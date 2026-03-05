@@ -179,7 +179,7 @@ export function CmsFeatures() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="left">
               <MockupScrollWrapper direction="left">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter">
                   <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_20px,rgba(249,115,22,0.02)_20px,rgba(249,115,22,0.02)_40px)] opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(249,115,22,0.8)] animate-[scan_3s_ease-in-out_infinite] pointer-events-none z-20"></div>
@@ -255,7 +255,7 @@ export function CmsFeatures() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex flex-col items-center justify-center">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex flex-col items-center justify-center">
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent,transparent_16px,rgba(59,130,246,0.02)_16px,rgba(59,130,246,0.02)_32px)] opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-[scan_3s_ease-in-out_infinite_reverse] pointer-events-none z-20"></div>
@@ -361,7 +361,7 @@ export function CmsFeatures() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="left">
               <MockupScrollWrapper direction="left">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter">
                   <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,rgba(16,185,129,0.02)_20px,rgba(16,185,129,0.02)_40px)] opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-transparent via-emerald-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-[scan_vertical_3s_ease-in-out_infinite] pointer-events-none z-20"></div>
@@ -443,10 +443,10 @@ export function CmsFeatures() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex flex-col justify-center">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex flex-col justify-center">
                   <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top_right,transparent,transparent_16px,rgba(139,92,246,0.02)_16px,rgba(139,92,246,0.02)_32px)] opacity-100 pointer-events-none rounded-xl"></div>
-                  <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-transparent via-violet-500 to-transparent opacity-30 shadow-[0_0_20px_rgba(139,92,246,0.8)] animate-[scan_vertical_4s_ease-in-out_infinite_reverse] pointer-events-none z-20"></div>
+                  <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-transparent via-violet-500 to-transparent opacity-30 shadow-[0_0_20px_rgba(139,92,246,0.8)] animate-[scan_vertical_4s_ease-in-out_infinite_reverse] pointer-events-none z-20"></div>
                   
                   {/* Pipeline Steps */}
                   <div className="space-y-4 relative z-10 w-full max-w-sm mx-auto">
@@ -522,7 +522,7 @@ export function CmsFeatures() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="left">
               <MockupScrollWrapper direction="left">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex gap-4">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex gap-4">
                   <div className="absolute inset-0 bg-gradient-to-tr from-rose-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(243,64,121,0.02)_10px,rgba(243,64,121,0.02)_20px)] opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(243,64,121,0.8)] animate-[scan_3s_ease-in-out_infinite] pointer-events-none z-20"></div>
@@ -602,10 +602,10 @@ export function CmsFeatures() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex flex-col gap-4">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex flex-col gap-4">
                   <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_bottom_left,transparent,transparent_20px,rgba(6,182,212,0.02)_20px,rgba(6,182,212,0.02)_40px)] opacity-100 pointer-events-none rounded-xl"></div>
-                  <div className="absolute top-0 right-0 w-2 h-full bg-gradient-to-b from-transparent via-cyan-500 to-transparent opacity-40 shadow-[0_0_20px_rgba(6,182,212,0.8)] animate-[scan_vertical_5s_ease-in-out_infinite_reverse] pointer-events-none z-20"></div>
+                  <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-transparent via-cyan-500 to-transparent opacity-40 shadow-[0_0_20px_rgba(6,182,212,0.8)] animate-[scan_vertical_5s_ease-in-out_infinite_reverse] pointer-events-none z-20"></div>
 
                   <div className="flex justify-between items-center relative z-10 border-b dark:border-white/5 border-black/5 pb-4 mb-2">
                     <div className="text-sm font-bold dark:text-white text-slate-900 uppercase tracking-wider flex items-center gap-2">

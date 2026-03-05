@@ -173,6 +173,21 @@ export function TopBarTitle({
  
   return (
     <div className="flex items-center gap-4">
+      <Button
+        variant="ghost"
+        className="hidden md:flex h-8 w-8 p-0 ml-3.5 items-center justify-center"
+        onClick={onCollapse}
+      >
+        {isCollapsed ? (
+          <PanelLeftOpen className="h-4 w-4" />
+        ) : (
+          <PanelLeftClose className="h-4 w-4" />
+        )}
+        <span className="sr-only">
+          {isCollapsed ? "Expandir menú" : "Colapsar menú"}
+        </span>
+      </Button>
+      
       {breadcrumbItems ? (
         <nav className="flex items-center" aria-label="Breadcrumb">
           <ol className="flex items-center">

@@ -141,6 +141,18 @@ module.exports = {
           "50%": { opacity: 1, borderWidth: "1px" },
           "100%": { transform: "translate(-50%, -50%) scale(2)", opacity: 0, borderWidth: "0px" },
         },
+        "scan": {
+          "0%": { top: "0%", opacity: 0 },
+          "10%": { opacity: 0.5 },
+          "90%": { opacity: 0.5 },
+          "100%": { top: "100%", opacity: 0 },
+        },
+        "scan_vertical": {
+          "0%": { left: "0%", opacity: 0 },
+          "10%": { opacity: 0.5 },
+          "90%": { opacity: 0.5 },
+          "100%": { left: "100%", opacity: 0 },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",

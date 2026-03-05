@@ -149,14 +149,14 @@ export function AuthLandingClient() {
           <div className="absolute inset-0 paper-texture-overlay z-0"></div>
           
           {/* Subtle vibrant glows for the futuristic touch */}
-          <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-violet-600/10 rounded-full font-sans blur-[100px] dark:mix-blend-screen mix-blend-multiply animate-pulse-slow"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-orange-500/5 rounded-full font-sans blur-[120px] dark:mix-blend-screen mix-blend-multiply animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-violet-600/10 rounded-full font-inter blur-[100px] dark:mix-blend-screen mix-blend-multiply animate-pulse-slow"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-orange-500/5 rounded-full font-inter blur-[120px] dark:mix-blend-screen mix-blend-multiply animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
         </div>
 
         {/* Logo and Chips - Centered */}
         <div className="relative z-10 flex flex-col items-center justify-center h-full drop-shadow-2xl">
           {/* YC-style badge: Backed by 500 Startups - schematic */}
-          <div className="mt-0 lg:-mt-16 mb-6 inline-flex items-center gap-3 rounded-sm border dark:border-white/50 border-black/50 bg-transparent px-4 py-2 text-sm font-sans font-normal dark:text-white/90 text-slate-500">
+          <div className="mt-0 lg:-mt-16 mb-6 inline-flex items-center gap-3 rounded-sm border dark:border-white/50 border-black/50 bg-transparent px-4 py-2 text-sm font-inter font-normal dark:text-white/90 text-slate-500">
             {t('auth.backedBy') || 'Backed by'}
             <Image
               src="/images/500logo.svg"
@@ -167,36 +167,36 @@ export function AuthLandingClient() {
             />
           </div>
           <Image 
-            src={isDark ? "/images/combination_mark_white.png" : "/images/combination_mark.png"}
+            src="/images/combination_mark.png"
             alt="Makinari Logo"
             width={320}
             height={100}
-            className="w-[200px] sm:w-[240px] md:w-[280px] lg:w-[320px] h-auto object-contain transition-transform duration-700 hover:scale-105"
+            className="w-[200px] sm:w-[240px] md:w-[280px] lg:w-[320px] h-auto object-contain transition-transform duration-700 hover:scale-105 dark:brightness-0 dark:invert"
             priority
           />
           
           {/* Feature Chips wrapped in AI stamp + Open Source outside */}
           <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
             <div className="inline-flex items-center gap-3 rounded-sm border dark:border-white/40 border-black/40 dark:bg-white/5 bg-black/5 px-3 py-2">
-              <span className="shrink-0 rounded border dark:border-white/30 border-black/30 dark:bg-white/10 bg-black/10 px-2.5 py-1 text-[10px] font-bold tracking-widest uppercase dark:text-white/95 text-slate-500 font-sans">
+              <span className="shrink-0 rounded border dark:border-white/30 border-black/30 dark:bg-white/10 bg-black/10 px-2.5 py-1 text-[10px] font-bold tracking-widest uppercase dark:text-white/95 text-slate-500 font-inter">
                 AI
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href="/resources/gtm-engineering"
-                  className="px-3 py-1 rounded-full font-sans dark:neu-black-chip-inward neu-white-chip-inward text-sm font-bold tracking-wide font-sans hover:opacity-80 transition-opacity cursor-pointer"
+                  className="px-3 py-1 rounded-full font-inter dark:neu-black-chip-inward neu-white-chip-inward text-sm font-bold tracking-wide font-inter hover:opacity-80 transition-opacity cursor-pointer"
                 >
                   {t('auth.chip.gtm') || 'GTM'}
                 </Link>
                 <Link
                   href="/product/crm"
-                  className="px-3 py-1 rounded-full font-sans dark:neu-black-chip-inward neu-white-chip-inward text-sm font-bold tracking-wide font-sans hover:opacity-80 transition-opacity cursor-pointer"
+                  className="px-3 py-1 rounded-full font-inter dark:neu-black-chip-inward neu-white-chip-inward text-sm font-bold tracking-wide font-inter hover:opacity-80 transition-opacity cursor-pointer"
                 >
                   {t('auth.chip.crm') || 'CRM'}
                 </Link>
                 <Link
                   href="/product/agents"
-                  className="px-3 py-1 rounded-full font-sans dark:neu-black-chip-inward neu-white-chip-inward text-sm font-bold tracking-wide font-sans hover:opacity-80 transition-opacity cursor-pointer"
+                  className="px-3 py-1 rounded-full font-inter dark:neu-black-chip-inward neu-white-chip-inward text-sm font-bold tracking-wide font-inter hover:opacity-80 transition-opacity cursor-pointer"
                 >
                   {t('auth.chip.employees') || 'Employees'}
                 </Link>
@@ -206,7 +206,7 @@ export function AuthLandingClient() {
               href="https://makinari.org"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full font-sans dark:neu-black-chip-inward neu-white-chip-inward text-sm font-bold tracking-wide font-sans hover:opacity-80 transition-opacity cursor-pointer"
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full font-inter dark:neu-black-chip-inward neu-white-chip-inward text-sm font-bold tracking-wide font-inter hover:opacity-80 transition-opacity cursor-pointer"
             >
               <GitHubIcon size={16} color={isDark ? "#fff" : "#000"} />
               {t('auth.chip.openSource') || 'Open Source'}
@@ -254,7 +254,7 @@ export function AuthLandingClient() {
         {mounted && (
           <div className="mx-auto w-full max-w-md relative z-10">
             <div className="flex items-center justify-center mb-8 animate-fade-in-up-1">
-              <div className="p-3 rounded-full font-sans font-bold bg-primary/10">
+              <div className="p-3 rounded-full font-inter font-bold bg-primary/10">
                 <Image 
                   src="/images/logo.png"
                   alt="Market Fit Logo"

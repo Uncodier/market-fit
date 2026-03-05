@@ -249,7 +249,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
                       <ul className="space-y-2">
                         {focusConfig.features.map((feature: string, i: number) => (
                           <li key={i} className="text-sm flex items-start">
-                            <div className="rounded-full font-sans h-1.5 w-1.5 mt-1.5 mr-2 bg-primary" />
+                            <div className="rounded-full font-inter h-1.5 w-1.5 mt-1.5 mr-2 bg-primary" />
                             {feature}
                           </li>
                         ))}

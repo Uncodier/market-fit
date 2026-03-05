@@ -654,7 +654,7 @@ export function ImportLeadsDialog({ segments = [], onImportLeads, trigger }: Imp
           {IMPORT_STEPS.map((step, index) => (
             <div key={step.id} className="flex items-center flex-1">
               <div className="flex items-center">
-                <div className={`w-8 h-8 min-w-[2rem] min-h-[2rem] rounded-full font-sans flex items-center justify-center border-2 flex-shrink-0 ${
+                <div className={`w-8 h-8 min-w-[2rem] min-h-[2rem] rounded-full font-inter flex items-center justify-center border-2 flex-shrink-0 ${
                   getStepStatus(step.id) === 'completed' 
                     ? 'bg-green-500 border-green-500 text-white' 
                     : getStepStatus(step.id) === 'current'

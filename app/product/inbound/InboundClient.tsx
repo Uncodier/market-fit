@@ -174,7 +174,7 @@ export function InboundClient() {
           </Reveal>
           <Reveal delay={300}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
-              <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 group">
+              <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-inter font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 group">
                 {t('inbound.hero.cta.start') || "Start with Makinari"}
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -192,7 +192,7 @@ export function InboundClient() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col gap-4 font-sans">
+              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col gap-4 font-inter">
                 <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                 <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top_left,transparent,transparent_8px,rgba(16,185,129,0.02)_8px,rgba(16,185,129,0.02)_16px)] opacity-100 pointer-events-none rounded-xl"></div>
                 
@@ -350,7 +350,7 @@ export function InboundClient() {
             <Reveal delay={200} direction="left">
               <div className="relative w-full aspect-square max-h-[500px] rounded-2xl dark:neu-panel neu-panel-light p-8 flex flex-col items-center justify-center overflow-hidden border dark:border-white/10 border-black/5 shadow-2xl">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08),transparent_70%)]"></div>
-                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.1)_8px,rgba(16,185,129,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.05)_8px,rgba(16,185,129,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.1)_8px,rgba(16,185,129,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.05)_8px,rgba(16,185,129,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
                 
                 {/* Visualization of budget moving */}
                 <div className="relative z-10 w-full h-full flex items-center justify-center">
@@ -526,7 +526,7 @@ export function InboundClient() {
             <Reveal delay={100} className="md:col-span-2 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(16,185,129,0.1)_10px,rgba(16,185,129,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(16,185,129,0.1)_10px,rgba(16,185,129,0.1)_20px)] opacity-40 pointer-events-none animate-expand-waves"></div>
                 <div className="relative z-10 max-w-md">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-emerald-500 mb-6 bg-emerald-500/5">
                     <Zap size={24} />
@@ -544,7 +544,7 @@ export function InboundClient() {
             <Reveal delay={200} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(20,184,166,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(20,184,166,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(20,184,166,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-[0.03] [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(20,184,166,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(20,184,166,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-40 [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-teal-500 mb-6 bg-teal-500/5">
                     <Target size={24} />
@@ -561,7 +561,7 @@ export function InboundClient() {
             <Reveal delay={300} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(59,130,246,0.1)_8px,rgba(59,130,246,0.1)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+                <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(59,130,246,0.1)_8px,rgba(59,130,246,0.1)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-blue-500 mb-6 bg-blue-500/5">
                     <CheckSquare size={24} />
@@ -578,7 +578,7 @@ export function InboundClient() {
             <Reveal delay={400} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.1)_8px,rgba(16,185,129,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.05)_8px,rgba(16,185,129,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.1)_8px,rgba(16,185,129,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(16,185,129,0.05)_8px,rgba(16,185,129,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-emerald-500 mb-6 bg-emerald-500/5">
                     <PieChart size={24} />
@@ -596,7 +596,7 @@ export function InboundClient() {
             <Reveal delay={500} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(249,115,22,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(249,115,22,0.1)_10px,rgba(249,115,22,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(249,115,22,0.1)_10px,rgba(249,115,22,0.1)_20px)] opacity-40 pointer-events-none animate-expand-waves"></div>
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(249,115,22,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(249,115,22,0.05)_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,black_70%,transparent_100%)] opacity-20 pointer-events-none"></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-orange-500 mb-6 bg-orange-500/5">

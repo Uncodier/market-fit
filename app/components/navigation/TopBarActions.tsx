@@ -428,7 +428,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           <Button 
             variant="outline" 
             size="default"
-            className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+            className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
             onClick={() => setIsAuthenticateModalOpen(true)}
             title="Authenticate"
           >
@@ -438,7 +438,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           <Button 
             variant="outline" 
             size="default"
-            className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+            className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
             onClick={handleSaveAuthSession}
             title="Save Auth Session"
           >
@@ -447,7 +447,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
           </Button>
           <Button 
             size="default"
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
             onClick={handleStopRobot}
             disabled={isStoppingRobot}
             title="Stop Robot"
@@ -482,7 +482,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
   return (
     <Button 
       size="default"
-      className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+      className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
       onClick={handleStartRobot}
       disabled={isStartingRobot}
       title="Start Robot"
@@ -1288,7 +1288,7 @@ The success of this experiment will be measured by:
     <div className="flex items-center gap-4">
       {isControlCenterPage && currentSite ? (
         <CreateTaskDialog trigger={
-          <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md" title="New Task">
+          <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="New Task">
             <PlusCircle className="h-4 w-4 shrink-0" />
             <span className="hidden md:inline ml-2">New Task</span>
           </Button>
@@ -1300,7 +1300,7 @@ The success of this experiment will be measured by:
         <Button 
           variant="ghost" 
           size="default"
-          className="text-muted-foreground hover:text-foreground flex items-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
           onClick={() => window.open('https://docs.makinari.com', '_blank')}
           title="Documentation"
         >
@@ -1323,7 +1323,7 @@ The success of this experiment will be measured by:
             })()
           ) && (
             <Button 
-              className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+              className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={async () => {
                 if (!userId) {
                   toast.error('User not authenticated')
@@ -1372,7 +1372,7 @@ The success of this experiment will be measured by:
         <Button 
           variant="outline" 
           size="default"
-          className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+            className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
           onClick={handleGenerateExperimentWithAI}
           disabled={isGeneratingExperiment}
           title="Build with AI"
@@ -1397,7 +1397,7 @@ The success of this experiment will be measured by:
             <Button 
               variant="outline" 
               size="default"
-              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={() => segmentData.openAIModal('analysis')}
               disabled={segmentData.isAnalyzing}
               title="Analyze with AI"
@@ -1419,7 +1419,7 @@ The success of this experiment will be measured by:
             <Button 
               variant="outline" 
               size="default"
-              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={() => segmentData.openAIModal('topics')}
               disabled={segmentData.isGeneratingTopics}
               title="Get Topics with AI"
@@ -1445,7 +1445,7 @@ The success of this experiment will be measured by:
             <Button 
               variant="outline" 
               size="default"
-              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
               title="Build with AI"
@@ -1465,7 +1465,7 @@ The success of this experiment will be measured by:
             <CreateSegmentDialog 
               onCreateSegment={handleCreateSegment}
               trigger={
-                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md" title="New Segment">
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="New Segment">
                   <PlusCircle className="h-4 w-4 shrink-0" />
                   <span className="hidden md:inline ml-2">New Segment</span>
                 </Button>
@@ -1482,7 +1482,7 @@ The success of this experiment will be measured by:
               campaigns={campaigns}
               onCreateExperiment={handleCreateExperiment}
               trigger={
-                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md" title="New Experiment">
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="New Experiment">
                   <PlusCircle className="h-4 w-4 shrink-0" />
                   <span className="hidden md:inline ml-2">New Experiment</span>
                 </Button>
@@ -1499,7 +1499,7 @@ The success of this experiment will be measured by:
               campaigns={campaigns}
               onCreateRequirement={handleCreateRequirement}
               trigger={
-                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md" title="New Requirement">
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="New Requirement">
                   <PlusCircle className="h-4 w-4 shrink-0" />
                   <span className="hidden md:inline ml-2">New Requirement</span>
                 </Button>
@@ -1515,7 +1515,7 @@ The success of this experiment will be measured by:
               segments={segments.length > 0 ? segments : propSegments || []}
               onImportLeads={handleImportLeads}
               trigger={
-                <Button variant="outline" className="md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md" title="Import">
+                <Button variant="outline" className="md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="Import">
                   <UploadCloud className="h-4 w-4 shrink-0" />
                   <span className="hidden md:inline ml-2">Import</span>
                 </Button>
@@ -1523,7 +1523,7 @@ The success of this experiment will be measured by:
             />
             <Button 
               variant="outline"
-              className="md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+              className="md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               title="Export"
               onClick={async () => {
                 try {
@@ -1559,7 +1559,7 @@ The success of this experiment will be measured by:
               campaigns={campaigns}
               onCreateLead={handleCreateLead}
               trigger={
-                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md" title="Add Lead">
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="Add Lead">
                   <PlusCircle className="h-4 w-4 shrink-0" />
                   <span className="hidden md:inline ml-2">Add Lead</span>
                 </Button>
@@ -1584,7 +1584,7 @@ The success of this experiment will be measured by:
             <Button 
               variant="outline" 
               size="default"
-              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
               title="Build with AI"
@@ -1612,7 +1612,7 @@ The success of this experiment will be measured by:
                 }
               }}
               trigger={
-                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md" title="New Content">
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="New Content">
                   <PlusCircle className="h-4 w-4 shrink-0" />
                   <span className="hidden md:inline ml-2">New Content</span>
                 </Button>
@@ -1627,7 +1627,7 @@ The success of this experiment will be measured by:
             <Button 
               variant="outline" 
               size="default"
-              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+              className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
               title="Build with AI"
@@ -1649,7 +1649,7 @@ The success of this experiment will be measured by:
               requirements={requirements}
               onCreateCampaign={handleCreateCampaign}
               trigger={
-                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md" title="New Campaign">
+                <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="New Campaign">
                   <PlusCircle className="h-4 w-4 shrink-0" />
                   <span className="hidden md:inline ml-2">New Campaign</span>
                 </Button>
@@ -1663,7 +1663,7 @@ The success of this experiment will be measured by:
           <>
             <Button 
               variant="outline"
-              className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md"
+              className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               title="Export"
               onClick={async () => {
                 try {
@@ -1694,7 +1694,7 @@ The success of this experiment will be measured by:
               <Download className="h-4 w-4 shrink-0" />
               <span className="hidden md:inline ml-2">Export</span>
             </Button>
-            <Button onClick={onCreateSale} className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-sans md:rounded-md" title="Add Sale">
+            <Button onClick={onCreateSale} className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="Add Sale">
               <PlusCircle className="h-4 w-4 shrink-0" />
               <span className="hidden md:inline ml-2">Add Sale</span>
             </Button>

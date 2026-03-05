@@ -801,7 +801,8 @@ function RobotsPageContent() {
   // Calculate how many tabs can fit based on available width
   // Always calculates - no early returns, uses defaults if measurements aren't ready
   const calculateMaxVisibleTabs = useCallback(() => {
-    // Use window width instead of container width (container expands with tabs)
+    // If container ref is available, its width is much more reliable
+    const containerWidth = tabsContainerRef.current?.clientWidth || 0
     const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 0
     
     if (windowWidth === 0) {
@@ -818,15 +819,21 @@ function RobotsPageContent() {
     const horizontalMargins = windowWidth >= 1024 ? 64 : 32
     
     const gapBetweenElements = 8 // gap-2 = 8px
-    const plusButtonWidth = 36 // Approximate width of Plus button (h-9 with padding)
-    const moreButtonWidth = 56 // Approximate width of "..." button
+    const plusButtonWidth = 44 // Approximate width of Plus button (h-9 with padding and shrink-0)
+    const moreButtonWidth = 80 // Approximate width of "..." button (needs to fit icon + up to 3 digits)
     
     // Fixed estimated width to prevent oscillation loops during resize
     // We use a conservative average width for robot tabs
-    const estimatedTabWidth = 120
+    // Note: tab max-w is 120px + 24px padding = 144px. So we use 150px to be safe.
+    const estimatedTabWidth = 150
     
-    // Calculate available width: window width minus sidebar, margins, buttons, and gaps
-    const availableWidth = windowWidth - sidebarWidth - horizontalMargins - gapBetweenElements - plusButtonWidth - gapBetweenElements - moreButtonWidth
+    // Calculate available width: 
+    // Prefer actual container width if available (> 0), otherwise fallback to window width calculation
+    const baseAvailableWidth = containerWidth > 0 
+      ? containerWidth 
+      : (windowWidth - sidebarWidth - horizontalMargins)
+      
+    const availableWidth = baseAvailableWidth - gapBetweenElements - plusButtonWidth - gapBetweenElements - moreButtonWidth - 16 // 16px extra buffer
     
     // Calculate how many tabs can fit (we already subtracted moreButtonWidth above)
     // We force at least 1 tab to be visible.
@@ -1004,8 +1011,8 @@ function RobotsPageContent() {
           <div className="flex items-center gap-4 w-full">
             <div className="flex items-center w-full min-w-0" ref={tabsContainerRef}>
               <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-                <Tabs key={`tabs-${currentSite?.id}-${siteChangeKey}`} value={selectedInstanceId} onValueChange={handleTabChange} className="w-full">
-                  <TabsList ref={tabsListRef} className="flex-nowrap justify-start w-full overflow-hidden">
+                <Tabs key={`tabs-${currentSite?.id}-${siteChangeKey}`} value={selectedInstanceId} onValueChange={handleTabChange} className="flex-1 min-w-0">
+                  <TabsList ref={tabsListRef} className="flex flex-nowrap justify-start w-full overflow-hidden">
                     {/* Show New Makina tab if no instances or while loading */}
                     {(allInstances.length === 0 || isLoadingRobots || forceLoading) && (
                       <TabsTrigger value="new">
@@ -1147,7 +1154,7 @@ function RobotsPageContent() {
                 {/* Create new instance button - pegado a los tabs */}
                 <Button
                   variant="secondary"
-                  className="h-9"
+                  className="h-9 shrink-0"
                   onClick={handleCreateNewInstance}
                   title="Create new robot instance"
                 >

@@ -118,7 +118,7 @@ export function Combobox({
               {clearable && value && (
                 <button
                   type="button"
-                  className="h-3.5 w-3.5 mr-1 rounded-full font-sans text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
+                  className="h-3.5 w-3.5 mr-1 rounded-full font-inter text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
                   onClick={handleClear}
                   aria-label="Clear selection"
                 >

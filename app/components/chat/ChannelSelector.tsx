@@ -54,7 +54,7 @@ export const ChannelSelector = memo(function ChannelSelector({
         className="w-auto"
       >
         <TabsList className={cn(
-          "h-8 p-0.5 bg-secondary/50 rounded-full font-sans transition-opacity duration-200",
+          "h-8 p-0.5 bg-secondary/50 rounded-full font-inter transition-opacity duration-200",
           isUpdating && "opacity-70"
         )}>
           <TooltipProvider delayDuration={300}>
@@ -69,7 +69,7 @@ export const ChannelSelector = memo(function ChannelSelector({
                       value={channel}
                       disabled={isUpdating}
                       className={cn(
-                        "h-7 w-7 px-0 flex items-center justify-center rounded-full font-sans transition-all duration-200",
+                        "h-7 w-7 px-0 flex items-center justify-center rounded-full font-inter transition-all duration-200",
                         "[&>*]:flex [&>*]:items-center [&>*]:justify-center",
                         isUpdating && "cursor-not-allowed"
                       )}

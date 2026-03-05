@@ -76,7 +76,7 @@ export function VariableCostsSection() {
               className="rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-6 md:p-8 flex flex-col justify-center border dark:border-white/[0.06] border-black/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:-translate-x-1 hover:border-violet-500/30 hover:shadow-[10px_10px_0px_rgba(255,255,255,0.05)]"
               style={{ animationDelay: `${idx * 50}ms` }}
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-full font-sans blur-3xl -translate-y-1/2 translate-x-1/2" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-full font-inter blur-3xl -translate-y-1/2 translate-x-1/2" />
               <div className="relative z-10 flex flex-col h-full">
                 <div className="flex-1">
                   <h3 className="text-sm dark:text-white/70 text-slate-500 font-medium mb-1">{cost.label}</h3>
@@ -105,7 +105,7 @@ export function VariableCostsSection() {
             {/* Example 1 */}
             <div className="rounded-xl dark:neu-base neu-base-light p-8 border dark:border-white/[0.06] border-black/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:-translate-x-1 hover:border-violet-500/30 hover:shadow-[10px_10px_0px_rgba(255,255,255,0.05)]">
               <h4 className="text-xl font-bold dark:text-white text-slate-900 mb-4 flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full font-sans font-bold bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400 text-sm font-bold shadow-inner">1</span>
+                <span className="flex items-center justify-center w-8 h-8 rounded-full font-inter font-bold bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400 text-sm font-bold shadow-inner">1</span>
                 {t('pricing.variable.ex1.title') || 'Recruitment Campaign'}
               </h4>
               <p className="dark:text-white/70 text-slate-500 mb-6 text-sm font-light">
@@ -130,7 +130,7 @@ export function VariableCostsSection() {
             {/* Example 2 */}
             <div className="rounded-xl dark:neu-base neu-base-light p-8 border dark:border-white/[0.06] border-black/5 backdrop-blur-sm transition-all duration-500 hover:-translate-y-2 hover:-translate-x-1 hover:border-orange-500/30 hover:shadow-[10px_10px_0px_rgba(255,255,255,0.05)]">
               <h4 className="text-xl font-bold dark:text-white text-slate-900 mb-4 flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full font-sans font-bold bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400 text-sm font-bold shadow-inner">2</span>
+                <span className="flex items-center justify-center w-8 h-8 rounded-full font-inter font-bold bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400 text-sm font-bold shadow-inner">2</span>
                 {t('pricing.variable.ex2.title') || 'Closing and Signing Partners'}
               </h4>
               <p className="dark:text-white/70 text-slate-500 mb-6 text-sm font-light">

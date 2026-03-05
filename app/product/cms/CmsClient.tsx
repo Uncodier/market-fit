@@ -176,7 +176,7 @@ export function CmsClient() {
           </Reveal>
           <Reveal delay={300}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
-              <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.4)] flex items-center justify-center gap-2 group">
+              <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-inter font-bold transition-all shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.4)] flex items-center justify-center gap-2 group">
                 {t('cms.hero.cta_start') || 'Start with Makinari'}
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -314,7 +314,7 @@ export function CmsClient() {
             <Reveal delay={100} className="md:col-span-2 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(249,115,22,0.1)_8px,rgba(249,115,22,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(249,115,22,0.05)_8px,rgba(249,115,22,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(249,115,22,0.1)_8px,rgba(249,115,22,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(249,115,22,0.05)_8px,rgba(249,115,22,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
                 <div className="relative z-10 max-w-md">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-orange-500 mb-6 bg-orange-500/5">
                     <Search size={24} />
@@ -332,7 +332,7 @@ export function CmsClient() {
             <Reveal delay={200} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(225,29,72,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(225,29,72,0.1)_10px,rgba(225,29,72,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(225,29,72,0.1)_10px,rgba(225,29,72,0.1)_20px)] opacity-40 pointer-events-none animate-expand-waves"></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-rose-500 mb-6 bg-rose-500/5">
                     <Bot size={24} />
@@ -349,7 +349,7 @@ export function CmsClient() {
             <Reveal delay={300} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(225,29,72,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(225,29,72,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(225,29,72,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-[0.03] [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(225,29,72,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(225,29,72,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-40 [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-rose-500 mb-6 bg-rose-500/5">
                     <Zap size={24} />
@@ -366,7 +366,7 @@ export function CmsClient() {
             <Reveal delay={400} className="md:col-span-2 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(249,115,22,0.1)_8px,rgba(249,115,22,0.1)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+                <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(249,115,22,0.1)_8px,rgba(249,115,22,0.1)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
                 <div className="relative z-10 max-w-md">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-orange-500 mb-6 bg-orange-500/5">
                     <FileText size={24} />

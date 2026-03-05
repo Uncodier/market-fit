@@ -1080,7 +1080,7 @@ export function ChatMessages({
                 {i % 2 === 0 ? (
                   <div className="flex items-start gap-3 max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0">
                     <div className="flex-shrink-0 mt-1">
-                      <div className="w-8 h-8 rounded-full font-sans font-bold bg-primary/20"></div>
+                      <div className="w-8 h-8 rounded-full font-inter font-bold bg-primary/20"></div>
                     </div>
                     <div className="space-y-2 w-[350px]">
                       <div className="h-4 bg-primary/10 rounded w-24"></div>
@@ -1985,9 +1985,9 @@ export function ChatMessages({
             {isAgentResponding && (
               <div className="flex justify-start animate-slide-in-fade mt-6 mb-8">
                 <div className="inline-flex items-center gap-2 ml-9 w-auto">
-                  <div className="w-2.5 h-2.5 rounded-full font-sans font-bold bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2.5 h-2.5 rounded-full font-sans font-bold bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2.5 h-2.5 rounded-full font-sans font-bold bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  <div className="w-2.5 h-2.5 rounded-full font-inter font-bold bg-primary animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2.5 h-2.5 rounded-full font-inter font-bold bg-primary animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2.5 h-2.5 rounded-full font-inter font-bold bg-primary animate-bounce" style={{ animationDelay: '300ms' }}></div>
                 </div>
               </div>
             )}

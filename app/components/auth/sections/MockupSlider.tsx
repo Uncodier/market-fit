@@ -109,12 +109,12 @@ export function MockupSlider() {
       }}
     >
       {/* Tab Selector */}
-      <div className="w-[calc(100vw-2rem)] md:w-auto overflow-x-auto scrollbar-hide flex items-center justify-start md:justify-center gap-1.5 md:gap-2 mb-8 neu-pressed-light dark:neu-pressed p-1.5 rounded-2xl md:rounded-full font-sans relative snap-x mx-auto">
+      <div className="w-[calc(100vw-2rem)] md:w-auto overflow-x-auto scrollbar-hide flex items-center justify-start md:justify-center gap-1.5 md:gap-2 mb-8 neu-pressed-light dark:neu-pressed p-1.5 rounded-2xl md:rounded-full font-inter relative snap-x mx-auto">
         {tabs.map((tab, i) => (
           <button
             key={tab.id}
             onClick={() => handleTabClick(i)}
-            className={`relative whitespace-nowrap px-4 md:px-5 py-2 rounded-xl md:rounded-full font-sans text-sm font-medium transition-all duration-300 overflow-hidden snap-center shrink-0 ${
+            className={`relative whitespace-nowrap px-4 md:px-5 py-2 rounded-xl md:rounded-full font-inter text-sm font-medium transition-all duration-300 overflow-hidden snap-center shrink-0 ${
               activeMockup === i
                 ? "neu-button-light dark:neu-button text-slate-900 dark:text-white"
                 : "text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
@@ -122,7 +122,7 @@ export function MockupSlider() {
           >
             {activeMockup === i && !isHovering && (
               <span
-                className="absolute inset-0 pointer-events-none rounded-full font-sans opacity-40"
+                className="absolute inset-0 pointer-events-none rounded-full font-inter opacity-40"
                 aria-hidden
                 style={{
                   background: `conic-gradient(from -90deg, rgba(139,92,246,0.8) 0deg, rgba(139,92,246,0.8) ${timerProgress * 3.6}deg, transparent ${timerProgress * 3.6}deg)`,
@@ -135,7 +135,7 @@ export function MockupSlider() {
       </div>
 
       {/* Mockup Container */}
-      <div className="relative w-full max-w-5xl mx-auto h-[450px] md:h-[600px] group/card perspective-[1000px] font-sans">
+      <div className="relative w-full max-w-5xl mx-auto h-[450px] md:h-[600px] group/card perspective-[1000px] font-inter">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeMockup}
@@ -174,7 +174,7 @@ export function MockupSlider() {
             </p>
             <Link 
               href={sliderContent[activeMockup].link}
-              className="inline-flex items-center gap-2 rounded-full font-sans dark:neu-button neu-button-light px-6 py-2 font-semibold text-xs md:text-sm transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+              className="inline-flex items-center gap-2 rounded-full font-inter dark:neu-button neu-button-light px-6 py-2 font-semibold text-xs md:text-sm transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
             >
               {t('mockupslider.learnMore') || 'Learn more'}
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -280,7 +280,7 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
       <div className="flex-1 flex flex-col relative overflow-hidden bg-gradient-to-b dark:from-white/[0.01] from-black/[0.01] to-transparent">
         {/* Topbar */}
         <div className="h-16 border-b border-black/5 dark:border-white/5 dark:bg-white/[0.01] bg-black/[0.01] flex items-center justify-between px-6 backdrop-blur-md">
-          <div className="hidden md:flex items-center w-64 h-9 neu-pressed-light dark:neu-pressed rounded-full font-sans px-3">
+          <div className="hidden md:flex items-center w-64 h-9 neu-pressed-light dark:neu-pressed rounded-full font-inter px-3">
             <svg
               className="w-4 h-4 text-slate-500 dark:text-white/30"
               fill="none"
@@ -297,10 +297,10 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
             <div className="ml-2 h-2 w-16 dark:neu-skeleton neu-skeleton-light rounded"></div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-full font-sans font-bold bg-black/5 dark:bg-white/5 flex items-center justify-center border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer">
+            <div className="w-8 h-8 rounded-full font-inter font-bold bg-black/5 dark:bg-white/5 flex items-center justify-center border border-black/10 dark:border-white/10 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer">
               <div className="w-3 h-3 bg-black/30 dark:bg-white/30 rounded-full"></div>
             </div>
-            <div className="w-8 h-8 rounded-full font-sans font-bold bg-gradient-to-tr from-indigo-500 to-purple-500 border border-black/10 dark:border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] cursor-pointer hover:scale-105 transition-transform"></div>
+            <div className="w-8 h-8 rounded-full font-inter font-bold bg-gradient-to-tr from-indigo-500 to-purple-500 border border-black/10 dark:border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] cursor-pointer hover:scale-105 transition-transform"></div>
           </div>
         </div>
 
@@ -331,13 +331,13 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-2 h-2 rounded-full font-sans ${col.color} shadow-[0_0_8px_${col.shadowColor}]`}
+                    className={`w-2 h-2 rounded-full font-inter ${col.color} shadow-[0_0_8px_${col.shadowColor}]`}
                   ></div>
                   <div className="text-sm font-medium text-slate-500 dark:text-white/80">
                     {col.title}
                   </div>
                 </div>
-                <div className="text-xs font-semibold text-slate-500 dark:text-white/40 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full font-sans border border-black/5 dark:border-white/5">
+                <div className="text-xs font-semibold text-slate-500 dark:text-white/40 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full font-inter border border-black/5 dark:border-white/5">
                   {col.count}
                 </div>
               </div>
@@ -349,7 +349,6 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
                     className="dark:neu-card neu-card-light dark:neu-card neu-card-light-hover rounded-md p-4 cursor-pointer group/card relative overflow-hidden animate-fade-in-up"
                     style={{ animationDelay: `${300 + idx * 150 + i * 100}ms` }}
                   >
-                    <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
                     <div className="absolute inset-0 bg-gradient-to-tr dark:from-white/0 from-black/0 dark:via-white/[0.02] via-black/[0.02] dark:to-white/0 to-black/0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
                     {col.active && i === 0 && (
@@ -359,9 +358,9 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
                     <div className="h-2 w-1/2 dark:neu-skeleton neu-skeleton-light opacity-70 rounded mb-4"></div>
                     <div className="flex justify-between items-center mt-4 relative z-10">
                       <div className="flex -space-x-2">
-                        <div className="w-7 h-7 rounded-full font-sans dark:bg-zinc-800 bg-zinc-200 border-2 border-white dark:border-[#09090b] shadow-sm"></div>
+                        <div className="w-7 h-7 rounded-full font-inter dark:bg-zinc-800 bg-zinc-200 border-2 border-white dark:border-[#09090b] shadow-sm"></div>
                         {col.active && (
-                          <div className="w-7 h-7 rounded-full font-sans font-bold bg-gradient-to-br from-violet-500 to-fuchsia-600 border-2 border-[#09090b] flex items-center justify-center text-[9px] font-bold shadow-[0_0_10px_rgba(139,92,246,0.6)] z-10">
+                          <div className="w-7 h-7 rounded-full font-inter font-bold bg-gradient-to-br from-violet-500 to-fuchsia-600 border-2 border-[#09090b] flex items-center justify-center text-[9px] font-bold shadow-[0_0_10px_rgba(139,92,246,0.6)] z-10">
                             AI
                           </div>
                         )}
@@ -385,11 +384,10 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
       </div>
       </div>
       {/* Floating Badges */}
-      <div className="overflow-hidden relative absolute -right-4 md:-right-8 top-1/3 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(16,185,129,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
+      <div className="overflow-hidden absolute -right-4 md:-right-8 top-1/3 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(16,185,129,0.15)] z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full font-sans font-bold bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0">
+          <div className="w-10 h-10 rounded-full font-inter font-bold bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0">
             <svg
               className="w-5 h-5 text-emerald-400"
               fill="none"
@@ -415,11 +413,10 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
         </div>
       </div>
 
-      <div className="overflow-hidden relative absolute -left-4 md:-left-8 bottom-1/4 w-48 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(139,92,246,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
+      <div className="overflow-hidden absolute -left-4 md:-left-8 bottom-1/4 w-48 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(139,92,246,0.15)] delay-100 z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full font-sans font-bold bg-violet-500 animate-pulse shadow-[0_0_12px_rgba(139,92,246,1)]"></div>
+          <div className="w-3 h-3 rounded-full font-inter font-bold bg-violet-500 animate-pulse shadow-[0_0_12px_rgba(139,92,246,1)]"></div>
           <div className="text-xs font-medium text-slate-500 dark:text-white/80 tracking-wide">
             {t('mockupslider.crm.agentTyping') || "Agent typing..."}
           </div>
@@ -492,8 +489,8 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full font-sans font-bold bg-cyan-500/10 border border-cyan-500/20">
-            <div className="w-2 h-2 rounded-full font-sans font-bold bg-cyan-500 animate-pulse"></div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full font-inter font-bold bg-cyan-500/10 border border-cyan-500/20">
+            <div className="w-2 h-2 rounded-full font-inter font-bold bg-cyan-500 animate-pulse"></div>
             <span className="text-xs font-medium text-cyan-400">{t('mockupslider.control.inProgress') || "In Progress"}</span>
           </div>
         </div>
@@ -511,7 +508,6 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
 
           {/* Comment Input */}
           <div className="overflow-hidden relative rounded-md neu-panel-light dark:neu-panel p-4 flex flex-col gap-3 animate-fade-in-up shrink-0" style={{ animationDelay: '100ms' }}>
-            <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
             <div className="h-20 w-full rounded-md dark:neu-recessed neu-recessed-light p-3 text-sm text-slate-500 dark:text-white/40">
               {t('mockupslider.control.writeUpdate') || "Write an update or comment..."}
             </div>
@@ -536,8 +532,7 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
               { author: "AI Agent", isAI: true, time: t('mockupslider.control.time3') || "3 hours ago", content: t('mockupslider.control.msg3') || "Initial data extraction completed. Found 124 records with missing identifiers.", file: "anomaly_report.csv" }
             ].map((item, i) => (
               <div key={i} className="overflow-hidden relative rounded-md dark:neu-card neu-card-light p-4 flex gap-4 animate-fade-in-up hover:dark:bg-white/[0.03] bg-black/5 transition-colors" style={{ animationDelay: `${200 + i * 150}ms` }}>
-                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
-                <div className={`w-10 h-10 rounded-full font-sans flex items-center justify-center text-xs font-bold shrink-0 ${item.isAI ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border dark:border-[#09090b] border-white shadow-[0_0_10px_rgba(139,92,246,0.4)] text-white' : 'dark:bg-zinc-800 bg-zinc-200 border dark:border-[#09090b] border-white text-slate-700 dark:text-white/70'}`}>
+                <div className={`w-10 h-10 rounded-full font-inter flex items-center justify-center text-xs font-bold shrink-0 ${item.isAI ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border dark:border-[#09090b] border-white shadow-[0_0_10px_rgba(139,92,246,0.4)] text-white' : 'dark:bg-zinc-800 bg-zinc-200 border dark:border-[#09090b] border-white text-slate-700 dark:text-white/70'}`}>
                   {item.isAI ? 'AI' : item.author.charAt(0)}
                 </div>
                 <div className="flex-1 flex flex-col gap-2">
@@ -564,11 +559,10 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
 
           {/* Original Task Description */}
           <div className="rounded-md neu-panel-light dark:neu-panel p-5 flex gap-4 mt-4 animate-fade-in-up shrink-0 relative overflow-hidden" style={{ animationDelay: '700ms' }}>
-            <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
              <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500/30"></div>
              <div className="flex -space-x-2 shrink-0">
-               <div className="w-10 h-10 rounded-full font-sans font-bold bg-blue-500/20 flex items-center justify-center border-2 border-[#09090b] text-blue-400 text-xs font-bold">SJ</div>
-               <div className="w-10 h-10 rounded-full font-sans font-bold bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center border-2 border-[#09090b] text-white text-xs font-bold shadow-[0_0_10px_rgba(139,92,246,0.4)] z-10">AI</div>
+               <div className="w-10 h-10 rounded-full font-inter font-bold bg-blue-500/20 flex items-center justify-center border-2 border-[#09090b] text-blue-400 text-xs font-bold">SJ</div>
+               <div className="w-10 h-10 rounded-full font-inter font-bold bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center border-2 border-[#09090b] text-white text-xs font-bold shadow-[0_0_10px_rgba(139,92,246,0.4)] z-10">AI</div>
              </div>
              <div className="flex-1 flex flex-col gap-1.5">
                <div className="text-base font-semibold text-slate-500 dark:text-white/90 flex items-center gap-3">
@@ -593,11 +587,10 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
       </div>
       </div>
       {/* Floating Badges */}
-      <div className="overflow-hidden relative absolute -right-4 md:-right-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(6,182,212,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
+      <div className="overflow-hidden absolute -right-4 md:-right-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(6,182,212,0.15)] z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full font-sans font-bold bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)] shrink-0">
+          <div className="w-10 h-10 rounded-full font-inter font-bold bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)] shrink-0">
             <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -609,11 +602,10 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
         </div>
       </div>
 
-      <div className="overflow-hidden relative absolute -left-4 md:-left-8 bottom-1/3 w-52 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(239,68,68,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
+      <div className="overflow-hidden absolute -left-4 md:-left-8 bottom-1/3 w-52 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(239,68,68,0.15)] delay-100 z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full font-sans font-bold bg-red-500 animate-pulse shadow-[0_0_12px_rgba(239,68,68,1)]"></div>
+          <div className="w-3 h-3 rounded-full font-inter font-bold bg-red-500 animate-pulse shadow-[0_0_12px_rgba(239,68,68,1)]"></div>
           <div className="text-xs font-medium text-slate-500 dark:text-white/80 tracking-wide">{t('mockupslider.control.badgeAnomaly') || "Anomaly Detected"}</div>
         </div>
       </div>
@@ -673,7 +665,7 @@ function DashboardMockup({ t }: { t: (key: string) => string }) {
         {/* Border Overlay to ensure crisp rounded edges over children */}
         <div className="absolute inset-0 rounded-xl border border-black/10 dark:border-white/10 pointer-events-none z-50"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.05),transparent_50%)] transition-colors pointer-events-none"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(16,185,129,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(16,185,129,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-40 [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.4)_1.5px,transparent_1.5px)] bg-[size:2rem_2rem] opacity-40 [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
       {/* Topbar */}
       <div className="h-16 border-b border-black/5 dark:border-white/5 dark:bg-white/[0.01] bg-black/[0.01] flex items-center justify-between px-6 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-4">
@@ -701,7 +693,6 @@ function DashboardMockup({ t }: { t: (key: string) => string }) {
             { label: t('mockupslider.dashboard.stat4') || "Avg Session", value: "4m 12s", change: "+1.2%", positive: true }
           ].map((stat, i) => (
             <div key={i} className="dark:neu-card neu-card-light dark:neu-card neu-card-light-hover rounded-md p-3 md:p-4 flex flex-col gap-2 relative overflow-hidden group cursor-pointer animate-fade-in-up" style={{ animationDelay: `${i * 100}ms` }}>
-              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
               <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl dark:from-white/5 from-black/5 to-transparent rounded-bl-full"></div>
               <div className="text-[10px] md:text-xs text-slate-500 dark:text-white/50 font-medium">{stat.label}</div>
               <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-1 xl:gap-0 mt-auto">
@@ -754,11 +745,10 @@ function DashboardMockup({ t }: { t: (key: string) => string }) {
       </div>
       </div>
       {/* Floating Badges */}
-      <div className="overflow-hidden relative absolute -left-4 md:-left-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(16,185,129,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
+      <div className="overflow-hidden absolute -left-4 md:-left-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(16,185,129,0.15)] z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full font-sans font-bold bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0">
+          <div className="w-10 h-10 rounded-full font-inter font-bold bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0">
             <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
@@ -770,8 +760,7 @@ function DashboardMockup({ t }: { t: (key: string) => string }) {
         </div>
       </div>
 
-      <div className="overflow-hidden relative absolute -right-4 md:-right-8 bottom-1/4 w-52 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(59,130,246,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
+      <div className="overflow-hidden absolute -right-4 md:-right-8 bottom-1/4 w-52 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(59,130,246,0.15)] delay-100 z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
@@ -856,7 +845,7 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
             { name: t('mockupslider.chat.marketing') || "Marketing", msg: t('mockupslider.chat.msg4') || "Assets are ready for review.", time: t('mockupslider.chat.yesterday') || "Yesterday", active: false, avatar: "bg-orange-500" }
           ].map((chat, i) => (
             <div key={i} className={`p-3 rounded-md flex items-center gap-3 cursor-pointer transition-colors animate-fade-in-up ${chat.active ? 'bg-black/10 dark:bg-white/10 border border-black/5 dark:border-white/5' : 'hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}`} style={{ animationDelay: `${i * 100}ms` }}>
-              <div className={`w-10 h-10 rounded-full font-sans flex items-center justify-center text-white font-bold text-sm shadow-inner ${chat.avatar}`}>
+              <div className={`w-10 h-10 rounded-full font-inter flex items-center justify-center text-white font-bold text-sm shadow-inner ${chat.avatar}`}>
                 {chat.name.charAt(0)}
               </div>
               <div className="flex-1 overflow-hidden">
@@ -876,20 +865,20 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
         {/* Header */}
         <div className="h-16 border-b border-black/5 dark:border-white/5 flex items-center justify-between px-6 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full font-sans font-bold bg-blue-500 flex items-center justify-center text-white font-bold text-sm shadow-inner">S</div>
+            <div className="w-10 h-10 rounded-full font-inter font-bold bg-blue-500 flex items-center justify-center text-white font-bold text-sm shadow-inner">S</div>
             <div>
               <div className="text-sm font-semibold text-slate-900 dark:text-white">{t('mockupslider.chat.team') || "Sales Team"}</div>
               <div className="text-xs text-slate-500 dark:text-white/40 flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full font-sans font-bold bg-emerald-500 animate-pulse"></div>
+                <div className="w-1.5 h-1.5 rounded-full font-inter font-bold bg-emerald-500 animate-pulse"></div>
                 {t('mockupslider.chat.online') || "4 members online"}
               </div>
             </div>
           </div>
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full font-sans font-bold bg-black/5 dark:bg-white/5 flex items-center justify-center cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+            <div className="w-8 h-8 rounded-full font-inter font-bold bg-black/5 dark:bg-white/5 flex items-center justify-center cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
               <svg className="w-4 h-4 text-slate-500 dark:text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
             </div>
-            <div className="w-8 h-8 rounded-full font-sans font-bold bg-black/5 dark:bg-white/5 flex items-center justify-center cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+            <div className="w-8 h-8 rounded-full font-inter font-bold bg-black/5 dark:bg-white/5 flex items-center justify-center cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
               <svg className="w-4 h-4 text-slate-500 dark:text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
             </div>
           </div>
@@ -900,30 +889,28 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
           <div className="text-center text-[10px] font-medium text-slate-500 dark:text-white/30 my-2 animate-fade-in-up">{t('mockupslider.chat.today') || "Today"}</div>
           
           <div className="flex gap-3 max-w-[80%] animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-            <div className="w-8 h-8 rounded-full font-sans font-bold bg-emerald-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold">J</div>
+            <div className="w-8 h-8 rounded-full font-inter font-bold bg-emerald-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold">J</div>
             <div className="overflow-hidden relative neu-panel-light dark:neu-panel rounded-lg rounded-bl-sm p-3 text-sm text-slate-500 dark:text-white/90">
-              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
               {t('mockupslider.chat.bubble1') || "Hey team, how's the new outreach campaign performing?"}
             </div>
           </div>
           
           <div className="flex gap-3 max-w-[80%] self-end flex-row-reverse animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-            <div className="w-8 h-8 rounded-full font-sans font-bold bg-violet-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold shadow-[0_0_10px_rgba(139,92,246,0.5)]">AI</div>
+            <div className="w-8 h-8 rounded-full font-inter font-bold bg-violet-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold shadow-[0_0_10px_rgba(139,92,246,0.5)]">AI</div>
             <div className="bg-violet-500/20 border border-violet-500/30 rounded-lg rounded-br-sm p-3 text-sm text-slate-500 dark:text-white/90">
               {t('mockupslider.chat.bubble2') || "I've analyzed the initial data. Open rates are up 24% compared to last week. I've also automatically followed up with 45 engaged leads."}
             </div>
           </div>
 
           <div className="flex gap-3 max-w-[80%] animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-            <div className="w-8 h-8 rounded-full font-sans font-bold bg-orange-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold">M</div>
+            <div className="w-8 h-8 rounded-full font-inter font-bold bg-orange-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold">M</div>
             <div className="overflow-hidden relative neu-panel-light dark:neu-panel rounded-lg rounded-bl-sm p-3 text-sm text-slate-500 dark:text-white/90">
-              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
               {t('mockupslider.chat.bubble3') || "That's amazing! Can you generate a report for the weekly meeting?"}
             </div>
           </div>
           
           <div className="flex gap-3 max-w-[80%] self-end flex-row-reverse animate-fade-in-up" style={{ animationDelay: '700ms' }}>
-            <div className="w-8 h-8 rounded-full font-sans font-bold bg-violet-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold shadow-[0_0_10px_rgba(139,92,246,0.5)]">AI</div>
+            <div className="w-8 h-8 rounded-full font-inter font-bold bg-violet-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold shadow-[0_0_10px_rgba(139,92,246,0.5)]">AI</div>
             <div className="bg-violet-500/20 border border-violet-500/30 rounded-lg rounded-br-sm p-3 text-sm text-slate-500 dark:text-white/90 flex flex-col gap-2">
               <div>{t('mockupslider.chat.bubble4') || "Absolutely. I'm compiling the metrics now."}</div>
               <div className="dark:bg-black/30 bg-black/5 rounded-md p-2 flex items-center gap-3 border border-black/5 dark:border-white/5 cursor-pointer hover:bg-black/10 hover:dark:bg-white/5 transition-colors">
@@ -958,11 +945,10 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
       </div>
       </div>
       {/* Floating Badges */}
-      <div className="overflow-hidden relative absolute -right-4 md:-right-8 top-1/4 w-60 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(139,92,246,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
+      <div className="overflow-hidden absolute -right-4 md:-right-8 top-1/4 w-60 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(139,92,246,0.15)] z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full font-sans font-bold bg-violet-500/20 flex items-center justify-center border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)] shrink-0">
+          <div className="w-10 h-10 rounded-full font-inter font-bold bg-violet-500/20 flex items-center justify-center border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)] shrink-0">
             <svg className="w-5 h-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
@@ -974,11 +960,10 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
         </div>
       </div>
 
-      <div className="overflow-hidden relative absolute -left-4 md:-left-8 bottom-1/4 w-52 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(16,185,129,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
+      <div className="overflow-hidden absolute -left-4 md:-left-8 bottom-1/4 w-52 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(16,185,129,0.15)] delay-100 z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full font-sans font-bold bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+          <div className="w-8 h-8 rounded-full font-inter font-bold bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
             <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
           </div>
           <div>
@@ -1130,8 +1115,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
       </div>
       </div>
       {/* Floating Badges */}
-      <div className="overflow-hidden relative absolute -left-4 md:-left-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(244,63,94,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
+      <div className="overflow-hidden absolute -left-4 md:-left-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(244,63,94,0.15)] z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-rose-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full font-sans font-bold bg-rose-500/20 flex items-center justify-center border border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.3)] shrink-0">
@@ -1146,8 +1130,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
         </div>
       </div>
 
-      <div className="overflow-hidden relative absolute -right-4 md:-right-8 bottom-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(244,63,94,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
+      <div className="overflow-hidden absolute -right-4 md:-right-8 bottom-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(244,63,94,0.15)] delay-100 z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-rose-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full font-sans font-bold bg-rose-500/20 flex items-center justify-center border border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.2)]">
@@ -1247,7 +1230,6 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
             { title: t('mockupslider.goals.g4.title') || "Implement Stripe Billing", type: t('mockupslider.goals.type.feature') || "Feature", status: t('mockupslider.goals.status.inProgress') || "In Progress", priority: t('mockupslider.goals.priority.high') || "High", progress: 30, color: "text-amber-400", bg: "bg-amber-500" }
           ].map((req, i) => (
             <div key={i} className="overflow-hidden relative dark:neu-card neu-card-light dark:neu-card neu-card-light-hover rounded-lg p-5 cursor-pointer group animate-fade-in-up" style={{ animationDelay: `${i * 150}ms` }}>
-              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
               <div className="flex justify-between items-start mb-4">
                 <div className="text-sm font-semibold text-slate-500 dark:text-white/90">{req.title}</div>
                 <div className={`text-[10px] font-bold px-2 py-1 rounded border ${
@@ -1291,8 +1273,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
       </div>
       </div>
       {/* Floating Badges */}
-      <div className="overflow-hidden relative absolute -right-4 md:-right-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(234,179,8,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
+      <div className="overflow-hidden absolute -right-4 md:-right-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(234,179,8,0.15)] z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full font-sans font-bold bg-amber-500/20 flex items-center justify-center border border-amber-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] shrink-0">
@@ -1307,8 +1288,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
         </div>
       </div>
 
-      <div className="overflow-hidden relative absolute -left-4 md:-left-8 bottom-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(234,179,8,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
+      <div className="overflow-hidden absolute -left-4 md:-left-8 bottom-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(234,179,8,0.15)] delay-100 z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full font-sans font-bold bg-amber-500/20 flex items-center justify-center border border-amber-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]">

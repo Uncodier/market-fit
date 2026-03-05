@@ -14,7 +14,7 @@ export function AgentFeatures() {
         {/* Feature 1: Zero Config */}
         <div className="rounded-2xl dark:neu-panel neu-panel-light p-8 flex flex-col border dark:border-white/[0.04] border-black/5 relative group overflow-hidden transition-all duration-500 hover:-translate-y-1 bg-white dark:bg-[#09090b]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(236,72,153,0.05),transparent_50%)] group-hover:bg-[radial-gradient(circle_at_top_right,rgba(236,72,153,0.1),transparent_50%)] transition-colors"></div>
-          <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(236,72,153,0.1)_8px,rgba(236,72,153,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(236,72,153,0.05)_8px,rgba(236,72,153,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+          <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(236,72,153,0.1)_8px,rgba(236,72,153,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(236,72,153,0.05)_8px,rgba(236,72,153,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
           
           <div className="mb-8 relative z-10 w-full rounded-xl dark:neu-recessed neu-recessed-light border dark:border-white/5 border-black/5 p-4 flex flex-col gap-3 bg-slate-50 dark:bg-black/20">
             <div className="flex items-center justify-between">
@@ -50,7 +50,7 @@ export function AgentFeatures() {
         {/* Feature 2: Easiest to use */}
         <div className="rounded-2xl dark:neu-panel neu-panel-light p-8 flex flex-col border dark:border-white/[0.04] border-black/5 relative group overflow-hidden transition-all duration-500 hover:-translate-y-1 bg-white dark:bg-[#09090b]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.05),transparent_50%)] group-hover:bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.1),transparent_50%)] transition-colors"></div>
-          <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(59,130,246,0.1)_10px,rgba(59,130,246,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
+          <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(59,130,246,0.1)_10px,rgba(59,130,246,0.1)_20px)] opacity-40 pointer-events-none animate-expand-waves"></div>
           
           <div className="mb-8 relative z-10 w-full rounded-xl dark:neu-recessed neu-recessed-light border dark:border-white/5 border-black/5 p-4 flex flex-col gap-3 bg-slate-50 dark:bg-black/20">
             <div className="flex gap-2">
@@ -83,7 +83,7 @@ export function AgentFeatures() {
         {/* Feature 3: State of the art */}
         <div className="rounded-2xl dark:neu-panel neu-panel-light p-8 flex flex-col border dark:border-white/[0.04] border-black/5 relative group overflow-hidden transition-all duration-500 hover:-translate-y-1 bg-white dark:bg-[#09090b]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.05),transparent_50%)] group-hover:bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_50%)] transition-colors"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(16,185,129,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(16,185,129,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-[0.03] [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(16,185,129,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(16,185,129,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-40 [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
           
           <div className="mb-8 relative z-10 w-full rounded-xl dark:neu-recessed neu-recessed-light border dark:border-white/5 border-black/5 p-4 flex flex-col gap-2 bg-slate-50 dark:bg-black/20 font-mono text-[10px]">
             <div className="flex items-center justify-between mb-2">
@@ -124,7 +124,7 @@ export function AgentFeatures() {
         {/* Feature 4: Secure */}
         <div className="rounded-2xl dark:neu-panel neu-panel-light p-8 flex flex-col border dark:border-white/[0.04] border-black/5 relative group overflow-hidden transition-all duration-500 hover:-translate-y-1 bg-white dark:bg-[#09090b]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.05),transparent_50%)] group-hover:bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.1),transparent_50%)] transition-colors"></div>
-          <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(249,115,22,0.1)_8px,rgba(249,115,22,0.1)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(249,115,22,0.1)_8px,rgba(249,115,22,0.1)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
           
           <div className="mb-8 relative z-10 w-full rounded-xl dark:neu-recessed neu-recessed-light border dark:border-white/5 border-black/5 p-4 flex flex-col gap-2 bg-slate-50 dark:bg-black/20">
             <div className="flex items-center gap-3 p-2 rounded-lg dark:bg-white/5 bg-black/5">

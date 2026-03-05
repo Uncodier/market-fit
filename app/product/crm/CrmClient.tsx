@@ -160,7 +160,7 @@ const CrmBentoFeatures = () => {
           <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(217,70,239,0.02)_20px,rgba(217,70,239,0.02)_40px)]"></div>
           {/* Vertical Scanner */}
           <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
-            <div className="w-full h-1 bg-gradient-to-r from-transparent via-fuchsia-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(217,70,239,0.8)] animate-[scan_3s_ease-in-out_infinite]"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-fuchsia-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(217,70,239,0.8)] animate-[scan_3s_ease-in-out_infinite]"></div>
           </div>
           <div className="p-6 relative z-20 h-full flex flex-col gap-4">
             <div className="flex items-center justify-between mb-2">
@@ -204,8 +204,8 @@ const CrmBentoFeatures = () => {
          <div className="relative w-full h-[400px] dark:bg-[#09090b] bg-white rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl">
             <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,rgba(59,130,246,0.02)_20px,rgba(59,130,246,0.02)_40px)]"></div>
             {/* Horizontal Scanner */}
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10 flex flex-col justify-center">
-              <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-[scan_vertical_3s_ease-in-out_infinite]"></div>
+            <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-[scan_3s_ease-in-out_infinite]"></div>
             </div>
             
             <div className="p-6 relative z-20 h-full flex flex-col gap-4">
@@ -526,7 +526,7 @@ export function CrmClient() {
           </Reveal>
           <Reveal delay={300}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
-            <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-violet-500 hover:bg-violet-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 group">
+            <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-violet-500 hover:bg-violet-600 text-white font-inter font-bold transition-all shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.4)] flex items-center justify-center gap-2 group">
               {t('crm.hero.startWith') || "Start with Makinari"}
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -797,8 +797,7 @@ export function CrmClient() {
                       
                       {[
                         { name: t('crm.feature1.stages.meeting') || "Meeting", count: "5", color: "bg-blue-400", val: "$45K" },
-                        { name: t('crm.feature1.stages.proposal') || "Proposal", count: "2", color: "bg-violet-400", val: "$145K", active: true },
-                        { name: t('crm.widget2.closing') || "Closing", count: "1", color: "bg-fuchsia-400", val: "$90K" }
+                        { name: t('crm.feature1.stages.proposal') || "Proposal", count: "2", color: "bg-violet-400", val: "$145K", active: true }
                       ].map((col, i) => (
                         <div key={i} className={`flex-[1] flex flex-col gap-3 rounded-xl p-3 border relative overflow-hidden transition-colors ${col.active ? 'bg-violet-500/5 border-violet-500/30' : 'bg-white/[0.02] border-white/5'}`}>
                           <div className="flex items-center justify-between px-1 mb-1">

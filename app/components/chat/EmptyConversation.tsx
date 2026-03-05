@@ -18,7 +18,7 @@ export function EmptyConversation({
 }: EmptyConversationProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center" style={{ transform: 'translateY(calc((100vh - 311px) / 2 - 100px))' }}>
-      <div className="w-16 h-16 rounded-full font-sans font-bold bg-primary/10 flex items-center justify-center mb-4">
+      <div className="w-16 h-16 rounded-full font-inter font-bold bg-primary/10 flex items-center justify-center mb-4">
         <Avatar className="h-12 w-12 border border-primary/20">
           <AvatarImage 
             src={avatarSrc || undefined} 

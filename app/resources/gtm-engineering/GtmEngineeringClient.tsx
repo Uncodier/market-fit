@@ -292,7 +292,7 @@ export function GtmEngineeringClient() {
             <Reveal delay={100} className="md:col-span-2 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(99,102,241,0.1)_8px,rgba(99,102,241,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(99,102,241,0.05)_8px,rgba(99,102,241,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(99,102,241,0.1)_8px,rgba(99,102,241,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(99,102,241,0.05)_8px,rgba(99,102,241,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
                 <div className="relative z-10 max-w-md">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-indigo-500 mb-6 bg-indigo-500/5">
                     <DatabaseIcon size={24} />
@@ -310,7 +310,7 @@ export function GtmEngineeringClient() {
             <Reveal delay={200} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(236,72,153,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(236,72,153,0.1)_10px,rgba(236,72,153,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(236,72,153,0.1)_10px,rgba(236,72,153,0.1)_20px)] opacity-40 pointer-events-none animate-expand-waves"></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-pink-500 mb-6 bg-pink-500/5">
                     <Zap size={24} />
@@ -337,7 +337,7 @@ export function GtmEngineeringClient() {
             <Reveal delay={300} className="md:col-span-1 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(16,185,129,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(16,185,129,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-[0.03] [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(16,185,129,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(16,185,129,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-40 [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
                 <div className="relative z-10">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-emerald-500 mb-6 bg-emerald-500/5">
                     <Terminal size={24} />
@@ -354,7 +354,7 @@ export function GtmEngineeringClient() {
             <Reveal delay={400} className="md:col-span-2 h-full">
               <div className="w-full h-full rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-center transition-all duration-500 hover:-translate-y-1">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.1),transparent_50%)]"></div>
-                <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(59,130,246,0.1)_8px,rgba(59,130,246,0.1)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+                <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(59,130,246,0.1)_8px,rgba(59,130,246,0.1)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
                 <div className="relative z-10 max-w-md">
                   <div className="w-12 h-12 rounded-lg dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 flex items-center justify-center text-blue-500 mb-6 bg-blue-500/5">
                     <Settings size={24} />

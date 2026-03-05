@@ -165,10 +165,10 @@ export function MenuItem({
       href={href}
       className={cn(
         className,
-        "flex items-center text-sm transition-colors duration-200 relative group",
+        "flex items-center text-sm transition-colors duration-200 relative group font-inter",
         isCollapsed 
           ? isActive 
-            ? "rounded-full font-sans justify-center h-[32px] w-[32px]" 
+            ? "rounded-full font-inter justify-center h-[32px] w-[32px]" 
             : "rounded-md justify-center h-[32px] w-[32px]"
           : "rounded-md justify-start h-[32px]",
         isActive

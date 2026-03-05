@@ -572,7 +572,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             {/* Submit button for reset password */}
             <Button 
               type="submit" 
-              className="w-full mt-6 font-medium neu-auth-btn font-sans" 
+              className="w-full mt-6 font-medium neu-auth-btn font-inter" 
               disabled={loading || resetPasswordSuccess}
             >
               {loading ? (t('auth.sending') || "Sending...") : (t('auth.sendResetLink') || "Send Reset Link")}
@@ -713,10 +713,10 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                 <div className="space-y-2">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Shield className="h-4 w-4" />
-                    Enter verification code
+                    {t('auth.mfa.title') || "Enter verification code"}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Enter the 6-digit code from your authenticator app
+                    {t('auth.mfa.desc') || "Enter the 6-digit code from your authenticator app"}
                   </p>
                 </div>
                 <div className="space-y-3">
@@ -741,9 +741,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                       type="button"
                       onClick={handleMfaVerify}
                       disabled={mfaVerifying || mfaCode.length !== 6}
-                      className="flex-1 font-medium neu-auth-btn font-sans"
+                      className="flex-1 font-medium neu-auth-btn font-inter"
                     >
-                      {mfaVerifying ? "Verifying..." : "Verify"}
+                      {mfaVerifying ? (t('auth.mfa.verifying') || "Verifying...") : (t('auth.mfa.verify') || "Verify")}
                     </Button>
                     <Button
                       type="button"
@@ -752,7 +752,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                       disabled={mfaVerifying}
                       className="font-medium"
                     >
-                      Cancel
+                      {t('auth.mfa.cancel') || "Cancel"}
                     </Button>
                   </div>
                 </div>
@@ -765,7 +765,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                 <button 
                   type="button"
                   onClick={() => handleAuthModeChange('reset_password')}
-                  className="text-sm text-primary hover:underline font-sans"
+                  className="text-sm text-primary hover:underline font-inter"
                 >
                   {t('auth.forgotPassword') || 'Forgot password?'}
                 </button>
@@ -776,11 +776,13 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             {!mfaRequired && (
               <Button 
                 type="submit" 
-                className="w-full mt-6 font-medium neu-auth-btn font-sans" 
+                className="w-full mt-6 font-medium neu-auth-btn font-inter" 
                 disabled={loading}
               >
                 {loading 
-                  ? (t('auth.pleaseWait') || "Please wait...") 
+                  ? authMode === 'sign_in' 
+                    ? (t('auth.signingIn') || "Signing in...") 
+                    : (t('auth.creating') || "Creating account...")
                   : authMode === 'sign_in' 
                     ? (t('auth.signInBtn') || "Sign In") 
                     : referralCodeStatus === 'valid'
@@ -811,7 +813,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
       {!waitlistSuccess && authMode !== 'reset_password' && (
           <Button 
             type="button" 
-            className="whatsapp-btn neu-auth-whatsapp-btn w-full font-medium hover:opacity-90 transition-opacity font-sans"
+            className="whatsapp-btn neu-auth-whatsapp-btn w-full font-medium hover:opacity-90 transition-opacity font-inter"
             onClick={() => window.open('https://wa.me/34600000000', '_blank')}
           >
           <WhatsApp className="w-4 h-4 mr-2 text-white" />
@@ -824,7 +826,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
         <Button 
           type="button" 
           variant="outline" 
-          className={`w-full font-medium ${!isGoogleButtonEnabled() ? 'opacity-50 cursor-not-allowed' : ''} font-sans`}
+          className={`w-full font-medium ${!isGoogleButtonEnabled() ? 'opacity-50 cursor-not-allowed' : ''} font-inter`}
           onClick={handleGoogleSignIn}
           disabled={loading || !isGoogleButtonEnabled()}
         >
@@ -843,7 +845,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             <button 
               type="button"
               onClick={() => handleAuthModeChange('sign_in')}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors font-sans"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors font-inter"
             >
               {t('auth.rememberPassword') || 'Remember your password?'} {" "}
               <span className="text-primary font-medium hover:underline">
@@ -860,7 +862,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
               <button 
                 type="button"
                 onClick={toggleAuthMode}
-                className="text-sm text-primary font-medium hover:underline transition-colors font-sans"
+                className="text-sm text-primary font-medium hover:underline transition-colors font-inter"
               >
                 {authMode === 'sign_in' ? (t('auth.signUpLink') || "Sign up") : (t('auth.signInLink') || "Sign in")}
               </button>

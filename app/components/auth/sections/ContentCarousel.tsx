@@ -54,8 +54,8 @@ export function ContentCarousel({ showBuilders = true, showLearnMore = true }: {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(236,72,153,0.05),transparent_60%)]"></div>
       
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 mb-12 flex flex-col items-center text-center">
-        <div className="inline-flex items-center rounded-full font-sans dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-8 transition-transform hover:scale-105 duration-300">
-          <span className="w-2 h-2 rounded-full font-sans font-bold bg-pink-500 mr-2 animate-pulse shadow-[0_0_8px_rgba(236,72,153,0.8)]"></span>
+        <div className="inline-flex items-center rounded-full font-inter dark:neu-black-chip neu-white-chip px-4 py-1.5 text-sm font-bold mb-8 transition-transform hover:scale-105 duration-300">
+          <span className="w-2 h-2 rounded-full font-inter font-bold bg-pink-500 mr-2 animate-pulse shadow-[0_0_8px_rgba(236,72,153,0.8)]"></span>
           Content AI
         </div>
         
@@ -70,7 +70,7 @@ export function ContentCarousel({ showBuilders = true, showLearnMore = true }: {
         {showLearnMore && (
         <Link
           href="/product/cms"
-          className="inline-flex items-center gap-2 rounded-full font-sans dark:neu-button neu-button-light px-6 py-3 font-semibold text-sm transition-all hover:scale-105 active:scale-95 mb-8"
+          className="inline-flex items-center gap-2 rounded-full font-inter dark:neu-button neu-button-light px-6 py-3 font-semibold text-sm transition-all hover:scale-105 active:scale-95 mb-8"
         >
           {t('landing.content.learnMore') || 'Learn more'}
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,7 +130,7 @@ export function ContentCarousel({ showBuilders = true, showLearnMore = true }: {
             {/* Video Card */}
             <TiltCard className="w-[480px] h-[270px] flex-shrink-0 rounded-lg dark:neu-panel neu-panel-light p-2 flex flex-col group/card transition-colors cursor-pointer relative overflow-hidden">
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2 dark:neu-pressed neu-pressed-light px-3 py-1.5 rounded-full">
-                <div className="w-2 h-2 rounded-full font-sans font-bold bg-pink-500 animate-pulse"></div>
+                <div className="w-2 h-2 rounded-full font-inter font-bold bg-pink-500 animate-pulse"></div>
                 <span className="text-xs font-semibold dark:text-white/90 text-slate-500">AI Video</span>
               </div>
               
@@ -138,7 +138,7 @@ export function ContentCarousel({ showBuilders = true, showLearnMore = true }: {
                 <div className="flex-1 relative">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(236,72,153,0.15),transparent_70%)]"></div>
                   <div className="absolute inset-0 flex items-center justify-center z-10">
-                    <div className="w-16 h-16 rounded-full font-sans dark:neu-button neu-button-light flex items-center justify-center group-hover/card:scale-110 transition-transform">
+                    <div className="w-16 h-16 rounded-full font-inter dark:neu-button neu-button-light flex items-center justify-center group-hover/card:scale-110 transition-transform">
                       <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[12px] border-l-pink-400 border-b-[8px] border-b-transparent ml-1"></div>
                     </div>
                   </div>
@@ -147,9 +147,9 @@ export function ContentCarousel({ showBuilders = true, showLearnMore = true }: {
                   <div className="w-3 h-3 dark:text-white/50 text-slate-500">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                   </div>
-                  <div className="flex-1 h-1.5 dark:bg-white/10 bg-black/10 rounded-full font-sans overflow-hidden">
+                  <div className="flex-1 h-1.5 dark:bg-white/10 bg-black/10 rounded-full font-inter overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-pink-600 to-pink-400 w-1/3 relative">
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full font-sans shadow-[0_0_10px_rgba(236,72,153,0.8)]"></div>
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full font-inter shadow-[0_0_10px_rgba(236,72,153,0.8)]"></div>
                     </div>
                   </div>
                   <div className="text-[10px] dark:text-white/50 text-slate-500 font-mono">0:45 / 2:30</div>
@@ -161,15 +161,15 @@ export function ContentCarousel({ showBuilders = true, showLearnMore = true }: {
             <TiltCard className="w-[300px] h-[380px] flex-shrink-0 self-center rounded-lg dark:neu-panel neu-panel-light p-5 flex flex-col group/card transition-colors cursor-pointer relative">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full font-sans font-bold bg-gradient-to-tr from-blue-600 to-purple-600 p-[2px]">
-                    <div className="w-full h-full dark:bg-[#121214] bg-white rounded-full font-sans border dark:border-white/10 border-black/10"></div>
+                  <div className="w-10 h-10 rounded-full font-inter font-bold bg-gradient-to-tr from-blue-600 to-purple-600 p-[2px]">
+                    <div className="w-full h-full dark:bg-[#121214] bg-white rounded-full font-inter border dark:border-white/10 border-black/10"></div>
                   </div>
                   <div>
                     <div className="text-sm font-semibold dark:text-white/90 text-slate-500">Makinari AI</div>
                     <div className="text-[10px] dark:text-white/40 text-slate-500">Just now • 🌐</div>
                   </div>
                 </div>
-                <div className="w-6 h-6 rounded-full font-sans font-bold bg-blue-500/10 flex items-center justify-center text-blue-400">
+                <div className="w-6 h-6 rounded-full font-inter font-bold bg-blue-500/10 flex items-center justify-center text-blue-400">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
                 </div>
               </div>
@@ -196,10 +196,10 @@ export function ContentCarousel({ showBuilders = true, showLearnMore = true }: {
               </div>
               
               <div className="flex justify-between items-center mt-4 pt-4 border-t dark:border-white/5 border-black/5 dark:text-white/40 text-slate-500">
-                <div className="w-4 h-4 rounded-full font-sans border dark:border-white/20 border-black/20"></div>
-                <div className="w-4 h-4 rounded-full font-sans border dark:border-white/20 border-black/20"></div>
-                <div className="w-4 h-4 rounded-full font-sans border dark:border-white/20 border-black/20"></div>
-                <div className="w-4 h-4 rounded-full font-sans border dark:border-white/20 border-black/20"></div>
+                <div className="w-4 h-4 rounded-full font-inter border dark:border-white/20 border-black/20"></div>
+                <div className="w-4 h-4 rounded-full font-inter border dark:border-white/20 border-black/20"></div>
+                <div className="w-4 h-4 rounded-full font-inter border dark:border-white/20 border-black/20"></div>
+                <div className="w-4 h-4 rounded-full font-inter border dark:border-white/20 border-black/20"></div>
               </div>
             </TiltCard>
 

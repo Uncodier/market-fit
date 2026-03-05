@@ -176,7 +176,7 @@ export function AgentCapabilities() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="left">
               <MockupScrollWrapper direction="left">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex flex-col justify-center">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex flex-col justify-center">
                   <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_20px,rgba(249,115,22,0.02)_20px,rgba(249,115,22,0.02)_40px)] opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(249,115,22,0.8)] animate-[scan_3s_ease-in-out_infinite] pointer-events-none z-20"></div>
@@ -254,7 +254,7 @@ export function AgentCapabilities() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex flex-col items-center justify-center">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex flex-col items-center justify-center">
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   
                   {/* Terminal IDE Mockup */}
@@ -357,7 +357,7 @@ export function AgentCapabilities() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="left">
               <MockupScrollWrapper direction="left">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex flex-col gap-4">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex flex-col gap-4">
                   <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top_right,transparent,transparent_20px,rgba(16,185,129,0.02)_20px,rgba(16,185,129,0.02)_40px)] opacity-100 pointer-events-none rounded-xl"></div>
                   
@@ -402,7 +402,7 @@ export function AgentCapabilities() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex flex-col items-center justify-center">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex flex-col items-center justify-center">
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   
                   {/* API Connection Mockup */}
@@ -480,7 +480,7 @@ export function AgentCapabilities() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="left">
               <MockupScrollWrapper direction="left">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex flex-col gap-4">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex flex-col gap-4">
                   <div className="absolute inset-0 bg-gradient-to-tr from-rose-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   
                   {/* Goal Prompt UI */}
@@ -534,7 +534,7 @@ export function AgentCapabilities() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans flex flex-col items-center justify-center">
+                <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter flex flex-col items-center justify-center">
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                   
                   {/* Database/Memory Mockup */}

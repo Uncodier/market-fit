@@ -176,7 +176,7 @@ const SupportBentoFeatures = () => {
           <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(99,102,241,0.02)_20px,rgba(99,102,241,0.02)_40px)]"></div>
           {/* Vertical Scanner */}
           <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
-            <div className="w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(99,102,241,0.8)] animate-[scan_3s_ease-in-out_infinite]"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(99,102,241,0.8)] animate-[scan_3s_ease-in-out_infinite]"></div>
           </div>
           <div className="p-6 relative z-20 h-full flex flex-col gap-4">
              <div className="flex items-center justify-between mb-2">
@@ -301,7 +301,7 @@ const SupportBentoFeatures = () => {
                        style={{ left: `${doc.distance}px`, transform: `translate(-50%, -50%) rotate(-${doc.angle}deg)` }}>
                      <div className="w-max px-3 py-2 dark:bg-[#0c0c0e] bg-white/90 backdrop-blur-md border dark:border-white/10 border-slate-200/80 rounded-xl flex items-center gap-3 shadow-xl hover:border-blue-500/50 hover:shadow-blue-500/20 transition-all duration-300 relative overflow-hidden group/doc cursor-default">
                         {/* Scanning ingest effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent -translate-x-full group-hover/doc:animate-[scan_1.5s_ease-in-out_infinite]" style={{ animationDelay: doc.delay }}></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent -translate-x-full group-hover/doc:animate-[support_scan_1.5s_ease-in-out_infinite]" style={{ animationDelay: doc.delay }}></div>
                         
                         <div className="bg-slate-100 dark:bg-white/5 w-8 h-8 rounded-lg z-10 flex items-center justify-center shrink-0 aspect-square">
                            {React.cloneElement(doc.icon as React.ReactElement, { className: `${(doc.icon as React.ReactElement).props.className} shrink-0` })}
@@ -327,7 +327,7 @@ const SupportBentoFeatures = () => {
                 0% { transform: translateX(100%); }
                 100% { transform: translateX(-200%); }
               }
-              @keyframes scan {
+              @keyframes support_scan {
                 0% { transform: translateX(-100%); }
                 100% { transform: translateX(100%); }
               }
@@ -543,7 +543,7 @@ export function SupportClient() {
             </Reveal>
           <Reveal delay={300}>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
-              <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] flex items-center justify-center gap-2 group">
+              <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white font-inter font-bold transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.4)] flex items-center justify-center gap-2 group">
                 {t('support.hero.cta.start') || 'Start with Makinari'}
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -561,7 +561,7 @@ export function SupportClient() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen border border-slate-200/50 dark:border-white/5 bg-slate-100/50 dark:bg-[#050505] p-6 group flex flex-col gap-4 font-sans shadow-2xl">
+              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen border border-slate-200/50 dark:border-white/5 bg-slate-100/50 dark:bg-[#050505] p-6 group flex flex-col gap-4 font-inter shadow-2xl">
                 <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-500/20 blur-[60px] rounded-full mix-blend-multiply dark:mix-blend-screen pointer-events-none transition-opacity duration-700 group-hover:opacity-100 opacity-50"></div>
                 

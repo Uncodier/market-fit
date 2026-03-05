@@ -288,7 +288,7 @@ export default function SocialNetworkCallbackPage() {
               {(ourRedirectUri || outstandError || error === "Missing code or state parameter") && (
                 <div className="w-full text-left space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground">Copy and send to Outstand (contact@outstand.so):</p>
-                  <pre className="text-xs p-3 bg-muted rounded overflow-x-auto whitespace-pre-wrap font-sans">
+                  <pre className="text-xs p-3 bg-muted rounded overflow-x-auto whitespace-pre-wrap font-inter">
                     {`Subject: Facebook OAuth "Missing code or state parameter" — whitelist redirect_uri and check your callback
 
 We use the white-label flow. Our redirect_uri (where you should send the user with ?session= or ?error=) is:

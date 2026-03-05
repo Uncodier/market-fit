@@ -57,13 +57,17 @@ export function OpenClawCard() {
           animation: scroll-x-right 40s linear infinite;
           will-change: transform;
         }
+        @keyframes pan-diagonal-hover-claw {
+          0% { background-position: 0px 0px; }
+          100% { background-position: 22.627417px 22.627417px; }
+        }
       `}} />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.08),transparent_50%)] group-hover:bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.18),transparent_50%)] transition-all duration-500"></div>
-      <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(139,92,246,0.12)_8px,rgba(139,92,246,0.12)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+      <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(139,92,246,0.12)_8px,rgba(139,92,246,0.12)_16px)] opacity-0 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none" style={{ backgroundSize: '22.6274px 22.6274px', animation: 'pan-diagonal-hover-claw 2s linear infinite' }}></div>
 
       <div className="relative z-10 flex flex-col items-center text-center">
-        <div className="inline-flex items-center rounded-full font-sans dark:neu-black-chip-inward neu-white-chip-inward px-3 py-1 text-xs font-bold mb-6 transition-transform hover:scale-105 duration-300">
-          <span className="w-1.5 h-1.5 rounded-full font-sans font-bold bg-violet-500 mr-2 animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.8)]"></span>
+        <div className="inline-flex items-center rounded-full font-inter dark:neu-black-chip-inward neu-white-chip-inward px-3 py-1 text-xs font-bold mb-6 transition-transform hover:scale-105 duration-300">
+          <span className="w-1.5 h-1.5 rounded-full font-inter font-bold bg-violet-500 mr-2 animate-pulse shadow-[0_0_8px_rgba(139,92,246,0.8)]"></span>
           Open Claw
         </div>
         <h2 className="text-2xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight drop-shadow-lg">
@@ -124,8 +128,8 @@ export function OpenClawCard() {
 
               <TiltCard className="w-[280px] h-[290px] flex-shrink-0 self-center rounded-lg dark:neu-panel neu-panel-light p-3 flex flex-col group/card transition-colors cursor-pointer relative">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full font-sans font-bold bg-gradient-to-tr from-green-500 to-emerald-600 p-[2px]">
-                    <div className="w-full h-full dark:bg-[#121214] bg-[#ffffff] rounded-full font-sans border dark:border-white/10 border-black/10 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full font-inter font-bold bg-gradient-to-tr from-green-500 to-emerald-600 p-[2px]">
+                    <div className="w-full h-full dark:bg-[#121214] bg-[#ffffff] rounded-full font-inter border dark:border-white/10 border-black/10 flex items-center justify-center">
                       <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
@@ -139,13 +143,13 @@ export function OpenClawCard() {
                 <div className="text-[10px] dark:text-white/80 text-slate-500 font-medium mb-2">{t('openclaw.agent.growth.task') || 'Go-to-market strategy'}</div>
                 <div className="w-full flex-1 rounded-md dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 p-2 relative transition-colors overflow-hidden flex flex-col gap-2">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.05),transparent_70%)]"></div>
-                  <div className="h-2 w-3/4 dark:neu-skeleton neu-skeleton-light rounded-full font-sans font-bold bg-green-500/20"></div>
+                  <div className="h-2 w-3/4 dark:neu-skeleton neu-skeleton-light rounded-full font-inter font-bold bg-green-500/20"></div>
                   <div className="space-y-1 mt-1">
-                    <div className="h-1 w-full dark:neu-skeleton neu-skeleton-light rounded-full font-sans opacity-70"></div>
-                    <div className="h-1 w-[85%] dark:neu-skeleton neu-skeleton-light rounded-full font-sans opacity-70"></div>
+                    <div className="h-1 w-full dark:neu-skeleton neu-skeleton-light rounded-full font-inter opacity-70"></div>
+                    <div className="h-1 w-[85%] dark:neu-skeleton neu-skeleton-light rounded-full font-inter opacity-70"></div>
                   </div>
                   <div className="flex items-center gap-1 mt-1">
-                    <div className="h-1 w-6 dark:neu-skeleton neu-skeleton-light rounded-full font-sans opacity-70"></div>
+                    <div className="h-1 w-6 dark:neu-skeleton neu-skeleton-light rounded-full font-inter opacity-70"></div>
                     <div className="h-2 w-0.5 bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]"></div>
                   </div>
                 </div>
@@ -165,7 +169,7 @@ export function OpenClawCard() {
                     </div>
                   </div>
                   <div className="px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-bold flex items-center gap-1">
-                    <div className="w-1 h-1 rounded-full font-sans font-bold bg-purple-500 animate-pulse"></div>
+                    <div className="w-1 h-1 rounded-full font-inter font-bold bg-purple-500 animate-pulse"></div>
                     {t('openclaw.agent.data.status') || 'Processing'}
                   </div>
                 </div>
@@ -183,11 +187,11 @@ export function OpenClawCard() {
                         className="grid grid-cols-4 gap-1 px-2 py-2 border-b dark:border-white/5 border-black/5 items-center hover:dark:bg-white/[0.02] bg-black/5 transition-colors"
                       >
                         <div className="flex items-center gap-1.5">
-                          <div className="w-4 h-4 rounded-full font-sans dark:neu-skeleton neu-skeleton-light shrink-0"></div>
+                          <div className="w-4 h-4 rounded-full font-inter dark:neu-skeleton neu-skeleton-light shrink-0"></div>
                           <div className="h-1 w-10 dark:neu-skeleton neu-skeleton-light rounded-full"></div>
                         </div>
-                        <div className="h-1 w-14 dark:neu-skeleton neu-skeleton-light rounded-full font-sans opacity-70"></div>
-                        <div className="h-1 w-full dark:neu-skeleton neu-skeleton-light rounded-full font-sans opacity-70"></div>
+                        <div className="h-1 w-14 dark:neu-skeleton neu-skeleton-light rounded-full font-inter opacity-70"></div>
+                        <div className="h-1 w-full dark:neu-skeleton neu-skeleton-light rounded-full font-inter opacity-70"></div>
                         <div className="flex justify-end">
                           {i === 1 ? (
                             <div className="h-3 w-10 bg-purple-500/20 rounded border border-purple-500/30"></div>
@@ -223,9 +227,9 @@ export function OpenClawCard() {
                 <div className="text-[10px] dark:text-white/80 text-slate-500 font-medium mb-2 relative z-10">{t('openclaw.agent.scraping.task') || 'SEO strategy & Competitors'}</div>
                 <div className="w-full flex-1 rounded-md dark:bg-black/40 bg-slate-50 border dark:border-white/5 border-black/5 flex flex-col overflow-hidden relative z-10">
                   <div className="h-5 dark:bg-white/[0.05] bg-black/10 border-b dark:border-white/5 border-black/5 flex items-center px-2 gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full font-sans dark:bg-white/20 bg-black/20"></div>
-                    <div className="w-1.5 h-1.5 rounded-full font-sans dark:bg-white/20 bg-black/20"></div>
-                    <div className="w-1.5 h-1.5 rounded-full font-sans dark:bg-white/20 bg-black/20"></div>
+                    <div className="w-1.5 h-1.5 rounded-full font-inter dark:bg-white/20 bg-black/20"></div>
+                    <div className="w-1.5 h-1.5 rounded-full font-inter dark:bg-white/20 bg-black/20"></div>
+                    <div className="w-1.5 h-1.5 rounded-full font-inter dark:bg-white/20 bg-black/20"></div>
                     <div className="ml-1.5 h-2 w-1/2 dark:bg-white/5 bg-black/5 rounded-sm"></div>
                   </div>
                   <div className="flex-1 p-2 space-y-2">
@@ -233,14 +237,14 @@ export function OpenClawCard() {
                       <div className="w-6 h-6 rounded dark:bg-white/5 bg-black/5 shrink-0"></div>
                       <div className="flex-1 space-y-1 mt-0.5">
                         <div className="h-1 w-3/4 dark:neu-skeleton neu-skeleton-light rounded-full"></div>
-                        <div className="h-1 w-1/2 dark:neu-skeleton neu-skeleton-light rounded-full font-sans opacity-70"></div>
+                        <div className="h-1 w-1/2 dark:neu-skeleton neu-skeleton-light rounded-full font-inter opacity-70"></div>
                       </div>
                     </div>
                     <div className="flex gap-1.5 items-start">
                       <div className="w-6 h-6 rounded dark:bg-white/5 bg-black/5 shrink-0"></div>
                       <div className="flex-1 space-y-1 mt-0.5">
                         <div className="h-1 w-full dark:neu-skeleton neu-skeleton-light rounded-full"></div>
-                        <div className="h-1 w-2/3 dark:neu-skeleton neu-skeleton-light rounded-full font-sans opacity-70"></div>
+                        <div className="h-1 w-2/3 dark:neu-skeleton neu-skeleton-light rounded-full font-inter opacity-70"></div>
                       </div>
                     </div>
                     <div className="flex gap-1.5 items-start opacity-50">
@@ -271,7 +275,7 @@ export function OpenClawCard() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                   </svg>
                   <div className="absolute bottom-1 left-2 right-2 flex gap-1">
-                    <div className="h-0.5 flex-1 dark:bg-white/20 bg-black/20 rounded-full font-sans overflow-hidden">
+                    <div className="h-0.5 flex-1 dark:bg-white/20 bg-black/20 rounded-full font-inter overflow-hidden">
                       <div className="w-1/3 h-full bg-pink-400"></div>
                     </div>
                     <div className="h-0.5 flex-1 dark:bg-white/20 bg-black/20 rounded-full"></div>
@@ -285,8 +289,8 @@ export function OpenClawCard() {
                   </div>
                   <div className="space-y-1.5 flex-1">
                     <div className="p-1.5 rounded dark:bg-white/[0.02] bg-black/5 border dark:border-white/5 border-black/5">
-                      <div className="h-1 w-3/4 dark:neu-skeleton neu-skeleton-light rounded-full font-sans mb-1"></div>
-                      <div className="h-1 w-full dark:neu-skeleton neu-skeleton-light rounded-full font-sans opacity-70"></div>
+                      <div className="h-1 w-3/4 dark:neu-skeleton neu-skeleton-light rounded-full font-inter mb-1"></div>
+                      <div className="h-1 w-full dark:neu-skeleton neu-skeleton-light rounded-full font-inter opacity-70"></div>
                     </div>
                     <div className="p-1.5 rounded dark:neu-pressed neu-pressed-light border border-pink-500/30 relative">
                       <div className="absolute -left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-3 bg-pink-500 rounded-full"></div>

@@ -29,7 +29,7 @@ export function ApiClient() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4">
-            <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 group">
+            <Link href="/auth?mode=register" className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-cyan-500 hover:bg-cyan-600 text-white font-inter font-bold transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 group">
               {t('api.hero.cta.start') || 'Start with Makinari'}
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -46,7 +46,7 @@ export function ApiClient() {
         {/* MCP Server Card */}
         <div className="flex-1 rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 md:p-12 flex flex-col border border-black/5 dark:border-white/5 transition-all duration-500 hover:-translate-y-2 hover:-translate-x-2">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(6,182,212,0.1),transparent_50%)]"></div>
-          <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(6,182,212,0.1)_8px,rgba(6,182,212,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(6,182,212,0.05)_8px,rgba(6,182,212,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+          <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(6,182,212,0.1)_8px,rgba(6,182,212,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(6,182,212,0.05)_8px,rgba(6,182,212,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
           
           <div className="relative z-10 flex flex-col h-full">
             <div className="inline-flex items-center rounded-full dark:neu-black-chip-inward neu-white-chip-inward px-3 py-1 text-xs font-bold mb-6 self-start">
@@ -79,7 +79,7 @@ export function ApiClient() {
         {/* REST API Card */}
         <div className="flex-1 rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 md:p-12 flex flex-col border border-black/5 dark:border-white/5 transition-all duration-500 hover:-translate-y-2 hover:-translate-x-2">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.1),transparent_50%)]"></div>
-          <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(168,85,247,0.1)_10px,rgba(168,85,247,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
+          <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(168,85,247,0.1)_10px,rgba(168,85,247,0.1)_20px)] opacity-40 pointer-events-none animate-expand-waves"></div>
           
           <div className="relative z-10 flex flex-col h-full">
             <div className="inline-flex items-center rounded-full dark:neu-black-chip-inward neu-white-chip-inward px-3 py-1 text-xs font-bold mb-6 self-start">

@@ -107,14 +107,8 @@ export function SiteHeader() {
             alt="Makinari Logo"
             width={100}
             height={24}
-            className="h-5 w-auto object-contain dark:hidden"
-          />
-          <Image 
-            src="/images/combination_mark_white.png"
-            alt="Makinari Logo"
-            width={100}
-            height={24}
-            className="h-5 w-auto object-contain hidden dark:block"
+            className="h-5 w-auto object-contain dark:brightness-0 dark:invert"
+            priority
           />
         </Link>
         
@@ -122,7 +116,7 @@ export function SiteHeader() {
         <div className="hidden lg:flex items-center gap-1 h-full flex-1 justify-center">
           {navItems.map((section) => (
             <div key={section.title} className="group h-full flex items-center relative">
-              <button className="px-4 py-2 rounded-full font-sans text-sm font-medium dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-all flex items-center gap-1.5 font-sans">
+              <button className="px-4 py-2 rounded-full font-inter text-sm font-medium dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-all flex items-center gap-1.5 font-inter">
                 {section.title}
                 <ChevronDown size={14} className="opacity-50 group-hover:rotate-180 transition-transform duration-300" />
               </button>
@@ -138,9 +132,9 @@ export function SiteHeader() {
                       
                       const LinkWrapper = ({ children }: { children: React.ReactNode }) => {
                         if (item.isExternal) {
-                          return <a href={item.href} target="_blank" rel="noreferrer" className="block text-sm dark:text-white/70 text-slate-600 hover:text-black dark:hover:text-white transition-colors py-2 font-sans">{children}</a>
+                          return <a href={item.href} target="_blank" rel="noreferrer" className="block text-sm dark:text-white/70 text-slate-600 hover:text-black dark:hover:text-white transition-colors py-2 font-inter">{children}</a>
                         }
-                        return <Link href={item.href!} className="block text-sm dark:text-white/70 text-slate-600 hover:text-black dark:hover:text-white transition-colors py-2 font-sans">{children}</Link>
+                        return <Link href={item.href!} className="block text-sm dark:text-white/70 text-slate-600 hover:text-black dark:hover:text-white transition-colors py-2 font-inter">{children}</Link>
                       }
 
                       return (
@@ -161,7 +155,7 @@ export function SiteHeader() {
         {/* Action Buttons */}
         <div className="flex items-center gap-3 relative z-50">
           <div className="hidden lg:flex items-center gap-3">
-            <Link href="/auth" className="text-sm font-medium px-4 py-2 rounded-full font-sans dark:text-white/80 text-slate-700 hover:text-black dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-all font-sans">
+            <Link href="/auth" className="text-sm font-medium px-4 py-2 rounded-full font-inter dark:text-white/80 text-slate-700 hover:text-black dark:hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-all font-inter">
               {t('auth.signInLink') || 'Log in'}
             </Link>
             <Link href="/auth?mode=register" className="text-sm font-medium bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-full font-inter font-bold hover:opacity-90 transition-opacity shadow-sm">
@@ -193,7 +187,7 @@ export function SiteHeader() {
             {navItems.map((section) => (
               <div key={section.title} className="flex flex-col">
                 <button 
-                  className="flex items-center justify-between w-full py-4 text-[19px] font-semibold dark:text-white text-slate-900 font-sans"
+                  className="flex items-center justify-between w-full py-4 text-[19px] font-semibold dark:text-white text-slate-900 font-inter"
                   onClick={() => setOpenMobileSection(openMobileSection === section.title ? null : section.title)}
                 >
                   {section.title}
@@ -217,7 +211,7 @@ export function SiteHeader() {
                           href={item.href} 
                           target="_blank" 
                           rel="noreferrer" 
-                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-sans block w-full transition-colors"
+                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-inter block w-full transition-colors"
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           {item.label}
@@ -226,7 +220,7 @@ export function SiteHeader() {
                         <Link 
                           key={item.label}
                           href={item.href!} 
-                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-sans block w-full transition-colors"
+                          className="text-[16px] py-2.5 dark:text-white/70 text-slate-600 hover:text-slate-900 dark:hover:text-white font-inter block w-full transition-colors"
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           {item.label}
@@ -242,7 +236,7 @@ export function SiteHeader() {
           <div className="flex flex-col gap-3 mt-8 pt-6 border-t dark:border-white/10 border-black/10">
             <Link 
               href="/auth" 
-              className="w-full py-3.5 text-center text-[16px] font-semibold dark:bg-white/10 bg-slate-100 dark:text-white text-slate-900 rounded-full font-sans hover:bg-slate-200 dark:hover:bg-white/20 transition-all font-sans"
+              className="w-full py-3.5 text-center text-[16px] font-semibold dark:bg-white/10 bg-slate-100 dark:text-white text-slate-900 rounded-full font-inter hover:bg-slate-200 dark:hover:bg-white/20 transition-all font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
               {t('auth.signInLink') || 'Log in'}

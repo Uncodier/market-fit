@@ -196,7 +196,7 @@ export function AuthenticateSessionsModal({
                       >
                         {isAuthenticating === session.id ? (
                           <>
-                            <div className="h-3.5 w-3.5 animate-spin rounded-full font-sans border-2 border-current border-t-transparent mr-2" />
+                            <div className="h-3.5 w-3.5 animate-spin rounded-full font-inter border-2 border-current border-t-transparent mr-2" />
                             Authenticating...
                           </>
                         ) : (

@@ -32,14 +32,14 @@ const RadioGroupItem = React.forwardRef<
       {/* Empty circle - always visible */}
       <div
         className={cn(
-          "absolute inset-0 rounded-full font-sans border-2",
+          "absolute inset-0 rounded-full font-inter border-2",
           "border-gray-700 dark:border-gray-300"
         )}
       />
       
       {/* Filled circle - only when selected */}
       <RadioGroupPrimitive.Indicator className="absolute inset-0 flex items-center justify-center">
-        <div className="h-2.5 w-2.5 rounded-full font-sans font-bold bg-primary" />
+        <div className="h-2.5 w-2.5 rounded-full font-inter font-bold bg-primary" />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
   )

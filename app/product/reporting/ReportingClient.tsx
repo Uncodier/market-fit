@@ -202,7 +202,7 @@ export function ReportingClient() {
           <div className="w-full perspective-[1200px]">
             <Reveal delay={200} direction="up">
               <MockupScrollWrapper direction="right">
-              <div className="relative w-full max-w-5xl mx-auto h-[550px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col font-sans">
+              <div className="relative w-full max-w-5xl mx-auto h-[550px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col font-inter">
                 <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                 <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent,transparent_12px,rgba(99,102,241,0.02)_12px,rgba(99,102,241,0.02)_24px)] opacity-100 pointer-events-none rounded-xl"></div>
                 

@@ -88,7 +88,7 @@ export const ChannelFilter = memo(function ChannelFilter({
         onValueChange={(value) => onFilterChange(value as FilterType)}
         className="w-auto flex items-center"
       >
-        <TabsList className="h-8 max-h-8 min-h-[32px] p-0.5 bg-muted/30 grid-cols-9 rounded-full font-sans flex-shrink-0">
+        <TabsList className="h-8 max-h-8 min-h-[32px] p-0.5 bg-muted/30 grid-cols-9 rounded-full font-inter flex-shrink-0">
           <TooltipProvider delayDuration={300}>
             {(Object.keys(filterConfig) as FilterType[]).map((filter) => {
               const config = filterConfig[filter]
@@ -99,7 +99,7 @@ export const ChannelFilter = memo(function ChannelFilter({
                   <TooltipTrigger asChild>
                     <TabsTrigger
                       value={filter}
-                      className="h-7 w-7 px-0 flex items-center justify-center rounded-full font-sans transition-all duration-200"
+                      className="h-7 w-7 px-0 flex items-center justify-center rounded-full font-inter transition-all duration-200"
                     >
                       <IconComponent className={filter === 'web' || filter === 'email' || filter === 'assigned' || filter === 'ai' || filter === 'inbound' || filter === 'outbound' || filter === 'all' || filter === 'tasks' ? "" : "h-3.5 w-3.5 text-current"} />
                     </TabsTrigger>

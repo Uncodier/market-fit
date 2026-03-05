@@ -22,24 +22,24 @@ export function SiteFooter() {
           <div className="lg:col-span-2">
             <Link href="/" className="inline-flex items-center gap-3 mb-6">
               <Image 
-                src={isDark ? "/images/combination_mark_white.png" : "/images/combination_mark.png"}
+                src="/images/combination_mark.png"
                 alt="Makinari" 
                 width={100} 
                 height={24} 
-                className="h-5 w-auto object-contain"
+                className="h-5 w-auto object-contain dark:brightness-0 dark:invert"
               />
             </Link>
-            <p className="dark:text-white/50 text-slate-500 text-sm max-w-sm mb-8 leading-relaxed font-light font-sans">
+            <p className="dark:text-white/50 text-slate-500 text-sm max-w-sm mb-8 leading-relaxed font-light font-inter">
               {t('footer.tagline') || 'The Revenue Operations Platform with AI agents that actually perform tasks for you. Scale your outbound, content, and growth automatically.'}
             </p>
             <div className="flex items-center gap-4">
-              <a href="https://tiktok.com/@makinari.com" target="_blank" rel="noreferrer" className="w-10 h-10 rounded-full font-sans dark:bg-white/5 bg-black/5 flex items-center justify-center hover:dark:bg-white/10 bg-black/10 transition-colors group font-sans">
+              <a href="https://tiktok.com/@makinari.com" target="_blank" rel="noreferrer" className="w-10 h-10 rounded-full font-inter dark:bg-white/5 bg-black/5 flex items-center justify-center hover:dark:bg-white/10 bg-black/10 transition-colors group font-inter">
                 <TikTokIcon size={18} color={isDark ? "#fff" : "#000"} className="opacity-70 group-hover:opacity-100 transition-opacity" />
               </a>
-              <a href="https://linkedin.com/company/makinari" target="_blank" rel="noreferrer" className="w-10 h-10 rounded-full font-sans dark:bg-white/5 bg-black/5 flex items-center justify-center hover:dark:bg-white/10 bg-black/10 transition-colors group font-sans">
+              <a href="https://linkedin.com/company/makinari" target="_blank" rel="noreferrer" className="w-10 h-10 rounded-full font-inter dark:bg-white/5 bg-black/5 flex items-center justify-center hover:dark:bg-white/10 bg-black/10 transition-colors group font-inter">
                 <LinkedInIcon size={18} color={isDark ? "#fff" : "#000"} className="opacity-70 group-hover:opacity-100 transition-opacity" />
               </a>
-              <a href="https://github.com/makinari-org" target="_blank" rel="noreferrer" className="w-10 h-10 rounded-full font-sans dark:bg-white/5 bg-black/5 flex items-center justify-center hover:dark:bg-white/10 bg-black/10 transition-colors group font-sans">
+              <a href="https://github.com/makinari-org" target="_blank" rel="noreferrer" className="w-10 h-10 rounded-full font-inter dark:bg-white/5 bg-black/5 flex items-center justify-center hover:dark:bg-white/10 bg-black/10 transition-colors group font-inter">
                 <GitHubIcon size={18} color={isDark ? "#fff" : "#000"} className="opacity-70 group-hover:opacity-100 transition-opacity" />
               </a>
             </div>
@@ -47,77 +47,77 @@ export function SiteFooter() {
 
           {/* Links Columns */}
           <div>
-            <h4 className="dark:text-white font-semibold mb-6 font-sans">{t('footer.product') || 'Product'}</h4>
+            <h4 className="dark:text-white font-semibold mb-6 font-inter">{t('footer.product') || 'Product'}</h4>
             <ul className="space-y-4">
-              <li><Link href="/product/crm" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.crm') || 'CRM'}</Link></li>
-              <li><Link href="/product/outbound" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.outbound') || 'Outbound'}</Link></li>
-              <li><Link href="/product/inbound" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.inbound') || 'Inbound'}</Link></li>
-              <li><Link href="/product/cms" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.cms') || 'Content Engine (CMS)'}</Link></li>
-              <li><Link href="/product/reporting" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.reporting') || 'Reporting & Analytics'}</Link></li>
-              <li><Link href="/product/support" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.support') || 'Support & CS'}</Link></li>
-              <li><Link href="/product/features" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.features') || 'Features'}</Link></li>
-              <li><Link href="/product/agents" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.agents') || 'AI Agents'}</Link></li>
-              <li><Link href="/product/api" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.api') || 'API & MCP Server'}</Link></li>
-              <li><Link href="/product/pricing" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.pricing') || 'Pricing'}</Link></li>
+              <li><Link href="/product/crm" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.crm') || 'CRM'}</Link></li>
+              <li><Link href="/product/outbound" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.outbound') || 'Outbound'}</Link></li>
+              <li><Link href="/product/inbound" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.inbound') || 'Inbound'}</Link></li>
+              <li><Link href="/product/cms" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.cms') || 'Content Engine (CMS)'}</Link></li>
+              <li><Link href="/product/reporting" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.reporting') || 'Reporting & Analytics'}</Link></li>
+              <li><Link href="/product/support" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.support') || 'Support & CS'}</Link></li>
+              <li><Link href="/product/features" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.features') || 'Features'}</Link></li>
+              <li><Link href="/product/agents" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.agents') || 'AI Agents'}</Link></li>
+              <li><Link href="/product/api" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.api') || 'API & MCP Server'}</Link></li>
+              <li><Link href="/product/pricing" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.pricing') || 'Pricing'}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="dark:text-white font-semibold mb-6 font-sans">{t('footer.gtm') || 'GTM & Use Cases'}</h4>
+            <h4 className="dark:text-white font-semibold mb-6 font-inter">{t('footer.gtm') || 'GTM & Use Cases'}</h4>
             <ul className="space-y-4">
-              <li><Link href="/product/use-cases?category=B2B" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.gtm.b2b') || 'B2B'}</Link></li>
-              <li><Link href="/product/use-cases?category=B2C" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.gtm.b2c') || 'B2C'}</Link></li>
-              <li><Link href="/product/use-cases?category=B2B2B" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.gtm.b2b2b') || 'B2B2B'}</Link></li>
-              <li><Link href="/product/use-cases?category=B2B2C" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.gtm.b2b2c') || 'B2B2C'}</Link></li>
-              <li><Link href="/product/use-cases" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans font-medium mt-2 pt-2 border-t dark:border-white/10 border-black/10 inline-block w-full">{t('footer.gtm.bySize') || 'By Size'}</Link></li>
-              <li><Link href="/product/use-cases?category=Solopreneurs" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.solopreneur') || 'Solopreneurs'}</Link></li>
-              <li><Link href="/product/use-cases?category=SMBs" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.smb') || 'SMBs'}</Link></li>
-              <li><Link href="/product/use-cases?category=Startups" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.startups') || 'Startups'}</Link></li>
-              <li><Link href="/product/use-cases?category=Scale Ups" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.scaleups') || 'Scale Ups'}</Link></li>
-              <li><Link href="/product/use-cases?category=Enterprise" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.enterprise') || 'Enterprise'}</Link></li>
+              <li><Link href="/product/use-cases?category=B2B" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.gtm.b2b') || 'B2B'}</Link></li>
+              <li><Link href="/product/use-cases?category=B2C" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.gtm.b2c') || 'B2C'}</Link></li>
+              <li><Link href="/product/use-cases?category=B2B2B" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.gtm.b2b2b') || 'B2B2B'}</Link></li>
+              <li><Link href="/product/use-cases?category=B2B2C" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.gtm.b2b2c') || 'B2B2C'}</Link></li>
+              <li><Link href="/product/use-cases" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter font-medium mt-2 pt-2 border-t dark:border-white/10 border-black/10 inline-block w-full">{t('footer.gtm.bySize') || 'By Size'}</Link></li>
+              <li><Link href="/product/use-cases?category=Solopreneurs" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.solopreneur') || 'Solopreneurs'}</Link></li>
+              <li><Link href="/product/use-cases?category=SMBs" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.smb') || 'SMBs'}</Link></li>
+              <li><Link href="/product/use-cases?category=Startups" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.startups') || 'Startups'}</Link></li>
+              <li><Link href="/product/use-cases?category=Scale Ups" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.scaleups') || 'Scale Ups'}</Link></li>
+              <li><Link href="/product/use-cases?category=Enterprise" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter pl-2 border-l-2 dark:border-white/20 border-black/20">{t('footer.gtm.enterprise') || 'Enterprise'}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="dark:text-white font-semibold mb-6 font-sans">{t('footer.resources') || 'Resources'}</h4>
+            <h4 className="dark:text-white font-semibold mb-6 font-inter">{t('footer.resources') || 'Resources'}</h4>
             <ul className="space-y-4">
-              <li><a href="https://docs.makinari.com" target="_blank" rel="noreferrer" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.resources.docs') || 'Documentation'}</a></li>
-              <li><a href="https://docs.makinari.com/rest-api" target="_blank" rel="noreferrer" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.resources.api') || 'API Reference'}</a></li>
-              <li><a href="https://chat.whatsapp.com/GWwzWDcCYpdA6aPBBvkp5a?mode=gi_t" target="_blank" rel="noreferrer" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.resources.community') || 'Community'}</a></li>
-              <li><Link href="#blog" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.resources.blog') || 'Blog'}</Link></li>
-              <li><Link href="/product/guides" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.resources.guides') || 'Guides'}</Link></li>
-              <li><Link href="/resources/gtm-engineering" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.resources.gtmEngineering') || 'GTM Engineering'}</Link></li>
-              <li><Link href="/resources/agents" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.resources.agents') || 'Resources for Agents'}</Link></li>
-              <li><Link href="/product/changelog" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.resources.changelog') || 'Changelog'}</Link></li>
-              <li><Link href="/product/openclaw" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.openclaw') || 'Open Claw'}</Link></li>
-              <li><Link href="/product/integrations" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.product.integrations') || 'Integrations'}</Link></li>
+              <li><a href="https://docs.makinari.com" target="_blank" rel="noreferrer" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.docs') || 'Documentation'}</a></li>
+              <li><a href="https://docs.makinari.com/rest-api" target="_blank" rel="noreferrer" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.api') || 'API Reference'}</a></li>
+              <li><a href="https://chat.whatsapp.com/GWwzWDcCYpdA6aPBBvkp5a?mode=gi_t" target="_blank" rel="noreferrer" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.community') || 'Community'}</a></li>
+              <li><Link href="#blog" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.blog') || 'Blog'}</Link></li>
+              <li><Link href="/product/guides" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.guides') || 'Guides'}</Link></li>
+              <li><Link href="/resources/gtm-engineering" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.gtmEngineering') || 'GTM Engineering'}</Link></li>
+              <li><Link href="/resources/agents" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.agents') || 'Resources for Agents'}</Link></li>
+              <li><Link href="/product/changelog" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.resources.changelog') || 'Changelog'}</Link></li>
+              <li><Link href="/product/openclaw" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.openclaw') || 'Open Claw'}</Link></li>
+              <li><Link href="/product/integrations" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.product.integrations') || 'Integrations'}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="dark:text-white font-semibold mb-6 font-sans">{t('footer.company') || 'Company'}</h4>
+            <h4 className="dark:text-white font-semibold mb-6 font-inter">{t('footer.company') || 'Company'}</h4>
             <ul className="space-y-4">
-              <li><Link href="/about" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.company.about') || 'About Us'}</Link></li>
-              <li><a href="https://linkedin.com/company/makinari" target="_blank" rel="noreferrer" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.company.careers') || 'Careers'}</a></li>
-              <li><a href="mailto:contact@makinari.com" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.company.contact') || 'Contact'}</a></li>
-              <li><Link href="/privacy" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.company.privacy') || 'Privacy Policy'}</Link></li>
-              <li><Link href="/terms" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.company.terms') || 'Terms of Service'}</Link></li>
-              <li><Link href="/safe-harbor" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.company.safeHarbor') || 'Safe Harbor Policy'}</Link></li>
-              <li><Link href="/cookies" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.company.cookies') || 'Cookie Policy'}</Link></li>
-              <li><Link href="/aup" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.company.aup') || 'Acceptable Use Policy'}</Link></li>
-              <li><Link href="/dpa" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-sans">{t('footer.company.dpa') || 'Data Processing Agreement'}</Link></li>
+              <li><Link href="/about" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.about') || 'About Us'}</Link></li>
+              <li><a href="https://linkedin.com/company/makinari" target="_blank" rel="noreferrer" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.careers') || 'Careers'}</a></li>
+              <li><a href="mailto:contact@makinari.com" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.contact') || 'Contact'}</a></li>
+              <li><Link href="/privacy" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.privacy') || 'Privacy Policy'}</Link></li>
+              <li><Link href="/terms" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.terms') || 'Terms of Service'}</Link></li>
+              <li><Link href="/safe-harbor" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.safeHarbor') || 'Safe Harbor Policy'}</Link></li>
+              <li><Link href="/cookies" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.cookies') || 'Cookie Policy'}</Link></li>
+              <li><Link href="/aup" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.aup') || 'Acceptable Use Policy'}</Link></li>
+              <li><Link href="/dpa" className="dark:text-white/50 text-slate-500 hover:dark:text-white text-sm transition-colors font-inter">{t('footer.company.dpa') || 'Data Processing Agreement'}</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="pt-8 border-t dark:border-white/[0.04] border-black/5 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="dark:text-white/40 text-slate-500 text-xs flex-1 font-sans font-medium">
+          <p className="dark:text-white/40 text-slate-500 text-xs flex-1 font-inter font-medium">
             © {currentYear} {t('footer.rightsReserved') || 'Makinari Inc. All rights reserved.'}
           </p>
           
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-xs dark:text-white/40 text-slate-500">
-            <span className="flex items-center gap-2 font-sans">
-              <span className="w-1.5 h-1.5 rounded-full font-sans font-bold bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+            <span className="flex items-center gap-2 font-inter">
+              <span className="w-1.5 h-1.5 rounded-full font-inter font-bold bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
               {t('footer.allSystemsOperational') || 'All systems operational'}
             </span>
             <div className="flex items-center gap-4">
@@ -145,7 +145,7 @@ function ThemeSelector() {
     <div className="flex items-center gap-2 border-l dark:border-white/10 border-black/10 pl-4 h-4">
       <button
         onClick={() => setTheme("light")}
-        className={`w-6 h-6 rounded-full font-sans flex items-center justify-center transition-colors font-sans ${
+        className={`w-6 h-6 rounded-full font-inter flex items-center justify-center transition-colors font-inter ${
           theme === "light" 
             ? "bg-black/10 dark:bg-white/10 bg-black/10 text-black dark:text-white" 
             : "text-black/40 dark:text-white/40 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-slate-900"
@@ -156,7 +156,7 @@ function ThemeSelector() {
       </button>
       <button
         onClick={() => setTheme("dark")}
-        className={`w-6 h-6 rounded-full font-sans flex items-center justify-center transition-colors font-sans ${
+        className={`w-6 h-6 rounded-full font-inter flex items-center justify-center transition-colors font-inter ${
           theme === "dark" 
             ? "bg-black/10 dark:bg-white/10 bg-black/10 text-black dark:text-white" 
             : "text-black/40 dark:text-white/40 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-slate-900"
@@ -167,7 +167,7 @@ function ThemeSelector() {
       </button>
       <button
         onClick={() => setTheme("system")}
-        className={`w-6 h-6 rounded-full font-sans flex items-center justify-center transition-colors font-sans ${
+        className={`w-6 h-6 rounded-full font-inter flex items-center justify-center transition-colors font-inter ${
           theme === "system" 
             ? "bg-black/10 dark:bg-white/10 bg-black/10 text-black dark:text-white" 
             : "text-black/40 dark:text-white/40 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white text-slate-900"
@@ -195,7 +195,7 @@ function LanguageSelector({ locale, setLocale, t }: { locale: SupportedLocale, s
     <div className="relative">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 hover:text-black dark:hover:text-white transition-colors py-1 font-sans"
+        className="flex items-center gap-1.5 hover:text-black dark:hover:text-white transition-colors py-1 font-inter"
         title="Select Language"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -220,7 +220,7 @@ function LanguageSelector({ locale, setLocale, t }: { locale: SupportedLocale, s
                   setLocale(lang.code);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-between font-sans ${
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-between font-inter ${
                   locale === lang.code 
                     ? 'text-black dark:text-white font-medium bg-black/5 dark:bg-white/5' 
                     : 'text-slate-600 dark:text-slate-400'

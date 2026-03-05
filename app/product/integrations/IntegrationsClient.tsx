@@ -46,7 +46,7 @@ export function IntegrationsClient() {
           {/* OmniChannel Bento from Landing */}
           <div className="w-full h-[450px] rounded-xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col items-center text-center justify-between transition-all duration-500">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.1),transparent_50%)]"></div>
-            <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(59,130,246,0.1)_8px,rgba(59,130,246,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(59,130,246,0.05)_8px,rgba(59,130,246,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+            <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(59,130,246,0.1)_8px,rgba(59,130,246,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(59,130,246,0.05)_8px,rgba(59,130,246,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
             
             <div className="relative z-10">
               <div className="inline-flex items-center rounded-full dark:neu-black-chip-inward neu-white-chip-inward px-3 py-1 text-xs font-bold mb-6">

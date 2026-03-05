@@ -89,7 +89,7 @@ export function AllInOnePlatform() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch relative">
           {/* Decorative connector line for desktop */}
           <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 items-center justify-center">
-            <div className="w-12 h-12 rounded-full font-sans dark:bg-black/80 bg-white/80 border dark:border-white/10 border-black/10 backdrop-blur-md flex items-center justify-center shadow-lg transform rotate-90 lg:rotate-0">
+            <div className="w-12 h-12 rounded-full font-inter dark:bg-black/80 bg-white/80 border dark:border-white/10 border-black/10 backdrop-blur-md flex items-center justify-center shadow-lg transform rotate-90 lg:rotate-0">
               <svg className="w-5 h-5 dark:text-white/50 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
@@ -100,11 +100,11 @@ export function AllInOnePlatform() {
           <Reveal delay={100} direction="right" className="h-full">
             <div className="rounded-2xl dark:neu-base neu-base-light border dark:border-red-500/20 border-red-200/50 p-8 relative overflow-hidden group transition-all duration-500 hover:shadow-[0_0_30px_rgba(239,68,68,0.05)] h-full flex flex-col">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-500"></div>
-              <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-red-500/5 blur-[60px] rounded-full font-sans pointer-events-none group-hover:bg-red-500/10 transition-colors duration-500"></div>
+              <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-red-500/5 blur-[60px] rounded-full font-inter pointer-events-none group-hover:bg-red-500/10 transition-colors duration-500"></div>
               
               <div className="relative z-10 flex-1 flex flex-col">
                 <h3 className="text-xl font-bold dark:text-white text-slate-900 mb-2 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full font-sans font-bold bg-red-500 animate-pulse"></div>
+                  <div className="w-2 h-2 rounded-full font-inter font-bold bg-red-500 animate-pulse"></div>
                   The Fragmented Stack
                 </h3>
                 <p className="text-sm dark:text-white/60 text-slate-600 mb-8">Expensive, disconnected, and relies on brittle webhooks.</p>
@@ -133,11 +133,11 @@ export function AllInOnePlatform() {
           <Reveal delay={200} direction="left" className="h-full">
             <div className="rounded-2xl dark:neu-base neu-base-light border dark:border-indigo-500/30 border-indigo-200/50 p-8 relative overflow-hidden group transition-all duration-500 hover:shadow-[0_0_40px_rgba(99,102,241,0.15)] h-full flex flex-col">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-              <div className="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/10 blur-[60px] rounded-full font-sans pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-500"></div>
+              <div className="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/10 blur-[60px] rounded-full font-inter pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-500"></div>
               
               <div className="relative z-10 flex-1 flex flex-col">
                 <h3 className="text-xl font-bold dark:text-white text-slate-900 mb-2 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full font-sans font-bold bg-indigo-500 animate-[pulse_1.5s_ease-in-out_infinite] shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
+                  <div className="w-2 h-2 rounded-full font-inter font-bold bg-indigo-500 animate-[pulse_1.5s_ease-in-out_infinite] shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
                   The Makinari Engine
                 </h3>
                 <p className="text-sm dark:text-white/60 text-slate-600 mb-8">One unified graph. Native execution. Zero integration debt.</p>
@@ -165,7 +165,7 @@ export function AllInOnePlatform() {
                   </div>
                   
                   <div className="mt-8 flex items-center justify-center pt-6 border-t dark:border-white/10 border-black/10">
-                    <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-sans dark:bg-emerald-500/10 bg-emerald-50 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-sm">
+                    <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-inter dark:bg-emerald-500/10 bg-emerald-50 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-sm">
                       <div className="bg-emerald-500/20 p-1 rounded-full">
                         <Check size={14} />
                       </div>

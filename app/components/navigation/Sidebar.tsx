@@ -491,7 +491,7 @@ export function Sidebar({
       className={cn(
         "flex flex-col h-[100dvh] overflow-hidden",
         isCollapsed ? "md:w-16" : "md:w-64",
-        "bg-background/80 text-foreground transition-[width,transform] duration-300 ease-in-out border-r dark:border-white/5 border-black/5 z-[200] backdrop-blur-[5px]",
+        "bg-background/80 text-foreground transition-[width,transform] duration-300 ease-in-out border-r dark:border-white/5 border-black/5 z-[200] backdrop-blur-[5px] font-inter",
         "sidebar-light-bg",
         // Mobile styles
         "fixed left-0 top-0",
@@ -511,16 +511,7 @@ export function Sidebar({
           className={cn(
             "transition-all duration-200 object-contain",
             renderCollapsed ? "h-6 w-6" : "h-5 w-auto",
-            "dark:hidden"
-          )}
-        />
-        <img 
-          src={renderCollapsed ? "/images/logo.png" : "/images/combination_mark_white.png"}
-          alt="Market Fit Logo"
-          className={cn(
-            "transition-all duration-200 object-contain",
-            renderCollapsed ? "h-6 w-6" : "h-5 w-auto",
-            "hidden dark:block"
+            "dark:brightness-0 dark:invert"
           )}
         />
       </NavigationLink>
@@ -645,7 +636,7 @@ export function Sidebar({
             {!renderCollapsed && (
               <div 
                 className={cn(
-                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full font-sans safari-icon-fix hover:bg-accent/50",
+                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full font-inter safari-icon-fix hover:bg-accent/50",
                   pathname.startsWith(contextMainItem.href) 
                     ? "transform rotate-90 text-white" // White when active
                     : shouldShowContextChildren
@@ -753,7 +744,7 @@ export function Sidebar({
               {!renderCollapsed && (
                 <div 
                   className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full font-sans safari-icon-fix hover:bg-accent/50",
+                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full font-inter safari-icon-fix hover:bg-accent/50",
                     pathname.startsWith('/notifications') 
                       ? "transform rotate-90 text-white" // White when active
                       : shouldShowProfileChildren
