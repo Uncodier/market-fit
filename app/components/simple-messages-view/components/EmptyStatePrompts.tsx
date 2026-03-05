@@ -251,44 +251,46 @@ export const EmptyStatePrompts: React.FC<EmptyStatePromptsProps> = ({ onSelectPr
   const allCards = [...cards, ...cards]
 
   return (
-    <div
-      className="w-full relative overflow-hidden"
-      style={{
-        maskImage: 'linear-gradient(to right, transparent, black 128px, black calc(100% - 128px), transparent)',
-        WebkitMaskImage: 'linear-gradient(to right, transparent, black 128px, black calc(100% - 128px), transparent)'
-      }}
-      onMouseEnter={() => { isPausedRef.current = true }}
-      onMouseLeave={() => { isPausedRef.current = false }}
-      onTouchStart={() => { isPausedRef.current = true }}
-      onTouchEnd={() => { isPausedRef.current = false }}
-    >
+    <div className="w-full relative flex flex-col items-center justify-center overflow-visible">
       <div
-        ref={trackRef}
-        className="flex gap-2 pb-1 px-1 will-change-transform"
-        style={{ width: 'max-content' }}
+        className="w-full relative overflow-hidden flex-shrink-0"
+        style={{
+          maskImage: 'linear-gradient(to right, transparent, black 128px, black calc(100% - 128px), transparent)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent, black 128px, black calc(100% - 128px), transparent)'
+        }}
+        onMouseEnter={() => { isPausedRef.current = true }}
+        onMouseLeave={() => { isPausedRef.current = false }}
+        onTouchStart={() => { isPausedRef.current = true }}
+        onTouchEnd={() => { isPausedRef.current = false }}
       >
-        {allCards.map((card, i) => {
-          const isSelected = selectedIndex === i % cards.length
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => handleSelect(card.prompt, i)}
-              className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors duration-150 text-left group ${
-                isSelected
-                  ? 'border-primary/50 bg-accent'
-                  : 'dark:border-white/5 border-black/5 bg-background/60 hover:bg-accent hover:border-primary/30'
-              }`}
-            >
-              <span className={`flex-shrink-0 ${card.color}`}>{card.icon}</span>
-              <span className={`text-xs whitespace-nowrap transition-colors duration-150 ${
-                isSelected ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'
-              }`}>
-                {card.label}
-              </span>
-            </button>
-          )
-        })}
+        <div
+          ref={trackRef}
+          className="flex gap-2 pb-1 px-1 will-change-transform"
+          style={{ width: 'max-content' }}
+        >
+          {allCards.map((card, i) => {
+            const isSelected = selectedIndex === i % cards.length
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleSelect(card.prompt, i)}
+                className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors duration-150 text-left group ${
+                  isSelected
+                    ? 'border-primary/50 bg-accent'
+                    : 'dark:border-white/5 border-black/5 bg-background/60 hover:bg-accent hover:border-primary/30'
+                }`}
+              >
+                <span className={`flex-shrink-0 ${card.color}`}>{card.icon}</span>
+                <span className={`text-xs whitespace-nowrap transition-colors duration-150 ${
+                  isSelected ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'
+                }`}>
+                  {card.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

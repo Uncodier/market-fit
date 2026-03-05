@@ -5,6 +5,7 @@ export interface ProfileData {
   id: string
   email: string
   name?: string
+  phone?: string
   avatar_url?: string
   bio?: string
   role?: 'Product Manager' | 'Designer' | 'Developer' | 'Marketing' | 'Sales' | 'CEO' | 'Other'
@@ -21,6 +22,7 @@ export interface ProfileData {
 
 export interface ProfileUpdateData {
   name?: string
+  phone?: string
   avatar_url?: string
   bio?: string
   role?: 'Product Manager' | 'Designer' | 'Developer' | 'Marketing' | 'Sales' | 'CEO' | 'Other'
@@ -52,6 +54,16 @@ class ProfileService {
         return null
       }
 
+      // Get the user's phone from their account (phone column or metadata)
+      const { data: userData } = await this.supabase.auth.getUser()
+      if (userData.user) {
+        if (userData.user.phone) {
+          data.phone = userData.user.phone
+        } else if (userData.user.user_metadata?.phone) {
+          data.phone = userData.user.user_metadata.phone
+        }
+      }
+
       return data
     } catch (error) {
       console.error('Error in getProfile:', error)
@@ -64,17 +76,55 @@ class ProfileService {
    */
   async upsertProfile(userId: string, profileData: ProfileUpdateData): Promise<ProfileData | null> {
     try {
+      // Extract phone to save it in user object instead of profile
+      const { phone, ...restProfileData } = profileData
+
+      // If phone exists, update it in the user (phone column and metadata)
+      if (phone !== undefined) {
+        try {
+          // 1. Update user metadata (client side)
+          await this.supabase.auth.updateUser({
+            data: { phone }
+          })
+          
+          // 2. Update phone column in auth.users via admin API
+          // Since we might not have a session (e.g. just signed up), we rely on the 
+          // 15-minute grace period built into the API endpoint
+          let token = ''
+          const { data: sessionData } = await this.supabase.auth.getSession()
+          if (sessionData.session?.access_token) {
+            token = sessionData.session.access_token
+          }
+          
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          if (token) headers['Authorization'] = `Bearer ${token}`
+          
+          // Fire and forget to avoid blocking the profile save if the network is slow
+          fetch('/api/auth/update-phone', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ userId, phone })
+          }).then(res => {
+            if (res.ok) console.log('Phone metadata also synced to root phone via API')
+          }).catch(phoneError => {
+            console.warn('Error syncing phone to auth.users:', phoneError)
+          })
+        } catch (phoneError) {
+          console.error('Error updating user metadata phone:', phoneError)
+        }
+      }
+
       // Primero verificamos si el perfil existe
       const existingProfile = await this.getProfile(userId)
       
       const updateData = {
         id: userId,
-        ...profileData,
+        ...restProfileData,
         updated_at: new Date().toISOString()
       }
 
       if (existingProfile) {
-        // Actualizar perfil existente
+        // Update existing profile
         const { data, error } = await this.supabase
           .from('profiles')
           .update(updateData)
@@ -87,9 +137,10 @@ class ProfileService {
           throw error
         }
 
-        return data
+        // Return profile including the phone
+        return { ...data, phone: phone !== undefined ? phone : existingProfile.phone }
       } else {
-        // Crear nuevo perfil
+        // Create new profile
         const { data: userData } = await this.supabase.auth.getUser()
         const userEmail = userData.user?.email
 
@@ -114,7 +165,8 @@ class ProfileService {
           throw error
         }
 
-        return data
+        // Return profile including the phone
+        return { ...data, phone: phone !== undefined ? phone : userData.user?.phone || userData.user?.user_metadata?.phone }
       }
     } catch (error) {
       console.error('Error in upsertProfile:', error)

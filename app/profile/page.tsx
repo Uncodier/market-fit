@@ -18,7 +18,8 @@ import {
   Trash2, 
   UploadCloud,
   Settings,
-  Home
+  Home,
+  Phone
 } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import {
@@ -60,6 +61,7 @@ export default function ProfilePage() {
   // Estados del formulario
   const [formData, setFormData] = useState({
     name: "",
+    phone: "",
     bio: "",
     role: "Product Manager" as UserRole,
     language: "es",
@@ -78,6 +80,7 @@ export default function ProfilePage() {
     if (profile) {
       setFormData({
         name: name || "",
+        phone: profile.phone || "",
         bio: bio || "",
         role: (role as UserRole) || "Product Manager",
         language: language || "es",
@@ -186,9 +189,15 @@ export default function ProfilePage() {
   })
 
   const handleSavePersonalInfo = async () => {
+    if (!formData.phone || formData.phone.length < 8) {
+      toast.error("Please enter a valid phone number")
+      return
+    }
+
     try {
       const profileData = {
         name: formData.name,
+        phone: formData.phone,
         bio: formData.bio,
         role: formData.role,
         avatar_url: imageUrl || undefined
@@ -315,6 +324,20 @@ export default function ProfilePage() {
                         placeholder="Your name" 
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Phone</label>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        className="pl-12 h-12 text-base transition-colors duration-200" 
+                        placeholder="Your phone number" 
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
                       />
                     </div>
                   </div>

@@ -152,6 +152,7 @@ export function useProfile() {
     
     return !!(
       profile.name &&
+      profile.phone &&
       profile.bio &&
       profile.role &&
       profile.language &&
@@ -206,6 +207,7 @@ export function useProfile() {
     emailChangeStatus,
     // Valores convenientes
     name: getProfileValue('name', ''),
+    phone: getProfileValue('phone', ''),
     email: getProfileValue('email', ''),
     bio: getProfileValue('bio', ''),
     role: getProfileValue('role', 'Product Manager'),

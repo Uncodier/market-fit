@@ -11,7 +11,7 @@ import { Button } from "@/app/components/ui/button"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google, Shield, WhatsApp } from "@/app/components/ui/icons"
+import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google, Shield, WhatsApp, Phone } from "@/app/components/ui/icons"
 import { Separator } from "@/app/components/ui/separator"
 import { Alert, AlertDescription } from "@/app/components/ui/alert"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
@@ -23,6 +23,7 @@ interface AuthFormProps {
   signupData?: {
     email?: string
     name?: string
+    phone?: string
     referralCode?: string
   }
   onAuthTypeChange?: (authType: string) => void
@@ -34,6 +35,7 @@ const authFormSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   name: z.string().optional(),
+  phone: z.string().optional(),
   referralCode: z.string().optional(),
 })
 
@@ -80,6 +82,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
       email: signupData?.email || "",
       password: "",
       name: signupData?.name || "",
+      phone: signupData?.phone || "",
       referralCode: signupData?.referralCode || "",
     }
   })
@@ -306,6 +309,10 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     
     try {
       if (authMode === 'sign_up') {
+        if (!values.phone || values.phone.length < 8) {
+          throw new Error(t('auth.invalidPhone') || 'Please enter a valid phone number')
+        }
+        
         // Check if email already exists with different auth method
         const emailCheckResponse = await fetch('/api/auth/check-email-exists', {
           method: 'POST',
@@ -321,21 +328,51 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
           throw new Error(`An account already exists with this email using ${emailCheckResult.provider}. Please sign in with ${emailCheckResult.provider} instead.`)
         }
 
-        // Create new user with email and password
-        const { data, error } = await supabase.auth.signUp({
+        // Prepare signup payload
+        const signupPayload: any = {
           email: values.email,
           password: values.password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/confirm?returnTo=${encodeURIComponent(finalReturnTo)}`,
             data: {
               name: values.name || '',
+              phone: values.phone || '', // Always save it in metadata for safety
               referral_code: values.referralCode || ''
             }
           }
-        })
+        }
+        
+        // Include the top-level phone for the auth.users table if valid
+        // Supabase requires phone to be sent this way during creation
+        if (values.phone && values.phone.trim() !== '') {
+          signupPayload.phone = values.phone
+        }
+
+        // Create new user with email and password
+        const { data, error } = await supabase.auth.signUp(signupPayload)
 
         if (error) {
           throw error
+        }
+
+        // If a phone was provided, use the proxy API to update auth.users 
+        // to ensure it is saved in the main auth table as well as metadata
+        if (data.user?.id && values.phone && values.phone.trim() !== '') {
+          // Fire and forget to avoid blocking UI navigation
+          fetch('/api/auth/update-phone', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: data.user.id,
+              phone: values.phone
+            })
+          }).then(res => {
+            if (res.ok) console.log('Phone successfully pushed to auth API after signup')
+          }).catch(phoneError => {
+            console.warn('Error syncing phone to auth.users:', phoneError)
+          })
         }
 
         if (data.user?.email_confirmed_at) {
@@ -596,6 +633,33 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                         className="h-12 text-sm neu-auth-input-light dark:neu-auth-input border-0 focus-visible:ring-0" 
                         placeholder={t('auth.namePlaceholder') || 'Your name'}
                         type="text"
+                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        ref={field.ref}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs mt-1" />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Phone field - Full width */}
+            {authMode === 'sign_up' && (
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-foreground">{t('auth.phone') || 'Phone number'}</FormLabel>
+                    <FormControl>
+                      <InputWithIcon
+                        leftIcon={<Phone className="h-4 w-4 text-muted-foreground" />}
+                        className="h-12 text-sm neu-auth-input-light dark:neu-auth-input border-0 focus-visible:ring-0" 
+                        placeholder={t('auth.phonePlaceholder') || '+1 (555) 000-0000'}
+                        type="tel"
                         name={field.name}
                         value={field.value}
                         onChange={field.onChange}

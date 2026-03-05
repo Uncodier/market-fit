@@ -509,8 +509,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   // Check if instance is running
   const isInstanceRunning = activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)
   
-  // Explorer is empty only if there's no timeline (instance running or not doesn't matter for the chat state)
-  const isEmptyExplorer = !shouldShowNewMakina && sortedTimeline.length === 0
+  // Explorer is empty only if there's no timeline AND no running instance
+  const isEmptyExplorer = !shouldShowNewMakina && sortedTimeline.length === 0 && !isInstanceRunning
   const isEmpty = isEmptyNewMakina || isEmptyExplorer
 
   return (
@@ -683,12 +683,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       {/* Message input - centered when empty, fixed at bottom when has content - animates between states */}
       <div 
         className={cn(
-          "absolute right-0 left-0 bottom-0 z-20 pointer-events-none flex flex-col items-center transition-all duration-500 ease-in-out chat-input-container !bg-transparent",
-          isEmpty ? "top-0 justify-center pb-[10vh]" : "top-auto justify-end pb-[15px]"
+          "fixed right-0 bottom-0 z-20 pointer-events-none flex flex-col items-center transition-all duration-500 ease-in-out chat-input-container !bg-transparent",
+          isEmpty ? "top-[135px] justify-center" : "justify-end pb-[15px]"
         )}
-        style={{
-          width: '100%',
-          maxWidth: '100%'
+        style={{ 
+          left: isMobile ? 0 : isLayoutCollapsed ? 64 : 256,
         }}
       >
         {/* Background that only appears when not empty, at the bottom */}
@@ -699,10 +698,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           )}
         />
         <div 
-          className={cn(
-            "w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0 mx-auto transition-all duration-300",
-            isEmpty ? "flex flex-col gap-3 -mt-12" : "block"
-          )}
+          className="w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0"
         >
         {/* Floating Step Indicator - Expandable */}
         {(() => {
@@ -735,7 +731,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         )}
         {/* Prompt suggestion carousel - shown only when chat is empty, fades out when content appears */}
         {isEmpty && (
-          <div className="w-full animate-in fade-in duration-500 delay-300 mx-auto max-w-[800px] overflow-hidden">
+          <div className="mb-2 mx-auto w-full animate-in fade-in duration-300" style={{ maxWidth: '800px' }}>
             <EmptyStatePrompts
               onSelectPrompt={(prompt) => {
                 setMessage(prompt)

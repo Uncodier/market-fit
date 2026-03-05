@@ -9,7 +9,6 @@ import { useSafariDetection } from "@/app/hooks/use-safari-detection"
 import { WhatsApp } from "@/app/components/ui/icons"
 import { GitHubIcon } from "@/app/components/ui/social-icons"
 import { siteConfig } from "@/config"
-import { LandingSections } from "@/app/components/auth/LandingSections"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 export function AuthLandingClient() {
@@ -47,6 +46,7 @@ export function AuthLandingClient() {
   const [signupData, setSignupData] = useState<{
     email?: string
     name?: string
+    phone?: string
     referralCode?: string
   }>({})
   const [authError, setAuthError] = useState<string | null>(null)
@@ -63,6 +63,7 @@ export function AuthLandingClient() {
       // Campos para pre-llenar en signup
       const email = url.searchParams.get("email")
       const name = url.searchParams.get("name")
+      const phone = url.searchParams.get("phone")
       const referralCode = url.searchParams.get("referralCode") || url.searchParams.get("referral_code")
       
       // Manejar errores de autenticación
@@ -75,13 +76,14 @@ export function AuthLandingClient() {
       }
       
       // Si hay campos de signup o parámetro signup=true, cambiar automáticamente a modo signup
-      const hasSignupData = email || name || referralCode || forceSignup
+      const hasSignupData = email || name || phone || referralCode || forceSignup
       
       if (hasSignupData || mode === "register") {
         setAuthType("signup")
         setSignupData({
           email: email || undefined,
           name: name || undefined,
+          phone: phone || undefined,
           referralCode: referralCode || undefined
         })
       } else {
@@ -301,8 +303,6 @@ export function AuthLandingClient() {
       </div>
       </div>
       
-      {/* Landing Sections go full width below the login grid */}
-      <LandingSections />
     </div>
   )
 } 
