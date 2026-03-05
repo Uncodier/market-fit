@@ -100,6 +100,47 @@ module.exports = {
           "50%": { transform: "scale(1.1)", opacity: 0.5 },
           "100%": { transform: "scale(1)", opacity: 1 },
         },
+        "scroll-x": {
+          "0%": { transform: "translate3d(0, 0, 0)" },
+          "100%": { transform: "translate3d(calc(-100% / 4), 0, 0)" },
+        },
+        "spin-super-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
+        "pulse-slow": {
+          "0%, 100%": { opacity: 1, transform: "translateY(0)" },
+          "50%": { opacity: 0.8, transform: "translateY(2%)" },
+        },
+        "float-slow": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        "float-medium": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-15px)" },
+        },
+        "wave-outward": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.15)" },
+        },
+        "pan-diagonal-fast": {
+          "0%": { backgroundPosition: "0 0" },
+          "100%": { backgroundPosition: "32px 32px" },
+        },
+        "pan-lines": {
+          "0%": { backgroundPosition: "0 0" },
+          "100%": { backgroundPosition: "40px 0" },
+        },
+        "expand-waves": {
+          "0%": { transform: "scale(1)", opacity: 0.8 },
+          "100%": { transform: "scale(1.5)", opacity: 0 },
+        },
+        "radar-ping": {
+          "0%": { transform: "translate(-50%, -50%) scale(0.1)", opacity: 0, borderWidth: "4px" },
+          "50%": { opacity: 1, borderWidth: "1px" },
+          "100%": { transform: "translate(-50%, -50%) scale(2)", opacity: 0, borderWidth: "0px" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -109,6 +150,17 @@ module.exports = {
         "fade-in-up-2": "fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
         "fade-in-up-3": "fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both",
         "ping-slow": "ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite",
+        "scroll-x": "scroll-x 40s linear infinite",
+        "scroll-x-right": "scroll-x 40s linear infinite reverse",
+        "spin-super-slow": "spin-super-slow 40s linear infinite",
+        "pulse-slow": "pulse-slow 6s ease-in-out infinite",
+        "float-slow": "float-slow 4s ease-in-out infinite",
+        "float-medium": "float-medium 3s ease-in-out infinite",
+        "wave-outward": "wave-outward 15s ease-in-out infinite",
+        "pan-diagonal-fast": "pan-diagonal-fast 40s linear infinite",
+        "pan-lines": "pan-lines 40s linear infinite",
+        "expand-waves": "expand-waves 20s ease-out infinite",
+        "radar-ping": "radar-ping 4s cubic-bezier(0, 0.2, 0.8, 1) infinite",
       },
       transitionDelay: {
         '300': '300ms',

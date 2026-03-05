@@ -9,6 +9,27 @@ import {
   Search, Users, Building, Target, Megaphone, Mail, Phone, TrendingUp, Bot, NetworkTree, CheckSquare, Zap, Clock, ShieldCheck, User, Star, CreditCard, DollarSign, PieChart, BarChart, ArrowUpRight, Video
 } from "@/app/components/ui/icons";
 
+
+// Hook for scroll animations
+function useIntersectionObserver(options: IntersectionObserverInit = { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }) {
+  const [isIntersecting, setIsIntersecting] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsIntersecting(true);
+        if (ref.current) observer.unobserve(ref.current);
+      }
+    }, options);
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [options]);
+
+  return [ref, isIntersecting] as const;
+}
+
 function Reveal({ 
   children, 
   delay = 0, 
@@ -20,30 +41,29 @@ function Reveal({
   direction?: "up" | "down" | "left" | "right" | "none", 
   className?: string
 }) {
+  const [ref, isVisible] = useIntersectionObserver();
+  
   const getTransform = () => {
-    if (direction === "up") return { y: 60, x: 0 };
-    if (direction === "down") return { y: -60, x: 0 };
-    if (direction === "left") return { x: 60, y: 0 };
-    if (direction === "right") return { x: -60, y: 0 };
-    return { x: 0, y: 0 };
+    if (direction === "up") return "translateY(40px)";
+    if (direction === "down") return "translateY(-40px)";
+    if (direction === "left") return "translateX(40px)";
+    if (direction === "right") return "translateX(-40px)";
+    return "translate(0)";
   };
 
-  const initial = { opacity: 0, filter: "blur(12px)", ...getTransform() };
-
   return (
-    <motion.div
-      initial={initial}
-      whileInView={{ opacity: 1, filter: "blur(0px)", x: 0, y: 0 }}
-      viewport={{ once: true, margin: "0px 0px -50px 0px" }}
-      transition={{ 
-        duration: 1, 
-        delay: delay / 1000, 
-        ease: [0.16, 1, 0.3, 1] 
+    <div
+      ref={ref}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        filter: isVisible ? "blur(0px)" : "blur(12px)",
+        transform: isVisible ? "translate(0)" : getTransform(),
+        transition: `opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, filter 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
       }}
       className={className}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -137,10 +157,10 @@ function ParallaxBackground({ scrollYProgress }: { scrollYProgress: any }) {
   return (
     <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
       {/* Glows */}
-      <motion.div style={{ y: y1 }} className="absolute top-[5%] -left-[20%] w-[70%] h-[30%] bg-orange-500/10 rounded-full blur-[120px]" />
-      <motion.div style={{ y: y2 }} className="absolute top-[35%] -right-[20%] w-[70%] h-[30%] bg-blue-500/10 rounded-full blur-[120px]" />
-      <motion.div style={{ y: y3 }} className="absolute top-[65%] -left-[20%] w-[70%] h-[30%] bg-emerald-500/10 rounded-full blur-[120px]" />
-      <motion.div style={{ y: y1 }} className="absolute bottom-[5%] -right-[20%] w-[70%] h-[30%] bg-violet-500/10 rounded-full blur-[120px]" />
+      <motion.div style={{ y: y1 }} className="absolute top-[5%] -left-[20%] w-[70%] h-[30%] bg-orange-500/10 rounded-full font-sans blur-[120px]" />
+      <motion.div style={{ y: y2 }} className="absolute top-[35%] -right-[20%] w-[70%] h-[30%] bg-blue-500/10 rounded-full font-sans blur-[120px]" />
+      <motion.div style={{ y: y3 }} className="absolute top-[65%] -left-[20%] w-[70%] h-[30%] bg-emerald-500/10 rounded-full font-sans blur-[120px]" />
+      <motion.div style={{ y: y1 }} className="absolute bottom-[5%] -right-[20%] w-[70%] h-[30%] bg-violet-500/10 rounded-full font-sans blur-[120px]" />
 
       {/* Retro-futuristic Waves Top */}
       <motion.div 
@@ -180,10 +200,11 @@ const getStages = (t: (key: string) => string) => [
     patternColor: "rgba(249,115,22,0.1)",
     icon: <Target size={28} className="text-orange-400 drop-shadow-[0_0_15px_rgba(249,115,22,0.8)]" />,
     features: [
+      { id: 'icp-generation', name: t('features.stages.find.f6') || "ICP generation", isSoon: false, icon: <Users size={20} className="text-orange-400/70" /> },
       { id: 'tam-sourcing', name: t('features.stages.find.f1') || "TAM sourcing", isSoon: false, icon: <Search size={20} className="text-orange-400/70" /> },
-      { id: 'contact-enrichment', name: t('features.stages.find.f2') || "Contact enrichment", isSoon: false, icon: <User size={20} className="text-orange-400/70" /> },
-      { id: 'company-enrichment', name: t('features.stages.find.f3') || "Company enrichment", isSoon: false, icon: <Building size={20} className="text-orange-400/70" /> },
       { id: 'intent-signals', name: t('features.stages.find.f4') || "Intent signals", isSoon: false, icon: <Zap size={20} className="text-orange-400/70" /> },
+      { id: 'company-enrichment', name: t('features.stages.find.f3') || "Company enrichment", isSoon: false, icon: <Building size={20} className="text-orange-400/70" /> },
+      { id: 'contact-enrichment', name: t('features.stages.find.f2') || "Contact enrichment", isSoon: false, icon: <User size={20} className="text-orange-400/70" /> },
       { id: 'lead-scoring', name: t('features.stages.find.f5') || "Lead scoring", isSoon: false, icon: <Star size={20} className="text-orange-400/70" /> },
     ]
   },
@@ -200,6 +221,7 @@ const getStages = (t: (key: string) => string) => [
       { id: 'domain-inbox', name: t('features.stages.contact.f1') || "Domain & inbox purchase", isSoon: false, icon: <CreditCard size={20} className="text-blue-400/70" /> },
       { id: 'inbox-warming', name: t('features.stages.contact.f2') || "Inbox warming", isSoon: false, icon: <CheckSquare size={20} className="text-blue-400/70" /> },
       { id: 'sequencing', name: t('features.stages.contact.f3') || "Sequencing", isSoon: false, icon: <NetworkTree size={20} className="text-blue-400/70" /> },
+      { id: 'automatic-follow-up', name: t('features.stages.contact.f6') || "Automatic follow-up", isSoon: false, icon: <TrendingUp size={20} className="text-blue-400/70" /> },
       { id: 'dialer', name: t('features.stages.contact.f4') || "Dialer", isSoon: true, icon: <Phone size={20} className="text-blue-400/70" /> },
       { id: 'scheduler', name: t('features.stages.contact.f5') || "Scheduler", isSoon: false, icon: <Clock size={20} className="text-blue-400/70" /> },
     ]
@@ -214,12 +236,12 @@ const getStages = (t: (key: string) => string) => [
     patternColor: "rgba(16,185,129,0.1)",
     icon: <TrendingUp size={28} className="text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.8)]" />,
     features: [
+      { id: 'seo-content', name: t('features.stages.sell.f3') || "SEO & Content automation", isSoon: false, icon: <PieChart size={20} className="text-emerald-400/70" /> },
       { id: 'ad-management', name: t('features.stages.sell.f1') || "Ad management", isSoon: false, icon: <Megaphone size={20} className="text-emerald-400/70" /> },
       { id: 'inbound-automation', name: t('features.stages.sell.f2') || "Inbound Automation", isSoon: false, icon: <Zap size={20} className="text-emerald-400/70" /> },
-      { id: 'seo-content', name: t('features.stages.sell.f3') || "SEO & Content automation", isSoon: false, icon: <PieChart size={20} className="text-emerald-400/70" /> },
       { id: 'smart-composer', name: t('features.stages.sell.f4') || "Smart email composer", isSoon: false, icon: <Mail size={20} className="text-emerald-400/70" /> },
-      { id: 'smart-logging', name: t('features.stages.sell.f5') || "Smart task logging", isSoon: false, icon: <CheckSquare size={20} className="text-emerald-400/70" /> },
       { id: 'meet-recording', name: t('features.stages.sell.f6') || "Meet Recording", isSoon: true, icon: <Video size={20} className="text-emerald-400/70" /> },
+      { id: 'smart-logging', name: t('features.stages.sell.f5') || "Smart task logging", isSoon: false, icon: <CheckSquare size={20} className="text-emerald-400/70" /> },
     ]
   },
   {
@@ -233,10 +255,11 @@ const getStages = (t: (key: string) => string) => [
     icon: <BarChart size={28} className="text-violet-400 drop-shadow-[0_0_15px_rgba(167,139,250,0.8)]" />,
     features: [
       { id: 'crm', name: t('features.stages.manage.f1') || "CRM", isSoon: false, icon: <Users size={20} className="text-violet-400/70" /> },
-      { id: 'ai-copilot', name: t('features.stages.manage.f2') || "Ask AI Copilot", isSoon: false, icon: <Bot size={20} className="text-violet-400/70" /> },
-      { id: 'reporting', name: t('features.stages.manage.f3') || "Reporting", isSoon: false, icon: <PieChart size={20} className="text-violet-400/70" /> },
       { id: 'workflows', name: t('features.stages.manage.f4') || "Workflows", isSoon: false, icon: <NetworkTree size={20} className="text-violet-400/70" /> },
       { id: 'integrations', name: t('features.stages.manage.f5') || "Integrations", isSoon: false, icon: <Zap size={20} className="text-violet-400/70" /> },
+      { id: 'ai-copilot', name: t('features.stages.manage.f2') || "Ask AI Copilot", isSoon: false, icon: <Bot size={20} className="text-violet-400/70" /> },
+      { id: 'ticket-control', name: t('features.stages.manage.f6') || "Ticket control", isSoon: false, icon: <ShieldCheck size={20} className="text-violet-400/70" /> },
+      { id: 'reporting', name: t('features.stages.manage.f3') || "Reporting", isSoon: false, icon: <PieChart size={20} className="text-violet-400/70" /> },
     ]
   }
 ];
@@ -267,7 +290,7 @@ export function FeaturesStages() {
                   <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stage.color} opacity-5 blur-[50px] group-hover:opacity-10 transition-opacity duration-500`}></div>
                   {/* Op-art geometric lines accent on hover */}
                   <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none animate-pan-diagonal-fast"
+                    className="absolute inset-0 opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"
                     style={{ backgroundImage: `repeating-linear-gradient(-45deg, transparent, transparent 6px, ${stage.patternColor} 6px, ${stage.patternColor} 12px)` }}
                   ></div>
                   
@@ -291,7 +314,7 @@ export function FeaturesStages() {
                             {feature.name}
                             <ArrowUpRight size={12} className="opacity-0 -ml-2 transition-all group-hover/item:opacity-100 group-hover/item:ml-0" />
                             {feature.isSoon && (
-                              <span className="ml-3 text-[10px] uppercase tracking-widest dark:bg-white/10 bg-black/10 dark:text-white/50 text-slate-500 px-2 py-0.5 rounded-full border dark:border-white/10 border-black/10 align-middle">
+                              <span className="ml-2 text-[8px] font-bold uppercase tracking-wider dark:bg-white/10 bg-black/10 dark:text-white/50 text-slate-500 px-1.5 py-[1px] rounded-full font-sans border dark:border-white/10 border-black/10 align-middle">
                                 {t('common.soon') || 'Soon'}
                               </span>
                             )}
@@ -312,7 +335,7 @@ export function FeaturesStages() {
         <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col lg:flex-row items-center gap-16">
           <div className="w-full lg:w-1/2">
             <Reveal delay={0} direction="right">
-              <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-3 py-1 text-xs font-bold mb-6">
+              <div className="inline-flex items-center rounded-full font-sans dark:neu-black-chip neu-white-chip px-3 py-1 text-xs font-bold mb-6">
                 {t('features.sections.find.badge') || 'Find'}
               </div>
               <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight">
@@ -323,8 +346,8 @@ export function FeaturesStages() {
               </p>
               <ul className="space-y-4">
                 {[
+                  { id: 'icp-generation', name: t('features.stages.find.f6') || "ICP generation", icon: <Users size={14} className="text-orange-400" /> },
                   { id: 'tam-sourcing', name: t('features.stages.find.f1') || "TAM sourcing", icon: <Search size={14} className="text-orange-400" /> },
-                  { id: 'contact-enrichment', name: t('features.stages.find.f2') || "Contact enrichment", icon: <User size={14} className="text-orange-400" /> },
                   { id: 'company-enrichment', name: t('features.stages.find.f3') || "Company enrichment", icon: <Building size={14} className="text-orange-400" /> }
                 ].map((item, i) => (
                   <li key={i} className="flex items-center dark:text-white/80 text-slate-500 font-medium group">
@@ -348,10 +371,10 @@ export function FeaturesStages() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="left">
               <MockupScrollWrapper direction="left">
-              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter">
-                <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans">
+                <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                 {/* Retro-futuristic pattern */}
-                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_bottom_right,transparent,transparent_8px,rgba(249,115,22,0.02)_8px,rgba(249,115,22,0.02)_16px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_bottom_right,transparent,transparent_8px,rgba(249,115,22,0.02)_8px,rgba(249,115,22,0.02)_16px)] opacity-100 pointer-events-none rounded-xl"></div>
                 {/* Scanner effect */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(249,115,22,0.8)] animate-[scan_3s_ease-in-out_infinite] pointer-events-none z-20"></div>
                 
@@ -378,10 +401,10 @@ export function FeaturesStages() {
                     <div key={i} className={`flex items-center justify-between p-4 rounded-md border transition-all duration-500 ${i === 1 ? 'bg-orange-500/10 border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.1)] -translate-y-1' : 'dark:bg-white/[0.03] bg-black/5 dark:border-white/5 border-black/5 hover:dark:bg-white/[0.08] bg-black/10'}`}>
                       <div className="flex items-center gap-4">
                         <div className="relative">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${i === 1 ? 'bg-orange-500/20 text-orange-400' : 'dark:bg-white/10 bg-black/10 dark:text-white/40 text-slate-500'}`}>
+                          <div className={`w-10 h-10 rounded-full font-sans flex items-center justify-center ${i === 1 ? 'bg-orange-500/20 text-orange-400' : 'dark:bg-white/10 bg-black/10 dark:text-white/40 text-slate-500'}`}>
                             <Building size={18} />
                           </div>
-                          {i === 1 && <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#09090b] shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse"></div>}
+                          {i === 1 && <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full font-sans font-bold bg-emerald-500 border-2 border-[#09090b] shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse"></div>}
                         </div>
                         <div>
                           <div className="w-32 h-3 dark:neu-skeleton neu-skeleton-light rounded-md mb-2"></div>
@@ -402,7 +425,7 @@ export function FeaturesStages() {
                 <div className="absolute -right-8 top-1/4 w-40 rounded-md dark:neu-panel neu-panel-light p-4 animate-float-slow transition-transform group-hover:scale-105 z-30">
                   <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-orange-500/50 to-transparent"></div>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full font-sans font-bold bg-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
                       <CheckSquare size={14} />
                     </div>
                     <div>
@@ -424,10 +447,10 @@ export function FeaturesStages() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                 {/* Retro-futuristic pattern */}
-                <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_10px,rgba(59,130,246,0.02)_10px,rgba(59,130,246,0.02)_20px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+                <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_10px,rgba(59,130,246,0.02)_10px,rgba(59,130,246,0.02)_20px)] opacity-100 pointer-events-none rounded-xl"></div>
                 
                 {/* Mockup UI */}
                 <div className="flex gap-4 h-full relative z-10">
@@ -438,8 +461,8 @@ export function FeaturesStages() {
                     {[1,2,3,4].map((i) => (
                       <div key={i} className={`p-4 rounded-md border transition-all duration-300 cursor-pointer ${i===1 ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)] translate-x-1' : 'dark:bg-white/5 bg-black/5 dark:border-white/5 border-black/5 hover:dark:bg-white/10 bg-black/10'}`}>
                         <div className="flex justify-between items-center mb-2">
-                          <div className={`w-16 h-2 rounded-full ${i===1 ? 'bg-blue-400 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)]' : 'dark:neu-skeleton neu-skeleton-light opacity-70'}`}></div>
-                          {i===1 && <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>}
+                          <div className={`w-16 h-2 rounded-full font-sans ${i===1 ? 'bg-blue-400 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)]' : 'dark:neu-skeleton neu-skeleton-light opacity-70'}`}></div>
+                          {i===1 && <div className="w-2 h-2 rounded-full font-sans font-bold bg-blue-400 animate-pulse"></div>}
                         </div>
                         <div className="w-full h-1.5 dark:neu-skeleton neu-skeleton-light opacity-50 rounded-full"></div>
                       </div>
@@ -448,7 +471,7 @@ export function FeaturesStages() {
                   
                   <div className="w-2/3 flex flex-col gap-4">
                     <div className="flex gap-3 items-center border-b dark:border-white/5 border-black/5 pb-4">
-                      <div className="w-10 h-10 rounded-full dark:neu-panel neu-panel-light flex items-center justify-center text-blue-400">
+                      <div className="w-10 h-10 rounded-full font-sans dark:neu-panel neu-panel-light flex items-center justify-center text-blue-400">
                         <Bot size={20} />
                       </div>
                       <div className="flex-1">
@@ -461,22 +484,22 @@ export function FeaturesStages() {
                       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[40px] rounded-full"></div>
                       
                       <div className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full dark:neu-skeleton neu-skeleton-light flex-shrink-0"></div>
+                        <div className="w-8 h-8 rounded-full font-sans dark:neu-skeleton neu-skeleton-light flex-shrink-0"></div>
                         <div className="dark:bg-white/5 bg-black/5 rounded-lg rounded-tl-sm p-3 w-[80%] border dark:border-white/5 border-black/5 shadow-inner">
-                          <div className="w-full h-2 dark:neu-skeleton neu-skeleton-light rounded-full mb-2"></div>
+                          <div className="w-full h-2 dark:neu-skeleton neu-skeleton-light rounded-full font-sans mb-2"></div>
                           <div className="w-5/6 h-2 dark:neu-skeleton neu-skeleton-light rounded-full"></div>
                         </div>
                       </div>
                       
                       <div className="flex gap-3 flex-row-reverse mt-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full font-sans font-bold bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 flex-shrink-0">
                           <Bot size={14} />
                         </div>
                         <div className="bg-blue-500/10 rounded-lg rounded-tr-sm p-4 w-[85%] border border-blue-500/20 relative">
-                          <div className="w-full h-2 bg-blue-400/50 rounded-full mb-3"></div>
-                          <div className="w-5/6 h-2 bg-blue-400/50 rounded-full mb-3"></div>
+                          <div className="w-full h-2 bg-blue-400/50 rounded-full font-sans mb-3"></div>
+                          <div className="w-5/6 h-2 bg-blue-400/50 rounded-full font-sans mb-3"></div>
                           <div className="w-4/6 h-2 bg-blue-400/50 rounded-full"></div>
-                          <div className="absolute -left-2 top-1/2 w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
+                          <div className="absolute -left-2 top-1/2 w-1 h-1 bg-blue-400 rounded-full font-sans animate-bounce"></div>
                         </div>
                       </div>
                     </div>
@@ -490,7 +513,7 @@ export function FeaturesStages() {
                 <div className="absolute -left-8 top-1/3 w-48 rounded-md dark:neu-panel neu-panel-light p-4 animate-float-medium transition-transform group-hover:scale-105 z-30">
                   <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30 flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full font-sans font-bold bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30 flex-shrink-0">
                       <Mail size={16} />
                     </div>
                     <div>
@@ -505,7 +528,7 @@ export function FeaturesStages() {
           </div>
           <div className="w-full lg:w-1/2">
             <Reveal delay={0} direction="left">
-              <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-3 py-1 text-xs font-bold mb-6">
+              <div className="inline-flex items-center rounded-full font-sans dark:neu-black-chip neu-white-chip px-3 py-1 text-xs font-bold mb-6">
                 {t('features.sections.contact.badge') || 'Contact'}
               </div>
               <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight">
@@ -546,7 +569,7 @@ export function FeaturesStages() {
         <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col lg:flex-row items-center gap-16">
           <div className="w-full lg:w-1/2">
             <Reveal delay={0} direction="right">
-              <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-3 py-1 text-xs font-bold mb-6">
+              <div className="inline-flex items-center rounded-full font-sans dark:neu-black-chip neu-white-chip px-3 py-1 text-xs font-bold mb-6">
                 {t('features.sections.sell.badge') || 'Sell'}
               </div>
               <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight">
@@ -557,11 +580,9 @@ export function FeaturesStages() {
               </p>
               <ul className="space-y-4">
                 {[
-                  { id: 'inbound-automation', name: t('features.stages.sell.f2') || "Inbound Automation", icon: <Zap size={14} className="text-emerald-400" /> },
                   { id: 'seo-content', name: t('features.stages.sell.f3') || "SEO & Content automation", icon: <PieChart size={14} className="text-emerald-400" /> },
-                  { id: 'smart-composer', name: t('features.stages.sell.f4') || "Smart email composer", icon: <Mail size={14} className="text-emerald-400" /> },
-                  { id: 'smart-logging', name: t('features.stages.sell.f5') || "Smart task logging", icon: <CheckSquare size={14} className="text-emerald-400" /> },
-                  { id: 'meet-recording', name: t('features.stages.sell.f6') || "Meet Recording", icon: <Video size={14} className="text-emerald-400" /> }
+                  { id: 'inbound-automation', name: t('features.stages.sell.f2') || "Inbound Automation", icon: <Zap size={14} className="text-emerald-400" /> },
+                  { id: 'smart-logging', name: t('features.stages.sell.f5') || "Smart task logging", icon: <CheckSquare size={14} className="text-emerald-400" /> }
                 ].map((item, i) => (
                   <li key={i} className="flex items-center dark:text-white/80 text-slate-500 font-medium group">
                     <Link href={`/product/features/${item.id}`} className="flex items-center hover:text-emerald-400 transition-colors w-full">
@@ -584,26 +605,26 @@ export function FeaturesStages() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="left">
               <MockupScrollWrapper direction="left">
-              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col gap-4 font-inter">
-                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col gap-4 font-sans">
+                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                 {/* Retro-futuristic pattern */}
-                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top_left,transparent,transparent_8px,rgba(16,185,129,0.02)_8px,rgba(16,185,129,0.02)_16px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top_left,transparent,transparent_8px,rgba(16,185,129,0.02)_8px,rgba(16,185,129,0.02)_16px)] opacity-100 pointer-events-none rounded-xl"></div>
                 
                 {/* Mockup UI */}
                 <div className="flex gap-4 relative z-10">
-                  <div className="flex-1 rounded-md bg-black/40 border dark:border-white/5 border-black/5 p-4 relative overflow-hidden dark:neu-panel neu-panel-light">
+                  <div className="flex-1 rounded-md border dark:border-white/5 border-black/5 p-4 relative overflow-hidden dark:neu-panel neu-panel-light">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 blur-[20px] rounded-full"></div>
                     <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider mb-1">{t('features.sections.sell.mockup.adSpend') || 'Ad Spend'}</div>
                     <div className="text-xl font-bold dark:text-white text-slate-900">$12,450</div>
                     <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1"><TrendingUp size={10} /> +5.2%</div>
                   </div>
-                  <div className="flex-1 rounded-md bg-black/40 border dark:border-white/5 border-black/5 p-4 relative overflow-hidden dark:neu-panel neu-panel-light">
+                  <div className="flex-1 rounded-md border dark:border-white/5 border-black/5 p-4 relative overflow-hidden dark:neu-panel neu-panel-light">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 blur-[20px] rounded-full"></div>
                     <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider mb-1">ROAS</div>
                     <div className="text-xl font-bold dark:text-white text-slate-900">4.2x</div>
                     <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1"><TrendingUp size={10} /> +1.1x</div>
                   </div>
-                  <div className="flex-1 rounded-md bg-black/40 border dark:border-white/5 border-black/5 p-4 relative overflow-hidden dark:neu-panel neu-panel-light">
+                  <div className="flex-1 rounded-md border dark:border-white/5 border-black/5 p-4 relative overflow-hidden dark:neu-panel neu-panel-light">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 blur-[20px] rounded-full"></div>
                     <div className="text-[10px] dark:text-white/50 text-slate-500 uppercase font-bold tracking-wider mb-1">{t('features.sections.sell.mockup.costPerLead') || 'Cost / Lead'}</div>
                     <div className="text-xl font-bold dark:text-white text-slate-900">$42.50</div>
@@ -612,13 +633,13 @@ export function FeaturesStages() {
                 </div>
 
                 {/* Campaigns List */}
-                <div className="flex-1 rounded-lg bg-black/40 border dark:border-white/5 border-black/5 p-5 relative overflow-hidden flex flex-col gap-3 z-10 dark:neu-panel neu-panel-light">
+                <div className="flex-1 rounded-lg border dark:border-white/5 border-black/5 p-5 relative overflow-hidden flex flex-col gap-3 z-10 dark:neu-panel neu-panel-light">
                   <div className="flex justify-between items-center mb-2">
                     <div className="text-xs dark:text-white/80 text-slate-500 font-bold tracking-wider uppercase flex items-center gap-2">
                       <Target size={14} className="text-emerald-400" /> {t('features.sections.sell.mockup.activeCampaigns') || 'Active Campaigns'}
                     </div>
                     <div className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-md text-[10px] font-bold flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                      <div className="w-1.5 h-1.5 rounded-full font-sans font-bold bg-emerald-400 animate-pulse"></div>
                       {t('features.sections.sell.mockup.aiOptimizing') || 'AI Optimizing'}
                     </div>
                   </div>
@@ -655,7 +676,7 @@ export function FeaturesStages() {
                 <div className="absolute -right-6 top-1/2 w-48 rounded-md dark:neu-panel neu-panel-light p-4 animate-float-medium transition-transform group-hover:scale-105 z-30 dark:bg-[#09090b] bg-white/90 backdrop-blur-xl border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
                   <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
+                    <div className="w-10 h-10 rounded-full font-sans font-bold bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
                       <Target size={16} />
                     </div>
                     <div>
@@ -677,10 +698,10 @@ export function FeaturesStages() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col font-inter">
-                <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group flex flex-col font-sans">
+                <div className="absolute inset-0 bg-gradient-to-tr from-violet-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                 {/* Retro-futuristic pattern */}
-                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent,transparent_12px,rgba(139,92,246,0.02)_12px,rgba(139,92,246,0.02)_24px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+                <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent,transparent_12px,rgba(139,92,246,0.02)_12px,rgba(139,92,246,0.02)_24px)] opacity-100 pointer-events-none rounded-xl"></div>
                 
                 {/* Mockup UI */}
                 <div className="flex justify-between items-start mb-6 relative z-10">
@@ -696,7 +717,7 @@ export function FeaturesStages() {
                   {/* Floating Chart Element */}
                   <div className="absolute right-[-1rem] top-[-1.5rem] w-[260px] rounded-xl dark:neu-panel neu-panel-light p-4 animate-float-slow transition-transform group-hover:scale-105 group-hover:-translate-y-2 z-30 shadow-2xl border dark:border-white/10 border-black/10 bg-white/90 dark:bg-[#09090b]/90 backdrop-blur-md hidden sm:block">
                     <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent"></div>
-                    <div className="absolute right-0 top-0 w-32 h-32 bg-violet-500/5 blur-[30px] rounded-full pointer-events-none"></div>
+                    <div className="absolute right-0 top-0 w-32 h-32 bg-violet-500/5 blur-[30px] rounded-full font-sans pointer-events-none"></div>
                     <div className="flex items-center justify-between gap-2 mb-3 relative z-10">
                       <div className="flex items-center gap-1.5 text-[10px] font-bold dark:text-white/80 text-slate-500 uppercase tracking-wider min-w-0">
                         <BarChart size={12} className="text-violet-500 shrink-0" /> 
@@ -722,7 +743,7 @@ export function FeaturesStages() {
                   {/* Copilot insight */}
                   <div className="bg-violet-500/10 border border-violet-500/20 rounded-md p-4 flex gap-4 items-start backdrop-blur-md relative overflow-hidden mb-auto">
                     <div className="absolute right-0 top-0 w-16 h-full bg-gradient-to-l from-violet-500/10 to-transparent"></div>
-                    <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0 border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)]">
+                    <div className="w-8 h-8 rounded-full font-sans font-bold bg-violet-500/20 flex items-center justify-center shrink-0 border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)]">
                       <Bot size={16} className="text-violet-400" />
                     </div>
                     <div>
@@ -754,7 +775,7 @@ export function FeaturesStages() {
                     ].map((stage, i) => (
                       <div key={i} className="flex flex-col items-center gap-2 flex-1">
                         <div className="text-[9px] dark:text-white/50 text-slate-500 uppercase font-semibold tracking-wider">{stage.name}</div>
-                        <div className={`w-full h-1.5 rounded-full ${i <= 2 ? stage.color : 'dark:bg-white/10 bg-black/10'} ${i === 2 ? 'shadow-[0_0_10px_rgba(139,92,246,0.5)]' : ''}`}></div>
+                        <div className={`w-full h-1.5 rounded-full font-sans ${i <= 2 ? stage.color : 'dark:bg-white/10 bg-black/10'} ${i === 2 ? 'shadow-[0_0_10px_rgba(139,92,246,0.5)]' : ''}`}></div>
                       </div>
                     ))}
                   </div>
@@ -765,7 +786,7 @@ export function FeaturesStages() {
           </div>
           <div className="w-full lg:w-1/2">
             <Reveal delay={0} direction="left">
-              <div className="inline-flex items-center rounded-full dark:neu-black-chip neu-white-chip px-3 py-1 text-xs font-bold mb-6">
+              <div className="inline-flex items-center rounded-full font-sans dark:neu-black-chip neu-white-chip px-3 py-1 text-xs font-bold mb-6">
                 {t('features.sections.manage.badge') || 'Manage'}
               </div>
               <h2 className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight">
