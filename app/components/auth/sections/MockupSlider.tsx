@@ -481,7 +481,7 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
         {/* Border Overlay to ensure crisp rounded edges over children */}
         <div className="absolute inset-0 rounded-xl border border-black/10 dark:border-white/10 pointer-events-none z-50"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(6,182,212,0.05),transparent_50%)] transition-colors pointer-events-none"></div>
-        <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(6,182,212,0.1)_10px,rgba(6,182,212,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(6,182,212,0.1)_8px,rgba(6,182,212,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(6,182,212,0.05)_8px,rgba(6,182,212,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
       {/* Topbar */}
       <div className="h-16 border-b border-black/5 dark:border-white/5 dark:bg-white/[0.01] bg-black/[0.01] flex items-center justify-between px-6 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-4">
@@ -1215,7 +1215,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
         {/* Border Overlay to ensure crisp rounded edges over children */}
         <div className="absolute inset-0 rounded-xl border border-black/10 dark:border-white/10 pointer-events-none z-50"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.05),transparent_50%)] transition-colors pointer-events-none"></div>
-        <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_top,transparent,transparent_10px,rgba(234,179,8,0.1)_10px,rgba(234,179,8,0.1)_20px)] opacity-[0.03] pointer-events-none animate-expand-waves"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(234,179,8,0.1)_8px,rgba(234,179,8,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(234,179,8,0.05)_8px,rgba(234,179,8,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
       {/* Topbar */}
       <div className="h-16 border-b border-black/5 dark:border-white/5 dark:bg-white/[0.01] bg-black/[0.01] flex items-center px-6 backdrop-blur-md shrink-0 gap-4 justify-between">
         <div className="flex items-center gap-4">
