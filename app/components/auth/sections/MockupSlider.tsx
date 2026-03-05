@@ -240,7 +240,7 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
         {/* Border Overlay to ensure crisp rounded edges over children */}
         <div className="absolute inset-0 rounded-xl border border-black/10 dark:border-white/10 pointer-events-none z-50"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.05),transparent_50%)] transition-colors pointer-events-none"></div>
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(139,92,246,0.1)_8px,rgba(139,92,246,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(139,92,246,0.05)_8px,rgba(139,92,246,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(139,92,246,0.1)_8px,rgba(139,92,246,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(139,92,246,0.05)_8px,rgba(139,92,246,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
       {/* Sidebar */}
       <div className="hidden md:flex w-16 md:w-64 border-r border-black/5 dark:border-white/5 bg-gradient-to-b dark:from-white/[0.03] from-black/[0.03] to-transparent flex-col relative shrink-0">
         <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
@@ -347,9 +347,9 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
                   <div
                     key={i}
                     className="dark:neu-card neu-card-light dark:neu-card neu-card-light-hover rounded-md p-4 cursor-pointer group/card relative overflow-hidden animate-fade-in-up"
-                      <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
                     style={{ animationDelay: `${300 + idx * 150 + i * 100}ms` }}
                   >
+                    <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
                     <div className="absolute inset-0 bg-gradient-to-tr dark:from-white/0 from-black/0 dark:via-white/[0.02] via-black/[0.02] dark:to-white/0 to-black/0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
                     {col.active && i === 0 && (
@@ -386,7 +386,7 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
       </div>
       {/* Floating Badges */}
       <div className="overflow-hidden relative absolute -right-4 md:-right-8 top-1/3 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(16,185,129,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full font-sans font-bold bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0">
@@ -416,7 +416,7 @@ function CrmMockup({ t }: { t: (key: string) => string }) {
       </div>
 
       <div className="overflow-hidden relative absolute -left-4 md:-left-8 bottom-1/4 w-48 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(139,92,246,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full font-sans font-bold bg-violet-500 animate-pulse shadow-[0_0_12px_rgba(139,92,246,1)]"></div>
@@ -481,7 +481,7 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
         {/* Border Overlay to ensure crisp rounded edges over children */}
         <div className="absolute inset-0 rounded-xl border border-black/10 dark:border-white/10 pointer-events-none z-50"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(6,182,212,0.05),transparent_50%)] transition-colors pointer-events-none"></div>
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(6,182,212,0.1)_8px,rgba(6,182,212,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(6,182,212,0.05)_8px,rgba(6,182,212,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(6,182,212,0.1)_8px,rgba(6,182,212,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(6,182,212,0.05)_8px,rgba(6,182,212,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
       {/* Topbar */}
       <div className="h-16 border-b border-black/5 dark:border-white/5 dark:bg-white/[0.01] bg-black/[0.01] flex items-center justify-between px-6 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-4">
@@ -511,7 +511,7 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
 
           {/* Comment Input */}
           <div className="overflow-hidden relative rounded-md neu-panel-light dark:neu-panel p-4 flex flex-col gap-3 animate-fade-in-up shrink-0" style={{ animationDelay: '100ms' }}>
-            <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+            <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
             <div className="h-20 w-full rounded-md dark:neu-recessed neu-recessed-light p-3 text-sm text-slate-500 dark:text-white/40">
               {t('mockupslider.control.writeUpdate') || "Write an update or comment..."}
             </div>
@@ -536,7 +536,7 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
               { author: "AI Agent", isAI: true, time: t('mockupslider.control.time3') || "3 hours ago", content: t('mockupslider.control.msg3') || "Initial data extraction completed. Found 124 records with missing identifiers.", file: "anomaly_report.csv" }
             ].map((item, i) => (
               <div key={i} className="overflow-hidden relative rounded-md dark:neu-card neu-card-light p-4 flex gap-4 animate-fade-in-up hover:dark:bg-white/[0.03] bg-black/5 transition-colors" style={{ animationDelay: `${200 + i * 150}ms` }}>
-                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+                <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
                 <div className={`w-10 h-10 rounded-full font-sans flex items-center justify-center text-xs font-bold shrink-0 ${item.isAI ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border dark:border-[#09090b] border-white shadow-[0_0_10px_rgba(139,92,246,0.4)] text-white' : 'dark:bg-zinc-800 bg-zinc-200 border dark:border-[#09090b] border-white text-slate-700 dark:text-white/70'}`}>
                   {item.isAI ? 'AI' : item.author.charAt(0)}
                 </div>
@@ -564,7 +564,7 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
 
           {/* Original Task Description */}
           <div className="rounded-md neu-panel-light dark:neu-panel p-5 flex gap-4 mt-4 animate-fade-in-up shrink-0 relative overflow-hidden" style={{ animationDelay: '700ms' }}>
-            <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+            <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
              <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500/30"></div>
              <div className="flex -space-x-2 shrink-0">
                <div className="w-10 h-10 rounded-full font-sans font-bold bg-blue-500/20 flex items-center justify-center border-2 border-[#09090b] text-blue-400 text-xs font-bold">SJ</div>
@@ -594,7 +594,7 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
       </div>
       {/* Floating Badges */}
       <div className="overflow-hidden relative absolute -right-4 md:-right-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(6,182,212,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full font-sans font-bold bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)] shrink-0">
@@ -610,7 +610,7 @@ function ControlCenterMockup({ t }: { t: (key: string) => string }) {
       </div>
 
       <div className="overflow-hidden relative absolute -left-4 md:-left-8 bottom-1/3 w-52 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(239,68,68,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full font-sans font-bold bg-red-500 animate-pulse shadow-[0_0_12px_rgba(239,68,68,1)]"></div>
@@ -673,7 +673,7 @@ function DashboardMockup({ t }: { t: (key: string) => string }) {
         {/* Border Overlay to ensure crisp rounded edges over children */}
         <div className="absolute inset-0 rounded-xl border border-black/10 dark:border-white/10 pointer-events-none z-50"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.05),transparent_50%)] transition-colors pointer-events-none"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(16,185,129,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(16,185,129,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-[0.03] [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(16,185,129,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(16,185,129,0.3)_1px,transparent_1px)] bg-[size:2rem_2rem] opacity-40 [mask-image:radial-gradient(circle_at_center,black_40%,transparent_100%)] pointer-events-none animate-pan-diagonal-fast"></div>
       {/* Topbar */}
       <div className="h-16 border-b border-black/5 dark:border-white/5 dark:bg-white/[0.01] bg-black/[0.01] flex items-center justify-between px-6 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-4">
@@ -701,7 +701,7 @@ function DashboardMockup({ t }: { t: (key: string) => string }) {
             { label: t('mockupslider.dashboard.stat4') || "Avg Session", value: "4m 12s", change: "+1.2%", positive: true }
           ].map((stat, i) => (
             <div key={i} className="dark:neu-card neu-card-light dark:neu-card neu-card-light-hover rounded-md p-3 md:p-4 flex flex-col gap-2 relative overflow-hidden group cursor-pointer animate-fade-in-up" style={{ animationDelay: `${i * 100}ms` }}>
-              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
               <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl dark:from-white/5 from-black/5 to-transparent rounded-bl-full"></div>
               <div className="text-[10px] md:text-xs text-slate-500 dark:text-white/50 font-medium">{stat.label}</div>
               <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-1 xl:gap-0 mt-auto">
@@ -755,7 +755,7 @@ function DashboardMockup({ t }: { t: (key: string) => string }) {
       </div>
       {/* Floating Badges */}
       <div className="overflow-hidden relative absolute -left-4 md:-left-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(16,185,129,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full font-sans font-bold bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0">
@@ -771,7 +771,7 @@ function DashboardMockup({ t }: { t: (key: string) => string }) {
       </div>
 
       <div className="overflow-hidden relative absolute -right-4 md:-right-8 bottom-1/4 w-52 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(59,130,246,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-blue-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
@@ -839,7 +839,7 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
         {/* Border Overlay to ensure crisp rounded edges over children */}
         <div className="absolute inset-0 rounded-xl border border-black/10 dark:border-white/10 pointer-events-none z-50"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.05),transparent_50%)] transition-colors pointer-events-none"></div>
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(236,72,153,0.1)_8px,rgba(236,72,153,0.1)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+        <div className="absolute inset-0 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(236,72,153,0.1)_8px,rgba(236,72,153,0.1)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
       {/* Sidebar */}
       <div className="hidden md:flex w-64 border-r border-black/5 dark:border-white/5 bg-gradient-to-b dark:from-white/[0.03] from-black/[0.03] to-transparent flex-col relative shrink-0">
         <div className="h-16 border-b border-black/5 dark:border-white/5 flex items-center px-4">
@@ -902,7 +902,7 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
           <div className="flex gap-3 max-w-[80%] animate-fade-in-up" style={{ animationDelay: '100ms' }}>
             <div className="w-8 h-8 rounded-full font-sans font-bold bg-emerald-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold">J</div>
             <div className="overflow-hidden relative neu-panel-light dark:neu-panel rounded-lg rounded-bl-sm p-3 text-sm text-slate-500 dark:text-white/90">
-              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
               {t('mockupslider.chat.bubble1') || "Hey team, how's the new outreach campaign performing?"}
             </div>
           </div>
@@ -917,7 +917,7 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
           <div className="flex gap-3 max-w-[80%] animate-fade-in-up" style={{ animationDelay: '500ms' }}>
             <div className="w-8 h-8 rounded-full font-sans font-bold bg-orange-500 shrink-0 mt-auto flex items-center justify-center text-white text-xs font-bold">M</div>
             <div className="overflow-hidden relative neu-panel-light dark:neu-panel rounded-lg rounded-bl-sm p-3 text-sm text-slate-500 dark:text-white/90">
-              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
               {t('mockupslider.chat.bubble3') || "That's amazing! Can you generate a report for the weekly meeting?"}
             </div>
           </div>
@@ -959,7 +959,7 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
       </div>
       {/* Floating Badges */}
       <div className="overflow-hidden relative absolute -right-4 md:-right-8 top-1/4 w-60 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(139,92,246,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full font-sans font-bold bg-violet-500/20 flex items-center justify-center border border-violet-500/30 shadow-[0_0_15px_rgba(139,92,246,0.3)] shrink-0">
@@ -975,7 +975,7 @@ function ChatMockup({ t }: { t: (key: string) => string }) {
       </div>
 
       <div className="overflow-hidden relative absolute -left-4 md:-left-8 bottom-1/4 w-52 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(16,185,129,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full font-sans font-bold bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
@@ -1043,7 +1043,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
         {/* Border Overlay to ensure crisp rounded edges over children */}
         <div className="absolute inset-0 rounded-xl border border-black/10 dark:border-white/10 pointer-events-none z-50"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(244,63,94,0.05),transparent_50%)] transition-colors pointer-events-none"></div>
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(244,63,94,0.1)_8px,rgba(244,63,94,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(244,63,94,0.05)_8px,rgba(244,63,94,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(244,63,94,0.1)_8px,rgba(244,63,94,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(244,63,94,0.05)_8px,rgba(244,63,94,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
       {/* Topbar */}
       <div className="h-16 border-b border-black/5 dark:border-white/5 dark:bg-white/[0.01] bg-black/[0.01] flex items-center px-6 backdrop-blur-md shrink-0 gap-4">
         <div className="w-8 h-8 rounded-md bg-gradient-to-br from-rose-500 to-pink-600 shadow-[0_0_15px_rgba(244,63,94,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] flex items-center justify-center">
@@ -1131,7 +1131,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
       </div>
       {/* Floating Badges */}
       <div className="overflow-hidden relative absolute -left-4 md:-left-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(244,63,94,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-rose-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full font-sans font-bold bg-rose-500/20 flex items-center justify-center border border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.3)] shrink-0">
@@ -1147,7 +1147,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
       </div>
 
       <div className="overflow-hidden relative absolute -right-4 md:-right-8 bottom-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(244,63,94,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-rose-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full font-sans font-bold bg-rose-500/20 flex items-center justify-center border border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.2)]">
@@ -1215,7 +1215,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
         {/* Border Overlay to ensure crisp rounded edges over children */}
         <div className="absolute inset-0 rounded-xl border border-black/10 dark:border-white/10 pointer-events-none z-50"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.05),transparent_50%)] transition-colors pointer-events-none"></div>
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(234,179,8,0.1)_8px,rgba(234,179,8,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(234,179,8,0.05)_8px,rgba(234,179,8,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(234,179,8,0.1)_8px,rgba(234,179,8,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(234,179,8,0.05)_8px,rgba(234,179,8,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
       {/* Topbar */}
       <div className="h-16 border-b border-black/5 dark:border-white/5 dark:bg-white/[0.01] bg-black/[0.01] flex items-center px-6 backdrop-blur-md shrink-0 gap-4 justify-between">
         <div className="flex items-center gap-4">
@@ -1247,7 +1247,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
             { title: t('mockupslider.goals.g4.title') || "Implement Stripe Billing", type: t('mockupslider.goals.type.feature') || "Feature", status: t('mockupslider.goals.status.inProgress') || "In Progress", priority: t('mockupslider.goals.priority.high') || "High", progress: 30, color: "text-amber-400", bg: "bg-amber-500" }
           ].map((req, i) => (
             <div key={i} className="overflow-hidden relative dark:neu-card neu-card-light dark:neu-card neu-card-light-hover rounded-lg p-5 cursor-pointer group animate-fade-in-up" style={{ animationDelay: `${i * 150}ms` }}>
-              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-diagonal-fast"></div>
+              <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(45deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-diagonal-fast"></div>
               <div className="flex justify-between items-start mb-4">
                 <div className="text-sm font-semibold text-slate-500 dark:text-white/90">{req.title}</div>
                 <div className={`text-[10px] font-bold px-2 py-1 rounded border ${
@@ -1292,7 +1292,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
       </div>
       {/* Floating Badges */}
       <div className="overflow-hidden relative absolute -right-4 md:-right-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(234,179,8,0.15)] z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full font-sans font-bold bg-amber-500/20 flex items-center justify-center border border-amber-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] shrink-0">
@@ -1308,7 +1308,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
       </div>
 
       <div className="overflow-hidden relative absolute -left-4 md:-left-8 bottom-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(234,179,8,0.15)] delay-100 z-50">
-        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-[0.03] pointer-events-none animate-pan-lines"></div>
+        <div className="absolute inset-0 dark:bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(255,255,255,0.1)_8px,rgba(255,255,255,0.1)_16px)] bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(0,0,0,0.05)_8px,rgba(0,0,0,0.05)_16px)] opacity-40 pointer-events-none animate-pan-lines"></div>
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full font-sans font-bold bg-amber-500/20 flex items-center justify-center border border-amber-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
