@@ -8,6 +8,27 @@ import Link from "next/link"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { OpenClawCard } from "@/app/components/auth/sections/OpenClawCard"
 
+
+// Hook for scroll animations
+function useIntersectionObserver(options: IntersectionObserverInit = { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }) {
+  const [isIntersecting, setIsIntersecting] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setIsIntersecting(true);
+        if (ref.current) observer.unobserve(ref.current);
+      }
+    }, options);
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [options]);
+
+  return [ref, isIntersecting] as const;
+}
+
 function Reveal({ 
   children, 
   delay = 0, 
@@ -19,30 +40,29 @@ function Reveal({
   direction?: "up" | "down" | "left" | "right" | "none", 
   className?: string
 }) {
+  const [ref, isVisible] = useIntersectionObserver();
+  
   const getTransform = () => {
-    if (direction === "up") return { y: 60, x: 0 };
-    if (direction === "down") return { y: -60, x: 0 };
-    if (direction === "left") return { x: 60, y: 0 };
-    if (direction === "right") return { x: -60, y: 0 };
-    return { x: 0, y: 0 };
+    if (direction === "up") return "translateY(40px)";
+    if (direction === "down") return "translateY(-40px)";
+    if (direction === "left") return "translateX(40px)";
+    if (direction === "right") return "translateX(-40px)";
+    return "translate(0)";
   };
 
-  const initial = { opacity: 0, filter: "blur(12px)", ...getTransform() };
-
   return (
-    <motion.div
-      initial={initial}
-      whileInView={{ opacity: 1, filter: "blur(0px)", x: 0, y: 0 }}
-      viewport={{ once: true, margin: "0px 0px -50px 0px" }}
-      transition={{ 
-        duration: 1, 
-        delay: delay / 1000, 
-        ease: [0.16, 1, 0.3, 1] 
+    <div
+      ref={ref}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        filter: isVisible ? "blur(0px)" : "blur(12px)",
+        transform: isVisible ? "translate(0)" : getTransform(),
+        transition: `opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, filter 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
       }}
       className={className}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -135,7 +155,7 @@ const CrmBentoFeatures = () => {
       icon: <Zap size={24} className="text-fuchsia-500" />,
       color: "fuchsia",
       mockup: (
-        <div className="relative w-full h-[400px] bg-[#09090b] rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl">
+        <div className="relative w-full h-[400px] dark:bg-[#09090b] bg-white rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl">
           <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(217,70,239,0.02)_20px,rgba(217,70,239,0.02)_40px)]"></div>
           {/* Vertical Scanner */}
           <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
@@ -180,7 +200,7 @@ const CrmBentoFeatures = () => {
       icon: <Users size={24} className="text-blue-500" />,
       color: "blue",
       mockup: (
-         <div className="relative w-full h-[400px] bg-[#09090b] rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl">
+         <div className="relative w-full h-[400px] dark:bg-[#09090b] bg-white rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl">
             <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,rgba(59,130,246,0.02)_20px,rgba(59,130,246,0.02)_40px)]"></div>
             {/* Horizontal Scanner */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10 flex flex-col justify-center">
@@ -238,7 +258,7 @@ const CrmBentoFeatures = () => {
       icon: <PieChart size={24} className="text-emerald-500" />,
       color: "emerald",
       mockup: (
-        <div className="relative w-full h-[400px] bg-[#09090b] rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl">
+        <div className="relative w-full h-[400px] dark:bg-[#09090b] bg-white rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl">
            <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent,transparent_16px,rgba(16,185,129,0.02)_16px,rgba(16,185,129,0.02)_32px)]"></div>
            {/* Radar Sweep Effect */}
            <div className="absolute top-1/2 left-1/2 w-[150%] h-[150%] -translate-x-1/2 -translate-y-1/2 bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(16,185,129,0.1)_360deg)] animate-[spin_4s_linear_infinite] rounded-full pointer-events-none z-10"></div>
@@ -297,49 +317,109 @@ const CrmBentoFeatures = () => {
       icon: <NetworkTree size={24} className="text-violet-500" />,
       color: "violet",
       mockup: (
-         <div className="relative w-full h-[400px] bg-[#09090b] rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl">
-            <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent,transparent_20px,rgba(139,92,246,0.02)_20px,rgba(139,92,246,0.02)_40px)]"></div>
+         <div className="relative w-full h-[400px] dark:bg-[#09090b] bg-slate-50 rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl">
+            {/* Grid Pattern */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#8b5cf60a_1px,transparent_1px),linear-gradient(to_bottom,#8b5cf60a_1px,transparent_1px)] bg-[size:24px_24px]"></div>
             
-            {/* Pulsing Core */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-violet-500/10 rounded-full blur-3xl animate-pulse z-0"></div>
-            
-            <div className="p-6 relative z-20 h-full flex flex-col items-center justify-center">
-               
-               <div className="relative w-full max-w-[280px] aspect-square">
-                  {/* Center Node */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-[#09090b] border-2 border-violet-500/50 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.3)] z-30 group-hover:scale-110 transition-transform duration-500">
-                     <NetworkTree size={24} className="text-violet-500" />
-                  </div>
-                  
-                  {/* Orbital Nodes */}
-                  {[
-                     { icon: <Mail size={16}/>, label: "Email Alert", angle: 0, delay: "0s", action: "Send" },
-                     { icon: <Zap size={16}/>, label: "Trigger", angle: 90, delay: "0.2s", action: "Start" },
-                     { icon: <Users size={16}/>, label: "Assign Rep", angle: 180, delay: "0.4s", action: "Update" },
-                     { icon: <LayoutGrid size={16}/>, label: "Update Stage", angle: 270, delay: "0.6s", action: "Move" },
-                  ].map((node, idx) => (
-                     <div key={idx} className="absolute top-1/2 left-1/2 w-full h-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ transform: `translate(-50%, -50%) rotate(${node.angle}deg)` }}>
-                        {/* Connecting Line */}
-                        <div className="absolute top-1/2 left-1/2 w-[40%] h-px bg-gradient-to-r from-violet-500/50 to-transparent origin-left opacity-30">
-                           {/* Data Packet Animation */}
-                           <div className="absolute top-1/2 -translate-y-1/2 w-2 h-0.5 bg-violet-500 rounded-full shadow-[0_0_8px_rgba(139,92,246,1)] animate-[travel_2s_linear_infinite]" style={{ animationDelay: node.delay }}></div>
+            {/* Glow Effect */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl opacity-50 pointer-events-none group-hover:opacity-100 transition-opacity duration-700"></div>
+
+            <div className="absolute inset-0 flex items-center justify-center">
+               <div className="relative w-full max-w-[340px] h-[310px]">
+                  {/* SVG Paths for connections */}
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
+                     <path d="M 170 82 L 170 110" stroke="currentColor" className="text-violet-500/40" strokeWidth="2" strokeDasharray="6 6" fill="none">
+                        <animate attributeName="stroke-dashoffset" from="12" to="0" dur="1s" repeatCount="indefinite" />
+                     </path>
+
+                     <path d="M 170 192 C 170 215, 80 210, 80 230" stroke="currentColor" className="text-violet-500/40" strokeWidth="2" strokeDasharray="6 6" fill="none">
+                        <animate attributeName="stroke-dashoffset" from="12" to="0" dur="1s" repeatCount="indefinite" />
+                     </path>
+
+                     <path d="M 170 192 C 170 215, 260 210, 260 230" stroke="currentColor" className="text-violet-500/40" strokeWidth="2" strokeDasharray="6 6" fill="none">
+                        <animate attributeName="stroke-dashoffset" from="12" to="0" dur="1s" repeatCount="indefinite" />
+                     </path>
+                  </svg>
+
+                  {/* Trigger Node */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[220px] dark:bg-[#09090b]/90 bg-white/90 backdrop-blur-md border border-violet-500/30 rounded-xl shadow-[0_0_20px_rgba(139,92,246,0.15)] z-10 group-hover:-translate-y-1 transition-transform duration-500">
+                     <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 dark:bg-[#09090b] bg-white border-2 border-violet-500 rounded-full z-20 shadow-[0_0_10px_rgba(139,92,246,0.5)]"></div>
+                     <div className="p-3">
+                        <div className="flex items-center justify-between mb-3">
+                           <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-md bg-violet-500/20 flex items-center justify-center text-violet-500 border border-violet-500/20">
+                                 <Zap size={12} />
+                              </div>
+                              <span className="text-[10px] font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider">Trigger</span>
+                           </div>
+                           <div className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[8px] font-bold uppercase border border-emerald-500/20 flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> Active
+                           </div>
                         </div>
-                        
-                        {/* Node */}
-                        <div className="absolute top-1/2 right-[10%] -translate-y-1/2 translate-x-1/2 w-12 h-12 bg-[#09090b] border dark:border-white/20 border-black/20 rounded-lg flex flex-col items-center justify-center pointer-events-auto shadow-lg group-hover:border-violet-500/50 transition-colors relative" style={{ transform: `translate(50%, -50%) rotate(-${node.angle}deg)` }}>
-                           <div className="text-violet-500 mb-1">{node.icon}</div>
-                           <div className="absolute -bottom-4 text-[8px] font-bold dark:text-white/50 text-slate-500 uppercase tracking-wider whitespace-nowrap">{node.label}</div>
-                           {/* Action badge */}
-                           <div className="absolute -top-2 -right-2 bg-violet-500/20 text-violet-500 text-[6px] font-bold uppercase px-1 py-0.5 rounded border border-violet-500/30 backdrop-blur-md">{node.action}</div>
+                        <div className="text-xs font-semibold dark:text-white text-slate-900 border dark:border-white/10 border-black/10 rounded-md px-2 py-1.5 bg-black/5 dark:bg-white/5 font-mono shadow-inner">
+                           Stage = "Closed Won"
                         </div>
                      </div>
-                  ))}
+                  </div>
+
+                  {/* Condition Node */}
+                  <div className="absolute top-[110px] left-1/2 -translate-x-1/2 w-[200px] dark:bg-[#09090b]/90 bg-white/90 backdrop-blur-md border dark:border-white/10 border-black/10 hover:border-violet-500/30 rounded-xl shadow-lg z-10 group-hover:scale-105 transition-all duration-500 delay-75">
+                     <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 dark:bg-[#09090b] bg-white border-2 dark:border-slate-600 border-slate-300 rounded-full z-20"></div>
+                     <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 dark:bg-[#09090b] bg-white border-2 border-violet-500 rounded-full z-20 shadow-[0_0_10px_rgba(139,92,246,0.5)]"></div>
+                     <div className="p-3">
+                        <div className="flex items-center gap-2 mb-3">
+                           <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center text-amber-500 border border-amber-500/20">
+                              <NetworkTree size={12} />
+                           </div>
+                           <span className="text-[10px] font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider">Condition</span>
+                        </div>
+                        <div className="text-xs font-semibold dark:text-white text-slate-900 border dark:border-white/10 border-black/10 rounded-md px-2 py-1.5 bg-black/5 dark:bg-white/5 flex items-center justify-between shadow-inner">
+                           <span>Value</span>
+                           <span className="text-violet-500 font-mono font-bold">&gt; $10k</span>
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Action Node 1 */}
+                  <div className="absolute top-[230px] left-[0px] w-[160px] dark:bg-[#09090b]/90 bg-white/90 backdrop-blur-md border dark:border-white/10 border-black/10 hover:border-blue-500/30 rounded-xl shadow-lg z-10 group-hover:-translate-x-2 transition-transform duration-500 delay-150">
+                     <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 dark:bg-[#09090b] bg-white border-2 dark:border-slate-600 border-slate-300 rounded-full z-20"></div>
+                     <div className="p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                           <div className="w-6 h-6 rounded-md bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
+                              <Mail size={12} />
+                           </div>
+                           <div className="text-[10px] font-bold dark:text-white/60 text-slate-500 uppercase tracking-wider">Action</div>
+                        </div>
+                        <div className="text-xs font-semibold dark:text-white text-slate-900 leading-tight">Send Welcome Email</div>
+                     </div>
+                  </div>
+
+                  {/* Action Node 2 */}
+                  <div className="absolute top-[230px] right-[0px] w-[160px] dark:bg-[#09090b]/90 bg-white/90 backdrop-blur-md border dark:border-white/10 border-black/10 hover:border-emerald-500/30 rounded-xl shadow-lg z-10 group-hover:translate-x-2 transition-transform duration-500 delay-150">
+                     <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 dark:bg-[#09090b] bg-white border-2 dark:border-slate-600 border-slate-300 rounded-full z-20"></div>
+                     <div className="p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                           <div className="w-6 h-6 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+                              <Check size={12} />
+                           </div>
+                           <div className="text-[10px] font-bold dark:text-white/60 text-slate-500 uppercase tracking-wider">Action</div>
+                        </div>
+                        <div className="text-xs font-semibold dark:text-white text-slate-900 leading-tight">Create Onboarding Task</div>
+                     </div>
+                  </div>
                </div>
-               
-               <div className="mt-8 text-center bg-black/40 dark:bg-white/5 px-4 py-2 rounded-xl border dark:border-white/5 border-black/5 backdrop-blur-sm">
-                  <div className="text-[10px] font-bold dark:text-white/80 text-slate-700 uppercase tracking-wider flex items-center justify-center gap-1.5"><Bot size={12} className="text-violet-500"/> AI Generated Logic</div>
+            </div>
+
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 dark:bg-black/60 bg-white/90 border dark:border-white/10 border-black/10 px-4 py-2 rounded-full flex items-center gap-2 backdrop-blur-md shadow-xl z-20 cursor-pointer hover:border-violet-500/50 hover:shadow-[0_0_20px_rgba(139,92,246,0.2)] transition-all">
+               <div className="text-violet-500 animate-pulse">
+                  <Bot size={14} />
                </div>
-               
+               <span className="text-[10px] font-bold dark:text-white/90 text-slate-800 uppercase tracking-wider">Generate with AI</span>
+               <div className="flex gap-0.5 ml-1">
+                  <div className="w-1 h-1 bg-violet-500 rounded-full animate-bounce"></div>
+                  <div className="w-1 h-1 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-1 h-1 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+               </div>
             </div>
          </div>
       )
@@ -355,32 +435,27 @@ const CrmBentoFeatures = () => {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+          <Reveal
+            delay={0}
+            direction="up"
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/10 dark:text-white/70 text-slate-500 text-xs font-bold uppercase tracking-wider mb-6"
           >
             Core CRM Capabilities
-          </motion.div>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
+          </Reveal>
+          <Reveal
+            delay={100}
+            direction="up"
             className="text-4xl md:text-5xl font-bold dark:text-white text-slate-900 mb-6 tracking-tight"
           >
             Everything you need to <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">manage relationships</span>
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
+          </Reveal>
+          <Reveal
+            delay={200}
+            direction="up"
             className="text-lg dark:text-white/50 text-slate-500 max-w-2xl mx-auto font-light leading-relaxed"
           >
             A unified view of your entire customer journey, augmented by AI that does the heavy lifting so your team can focus on selling.
-          </motion.p>
+          </Reveal>
         </div>
 
         {/* Left/Right Animated Sections */}
@@ -388,17 +463,15 @@ const CrmBentoFeatures = () => {
           {bentoFeatures.map((feature, index) => {
             const isEven = index % 2 === 0;
             return (
-              <motion.div
+              <Reveal
                 key={index}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.7, ease: "easeOut" }}
+                delay={0}
+                direction="up"
                 className={`flex flex-col ${isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-12 lg:gap-20 items-center`}
               >
                 {/* Text Content */}
                 <div className="flex-1 space-y-6">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${feature.color}-500/10 border border-${feature.color}-500/20 shadow-inner`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-${feature.color}-500/5 shadow-sm group-hover:scale-110 transition-transform`}>
                     {feature.icon}
                   </div>
                   <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 tracking-tight">{feature.title}</h3>
@@ -406,10 +479,6 @@ const CrmBentoFeatures = () => {
                     {feature.description}
                   </p>
                   
-                  {/* Decorative line */}
-                  <div className="pt-4">
-                     <div className="w-12 h-1 bg-gradient-to-r dark:from-white/20 from-black/20 to-transparent rounded-full"></div>
-                  </div>
                 </div>
 
                 {/* Mockup Container */}
@@ -426,7 +495,7 @@ const CrmBentoFeatures = () => {
                       </MockupScrollWrapper>
                    </div>
                 </div>
-              </motion.div>
+              </Reveal>
             );
           })}
         </div>
@@ -579,7 +648,7 @@ export function CrmClient() {
                   { id: 'workflows', name: "Automated Workflows", icon: <NetworkTree size={18} className="text-violet-400" />, desc: "Trigger tasks, emails, and alerts when deal stages change." }
                 ].map((item, i) => (
                   <li key={i} className="flex items-start dark:text-white/80 text-slate-500 font-medium group">
-                    <div className="w-10 h-10 rounded-md dark:neu-pressed neu-pressed-light flex items-center justify-center mr-4 flex-shrink-0 border dark:border-white/5 border-black/5 group-hover:border-violet-500/30 transition-colors bg-violet-500/5">
+                    <div className="w-10 h-10 rounded-md dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-violet-500/5 flex items-center justify-center mr-4 flex-shrink-0 group-hover:border-violet-500/30 transition-colors">
                       {item.icon}
                     </div>
                     <div>
@@ -623,12 +692,16 @@ export function CrmClient() {
             <Reveal delay={100} className="w-full">
               <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
                 <div className="w-full lg:w-1/2 flex-shrink-0">
-                  <div className="w-full rounded-2xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-between transition-all duration-500 hover:-translate-y-1 h-[400px]">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(217,70,239,0.15),transparent_60%)]"></div>
-                    <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_20px,rgba(217,70,239,0.02)_20px,rgba(217,70,239,0.02)_40px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+                  <div className="relative w-full h-[400px] dark:bg-[#09090b] bg-slate-50 rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                    {/* Grid Pattern */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#d946ef0a_1px,transparent_1px),linear-gradient(to_bottom,#d946ef0a_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+                    
+                    {/* Glow Effect */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-fuchsia-500/10 rounded-full blur-3xl opacity-50 pointer-events-none group-hover:opacity-100 transition-opacity duration-700"></div>
                     
                     {/* Visual Widget */}
-                    <div className="relative z-10 w-full h-full rounded-xl border dark:border-white/5 border-black/5 dark:bg-[#09090b] bg-white overflow-hidden flex flex-col p-6 shadow-2xl">
+                    <div className="absolute inset-0 flex items-center justify-center p-6">
+                      <div className="relative z-10 w-full h-full rounded-xl border dark:border-white/10 border-black/10 dark:bg-[#09090b]/90 bg-white/90 backdrop-blur-md overflow-hidden flex flex-col p-4 shadow-xl group-hover:scale-[1.02] transition-transform duration-500">
                       <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-transparent via-fuchsia-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(217,70,239,0.8)] animate-[scan_vertical_4s_ease-in-out_infinite] pointer-events-none z-20"></div>
 
                       <div className="flex items-center justify-between mb-6 pb-4 border-b dark:border-white/5 border-black/5">
@@ -685,9 +758,10 @@ export function CrmClient() {
                       </div>
                     </div>
                   </div>
+                  </div>
                 </div>
                 <div className="w-full lg:w-1/2">
-                  <div className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-fuchsia-400 mb-6 shadow-inner">
+                  <div className="w-12 h-12 rounded-xl dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-fuchsia-500/5 flex items-center justify-center text-fuchsia-400 mb-6 shadow-sm group-hover:scale-110 transition-transform">
                     <Users size={24} />
                   </div>
                   <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">360° Customer View</h3>
@@ -712,7 +786,7 @@ export function CrmClient() {
             <Reveal delay={150} className="w-full">
               <div className="flex flex-col-reverse lg:flex-row items-center gap-12 lg:gap-20">
                 <div className="w-full lg:w-1/2">
-                  <div className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-violet-400 mb-6 shadow-inner">
+                  <div className="w-12 h-12 rounded-xl dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-violet-500/5 flex items-center justify-center text-violet-400 mb-6 shadow-sm group-hover:scale-110 transition-transform">
                     <LayoutGrid size={24} />
                   </div>
                   <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">Visual Pipeline Management</h3>
@@ -731,13 +805,17 @@ export function CrmClient() {
                   </ul>
                 </div>
                 <div className="w-full lg:w-1/2 flex-shrink-0">
-                  <div className="w-full rounded-2xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-between transition-all duration-500 hover:-translate-y-1 h-[400px]">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.15),transparent_60%)]"></div>
-                    <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_center,transparent,transparent_16px,rgba(139,92,246,0.02)_16px,rgba(139,92,246,0.02)_32px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+                  <div className="relative w-full h-[400px] dark:bg-[#09090b] bg-slate-50 rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                    {/* Grid Pattern */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#8b5cf60a_1px,transparent_1px),linear-gradient(to_bottom,#8b5cf60a_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+                    
+                    {/* Glow Effect */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl opacity-50 pointer-events-none group-hover:opacity-100 transition-opacity duration-700"></div>
                     
                     {/* Visual Widget */}
-                    <div className="relative z-10 w-full h-full flex gap-4 overflow-hidden bg-[#09090b] rounded-xl border border-white/10 p-4 shadow-2xl">
-                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-violet-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(139,92,246,0.8)] animate-[scan_3s_ease-in-out_infinite_reverse] pointer-events-none z-20"></div>
+                    <div className="absolute inset-0 flex items-center justify-center p-6">
+                      <div className="relative z-10 w-full h-full flex gap-4 overflow-hidden dark:bg-[#09090b]/90 bg-white/90 backdrop-blur-md rounded-xl border dark:border-white/10 border-black/10 p-4 shadow-xl group-hover:scale-[1.02] transition-transform duration-500">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-violet-500 to-transparent opacity-50 shadow-[0_0_15px_rgba(139,92,246,0.8)] animate-[scan_3s_ease-in-out_infinite_reverse] pointer-events-none z-20"></div>
                       
                       {[
                         { name: "Meeting", count: "5", color: "bg-blue-400", val: "$45K" },
@@ -793,6 +871,7 @@ export function CrmClient() {
                           </div>
                         </div>
                       ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -803,12 +882,16 @@ export function CrmClient() {
             <Reveal delay={200} className="w-full">
               <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
                 <div className="w-full lg:w-1/2 flex-shrink-0">
-                  <div className="w-full rounded-2xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-between transition-all duration-500 hover:-translate-y-1 h-[400px]">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.15),transparent_60%)]"></div>
-                    <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(59,130,246,0.02)_10px,rgba(59,130,246,0.02)_20px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+                  <div className="relative w-full h-[400px] dark:bg-[#09090b] bg-slate-50 rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                    {/* Grid Pattern */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#3b82f60a_1px,transparent_1px),linear-gradient(to_bottom,#3b82f60a_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+                    
+                    {/* Glow Effect */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl opacity-50 pointer-events-none group-hover:opacity-100 transition-opacity duration-700"></div>
                     
                     {/* Visual Widget */}
-                    <div className="relative z-10 w-full h-full rounded-xl border dark:border-white/5 border-black/5 dark:bg-[#09090b] bg-white overflow-hidden flex flex-col shadow-2xl">
+                    <div className="absolute inset-0 flex items-center justify-center p-6">
+                      <div className="relative z-10 w-full h-full rounded-xl border dark:border-white/10 border-black/10 dark:bg-[#09090b]/90 bg-white/90 backdrop-blur-md overflow-hidden flex flex-col shadow-xl group-hover:scale-[1.02] transition-transform duration-500">
                       <div className="flex border-b dark:border-white/10 border-black/10 bg-black/20">
                         <div className="flex-[1] p-3 border-r dark:border-white/10 border-black/10 bg-blue-500/10 flex items-center justify-center gap-2 border-b-2 border-b-blue-500 relative">
                           <Mail size={14} className="text-blue-400" />
@@ -857,12 +940,13 @@ export function CrmClient() {
                             <Bot size={14} />
                           </div>
                         </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
                 <div className="w-full lg:w-1/2">
-                  <div className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-blue-400 mb-6 shadow-inner">
+                  <div className="w-12 h-12 rounded-xl dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-blue-500/5 flex items-center justify-center text-blue-400 mb-6 shadow-sm group-hover:scale-110 transition-transform">
                     <MessageSquare size={24} />
                   </div>
                   <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">Omnichannel Inbox</h3>
@@ -887,7 +971,7 @@ export function CrmClient() {
             <Reveal delay={250} className="w-full">
               <div className="flex flex-col-reverse lg:flex-row items-center gap-12 lg:gap-20">
                 <div className="w-full lg:w-1/2">
-                  <div className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-emerald-400 mb-6 shadow-inner">
+                  <div className="w-12 h-12 rounded-xl dark:neu-pressed neu-pressed-light border dark:border-white/5 border-black/5 bg-emerald-500/5 flex items-center justify-center text-emerald-400 mb-6 shadow-sm group-hover:scale-110 transition-transform">
                     <BarChart size={24} />
                   </div>
                   <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">Advanced Dashboards</h3>
@@ -906,12 +990,16 @@ export function CrmClient() {
                   </ul>
                 </div>
                 <div className="w-full lg:w-1/2 flex-shrink-0">
-                  <div className="w-full rounded-2xl dark:neu-base neu-base-light overflow-hidden relative group p-8 flex flex-col justify-between transition-all duration-500 hover:-translate-y-1 h-[400px]">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.15),transparent_60%)]"></div>
-                    <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_20px,rgba(16,185,129,0.02)_20px,rgba(16,185,129,0.02)_40px)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-xl"></div>
+                  <div className="relative w-full h-[400px] dark:bg-[#09090b] bg-slate-50 rounded-2xl border dark:border-white/5 border-black/5 overflow-hidden group shadow-2xl transition-all duration-500 hover:-translate-y-1">
+                    {/* Grid Pattern */}
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#10b9810a_1px,transparent_1px),linear-gradient(to_bottom,#10b9810a_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+                    
+                    {/* Glow Effect */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl opacity-50 pointer-events-none group-hover:opacity-100 transition-opacity duration-700"></div>
                     
                     {/* Visual Widget */}
-                    <div className="relative z-10 w-full h-full rounded-xl border dark:border-white/5 border-black/5 dark:bg-[#09090b] bg-white overflow-hidden flex flex-col gap-4 p-6 shadow-2xl">
+                    <div className="absolute inset-0 flex items-center justify-center p-6">
+                      <div className="relative z-10 w-full h-full rounded-xl border dark:border-white/10 border-black/10 dark:bg-[#09090b]/90 bg-white/90 backdrop-blur-md overflow-hidden flex flex-col gap-4 p-4 shadow-xl group-hover:scale-[1.02] transition-transform duration-500">
                       <div className="flex gap-4 h-1/3">
                         <div className="flex-[1] rounded-lg dark:bg-white/[0.03] bg-black/5 border dark:border-white/10 border-black/10 p-4 flex flex-col justify-center relative overflow-hidden group/stat hover:border-emerald-500/30 transition-colors cursor-default">
                           <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-[20px] opacity-0 group-hover/stat:opacity-100 transition-opacity"></div>
@@ -961,6 +1049,7 @@ export function CrmClient() {
                           <span>Aug</span>
                           <span>Sep (Proj)</span>
                         </div>
+                      </div>
                       </div>
                     </div>
                   </div>
