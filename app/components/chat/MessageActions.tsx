@@ -115,7 +115,7 @@ export function MessageActions({
 
   return (
     <div 
-      className="rounded-full font-sans px-2 py-1.5 mt-2 inline-flex items-center gap-1.5"
+      className="rounded-full font-inter px-2 py-1.5 mt-2 inline-flex items-center gap-1.5"
       style={{ 
         backgroundColor: isDarkMode ? 'rgba(156, 163, 175, 0.15)' : 'rgba(156, 163, 175, 0.1)',
       }}

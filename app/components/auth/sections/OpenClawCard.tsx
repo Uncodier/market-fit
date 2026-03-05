@@ -267,7 +267,7 @@ export function OpenClawCard() {
 
               <TiltCard className="w-[260px] h-[290px] flex-shrink-0 self-center rounded-lg dark:neu-panel neu-panel-light p-2 flex flex-col group/card transition-colors cursor-pointer relative overflow-hidden">
                 <div className="absolute top-2 right-2 z-20 flex items-center gap-1 dark:neu-pressed neu-pressed-light px-2 py-0.5 rounded-full">
-                  <div className="w-1 h-1 rounded-full font-sans font-bold bg-pink-500 animate-pulse"></div>
+                  <div className="w-1 h-1 rounded-full font-inter font-bold bg-pink-500 animate-pulse"></div>
                   <span className="text-[10px] font-semibold dark:text-white/90 text-slate-500">{t('openclaw.agent.marketing.name') || 'Marketing Agent'}</span>
                 </div>
                 <div className="w-full h-20 rounded-md bg-gradient-to-br from-pink-500/20 to-rose-600/20 border dark:border-white/5 border-black/5 mb-2 relative overflow-hidden flex items-center justify-center">
@@ -294,7 +294,7 @@ export function OpenClawCard() {
                     </div>
                     <div className="p-1.5 rounded dark:neu-pressed neu-pressed-light border border-pink-500/30 relative">
                       <div className="absolute -left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-3 bg-pink-500 rounded-full"></div>
-                      <div className="h-1 w-2/3 bg-pink-400/50 rounded-full font-sans mb-1"></div>
+                      <div className="h-1 w-2/3 bg-pink-400/50 rounded-full font-inter mb-1"></div>
                       <div className="h-1 w-4/5 dark:bg-white/20 bg-black/20 rounded-full"></div>
                     </div>
                   </div>

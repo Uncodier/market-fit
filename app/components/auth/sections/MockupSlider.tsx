@@ -1087,7 +1087,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
         {/* Chat / Log area */}
         <div className="w-full md:w-80 h-1/2 md:h-full border-t md:border-t-0 md:border-l border-black/5 dark:border-white/5 dark:bg-[#0a0a0c] bg-white flex flex-col shrink-0">
           <div className="h-12 border-b dark:border-white/5 border-black/5 flex items-center px-4 gap-2 dark:bg-white/[0.01] bg-black/[0.01]">
-            <div className="w-2 h-2 rounded-full font-sans font-bold bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.8)]"></div>
+            <div className="w-2 h-2 rounded-full font-inter font-bold bg-rose-500 animate-pulse shadow-[0_0_8px_rgba(244,63,94,0.8)]"></div>
             <span className="text-xs font-medium dark:text-white/80 text-slate-500">{t('mockupslider.agents.agentLog') || "Agent Log"}</span>
           </div>
           <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 font-mono text-[10px]">
@@ -1118,7 +1118,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
       <div className="overflow-hidden absolute -left-4 md:-left-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(244,63,94,0.15)] z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-rose-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full font-sans font-bold bg-rose-500/20 flex items-center justify-center border border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.3)] shrink-0">
+          <div className="w-10 h-10 rounded-full font-inter font-bold bg-rose-500/20 flex items-center justify-center border border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.3)] shrink-0">
             <svg className="w-5 h-5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
@@ -1133,7 +1133,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
       <div className="overflow-hidden absolute -right-4 md:-right-8 bottom-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(244,63,94,0.15)] delay-100 z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-rose-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full font-sans font-bold bg-rose-500/20 flex items-center justify-center border border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.2)]">
+          <div className="w-8 h-8 rounded-full font-inter font-bold bg-rose-500/20 flex items-center justify-center border border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.2)]">
             <svg className="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
           </div>
           <div>
@@ -1247,7 +1247,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
                   {req.type}
                 </div>
                 <div className="flex items-center gap-1.5 bg-black/5 dark:bg-white/5 px-2 py-1 rounded text-[10px] text-slate-500 dark:text-white/60 border border-black/5 dark:border-white/5">
-                  <div className={`w-1.5 h-1.5 rounded-full font-sans ${req.bg}`}></div>
+                  <div className={`w-1.5 h-1.5 rounded-full font-inter ${req.bg}`}></div>
                   {req.status}
                 </div>
               </div>
@@ -1258,13 +1258,13 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
                     <span>{t('mockupslider.goals.progress') || "Progress"}</span>
                     <span>{req.progress}%</span>
                   </div>
-                  <div className="h-1.5 dark:neu-recessed neu-recessed-light rounded-full font-sans overflow-hidden border border-black/5 dark:border-white/5">
-                    <div className={`h-full ${req.bg} rounded-full font-sans transition-all duration-1000 ease-out`} style={{ width: req.progress === 0 ? '0%' : '0%', animation: `fill-progress-${req.progress} 1s ease-out ${500 + i * 150}ms forwards` }}></div>
+                  <div className="h-1.5 dark:neu-recessed neu-recessed-light rounded-full font-inter overflow-hidden border border-black/5 dark:border-white/5">
+                    <div className={`h-full ${req.bg} rounded-full font-inter transition-all duration-1000 ease-out`} style={{ width: req.progress === 0 ? '0%' : '0%', animation: `fill-progress-${req.progress} 1s ease-out ${500 + i * 150}ms forwards` }}></div>
                   </div>
                 </div>
                 <div className="flex -space-x-2">
-                  <div className="w-6 h-6 rounded-full font-sans dark:bg-zinc-800 bg-zinc-200 border border-white dark:border-[#09090b] shadow-sm"></div>
-                  <div className="w-6 h-6 rounded-full font-sans font-bold bg-gradient-to-br from-indigo-500 to-purple-600 border border-[#09090b] flex items-center justify-center text-[8px] font-bold text-white z-10">AI</div>
+                  <div className="w-6 h-6 rounded-full font-inter dark:bg-zinc-800 bg-zinc-200 border border-white dark:border-[#09090b] shadow-sm"></div>
+                  <div className="w-6 h-6 rounded-full font-inter font-bold bg-gradient-to-br from-indigo-500 to-purple-600 border border-[#09090b] flex items-center justify-center text-[8px] font-bold text-white z-10">AI</div>
                 </div>
               </div>
             </div>
@@ -1276,7 +1276,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
       <div className="overflow-hidden absolute -right-4 md:-right-8 top-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-4 animate-float-slow hidden md:block transition-all duration-500 group-hover/card:-translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(234,179,8,0.15)] z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full font-sans font-bold bg-amber-500/20 flex items-center justify-center border border-amber-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] shrink-0">
+          <div className="w-10 h-10 rounded-full font-inter font-bold bg-amber-500/20 flex items-center justify-center border border-amber-500/30 shadow-[0_0_15px_rgba(234,179,8,0.3)] shrink-0">
             <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -1291,7 +1291,7 @@ function GoalsMockup({ t }: { t: (key: string) => string }) {
       <div className="overflow-hidden absolute -left-4 md:-left-8 bottom-1/4 w-56 rounded-lg neu-panel-light dark:neu-panel p-3 animate-float-medium hidden md:block transition-all duration-500 group-hover/card:translate-y-4 group-hover/card:scale-105 group-hover/card:shadow-[0_20px_60px_rgba(234,179,8,0.15)] delay-100 z-50">
         <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full font-sans font-bold bg-amber-500/20 flex items-center justify-center border border-amber-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
+          <div className="w-8 h-8 rounded-full font-inter font-bold bg-amber-500/20 flex items-center justify-center border border-amber-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
              <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </div>
           <div>

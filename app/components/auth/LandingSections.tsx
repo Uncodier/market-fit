@@ -137,7 +137,7 @@ export function LandingSections() {
       {/* 1. Full-width Main Feature (Revenue Operations Platform) */}
       <section className="relative w-full pt-32 pb-24 border-t dark:border-white/[0.04] border-black/5 dark:bg-black-paper bg-white-paper bg-white">
         {/* Ambient Glows & Retro-futuristic Op-art Accents - Removed to avoid page change effect */}
-        {/* <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] md:w-[1000px] md:h-[1000px] bg-violet-600/10 rounded-full font-sans blur-[100px] md:blur-[120px] opacity-60 mix-blend-screen pointer-events-none animate-pulse-slow"></div> */}
+        {/* <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] md:w-[1000px] md:h-[1000px] bg-violet-600/10 rounded-full font-inter blur-[100px] md:blur-[120px] opacity-60 mix-blend-screen pointer-events-none animate-pulse-slow"></div> */}
         
         {/* Glow behind title text for readability */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] md:w-[1000px] md:h-[500px] bg-white dark:bg-transparent rounded-full font-inter blur-[100px] md:blur-[120px] opacity-100 pointer-events-none"></div>
@@ -248,7 +248,7 @@ export function LandingSections() {
 
                 <div className="relative z-10 max-w-sm">
                   <div className="inline-flex items-center rounded-full font-inter dark:neu-black-chip-inward neu-white-chip-inward px-3 py-1 text-xs font-bold mb-6">
-                    <span className="w-1.5 h-1.5 rounded-full font-sans font-bold bg-orange-500 mr-2 shadow-[0_0_8px_rgba(249,115,22,0.8)]"></span>
+                    <span className="w-1.5 h-1.5 rounded-full font-inter font-bold bg-orange-500 mr-2 shadow-[0_0_8px_rgba(249,115,22,0.8)]"></span>
                     {t('landing.outbound.badge') || 'Massive Scale'}
                   </div>
                   <h3 className="text-3xl md:text-4xl font-bold dark:text-white text-slate-900 mb-4 tracking-tight">{t('landing.outbound.title') || 'Outbound ready system'}</h3>

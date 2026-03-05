@@ -194,7 +194,7 @@ export function CmsClient() {
           <div className="w-full lg:w-1/2 perspective-[1200px]">
             <Reveal delay={200} direction="right">
               <MockupScrollWrapper direction="right">
-              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-sans">
+              <div className="relative w-full h-[450px] rounded-xl dark:neu-mockup-screen neu-mockup-screen-light p-6 group font-inter">
                 <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/5 to-transparent opacity-100 pointer-events-none rounded-xl"></div>
                 <div className="absolute inset-0 bg-[repeating-radial-gradient(circle_at_bottom_right,transparent,transparent_8px,rgba(249,115,22,0.02)_8px,rgba(249,115,22,0.02)_16px)] opacity-100 pointer-events-none rounded-xl"></div>
                 
