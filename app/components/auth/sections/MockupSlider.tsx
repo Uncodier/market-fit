@@ -1036,7 +1036,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
         </div>
         <div className="flex gap-2 neu-pressed-light dark:neu-pressed p-1 rounded-full">
           {[t('mockupslider.agents.new') || "New Makina", t('mockupslider.agents.instance1') || "Instance 1", t('mockupslider.agents.instance2') || "Instance 2"].map((tab, i) => (
-            <div key={i} className={`text-xs font-medium px-4 py-1.5 rounded-full font-sans cursor-pointer transition-colors ${i === 1 ? 'neu-button-light dark:neu-button text-slate-900 dark:text-white' : 'text-slate-500 dark:text-white/50 hover:text-slate-700 dark:hover:text-white/80'}`}>
+            <div key={i} className={`text-xs font-medium px-4 py-1.5 rounded-full font-inter cursor-pointer transition-colors ${i === 1 ? 'neu-button-light dark:neu-button text-slate-900 dark:text-white' : 'text-slate-500 dark:text-white/50 hover:text-slate-700 dark:hover:text-white/80'}`}>
               {tab}
             </div>
           ))}
@@ -1050,9 +1050,9 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
           <div className="flex-1 rounded-md dark:neu-recessed neu-recessed-light overflow-hidden flex flex-col relative group">
             <div className="h-10 border-b border-black/5 dark:border-white/5 dark:bg-white/[0.02] bg-black/5 flex items-center px-4 gap-3 shrink-0">
               <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full font-sans font-bold bg-rose-500/80"></div>
-                <div className="w-2.5 h-2.5 rounded-full font-sans font-bold bg-amber-500/80"></div>
-                <div className="w-2.5 h-2.5 rounded-full font-sans font-bold bg-emerald-500/80"></div>
+                <div className="w-2.5 h-2.5 rounded-full font-inter font-bold bg-rose-500/80"></div>
+                <div className="w-2.5 h-2.5 rounded-full font-inter font-bold bg-amber-500/80"></div>
+                <div className="w-2.5 h-2.5 rounded-full font-inter font-bold bg-emerald-500/80"></div>
               </div>
               <div className="flex-1 h-6 bg-black/5 dark:bg-white/5 rounded-md border border-black/5 dark:border-white/5 flex items-center justify-center">
                 <span className="text-[10px] text-slate-500 dark:text-white/30 font-mono">browser-session-xyz.internal</span>
@@ -1062,7 +1062,7 @@ function AgentsMockup({ t }: { t: (key: string) => string }) {
             {/* Animated Loading Overlay */}
             <div className="absolute inset-0 top-10 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                <div className="flex flex-col items-center gap-3">
-                 <div className="w-12 h-12 rounded-full font-sans border-2 border-rose-500/20 border-t-rose-500 animate-spin"></div>
+                 <div className="w-12 h-12 rounded-full font-inter border-2 border-rose-500/20 border-t-rose-500 animate-spin"></div>
                  <div className="text-rose-400 text-xs font-mono animate-pulse">{t('mockupslider.agents.running') || "Running Task..."}</div>
                </div>
             </div>
