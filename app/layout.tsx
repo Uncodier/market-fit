@@ -21,8 +21,27 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://makinari.com'),
   title: 'MAKINARI',
   description: 'Find your product market fit.',
+  openGraph: {
+    title: 'MAKINARI',
+    description: 'Find your product market fit.',
+    images: [
+      {
+        url: '/opengraph-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'MAKINARI Preview',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'MAKINARI',
+    description: 'Find your product market fit.',
+    images: ['/opengraph-image.png'],
+  },
 }
 
 // Configuración del viewport con ancho mínimo y escalado

@@ -41,8 +41,25 @@ export function useProfile() {
     }
 
     try {
+      console.log("Setting isUpdating to true");
       setIsUpdating(true)
-      const updatedProfile = await profileService.upsertProfile(user.id, data)
+      console.log("Calling profileService.upsertProfile...");
+      
+      // Hacemos un catch local para no quedarnos atorados si hay error de red
+      // Implementamos Promise.race para poner un timeout de 15s como fallback
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => reject(new Error("Timeout updating profile")), 15000);
+      });
+      
+      const updatedProfile = await Promise.race([
+        profileService.upsertProfile(user.id, data).catch(error => {
+          console.error('Catch en upsertProfile:', error)
+          throw error
+        }),
+        timeoutPromise
+      ]);
+      
+      console.log("profileService.upsertProfile returned", updatedProfile);
       
       if (updatedProfile) {
         setProfile(updatedProfile)
@@ -57,6 +74,7 @@ export function useProfile() {
       if (!silent) toast.error('Error updating profile')
       return false
     } finally {
+      console.log("Setting isUpdating to false");
       setIsUpdating(false)
     }
   }, [user?.id])

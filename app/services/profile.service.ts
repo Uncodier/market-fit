@@ -43,11 +43,14 @@ class ProfileService {
    */
   async getProfile(userId: string): Promise<ProfileData | null> {
     try {
+      console.log("getProfile: Fetching from profiles table...");
       const { data, error } = await this.supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
+      
+      console.log("getProfile: DB query returned", !!data, error);
 
       if (error) {
         console.error('Error fetching profile:', error)
@@ -55,8 +58,14 @@ class ProfileService {
       }
 
       // Get the user's phone from their account (phone column or metadata)
+      console.log("getProfile: Fetching auth.getUser()...");
       const { data: userData } = await this.supabase.auth.getUser()
+      console.log("getProfile: auth.getUser() returned", !!userData?.user);
+      
       if (userData.user) {
+        // En supabase, phone en user suele venir vacio si no se verificó con otp, 
+        // pero lo guardamos en user_metadata.phone. 
+        // No existe columna phone en 'profiles'
         if (userData.user.phone) {
           data.phone = userData.user.phone
         } else if (userData.user.user_metadata?.phone) {
@@ -76,54 +85,70 @@ class ProfileService {
    */
   async upsertProfile(userId: string, profileData: ProfileUpdateData): Promise<ProfileData | null> {
     try {
+      console.log("upsertProfile started for", userId, profileData);
       // Extract phone to save it in user object instead of profile
       const { phone, ...restProfileData } = profileData
 
       // If phone exists, update it in the user (phone column and metadata)
       if (phone !== undefined) {
+        // 1. Update phone column in auth.users via admin API
+        let token = ''
+        console.log("Getting session...");
+        const { data: sessionData } = await this.supabase.auth.getSession()
+        if (sessionData.session?.access_token) {
+          token = sessionData.session.access_token
+        }
+        
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
+        
+        console.log("Calling /api/auth/update-phone...");
+        
         try {
-          // 1. Update user metadata (client side)
-          await this.supabase.auth.updateUser({
-            data: { phone }
-          })
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 seconds timeout
           
-          // 2. Update phone column in auth.users via admin API
-          // Since we might not have a session (e.g. just signed up), we rely on the 
-          // 15-minute grace period built into the API endpoint
-          let token = ''
-          const { data: sessionData } = await this.supabase.auth.getSession()
-          if (sessionData.session?.access_token) {
-            token = sessionData.session.access_token
-          }
-          
-          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-          if (token) headers['Authorization'] = `Bearer ${token}`
-          
-          // Fire and forget to avoid blocking the profile save if the network is slow
-          fetch('/api/auth/update-phone', {
+          const res = await fetch('/api/auth/update-phone', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ userId, phone })
-          }).then(res => {
-            if (res.ok) console.log('Phone metadata also synced to root phone via API')
-          }).catch(phoneError => {
-            console.warn('Error syncing phone to auth.users:', phoneError)
-          })
-        } catch (phoneError) {
-          console.error('Error updating user metadata phone:', phoneError)
+            body: JSON.stringify({ userId, phone }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          console.log("/api/auth/update-phone returned status", res.status);
+          
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            console.error("Error from /api/auth/update-phone:", errorData);
+          } else {
+            console.log("Phone updated via API successfully.");
+            // Actualizamos la sesión en segundo plano sin esperar al await
+            // para que no detenga el guardado de perfiles si de casualidad 
+            // esto se atora o levanta algún listener que cuelga la promesa.
+            // Omitimos esto porque estaba colgando la sesión en algunos casos. 
+            // supabase auth triggers session events that can hang if done here.
+          }
+        } catch (fetchError) {
+          console.error("Network or timeout error calling /api/auth/update-phone:", fetchError);
+          // Continue saving profile even if fetch fails
         }
       }
 
+      console.log("Checking if profile exists...");
       // Primero verificamos si el perfil existe
       const existingProfile = await this.getProfile(userId)
+      console.log("existingProfile is", existingProfile ? "found" : "not found");
       
       const updateData = {
         id: userId,
+        // Eliminamos 'phone: phone' de aquí porque causa el error PGRST204 
+        // ya que la columna no existe en la tabla profiles
         ...restProfileData,
         updated_at: new Date().toISOString()
       }
 
       if (existingProfile) {
+        console.log("Updating existing profile in DB...");
         // Update existing profile
         const { data, error } = await this.supabase
           .from('profiles')
@@ -132,14 +157,18 @@ class ProfileService {
           .select()
           .single()
 
+        console.log("Update query returned", !!data, error);
+
         if (error) {
           console.error('Error updating profile:', error)
           throw error
         }
 
+        console.log("Returning updated profile...");
         // Return profile including the phone
-        return { ...data, phone: phone !== undefined ? phone : existingProfile.phone }
+        return { ...data, phone: phone || existingProfile?.phone || null }
       } else {
+        console.log("Creating new profile...");
         // Create new profile
         const { data: userData } = await this.supabase.auth.getUser()
         const userEmail = userData.user?.email
@@ -154,19 +183,23 @@ class ProfileService {
           created_at: new Date().toISOString()
         }
 
+        console.log("Inserting new profile...");
         const { data, error } = await this.supabase
           .from('profiles')
           .insert(newProfileData)
           .select()
           .single()
 
+        console.log("Insert query returned", !!data, error);
+
         if (error) {
           console.error('Error creating profile:', error)
           throw error
         }
 
+        console.log("Returning new profile...");
         // Return profile including the phone
-        return { ...data, phone: phone !== undefined ? phone : userData.user?.phone || userData.user?.user_metadata?.phone }
+        return { ...data, phone: phone || userData.user?.phone || userData.user?.user_metadata?.phone || null }
       }
     } catch (error) {
       console.error('Error in upsertProfile:', error)

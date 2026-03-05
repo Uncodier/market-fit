@@ -195,6 +195,7 @@ export default function ProfilePage() {
     }
 
     try {
+      console.log("Starting handleSavePersonalInfo...");
       const profileData = {
         name: formData.name,
         phone: formData.phone,
@@ -203,14 +204,20 @@ export default function ProfilePage() {
         avatar_url: imageUrl || undefined
       }
       
+      console.log("Calling updateProfile with", profileData);
+      // Usar fire-and-forget o un timeout si es que el await se está atorando
       const success = await updateProfile(profileData, true)
+      console.log("updateProfile returned", success);
+      
       if (success) {
         toast.success("Personal information updated successfully")
+        // Forzar actualización manual del form
+        setFormData(prev => ({ ...prev, phone: profileData.phone }))
       } else {
         toast.error("Failed to update personal information")
       }
     } catch (error) {
-      console.error(error)
+      console.error("Error in handleSavePersonalInfo:", error)
       toast.error("Error updating personal information")
     }
   }

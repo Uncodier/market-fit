@@ -68,13 +68,23 @@ export async function POST(request: Request) {
     const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       phone: phone,
       phone_confirm: true, // Auto-confirm the phone to validate it
-      user_metadata: { phone: phone } // Done in the same request to avoid multiple API calls
+      user_metadata: { phone: phone }
     })
 
     if (error) {
       console.error('Error updating user phone via admin API:', error)
+      // Si el teléfono ya ha sido tomado, podríamos decidir si fallamos o no
+      // Por ahora retornaremos un 400 pero indicando que esto no debería bloquear 
+      // la actualización de 'profiles'
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+
+    // Actualizamos tambien los metadatos de usuario ya que a veces fallaba
+    // Lo hacemos con fire-and-forget para no bloquear el retorno
+    supabaseAdmin.auth.admin.updateUserById(userId, {
+      user_metadata: { phone: phone }
+    }).then(() => console.log('Metadata phone updated via admin'))
+      .catch(metaError => console.error('Error updating metadata phone:', metaError));
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
