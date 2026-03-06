@@ -3,33 +3,17 @@ const path = require('path');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: [
-      'rnjgeloamtszdjplmqxy.supabase.co',
-      'localhost',
-      'avatars.githubusercontent.com',
-      'lh3.googleusercontent.com',
-      'googleusercontent.com',
-      's.gravatar.com',
-      'avatar.vercel.sh',
-      'github.com'
-    ],
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'cloudfront.cdn.uncodie.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'rnjgeloamtszdjplmqxy.supabase.co',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-      },
+      { protocol: 'https', hostname: 'rnjgeloamtszdjplmqxy.supabase.co' },
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: 'avatars.githubusercontent.com' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: 'googleusercontent.com' },
+      { protocol: 'https', hostname: 's.gravatar.com' },
+      { protocol: 'https', hostname: 'avatar.vercel.sh' },
+      { protocol: 'https', hostname: 'github.com' },
+      { protocol: 'https', hostname: 'cloudfront.cdn.uncodie.com' },
+      { protocol: 'https', hostname: '*.supabase.co' },
     ],
   },
   // Headers configuration for CSP
@@ -63,11 +47,6 @@ const nextConfig = {
     // ⚠️ Solución temporal para permitir la compilación 
     // Nota: Esto no es recomendable para producción, solo para desarrollo
     ignoreBuildErrors: true,
-  },
-  // Desactivar ESLint durante la compilación
-  eslint: {
-    // ⚠️ Solución temporal para permitir la compilación
-    ignoreDuringBuilds: true,
   }
 }
 
