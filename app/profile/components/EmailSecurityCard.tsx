@@ -8,6 +8,7 @@ import { Shield, MessageSquare, AlertCircle } from "@/app/components/ui/icons"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { ChangeEmailModal } from "./ChangeEmailModal"
 import { EmailChangeStatus } from "@/lib/services/email-change.service"
+import Link from "next/link"
 
 interface EmailSecurityCardProps {
   email: string
@@ -72,6 +73,15 @@ export function EmailSecurityCard({
           </div>
         </CardContent>
         <ActionFooter>
+          <Button
+            asChild
+            variant="outline"
+            disabled={isUpdating}
+          >
+            <Link href="/security">
+              Change Password
+            </Link>
+          </Button>
           <Button
             onClick={() => setIsModalOpen(true)}
             variant="outline"

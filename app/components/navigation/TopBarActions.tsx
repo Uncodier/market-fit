@@ -37,7 +37,8 @@ import {
   StopCircle,
   Search,
   Shield,
-  BookOpen
+  BookOpen,
+  LogOut
 } from "@/app/components/ui/icons"
 
 import { subMonths, format } from "date-fns"
@@ -426,7 +427,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       <>
         <div className="flex items-center gap-2">
           <Button 
-            variant="outline" 
+            variant="secondary" 
             size="default"
             className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
             onClick={() => setIsAuthenticateModalOpen(true)}
@@ -436,7 +437,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
             <span className="hidden md:inline">Authenticate</span>
           </Button>
           <Button 
-            variant="outline" 
+            variant="secondary" 
             size="default"
             className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
             onClick={handleSaveAuthSession}
@@ -1284,6 +1285,26 @@ The success of this experiment will be measured by:
     }, 2000);
   };
 
+  // Handle logout function
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true)
+      toast.loading("Signing out...")
+      
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      
+      window.location.href = '/api/auth/logout'
+    } catch (error) {
+      console.error("Error logging out:", error)
+      toast.error("Error signing out")
+      
+      window.location.href = '/api/auth/logout'
+    }
+  }
+
   return (
     <div className="flex items-center gap-4">
       {isControlCenterPage && currentSite ? (
@@ -1370,7 +1391,7 @@ The success of this experiment will be measured by:
       {/* Experiment Detail Page AI Button */}
       {isExperimentDetailPage && currentSite && (
         <Button 
-          variant="outline" 
+          variant="secondary" 
           size="default"
             className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
           onClick={handleGenerateExperimentWithAI}
@@ -1395,7 +1416,7 @@ The success of this experiment will be measured by:
         <>
           {(segmentData.activeTab === "analysis" || segmentData.activeTab === "icp") && (
             <Button 
-              variant="outline" 
+              variant="secondary" 
               size="default"
               className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={() => segmentData.openAIModal('analysis')}
@@ -1417,7 +1438,7 @@ The success of this experiment will be measured by:
           )}
           {segmentData.activeTab === "topics" && (
             <Button 
-              variant="outline" 
+              variant="secondary" 
               size="default"
               className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={() => segmentData.openAIModal('topics')}
@@ -1443,7 +1464,7 @@ The success of this experiment will be measured by:
         currentSite ? (
           <div className="flex items-center gap-2">
             <Button 
-              variant="outline" 
+              variant="secondary" 
               size="default"
               className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={handleBuildWithAI}
@@ -1515,14 +1536,14 @@ The success of this experiment will be measured by:
               segments={segments.length > 0 ? segments : propSegments || []}
               onImportLeads={handleImportLeads}
               trigger={
-                <Button variant="outline" className="md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="Import">
+                <Button variant="secondary" className="md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="Import">
                   <UploadCloud className="h-4 w-4 shrink-0" />
                   <span className="hidden md:inline ml-2">Import</span>
                 </Button>
               }
             />
             <Button 
-              variant="outline"
+              variant="secondary"
               className="md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               title="Export"
               onClick={async () => {
@@ -1582,7 +1603,7 @@ The success of this experiment will be measured by:
         currentSite ? (
           <div className="flex items-center gap-2">
             <Button 
-              variant="outline" 
+              variant="secondary" 
               size="default"
               className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={handleBuildWithAI}
@@ -1625,7 +1646,7 @@ The success of this experiment will be measured by:
         currentSite ? (
           <div className="flex items-center gap-2">
             <Button 
-              variant="outline" 
+              variant="secondary" 
               size="default"
               className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               onClick={handleBuildWithAI}
@@ -1662,7 +1683,7 @@ The success of this experiment will be measured by:
         currentSite ? (
           <>
             <Button 
-              variant="outline"
+              variant="secondary"
               className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
               title="Export"
               onClick={async () => {
@@ -1721,6 +1742,20 @@ The success of this experiment will be measured by:
         estimatedTime={AIModalConfig.estimatedTime}
         refreshOnComplete={isSegmentsPage || isExperimentsPage} // Only refresh for segments and experiments
       />
+      
+      {/* Logout button in toolbar - only visible on profile page */}
+      {pathname.startsWith('/profile') && (
+        <Button 
+          variant="secondary" 
+          size="default"
+          className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-0 md:w-auto md:px-3 w-9 h-9 p-0 rounded-full font-inter md:rounded-md"
+          onClick={handleLogout}
+          title={isLoggingOut ? "Signing out..." : "Log out"}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline text-sm font-medium">{isLoggingOut ? "Signing out..." : "Log out"}</span>
+        </Button>
+      )}
     </div>
   )
 } 

@@ -19,7 +19,6 @@ import {
   DollarSign,
   Rocket,
   LogOut,
-  HelpCircle,
   Search
 } from "@/app/components/ui/icons"
 import { useEffect, useState, useRef } from "react"
@@ -170,35 +169,13 @@ const contextChildrenItems = [
   },
 ]
 
-// Profile section - main item (clicking goes to notifications)
+// Profile section - main item (clicking goes to profile)
 const profileMainItem = {
   title: "Account",
-  href: "/notifications",
+  href: "/profile",
   icon: User,
   emoji: "👤",
 }
-
-// Profile children items
-const profileChildrenItems = [
-  {
-    title: "Account",
-    href: "/profile",
-    icon: User,
-    emoji: "👤",
-  },
-  {
-    title: "Help",
-    href: "#help",
-    icon: HelpCircle,
-    emoji: "❓",
-  },
-  {
-    title: "Log out",
-    href: "#logout",
-    icon: LogOut,
-    emoji: "🚪",
-  },
-]
 
 import { CreditsWidget } from "./CreditsWidget"
 
@@ -248,9 +225,6 @@ export function Sidebar({
   // Settings section state (to coordinate with ConfigurationSection)
   const [forceShowSettingsChildren, setForceShowSettingsChildren] = useState(false)
   
-  // Profile section state
-  const [forceShowProfileChildren, setForceShowProfileChildren] = useState(false)
-  
   // Check if Context or any context child is active
   const isContextActive = pathname.startsWith('/context')
   const isCampaignsActive = pathname.startsWith('/campaigns')
@@ -262,13 +236,6 @@ export function Sidebar({
   const shouldShowContextChildren = isContextActive || isCampaignsActive || isSegmentsActive || 
     isAssetsActive || isSalesActive || forceShowContextChildren
   
-  // Check if Profile or any profile child is active
-  const isProfileActive = pathname.startsWith('/profile')
-  const isNotificationsActive = pathname.startsWith('/notifications')
-  
-  // Profile children should be open when in profile/notifications area or forced
-  const shouldShowProfileChildren = isProfileActive || isNotificationsActive || forceShowProfileChildren
-  
   // For tracking previous path to handle context menu closing
   const prevPathContextRef = useRef(pathname)
   
@@ -279,7 +246,6 @@ export function Sidebar({
     const inContextArea = isContextActive || isCampaignsActive || isSegmentsActive || 
                           isAssetsActive || isSalesActive;
     const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing') || pathname.startsWith('/agents') || pathname.startsWith('/integrations');
-    const inProfileArea = isProfileActive;
     
     const isLeavingContextArea = (
       (previousPath.startsWith('/context') || 
@@ -300,12 +266,6 @@ export function Sidebar({
       !inSettingsArea
     );
     
-    const isLeavingProfileArea = (
-      (previousPath.startsWith('/profile') || 
-       previousPath.startsWith('/notifications')) &&
-      !inProfileArea
-    );
-    
     // When navigating away from context area, hide the context children
     if (isLeavingContextArea) {
       setForceShowContextChildren(false);
@@ -316,14 +276,9 @@ export function Sidebar({
       setForceShowSettingsChildren(false);
     }
     
-    // When navigating away from profile area, hide the profile children
-    if (isLeavingProfileArea) {
-      setForceShowProfileChildren(false);
-    }
-    
     // Update previous path reference
     prevPathContextRef.current = pathname;
-  }, [pathname, isContextActive, isCampaignsActive, isSegmentsActive, isAssetsActive, isSalesActive, isProfileActive, isNotificationsActive]);
+  }, [pathname, isContextActive, isCampaignsActive, isSegmentsActive, isAssetsActive, isSalesActive]);
   
   // Centralized navigation handler that coordinates all sections
   const handleSectionNavigation = (e: React.MouseEvent, href: string, section: 'context' | 'settings' | 'profile') => {
@@ -335,13 +290,13 @@ export function Sidebar({
     
     // Check if we're in settings area (we'll need to get this from ConfigurationSection)
     const inSettingsArea = pathname.startsWith('/settings') || pathname.startsWith('/security') || pathname.startsWith('/billing') || pathname.startsWith('/agents') || pathname.startsWith('/integrations');
-    const inProfileArea = isProfileActive || isNotificationsActive;
-    
-    if (section === 'context') {
+  const isProfileActive = pathname.startsWith('/profile')
+  const isNotificationsActive = pathname.startsWith('/notifications')
+  
+  if (section === 'context') {
       // Always ensure context section is open when clicking on Context
       setForceShowContextChildren(true);
       setForceShowSettingsChildren(false); // Close other sections
-      setForceShowProfileChildren(false);
       
       // If already in context area and trying to go to context, navigate immediately
       if (href === '/context' && isContextActive) {
@@ -373,7 +328,6 @@ export function Sidebar({
       if (!inSettingsArea) {
         setForceShowSettingsChildren(true);
         setForceShowContextChildren(false); // Close context immediately
-        setForceShowProfileChildren(false); // Close profile immediately
         
         // Navigate after delay
         setTimeout(() => {
@@ -386,29 +340,9 @@ export function Sidebar({
         router.push(href);
       }
     } else if (section === 'profile') {
-      // If already in profile area and trying to go to profile, navigate immediately
-      if (href === '/profile' && isProfileActive) {
-        markUINavigation();
-        router.push(href);
-        return;
-      }
-      
-      // If not in profile area, show profile children and hide other sections immediately
-      if (!inProfileArea) {
-        setForceShowProfileChildren(true);
-        setForceShowContextChildren(false); // Close context immediately
-        setForceShowSettingsChildren(false); // Close settings immediately
-        
-        // Navigate after delay
-        setTimeout(() => {
-          markUINavigation();
-          router.push(href);
-        }, 400);
-      } else {
-        // If already in profile area, navigate immediately
-        markUINavigation();
-        router.push(href);
-      }
+      // Navigate immediately for profile
+      markUINavigation();
+      router.push(href);
     }
   };
   
@@ -440,41 +374,6 @@ export function Sidebar({
     
     // Toggle force show
     setForceShowContextChildren(prev => !prev);
-  }
-  
-  // Handle toggling profile menu
-  const toggleProfileMenu = (e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-    
-    // If already in profile area, don't toggle
-    if (isProfileActive || isNotificationsActive) return;
-    
-    // Toggle force show
-    setForceShowProfileChildren(prev => !prev);
-  }
-
-  // Handle logout function
-  const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true)
-      toast.loading("Signing out...")
-      
-      // Cerrar sesión en Supabase del lado del cliente como medida adicional
-      const supabase = createClient()
-      await supabase.auth.signOut()
-      
-      // Redirección simple a la API de logout
-      window.location.href = '/api/auth/logout'
-    } catch (error) {
-      console.error("Error logging out:", error)
-      toast.error("Error signing out")
-      
-      // En caso de error, intentar la redirección directa de todos modos
-      window.location.href = '/api/auth/logout'
-    }
   }
 
   return (
@@ -709,9 +608,33 @@ export function Sidebar({
         {/* Profile Section - Collapsible */}
         <div className="border-t dark:border-white/5 border-black/5">
           <div className={cn("flex flex-col space-y-1 py-4", renderCollapsed ? "px-[14px] items-center" : "px-3")}>
+            
+            {/* Notifications item */}
+            <div className={cn("relative", renderCollapsed ? "w-8 mx-auto" : "w-full")}>
+              <MenuItem
+                href="/notifications"
+                icon={Bell}
+                emoji="🔔"
+                title="Notifications"
+                isActive={pathname.startsWith('/notifications')}
+                isCollapsed={renderCollapsed}
+              />
+              {/* Notification badge */}
+              {!renderCollapsed && (
+                <div className="absolute top-[6px] right-2 z-10 pointer-events-none">
+                  <NotificationBadge isActive={pathname.startsWith("/notifications")} />
+                </div>
+              )}
+              {renderCollapsed && (
+                <div className="absolute -top-1 -right-1 z-10 pointer-events-none transform scale-90">
+                  <NotificationBadge isActive={pathname.startsWith("/notifications")} />
+                </div>
+              )}
+            </div>
+
             {/* Profile main item */}
             <div 
-              className="relative"
+              className="relative mt-1"
             >
               <MenuItem
                 href={profileMainItem.href}
@@ -720,112 +643,11 @@ export function Sidebar({
                 title={user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Account'}
                 subtitle={user?.email || ''}
                 avatarUrl={user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
-                isActive={pathname.startsWith('/notifications')}
+                isActive={pathname.startsWith('/profile')}
                 isCollapsed={renderCollapsed}
                 className="profile-parent-item ![padding-top:25.2px] ![padding-bottom:25.2px]"
                 onClick={(e) => handleProfileNavigation(e, profileMainItem.href)}
               />
-              
-              {/* Notification badge positioned above avatar */}
-              {!renderCollapsed && (
-                <div className="absolute top-0 left-[1.7rem] z-10">
-                  <NotificationBadge isActive={pathname.startsWith("/notifications")} />
-                </div>
-              )}
-              
-              {/* For collapsed mode, position badge over collapsed avatar */}
-              {renderCollapsed && (
-                <div className="absolute -top-2 right-0.5 z-10">
-                  <NotificationBadge isActive={pathname.startsWith("/notifications")} />
-                </div>
-              )}
-              
-              {/* Indicator for Profile that it has children */}
-              {!renderCollapsed && (
-                <div 
-                  className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-colors duration-300 cursor-pointer rounded-full font-inter safari-icon-fix hover:bg-accent/50",
-                    pathname.startsWith('/notifications') 
-                      ? "transform rotate-90 text-white" // White when active
-                      : shouldShowProfileChildren
-                        ? "transform rotate-90 text-primary" 
-                        : "transform rotate-0 text-muted-foreground/70"
-                  )}
-                  onClick={toggleProfileMenu}
-                >
-                  <svg 
-                    width="8" 
-                    height="8" 
-                    viewBox="0 0 6 10" 
-                    fill="none" 
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="transition-colors duration-300"
-                  >
-                    <path 
-                      d="M1 1L5 5L1 9" 
-                      stroke="currentColor" 
-                      strokeWidth="1.5" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                    />
-                  </svg>
-                </div>
-              )}
-            </div>
-            
-            {/* Container for Profile children with animation */}
-            <div 
-              className={cn(
-                "transition-all duration-300 ease-in-out overflow-hidden", 
-                shouldShowProfileChildren ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
-              )}
-              style={{
-                transitionTimingFunction: shouldShowProfileChildren 
-                  ? 'cubic-bezier(0.4, 0, 0.2, 1)' // ease-out for showing
-                  : 'cubic-bezier(0.4, 0, 1, 1)'    // ease-in for hiding (faster)
-              }}
-            >
-              {/* Profile children items */}
-              {profileChildrenItems.map((item) => {
-                const isLogout = item.href === "#logout";
-                const isHelp = item.href === "#help";
-                
-                return (
-                  <div 
-                    key={`profile-child-${item.href}`} 
-                    className="relative"
-                    onClick={(e) => {
-                      if (isLogout) {
-                        e.preventDefault();
-                        handleLogout();
-                      } else if (isHelp) {
-                        e.preventDefault();
-                        if (typeof window !== 'undefined') {
-                          if ((window as any).MarketFit?.openChatWithTask) {
-                            ;(window as any).MarketFit.openChatWithTask({
-                              welcomeMessage: "Hi! I'm here to help you navigate and use all the features effectively. What would you like to know?",
-                              task: "I need help with using the platform",
-                              clearExistingMessages: false,
-                              newConversation: false
-                            });
-                          }
-                        }
-                      }
-                    }}
-                  >
-                    <MenuItem
-                      href={isLogout || isHelp ? "#" : item.href}
-                      icon={item.icon}
-                      emoji={item.emoji}
-                      title={isLogout ? (isLoggingOut ? "Signing out..." : "Log out") : item.title}
-                      isActive={!isLogout && !isHelp && pathname.startsWith(item.href)}
-                      isCollapsed={renderCollapsed}
-                      className={!renderCollapsed ? "ml-3" : ""}
-                    >
-                    </MenuItem>
-                  </div>
-                );
-              })}
             </div>
           </div>
         </div>
