@@ -687,9 +687,9 @@ export default function CampaignsPage() {
   }, [currentSite]);
 
   return (
-    <div className="flex-1 p-0 h-auto overflow-visible bg-muted/30 min-h-[calc(100vh-64px)]">
+    <div className="flex-1 min-w-0 w-full p-0 h-auto overflow-visible bg-muted/30 min-h-[calc(100vh-64px)]">
       <StickyHeader>
-          <div className="flex items-center justify-between px-16 w-full">
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-4">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">

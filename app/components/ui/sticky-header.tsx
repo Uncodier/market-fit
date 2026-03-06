@@ -47,14 +47,14 @@ export function StickyHeader({
     <div
       data-toolbar-font
       className={cn(
-      "flex items-center p-0",
-      "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-      "border-b dark:border-white/5 border-black/5 z-[150]",
-      useFixedPosition ? "fixed transition-all duration-300 ease-in-out" : "sticky",
-      "top-[64px] min-h-[71px]",
-      className
-    )}
-    style={useFixedPosition ? { left: sidebarLeft, right: 0 } : undefined}
+        "flex items-center p-0",
+        "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+        "border-b dark:border-white/5 border-black/5 z-[150]",
+        useFixedPosition ? "fixed transition-all duration-300 ease-in-out" : "sticky",
+        "top-[64px] min-h-[71px]",
+        className
+      )}
+      style={useFixedPosition ? { left: sidebarLeft, right: 0 } : undefined}
     >
       <div className={cn(
         "transition-[padding] duration-300 ease-in-out w-full flex items-center h-full max-w-full overflow-hidden",

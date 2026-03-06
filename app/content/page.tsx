@@ -857,7 +857,7 @@ function ContentKanban({
   }
 
   return (
-    <div className="overflow-x-auto pb-4">
+    <div className="w-full">
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 min-w-fit">
           {CONTENT_STATUSES.map(status => (
@@ -1631,7 +1631,7 @@ function ContentFiltersDialog({
 
 function ContentSkeleton() {
   return (
-    <div className="overflow-x-auto pb-4">
+    <div className="w-full">
       <div className="flex gap-4 min-w-fit">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex-shrink-0 w-80">
@@ -1905,11 +1905,11 @@ export default function ContentPage() {
 
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col min-w-0 w-full">
       <Tabs defaultValue="all">
         <StickyHeader>
-          <div className="px-16 pt-0">
-            <div className="flex items-center gap-8">
+          <div className="w-full pt-0">
+            <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Content">
@@ -1993,17 +1993,18 @@ export default function ContentPage() {
           )}
           
           {/* Main Content Layout */}
-          <div className={viewType === 'kanban' ? "flex gap-4" : "px-8"}>
-            {/* Left Sidebar - Trends Column (Only for Kanban View) */}
-            {viewType === 'kanban' && (
-              <div className="mt-2">
-                <TrendsColumn segments={segments} currentSiteId={currentSite?.id} />
-              </div>
-            )}
-            
-            {/* Main Content Area */}
-            <div className={viewType === 'kanban' ? "flex-1 min-w-0" : ""}>
-              <TabsContent value="all" className="space-y-4">
+          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : "px-8"}>
+            <div className={viewType === 'kanban' ? "flex gap-4 min-w-fit px-16" : ""}>
+              {/* Left Sidebar - Trends Column (Only for Kanban View) */}
+              {viewType === 'kanban' && (
+                <div className="flex-shrink-0">
+                  <TrendsColumn segments={segments} currentSiteId={currentSite?.id} />
+                </div>
+              )}
+              
+              {/* Main Content Area */}
+              <div className={viewType === 'kanban' ? "flex-1" : ""}>
+                <TabsContent value="all" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2034,7 +2035,7 @@ export default function ContentPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="blog_post" className="space-y-4">
+            <TabsContent value="blog_post" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2065,7 +2066,7 @@ export default function ContentPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="video" className="space-y-4">
+            <TabsContent value="video" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2096,7 +2097,7 @@ export default function ContentPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="social_post" className="space-y-4">
+            <TabsContent value="social_post" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2127,7 +2128,7 @@ export default function ContentPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="ad" className="space-y-4">
+            <TabsContent value="ad" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2158,7 +2159,11 @@ export default function ContentPage() {
               )}
             </TabsContent>
             </div>
+            
+            {/* Right padding spacer for scroll */}
+            {viewType === 'kanban' && <div className="w-16 flex-shrink-0" />}
           </div>
+        </div>
         </div>
       </Tabs>
       

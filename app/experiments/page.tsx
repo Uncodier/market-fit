@@ -685,7 +685,7 @@ export default function ExperimentsPage() {
       <div className="flex-1 p-0">
         <Tabs defaultValue="all" className="h-full">
           <StickyHeader>
-            <div className="px-16 pt-0 w-full">
+            <div className="w-full pt-0">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
                   <TabsList>
@@ -736,7 +736,7 @@ export default function ExperimentsPage() {
       <div className="flex-1 p-0">
         <Tabs defaultValue="all" className="h-full">
           <StickyHeader>
-            <div className="px-16 pt-0 w-full">
+            <div className="w-full pt-0">
               <div className="flex items-center gap-8">
                 <div>
                   <TabsList>
@@ -781,7 +781,7 @@ export default function ExperimentsPage() {
     <div className="flex-1 p-0">
       <Tabs defaultValue="all" className="h-full">
         <StickyHeader>
-          <div className="px-16 pt-0 w-full">
+          <div className="w-full pt-0">
             <div className="flex items-center gap-8">
               <div>
                 <TabsList>

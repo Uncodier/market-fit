@@ -178,7 +178,7 @@ export function ControlCenterSkeleton({
       {/* Main content */}
       <div 
         className={cn(
-          "flex flex-col h-full w-full transition-[padding] duration-200 ease-in-out",
+          "flex flex-col h-full flex-1 min-w-0 transition-[padding] duration-200 ease-in-out",
           !isSidebarCollapsed && "md:ml-[319px]"
         )}
       >

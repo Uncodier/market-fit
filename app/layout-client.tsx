@@ -264,7 +264,7 @@ function LayoutClientInner({
               className="flex-none fixed left-0 top-0 h-screen z-[200]"
             />
             <div 
-              className="flex-1 flex flex-col transition-[margin] duration-300 ease-in-out"
+              className="flex-1 flex flex-col min-w-0 transition-[margin] duration-300 ease-in-out"
               style={{ marginLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
             >
               <TopBar 
@@ -285,7 +285,7 @@ function LayoutClientInner({
               <div className={!isChatPage && customBreadcrumb ? "h-[64px] md:h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
               <main 
                 className={cn(
-                  "flex-1",
+                  "flex-1 min-w-0",
                   isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
                 )} 
                 style={

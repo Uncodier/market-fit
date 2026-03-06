@@ -642,11 +642,11 @@ export default function SalesPage() {
 
   return (
     <SalesContext.Provider value={{ segments, campaigns }}>
-      <div className="flex-1 p-0">
+      <div className="flex-1 min-w-0 w-full p-0">
         <Tabs defaultValue={activeTab} className="h-full space-y-6">
           <StickyHeader>
-            <div className="px-16 pt-0">
-              <div className="flex items-center gap-8">
+            <div className="w-full pt-0">
+              <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                     <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="All Sales">

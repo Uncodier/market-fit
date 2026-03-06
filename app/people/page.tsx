@@ -2566,9 +2566,9 @@ export default function PeopleSearchPage() {
         {sidebar}
       </div>
       {/* Main content: hidden on mobile step 1, full-screen on step 2 */}
-      <div 
+      <div
         className={cn(
-          "flex flex-col h-full w-full transition-[padding] duration-200 ease-in-out",
+          "flex flex-col h-full flex-1 transition-[padding] duration-200 ease-in-out min-w-0",
           !showResultsOnMobile ? "hidden md:flex" : "flex",
           // On desktop, offset by filter sidebar width
           !isSidebarCollapsed ? "md:ml-[319px]" : "md:ml-0"
@@ -2586,7 +2586,7 @@ export default function PeopleSearchPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="md:hidden flex items-center gap-1.5 text-sm"
+                  className="flex items-center gap-1.5 text-sm md:!hidden"
                   onClick={() => setShowResultsOnMobile(false)}
                 >
                   <ChevronLeft className="h-4 w-4" />

@@ -740,7 +740,7 @@ export default function SegmentsPage() {
       <div className="flex-1 p-0">
       <Tabs defaultValue="all">
         <StickyHeader>
-          <div className="px-16 pt-0">
+          <div className="w-full pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
@@ -820,7 +820,7 @@ export default function SegmentsPage() {
     <div className="flex-1 p-0">
       <Tabs defaultValue="all">
         <StickyHeader>
-          <div className="px-16 pt-0">
+          <div className="w-full pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
