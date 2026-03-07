@@ -213,11 +213,12 @@ export function IsEmpty({
   description,
   icon,
   action,
-  className
-}: Pick<EmptyStateProps, 'title' | 'description' | 'icon' | 'action' | 'className'>) {
+  className,
+  variant = "simple"
+}: Pick<EmptyStateProps, 'title' | 'description' | 'icon' | 'action' | 'className'> & { variant?: "simple" | "fancy" }) {
   return (
     <EmptyState
-      variant="simple"
+      variant={variant}
       title={title}
       description={description}
       icon={icon}

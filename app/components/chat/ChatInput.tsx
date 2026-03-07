@@ -117,13 +117,13 @@ export const ChatInput = memo(function ChatInput({
   return (
     <div 
       className={cn(
-        "sticky bottom-0 flex-none chat-input-container transition-[padding,margin] duration-300 ease-in-out bg-background/95 z-10 pb-[15px]"
+        "sticky bottom-0 flex-none chat-input-container transition-[padding,margin] duration-300 ease-in-out bg-background/95 z-10 pb-[15px] w-full"
       )}
     >
-      <div>
-        <div className="max-w-[800px] mx-auto">
-          <form onSubmit={handleSubmit} className="relative">
-            <div className="relative">
+      <div className="w-full">
+        <div className="max-w-[800px] w-full mx-auto px-4 md:px-0">
+          <form onSubmit={handleSubmit} className="relative w-full">
+            <div className="relative w-full">
               <OptimizedTextarea
                 ref={externalRef ?? internalRef}
                 onChange={handleChange}

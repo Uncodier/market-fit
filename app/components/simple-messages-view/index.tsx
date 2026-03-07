@@ -514,7 +514,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const isEmpty = isEmptyNewMakina || isEmptyExplorer
 
   return (
-    <div className={`flex flex-col w-full min-w-0 h-full min-h-0 relative ${className}`}>
+    <div className={cn("flex flex-col w-full min-w-0 h-full min-h-0", className, !className?.includes('absolute') && "relative")}>
       {/* Floating background orbs - shown when chat is empty */}
       {isEmpty && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">

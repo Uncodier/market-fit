@@ -19,7 +19,8 @@ import {
   DollarSign,
   Rocket,
   LogOut,
-  Search
+  Search,
+  Briefcase
 } from "@/app/components/ui/icons"
 import { useEffect, useState, useRef } from "react"
 import { usePathname, useRouter } from "next/navigation"
@@ -114,6 +115,12 @@ const humanInTheLoopItems = [
     href: "/leads",
     icon: Users,
     emoji: "👥",
+  },
+  {
+    title: "Deals",
+    href: "/deals",
+    icon: Briefcase, // Using Briefcase icon
+    emoji: "🤝",
   },
   {
     title: "Conversations",
@@ -230,6 +237,7 @@ export function Sidebar({
   const isCampaignsActive = pathname.startsWith('/campaigns')
   const isSegmentsActive = pathname.startsWith('/segments')
   const isAssetsActive = pathname.startsWith('/assets')
+  const isDealsActive = pathname.startsWith('/deals')
 
   const isSalesActive = pathname.startsWith('/sales')
   
@@ -253,6 +261,7 @@ export function Sidebar({
        previousPath.startsWith('/segments') ||
        previousPath.startsWith('/assets') ||
        previousPath.startsWith('/leads') ||
+       previousPath.startsWith('/deals') ||
        previousPath.startsWith('/sales')) &&
       !inContextArea
     );
@@ -278,7 +287,7 @@ export function Sidebar({
     
     // Update previous path reference
     prevPathContextRef.current = pathname;
-  }, [pathname, isContextActive, isCampaignsActive, isSegmentsActive, isAssetsActive, isSalesActive]);
+  }, [pathname, isContextActive, isCampaignsActive, isSegmentsActive, isAssetsActive, isSalesActive, isDealsActive]);
   
   // Centralized navigation handler that coordinates all sections
   const handleSectionNavigation = (e: React.MouseEvent, href: string, section: 'context' | 'settings' | 'profile') => {

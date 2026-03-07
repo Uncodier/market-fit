@@ -126,7 +126,7 @@ export function ChatHeader({
   return (
     <div
       data-toolbar-font
-      className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] max-h-[71px] min-h-[71px] flex items-center overflow-hidden fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2" 
+      className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] max-h-[71px] min-h-[71px] flex items-center overflow-hidden relative w-full z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2" 
       style={{ backdropFilter: 'blur(10px)' }}>
       
       {/* Back Button for Mobile */}

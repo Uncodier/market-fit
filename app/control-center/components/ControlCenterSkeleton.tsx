@@ -75,21 +75,27 @@ function DesktopKanbanSkeleton({ isSidebarCollapsed }: { isSidebarCollapsed: boo
   return (
     <div className="flex-1 overflow-auto bg-muted/30 pt-[71px]">
       <div className="p-8 h-full">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 h-full">
-          {['Pending', 'In Progress', 'Completed', 'Failed'].map((status, columnIndex) => (
-            <div key={status} className="flex flex-col">
-              <div className="flex items-center gap-2 mb-4">
-                <Skeleton className="h-2 w-2 rounded-full" />
-                <Skeleton className="h-5 w-20" />
-                <Skeleton className="h-5 w-6 rounded-full" />
+        <div className="overflow-x-auto pb-4 -mx-8">
+          <div className="flex gap-4 min-w-fit px-16 min-h-[calc(100vh-220px)] items-stretch">
+            {['Pending', 'In Progress', 'Completed', 'Failed'].map((status, columnIndex) => (
+              <div key={status} className="flex-shrink-0 w-80 flex flex-col">
+                <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-4 rounded-full" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                    <Skeleton className="h-5 w-6 rounded-full" />
+                  </div>
+                </div>
+                <div className="bg-muted/30 rounded-b-md p-2 border-b border-x space-y-2 flex-1 min-h-[150px]">
+                  {Array.from({ length: Math.max(1, 3 - columnIndex) }).map((_, i) => (
+                    <TaskCardSkeleton key={i} />
+                  ))}
+                </div>
               </div>
-              <div className="space-y-3 flex-1">
-                {Array.from({ length: Math.max(1, 3 - columnIndex) }).map((_, i) => (
-                  <TaskCardSkeleton key={i} />
-                ))}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -196,10 +202,8 @@ export function ControlCenterSkeleton({
             <div className="hidden md:block" />
 
             {/* View selector */}
-            <div className="flex gap-0">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-8 rounded-md" />
-              ))}
+            <div className="flex">
+              <Skeleton className="h-9 w-[116px] rounded-md" />
             </div>
           </div>
         </div>

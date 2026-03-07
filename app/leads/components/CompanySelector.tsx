@@ -13,9 +13,10 @@ interface CompanySelectorProps {
   selectedCompanyId: string | null
   onCompanyChange: (company: Company | null) => void
   isEditing: boolean
+  hideLabel?: boolean
 }
 
-export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing }: CompanySelectorProps) {
+export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing, hideLabel = false }: CompanySelectorProps) {
   const [companies, setCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -104,7 +105,7 @@ export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing 
   if (!isEditing) {
     return (
       <div className="flex-1">
-        <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
+        {!hideLabel && <p className="text-xs text-muted-foreground mb-[5px]">Company</p>}
         <p className="text-sm font-medium">
           {selectedCompany?.name || "Not specified"}
         </p>
@@ -114,7 +115,7 @@ export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing 
 
   return (
     <div className="flex-1">
-      <p className="text-xs text-muted-foreground mb-[5px]">Company</p>
+      {!hideLabel && <p className="text-xs text-muted-foreground mb-[5px]">Company</p>}
       <div className="flex gap-1 min-w-0">
         <div className="flex-1 min-w-0">
           <Popover open={open} onOpenChange={setOpen}>

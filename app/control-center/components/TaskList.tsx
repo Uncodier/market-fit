@@ -38,12 +38,12 @@ export function TaskList({ tasks, maxHeight = "300px" }: TaskListProps) {
               <div className="flex items-center gap-2">
                 <Badge 
                   variant="outline" 
-                  className={statusColors[task.status]}
+                  className={statusColors[task.status] || "bg-gray-500/10 text-gray-700"}
                 >
-                  {task.status.replace('_', ' ')}
+                  {(task.status || "pending").replace('_', ' ')}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true })}
+                  {task.scheduled_date ? formatDistanceToNow(new Date(task.scheduled_date), { addSuffix: true }) : "No date"}
                 </span>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { createExperiment, type ExperimentFormValues } from "@/app/experiments/a
 import { createAsset } from "@/app/assets/actions"
 import { createRequirement } from "@/app/requirements/actions"
 import { createLead, importLeads } from "@/app/leads/actions"
+import { createDeal, addDealContact } from "@/app/deals/actions"
 import { Lead } from "@/app/leads/types"
 import { createCampaign } from "@/app/campaigns/actions/campaigns/create"
 import { buildSegmentsWithAI, buildExperimentsWithAI, buildCampaignsWithAI, buildContentWithAI } from "@/app/services/ai-service"
@@ -17,6 +18,7 @@ import { CreateContentDialog } from "@/app/content/components"
 import { CreateCampaignDialog } from "../create-campaign-dialog"
 import { CreateTaskDialog } from "../create-task-dialog"
 import { CalendarDateRangePicker } from "../ui/date-range-picker"
+import { CreateDealDialog } from "@/app/deals/components/CreateDealDialog"
 import { AIActionModal } from "@/app/components/ui/ai-action-modal"
 import { useSite } from "@/app/context/SiteContext"
 import { useRouter, usePathname } from "next/navigation"
@@ -560,7 +562,9 @@ interface TopBarActionsProps {
   propSegments?: Array<{ id: string; name: string; description: string }>
   requirements: Array<{ id: string; title: string; description: string }>
   campaigns: Array<{ id: string; title: string; description: string }>
+  isDealsPage?: boolean
   onCreateSale?: () => void
+  onCreateDeal?: () => void
 }
 
 export function TopBarActions({
@@ -586,7 +590,9 @@ export function TopBarActions({
   propSegments,
   requirements,
   campaigns,
-  onCreateSale
+  isDealsPage,
+  onCreateSale,
+  onCreateDeal
 }: TopBarActionsProps) {
   const { currentSite } = useSite()
   const router = useRouter()
@@ -1200,6 +1206,34 @@ export function TopBarActions({
     }
   }
 
+  const handleCreateDeal = async (data: any): Promise<{ error?: string; deal?: any }> => {
+    try {
+      const { lead_id, ...dealData } = data;
+      const result = await createDeal(dealData)
+
+      if (result.error) {
+        return { error: result.error }
+      }
+
+      // If a lead was selected, link it to the deal
+      if (lead_id && result.deal?.id) {
+        await addDealContact(result.deal.id, lead_id, 'Primary Contact', true);
+      }
+
+      // Update UI without full page reload if possible
+      if (typeof window !== 'undefined' && (window as any).refreshDealsList) {
+        (window as any).refreshDealsList();
+      } else {
+        safeReload(false, 'New deal created');
+      }
+
+      return { deal: result.deal }
+    } catch (error) {
+      console.error("Error creating deal:", error)
+      return { error: error instanceof Error ? error.message : "Error inesperado" }
+    }
+  }
+
   const handleImportLeads = async (leads: Partial<Lead>[]) => {
     if (!currentSite?.id) {
       return { success: false, count: 0, errors: ['No site selected'] }
@@ -1720,6 +1754,19 @@ The success of this experiment will be measured by:
               <span className="hidden md:inline ml-2">Add Sale</span>
             </Button>
           </>
+        ) : null
+      )}
+      {isDealsPage && (
+        currentSite ? (
+          <CreateDealDialog 
+            onCreateDeal={handleCreateDeal}
+            trigger={
+              <Button className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 p-0 rounded-full font-inter md:rounded-md" title="Create Deal">
+                <PlusCircle className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline ml-2">Create Deal</span>
+              </Button>
+            }
+          />
         ) : null
       )}
       {isRobotsPage && (

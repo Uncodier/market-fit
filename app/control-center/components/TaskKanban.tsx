@@ -242,10 +242,10 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-fit">
+      <div className="overflow-x-auto pb-4 -mx-8">
+        <div className="flex gap-4 min-w-fit px-16 min-h-[calc(100vh-220px)] items-stretch">
           {TASK_STATUSES.map(status => (
-            <div key={status.id} className="flex-shrink-0 w-80">
+            <div key={status.id} className="flex-shrink-0 w-80 flex flex-col">
               <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -262,7 +262,10 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="bg-muted/30 rounded-b-md p-2 border-b border-x"
+                    className={cn(
+                      "bg-muted/30 rounded-b-md p-2 border-b border-x flex-1 flex flex-col min-h-[150px]",
+                      snapshot.isDraggingOver && "bg-muted/50"
+                    )}
                   >
                     {tasksByStatus[status.id]?.length > 0 ? (
                       tasksByStatus[status.id].map((task, index) => (

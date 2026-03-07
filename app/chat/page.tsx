@@ -609,7 +609,7 @@ function ChatPageContent() {
         isChatListCollapsed ? "ml-0" : "ml-0"
       )}>
         {/* Chat header with agent and lead info */}
-        <div className="relative">
+        <div className="relative flex-none w-full z-10">
           {/* Header with agent and lead info */}
           <ChatHeader 
             agentId={agentId}

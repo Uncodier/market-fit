@@ -22,7 +22,7 @@ export interface DateEvent {
 }
 
 export interface DatePickerProps {
-  date: Date;
+  date?: Date;
   setDate: (date: Date) => void;
   className?: string;
   placeholder?: string;
@@ -58,15 +58,16 @@ export function DatePicker({
   showTimePicker = false,
   timeFormat = '24h'
 }: DatePickerProps) {
-  const [currentMonth, setCurrentMonth] = React.useState(new Date(date))
+  const defaultDate = date || new Date()
+  const [currentMonth, setCurrentMonth] = React.useState(new Date(defaultDate))
   const [open, setOpen] = React.useState(false)
   const [isSelectingEndDate, setIsSelectingEndDate] = React.useState(false)
   const [selectedPresetLabel, setSelectedPresetLabel] = React.useState<string | null>(null)
   const [isNavigating, setIsNavigating] = React.useState(false)
   const [forceUpdate, setForceUpdate] = React.useState(0)
   const [selectedTime, setSelectedTime] = React.useState({
-    hours: date.getHours(),
-    minutes: date.getMinutes()
+    hours: date?.getHours() ?? defaultDate.getHours(),
+    minutes: date?.getMinutes() ?? defaultDate.getMinutes()
   })
   
   // Update currentMonth when date changes - prevent loops with useRef
@@ -74,7 +75,7 @@ export function DatePicker({
   
   React.useEffect(() => {
     // Only update if date actually changed and is different from last processed
-    if (!lastProcessedDateRef.current || !isSameDay(lastProcessedDateRef.current, date)) {
+    if (date && (!lastProcessedDateRef.current || !isSameDay(lastProcessedDateRef.current, date))) {
       if (!isSameMonth(currentMonth, date)) {
         setCurrentMonth(new Date(date));
       }
@@ -84,10 +85,12 @@ export function DatePicker({
 
   // Update selected time when date changes from outside
   React.useEffect(() => {
-    setSelectedTime({
-      hours: date.getHours(),
-      minutes: date.getMinutes()
-    });
+    if (date) {
+      setSelectedTime({
+        hours: date.getHours(),
+        minutes: date.getMinutes()
+      });
+    }
   }, [date]);
   
   // Simplified force update without logging
@@ -287,7 +290,7 @@ export function DatePicker({
     setSelectedTime({ hours, minutes });
     
     // Create new date with updated time
-    const newDate = new Date(date);
+    const newDate = new Date(date || new Date());
     newDate.setHours(hours, minutes, 0, 0);
     setDate(newDate);
   };
@@ -344,10 +347,10 @@ export function DatePicker({
         return;
       } else {
         // Selecting end date
-        let start = date;
+        let start = date || selectedDate;
         let end = selectedDate;
         
-        if (selectedDate < date) {
+        if (date && selectedDate < date) {
           // If selected end date is before start date, swap them
           start = selectedDate;
           end = date;
@@ -361,7 +364,7 @@ export function DatePicker({
         
         if (onRangeSelect) {
           // Notificar solo si hay cambios reales
-          if (!endDate || !isSameDay(end, endDate) || !isSameDay(start, date)) {
+          if (!endDate || !isSameDay(end, endDate) || !date || !isSameDay(start, date)) {
             onRangeSelect(start, end);
           }
         }
@@ -372,7 +375,7 @@ export function DatePicker({
     }
     
     // Si no es modo rango, simplemente actualizar la fecha
-    if (!isSameDay(date, selectedDate)) {
+    if (!date || !isSameDay(date, selectedDate)) {
       setDate(selectedDate);
     }
     
@@ -405,7 +408,7 @@ export function DatePicker({
       }
       
       // Notificar solo si hay cambios reales
-      if (!endDate || !isSameDay(end, endDate) || !isSameDay(selectedDate, date)) {
+      if (!endDate || !isSameDay(end, endDate) || !date || !isSameDay(selectedDate, date)) {
         onRangeSelect(startOfDay(selectedDate), end);
       }
     }
@@ -431,7 +434,7 @@ export function DatePicker({
 
   // Check if a day is within the selected range
   const isDayInRange = (day: Date): boolean => {
-    if (mode !== 'range' || !endDate) return false;
+    if (mode !== 'range' || !endDate || !date) return false;
     return day >= date && day <= endDate;
   };
   
@@ -531,7 +534,7 @@ export function DatePicker({
       // Trigger range selection callback immediately
       if (onRangeSelect) {
         // Notificar solo si hay cambios reales
-        if (!isSameDay(start, date) || !endDate || !isSameDay(end, endDate)) {
+        if (!date || !isSameDay(start, date) || !endDate || !isSameDay(end, endDate)) {
           onRangeSelect(start, end);
         }
       }
@@ -598,11 +601,11 @@ export function DatePicker({
                   <div className="text-xs font-medium text-muted-foreground">Selected Range</div>
                   <div className="flex items-center justify-between w-full">
                     <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
-                      <span className="truncate">{format(date, "MMM d, yyyy")}</span>
+                      <span className="truncate">{date ? format(date, "MMM d, yyyy") : "Select date"}</span>
                     </Badge>
                     <span className="px-2 text-muted-foreground flex-shrink-0">to</span>
                     <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
-                      <span className="truncate">{endDate ? format(endDate, "MMM d, yyyy") : format(date, "MMM d, yyyy")}</span>
+                      <span className="truncate">{endDate ? format(endDate, "MMM d, yyyy") : (date ? format(date, "MMM d, yyyy") : "Select date")}</span>
                     </Badge>
                   </div>
                   {isSelectingEndDate && (
@@ -659,7 +662,7 @@ export function DatePicker({
                 ))}
                 {days.map((day, i) => {
                   const isInRange = isDayInRange(day);
-                  const isRangeStart = mode === 'range' && isSameDay(day, date);
+                  const isRangeStart = mode === 'range' && date && isSameDay(day, date);
                   const isRangeEnd = mode === 'range' && endDate && isSameDay(day, endDate);
                   const isFutureDate = shouldDisableDate(day);
                   
@@ -670,7 +673,7 @@ export function DatePicker({
                       className={cn(
                         "h-8 w-8 p-0 text-sm relative",
                         !isSameMonth(day, currentMonth) && "text-muted-foreground opacity-50",
-                        (mode === 'range' ? (isRangeStart || isRangeEnd) : isSameDay(day, date)) && "bg-primary text-primary-foreground",
+                        (mode === 'range' ? (isRangeStart || isRangeEnd) : (date && isSameDay(day, date))) && "bg-primary text-primary-foreground",
                         isSameDay(day, new Date()) && !(isRangeStart || isRangeEnd) && "border border-primary",
                         isInRange && !isRangeStart && !isRangeEnd && "bg-primary/20",
                         isFutureDate && "text-muted-foreground opacity-50 cursor-not-allowed",

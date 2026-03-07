@@ -26,6 +26,7 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   breadcrumb?: React.ReactNode
   isExperimentDetailPage?: boolean
   onCreateSale?: () => void
+  onCreateDeal?: () => void
   onMobileToggle?: () => void
 }
 
@@ -41,6 +42,7 @@ export function TopBar({
   breadcrumb,
   isExperimentDetailPage = false,
   onCreateSale,
+  onCreateDeal,
   onMobileToggle,
   ...props 
 }: TopBarProps) {
@@ -204,7 +206,9 @@ export function TopBar({
           propSegments={propSegments}
           requirements={requirements}
           campaigns={campaigns}
+          isDealsPage={pathname === "/deals"}
           onCreateSale={onCreateSale}
+          onCreateDeal={onCreateDeal}
         />
       </div>
       

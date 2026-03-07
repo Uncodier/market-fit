@@ -238,6 +238,11 @@ function LayoutClientInner({
     window.dispatchEvent(new CustomEvent('sales:create'))
   }
 
+  // Handle create deal button click
+  const handleCreateDealClick = () => {
+    window.dispatchEvent(new CustomEvent('deals:create'))
+  }
+
   return (
     <div className={cn(
       "flex min-h-[100dvh] w-full bg-background",
@@ -281,6 +286,7 @@ function LayoutClientInner({
                 breadcrumb={customBreadcrumb}
                 isExperimentDetailPage={isExperimentDetailPage}
                 onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
+                onCreateDeal={pathname === "/deals" ? handleCreateDealClick : undefined}
               />
               <div className={!isChatPage && customBreadcrumb ? "h-[64px] md:h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
               <main 
