@@ -297,3 +297,36 @@ export async function removeDealOwner(dealId: string, userId: string) {
     return { error: error.message || "Failed to remove owner" }
   }
 }
+
+export async function getSiteQualificationCriteriaKeys(siteId: string) {
+  try {
+    const supabase = createClient()
+    
+    // We only fetch the qualification_criteria column
+    const { data, error } = await supabase
+      .from("deals")
+      .select("qualification_criteria")
+      .eq("site_id", siteId)
+      
+    if (error) {
+      if (error.code === '42P01') {
+        return { keys: [], error: null }
+      }
+      return { keys: [], error: error.message || "Failed to fetch criteria" }
+    }
+    
+    if (!data || data.length === 0) return { keys: [], error: null }
+    
+    const uniqueKeys = new Set<string>()
+    data.forEach(deal => {
+      if (deal.qualification_criteria && typeof deal.qualification_criteria === 'object') {
+        Object.keys(deal.qualification_criteria).forEach(key => uniqueKeys.add(key))
+      }
+    })
+    
+    return { keys: Array.from(uniqueKeys), error: null }
+  } catch (error: any) {
+    console.error("Error fetching qualification criteria keys:", error)
+    return { keys: [], error: error.message || "Failed to fetch criteria" }
+  }
+}

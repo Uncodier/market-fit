@@ -247,15 +247,16 @@ export default function DealPage() {
                   <h3 className="text-lg font-medium">Deal Tasks</h3>
                   {tasks.length > 0 ? (
                     <TaskList tasks={tasks} maxHeight="none" />
-                  ) : (
-                    <EmptyCard
-                      variant="fancy"
-                      icon={<ClipboardList />}
-                      title="No tasks found for this deal"
-                      description="Create tasks to track your activities and progress for this deal."
-                      className="min-h-[400px] border rounded-lg bg-muted/5"
-                    />
-                  )}
+              ) : (
+                <EmptyCard
+                  variant="fancy"
+                  icon={<ClipboardList />}
+                  title="No tasks found for this deal"
+                  description="Create tasks to track your activities and progress for this deal."
+                  className="min-h-[400px] border border-dashed rounded-lg bg-muted/5"
+                  showShadow={false}
+                />
+              )}
                 </div>
               </TabsContent>
             </div>

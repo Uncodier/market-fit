@@ -7,11 +7,13 @@ import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { updateDeal, removeDealContact, getDealById } from "@/app/deals/actions"
+import { Checkbox } from "@/app/components/ui/checkbox"
+import { updateDeal, removeDealContact, getDealById, getSiteQualificationCriteriaKeys } from "@/app/deals/actions"
 import { toast } from "sonner"
-import { Briefcase, Building, Calendar, DollarSign, FileText, Target, Users, Settings, Edit, BarChart, User, PlusCircle } from "@/app/components/ui/icons"
+import { Briefcase, Building, Calendar, DollarSign, FileText, Target, Users, Settings, Edit, BarChart, User, PlusCircle, Plus } from "@/app/components/ui/icons"
 import { CompanySelector } from "@/app/leads/components/CompanySelector"
 import { LinkContactDialog } from "./LinkContactDialog"
+import { DealSalesOrder } from "./DealSalesOrder"
 
 interface DealDetailProps {
   deal: Deal
@@ -23,11 +25,22 @@ interface DealDetailProps {
 export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: DealDetailProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isLinkContactOpen, setIsLinkContactOpen] = useState(false)
+  
+  // Qualifications State
+  const [availableCriteriaKeys, setAvailableCriteriaKeys] = useState<string[]>([
+    "budget_confirmed",
+    "authority_identified",
+    "need_established",
+    "timeline_agreed"
+  ])
+  const [criteriaForm, setCriteriaForm] = useState<Record<string, boolean>>({})
+  const [newCriterion, setNewCriterion] = useState("")
+  const [isAddingCriterion, setIsAddingCriterion] = useState(false)
+
   const [generalForm, setGeneralForm] = useState({
     name: deal.name || "",
     amount: deal.amount?.toString() || "",
     expected_close_date: deal.expected_close_date ? new Date(deal.expected_close_date).toISOString().split('T')[0] : "",
-    sales_order_id: deal.sales_order_id || "",
     company_id: deal.company_id || "",
   })
   
@@ -45,7 +58,6 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
       name: deal.name || "",
       amount: deal.amount?.toString() || "",
       expected_close_date: deal.expected_close_date ? new Date(deal.expected_close_date).toISOString().split('T')[0] : "",
-      sales_order_id: deal.sales_order_id || "",
       company_id: deal.company_id || "",
     })
     setStageForm({
@@ -55,7 +67,22 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
     setNotesForm({
       notes: deal.notes || ""
     })
+    setCriteriaForm(deal.qualification_criteria || {})
   }, [deal])
+
+  useEffect(() => {
+    async function loadCriteriaKeys() {
+      if (!deal.site_id) return
+      const result = await getSiteQualificationCriteriaKeys(deal.site_id)
+      if (result.keys && result.keys.length > 0) {
+        setAvailableCriteriaKeys(prev => {
+          const combined = new Set([...prev, ...result.keys])
+          return Array.from(combined)
+        })
+      }
+    }
+    loadCriteriaKeys()
+  }, [deal.site_id])
 
   const handleSaveGeneral = async () => {
     setIsUpdating(true)
@@ -65,7 +92,6 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
         name: generalForm.name,
         amount: generalForm.amount ? parseFloat(generalForm.amount) : null,
         expected_close_date: generalForm.expected_close_date || null,
-        sales_order_id: generalForm.sales_order_id || null,
         company_id: generalForm.company_id || null,
       }
       const result = await updateDeal(updates)
@@ -119,6 +145,59 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
     } finally {
       setIsUpdating(false)
     }
+  }
+
+  const handleSaveCriteria = async () => {
+    setIsUpdating(true)
+    try {
+      const activeKeys = Object.keys(criteriaForm);
+      let score = 0;
+      if (activeKeys.length > 0) {
+        const trueCount = activeKeys.filter(k => criteriaForm[k]).length;
+        score = Math.round((trueCount / activeKeys.length) * 100);
+      }
+      
+      const updates = {
+        id: deal.id,
+        qualification_criteria: criteriaForm,
+        qualification_score: score
+      }
+      const result = await updateDeal(updates)
+      if (result.error) {
+        toast.error(result.error)
+      } else if (result.deal) {
+        toast.success("Qualification checklist updated")
+        onUpdate(result.deal)
+      }
+    } catch (e) {
+      toast.error("Failed to update qualification checklist")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const toggleCriterion = (key: string, checked: boolean) => {
+    setCriteriaForm(prev => ({
+      ...prev,
+      [key]: checked
+    }))
+  }
+
+  const handleAddCriterion = () => {
+    if (!newCriterion.trim()) {
+      setIsAddingCriterion(false)
+      return
+    }
+    const key = newCriterion.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')
+    if (!availableCriteriaKeys.includes(key)) {
+      setAvailableCriteriaKeys(prev => [...prev, key])
+    }
+    setCriteriaForm(prev => ({
+      ...prev,
+      [key]: false
+    }))
+    setNewCriterion("")
+    setIsAddingCriterion(false)
   }
 
   const formatCurrency = (amount: number | string | null, currency: string = 'USD') => {
@@ -181,124 +260,153 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
           </CardFooter>
         </Card>
 
-        {Object.keys(deal.qualification_criteria || {}).length > 0 && (
-          <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">Qualification Checklist</CardTitle>
-              <Button variant="outline" size="sm">
-                <Edit className="mr-2 h-4 w-4" /> Re-evaluate
-              </Button>
-            </CardHeader>
-            <CardContent className="px-6 md:px-8 pb-8">
-              <div className="space-y-2">
-                {Object.entries(deal.qualification_criteria).map(([key, val]) => (
-                  <div key={key} className="flex justify-between items-center py-3 border-b last:border-0">
-                    <span className="text-sm font-medium capitalize">{key.replace(/_/g, ' ')}</span>
-                    <Badge variant={val ? "default" : "secondary"}>
-                      {typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val)}
-                    </Badge>
-                  </div>
-                ))}
+        <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
+            <CardTitle className="text-xl font-semibold flex items-center gap-2">Qualification Checklist</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => setIsAddingCriterion(true)}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Criteria
+            </Button>
+          </CardHeader>
+          <CardContent className="px-6 md:px-8 pb-8">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {availableCriteriaKeys.map((key) => {
+                  const isChecked = criteriaForm[key] || false;
+                  return (
+                    <div key={key} className="flex items-center space-x-3 py-2 border-b last:border-0 md:last:border-b-0 md:border-b-0 md:[&:nth-last-child(-n+2)]:border-0 md:border-b">
+                      <Checkbox 
+                        id={`criterion-${key}`} 
+                        checked={isChecked}
+                        onCheckedChange={(checked) => toggleCriterion(key, checked === true)}
+                        className="h-5 w-5"
+                      />
+                      <label 
+                        htmlFor={`criterion-${key}`} 
+                        className={`text-sm font-medium leading-none cursor-pointer select-none flex-1 capitalize ${isChecked ? '' : 'text-muted-foreground'}`}
+                      >
+                        {key.replace(/_/g, ' ')}
+                      </label>
+                    </div>
+                  );
+                })}
               </div>
-            </CardContent>
-          </Card>
-        )}
+
+              {isAddingCriterion && (
+                <div className="flex items-center gap-2 pt-4 mt-2 border-t">
+                  <Input 
+                    placeholder="Add new criteria..." 
+                    value={newCriterion}
+                    onChange={(e) => setNewCriterion(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCriterion();
+                      } else if (e.key === 'Escape') {
+                        setIsAddingCriterion(false);
+                      }
+                    }}
+                    autoFocus
+                    className="flex-1"
+                  />
+                  <Button variant="outline" size="sm" onClick={handleAddCriterion} type="button">
+                    <Plus className="h-4 w-4 mr-1" /> Add
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setIsAddingCriterion(false)} type="button">
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+            <Button 
+              variant="outline"
+              onClick={handleSaveCriteria} 
+              disabled={isUpdating}
+            >
+              {isUpdating ? "Saving..." : "Save Checklist"}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <DealSalesOrder deal={deal} onUpdate={onUpdate} />
       </div>
     )
   }
 
   return (
     <div className="space-y-6 md:space-y-12">
-      {/* Deal Metrics Summary (Requested in prompt) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
-        <Card className="bg-primary/5 border-primary/20 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center h-28">
-            <p className="text-sm font-medium text-muted-foreground mb-2">Deal Value</p>
-            <p className="text-3xl font-bold text-primary">{formatCurrency(deal.amount, deal.currency)}</p>
-          </CardContent>
-        </Card>
-        <Card className="border shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center h-28">
-            <p className="text-sm font-medium text-muted-foreground mb-2">Win Probability</p>
-            <p className="text-3xl font-bold text-foreground">
-              {deal.stage === "prospecting" ? "10%" :
-               deal.stage === "qualification" ? "30%" :
-               deal.stage === "proposal" ? "50%" :
-               deal.stage === "negotiation" ? "80%" :
-               deal.stage === "closed_won" ? "100%" : "0%"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center h-28">
-            <p className="text-sm font-medium text-muted-foreground mb-2">Expected Close</p>
-            <p className="text-2xl font-bold text-foreground">{formatDate(deal.expected_close_date)}</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* General Information */}
       <Card id="deal-information" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-6 md:px-8 py-6">
+        <CardHeader className="px-6 md:px-8 py-6 pb-2">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <FileText className="h-5 w-5" /> General Information
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 px-6 md:px-8 pb-8">
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground">Deal Name</label>
-            <div className="relative">
-              <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                className="pl-12 h-12 text-base"
-                value={generalForm.name}
-                onChange={(e) => setGeneralForm({...generalForm, name: e.target.value})}
-                placeholder="e.g. Enterprise License"
-              />
+        <CardContent className="px-6 md:px-8 pb-8 space-y-8">
+          {/* Deal Metrics Summary (Requested in prompt) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 pt-4">
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 flex flex-col items-center justify-center text-center h-28">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Deal Value</p>
+              <p className="text-3xl font-bold text-primary">{formatCurrency(deal.amount, deal.currency)}</p>
+            </div>
+            <div className="border rounded-lg p-6 flex flex-col items-center justify-center text-center h-28 bg-muted/10">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Win Probability</p>
+              <p className="text-3xl font-bold text-foreground">
+                {deal.stage === "prospecting" ? "10%" :
+                 deal.stage === "qualification" ? "30%" :
+                 deal.stage === "proposal" ? "50%" :
+                 deal.stage === "negotiation" ? "80%" :
+                 deal.stage === "closed_won" ? "100%" : "0%"}
+              </p>
+            </div>
+            <div className="border rounded-lg p-6 flex flex-col items-center justify-center text-center h-28 bg-muted/10">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Expected Close</p>
+              <p className="text-2xl font-bold text-foreground">{formatDate(deal.expected_close_date)}</p>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground">Amount ({deal.currency || 'USD'})</label>
-            <div className="relative">
-              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                type="number"
-                className="pl-12 h-12 text-base"
-                value={generalForm.amount}
-                onChange={(e) => setGeneralForm({...generalForm, amount: e.target.value})}
-                placeholder="e.g. 10000"
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 pt-4 border-t">
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-foreground">Deal Name</label>
+              <div className="relative">
+                <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  className="pl-12 h-12 text-base"
+                  value={generalForm.name}
+                  onChange={(e) => setGeneralForm({...generalForm, name: e.target.value})}
+                  placeholder="e.g. Enterprise License"
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground">Expected Close Date</label>
-            <div className="relative">
-              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <Input 
-                type="date"
-                className="pl-12 h-12 text-base"
-                value={generalForm.expected_close_date}
-                onChange={(e) => setGeneralForm({...generalForm, expected_close_date: e.target.value})}
-              />
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-foreground">Amount ({deal.currency || 'USD'})</label>
+              <div className="relative">
+                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  type="number"
+                  className="pl-12 h-12 text-base"
+                  value={generalForm.amount}
+                  onChange={(e) => setGeneralForm({...generalForm, amount: e.target.value})}
+                  placeholder="e.g. 10000"
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-foreground">Linked Sales Order ID</label>
-            <div className="relative">
-              <Target className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                className="pl-12 h-12 text-base"
-                value={generalForm.sales_order_id}
-                onChange={(e) => setGeneralForm({...generalForm, sales_order_id: e.target.value})}
-                placeholder="Optional order ID"
-              />
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-foreground">Expected Close Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                <Input 
+                  type="date"
+                  className="pl-12 h-12 text-base"
+                  value={generalForm.expected_close_date}
+                  onChange={(e) => setGeneralForm({...generalForm, expected_close_date: e.target.value})}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="col-span-1 md:col-span-2 pt-6 border-t mt-2">
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Linked Company</label>
               <CompanySelector 
@@ -411,11 +519,11 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
             ) : (
               <EmptyCard
                 variant="fancy"
-                icon={<Target className="h-10 w-10 text-primary" />}
+                icon={<Target className="h-10 w-10 text-muted-foreground" />}
                 title="No qualification score"
                 description="Run a qualification assessment to score this deal and identify potential risks or opportunities."
-                actionButton={<Button>Run Assessment</Button>}
-                className="py-12 min-h-[300px] bg-muted/5 border border-dashed rounded-lg"
+                className="min-h-[180px] bg-muted/5 border border-dashed rounded-lg"
+                showShadow={false}
               />
             )}
           </div>
@@ -491,10 +599,11 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
           ) : (
             <EmptyCard
               variant="fancy"
-              icon={<Users className="h-10 w-10 text-primary" />}
+              icon={<Users />}
               title="No contacts linked"
               description="Add key stakeholders and decision makers for this deal."
-              className="py-12 min-h-[300px] bg-muted/5 border border-dashed rounded-lg"
+              className="min-h-[400px] border border-dashed rounded-lg bg-muted/5"
+              showShadow={false}
             />
           )}
         </CardContent>

@@ -17,6 +17,7 @@ import { Search, Briefcase } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
+import { navigateToDeal } from "@/app/hooks/use-navigation-history"
 import { IsEmpty } from "@/app/components/ui/empty-state"
 import { Button } from "@/app/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
@@ -173,7 +174,7 @@ export default function DealsPage() {
   }
 
   const handleDealClick = (deal: Deal) => {
-    router.push(`/deals/${deal.id}`)
+    navigateToDeal({ dealId: deal.id, dealName: deal.name, router })
   }
 
   const handleUpdateDealStage = async (dealId: string, newStage: string) => {

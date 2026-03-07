@@ -35,6 +35,7 @@ const routeTitles: Record<string, string> = {
   'billing': 'Billing',
   'robots': 'Makina',
   'sales': 'Sales',
+  'deals': 'Deals',
   'people': 'People',
   'integrations': 'Integrations',
   'context': 'Context'
@@ -249,6 +250,37 @@ export function useNavigationHistory() {
   const queryString = searchParams?.toString() || ''
   const fullPath = queryString ? `${pathname}?${queryString}` : pathname
   
+  // Listen to breadcrumb:update to dynamically update the current history item's label
+  useEffect(() => {
+    const handleBreadcrumbUpdate = (event: any) => {
+      if (event.detail && event.detail.title) {
+        setHistory(prev => {
+          if (prev.items.length === 0) return prev;
+          
+          const newItems = [...prev.items];
+          const lastItem = newItems[newItems.length - 1];
+          
+          // Only update if the title actually changed to avoid unnecessary re-renders
+          if (lastItem.label !== event.detail.title) {
+            newItems[newItems.length - 1] = {
+              ...lastItem,
+              label: event.detail.title
+            };
+            const newHistory = { items: newItems };
+            saveHistory(newHistory);
+            return newHistory;
+          }
+          return prev;
+        });
+      }
+    };
+    
+    window.addEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
+    return () => {
+      window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
+    };
+  }, []);
+
   // Initialize history from localStorage on mount
   useEffect(() => {
     const loadedHistory = loadHistory()
@@ -716,4 +748,20 @@ export function navigateToChat({ conversationId, agentId, conversationTitle, age
 export function navigateToControlCenter({ router }: NavigateToControlCenterParams): void {
   markUINavigation()
   router.push('/control-center')
+}
+
+interface NavigateToDealParams {
+  dealId: string
+  dealName: string
+  router: any
+}
+
+/**
+ * Navigate to a deal detail page
+ * @example navigateToDeal({ dealId: '123', dealName: 'Acme Corp Deal', router })
+ */
+export function navigateToDeal({ dealId, dealName, router }: NavigateToDealParams): void {
+  markUINavigation()
+  const encodedName = encodeURIComponent(dealName)
+  router.push(`/deals/${dealId}?name=${encodedName}`)
 }
