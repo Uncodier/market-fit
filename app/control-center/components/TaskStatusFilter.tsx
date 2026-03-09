@@ -78,7 +78,7 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
                 <Button
                   variant="secondary"
                   size="icon"
-                  className="h-9 w-9 shrink-0"
+                  className="h-9 w-9 shrink-0 rounded-full"
                   onClick={onFilterClick}
                 >
                   <Filter className="h-4 w-4" />

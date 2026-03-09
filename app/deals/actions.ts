@@ -31,10 +31,10 @@ export async function getDeals(siteId: string) {
     }
     
     // If we want deal_owners and deal_leads, we should fetch them too.
-    // For performance on lists, we might just load owners.
     const dealIds = deals.map((d: any) => d.id)
     
     let dealOwners: DealOwner[] = []
+    let dealContacts: DealContact[] = []
     if (dealIds.length > 0) {
       const { data: owners } = await supabase
         .from("deal_owners")
@@ -45,12 +45,39 @@ export async function getDeals(siteId: string) {
         .in("deal_id", dealIds)
         
       dealOwners = owners || []
+      
+      if (dealOwners.length > 0) {
+        const userIds = [...new Set(dealOwners.map(o => o.user_id))]
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, email, name")
+          .in("id", userIds)
+          
+        if (profiles) {
+          dealOwners = dealOwners.map(o => ({
+            ...o,
+            user: profiles.find(p => p.id === o.user_id) || { id: o.user_id, email: "Unknown User" }
+          })) as DealOwner[]
+        }
+      }
+
+      const { data: contacts } = await supabase
+        .from("deal_leads")
+        .select(`
+          deal_id,
+          lead_id,
+          lead:leads(name, email, id)
+        `)
+        .in("deal_id", dealIds)
+        
+      dealContacts = contacts || []
     }
 
-    // Attach owners to deals
+    // Attach owners and contacts to deals
     const normalizedDeals = deals.map((deal: any) => ({
       ...deal,
-      owners: dealOwners.filter((o) => o.deal_id === deal.id)
+      owners: dealOwners.filter((o) => o.deal_id === deal.id),
+      contacts: dealContacts.filter((c) => c.deal_id === deal.id)
     }))
 
     return { deals: normalizedDeals as Deal[], error: null }
@@ -64,14 +91,14 @@ export async function getDealById(id: string) {
   try {
     const supabase = createClient()
     
-    const { data: deal, error } = await supabase
-      .from("deals")
-      .select(`
-        *,
-        companies(*)
-      `)
-      .eq("id", id)
-      .single()
+      const { data: deal, error } = await supabase
+        .from("deals")
+        .select(`
+          *,
+          companies(name, website, industry, id)
+        `)
+        .eq("id", id)
+        .single()
 
     if (error) {
       if (error.code === '42P01') {
@@ -81,10 +108,32 @@ export async function getDealById(id: string) {
     }
     
     // Fetch owners
-    const { data: owners } = await supabase
+    const { data: ownersData, error: ownersError } = await supabase
       .from("deal_owners")
       .select(`*`)
       .eq("deal_id", id)
+
+    if (ownersError) {
+      console.error("Error fetching deal owners:", ownersError)
+    }
+    
+    let owners = ownersData || []
+    
+    // Fetch profiles for owners if any exist
+    if (owners.length > 0) {
+      const userIds = owners.map(o => o.user_id)
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email, name")
+        .in("id", userIds)
+        
+      if (profiles) {
+        owners = owners.map(o => ({
+          ...o,
+          user: profiles.find(p => p.id === o.user_id) || { id: o.user_id, email: "Unknown User" }
+        }))
+      }
+    }
       
     // Fetch contacts (leads)
     const { data: contacts } = await supabase

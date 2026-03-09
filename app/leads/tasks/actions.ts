@@ -8,7 +8,9 @@ import { z } from "zod"
 // Define the task schema for validation
 const TaskSchema = z.object({
   id: z.string().uuid().optional(),
-  lead_id: z.string().uuid(),
+  lead_id: z.string().uuid().optional().nullable(),
+  deal_id: z.string().uuid().optional().nullable(),
+  deal_id: z.string().uuid().optional().nullable(),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional().nullable(),
   type: z.enum([
@@ -67,7 +69,8 @@ export interface TaskResponse {
   task?: {
     id: string
     serial_id: string
-    lead_id: string
+    lead_id: string | null
+    deal_id: string | null
     title: string
     description: string | null
     type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback" | "trial" | "onboarding" | "refund" | "ticket" | "kyc" | "training" | "consultation" | "follow_up" | "survey" | "review" | "support" | "billing" | "documentation" | "integration"
@@ -93,7 +96,8 @@ export interface TasksResponse {
   tasks: Array<{
     id: string
     serial_id: string
-    lead_id: string
+    lead_id: string | null
+    deal_id: string | null
     title: string
     description: string | null
     type: "website_visit" | "demo" | "meeting" | "email" | "call" | "quote" | "contract" | "payment" | "referral" | "feedback" | "trial" | "onboarding" | "refund" | "ticket" | "kyc" | "training" | "consultation" | "follow_up" | "survey" | "review" | "support" | "billing" | "documentation" | "integration"
@@ -159,8 +163,13 @@ export async function createTask(data: CreateTaskInput): Promise<TaskResponse> {
       return { error: "Failed to create task: No data returned", task: null }
     }
     
-    // Revalidate the lead page path
-    revalidatePath(`/leads/${data.lead_id}`)
+    // Revalidate the appropriate path
+    if (data.lead_id) {
+      revalidatePath(`/leads/${data.lead_id}`)
+    }
+    if (data.deal_id) {
+      revalidatePath(`/deals/${data.deal_id}`)
+    }
     
     return { task }
   } catch (error) {
@@ -233,10 +242,10 @@ export async function updateTask(id: string, data: Partial<CreateTaskInput>): Pr
     // Get current user for logging
     const { data: { user } } = await supabase.auth.getUser()
     
-    // Get current task to get lead_id for path revalidation
+    // Get current task to get lead_id and deal_id for path revalidation
     const { data: currentTask, error: fetchError } = await supabase
       .from("tasks")
-      .select("lead_id")
+      .select("lead_id, deal_id")
       .eq("id", id)
       .single()
     
@@ -266,9 +275,12 @@ export async function updateTask(id: string, data: Partial<CreateTaskInput>): Pr
       return { error: `Error updating task: ${error.message}`, task: null }
     }
     
-    // Revalidate the lead page path
+    // Revalidate the appropriate path
     if (currentTask?.lead_id) {
       revalidatePath(`/leads/${currentTask.lead_id}`)
+    }
+    if (currentTask?.deal_id) {
+      revalidatePath(`/deals/${currentTask.deal_id}`)
     }
     
     return { task }
@@ -288,10 +300,10 @@ export async function deleteTask(id: string): Promise<{ success?: boolean, error
   try {
     const supabase = await createClient()
     
-    // Get current task to get lead_id for path revalidation
+    // Get current task to get lead_id and deal_id for path revalidation
     const { data: currentTask, error: fetchError } = await supabase
       .from("tasks")
-      .select("lead_id")
+      .select("lead_id, deal_id")
       .eq("id", id)
       .single()
     
@@ -310,9 +322,12 @@ export async function deleteTask(id: string): Promise<{ success?: boolean, error
       return { error: `Error deleting task: ${error.message}` }
     }
     
-    // Revalidate the lead page path
+    // Revalidate the appropriate path
     if (currentTask?.lead_id) {
       revalidatePath(`/leads/${currentTask.lead_id}`)
+    }
+    if (currentTask?.deal_id) {
+      revalidatePath(`/deals/${currentTask.deal_id}`)
     }
     
     return { success: true }

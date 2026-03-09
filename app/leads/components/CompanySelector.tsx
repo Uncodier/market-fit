@@ -11,17 +11,18 @@ import { toast } from "sonner"
 
 interface CompanySelectorProps {
   selectedCompanyId: string | null
+  initialCompany?: { id: string, name: string } | null
   onCompanyChange: (company: Company | null) => void
   isEditing: boolean
   hideLabel?: boolean
 }
 
-export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing, hideLabel = false }: CompanySelectorProps) {
+export function CompanySelector({ selectedCompanyId, initialCompany, onCompanyChange, isEditing, hideLabel = false }: CompanySelectorProps) {
   const [companies, setCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const [selectedCompany, setSelectedCompany] = useState<{ id: string, name: string } | Company | null>(initialCompany || null)
   const [isCreating, setIsCreating] = useState(false)
   const [newCompanyName, setNewCompanyName] = useState("")
 
@@ -32,13 +33,22 @@ export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing,
 
   // Find selected company when selectedCompanyId changes
   useEffect(() => {
-    if (selectedCompanyId && companies.length > 0) {
-      const company = companies.find(c => c.id === selectedCompanyId)
-      setSelectedCompany(company || null)
-    } else {
+    if (!selectedCompanyId) {
       setSelectedCompany(null)
+      return
     }
-  }, [selectedCompanyId, companies])
+
+    if (companies.length > 0) {
+      const company = companies.find(c => c.id === selectedCompanyId)
+      if (company) {
+        setSelectedCompany(company)
+      } else if (initialCompany && initialCompany.id === selectedCompanyId) {
+        setSelectedCompany(initialCompany)
+      }
+    } else if (initialCompany && initialCompany.id === selectedCompanyId) {
+      setSelectedCompany(initialCompany)
+    }
+  }, [selectedCompanyId, companies, initialCompany?.id, initialCompany?.name])
 
   const loadCompanies = async () => {
     setLoading(true)
@@ -124,7 +134,7 @@ export function CompanySelector({ selectedCompanyId, onCompanyChange, isEditing,
                 variant="outline"
                 role="combobox"
                 aria-expanded={open}
-                className="w-full justify-between h-12 text-sm min-w-0"
+                className="w-full justify-between h-12 text-sm min-w-0 rounded-md"
               >
                 <span className="truncate">
                   {selectedCompany ? selectedCompany.name : "Select company..."}

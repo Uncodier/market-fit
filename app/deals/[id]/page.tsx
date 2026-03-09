@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation"
 import { Deal, DEAL_STATUSES } from "@/app/deals/types"
 import { getDealById, updateDeal } from "@/app/deals/actions"
 import { getTasksByDealId } from "@/app/tasks/actions"
-import { TaskList } from "@/app/control-center/components/TaskList"
+import { JourneyTimeline } from "@/app/leads/components/JourneyTimeline"
+import { TasksProvider } from "@/app/leads/context/TasksContext"
 import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
 import { DealDetail } from "@/app/deals/components/DealDetail"
@@ -242,22 +243,14 @@ export default function DealPage() {
               <TabsContent value="details" className="mt-0 p-0">
                 <DealDetail deal={deal} onUpdate={(updatedDeal) => setDeal(updatedDeal)} tab="details" onTabChange={setActiveTab} />
               </TabsContent>
-              <TabsContent value="activity" className="mt-0 p-0">
-                <div className="space-y-6">
-                  <h3 className="text-lg font-medium">Deal Tasks</h3>
-                  {tasks.length > 0 ? (
-                    <TaskList tasks={tasks} maxHeight="none" />
-              ) : (
-                <EmptyCard
-                  variant="fancy"
-                  icon={<ClipboardList />}
-                  title="No tasks found for this deal"
-                  description="Create tasks to track your activities and progress for this deal."
-                  className="min-h-[400px] border border-dashed rounded-lg bg-muted/5"
-                  showShadow={false}
-                />
-              )}
-                </div>
+              <TabsContent value="activity" className="mt-0 pt-0">
+                <TasksProvider leadId={id}>
+                  <div className="w-full pb-6 flex flex-col h-full overflow-auto pt-6">
+                    <div className="mt-0">
+                      <JourneyTimeline leadId={id} />
+                    </div>
+                  </div>
+                </TasksProvider>
               </TabsContent>
             </div>
           </div>

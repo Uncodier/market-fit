@@ -14,6 +14,7 @@ export async function createTask(values: CreateTaskFormValues): Promise<{ data?:
     const cleanedValues = {
       ...values,
       lead_id: values.lead_id || null,
+      deal_id: values.deal_id || null,
       assignee: values.assignee || null,
       type: values.type || null,
       stage: values.stage || null,
@@ -60,11 +61,11 @@ export async function getTasksByDealId(dealId: string) {
     let tasks: any[] = []
     
     // 1. Try fetching by deal_id
-    const { data: dealTasks, error: dealError } = await supabase
+      const { data: dealTasks, error: dealError } = await supabase
       .from('tasks')
       .select('*')
       .eq('deal_id', dealId)
-      .order('created_at', { ascending: false })
+      .order('scheduled_date', { ascending: true })
       
     if (!dealError && dealTasks) {
       tasks = [...dealTasks]
@@ -76,7 +77,7 @@ export async function getTasksByDealId(dealId: string) {
         .from('tasks')
         .select('*')
         .in('lead_id', leadIds)
-        .order('created_at', { ascending: false })
+        .order('scheduled_date', { ascending: true })
         
       if (!leadError && leadTasks) {
         // Add tasks that aren't already in the list
@@ -86,8 +87,12 @@ export async function getTasksByDealId(dealId: string) {
       }
     }
 
-    // Sort combined tasks by created_at desc
-    tasks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    // Sort combined tasks by scheduled_date asc, handling potential nulls
+    tasks.sort((a, b) => {
+      if (!a.scheduled_date) return 1;
+      if (!b.scheduled_date) return -1;
+      return new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime();
+    })
 
     return { data: tasks }
   } catch (error) {

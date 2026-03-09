@@ -175,7 +175,7 @@ export function TopBarTitle({
     <div className="flex items-center gap-4">
       <Button
         variant="ghost"
-        className="hidden md:flex h-8 w-8 p-0 ml-3.5 items-center justify-center"
+        className="hidden md:flex h-8 w-8 p-0 ml-3.5 items-center justify-center font-inter"
         onClick={onCollapse}
       >
         {isCollapsed ? (
@@ -215,7 +215,7 @@ export function TopBarTitle({
                       />
                     )}
                     {item.isCurrent ? (
-                      <span className={cn("font-semibold text-foreground transition-all duration-200", fontSize)}>
+                      <span className={cn("font-semibold text-foreground transition-all duration-200 font-inter", fontSize)}>
                         {item.label}
                       </span>
                     ) : (
@@ -227,7 +227,7 @@ export function TopBarTitle({
                           }
                         }}
                         className={cn(
-                          "font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer",
+                          "font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer font-inter",
                           fontSize
                         )}
                       >
@@ -240,7 +240,7 @@ export function TopBarTitle({
           </ol>
         </nav>
       ) : (
-        <h1 className="text-2xl font-semibold text-foreground">{customTitle || getDefaultTitle()}</h1>
+        <h1 className="text-2xl font-semibold text-foreground font-inter">{customTitle || getDefaultTitle()}</h1>
       )}
       
       {(helpText || helpWelcomeMessage || helpTask) && (

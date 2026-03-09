@@ -62,6 +62,7 @@ import { StarRating } from "@/app/components/ui/rating"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { safeReload } from "@/app/utils/safe-reload"
 import { TrendsSection, TrendsColumn } from "@/app/components/trends"
+import { cn } from "@/lib/utils"
 
 // Definimos los tipos de estado del contenido
 const CONTENT_STATUSES = [
@@ -1963,7 +1964,11 @@ export default function ContentPage() {
                 </div>
                 <Button 
                   variant="secondary" 
-                  className="h-9"
+                  size={(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "default" : "icon"}
+                  className={cn(
+                    "h-9 rounded-full",
+                    (filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "px-3" : "w-9"
+                  )}
                   onClick={() => setIsFiltersDialogOpen(true)}
                 >
                   <Filter className="h-4 w-4" />

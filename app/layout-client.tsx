@@ -206,7 +206,9 @@ function LayoutClientInner({
   }, [isMobile])
 
   // Pages that need full-height layout (no scroll, fixed height container)
-  const isChatPage = pathname && (pathname.startsWith('/chat') || pathname.startsWith('/robots'));
+  const isChatPage = pathname && pathname.startsWith('/chat');
+  const isRobotsPage = pathname && pathname.startsWith('/robots');
+  const isAppPage = isChatPage || isRobotsPage;
 
   let pageCustomTitle: string | null = null;
   let customHelpText: string | null = null;
@@ -288,15 +290,17 @@ function LayoutClientInner({
                 onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
                 onCreateDeal={pathname === "/deals" ? handleCreateDealClick : undefined}
               />
-              <div className={!isChatPage && customBreadcrumb ? "h-[64px] md:h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
+              {!isRobotsPage && (
+                <div className={!isChatPage && customBreadcrumb ? "h-[64px] md:h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>
+              )}
               <main 
                 className={cn(
                   "flex-1 min-w-0",
-                  isChatPage ? "flex flex-col overflow-hidden" : "overflow-visible"
+                  isAppPage ? "flex flex-col overflow-hidden" : "overflow-visible"
                 )} 
                 style={
-                  isChatPage ? 
-                  { height: 'calc(100dvh - 64px)' } as React.CSSProperties 
+                  isAppPage ? 
+                  { height: isRobotsPage ? '100dvh' : 'calc(100dvh - 64px)' } as React.CSSProperties 
                   : {}
                 }
               >

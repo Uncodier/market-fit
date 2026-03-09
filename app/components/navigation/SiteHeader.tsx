@@ -165,7 +165,7 @@ export function SiteHeader() {
           
           {/* Mobile Menu Toggle */}
           <button 
-            className="lg:!hidden p-2 -mr-2 dark:text-white text-black transition-colors"
+            className="lg:!hidden p-2 -mr-2 dark:text-white text-black transition-colors rounded-full"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}

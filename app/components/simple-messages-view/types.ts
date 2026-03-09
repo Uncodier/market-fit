@@ -4,6 +4,7 @@ export interface SimpleMessagesViewProps {
   isBrowserVisible?: boolean
   onMessageSent?: (hasMessageBeenSent: boolean) => void
   onNewInstanceCreated?: (instanceId: string) => void
+  hasTopHeaderSpace?: boolean // Used to add top padding for fixed headers
 }
 
 // Media Parameter Types

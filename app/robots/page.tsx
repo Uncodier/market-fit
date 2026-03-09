@@ -1002,7 +1002,8 @@ function RobotsPageContent() {
     }
   }, [pathname, calculateMaxVisibleTabs])
 
-  
+  // Compute if browser should be visible
+  const isBrowserVisible = Boolean(((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId)
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
@@ -1154,7 +1155,8 @@ function RobotsPageContent() {
                 {/* Create new instance button - pegado a los tabs */}
                 <Button
                   variant="secondary"
-                  className="h-9 shrink-0"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 rounded-full"
                   onClick={handleCreateNewInstance}
                   title="Create new robot instance"
                 >
@@ -1314,13 +1316,13 @@ function RobotsPageContent() {
         />
       )}
       
-      <div className="absolute inset-0 pt-[71px] flex flex-col min-h-0 overflow-hidden">
-        {/* Content area - pt compensates for fixed StickyHeader */}
+      <div className="absolute inset-0 flex flex-col min-h-0 overflow-hidden">
+        {/* Content area - no pt-[71px] here so it can go under header */}
         <div className="flex-1 flex flex-col min-h-0 bg-muted/30 transition-colors duration-300 ease-in-out overflow-hidden">
           <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
-            {((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId && (
-              <div className="w-full lg:w-2/3 border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[40vh] lg:h-full overflow-hidden relative">
-                <div className="flex flex-col m-0 bg-card absolute inset-0">
+            {isBrowserVisible && (
+              <div className="w-full lg:w-2/3 border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative">
+                <div className="flex flex-col m-0 bg-card absolute inset-x-0 bottom-0 top-[135px]">
                   <div className="flex flex-col p-0 relative h-full">
                     {isResuming || isInstanceStarting ? (
                       <div className="absolute inset-0 flex flex-col">
@@ -1436,13 +1438,14 @@ function RobotsPageContent() {
             )}
 
             {/* Messages View - Chat/Instance Logs */}
-            <div className={`${((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 overflow-hidden`}>
+            <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 overflow-hidden`}>
               <div className="flex flex-col m-0 bg-card min-w-0 flex-1 min-h-0 overflow-hidden relative">
                 <SimpleMessagesView 
                   key={`${currentSite?.id}-${siteChangeKey}`}
                   className="h-full absolute inset-0"
                   activeRobotInstance={activeRobotInstance}
-                  isBrowserVisible={((selectedInstanceId !== 'new' && activeRobotInstance && (isLoadingRobots || isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId}
+                  isBrowserVisible={isBrowserVisible}
+                  hasTopHeaderSpace={!isBrowserVisible}
                   onMessageSent={setHasMessageBeenSent}
                   onNewInstanceCreated={handleNewInstanceCreated}
                 />

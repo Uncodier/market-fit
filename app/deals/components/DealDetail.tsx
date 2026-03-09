@@ -8,11 +8,14 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Checkbox } from "@/app/components/ui/checkbox"
-import { updateDeal, removeDealContact, getDealById, getSiteQualificationCriteriaKeys } from "@/app/deals/actions"
+import { DatePicker } from "@/app/components/ui/date-picker"
+import { format } from "date-fns"
+import { updateDeal, removeDealContact, getDealById, getSiteQualificationCriteriaKeys, removeDealOwner } from "@/app/deals/actions"
 import { toast } from "sonner"
 import { Briefcase, Building, Calendar, DollarSign, FileText, Target, Users, Settings, Edit, BarChart, User, PlusCircle, Plus } from "@/app/components/ui/icons"
 import { CompanySelector } from "@/app/leads/components/CompanySelector"
 import { LinkContactDialog } from "./LinkContactDialog"
+import { LinkTeamMemberDialog } from "./LinkTeamMemberDialog"
 import { DealSalesOrder } from "./DealSalesOrder"
 
 interface DealDetailProps {
@@ -25,6 +28,7 @@ interface DealDetailProps {
 export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: DealDetailProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isLinkContactOpen, setIsLinkContactOpen] = useState(false)
+  const [isLinkTeamMemberOpen, setIsLinkTeamMemberOpen] = useState(false)
   
   // Qualifications State
   const [availableCriteriaKeys, setAvailableCriteriaKeys] = useState<string[]>([
@@ -150,16 +154,22 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
   const handleSaveCriteria = async () => {
     setIsUpdating(true)
     try {
-      const activeKeys = Object.keys(criteriaForm);
+      const totalKeys = availableCriteriaKeys.length;
       let score = 0;
-      if (activeKeys.length > 0) {
-        const trueCount = activeKeys.filter(k => criteriaForm[k]).length;
-        score = Math.round((trueCount / activeKeys.length) * 100);
+      
+      const fullCriteriaForm: Record<string, boolean> = {};
+      availableCriteriaKeys.forEach(key => {
+        fullCriteriaForm[key] = criteriaForm[key] || false;
+      });
+
+      if (totalKeys > 0) {
+        const trueCount = availableCriteriaKeys.filter(k => fullCriteriaForm[k]).length;
+        score = Math.round((trueCount / totalKeys) * 100);
       }
       
       const updates = {
         id: deal.id,
-        qualification_criteria: criteriaForm,
+        qualification_criteria: fullCriteriaForm,
         qualification_score: score
       }
       const result = await updateDeal(updates)
@@ -227,6 +237,26 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
       }
     } catch (e) {
       toast.error("Failed to remove contact")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleRemoveTeamMember = async (userId: string) => {
+    setIsUpdating(true)
+    try {
+      const result = await removeDealOwner(deal.id, userId)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success("Team member removed")
+        const updatedDealResult = await getDealById(deal.id)
+        if (updatedDealResult.deal) {
+          onUpdate(updatedDealResult.deal)
+        }
+      }
+    } catch (e) {
+      toast.error("Failed to remove team member")
     } finally {
       setIsUpdating(false)
     }
@@ -335,15 +365,16 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
   }
 
   return (
-    <div className="space-y-6 md:space-y-12">
-      {/* General Information */}
-      <Card id="deal-information" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
+    <>
+      <div className="space-y-6 md:space-y-12 relative z-[99]">
+        {/* General Information */}
+        <Card id="deal-information" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200 relative z-[99] overflow-visible">
         <CardHeader className="px-6 md:px-8 py-6 pb-2">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <FileText className="h-5 w-5" /> General Information
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-6 md:px-8 pb-8 space-y-8">
+        <CardContent className="px-6 md:px-8 pb-8 space-y-8 relative z-[99] overflow-visible">
           {/* Deal Metrics Summary (Requested in prompt) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 pt-4">
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 flex flex-col items-center justify-center text-center h-28">
@@ -366,7 +397,7 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 pt-4 border-t">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 pt-4 border-t relative z-[99] overflow-visible">
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Deal Name</label>
               <div className="relative">
@@ -394,23 +425,24 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 relative z-10" style={{ zIndex: 100 }}>
               <label className="text-sm font-medium text-foreground">Expected Close Date</label>
-              <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                <Input 
-                  type="date"
-                  className="pl-12 h-12 text-base"
-                  value={generalForm.expected_close_date}
-                  onChange={(e) => setGeneralForm({...generalForm, expected_close_date: e.target.value})}
-                />
-              </div>
+              <DatePicker 
+                date={generalForm.expected_close_date ? new Date(generalForm.expected_close_date + 'T12:00:00') : undefined}
+                setDate={(date: Date | undefined) => setGeneralForm({
+                  ...generalForm, 
+                  expected_close_date: date ? format(date, 'yyyy-MM-dd') : ""
+                })}
+                className="w-full h-12"
+                placeholder="Select close date"
+              />
             </div>
 
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Linked Company</label>
               <CompanySelector 
                 selectedCompanyId={generalForm.company_id}
+                initialCompany={deal.company_id && deal.companies ? { id: deal.company_id, name: deal.companies.name } : null}
                 onCompanyChange={(c) => setGeneralForm({ ...generalForm, company_id: c ? c.id : "" })}
                 isEditing={true}
                 hideLabel={true}
@@ -539,6 +571,73 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
         </CardFooter>
       </Card>
 
+      <Card id="deal-team" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
+          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5" /> Deal Team
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={() => setIsLinkTeamMemberOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Assign Member
+          </Button>
+        </CardHeader>
+        <CardContent className="px-6 md:px-8 pb-8">
+          {deal.owners && deal.owners.length > 0 ? (
+            <div className="border rounded-lg overflow-x-auto">
+              <table className="w-full min-w-[500px]">
+                <thead>
+                  <tr className="bg-muted/50 border-b">
+                    <th className="px-6 py-4 text-sm font-semibold text-left">Name / Email</th>
+                    <th className="px-6 py-4 text-sm font-semibold text-right w-24">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deal.owners.map((owner) => (
+                    <tr key={owner.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                            {(owner.user?.name || owner.user?.email || "U")[0].toUpperCase()}
+                          </div>
+                          <div className="flex flex-col">
+                            <span>{owner.user?.name || owner.user?.email || "Unknown Member"}</span>
+                            {owner.user?.name && owner.user?.email && (
+                              <span className="text-xs text-muted-foreground font-normal">{owner.user.email}</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (window.confirm("Are you sure you want to remove this team member from the deal?")) {
+                              handleRemoveTeamMember(owner.user_id)
+                            }
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyCard
+              variant="fancy"
+              icon={<User />}
+              title="No team members assigned"
+              description="Assign team members to collaborate on this deal."
+              className="min-h-[250px] border border-dashed rounded-lg bg-muted/5"
+              showShadow={false}
+            />
+          )}
+        </CardContent>
+      </Card>
+
       <Card id="deal-contacts" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
@@ -608,6 +707,7 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
           )}
         </CardContent>
       </Card>
+      </div>
       
       <LinkContactDialog 
         deal={deal}
@@ -615,6 +715,12 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
         onOpenChange={setIsLinkContactOpen}
         onLinked={onUpdate}
       />
-    </div>
+      <LinkTeamMemberDialog 
+        deal={deal}
+        isOpen={isLinkTeamMemberOpen}
+        onOpenChange={setIsLinkTeamMemberOpen}
+        onLinked={onUpdate}
+      />
+    </>
   )
 }

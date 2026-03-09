@@ -76,7 +76,7 @@ export function TopBar({
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
-          className="h-8 w-8 p-0 ml-3.5"
+          className="h-8 w-8 p-0 ml-3.5 rounded-full"
           onClick={onCollapse}
         >
           {isCollapsed ? (
@@ -109,14 +109,14 @@ export function TopBar({
         {isDashboardPage && (
           <>
             <CalendarDateRangePicker />
-            <Button>Download</Button>
+            <Button className="rounded-full">Download</Button>
           </>
         )}
         {isSegmentsPage && (
           canCreateContent ? (
             <CreateSegmentDialog onCreateSegment={handleCreateSegment} />
           ) : (
-            <Button variant="outline" disabled>
+            <Button variant="outline" disabled className="rounded-full">
               <PlusCircle className="mr-2 h-4 w-4" />
               Seleccione un sitio
             </Button>
@@ -129,7 +129,7 @@ export function TopBar({
               onCreateExperiment={handleCreateExperiment}
             />
           ) : (
-            <Button variant="outline" disabled>
+            <Button variant="outline" disabled className="rounded-full">
               <PlusCircle className="mr-2 h-4 w-4" />
               Seleccione un sitio
             </Button>
@@ -138,7 +138,7 @@ export function TopBar({
         {isRequirementsPage && (
           canCreateContent ? (
             <>
-              <Button variant="secondary" className="h-9 gap-2">
+              <Button variant="secondary" className="h-9 gap-2 rounded-full">
                 <Filter className="mr-2 h-4 w-4" />
                 Filter
               </Button>
@@ -146,7 +146,7 @@ export function TopBar({
                 segments={segments || []}
                 onCreateRequirement={handleCreateRequirement}
                 trigger={
-                  <Button>
+                  <Button className="rounded-full">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     New Requirement
                   </Button>
@@ -154,7 +154,7 @@ export function TopBar({
               />
             </>
           ) : (
-            <Button variant="outline" disabled>
+            <Button variant="outline" disabled className="rounded-full">
               <PlusCircle className="mr-2 h-4 w-4" />
               Seleccione un sitio
             </Button>
@@ -163,21 +163,21 @@ export function TopBar({
         {isLeadsPage && (
           canCreateContent ? (
             <>
-              <Button variant="secondary" className="h-9 gap-2">
+              <Button variant="secondary" className="h-9 gap-2 rounded-full">
                 <Filter className="mr-2 h-4 w-4" />
                 Filter
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" className="rounded-full">
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
-              <Button>
+              <Button className="rounded-full">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Lead
               </Button>
             </>
           ) : (
-            <Button variant="outline" disabled>
+            <Button variant="outline" disabled className="rounded-full">
               <PlusCircle className="mr-2 h-4 w-4" />
               Seleccione un sitio
             </Button>
@@ -185,12 +185,12 @@ export function TopBar({
         )}
         {isAgentsPage && (
           canCreateContent ? (
-            <Button>
+            <Button className="rounded-full">
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Agent
             </Button>
           ) : (
-            <Button variant="outline" disabled>
+            <Button variant="outline" disabled className="rounded-full">
               <PlusCircle className="mr-2 h-4 w-4" />
               Seleccione un sitio
             </Button>
@@ -200,7 +200,7 @@ export function TopBar({
           canCreateContent ? (
             <UploadAssetDialog onUploadAsset={handleCreateAsset} />
           ) : (
-            <Button variant="outline" disabled>
+            <Button variant="outline" disabled className="rounded-full">
               <PlusCircle className="mr-2 h-4 w-4" />
               Seleccione un sitio
             </Button>

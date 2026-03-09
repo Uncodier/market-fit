@@ -53,9 +53,9 @@ export function HelpButton({
   }
 
   const sizeClasses = {
-    sm: "h-8 w-8 p-0",
-    md: "h-9 w-9 p-0", 
-    lg: "h-10 w-10 p-0"
+    sm: "h-8 w-8 !min-w-0 !p-0 aspect-square",
+    md: "h-9 w-9 !min-w-0 !p-0 aspect-square", 
+    lg: "h-10 w-10 !min-w-0 !p-0 aspect-square"
   }
 
   const iconSizes = {
@@ -70,7 +70,7 @@ export function HelpButton({
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
-            className={cn(sizeClasses[size], "transition-colors duration-200", className)}
+            className={cn(sizeClasses[size], "transition-colors duration-200 rounded-full flex items-center justify-center shrink-0", className)}
             onClick={handleHelpClick}
           >
             <HelpCircle className={iconSizes[size]} />

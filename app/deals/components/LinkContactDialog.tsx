@@ -7,7 +7,7 @@ import { Deal } from "@/app/deals/types"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/app/components/ui/command"
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList, CommandInput } from "@/app/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
 import { Check, ChevronDown, User as UserIcon, Search } from "@/app/components/ui/icons"
 
@@ -117,8 +117,19 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
   const selectedLead = leads.find(l => l.id === selectedLeadId)
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        setSearchTerm("")
+        setOpenCombobox(false)
+      }
+      onOpenChange(open)
+    }}>
+      <DialogContent className="sm:max-w-[500px]" onInteractOutside={(e) => {
+        // Prevenir que el dialog se cierre si el popover está abierto
+        if (openCombobox) {
+          e.preventDefault()
+        }
+      }}>
         <DialogHeader>
           <DialogTitle>Add Contact</DialogTitle>
           <DialogDescription>
@@ -129,13 +140,13 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
         <div className="py-4 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Contact</label>
-            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+              <Popover open={openCombobox} onOpenChange={setOpenCombobox} modal={true}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
                   aria-expanded={openCombobox}
-                  className="w-full justify-between h-12 text-base px-4"
+                  className="w-full justify-between h-12 text-base px-4 bg-background"
                 >
                   {selectedLeadId
                     ? selectedLead?.name || "Unknown Contact"
@@ -143,25 +154,30 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[460px] p-0" align="start">
-                <Command>
-                  <div className="flex items-center border-b px-3">
-                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                    <input
-                      className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder="Search contacts by name or email..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <CommandList>
-                    <CommandEmpty>{loading ? "Searching..." : "No contacts found."}</CommandEmpty>
-                    <CommandGroup>
+              <PopoverContent 
+                className="w-[460px] p-0 z-[100000]" 
+                align="start"
+              >
+                <Command className="w-full" shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Search contacts by name or email..."
+                    value={searchTerm}
+                    onValueChange={setSearchTerm}
+                  />
+                  <CommandList className="max-h-[200px] overflow-y-auto">
+                    {leads.length === 0 && !loading && (
+                      <CommandEmpty>No contacts found.</CommandEmpty>
+                    )}
+                    {loading && (
+                      <CommandEmpty>Searching...</CommandEmpty>
+                    )}
+                    {leads.length > 0 && (
+                      <CommandGroup>
                       {leads.map((lead) => (
-                        <CommandItem
+                        <div
                           key={lead.id}
-                          value={lead.name}
-                          onSelect={() => {
+                          className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                          onClick={() => {
                             setSelectedLeadId(lead.id)
                             setOpenCombobox(false)
                           }}
@@ -181,9 +197,10 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
                               </span>
                             )}
                           </div>
-                        </CommandItem>
+                        </div>
                       ))}
-                    </CommandGroup>
+                      </CommandGroup>
+                    )}
                   </CommandList>
                 </Command>
               </PopoverContent>

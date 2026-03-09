@@ -3,7 +3,7 @@
 import { Deal, DEAL_STAGES, STAGE_STYLES } from "../types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
-import { Building, Calendar, DollarSign } from "@/app/components/ui/icons"
+import { Building, Calendar, DollarSign, Clock } from "@/app/components/ui/icons"
 import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { cn } from "@/lib/utils"
@@ -104,60 +104,72 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
                                   )}
                                   onClick={() => onDealClick(deal)}
                                 >
-                                  <CardContent className="p-3.5">
-                                    <div className="flex flex-col gap-2">
-                                      {/* Title & Company */}
+                                  <CardContent className="p-3">
+                                    <div className="flex flex-col gap-1.5">
+                                      {/* Title & Amount & Company */}
                                       <div>
-                                        <h3 className="text-sm font-semibold leading-tight line-clamp-2 mb-1.5 group-hover:text-primary transition-colors">
-                                          {deal.name}
-                                        </h3>
-                                        <div className="text-xs text-muted-foreground flex items-center">
-                                          <Building className="h-3.5 w-3.5 mr-1.5 flex-shrink-0 text-muted-foreground/70" />
-                                          <span className="truncate">{deal.companies?.name || deal.company?.name || "No company"}</span>
+                                        <div className="flex justify-between items-start mb-1.5 gap-2">
+                                          <h3 className="text-sm font-semibold leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                                            {deal.name}
+                                          </h3>
+                                          <span className="font-semibold text-[13px] text-foreground flex-shrink-0 mt-0.5">
+                                            {formatCurrency(deal.amount, deal.currency)}
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground flex items-center gap-2 min-h-8">
+                                          {deal.contacts && deal.contacts.length > 0 ? (
+                                            <div className="flex -space-x-2">
+                                              {deal.contacts.slice(0, 3).map((contact, i) => (
+                                                <Avatar key={contact.id || i} className="h-8 w-8 border-2 border-background shadow-sm relative z-10">
+                                                  <AvatarFallback className="text-[11px] font-medium bg-primary/10 text-primary" title={contact.lead?.name || "Unknown"}>
+                                                    {(contact.lead?.name || contact.lead?.email || "U").substring(0, 2).toUpperCase()}
+                                                  </AvatarFallback>
+                                                </Avatar>
+                                              ))}
+                                              {deal.contacts.length > 3 && (
+                                                <div className="h-8 w-8 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground shadow-sm relative z-20">
+                                                  +{deal.contacts.length - 3}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <Building className="h-4 w-4 flex-shrink-0 text-muted-foreground/70" />
+                                          )}
+                                          <span className="truncate text-sm">{deal.companies?.name || deal.company?.name || "No company"}</span>
                                         </div>
                                       </div>
                                       
-                                      {/* Amount & Badges */}
-                                      <div className="flex items-center justify-between mt-1">
-                                        <span className="font-semibold text-[13px] text-foreground">
-                                          {formatCurrency(deal.amount, deal.currency)}
-                                        </span>
-                                        
-                                        {deal.qualification_score !== null && (
-                                          <Badge 
-                                            variant="outline" 
-                                            className={cn(
-                                              "text-[10px] px-1.5 py-0 h-5 font-medium border",
-                                              deal.qualification_score >= 80 ? 'text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-900/20' : 
-                                              deal.qualification_score >= 50 ? 'text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20' : 
-                                              'text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-900/20'
+                                      {/* Footer: Date, Next Activity & Owner */}
+                                      <div className="flex items-center justify-between mt-1 pt-2 border-t border-border/40">
+                                        <div className="flex items-center gap-3">
+                                          <div className="flex items-center text-[11px] text-muted-foreground font-medium">
+                                            {deal.expected_close_date ? (
+                                              <>
+                                                <Calendar className="h-3 w-3 mr-1.5 opacity-70" />
+                                                {formatDate(deal.expected_close_date)}
+                                              </>
+                                            ) : (
+                                              <span className="opacity-60 text-muted-foreground/70">No close date</span>
                                             )}
-                                          >
-                                            Score: {deal.qualification_score}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      
-                                      {/* Footer: Date & Owner */}
-                                      <div className="flex items-center justify-between mt-1.5 pt-2.5 border-t border-border/40">
-                                        <div className="flex items-center text-[11px] text-muted-foreground font-medium">
-                                          {deal.expected_close_date ? (
-                                            <>
-                                              <Calendar className="h-3 w-3 mr-1.5 opacity-70" />
-                                              {formatDate(deal.expected_close_date)}
-                                            </>
-                                          ) : (
-                                            <span className="opacity-60 text-muted-foreground/70">No close date</span>
+                                          </div>
+                                          
+                                          {/* Next Activity Placeholder */}
+                                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded border border-border/40" title="Next activity: Not scheduled">
+                                            <Clock size={10} className="text-muted-foreground/70 flex-shrink-0" />
+                                            <span className="truncate max-w-[90px]">Not scheduled</span>
+                                          </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center flex-shrink-0">
+                                          {/* Owner Avatar */}
+                                          {deal.owners && deal.owners.length > 0 && deal.owners[0].user && (
+                                            <Avatar className="h-8 w-8 border-2 border-background shadow-sm relative z-20">
+                                              <AvatarFallback className="text-[11px] font-medium bg-muted/80 text-foreground" title={deal.owners[0].user.name || deal.owners[0].user.email}>
+                                                {(deal.owners[0].user.name || deal.owners[0].user.email).substring(0, 2).toUpperCase()}
+                                              </AvatarFallback>
+                                            </Avatar>
                                           )}
                                         </div>
-                                        
-                                        {deal.owners && deal.owners.length > 0 && deal.owners[0].user && (
-                                          <Avatar className="h-5 w-5 border border-border shadow-sm">
-                                            <AvatarFallback className="text-[9px] bg-muted/80 text-foreground">
-                                              {(deal.owners[0].user.name || deal.owners[0].user.email).substring(0, 2).toUpperCase()}
-                                            </AvatarFallback>
-                                          </Avatar>
-                                        )}
                                       </div>
                                     </div>
                                   </CardContent>

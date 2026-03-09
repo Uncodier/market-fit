@@ -170,7 +170,7 @@ export function TopBar({
     >
       <div className="flex h-[64px] items-center justify-between pr-4 lg:px-8 w-full max-w-full">
         <div className="flex items-center min-w-0">
-          <Button variant="ghost" size="icon" className="md:!hidden ml-2 mr-2" onClick={onMobileToggle}>
+          <Button variant="ghost" size="icon" className="md:!hidden ml-2 mr-2 font-inter" onClick={onMobileToggle}>
             <Menu className="h-5 w-5" />
           </Button>
           <TopBarTitle 

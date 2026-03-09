@@ -160,7 +160,7 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button className="flex items-center gap-2">
+          <Button className="flex items-center gap-2 rounded-full">
             <PlusCircle className="h-4 w-4" />
             New Segment
           </Button>
@@ -247,12 +247,13 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
           </div>
         </div>
         <DialogFooter className="flex justify-between border-t pt-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting} className="rounded-full">
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit} 
             disabled={isSubmitting || !name || !description || !audience || !language}
+            className="rounded-full"
           >
             {isSubmitting ? (
               <>

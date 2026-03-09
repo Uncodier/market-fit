@@ -74,7 +74,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
           <TooltipTrigger asChild>
             <div 
               className={cn(
-                "flex items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors rounded-md", 
+                "flex items-center justify-center cursor-pointer hover:bg-accent/50 transition-colors rounded-full", 
                 "w-[32px] h-[32px]",
                 className
               )}
@@ -126,7 +126,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
           <TooltipTrigger asChild>
             <div 
               onClick={handleBuyCredits}
-              className="bg-muted/30 rounded-lg p-3 border dark:border-white/5 border-black/5/50 cursor-pointer hover:bg-muted/50 transition-colors group"
+              className="bg-muted/30 rounded-lg p-3 border dark:border-white/5 border-black/5/50 cursor-pointer hover:bg-muted/50 transition-colors group font-inter"
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1.5">

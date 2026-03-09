@@ -1350,7 +1350,7 @@ export default function LeadsPage() {
                     <span className="text-xs">⌘</span>K
                   </kbd>
                 </div>
-                <Button variant="secondary" className="h-9" onClick={handleOpenFilterModal}>
+                <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
                   <Filter className="h-4 w-4" />
                 </Button>
               </div>

@@ -429,9 +429,9 @@ function ContextFilesSkeleton() {
               </div>
             </div>
             <div className="flex space-x-1">
-              <Skeleton className="h-8 w-8 rounded-md" />
-              <Skeleton className="h-8 w-8 rounded-md" />
-              <Skeleton className="h-8 w-8 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-8 w-8 rounded-full" />
             </div>
           </div>
         ))}
@@ -478,7 +478,7 @@ function AgentPageSkeleton() {
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
-                <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                <div className="inline-flex h-10 items-center justify-center rounded-full bg-muted p-1 text-muted-foreground">
                   {['Basic Information', 'Tools', 'Triggers', 'Integrations', 'Context Files', 'Activities'].map((tab, index) => (
                     <div 
                       key={index} 
@@ -495,7 +495,7 @@ function AgentPageSkeleton() {
                 </div>
               </div>
               <div className="ml-auto">
-                <div className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground h-10 px-4 py-2">
+                <div className="inline-flex items-center justify-center rounded-full text-sm font-medium bg-primary text-primary-foreground h-10 px-4 py-2">
                   Save changes
                 </div>
               </div>

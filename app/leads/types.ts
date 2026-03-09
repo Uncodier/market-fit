@@ -106,7 +106,8 @@ export function hasAmount(event: JourneyEvent): event is JourneyEventWithAmount 
 export interface Task {
   id: string
   serial_id: string
-  lead_id: string
+  lead_id?: string | null
+  deal_id?: string | null
   title: string
   description: string
   created_at: string

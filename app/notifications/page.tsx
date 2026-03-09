@@ -79,7 +79,7 @@ export default function NotificationsPage() {
                 <Button 
                   variant="secondary" 
                   size="default"
-                  className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-0 md:w-auto px-3 h-9 font-inter rounded-md text-sm font-medium"
+                  className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-0 md:w-auto px-3 h-9 font-inter rounded-full text-sm font-medium"
                   onClick={() => markAllNotificationsAsRead()}
                   disabled={!notifications.some(n => !n.is_read)}
                 >
@@ -88,7 +88,7 @@ export default function NotificationsPage() {
                 <Button 
                   variant="secondary" 
                   size="default"
-                  className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-0 md:w-auto px-3 h-9 font-inter rounded-md text-sm font-medium"
+                  className="flex items-center gap-2 transition-colors duration-200 min-w-0 md:min-w-0 md:w-auto px-3 h-9 font-inter rounded-full text-sm font-medium"
                   onClick={() => deleteAllUserNotifications()}
                   disabled={notifications.length === 0}
                 >

@@ -8,15 +8,19 @@
     scrollbar-gutter: stable;
   }
 
-  /* Prioritize legibility for body text (p, span, a, button) */
-  p, span, a, button, input, textarea, select, li, label, td, th, [role="button"], [role="link"] {
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Prioritize legibility for body text and interactive elements */
+  p, span, a, button, input, textarea, select, li, label, td, th, summary,
+  [role="button"], [role="link"], [role="menuitem"], [role="tab"], 
+  [role="switch"], [role="checkbox"], [role="radio"], [role="option"] {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
   }
 
   /* Toolbar: use MuseoModerno for brand consistency with logo */
   [data-toolbar-font] p,
-  [data-toolbar-font] span {
-    font-family: var(--font-museo-moderno), sans-serif;
+  [data-toolbar-font] span,
+  [data-toolbar-font] a,
+  [data-toolbar-font] button {
+    font-family: var(--font-museo-moderno), sans-serif !important;
   }
   
   :root {
@@ -910,35 +914,27 @@
 /* Mejoras para los botones - avoid transition-all to prevent hover jumps */
 button.rounded-full, button.rounded-xl {
   transition: background-color 0.2s ease;
-  box-shadow: none;
-  border: none;
 }
 
 button.rounded-full:hover, button.rounded-xl:hover {
-  box-shadow: none;
   transform: none;
   background-color: rgba(0, 0, 0, 0.05);
 }
 
 button.rounded-full:active, button.rounded-xl:active {
-  box-shadow: none;
   transform: none;
   background-color: rgba(0, 0, 0, 0.1);
 }
 
 /* Estilos para el tema oscuro */
 .dark button.rounded-full, .dark button.rounded-xl {
-  box-shadow: none;
-  border: none;
 }
 
 .dark button.rounded-full:hover, .dark button.rounded-xl:hover {
-  box-shadow: none;
   background-color: rgba(255, 255, 255, 0.1);
 }
 
 .dark button.rounded-full:active, .dark button.rounded-xl:active {
-  box-shadow: none;
   background-color: rgba(255, 255, 255, 0.15);
 }
 

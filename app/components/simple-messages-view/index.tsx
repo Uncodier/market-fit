@@ -46,7 +46,7 @@ import { EmptyStatePrompts } from './components/EmptyStatePrompts'
 // Import utilities
 import { getActivityName, getToolName, groupTimelineToolCalls } from './utils'
 
-export function SimpleMessagesView({ className = "", activeRobotInstance, isBrowserVisible = false, onMessageSent, onNewInstanceCreated }: SimpleMessagesViewProps) {
+export function SimpleMessagesView({ className = "", activeRobotInstance, isBrowserVisible = false, onMessageSent, onNewInstanceCreated, hasTopHeaderSpace = true }: SimpleMessagesViewProps) {
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
   const { isLayoutCollapsed } = useLayout()
@@ -534,10 +534,12 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       {/* Messages list */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-6 w-full min-w-0 transition-colors duration-300 ease-in-out pb-[220px]"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-[220px] w-full min-w-0 transition-colors duration-300 ease-in-out"
       >
         <div className="w-full max-w-4xl mx-auto px-4 min-w-0">
-        <div className="space-y-6">
+          {/* Spacer for sticky header and topbar blur effect */}
+          <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
+          <div className="space-y-6 pt-6 pb-6">
         {(() => {
           if (shouldShowNewMakina) {
             return (

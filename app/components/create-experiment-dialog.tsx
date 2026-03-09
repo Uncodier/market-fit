@@ -198,7 +198,7 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
     >
       <DialogTrigger asChild>
         {trigger || (
-          <Button>
+          <Button className="rounded-full">
             <PlusCircle className="mr-2 h-4 w-4" />
             New Experiment
           </Button>
@@ -370,7 +370,7 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
               variant="outline"
               onClick={handleClose}
               disabled={isLoading}
-              className="h-12"
+              className="h-12 rounded-full"
             >
               Cancel
             </Button>
@@ -419,11 +419,11 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
                   toast.error("Debug error: " + (error instanceof Error ? error.message : "Unexpected error"))
                 }
               }}
-              className="h-12"
+              className="h-12 rounded-full"
             >
               Debug Create
             </Button>
-            <Button type="submit" disabled={isLoading} className="h-12">
+            <Button type="submit" disabled={isLoading} className="h-12 rounded-full">
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 animate-pulse bg-muted rounded" />

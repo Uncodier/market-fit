@@ -5,6 +5,7 @@ import { Task, TaskFilters, JOURNEY_STAGES } from '../types'
 import { v4 as uuidv4 } from 'uuid'
 import { useSite } from "@/app/context/SiteContext"
 import { createTask as createTaskAction, getTasksByLeadId as getTasksByLeadIdAction, updateTask as updateTaskAction, deleteTask as deleteTaskAction } from '../tasks/actions'
+import { getTasksByDealId } from '@/app/tasks/actions'
 import { toast } from "sonner"
 
 // Initial values for filters
@@ -47,15 +48,23 @@ export function TasksProvider({ children, leadId }: TasksProviderProps) {
   const [filters, setFilters] = useState<TaskFilters>(initialFilters)
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Function to load tasks for a lead
-  const loadTasksForLead = async (leadId: string) => {
+  // Function to load tasks for a lead or deal
+  const loadTasksForLead = async (id: string) => {
     if (!currentSite?.id) return
 
     setLoading(true)
     try {
-      const result = await getTasksByLeadIdAction(leadId)
+      // Determine if id is a lead or deal by checking the route or using both
+      let result;
+      const isDealRoute = typeof window !== 'undefined' && window.location.pathname.includes('/deals/');
       
-      if (result.error || !result.tasks) {
+      if (isDealRoute) {
+        result = await getTasksByDealId(id);
+      } else {
+        result = await getTasksByLeadIdAction(id);
+      }
+      
+      if (result.error || (!result.tasks && !result.data)) {
         const errorMessage = result.error || 'Failed to load tasks'
         setError(errorMessage)
         // Solo mostrar el toast si no es un error de inicialización y la app ya está inicializada
@@ -66,7 +75,8 @@ export function TasksProvider({ children, leadId }: TasksProviderProps) {
         return
       }
       
-      setTasks(result.tasks as Task[])
+      const loadedTasks = result.tasks || result.data;
+      setTasks(loadedTasks as Task[])
       setError(null)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load tasks'
@@ -100,9 +110,11 @@ export function TasksProvider({ children, leadId }: TasksProviderProps) {
         throw new Error('No site selected')
       }
       
+      const isDealRoute = typeof window !== 'undefined' && window.location.pathname.includes('/deals/');
+      
       // Validate required fields before processing
-      if (!taskData.lead_id) {
-        throw new Error('Lead ID is required')
+      if (!taskData.lead_id && !taskData.deal_id && !isDealRoute) {
+        throw new Error('Lead ID or Deal ID is required')
       }
       if (!taskData.title) {
         throw new Error('Title is required')
@@ -122,7 +134,8 @@ export function TasksProvider({ children, leadId }: TasksProviderProps) {
 
       // Filter data to match backend TaskSchema expectations
       const backendTaskData = {
-        lead_id: taskData.lead_id,
+        lead_id: taskData.lead_id || (isDealRoute ? null : leadId),
+        deal_id: taskData.deal_id || (isDealRoute ? leadId : null),
         title: taskData.title,
         description: taskData.description || null,
         type: taskData.type,
@@ -153,7 +166,7 @@ export function TasksProvider({ children, leadId }: TasksProviderProps) {
       setTasks(prevTasks => [...prevTasks, result.task as Task])
       
       // Recargar las tareas del servidor para asegurar sincronización
-      await loadTasksForLead(taskData.lead_id)
+      await loadTasksForLead(leadId)
       
       toast.success("Task created successfully")
       setLoading(false)
@@ -218,14 +231,22 @@ export function TasksProvider({ children, leadId }: TasksProviderProps) {
     }
   }
 
-  // Function to get tasks by lead ID
-  const getTasksByLeadId = (leadId: string) => {
-    return tasks.filter(task => task.lead_id === leadId)
+  // Function to get tasks by lead ID or deal ID
+  const getTasksByLeadId = (id: string) => {
+    // Si estamos en un deal, filtramos por deal_id (o por lead_id si el task pertenece a los leads del deal)
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/deals/')) {
+      // Como ya cargamos todas las tareas relacionadas (del deal y sus leads)
+      // desde getTasksByDealId, podemos devolver todas las tareas cargadas
+      return tasks;
+    }
+    
+    // Si estamos en un lead, filtramos explícitamente por lead_id
+    return tasks.filter(task => task.lead_id === id)
   }
 
   // Function to get tasks grouped by stage (for journey view)
-  const getTasksGroupedByStage = (leadId: string) => {
-    const leadTasks = getTasksByLeadId(leadId)
+  const getTasksGroupedByStage = (id: string) => {
+    const leadTasks = getTasksByLeadId(id)
     
     return JOURNEY_STAGES.map(stage => {
       return {

@@ -129,7 +129,7 @@ export function Combobox({
             </div>
           </div>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px]" align="start">
+        <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px] z-[1000000]" align="start">
           <div className="p-2">
             <div className="flex items-center px-3 pb-2 mb-2">
               <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-50" />

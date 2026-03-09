@@ -79,8 +79,8 @@ function getBadgeStyleForStatus(status: string) {
   }
 }
 
-// Helper for status check
-function getStatusContent(task: Task) {
+  // Helper for status check
+function getStatusContent(task: any) {
   if (task.status === "in_progress") {
     return (
       <div className="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center">
@@ -156,7 +156,7 @@ function TaskSkeleton() {
 export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
   const router = useRouter()
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false)
-  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [editingTask, setEditingTask] = useState<any>(null)
   const [isEditTaskOpen, setIsEditTaskOpen] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null)
@@ -165,6 +165,9 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
   const [taskCommentsCount, setTaskCommentsCount] = useState<Record<string, number>>({})
   const { getTasksGroupedByStage, updateTask, deleteTask, loading } = useTasks()
   
+  // Check if we are in deals context
+  const isDealContext = typeof window !== 'undefined' && window.location.pathname.includes('/deals/');
+
   // Get tasks grouped by stage
   const stageGroups = getTasksGroupedByStage(leadId)
   
@@ -309,7 +312,7 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
   }
   
   // Handle editing a task
-  const handleEditTask = (task: Task, e?: React.MouseEvent) => {
+  const handleEditTask = (task: any, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation()
     }
@@ -318,7 +321,8 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
   }
 
   // Handle task click to navigate to control center
-  const handleTaskClick = (task: Task) => {
+  const handleTaskClick = (task: any) => {
+    // Navigate via proper paths based on the context
     router.push(`/control-center/${task.id}`)
   }
 
@@ -522,7 +526,7 @@ export function JourneyTimeline({ leadId }: JourneyTimelineProps) {
             <AlertDialogTitle>Delete Task</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the task 
-              and remove it from this lead's journey.
+              and remove it from this {isDealContext ? "deal's" : "lead's"} journey.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

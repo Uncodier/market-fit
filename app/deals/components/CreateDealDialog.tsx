@@ -86,7 +86,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
           .order('name')
           
         if (companiesData) {
-          setCompaniesList(companiesData.map(c => ({ value: c.id, label: c.name })))
+          setCompaniesList(companiesData.map((c: any) => ({ value: c.id, label: c.name })))
         }
 
         // Fetch leads
@@ -97,7 +97,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
           .order('name')
           
         if (leadsData) {
-          setLeadsList(leadsData.map(l => ({ 
+          setLeadsList(leadsData.map((l: any) => ({ 
             value: l.id, 
             label: l.name + (l.email ? ` (${l.email})` : '') 
           })))
@@ -196,7 +196,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
         )}
       </DialogTrigger>
       <DialogContent 
-        className="sm:max-w-[550px]" 
+        className="sm:max-w-[550px] overflow-visible relative z-[99]" 
         onEscapeKeyDown={(e) => {
           if (isLoading) e.preventDefault()
         }}
@@ -214,7 +214,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-5 py-4">
+        <div className="space-y-5 py-4 relative z-[99] overflow-visible">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
               {error}
@@ -315,7 +315,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 relative z-[99]">
             <div className="space-y-2">
               <label htmlFor="lead" className="text-sm font-medium">
                 Primary Contact (Lead)
@@ -331,18 +331,16 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 flex flex-col relative z-[99]" style={{ zIndex: 100 }}>
               <label htmlFor="expectedCloseDate" className="text-sm font-medium">
                 Expected Close Date
               </label>
-              <div className="relative z-[1000000]">
-                <DatePicker
-                  date={expectedCloseDate as Date}
-                  setDate={setExpectedCloseDate as any}
-                  className="h-12 w-full"
-                  placeholder="Select close date"
-                />
-              </div>
+              <DatePicker
+                date={expectedCloseDate as Date}
+                setDate={setExpectedCloseDate as any}
+                className="w-full h-12"
+                placeholder="Select close date"
+              />
             </div>
           </div>
           
