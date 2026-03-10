@@ -35,6 +35,7 @@ export async function getDeals(siteId: string) {
     
     let dealOwners: DealOwner[] = []
     let dealContacts: DealContact[] = []
+    let dealTasks: any[] = []
     if (dealIds.length > 0) {
       const { data: owners } = await supabase
         .from("deal_owners")
@@ -71,14 +72,36 @@ export async function getDeals(siteId: string) {
         .in("deal_id", dealIds)
         
       dealContacts = contacts || []
+
+      // Fetch pending tasks to find next activity
+      const { data: tasks } = await supabase
+        .from("tasks")
+        .select(`
+          id,
+          deal_id,
+          title,
+          scheduled_date,
+          type
+        `)
+        .in("deal_id", dealIds)
+        .eq("status", "pending")
+        .order("scheduled_date", { ascending: true, nullsFirst: false })
+        
+      dealTasks = tasks || []
     }
 
-    // Attach owners and contacts to deals
-    const normalizedDeals = deals.map((deal: any) => ({
-      ...deal,
-      owners: dealOwners.filter((o) => o.deal_id === deal.id),
-      contacts: dealContacts.filter((c) => c.deal_id === deal.id)
-    }))
+    // Attach owners, contacts and next task to deals
+    const normalizedDeals = deals.map((deal: any) => {
+      const dTasks = dealTasks.filter(t => t.deal_id === deal.id)
+      const nextTask = dTasks.length > 0 ? dTasks[0] : null
+      
+      return {
+        ...deal,
+        owners: dealOwners.filter((o) => o.deal_id === deal.id),
+        contacts: dealContacts.filter((c) => c.deal_id === deal.id),
+        next_task: nextTask
+      }
+    })
 
     return { deals: normalizedDeals as Deal[], error: null }
   } catch (error: any) {
@@ -143,12 +166,30 @@ export async function getDealById(id: string) {
         lead:leads(*)
       `)
       .eq("deal_id", id)
+
+    // Fetch next task
+    const { data: tasks } = await supabase
+      .from("tasks")
+      .select(`
+        id,
+        deal_id,
+        title,
+        scheduled_date,
+        type
+      `)
+      .eq("deal_id", id)
+      .eq("status", "pending")
+      .order("scheduled_date", { ascending: true, nullsFirst: false })
+      .limit(1)
+      
+    const nextTask = tasks && tasks.length > 0 ? tasks[0] : null
       
     return { 
       deal: {
         ...deal,
         owners: owners || [],
-        contacts: contacts || []
+        contacts: contacts || [],
+        next_task: nextTask
       } as Deal, 
       error: null 
     }

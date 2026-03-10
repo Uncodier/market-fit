@@ -4,6 +4,8 @@ import { Badge } from "@/app/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Pagination } from "@/app/components/ui/pagination"
 import { Deal, STAGE_STYLES } from "@/app/deals/types"
+import { Clock } from "@/app/components/ui/icons"
+import { cn } from "@/lib/utils"
 
 interface DealsTableProps {
   deals: Deal[]
@@ -31,6 +33,25 @@ export function DealsTable({
     if (amount === null || amount === undefined) return "-"
     return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
   }
+
+  const formatTaskDate = (dateString: string | null) => {
+    if (!dateString) return ""
+    const date = new Date(dateString)
+    const now = new Date()
+    const isThisYear = date.getFullYear() === now.getFullYear()
+    const isThisMonth = isThisYear && date.getMonth() === now.getMonth()
+    
+    if (isThisMonth) {
+      // If it's this month, show day and short month (e.g., "Oct 15")
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    } else if (isThisYear) {
+      // If it's this year but different month, show short month (e.g., "Nov")
+      return date.toLocaleDateString(undefined, { month: 'short' })
+    } else {
+      // If it's a different year, show month and year (e.g., "Jan 2024")
+      return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    }
+  }
   
   return (
     <div className="border rounded-xl overflow-hidden bg-card">
@@ -43,6 +64,7 @@ export function DealsTable({
               <TableHead className="w-[120px] min-w-[120px]">Amount</TableHead>
               <TableHead className="w-[130px] min-w-[130px]">Stage</TableHead>
               <TableHead className="w-[130px] min-w-[130px]">Score</TableHead>
+              <TableHead className="w-[160px] min-w-[160px]">Next Activity</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -89,11 +111,36 @@ export function DealsTable({
                       <span className="text-xs text-muted-foreground">Unscored</span>
                     )}
                   </TableCell>
+                  <TableCell>
+                    <div 
+                      className={cn(
+                        "inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border",
+                        deal.next_task 
+                          ? "text-muted-foreground bg-muted/20 border-border/60 hover:bg-muted/40 transition-colors" 
+                          : "text-muted-foreground/60 bg-transparent border-transparent"
+                      )}
+                      title={deal.next_task ? `Next activity: ${deal.next_task.title}${deal.next_task.scheduled_date ? ` on ${formatTaskDate(deal.next_task.scheduled_date)}` : ''}` : "Next activity: Not scheduled"}
+                    >
+                      <Clock size={12} className={cn("flex-shrink-0", deal.next_task ? "text-primary/60" : "text-muted-foreground/40")} />
+                      {deal.next_task ? (
+                        <span className="flex items-center gap-1.5 truncate">
+                          <span className="truncate max-w-[80px] font-medium">{deal.next_task.title}</span>
+                          {deal.next_task.scheduled_date && (
+                            <span className="flex-shrink-0 opacity-70 border-l border-border/50 pl-1.5 whitespace-nowrap">
+                              {formatTaskDate(deal.next_task.scheduled_date)}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="truncate">Not scheduled</span>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No deals found.
                 </TableCell>
               </TableRow>

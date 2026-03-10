@@ -53,9 +53,30 @@ export function DealsView({ leadId }: DealsViewProps) {
           setDeals([])
         } else {
           // Format data
-          const formattedDeals = data
+          let formattedDeals = data
             .filter((item: any) => item.deals) // Ensure the deal exists
             .map((item: any) => item.deals as Deal)
+
+          // Fetch pending tasks
+          const dealIds = formattedDeals.map(d => d.id)
+          if (dealIds.length > 0) {
+            const { data: tasks } = await supabase
+              .from('tasks')
+              .select('id, deal_id, title, scheduled_date, type')
+              .in('deal_id', dealIds)
+              .eq('status', 'pending')
+              .order('scheduled_date', { ascending: true, nullsFirst: false })
+
+            if (tasks && tasks.length > 0) {
+              formattedDeals = formattedDeals.map(deal => {
+                const dTasks = tasks.filter(t => t.deal_id === deal.id)
+                return {
+                  ...deal,
+                  next_task: dTasks.length > 0 ? dTasks[0] : null
+                }
+              }) as Deal[]
+            }
+          }
             
           setDeals(formattedDeals)
         }

@@ -25,6 +25,22 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
     return new Date(dateString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   }
 
+  const formatTaskDate = (dateString: string | null) => {
+    if (!dateString) return ""
+    const date = new Date(dateString)
+    const now = new Date()
+    const isThisYear = date.getFullYear() === now.getFullYear()
+    const isThisMonth = isThisYear && date.getMonth() === now.getMonth()
+    
+    if (isThisMonth) {
+      return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    } else if (isThisYear) {
+      return date.toLocaleDateString(undefined, { month: 'short' })
+    } else {
+      return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    }
+  }
+
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result
 
@@ -153,10 +169,29 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
                                             )}
                                           </div>
                                           
-                                          {/* Next Activity Placeholder */}
-                                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/40 px-1.5 py-0.5 rounded border border-border/40" title="Next activity: Not scheduled">
-                                            <Clock size={10} className="text-muted-foreground/70 flex-shrink-0" />
-                                            <span className="truncate max-w-[90px]">Not scheduled</span>
+                                          {/* Next Activity */}
+                                          <div 
+                                            className={cn(
+                                              "flex items-center gap-1.5 text-[10px] px-1.5 py-0.5 rounded border max-w-[130px]",
+                                              deal.next_task 
+                                                ? "text-muted-foreground bg-muted/20 border-border/60 hover:bg-muted/40 transition-colors" 
+                                                : "text-muted-foreground/60 bg-transparent border-transparent"
+                                            )} 
+                                            title={deal.next_task ? `Next activity: ${deal.next_task.title}${deal.next_task.scheduled_date ? ` on ${formatTaskDate(deal.next_task.scheduled_date)}` : ''}` : "Next activity: Not scheduled"}
+                                          >
+                                            <Clock size={10} className={cn("flex-shrink-0", deal.next_task ? "text-primary/60" : "text-muted-foreground/40")} />
+                                            {deal.next_task ? (
+                                              <span className="truncate flex items-center gap-1">
+                                                <span className="truncate max-w-[65px] font-medium">{deal.next_task.title}</span>
+                                                {deal.next_task.scheduled_date && (
+                                                  <span className="flex-shrink-0 opacity-70 border-l border-border/50 pl-1">
+                                                    {formatTaskDate(deal.next_task.scheduled_date)}
+                                                  </span>
+                                                )}
+                                              </span>
+                                            ) : (
+                                              <span className="truncate">Not scheduled</span>
+                                            )}
                                           </div>
                                         </div>
                                         

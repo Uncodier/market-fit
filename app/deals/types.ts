@@ -52,6 +52,12 @@ export interface Deal {
   // Relations
   contacts?: DealContact[]
   owners?: DealOwner[]
+  next_task?: {
+    id: string
+    title: string
+    scheduled_date: string | null
+    type: string | null
+  } | null
 }
 
 export interface DealFilters {

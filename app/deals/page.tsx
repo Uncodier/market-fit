@@ -35,6 +35,7 @@ function DealsTableSkeleton() {
             <TableHead className="w-[120px]"><Skeleton className="h-4 w-20" /></TableHead>
             <TableHead className="w-[130px]"><Skeleton className="h-4 w-16" /></TableHead>
             <TableHead className="w-[130px]"><Skeleton className="h-4 w-16" /></TableHead>
+            <TableHead className="w-[160px]"><Skeleton className="h-4 w-20" /></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -45,6 +46,7 @@ function DealsTableSkeleton() {
               <TableCell><Skeleton className="h-4 w-20" /></TableCell>
               <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
               <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+              <TableCell><Skeleton className="h-6 w-24 rounded border" /></TableCell>
             </TableRow>
           ))}
         </TableBody>
