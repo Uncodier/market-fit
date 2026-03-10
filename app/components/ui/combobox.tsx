@@ -103,7 +103,7 @@ export function Combobox({
               placeholder={placeholder}
               disabled={disabled}
               className={cn(
-                "w-full pr-9",
+                "w-full pr-9 font-inter",
                 icon && "pl-9",
                 className
               )}
@@ -129,7 +129,7 @@ export function Combobox({
             </div>
           </div>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px] z-[1000000]" align="start">
+        <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] max-h-[300px] z-[1000000] font-inter" align="start">
           <div className="p-2">
             <div className="flex items-center px-3 pb-2 mb-2">
               <Search className="mr-2 h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -137,7 +137,7 @@ export function Combobox({
                 placeholder={searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-0 shadow-none focus-visible:ring-0 h-8"
+                className="border-0 shadow-none focus-visible:ring-0 h-8 font-inter"
               />
             </div>
             <div className="max-h-64 overflow-auto">
@@ -146,7 +146,7 @@ export function Combobox({
                   <div
                     key={option.value}
                     className={cn(
-                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground transition-colors",
+                      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm font-inter outline-none hover:bg-accent hover:text-accent-foreground transition-colors",
                       value === option.value && "bg-accent text-accent-foreground"
                     )}
                     onClick={() => handleSelectOption(option)}
@@ -155,7 +155,7 @@ export function Combobox({
                   </div>
                 ))
               ) : (
-                <div className="py-6 text-center text-sm text-muted-foreground">{emptyMessage}</div>
+                <div className="py-6 text-center text-sm font-inter text-muted-foreground">{emptyMessage}</div>
               )}
             </div>
           </div>

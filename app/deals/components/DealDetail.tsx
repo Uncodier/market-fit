@@ -366,15 +366,15 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
 
   return (
     <>
-      <div className="space-y-6 md:space-y-12 relative z-[99]">
+      <div className="space-y-6 md:space-y-12 relative">
         {/* General Information */}
-        <Card id="deal-information" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200 relative z-[99] overflow-visible">
+        <Card id="deal-information" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200 relative overflow-visible">
         <CardHeader className="px-6 md:px-8 py-6 pb-2">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
             <FileText className="h-5 w-5" /> General Information
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-6 md:px-8 pb-8 space-y-8 relative z-[99] overflow-visible">
+        <CardContent className="px-6 md:px-8 pb-8 space-y-8 relative overflow-visible">
           {/* Deal Metrics Summary (Requested in prompt) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 pt-4">
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 flex flex-col items-center justify-center text-center h-28">
@@ -397,7 +397,7 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 pt-4 border-t relative z-[99] overflow-visible">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 pt-4 border-t relative overflow-visible">
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Deal Name</label>
               <div className="relative">
@@ -425,7 +425,7 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
               </div>
             </div>
 
-            <div className="space-y-3 relative z-10" style={{ zIndex: 100 }}>
+            <div className="space-y-3 relative z-10">
               <label className="text-sm font-medium text-foreground">Expected Close Date</label>
               <DatePicker 
                 date={generalForm.expected_close_date ? new Date(generalForm.expected_close_date + 'T12:00:00') : undefined}

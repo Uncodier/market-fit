@@ -196,7 +196,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
         )}
       </DialogTrigger>
       <DialogContent 
-        className="sm:max-w-[550px] overflow-visible relative z-[99]" 
+        className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto" 
         onEscapeKeyDown={(e) => {
           if (isLoading) e.preventDefault()
         }}
@@ -214,7 +214,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-5 py-4 relative z-[99] overflow-visible">
+        <div className="space-y-5 py-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
               {error}
@@ -315,7 +315,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4 relative z-[99]">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="lead" className="text-sm font-medium">
                 Primary Contact (Lead)
@@ -331,7 +331,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
               />
             </div>
 
-            <div className="space-y-2 flex flex-col relative z-[99]" style={{ zIndex: 100 }}>
+            <div className="space-y-2 flex flex-col justify-end">
               <label htmlFor="expectedCloseDate" className="text-sm font-medium">
                 Expected Close Date
               </label>

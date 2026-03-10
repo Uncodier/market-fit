@@ -24,10 +24,10 @@ const SelectValue = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Value>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value>
 >(({ className, ...props }, ref) => (
-  <div className="flex-1 min-w-0 overflow-hidden">
+  <div className="flex-1 min-w-0 overflow-hidden font-inter">
     <SelectPrimitive.Value
       ref={ref}
-      className={cn("text-left block whitespace-nowrap overflow-hidden text-ellipsis truncate w-full max-w-full", className)}
+      className={cn("text-left block whitespace-nowrap overflow-hidden text-ellipsis truncate w-full max-w-full font-inter", className)}
       style={{ pointerEvents: 'none' }}
       {...props}
     />
@@ -42,7 +42,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-11 w-full min-w-0 items-center justify-between rounded-md border border-input bg-background px-2.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-left overflow-hidden",
+      "flex h-11 w-full min-w-0 font-inter items-center justify-between rounded-md border border-input bg-background px-2.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-left overflow-hidden",
       className
     )}
     {...props}
@@ -106,7 +106,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[state=checked]:bg-accent/50 data-[state=checked]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-muted transition-colors duration-150 text-left leading-none",
+      "flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm font-inter outline-none focus:bg-accent focus:text-accent-foreground data-[state=checked]:bg-accent/50 data-[state=checked]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-muted transition-colors duration-150 text-left leading-none",
       className
     )}
     {...props}
