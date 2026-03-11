@@ -2,6 +2,7 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { format } from "date-fns"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { PieChart } from "@/app/components/ui/icons"
@@ -257,8 +258,8 @@ export function CampaignRevenueDonut({
     return (
       <EmptyCard 
         icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-        title="No revenue data available"
-        description="There is no campaign revenue data available for the selected period."
+        title={t('dashboard.reports.noRevenueData') || 'No revenue data available'}
+        description={t('dashboard.reports.noRevenueDataDesc') || 'There is no campaign revenue data available for the selected period.'}
       />
     );
   }

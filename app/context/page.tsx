@@ -27,6 +27,7 @@ import { handleDeleteSite, handleSaveGeneral, handleSaveCompany, handleSaveBrand
 import { Input } from "../components/ui/input"
 import { useAuthContext } from "../components/auth/auth-provider"
 import { QuickNav, type QuickNavSection } from "../components/ui/quick-nav"
+import { useLocalization } from "../context/LocalizationContext"
 
 function ContextFormSkeleton() {
   return (
@@ -141,46 +142,46 @@ function ContextFormSkeleton() {
 }
 
 // Section configurations for quick navigation
-const getInitialCompanySections = (): QuickNavSection[] => [
-  { id: "company-profile", title: "Company Profile" },
+const getCompanySections = (t: (key: string) => string): QuickNavSection[] => [
+  { id: "company-profile", title: t('context.nav.companyInformation') || "Company Profile" },
   { 
     id: "goals-quarterly", 
-    title: "Business Goals",
+    title: t('context.nav.goals') || "Business Goals",
     children: [
-      { id: "goals-quarterly", title: "Quarter Goals" },
-      { id: "goals-yearly", title: "Year Goals" },
-      { id: "goals-five-year", title: "5 Year Goals" },
-      { id: "goals-ten-year", title: "10 Year Goals" },
+      { id: "goals-quarterly", title: t('context.nav.goals.quarterly') || "Quarter Goals" },
+      { id: "goals-yearly", title: t('context.nav.goals.yearly') || "Year Goals" },
+      { id: "goals-five-year", title: t('context.nav.goals.fiveYear') || "5 Year Goals" },
+      { id: "goals-ten-year", title: t('context.nav.goals.tenYear') || "10 Year Goals" },
     ]
   },
   { 
     id: "swot-strengths", 
-    title: "SWOT Analysis",
+    title: t('context.nav.swot') || "SWOT Analysis",
     children: [
-      { id: "swot-strengths", title: "Strengths" },
-      { id: "swot-weaknesses", title: "Weaknesses" },
-      { id: "swot-opportunities", title: "Opportunities" },
-      { id: "swot-threats", title: "Threats" },
+      { id: "swot-strengths", title: t('context.nav.swot.strengths') || "Strengths" },
+      { id: "swot-weaknesses", title: t('context.nav.swot.weaknesses') || "Weaknesses" },
+      { id: "swot-opportunities", title: t('context.nav.swot.opportunities') || "Opportunities" },
+      { id: "swot-threats", title: t('context.nav.swot.threats') || "Threats" },
     ]
   },
   { 
     id: "office-locations", 
-    title: "Office Locations",
+    title: t('context.nav.officeLocations') || "Office Locations",
     children: []
   },
   { 
     id: "service-available-restrictions", 
-    title: "Service Available Restrictions",
+    title: t('context.nav.serviceRestrictions') || "Service Available Restrictions",
     children: []
   },
   { 
     id: "service-exclusions-addresses", 
-    title: "Service Exclusions Addresses",
+    title: t('context.nav.serviceExclusions') || "Service Exclusions Addresses",
     children: []
   },
   { 
     id: "business-hours", 
-    title: "Business Hours",
+    title: t('context.nav.businessHours') || "Business Hours",
     children: []
   },
 ]
@@ -466,11 +467,11 @@ export default function ContextPage() {
           <div className="flex items-center justify-between px-16 w-full">
             <Tabs value="company" className="w-auto">
               <TabsList>
-                <TabsTrigger value="company">Company</TabsTrigger>
-                <TabsTrigger value="branding">Branding</TabsTrigger>
-                <TabsTrigger value="marketing">Marketing</TabsTrigger>
-                <TabsTrigger value="copywriting">Copy Sequences</TabsTrigger>
-                <TabsTrigger value="customer-journey">Customer Journey</TabsTrigger>
+                <TabsTrigger value="company">{t('context.tabs.company') || 'Company'}</TabsTrigger>
+                <TabsTrigger value="branding">{t('context.tabs.branding') || 'Branding'}</TabsTrigger>
+                <TabsTrigger value="marketing">{t('context.tabs.marketing') || 'Marketing'}</TabsTrigger>
+                <TabsTrigger value="copywriting">{t('settings.nav.copySequences') || 'Copy Sequences'}</TabsTrigger>
+                <TabsTrigger value="customer-journey">{t('context.nav.customerJourney') || 'Customer Journey'}</TabsTrigger>
                 {/* <TabsTrigger value="social">Social Networks</TabsTrigger> */}
               </TabsList>
             </Tabs>
@@ -490,7 +491,7 @@ export default function ContextPage() {
   if (!currentSite) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-gray-500">No site selected</p>
+        <p className="text-gray-500">{t('context.empty.noSite') || 'No site selected'}</p>
       </div>
     )
   }
@@ -501,11 +502,11 @@ export default function ContextPage() {
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
             <TabsList className="flex">
-              <TabsTrigger value="company" className="whitespace-nowrap">Company</TabsTrigger>
-              <TabsTrigger value="branding" className="whitespace-nowrap">Branding</TabsTrigger>
-              <TabsTrigger value="marketing" className="whitespace-nowrap">Marketing</TabsTrigger>
-              <TabsTrigger value="copywriting" className="whitespace-nowrap">Copy Sequences</TabsTrigger>
-              <TabsTrigger value="customer-journey" className="whitespace-nowrap">Customer Journey</TabsTrigger>
+              <TabsTrigger value="company" className="whitespace-nowrap">{t('context.tabs.company') || 'Company'}</TabsTrigger>
+              <TabsTrigger value="branding" className="whitespace-nowrap">{t('context.tabs.branding') || 'Branding'}</TabsTrigger>
+              <TabsTrigger value="marketing" className="whitespace-nowrap">{t('context.tabs.marketing') || 'Marketing'}</TabsTrigger>
+              <TabsTrigger value="copywriting" className="whitespace-nowrap">{t('settings.nav.copySequences') || 'Copy Sequences'}</TabsTrigger>
+              <TabsTrigger value="customer-journey" className="whitespace-nowrap">{t('context.nav.customerJourney') || 'Customer Journey'}</TabsTrigger>
               {/* <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger> */}
             </TabsList>
           </Tabs>
@@ -540,45 +541,44 @@ export default function ContextPage() {
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Site</AlertDialogTitle>
+            <AlertDialogTitle>{t('context.delete.title') || 'Delete Site'}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the site
-              "{currentSite?.name}" and all of its data including pages, assets, and settings.
+              {(t('context.delete.description') || 'This action cannot be undone. This will permanently delete the site "{siteName}" and all of its data including pages, assets, and settings.').replace('{siteName}', currentSite?.name || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground mb-2">
-              To confirm, type the site name <span className="font-semibold">"{currentSite?.name}"</span> below:
+              <span dangerouslySetInnerHTML={{ __html: (t('context.delete.confirmLabel') || 'To confirm, type the site name "{siteName}" below:').replace('{siteName}', `<span class="font-semibold">"${currentSite?.name}"</span>`) }} />
             </p>
             <div className="space-y-2">
               <Input
                 type="text"
                 value={confirmationName}
                 onChange={(e) => setConfirmationName(e.target.value)}
-                placeholder="Enter site name"
+                placeholder={t('context.delete.placeholder') || "Enter site name"}
                 disabled={isSaving}
                 className={confirmationName === currentSite?.name ? "border-green-500 focus-visible:ring-green-500" : ""}
               />
               {confirmationName && confirmationName !== currentSite?.name && (
                 <p className="text-xs text-red-500">
-                  Site name doesn't match. Please type "{currentSite?.name}" exactly.
+                  {(t('context.delete.mismatch') || 'Site name doesn\'t match. Please type "{siteName}" exactly.').replace('{siteName}', currentSite?.name || '')}
                 </p>
               )}
               {confirmationName === currentSite?.name && (
                 <p className="text-xs text-green-600">
-                  ✓ Site name confirmed
+                  {t('context.delete.confirmed') || '✓ Site name confirmed'}
                 </p>
               )}
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('context.delete.cancel') || 'Cancel'}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={onDeleteSite}
               className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSaving || confirmationName !== currentSite?.name}
             >
-              {isSaving ? "Deleting..." : "Delete Site"}
+              {isSaving ? (t('context.delete.deleting') || "Deleting...") : (t('context.delete.submit') || "Delete Site")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

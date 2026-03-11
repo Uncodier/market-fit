@@ -9,6 +9,7 @@ import { ClipboardList, Tag, CalendarIcon, CheckCircle2, AlertCircle, Clock, Che
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { Separator } from "@/app/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Definimos los tipos de estado de los requisitos
 const REQUIREMENT_STATUSES = [
@@ -119,6 +120,7 @@ export function KanbanView({
   filters,
   onOpenFilters
 }: KanbanViewProps) {
+  const { t } = useLocalization()
   const { toast } = useToast()
   
   // Estado para controlar qué columnas están colapsadas
@@ -199,15 +201,15 @@ export function KanbanView({
       await onUpdateRequirementStatus(draggableId, destination.droppableId as any)
       
       toast({
-        title: "Status updated",
-        description: `Requirement moved to ${REQUIREMENT_STATUSES.find(s => s.id === destination.droppableId)?.name}`,
+        title: t('requirements.kanban.statusUpdated') || "Status updated",
+        description: `${t('requirements.kanban.movedTo') || 'Requirement moved to'} ${REQUIREMENT_STATUSES.find(s => s.id === destination.droppableId)?.name}`,
       })
     } catch (error) {
       // Si hay un error, revertimos el cambio local
       toast({
         title: "Error",
         variant: "destructive",
-        description: "Error updating requirement status",
+        description: t('requirements.kanban.errorUpdating') || "Error updating requirement status",
       })
       setRequirementsByStatus(getRequirementsByStatus())
     }
@@ -229,14 +231,14 @@ export function KanbanView({
       {hasNoRequirements ? (
         <EmptyState
           icon={<ClipboardList className="h-12 w-12 text-primary" />}
-          title="No requirements found"
-          description="There are no requirements matching your current filters or you haven't created any requirements yet."
-          hint="Try clearing your filters or create a new requirement to get started."
+          title={t('requirements.empty.noTitle') || "No requirements found"}
+          description={t('requirements.empty.noMatch') || "There are no requirements matching your current filters or you haven't created any requirements yet."}
+          hint={t('requirements.empty.hint') || "Try clearing your filters or create a new requirement to get started."}
         />
       ) : (
-        <div className="overflow-x-auto pb-8">
+        <div className="w-full">
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="inline-flex gap-4 pb-4 min-h-[200px]">
+            <div className="flex gap-4 pb-4 min-w-fit min-h-[200px]">
               {REQUIREMENT_STATUSES.map(status => {
                 const isCollapsed = collapsedColumns[status.id] || false;
                 const columnItems = requirementsByStatus[status.id];
@@ -325,11 +327,11 @@ export function KanbanView({
                                           requirement.type === 'planning' ? 'text-amber-600 dark:text-amber-400' :
                                           'text-pink-600 dark:text-pink-400'
                                         }`}>
-                                          {requirement.type === 'follow_up' ? 'Follow Up' : requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)}
+                                          {requirement.type === 'follow_up' ? (t('requirements.types.followUp') || 'Follow Up') : (t(`requirements.types.${requirement.type}`) || requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1))}
                                         </span>
                                       </div>
                                       <Badge className={`text-xs whitespace-nowrap ml-2 ${PRIORITY_COLORS[requirement.priority]}`}>
-                                        {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                                        {t(`requirements.priority.${requirement.priority}`) || requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
                                       </Badge>
                                     </div>
                                     
@@ -371,7 +373,7 @@ export function KanbanView({
                                           ) : (
                                             <>
                                               <Target className="h-3 w-3" />
-                                              <span className="text-gray-500 dark:text-gray-500">No campaign</span>
+                                              <span className="text-gray-500 dark:text-gray-500">{t('requirements.list.noCampaign') || 'No campaign'}</span>
                                             </>
                                           )}
                                         </div>
@@ -380,7 +382,7 @@ export function KanbanView({
                                           {requirement.budget ? (
                                             <span className="font-medium">${requirement.budget.toLocaleString()}</span>
                                           ) : (
-                                            <span className="text-gray-500 dark:text-gray-500">No budget</span>
+                                            <span className="text-gray-500 dark:text-gray-500">{t('requirements.kanban.noBudget') || 'No budget'}</span>
                                           )}
                                         </div>
                                       </div>
@@ -416,6 +418,7 @@ function KanbanRequirementCard({
   snapshot: DraggableStateSnapshot,
   onClick: (requirement: Requirement) => void
 }) {
+  const { t } = useLocalization()
   return (
     <div
       ref={provided.innerRef}
@@ -452,9 +455,9 @@ function KanbanRequirementCard({
             requirement.type === 'integration' ? 'text-rose-600 dark:text-rose-400' :
             requirement.type === 'planning' ? 'text-amber-600 dark:text-amber-400' :
             'text-pink-600 dark:text-pink-400'
-          }`}>
-            {requirement.type === 'follow_up' ? 'Follow Up' : requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)}
-          </span>
+                                        }`}>
+                                          {requirement.type === 'follow_up' ? (t('requirements.types.followUp') || 'Follow Up') : (t(`requirements.types.${requirement.type}`) || requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1))}
+                                        </span>
         </div>
         <Badge className={`capitalize ${PRIORITY_COLORS[requirement.priority]}`}>{requirement.priority}</Badge>
       </div>
@@ -511,7 +514,7 @@ function KanbanRequirementCard({
           ))}
           {requirement.segmentNames.length > 3 && (
             <span className="px-1.5 py-0.5 text-xs rounded-full bg-muted/20 text-muted-foreground">
-              +{requirement.segmentNames.length - 3} more
+              +{requirement.segmentNames.length - 3} {t('requirements.kanban.more') || 'more'}
             </span>
           )}
         </div>
@@ -520,7 +523,7 @@ function KanbanRequirementCard({
       {/* Campaign information */}
       {requirement.campaignNames && requirement.campaignNames.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2 border-t pt-2">
-          <span className="text-xs text-muted-foreground mr-1">Campaigns:</span>
+          <span className="text-xs text-muted-foreground mr-1">{t('requirements.kanban.campaigns') || 'Campaigns:'}</span>
           {requirement.campaignNames.slice(0, 2).map((campaign, i) => (
             <span
               key={`${requirement.id}-campaign-${i}`}
@@ -531,7 +534,7 @@ function KanbanRequirementCard({
           ))}
           {requirement.campaignNames.length > 2 && (
             <span className="px-1.5 py-0.5 text-xs rounded-full bg-muted/20 text-muted-foreground">
-              +{requirement.campaignNames.length - 2} more
+              +{requirement.campaignNames.length - 2} {t('requirements.kanban.more') || 'more'}
             </span>
           )}
         </div>

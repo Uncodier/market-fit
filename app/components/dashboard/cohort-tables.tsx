@@ -4,6 +4,7 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { format, subDays } from "date-fns"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -62,6 +63,7 @@ function getGradientBackground(value: number, isDarkMode: boolean) {
 }
 
 export function CohortTables({ segmentId = "all", startDate: propStartDate, endDate: propEndDate }: CohortTablesProps) {
+  const { t } = useLocalization();
   const { isDarkMode } = useTheme();
   const { currentSite } = useSite();
   const { user } = useAuth();
@@ -254,15 +256,15 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
       {/* Sales Cohort Table - Only show if we have sales data */}
       {salesCohortData.length > 0 && (
         <div>
-          <h3 className="text-lg font-medium mb-4">Sales Retention by Week</h3>
+          <h3 className="text-lg font-medium mb-4">{t('dashboard.cohort.salesRetention') || 'Sales Retention by Week'}</h3>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cohort</TableHead>
+                  <TableHead>{t('dashboard.cohort.cohort') || 'Cohort'}</TableHead>
                   {Array.from({ length: 8 }).map((_, i) => (
                     <TableHead key={i} className="text-center">
-                      Week {i + 1}
+                      {t('dashboard.cohort.week') || 'Week'} {i + 1}
                     </TableHead>
                   ))}
                 </TableRow>
@@ -301,15 +303,15 @@ export function CohortTables({ segmentId = "all", startDate: propStartDate, endD
       {/* Usage Cohort Table - Only show if we have usage data */}
       {usageCohortData.length > 0 && (
         <div>
-          <h3 className="text-lg font-medium mb-4">Usage Retention by Week</h3>
+          <h3 className="text-lg font-medium mb-4">{t('dashboard.cohort.usageRetention') || 'Usage Retention by Week'}</h3>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cohort</TableHead>
+                  <TableHead>{t('dashboard.cohort.cohort') || 'Cohort'}</TableHead>
                   {Array.from({ length: 8 }).map((_, i) => (
                     <TableHead key={i} className="text-center">
-                      Week {i + 1}
+                      {t('dashboard.cohort.week') || 'Week'} {i + 1}
                     </TableHead>
                   ))}
                 </TableRow>

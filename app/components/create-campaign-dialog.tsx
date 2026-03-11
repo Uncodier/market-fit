@@ -40,6 +40,7 @@ import { Switch } from "@/app/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { campaignFormSchema, type CampaignFormValues } from "../campaigns/schema"
 import * as z from "zod"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface Segment {
   id: string
@@ -83,6 +84,7 @@ export function CreateCampaignDialog({
   onCreateCampaign,
   trigger 
 }: CreateCampaignDialogProps) {
+  const { t } = useLocalization()
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { user } = useAuth()
@@ -129,11 +131,18 @@ export function CreateCampaignDialog({
     try {
       setIsLoading(true)
       
-      // Add site_id and user_id to values
+      // Add site_id to values
       values.site_id = currentSite.id
       values.user_id = user.id
+      
+      const payload = { ...values }
+      
+      // Override status to 'active' if they just created it
+      if (payload.status === 'draft') {
+          payload.status = 'active';
+      }
 
-      const response = await onCreateCampaign(values)
+      const response = await onCreateCampaign(payload)
 
       if (response.error) {
         toast.error(response.error)
@@ -182,21 +191,21 @@ export function CreateCampaignDialog({
       >
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Create New Campaign</DialogTitle>
+            <DialogTitle>{t('campaigns.create.title') || 'Create New Campaign'}</DialogTitle>
             <DialogDescription>
-              Create a new marketing campaign to organize your marketing activities.
+              {t('campaigns.create.description') || 'Create a new marketing campaign to organize your marketing activities.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">{t('campaigns.create.titleLabel') || 'Title'}</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <Input
                   id="title"
-                  placeholder="Campaign title"
+                  placeholder={t('campaigns.create.titlePlaceholder') || 'Campaign title'}
                   className="h-12 pl-10"
                   {...form.register("title")}
                 />
@@ -210,14 +219,14 @@ export function CreateCampaignDialog({
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t('campaigns.create.descriptionLabel') || 'Description'}</Label>
               <div className="relative">
                 <div className="absolute left-3 top-3 flex items-center pointer-events-none">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <Textarea
                   id="description"
-                  placeholder="Describe the campaign objectives and goals"
+                  placeholder={t('campaigns.create.descriptionPlaceholder') || 'Describe the campaign objectives and goals'}
                   className="min-h-[100px] pl-10 pt-2"
                   {...form.register("description")}
                 />
@@ -232,7 +241,7 @@ export function CreateCampaignDialog({
             
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="type">Campaign Type</Label>
+                <Label htmlFor="type">{t('campaigns.create.typeLabel') || 'Campaign Type'}</Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                     <Tag className="h-4 w-4 text-muted-foreground" />
@@ -242,7 +251,7 @@ export function CreateCampaignDialog({
                     defaultValue={form.getValues("type")}
                   >
                     <SelectTrigger id="type" className="h-12 pl-10">
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder={t('campaigns.create.selectType') || 'Select type'} />
                     </SelectTrigger>
                     <SelectContent>
                       {CAMPAIGN_TYPES.map((type) => (
@@ -260,7 +269,7 @@ export function CreateCampaignDialog({
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="priority">Priority</Label>
+                <Label htmlFor="priority">{t('campaigns.create.priorityLabel') || 'Priority'}</Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                     <BarChart className="h-4 w-4 text-muted-foreground" />
@@ -270,12 +279,12 @@ export function CreateCampaignDialog({
                     defaultValue={form.getValues("priority")}
                   >
                     <SelectTrigger id="priority" className="h-12 pl-10">
-                      <SelectValue placeholder="Select priority" />
+                      <SelectValue placeholder={t('campaigns.create.selectPriority') || 'Select priority'} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="high">High Priority</SelectItem>
-                      <SelectItem value="medium">Medium Priority</SelectItem>
-                      <SelectItem value="low">Low Priority</SelectItem>
+                      <SelectItem value="high">{t('campaigns.create.priorityHigh') || 'High Priority'}</SelectItem>
+                      <SelectItem value="medium">{t('campaigns.create.priorityMedium') || 'Medium Priority'}</SelectItem>
+                      <SelectItem value="low">{t('campaigns.create.priorityLow') || 'Low Priority'}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -290,7 +299,7 @@ export function CreateCampaignDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="dueDate">Due Date</Label>
+                <Label htmlFor="dueDate">{t('campaigns.create.dueDateLabel') || 'Due Date'}</Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                     <CalendarIcon className="h-4 w-4 text-muted-foreground" />
@@ -311,7 +320,7 @@ export function CreateCampaignDialog({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="budget">Budget</Label>
+                <Label htmlFor="budget">{t('campaigns.create.budgetLabel') || 'Budget'}</Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                     <ShoppingCart className="h-4 w-4 text-muted-foreground" />
@@ -319,7 +328,7 @@ export function CreateCampaignDialog({
                   <Input
                     id="budget"
                     type="number"
-                    placeholder="Budget amount"
+                    placeholder={t('campaigns.create.budgetPlaceholder') || 'Budget amount'}
                     className="h-12 pl-10"
                     onChange={(e) => {
                       const value = parseFloat(e.target.value)
@@ -340,7 +349,7 @@ export function CreateCampaignDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label>Target Segments</Label>
+              <Label>{t('campaigns.create.targetSegments') || 'Target Segments'}</Label>
               <ScrollArea className="h-[150px] rounded-md border">
                 <div className="p-4">
                   {segments.length > 0 ? (
@@ -389,7 +398,7 @@ export function CreateCampaignDialog({
                     })
                   ) : (
                     <div className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">No segments available</p>
+                      <p className="text-sm text-muted-foreground">{t('campaigns.create.noSegments') || 'No segments available'}</p>
                     </div>
                   )}
                 </div>
@@ -397,7 +406,7 @@ export function CreateCampaignDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label>Related Requirements</Label>
+              <Label>{t('campaigns.create.relatedRequirements') || 'Related Requirements'}</Label>
               <ScrollArea className="h-[150px] rounded-md border">
                 <div className="p-4">
                   {requirements.length > 0 ? (
@@ -446,7 +455,7 @@ export function CreateCampaignDialog({
                     })
                   ) : (
                     <div className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">No requirements available</p>
+                      <p className="text-sm text-muted-foreground">{t('campaigns.create.noRequirements') || 'No requirements available'}</p>
                     </div>
                   )}
                 </div>
@@ -461,15 +470,15 @@ export function CreateCampaignDialog({
               disabled={isLoading}
               className="h-12"
             >
-              Cancel
+              {t('campaigns.create.cancel') || 'Cancel'}
             </Button>
             <Button type="submit" disabled={isLoading} className="h-12">
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                  <span>Creating</span>
+                  <span>{t('campaigns.create.creating') || 'Creating'}</span>
                 </div>
-              ) : "Create Campaign"}
+              ) : (t('campaigns.create.submit') || 'Create Campaign')}
             </Button>
           </DialogFooter>
         </form>

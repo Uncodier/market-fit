@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyCard } from '@/app/components/ui/empty-card';
 import { ExternalLink } from '@/app/components/ui/icons';
+import { useLocalization } from '@/app/context/LocalizationContext';
 
 interface ReferrerData {
   referrer: string;
@@ -31,6 +32,7 @@ export function SessionEventsReferrers({
   loading: propLoading, 
   error: propError 
 }: SessionEventsReferrersProps) {
+  const { t } = useLocalization();
   const [internalData, setInternalData] = useState<ReferrerData[]>([]);
   const [internalLoading, setInternalLoading] = useState(true);
   const [internalError, setInternalError] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export function SessionEventsReferrers({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Top Referrers</CardTitle>
+          <CardTitle>{t('dashboard.traffic.topReferrers') || 'Top Referrers'}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -144,7 +146,7 @@ export function SessionEventsReferrers({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Top Referrers</CardTitle>
+          <CardTitle>{t('dashboard.traffic.topReferrers') || 'Top Referrers'}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-red-500 text-center py-8">
@@ -158,23 +160,23 @@ export function SessionEventsReferrers({
   return (
     <Card className="flex flex-col">
       <CardHeader className="flex-shrink-0">
-        <CardTitle>Top Referrers</CardTitle>
+        <CardTitle>{t('dashboard.traffic.topReferrers') || 'Top Referrers'}</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
         {data.length === 0 ? (
           <div className="flex-1 w-full h-full flex items-center justify-center">
             <EmptyCard
               icon={<ExternalLink className="h-10 w-10 text-muted-foreground" />}
-              title="No Referrers Found"
-              description="No referrer data available for page visits in this time period"
+              title={t('dashboard.traffic.noReferrers') || 'No Referrers Found'}
+              description={t('dashboard.traffic.noReferrersDesc') || 'No referrer data available for page visits in this time period'}
             />
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Referrer</TableHead>
-                <TableHead className="text-right">Events</TableHead>
+                <TableHead>{t('dashboard.traffic.referrer') || 'Referrer'}</TableHead>
+                <TableHead className="text-right">{t('dashboard.traffic.events') || 'Events'}</TableHead>
                 <TableHead className="text-right">%</TableHead>
               </TableRow>
             </TableHeader>

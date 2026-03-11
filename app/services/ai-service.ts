@@ -7,6 +7,7 @@ export interface AISegmentResponse {
   message?: string;
   segments?: any[];
   error?: string;
+  code?: string;
   jobId?: string;
   rawResponse?: string;
   details?: any;
@@ -106,6 +107,7 @@ export async function buildSegmentsWithAI(params: BuildSegmentsParams): Promise<
         return {
           success: false,
           error: response.error?.message || "Unknown error occurred",
+          code: response.error?.code,
           details: response.error?.details,
           rawResponse: response.error?.details?.htmlContent || response.error?.details?.textContent,
           apiUrl: apiClient.getApiUrl()
@@ -236,6 +238,7 @@ export async function buildSegmentsICPWithAI(params: BuildSegmentsParams): Promi
         return {
           success: false,
           error: response.error?.message || "Unknown error occurred",
+          code: response.error?.code,
           details: response.error?.details,
           rawResponse: response.error?.details?.htmlContent || response.error?.details?.textContent,
           apiUrl: apiClient.getApiUrl()
@@ -559,6 +562,7 @@ export async function buildExperimentsWithAI(params: BuildExperimentsParams): Pr
         return {
           success: false,
           error: response.error?.message || "Unknown error occurred",
+          code: response.error?.code,
           details: response.error?.details,
           rawResponse: response.error?.details?.htmlContent || response.error?.details?.textContent,
           apiUrl: apiClient.getApiUrl()
@@ -701,6 +705,7 @@ export async function buildCampaignsWithAI(params: BuildCampaignsParams): Promis
         return {
           success: false,
           error: response.error?.message || "Unknown error occurred",
+          code: response.error?.code,
           details: response.error?.details,
           rawResponse: response.error?.details?.htmlContent || response.error?.details?.textContent,
           apiUrl: apiClient.getApiUrl()
@@ -843,6 +848,7 @@ export async function buildContentWithAI(params: BuildContentParams): Promise<AI
         return {
           success: false,
           error: response.error?.message || "Unknown error occurred",
+          code: response.error?.code,
           details: response.error?.details,
           rawResponse: response.error?.details?.htmlContent || response.error?.details?.textContent,
           apiUrl: apiClient.getApiUrl()

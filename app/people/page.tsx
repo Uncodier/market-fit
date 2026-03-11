@@ -29,6 +29,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
 import { createClient } from "@/lib/supabase/client"
+import { useBillingCheck } from "@/app/hooks/use-billing-check"
+import pricingConfig from "@/app/config/pricing.json"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 type Person = {
   id: string
@@ -58,6 +61,7 @@ type FinderSimpleEventSource = 'product_hunt' | 'form_c_sec_gov' | 'form_d_sec_g
 type FinderSimpleEventReason = 'report_released' | 'promoted_on_site'
 
 interface FinderRequest {
+  site_id?: string
   page?: number
 
   /** Single string or array of terms for OR semantics. */
@@ -372,7 +376,7 @@ function LookupChipsInput({
 }
 
 // Centralized lookup fetcher: hits external Finder autocomplete endpoints
-async function lookupFetcher(type: string, q: string): Promise<LookupOption[]> {
+async function lookupFetcher(type: string, q: string, siteId?: string): Promise<LookupOption[]> {
   // Map UI field keys to server categories
   const categoryMap: Record<string, string> = {
     industries: 'industries',
@@ -386,7 +390,8 @@ async function lookupFetcher(type: string, q: string): Promise<LookupOption[]> {
   const category = categoryMap[type] || type
 
   try {
-    const res = await apiClient.get(`/api/finder/autocomplete/${encodeURIComponent(category)}?q=${encodeURIComponent(q)}&page=0`, { includeAuth: false })
+    const url = `/api/finder/autocomplete/${encodeURIComponent(category)}?q=${encodeURIComponent(q)}&page=0${siteId ? `&site_id=${encodeURIComponent(siteId)}` : ''}`
+    const res = await apiClient.get(url, { includeAuth: false })
     if (!res.success) throw new Error(res.error?.message || 'lookup failed')
     const data: any = res.data
     const results = Array.isArray(data?.results) ? data.results : []
@@ -409,6 +414,7 @@ async function lookupFetcher(type: string, q: string): Promise<LookupOption[]> {
 }
 
 export default function PeopleSearchPage() {
+  const { t } = useLocalization()
   const { isLayoutCollapsed } = useLayout()
   const { currentSite } = useSite()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -493,6 +499,11 @@ export default function PeopleSearchPage() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [addingToLeads, setAddingToLeads] = useState(false)
   const [isSegmentModalOpen, setIsSegmentModalOpen] = useState(false)
+  
+  const { creditsAvailable } = useBillingCheck()
+  const enrichmentCostPerLead = pricingConfig.pricing_map.find(p => p.name === "Enrichment (Details)")?.cost_per_call || 0.1
+  const requiredCredits = Math.ceil(totalResults * enrichmentCostPerLead * 10) / 10 // rounding to 1 decimal
+  const hasEnoughCredits = creditsAvailable >= requiredCredits
   const [segmentsLoading, setSegmentsLoading] = useState(false)
   const [availableSegments, setAvailableSegments] = useState<Array<{ id: string; name: string }>>([])
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | 'none'>('none')
@@ -565,8 +576,8 @@ export default function PeopleSearchPage() {
   // Helper function to load ICP data
   const handleLoadIcp = async (icpId: string) => {
     try {
-      if (!currentSite?.id) return
-      const res = await apiClient.get(`/api/finder/icp?icp_id=${encodeURIComponent(icpId)}&site_id=${encodeURIComponent(currentSite.id)}`)
+      const url = `/api/finder/icp?icp_id=${encodeURIComponent(icpId)}${currentSite?.id ? `&site_id=${encodeURIComponent(currentSite.id)}` : ''}`
+      const res = await apiClient.get(url)
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to load saved list')
       }
@@ -697,6 +708,9 @@ export default function PeopleSearchPage() {
       // Trigger search with the full saved query so all API fields are sent (avoid dropping any field)
       setCurrentPage(1)
       const payloadFromQ: FinderRequest = { ...q, page: 0 }
+      if (currentSite?.id) {
+        payloadFromQ.site_id = currentSite.id
+      }
       await executeSearch(payloadFromQ)
     } catch (e) {
       console.error('[People] Load saved list error:', e)
@@ -707,8 +721,8 @@ export default function PeopleSearchPage() {
   // Helper function to delete ICP
   const handleDeleteIcp = async (icpId: string) => {
     try {
-      if (!currentSite?.id) return
-      const res = await apiClient.delete(`/api/finder/icp?icp_id=${encodeURIComponent(icpId)}&site_id=${encodeURIComponent(currentSite.id)}`)
+      const url = `/api/finder/icp?icp_id=${encodeURIComponent(icpId)}${currentSite?.id ? `&site_id=${encodeURIComponent(currentSite.id)}` : ''}`
+      const res = await apiClient.delete(url)
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to delete saved list')
       }
@@ -805,38 +819,55 @@ export default function PeopleSearchPage() {
         setIcpListLoading(true)
         const supabase = createClient()
         // 1) Get segment ids for current site
-        const { data: segs, error: segErr } = await supabase
+        const { data: segmentsData, error: segError } = await supabase
           .from('segments')
-          .select('id')
+          .select('id, name')
           .eq('site_id', currentSite.id)
-        if (segErr) throw segErr
-        const segmentIds = (segs || []).map((s: any) => s.id)
-        if (segmentIds.length === 0) { setAvailableIcps([]); return }
-        // 2) Get role_query_ids related to those segments
-        const { data: rqs, error: rqErr } = await supabase
-          .from('role_query_segments')
-          .select('role_query_id')
-          .in('segment_id', segmentIds)
-        if (rqErr) throw rqErr
-        const roleQueryIds = Array.from(new Set((rqs || []).map((r: any) => r.role_query_id)))
-        if (roleQueryIds.length === 0) { setAvailableIcps([]); return }
-        // 3) List ICPs for those role_query_ids
-        const { data: icps, error: icpErr } = await supabase
+        
+        if (segError) throw segError
+        
+        const segmentIds = segmentsData?.map(s => s.id) || []
+        const segmentMap = new Map(segmentsData?.map(s => [s.id, s.name]) || [])
+        
+        // 2) Fetch ICPs directly associated with the site
+        const { data, error } = await supabase
           .from('icp_mining')
-          .select('id, name, status, role_query_id, total_targets, processed_targets, found_matches, progress_percent, started_at, last_progress_at, finished_at')
-          .in('role_query_id', roleQueryIds)
+          .select(`
+            id,
+            name,
+            status,
+            created_at,
+            total_targets,
+            role_query_id,
+            role_query_segments(segment_id)
+          `)
+          .eq('site_id', currentSite.id)
           .order('created_at', { ascending: false })
-        if (icpErr) throw icpErr
-        setAvailableIcps(icps || [])
+        
+        if (error) throw error
+        
+        if (data) {
+          const formattedData = data.map((item: any) => {
+            const segmentId = item.role_query_segments?.[0]?.segment_id
+            return {
+              ...item,
+              segment_name: segmentId ? segmentMap.get(segmentId) || 'Unknown Segment' : 'No Segment'
+            }
+          })
+          setAvailableIcps(formattedData)
+        }
       } catch (e) {
-        console.error('[People] Load ICP list error:', e)
-        setAvailableIcps([])
+        console.error('[People] Initial load ICPs error:', e)
       } finally {
         setIcpListLoading(false)
       }
     }
-    loadIcps()
-  }, [currentSite?.id])
+    
+    // Only fetch if we're on the saved lists tab
+    if (peopleTab === "saved") {
+      loadIcps()
+    }
+  }, [currentSite?.id, peopleTab])
 
   // Update TopBar breadcrumb with results count
   useEffect(() => {
@@ -933,6 +964,7 @@ export default function PeopleSearchPage() {
   })
 
     const payload: FinderRequest = {
+      site_id: currentSite?.id,
       page: Math.max(0, pageOneBased - 1),
       role_title: termsToPayload(jobTitleTerms),
       role_description: wrapInQuotesIfNeeded(query) || undefined,
@@ -1098,6 +1130,10 @@ export default function PeopleSearchPage() {
     setLoading(true)
     setError(null)
     try {
+      if (currentSite?.id) {
+        payload.site_id = currentSite.id
+      }
+      
       // Debug: Log payload being sent
       console.log('[People] Sending request with payload:', JSON.stringify(payload, null, 2))
       
@@ -1151,7 +1187,7 @@ export default function PeopleSearchPage() {
   // Calculate dynamic max width for main content based on left nav and filters sidebar
   const leftNavWidth = isLayoutCollapsed ? 64 : 256
   const filtersWidth = isSidebarCollapsed ? 0 : 319
-  const contentMaxWidth = `calc(100% - ${filtersWidth}px)`
+  const contentMaxWidth = `calc(100vw - ${leftNavWidth + filtersWidth}px)`
 
   // Open modal and fetch segments
   const handleAddToLeads = async () => {
@@ -1177,15 +1213,14 @@ export default function PeopleSearchPage() {
     try {
       setAddingToLeads(true)
       const payload = buildFinderPayload(currentPage) as any
-      if (!currentSite?.id) {
-        throw new Error('Missing site_id')
+      if (currentSite?.id) {
+        payload.site_id = currentSite.id
       }
-      payload.site_id = currentSite.id
       if (selectedSegmentId && selectedSegmentId !== 'none') {
         payload.segment_id = selectedSegmentId
       }
       if (icpName && icpName.trim().length > 0) {
-        payload.name = icpName.trim()
+        payload.campaign_name = icpName.trim()
       }
       // Add total_targets with current search results total
       payload.total_targets = totalResults
@@ -1193,7 +1228,7 @@ export default function PeopleSearchPage() {
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to create query')
       }
-      toast.success('Leads query created successfully')
+      toast.success('Leads enrichment started successfully. Your campaigns and segments will be updated.')
       setIsSegmentModalOpen(false)
       setIcpName("")
     } catch (e: any) {
@@ -1555,17 +1590,16 @@ export default function PeopleSearchPage() {
 
   const sidebar = (
     <div className={cn(
-      "fixed transition-all duration-200 ease-in-out z-10 left-0",
-      isSidebarCollapsed ? "w-0 opacity-0" : "w-full md:w-[319px] opacity-100",
-      !isSidebarCollapsed && (isLayoutCollapsed ? "md:left-16" : "md:left-64")
-    )} style={{ top: "64px", height: "calc(100vh - 64px)" }}>
+      "fixed transition-all duration-200 ease-in-out z-10",
+      isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
+    )} style={{ left: sidebarLeft, top: "64px", height: "calc(100vh - 64px)" }}>
       <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r relative flex flex-col">
         {/* Tab selector - min height matches main toolbar (71px) */}
         <div className="flex-shrink-0 min-h-[71px] flex items-center p-3 border-b border-border/50">
           <Tabs value={peopleTab} onValueChange={(v) => setPeopleTab(v as "search" | "saved")} className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-9">
-              <TabsTrigger value="search" className="text-xs">Search people</TabsTrigger>
-              <TabsTrigger value="saved" className="text-xs">Saved lists</TabsTrigger>
+              <TabsTrigger value="search" className="text-xs">{t('people.tabs.search') || 'Search people'}</TabsTrigger>
+              <TabsTrigger value="saved" className="text-xs">{t('people.tabs.saved') || 'Saved lists'}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -1574,7 +1608,7 @@ export default function PeopleSearchPage() {
           <div className={cn("h-full overflow-auto p-4 flex-1", peopleTab === "saved" ? "flex flex-col pb-4" : "space-y-4 pb-[110px]")}>
             {peopleTab === "saved" && (
             <div className={cn("flex flex-col min-h-0", availableIcps.length === 0 && !icpListLoading ? "flex-1" : "space-y-3")}>
-              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex-shrink-0" style={{ fontSize: '10.8px' }}>📋 Saved Lists</h3>
+              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex-shrink-0" style={{ fontSize: '10.8px' }}>📋 {t('people.saved.title') || 'Saved Lists'}</h3>
               {(() => {
                 if (icpListLoading) {
                   return (
@@ -1605,8 +1639,8 @@ export default function PeopleSearchPage() {
                         showShadow={false}
                         className="max-w-sm border-0 shadow-none bg-transparent"
                         icon={<ClipboardList className="h-6 w-6" />}
-                        title="No saved lists yet"
-                        description="Save search results to lists from the Search people tab to see them here."
+                        title={t('people.saved.empty.title') || "No saved lists yet"}
+                        description={t('people.saved.empty.desc') || "Save search results to lists from the Search people tab to see them here."}
                       />
                     </div>
                   )
@@ -1629,11 +1663,11 @@ export default function PeopleSearchPage() {
                 // Status order and labels
                 const statusOrder = ['in_progress', 'pending', 'completed', 'failed', 'unknown']
                 const statusLabels: Record<string, string> = {
-                  'in_progress': 'In Progress',
-                  'pending': 'Pending',
-                  'completed': 'Completed',
-                  'failed': 'Failed',
-                  'unknown': 'Other'
+                  'in_progress': t('people.saved.status.inProgress') || 'In Progress',
+                  'pending': t('people.saved.status.pending') || 'Pending',
+                  'completed': t('people.saved.status.completed') || 'Completed',
+                  'failed': t('people.saved.status.failed') || 'Failed',
+                  'unknown': t('people.saved.status.other') || 'Other'
                 }
 
                 const renderIcpCard = (icp: typeof availableIcps[0]) => (
@@ -1667,7 +1701,7 @@ export default function PeopleSearchPage() {
                                 handleLoadIcp(icp.id)
                               }}
                             >
-                              Load
+                              {t('people.saved.actions.load') || 'Load'}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={async (e) => {
@@ -1723,7 +1757,7 @@ export default function PeopleSearchPage() {
                               }}
                               className="text-destructive focus:text-destructive"
                             >
-                              Delete
+                              {t('people.saved.actions.delete') || 'Delete'}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -1765,27 +1799,27 @@ export default function PeopleSearchPage() {
                 <CollapsibleField title="Name" defaultOpen={sectionOpenDefaults.name} onClear={() => { setPersonNameChips([]); setPersonNameInput(""); setPersonHeadlineChips([]); setPersonHeadlineInput(""); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText("") }}>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">Use “quotation marks" for exact matches. Press Enter to add as chip.</p>
+                      <p className="text-xs text-muted-foreground">{t('people.filters.name.help') || 'Use “quotation marks" for exact matches. Press Enter to add as chip.'}</p>
                       <ChipsInput
                         values={personNameChips}
                         onChange={setPersonNameChips}
-                        placeholder="Search"
+                        placeholder={t('people.filters.name.search') || 'Search'}
                         inputValue={personNameInput}
                         onInputChange={setPersonNameInput}
                       />
                     </div>
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">Headline</p>
+                      <p className="text-xs text-muted-foreground">{t('people.filters.name.headline') || 'Headline'}</p>
                       <ChipsInput
                         values={personHeadlineChips}
                         onChange={setPersonHeadlineChips}
-                        placeholder="Search"
+                        placeholder={t('people.filters.name.search') || 'Search'}
                         inputValue={personHeadlineInput}
                         onInputChange={setPersonHeadlineInput}
                       />
                     </div>
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">LinkedIn Identifiers</p>
+                      <p className="text-xs text-muted-foreground">{t('people.filters.name.linkedin') || 'LinkedIn Identifiers'}</p>
                       <ChipsInput 
                         values={personLinkedinIds}
                         onChange={setPersonLinkedinIds}
@@ -1795,33 +1829,33 @@ export default function PeopleSearchPage() {
                     </div>
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="Job Title" defaultOpen={sectionOpenDefaults.jobTitle} onClear={() => { setJobTitleChips([]); setJobTitleInput(""); setQuery(""); setIsCurrentRole(true); setRoleDateSince(undefined); setRoleDateUntil(undefined) }}>
-                  <p className="text-xs text-muted-foreground mb-2">Use "quotation marks" for exact matches. Press Enter to add as chip.</p>
+                <CollapsibleField title={t('people.filters.jobTitle.title') || "Job Title"} defaultOpen={sectionOpenDefaults.jobTitle} onClear={() => { setJobTitleChips([]); setJobTitleInput(""); setQuery(""); setIsCurrentRole(true); setRoleDateSince(undefined); setRoleDateUntil(undefined) }}>
+                  <p className="text-xs text-muted-foreground mb-2">{t('people.filters.jobTitle.help') || 'Use "quotation marks" for exact matches. Press Enter to add as chip.'}</p>
                   <ChipsInput
                     values={jobTitleChips}
                     onChange={setJobTitleChips}
-                    placeholder="Search"
+                    placeholder={t('people.filters.name.search') || 'Search'}
                     inputValue={jobTitleInput}
                     onInputChange={setJobTitleInput}
                   />
                   {/* Job description (boolean search) */}
                   <div className="mt-4 flex flex-col items-start space-y-2">
-                    <p className="text-xs text-muted-foreground mb-1">Description</p>
-                    <Input placeholder="Keywords" className="h-10" value={query} onChange={(e)=> setQuery(e.target.value)} />
+                    <p className="text-xs text-muted-foreground mb-1">{t('people.filters.jobTitle.desc') || 'Description'}</p>
+                    <Input placeholder={t('people.filters.jobTitle.keywords') || 'Keywords'} className="h-10" value={query} onChange={(e)=> setQuery(e.target.value)} />
                   </div>
                   <div className="mt-4 space-y-3">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <label className="text-left text-xs text-muted-foreground">Role date since</label>
+                        <label className="text-left text-xs text-muted-foreground">{t('people.filters.jobTitle.dateSince') || 'Role date since'}</label>
                         {!roleDateSince && (
-                          <Badge variant="outline" className="text-xs">Not set</Badge>
+                          <Badge variant="outline" className="text-xs">{t('people.filters.notSet') || 'Not set'}</Badge>
                         )}
                         {roleDateSince && (
                           <button
                             type="button"
                             onClick={() => setRoleDateSince(undefined)}
                             className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Clear date"
+                            aria-label={t('people.filters.clearDate') || 'Clear date'}
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -1832,21 +1866,21 @@ export default function PeopleSearchPage() {
                         setDate={(date) => setRoleDateSince(date)}
                         className="w-full"
                         mode="default"
-                        placeholder="Select start date"
+                        placeholder={t('people.filters.selectStartDate') || 'Select start date'}
                       />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <label className="text-left text-xs text-muted-foreground">Role date until</label>
+                        <label className="text-left text-xs text-muted-foreground">{t('people.filters.jobTitle.dateUntil') || 'Role date until'}</label>
                         {!roleDateUntil && (
-                          <Badge variant="outline" className="text-xs">Not set</Badge>
+                          <Badge variant="outline" className="text-xs">{t('people.filters.notSet') || 'Not set'}</Badge>
                         )}
                         {roleDateUntil && (
                           <button
                             type="button"
                             onClick={() => setRoleDateUntil(undefined)}
                             className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Clear date"
+                            aria-label={t('people.filters.clearDate') || 'Clear date'}
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -1857,10 +1891,10 @@ export default function PeopleSearchPage() {
                         setDate={(date) => setRoleDateUntil(date)}
                         className="w-full"
                         mode="default"
-                        placeholder="Select end date"
+                        placeholder={t('people.filters.selectEndDate') || 'Select end date'}
                       />
                     </div>
-                    <p className="text-left text-xs text-muted-foreground">Pick the period for the role.</p>
+                    <p className="text-left text-xs text-muted-foreground">{t('people.filters.jobTitle.pickPeriod') || 'Pick the period for the role.'}</p>
                   </div>
                   <div className="py-1.5 flex items-center justify-between gap-2">
                     <label htmlFor="current-role" className="text-left text-sm text-foreground">Role is current</label>
@@ -1875,7 +1909,7 @@ export default function PeopleSearchPage() {
                         values={industries}
                         onChange={setIndustries}
                         placeholder="Search industries"
-                        fetcher={(q) => lookupFetcher('industries', q)}
+                        fetcher={(q) => lookupFetcher('industries', q, currentSite?.id)}
                       />
                     </div>
                     <div>
@@ -1884,7 +1918,7 @@ export default function PeopleSearchPage() {
                         values={personIndustriesExclude}
                         onChange={setPersonIndustriesExclude}
                         placeholder="Search industries to exclude"
-                        fetcher={(q) => lookupFetcher('industries', q)}
+                        fetcher={(q) => lookupFetcher('industries', q, currentSite?.id)}
                       />
                     </div>
                   </div>
@@ -1894,7 +1928,7 @@ export default function PeopleSearchPage() {
                     values={locations}
                     onChange={setLocations}
                     placeholder="Search locations"
-                    fetcher={(q) => lookupFetcher('locations', q)}
+                    fetcher={(q) => lookupFetcher('locations', q, currentSite?.id)}
                   />
                 </CollapsibleField>
                 <CollapsibleField title="Skills" countBadge={skills.length} onClear={() => setSkills([])} defaultOpen={sectionOpenDefaults.skills}>
@@ -1902,7 +1936,7 @@ export default function PeopleSearchPage() {
                     values={skills} 
                     onChange={setSkills} 
                     placeholder="Search skills"
-                    fetcher={(q) => lookupFetcher('skills', q)}
+                    fetcher={(q) => lookupFetcher('skills', q, currentSite?.id)}
                   />
                 </CollapsibleField>
                 <CollapsibleField title="LinkedIn Identifiers" defaultOpen={sectionOpenDefaults.personLinkedin} countBadge={personLinkedinIds.length} onClear={() => { setPersonLinkedinIds([]); setPersonLinkedinIdsInputText("") }}>
@@ -1925,7 +1959,7 @@ export default function PeopleSearchPage() {
                       values={companies}
                       onChange={setCompanies}
                       placeholder="Search companies"
-                      fetcher={(q) => lookupFetcher('organizations', q)}
+                      fetcher={(q) => lookupFetcher('organizations', q, currentSite?.id)}
                     />
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Description</p>
@@ -1977,7 +2011,7 @@ export default function PeopleSearchPage() {
                         values={orgLocations}
                         onChange={setOrgLocations}
                         placeholder="Search locations"
-                        fetcher={(q) => lookupFetcher('locations', q)}
+                        fetcher={(q) => lookupFetcher('locations', q, currentSite?.id)}
                       />
                     </div>
                     <div>
@@ -1986,7 +2020,7 @@ export default function PeopleSearchPage() {
                         values={orgIndustries}
                         onChange={setOrgIndustries}
                         placeholder="Search industries"
-                        fetcher={(q) => lookupFetcher('industries', q)}
+                        fetcher={(q) => lookupFetcher('industries', q, currentSite?.id)}
                       />
                     </div>
                     <div>
@@ -1995,7 +2029,7 @@ export default function PeopleSearchPage() {
                         values={orgIndustriesExclude}
                         onChange={setOrgIndustriesExclude}
                         placeholder="Search industries to exclude"
-                        fetcher={(q) => lookupFetcher('industries', q)}
+                        fetcher={(q) => lookupFetcher('industries', q, currentSite?.id)}
                       />
                     </div>
                     <div>
@@ -2004,7 +2038,7 @@ export default function PeopleSearchPage() {
                         values={keywords} 
                         onChange={setKeywords} 
                         placeholder="Keywords"
-                        fetcher={(q) => lookupFetcher('org_keywords', q)}
+                        fetcher={(q) => lookupFetcher('org_keywords', q, currentSite?.id)}
                       />
                     </div>
                   </div>
@@ -2114,22 +2148,22 @@ export default function PeopleSearchPage() {
                   </div>
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="Web & Tech" defaultOpen={false}>
+                <CollapsibleField title={t('people.filters.webTech.title') || "Web & Tech"} defaultOpen={false}>
                   <div className="space-y-3">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Technologies</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('people.filters.technologies.title') || 'Technologies'}</p>
                       <LookupChipsInput 
                         values={technologies}
                         onChange={setTechnologies}
-                        placeholder="Search technologies"
-                        fetcher={(q) => lookupFetcher('web_technologies', q)}
+                        placeholder={t('people.filters.technologies.search') || "Search technologies"}
+                        fetcher={(q) => lookupFetcher('web_technologies', q, currentSite?.id)}
                       />
                     </div>
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground mb-1">Domain Rank</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('people.filters.webTech.domainRank') || 'Domain Rank'}</p>
                       <div className="grid grid-cols-12 items-end gap-2">
                     <div className="col-span-5">
-                      <p className="text-xs text-muted-foreground mb-1">From</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('people.filters.foundedDate.from') || 'From'}</p>
                       <Input
                         type="number"
                         inputMode="numeric"
@@ -2146,7 +2180,7 @@ export default function PeopleSearchPage() {
                     </div>
                     <div className="col-span-2 flex items-center justify-center pb-2">-</div>
                     <div className="col-span-5">
-                      <p className="text-xs text-muted-foreground mb-1">To</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('people.filters.foundedDate.to') || 'To'}</p>
                       <Input
                         type="number"
                         inputMode="numeric"
@@ -2166,19 +2200,19 @@ export default function PeopleSearchPage() {
                   </div>
                 </CollapsibleField>
                 
-                <CollapsibleField title="Founded Date" defaultOpen={sectionOpenDefaults.foundedDate}>
+                <CollapsibleField title={t('people.filters.foundedDate.title') || "Founded Date"} defaultOpen={sectionOpenDefaults.foundedDate}>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <label className="text-left text-xs text-muted-foreground">Founded Date Range</label>
+                      <label className="text-left text-xs text-muted-foreground">{t('people.filters.foundedDate.range') || 'Founded Date Range'}</label>
                       {(!orgFoundedRange.start || !orgFoundedRange.end) && (
-                        <Badge variant="outline" className="text-xs">Not set</Badge>
+                        <Badge variant="outline" className="text-xs">{t('people.filters.notSet') || 'Not set'}</Badge>
                       )}
                       {(orgFoundedRange.start || orgFoundedRange.end) && (
                         <button
                           type="button"
                           onClick={() => setOrgFoundedRange({})}
                           className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-                          aria-label="Clear date range"
+                          aria-label={t('people.filters.clearDateRange') || 'Clear date range'}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -2190,10 +2224,10 @@ export default function PeopleSearchPage() {
                       onRangeChange={(start, end) => setOrgFoundedRange({ start, end })}
                       className="w-full [&_.btn]:h-10 [&_.btn]:items-start"
                     />
-                    <p className="text-left text-xs text-muted-foreground">Pick the period for the company founding.</p>
+                    <p className="text-left text-xs text-muted-foreground">{t('people.filters.foundedDate.help') || 'Pick the period for the company founding.'}</p>
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="LinkedIn Identifiers" defaultOpen={sectionOpenDefaults.companyLinkedin} countBadge={orgLinkedinIds.length} onClear={() => setOrgLinkedinIds([])}>
+                <CollapsibleField title={t('people.filters.companyLinkedin.title') || "LinkedIn Identifiers"} defaultOpen={sectionOpenDefaults.companyLinkedin} countBadge={orgLinkedinIds.length} onClear={() => setOrgLinkedinIds([])}>
                   <ChipsInput 
                     values={orgLinkedinIds}
                     onChange={setOrgLinkedinIds}
@@ -2204,27 +2238,27 @@ export default function PeopleSearchPage() {
             </div>
 
             <div className="space-y-3">
-              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>🎯 Buying Intent</h3>
+              <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>🎯 {t('people.filters.buyingIntent') || 'Buying Intent'}</h3>
               <div className="space-y-3">
-                <CollapsibleField title="Job Postings" defaultOpen={sectionOpenDefaults.jobPostings}>
+                <CollapsibleField title={t('people.filters.jobPostings.title') || "Job Postings"} defaultOpen={sectionOpenDefaults.jobPostings}>
                   <div className="space-y-4">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Title</p>
-                      <p className="text-xs text-muted-foreground mb-2">Use "quotation marks" for exact matches. Press Enter to add as chip.</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('people.filters.jobPostings.titleLabel') || 'Title'}</p>
+                      <p className="text-xs text-muted-foreground mb-2">{t('people.filters.jobTitle.help') || 'Use "quotation marks" for exact matches. Press Enter to add as chip.'}</p>
                       <ChipsInput
                         values={jobPostingTitleChips}
                         onChange={setJobPostingTitleChips}
-                        placeholder="Search"
+                        placeholder={t('people.filters.name.search') || "Search"}
                         inputValue={jobPostingTitleInput}
                         onInputChange={setJobPostingTitleInput}
                       />
                     </div>
                     <div className="flex flex-col items-start space-y-2">
-                      <p className="text-xs text-muted-foreground mb-1">Description</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('people.filters.jobTitle.desc') || 'Description'}</p>
                       <ChipsInput
                         values={jobPostingDescriptionChips}
                         onChange={setJobPostingDescriptionChips}
-                        placeholder="Description"
+                        placeholder={t('people.filters.jobTitle.desc') || "Description"}
                         inputValue={jobPostingDescriptionInput}
                         onInputChange={setJobPostingDescriptionInput}
                       />
@@ -2232,16 +2266,16 @@ export default function PeopleSearchPage() {
                     <div className="space-y-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="text-xs text-muted-foreground">Job featured date since</p>
+                          <p className="text-xs text-muted-foreground">{t('people.filters.jobPostings.dateSince') || 'Job featured date since'}</p>
                           {!jobFeaturedDateFrom && (
-                            <Badge variant="outline" className="text-xs">Not set</Badge>
+                            <Badge variant="outline" className="text-xs">{t('people.filters.notSet') || 'Not set'}</Badge>
                           )}
                           {jobFeaturedDateFrom && (
                             <button
                               type="button"
                               onClick={() => setJobFeaturedDateFrom(undefined)}
                               className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-                              aria-label="Clear date"
+                              aria-label={t('people.filters.clearDate') || 'Clear date'}
                             >
                               <X className="h-3 w-3" />
                             </button>
@@ -2252,14 +2286,14 @@ export default function PeopleSearchPage() {
                           setDate={(date) => setJobFeaturedDateFrom(date)}
                           className="w-full"
                           mode="default"
-                          placeholder="Select start date"
+                          placeholder={t('people.filters.selectStartDate') || "Select start date"}
                         />
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="text-xs text-muted-foreground">Job featured date until</p>
+                          <p className="text-xs text-muted-foreground">{t('people.filters.jobPostings.dateUntil') || 'Job featured date until'}</p>
                           {!jobFeaturedDateTo && (
-                            <Badge variant="outline" className="text-xs">Not set</Badge>
+                            <Badge variant="outline" className="text-xs">{t('people.filters.notSet') || 'Not set'}</Badge>
                           )}
                           {jobFeaturedDateTo && (
                             <button
@@ -2297,7 +2331,7 @@ export default function PeopleSearchPage() {
                         values={jobLocations} 
                         onChange={setJobLocations} 
                         placeholder="Search"
-                        fetcher={(q) => lookupFetcher('locations', q)}
+                        fetcher={(q) => lookupFetcher('locations', q, currentSite?.id)}
                       />
                     </div>
                     <div>
@@ -2306,7 +2340,7 @@ export default function PeopleSearchPage() {
                         values={jobLocationsExclude} 
                         onChange={setJobLocationsExclude} 
                         placeholder="Search"
-                        fetcher={(q) => lookupFetcher('locations', q)}
+                        fetcher={(q) => lookupFetcher('locations', q, currentSite?.id)}
                       />
                     </div>
                   </div>
@@ -2463,20 +2497,20 @@ export default function PeopleSearchPage() {
                     </div>
                   </div>
                 </CollapsibleField>
-                <CollapsibleField title="Technologies" countBadge={technologies.length} defaultOpen={sectionOpenDefaults.technologies}>
+                <CollapsibleField title={t('people.filters.technologies.title') || "Technologies"} countBadge={technologies.length} defaultOpen={sectionOpenDefaults.technologies}>
                   <LookupChipsInput 
                     values={technologies}
                     onChange={setTechnologies}
-                    placeholder="Search technologies"
-                    fetcher={(q) => lookupFetcher('web_technologies', q)}
+                    placeholder={t('people.filters.technologies.search') || "Search technologies"}
+                    fetcher={(q) => lookupFetcher('web_technologies', q, currentSite?.id)}
                   />
                 </CollapsibleField>
-                <CollapsibleField title="Signals" defaultOpen={sectionOpenDefaults.signals}>
+                <CollapsibleField title={t('people.filters.signals.title') || "Signals"} defaultOpen={sectionOpenDefaults.signals}>
                   <div className="space-y-3">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Simple Event Source</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('people.filters.signals.simpleEventSource') || 'Simple Event Source'}</p>
                       <Select value={simpleEventSource ?? ""} onValueChange={(v) => setSimpleEventSource(v as FinderSimpleEventSource)}>
-                        <SelectTrigger className="h-10"><SelectValue placeholder="Select source" /></SelectTrigger>
+                        <SelectTrigger className="h-10"><SelectValue placeholder={t('people.filters.signals.selectSource') || "Select source"} /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="product_hunt">Product Hunt</SelectItem>
                           <SelectItem value="form_c_sec_gov">Form C (sec.gov)</SelectItem>
@@ -2485,9 +2519,9 @@ export default function PeopleSearchPage() {
                       </Select>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Simple Event Reason</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('people.filters.signals.simpleEventReason') || 'Simple Event Reason'}</p>
                       <Select value={simpleEventReason ?? ""} onValueChange={(v) => setSimpleEventReason(v as FinderSimpleEventReason)}>
-                        <SelectTrigger className="h-10"><SelectValue placeholder="Select reason" /></SelectTrigger>
+                        <SelectTrigger className="h-10"><SelectValue placeholder={t('people.filters.signals.selectReason') || "Select reason"} /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="report_released">Report released</SelectItem>
                           <SelectItem value="promoted_on_site">Promoted on site</SelectItem>
@@ -2496,16 +2530,16 @@ export default function PeopleSearchPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="text-xs text-muted-foreground">Simple Event Featured Date</p>
+                        <p className="text-xs text-muted-foreground">{t('people.filters.signals.featuredDate') || 'Simple Event Featured Date'}</p>
                         {(!simpleEventDateRange.start || !simpleEventDateRange.end) && (
-                          <Badge variant="outline" className="text-xs">Not set</Badge>
+                          <Badge variant="outline" className="text-xs">{t('people.filters.notSet') || 'Not set'}</Badge>
                         )}
                         {(simpleEventDateRange.start || simpleEventDateRange.end) && (
                           <button
                             type="button"
                             onClick={() => setSimpleEventDateRange({})}
                             className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Clear date range"
+                            aria-label={t('people.filters.clearDateRange') || 'Clear date range'}
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -2530,7 +2564,7 @@ export default function PeopleSearchPage() {
           {peopleTab === "search" && (
           <div 
             className={cn(
-              "absolute bottom-0 left-0 w-full border-t bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 h-[87px]",
+              "absolute bottom-0 left-0 w-full border-t bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 h-[71px]",
               isSidebarCollapsed ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"
             )}
             style={{ paddingLeft: '16px', paddingRight: '16px' }}
@@ -2538,14 +2572,14 @@ export default function PeopleSearchPage() {
             <div className="h-full w-full flex items-center gap-2">
               <Button 
                 variant="outline" 
-                className="w-1/2 h-10"
-                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonName(""); setPersonHeadline(""); setJobTitle(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitle(""); setJobPostingDescription(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRange([0, 0]); setFundingRangeTouched(false); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText(""); setOrgDomains([]); setOrgDomainsInputText(""); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgLinkedinIdsInputText(""); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRoleDateSince(undefined); setRoleDateUntil(undefined); }}
+                className="flex-1 h-10"
+                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonNameChips([]); setPersonNameInput(""); setPersonHeadlineChips([]); setPersonHeadlineInput(""); setJobTitleChips([]); setJobTitleInput(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitleChips([]); setJobPostingTitleInput(""); setJobPostingDescriptionChips([]); setJobPostingDescriptionInput(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRange([0, 0]); setFundingRangeTouched(false); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText(""); setOrgDomains([]); setOrgDomainsInputText(""); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgLinkedinIdsInputText(""); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRoleDateSince(undefined); setRoleDateUntil(undefined); setRoleYearsOnPositionStart(""); setRoleYearsOnPositionEnd(""); }}
               >
-                Clear
+                {t('people.search.clear') || 'Clear'}
               </Button>
-            <Button className="w-1/2 h-10 gap-2" onClick={onClickSearch}>
+            <Button className="flex-1 h-10 gap-2 !min-w-0" onClick={onClickSearch}>
                 <Search className="h-4 w-4" />
-              {loading ? 'Searching…' : 'Search'}
+              {loading ? (t('people.search.searching') || 'Searching…') : (t('people.search.btnShort') || 'Search')}
               </Button>
             </div>
           </div>
@@ -2559,20 +2593,17 @@ export default function PeopleSearchPage() {
 
   return (
     <div className="flex h-full relative">
-      {/* Sidebar: full-screen on mobile step 1, normal on desktop */}
-      <div className={cn(
-        showResultsOnMobile ? "hidden md:block" : "block"
-      )}>
-        {sidebar}
-      </div>
+      {sidebar}
       {/* Main content: hidden on mobile step 1, full-screen on step 2 */}
-      <div
+      <div 
         className={cn(
-          "flex flex-col h-full flex-1 transition-[padding] duration-200 ease-in-out min-w-0",
-          !showResultsOnMobile ? "hidden md:flex" : "flex",
-          // On desktop, offset by filter sidebar width
-          !isSidebarCollapsed ? "md:ml-[319px]" : "md:ml-0"
+          "flex flex-col h-full w-full transition-[padding] duration-200 ease-in-out",
+          !showResultsOnMobile ? "hidden md:flex" : "flex"
         )}
+        style={{ 
+          marginLeft: isSidebarCollapsed ? "0px" : "319px",
+          maxWidth: contentMaxWidth
+        }}
       >
         <StickyHeader className="sticky-left">
           <SidebarToggle
@@ -2595,7 +2626,7 @@ export default function PeopleSearchPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="secondary" className="h-9 !hidden md:!flex" onClick={handleAddToLeads} disabled={totalResults === 0 || loading || addingToLeads}>
-                  {addingToLeads ? 'Adding...' : `Add all ${(totalResults || 0).toLocaleString()} to prospection`}
+                  {addingToLeads ? 'Processing...' : `Enrich ${(totalResults || 0).toLocaleString()} Leads`}
                 </Button>
                 <Button 
                   variant="secondary" 
@@ -2889,9 +2920,9 @@ export default function PeopleSearchPage() {
                     <p className="text-sm text-muted-foreground">
                             {totalResults > 0 ? (
                               <>
-                                Showing <span className="font-medium">{Math.min((currentPage - 1) * itemsPerPage + 1, totalResults).toLocaleString()}</span> to <span className="font-medium">{Math.min((currentPage - 1) * itemsPerPage + (searchResults?.length || 0), totalResults).toLocaleString()}</span> of <span className="font-medium">{(totalResults || 0).toLocaleString()}</span> people
+                                Showing <span className="font-medium">{Math.min((currentPage - 1) * itemsPerPage + 1, totalResults).toLocaleString()}</span> {t('people.table.pagination.to') || 'to'} <span className="font-medium">{Math.min((currentPage - 1) * itemsPerPage + (searchResults?.length || 0), totalResults).toLocaleString()}</span> {t('people.table.pagination.of') || 'of'} <span className="font-medium">{(totalResults || 0).toLocaleString()}</span> {t('people.table.pagination.people') || 'people'}
                               </>
-                            ) : 'No results'}
+                            ) : (t('people.table.pagination.noResults') || 'No results')}
                     </p>
                   </div>
                         <div className="flex items-center gap-3">
@@ -2946,10 +2977,31 @@ export default function PeopleSearchPage() {
       <Dialog open={isSegmentModalOpen} onOpenChange={setIsSegmentModalOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Select segment</DialogTitle>
-            <DialogDescription>Choose a segment to associate with the new leads query.</DialogDescription>
+            <DialogTitle>Add to Campaign / Segment</DialogTitle>
+            <DialogDescription>Choose a segment and optional campaign to enrich these leads. This will consume your credits.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            <div className="mb-4 p-4 rounded-lg border bg-muted/50 space-y-2">
+              <div className="flex justify-between items-center text-sm font-medium">
+                <span>Total Leads Selected:</span>
+                <span>{totalResults.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm font-medium">
+                <span>Estimated Cost:</span>
+                <span>{requiredCredits} Credits</span>
+              </div>
+              <div className="flex justify-between items-center text-sm font-medium">
+                <span>Available Credits:</span>
+                <span className={cn(hasEnoughCredits ? "text-green-600 dark:text-green-400" : "text-destructive")}>
+                  {creditsAvailable.toLocaleString()} Credits
+                </span>
+              </div>
+              {!hasEnoughCredits && (
+                <p className="text-xs text-destructive mt-2">
+                  You don't have enough credits to execute this enrichment query. Please add more credits or reduce the search scope.
+                </p>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">Segment</p>
             <Select value={selectedSegmentId} onValueChange={(v) => setSelectedSegmentId(v)}>
               <SelectTrigger className="h-10">
@@ -2963,9 +3015,9 @@ export default function PeopleSearchPage() {
               </SelectContent>
             </Select>
             <div className="pt-2">
-              <p className="text-xs text-muted-foreground mb-1">ICP name</p>
+              <p className="text-xs text-muted-foreground mb-1">Campaign (Optional)</p>
               <Input
-                placeholder="e.g. SaaS US - Heads of Growth"
+                placeholder="e.g. Summer 2026 Outreach"
                 value={icpName}
                 onChange={(e) => setIcpName(e.target.value)}
                 className="h-10"
@@ -2974,8 +3026,8 @@ export default function PeopleSearchPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsSegmentModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleConfirmAddToLeads} disabled={addingToLeads || segmentsLoading}>
-              {addingToLeads ? 'Adding…' : 'Add to leads'}
+            <Button onClick={handleConfirmAddToLeads} disabled={addingToLeads || segmentsLoading || !hasEnoughCredits}>
+              {addingToLeads ? 'Processing...' : 'Enrich & Start Campaign'}
             </Button>
           </DialogFooter>
         </DialogContent>

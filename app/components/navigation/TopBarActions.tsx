@@ -21,6 +21,7 @@ import { CalendarDateRangePicker } from "../ui/date-range-picker"
 import { CreateDealDialog } from "@/app/deals/components/CreateDealDialog"
 import { AIActionModal } from "@/app/components/ui/ai-action-modal"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useRouter, usePathname } from "next/navigation"
 import { useState, useEffect, useRef, useMemo } from "react"
 import { toast } from "sonner"
@@ -52,6 +53,7 @@ import { AuthenticateSessionsModal } from "./AuthenticateSessionsModal"
 
 // Robot Start Button Component
 function RobotStartButton({ currentSite }: { currentSite: any }) {
+  const { t } = useLocalization()
   const [isStartingRobot, setIsStartingRobot] = useState(false)
   const [isStoppingRobot, setIsStoppingRobot] = useState(false)
   const [isAuthenticateModalOpen, setIsAuthenticateModalOpen] = useState(false)
@@ -433,37 +435,37 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
             size="default"
             className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
             onClick={() => setIsAuthenticateModalOpen(true)}
-            title="Authenticate"
+            title={t('layout.topbar.authenticate')}
           >
             <Shield className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline">Authenticate</span>
+            <span className="hidden md:inline">{t('layout.topbar.authenticate')}</span>
           </Button>
           <Button 
             variant="secondary" 
             size="default"
             className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
             onClick={handleSaveAuthSession}
-            title="Save Auth Session"
+            title={t('layout.topbar.saveAuthSession')}
           >
             <Key className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline">Save Auth Session</span>
+            <span className="hidden md:inline">{t('layout.topbar.saveAuthSession')}</span>
           </Button>
           <Button 
             size="default"
             className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
             onClick={handleStopRobot}
             disabled={isStoppingRobot}
-            title="Stop Robot"
+            title={t('layout.topbar.stopRobot')}
           >
             {isStoppingRobot ? (
               <>
                 <LoadingSkeleton variant="button" size="sm" className="text-white" />
-                <span className="hidden md:inline">Stopping...</span>
+                <span className="hidden md:inline">{t('layout.topbar.stopping')}</span>
               </>
             ) : (
               <>
                 <StopCircle className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline ml-2">Stop Robot</span>
+                <span className="hidden md:inline ml-2">{t('layout.topbar.stopRobot')}</span>
               </>
             )}
           </Button>
@@ -488,17 +490,17 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
       onClick={handleStartRobot}
       disabled={isStartingRobot}
-      title="Start Robot"
+      title={t('layout.topbar.startRobot')}
     >
       {isStartingRobot ? (
         <>
           <LoadingSkeleton variant="button" size="sm" className="text-white" />
-          <span className="hidden md:inline">Starting Robot...</span>
+          <span className="hidden md:inline">{t('layout.topbar.startingRobot')}</span>
         </>
       ) : (
         <>
           <PlayCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">Start Robot</span>
+          <span className="hidden md:inline ml-2">{t('layout.topbar.startRobot')}</span>
         </>
       )}
     </Button>
@@ -594,6 +596,7 @@ export function TopBarActions({
   onCreateSale,
   onCreateDeal
 }: TopBarActionsProps) {
+  const { t } = useLocalization()
   const { currentSite } = useSite()
   const router = useRouter()
   const pathname = usePathname()
@@ -737,33 +740,33 @@ export function TopBarActions({
     // Configure the AI modal according to the current page
     if (isSegmentsPage) {
       setAIModalConfig({
-        title: "Building Segments with AI",
-        description: "Our AI will analyze your site data and automatically create optimized audience segments based on your business goals and target market. This helps you identify and target the most valuable customer groups.",
-        actionLabel: "Build Segments",
+        title: t('layout.modal.ai.titleSegments') || "Building Segments with AI",
+        description: t('layout.modal.ai.descSegments') || "Our AI will analyze your site data and automatically create optimized audience segments based on your business goals and target market.",
+        actionLabel: t('layout.modal.ai.actionSegments') || "Build Segments",
         estimatedTime: 120, // 2 minutes
         action: handleBuildSegmentsWithAI
       });
     } else if (isExperimentsPage) {
       setAIModalConfig({
-        title: "Building Experiments with AI",
-        description: "Our AI will analyze your site data and automatically create A/B test experiments designed to improve conversion rates and user experience. This helps you identify what changes will have the most impact on your business goals.",
-        actionLabel: "Build Experiments",
+        title: t('layout.modal.ai.titleExperiments') || "Building Experiments with AI",
+        description: t('layout.modal.ai.descExperiments') || "Our AI will analyze your site data and automatically create A/B test experiments designed to improve conversion rates and user experience.",
+        actionLabel: t('layout.modal.ai.actionExperiments') || "Build Experiments",
         estimatedTime: 120, // 2 minutes
         action: handleBuildExperimentsWithAI
       });
     } else if (isCampaignsPage) {
       setAIModalConfig({
-        title: "Building Campaigns with AI",
-        description: "Our AI will analyze your site data and automatically create optimized marketing campaigns tailored to your business objectives. This helps you generate effective campaign strategies that align with your target audience and goals.",
-        actionLabel: "Build Campaigns",
+        title: t('layout.modal.ai.titleCampaigns') || "Building Campaigns with AI",
+        description: t('layout.modal.ai.descCampaigns') || "Our AI will analyze your site data and automatically create optimized marketing campaigns tailored to your business objectives.",
+        actionLabel: t('layout.modal.ai.actionCampaigns') || "Build Campaigns",
         estimatedTime: 120, // 2 minutes
         action: handleBuildCampaignsWithAI
       });
     } else if (isContentPage) {
       setAIModalConfig({
-        title: "Building Content with AI",
-        description: "Our AI will analyze your site data and automatically create high-quality content pieces optimized for your target audience. This helps you generate engaging content that resonates with your users and supports your marketing objectives.",
-        actionLabel: "Build Content",
+        title: t('layout.modal.ai.titleContent') || "Building Content with AI",
+        description: t('layout.modal.ai.descContent') || "Our AI will analyze your site data and automatically create high-quality content pieces optimized for your target audience.",
+        actionLabel: t('layout.modal.ai.actionContent') || "Build Content",
         estimatedTime: 120, // 2 minutes
         action: handleBuildContentWithAI
       });
@@ -1325,7 +1328,7 @@ The success of this experiment will be measured by:
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true)
-      toast.loading("Signing out...")
+      toast.loading(t('layout.topbar.signingOut'))
       
       const supabase = createClient()
       await supabase.auth.signOut()
@@ -1343,9 +1346,9 @@ The success of this experiment will be measured by:
     <div className="flex items-center gap-4">
       {isControlCenterPage && currentSite ? (
         <CreateTaskDialog trigger={
-          <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="New Task">
+          <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title={t('layout.topbar.newTask')}>
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">New Task</span>
+            <span className="hidden md:inline ml-2">{t('layout.topbar.newTask')}</span>
           </Button>
         } />
       ) : null}
@@ -1360,7 +1363,7 @@ The success of this experiment will be measured by:
           title="Documentation"
         >
           <BookOpen className="h-5 w-5 shrink-0" />
-          <span className="hidden md:inline">Docs</span>
+          <span className="hidden md:inline">{t('layout.topbar.docs')}</span>
         </Button>
       )}
 
@@ -1414,10 +1417,10 @@ The success of this experiment will be measured by:
                   toast.error('Failed to export report')
                 }
               }}
-              title="Export"
+              title={t('layout.topbar.export')}
             >
               <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">Export</span>
+              <span className="hidden md:inline ml-2">{t('layout.topbar.export')}</span>
             </Button>
           )}
         </>
@@ -1430,17 +1433,17 @@ The success of this experiment will be measured by:
             className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
           onClick={handleGenerateExperimentWithAI}
           disabled={isGeneratingExperiment}
-          title="Build with AI"
+          title={t('layout.topbar.buildWithAI')}
         >
           {isGeneratingExperiment ? (
             <>
               <LoadingSkeleton variant="button" size="sm" />
-              <span className="hidden md:inline">Generating...</span>
+              <span className="hidden md:inline">{t('layout.topbar.generating')}</span>
             </>
           ) : (
             <>
               <Cpu className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline">Build with AI</span>
+              <span className="hidden md:inline">{t('layout.topbar.buildWithAI')}</span>
             </>
           )}
         </Button>
@@ -1455,17 +1458,17 @@ The success of this experiment will be measured by:
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
               onClick={() => segmentData.openAIModal('analysis')}
               disabled={segmentData.isAnalyzing}
-              title="Analyze with AI"
+              title={t('layout.topbar.analyzeWithAI')}
             >
               {segmentData.isAnalyzing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline">Analyzing...</span>
+                  <span className="hidden md:inline">{t('layout.topbar.analyzing')}</span>
                 </>
               ) : (
                 <>
                   <BarChart className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline">Analyze with AI</span>
+                  <span className="hidden md:inline">{t('layout.topbar.analyzeWithAI')}</span>
                 </>
               )}
             </Button>
@@ -1477,17 +1480,17 @@ The success of this experiment will be measured by:
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
               onClick={() => segmentData.openAIModal('topics')}
               disabled={segmentData.isGeneratingTopics}
-              title="Get Topics with AI"
+              title={t('layout.topbar.getTopicsWithAI')}
             >
               {segmentData.isGeneratingTopics ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline">Getting Topics...</span>
+                  <span className="hidden md:inline">{t('layout.topbar.gettingTopics')}</span>
                 </>
               ) : (
                 <>
                   <FileText className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline">Get Topics with AI</span>
+                  <span className="hidden md:inline">{t('layout.topbar.getTopicsWithAI')}</span>
                 </>
               )}
             </Button>
@@ -1503,26 +1506,26 @@ The success of this experiment will be measured by:
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
-              title="Build with AI"
+              title={t('layout.topbar.buildWithAI')}
             >
               {isProcessing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline">Processing...</span>
+                  <span className="hidden md:inline">{t('layout.topbar.processing')}</span>
                 </>
               ) : (
                 <>
                   <FlaskConical className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline">Build with AI</span>
+                  <span className="hidden md:inline">{t('layout.topbar.buildWithAI')}</span>
                 </>
               )}
             </Button>
             <CreateSegmentDialog 
               onCreateSegment={handleCreateSegment}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="New Segment">
+                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title={t('layout.topbar.newSegment')}>
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">New Segment</span>
+                  <span className="hidden md:inline ml-2">{t('layout.topbar.newSegment')}</span>
                 </Button>
               }
             />
@@ -1537,9 +1540,9 @@ The success of this experiment will be measured by:
               campaigns={campaigns}
               onCreateExperiment={handleCreateExperiment}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="New Experiment">
+                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title={t('layout.topbar.newExperiment')}>
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">New Experiment</span>
+                  <span className="hidden md:inline ml-2">{t('layout.topbar.newExperiment')}</span>
                 </Button>
               }
             />
@@ -1554,9 +1557,9 @@ The success of this experiment will be measured by:
               campaigns={campaigns}
               onCreateRequirement={handleCreateRequirement}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="New Requirement">
+                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title={t('layout.topbar.newRequirement')}>
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">New Requirement</span>
+                  <span className="hidden md:inline ml-2">{t('layout.topbar.newRequirement')}</span>
                 </Button>
               }
             />
@@ -1570,16 +1573,16 @@ The success of this experiment will be measured by:
               segments={segments.length > 0 ? segments : propSegments || []}
               onImportLeads={handleImportLeads}
               trigger={
-                <Button variant="secondary" className="flex items-center justify-center gap-2 md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="Import">
+                <Button variant="secondary" className="flex items-center justify-center gap-2 md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title={t('layout.topbar.import')}>
                   <UploadCloud className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">Import</span>
+                  <span className="hidden md:inline ml-2">{t('layout.topbar.import')}</span>
                 </Button>
               }
             />
             <Button 
               variant="secondary"
               className="flex items-center justify-center gap-2 md:h-9 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
-              title="Export"
+              title={t('layout.topbar.export')}
               onClick={async () => {
                 try {
                   const response = await fetch(`/api/leads/export?siteId=${currentSite.id}`, {
@@ -1607,7 +1610,7 @@ The success of this experiment will be measured by:
               }}
             >
               <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">Export</span>
+              <span className="hidden md:inline ml-2">{t('layout.topbar.export')}</span>
             </Button>
             <CreateLeadDialog 
               segments={segments.length > 0 ? segments : propSegments || []}
@@ -1616,7 +1619,7 @@ The success of this experiment will be measured by:
               trigger={
                 <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="Add Lead">
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">Add Lead</span>
+                  <span className="hidden md:inline ml-2">{t('layout.topbar.addLead')}</span>
                 </Button>
               }
             />
@@ -1642,17 +1645,17 @@ The success of this experiment will be measured by:
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
-              title="Build with AI"
+              title={t('layout.topbar.buildWithAI')}
             >
               {isProcessing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline">Processing...</span>
+                  <span className="hidden md:inline">{t('layout.topbar.processing')}</span>
                 </>
               ) : (
                 <>
                   <FlaskConical className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline">Build with AI</span>
+                  <span className="hidden md:inline">{t('layout.topbar.buildWithAI')}</span>
                 </>
               )}
             </Button>
@@ -1667,9 +1670,9 @@ The success of this experiment will be measured by:
                 }
               }}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="New Content">
+                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title={t('layout.topbar.newContent')}>
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">New Content</span>
+                  <span className="hidden md:inline ml-2">{t('layout.topbar.newContent')}</span>
                 </Button>
               }
             />
@@ -1685,17 +1688,17 @@ The success of this experiment will be measured by:
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
-              title="Build with AI"
+              title={t('layout.topbar.buildWithAI')}
             >
               {isProcessing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline">Processing...</span>
+                  <span className="hidden md:inline">{t('layout.topbar.processing')}</span>
                 </>
               ) : (
                 <>
                   <FlaskConical className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline">Build with AI</span>
+                  <span className="hidden md:inline">{t('layout.topbar.buildWithAI')}</span>
                 </>
               )}
             </Button>
@@ -1704,9 +1707,9 @@ The success of this experiment will be measured by:
               requirements={requirements}
               onCreateCampaign={handleCreateCampaign}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="New Campaign">
+                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title={t('layout.topbar.newCampaign')}>
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">New Campaign</span>
+                  <span className="hidden md:inline ml-2">{t('layout.topbar.newCampaign')}</span>
                 </Button>
               }
             />
@@ -1719,7 +1722,7 @@ The success of this experiment will be measured by:
             <Button 
               variant="secondary"
               className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
-              title="Export"
+              title={t('layout.topbar.export')}
               onClick={async () => {
                 try {
                   const response = await fetch(`/api/sales/export?siteId=${currentSite.id}`, {
@@ -1747,11 +1750,11 @@ The success of this experiment will be measured by:
               }}
             >
               <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">Export</span>
+              <span className="hidden md:inline ml-2">{t('layout.topbar.export')}</span>
             </Button>
-            <Button onClick={onCreateSale} className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="Add Sale">
+            <Button onClick={onCreateSale} className="min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title={t('layout.topbar.addSale')}>
               <PlusCircle className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">Add Sale</span>
+              <span className="hidden md:inline ml-2">{t('layout.topbar.addSale')}</span>
             </Button>
           </>
         ) : null
@@ -1761,9 +1764,9 @@ The success of this experiment will be measured by:
           <CreateDealDialog 
             onCreateDeal={handleCreateDeal}
             trigger={
-              <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title="Create Deal">
+              <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[162px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter" title={t('layout.topbar.createDeal')}>
                 <PlusCircle className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline ml-2">Create Deal</span>
+                <span className="hidden md:inline ml-2">{t('layout.topbar.createDeal')}</span>
               </Button>
             }
           />
@@ -1797,10 +1800,10 @@ The success of this experiment will be measured by:
           size="default"
           className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-0 md:w-auto md:px-3 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter"
           onClick={handleLogout}
-          title={isLoggingOut ? "Signing out..." : "Log out"}
+          title={isLoggingOut ? t('layout.topbar.signingOut') : t('layout.topbar.logOut')}
         >
           <LogOut className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline text-sm font-medium">{isLoggingOut ? "Signing out..." : "Log out"}</span>
+          <span className="hidden md:inline text-sm font-medium">{isLoggingOut ? t('layout.topbar.signingOut') : t('layout.topbar.logOut')}</span>
         </Button>
       )}
     </div>

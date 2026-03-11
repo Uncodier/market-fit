@@ -17,6 +17,7 @@ import { Search, Briefcase } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { navigateToDeal } from "@/app/hooks/use-navigation-history"
 import { IsEmpty } from "@/app/components/ui/empty-state"
 import { Button } from "@/app/components/ui/button"
@@ -95,6 +96,7 @@ function DealsKanbanSkeleton() {
 }
 
 export default function DealsPage() {
+  const { t } = useLocalization()
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -194,11 +196,11 @@ export default function DealsPage() {
         // Revert on error
         loadDeals(true)
       } else {
-        toast.success("Deal stage updated")
+        toast.success(t('deals.success.updated') || "Deal stage updated")
       }
     } catch (error) {
       console.error("Error updating deal stage:", error)
-      toast.error("Failed to update deal stage")
+      toast.error(t('deals.error.updateFailed') || "Failed to update deal stage")
       // Revert on error
       loadDeals(true)
     }
@@ -212,25 +214,25 @@ export default function DealsPage() {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Deals">
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.all') || "All Deals"}>
                     <LayoutGrid size={13} />
-                    <span className="tab-label">All Deals</span>
+                    <span className="tab-label">{t('deals.tabs.all') || 'All Deals'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="open" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Open Deals">
+                  <TabsTrigger value="open" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.open') || "Open Deals"}>
                     <Target size={13} />
-                    <span className="tab-label">Open</span>
+                    <span className="tab-label">{t('deals.tabs.openTitle') || 'Open'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="won" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Won Deals">
+                  <TabsTrigger value="won" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.won') || "Won Deals"}>
                     <TrendingUp size={13} />
-                    <span className="tab-label">Won</span>
+                    <span className="tab-label">{t('deals.tabs.wonTitle') || 'Won'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="lost" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Lost Deals">
+                  <TabsTrigger value="lost" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.lost') || "Lost Deals"}>
                     <XCircle size={13} />
-                    <span className="tab-label">Lost</span>
+                    <span className="tab-label">{t('deals.tabs.lostTitle') || 'Lost'}</span>
                   </TabsTrigger>
                 </TabsList>
                 <SearchInput 
-                  placeholder="Search deals..." 
+                  placeholder={t('deals.search') || "Search deals..."} 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -249,8 +251,8 @@ export default function DealsPage() {
             ) : filteredDeals.length === 0 && !searchQuery ? (
               <IsEmpty 
                 icon={<Briefcase className="h-10 w-10 text-muted-foreground" />}
-                title="No deals found"
-                description="Get started by creating a new deal or wait for leads to be converted into deals."
+                title={t('deals.empty.title') || "No deals found"}
+                description={t('deals.empty.desc') || "Get started by creating a new deal or wait for leads to be converted into deals."}
                 variant="fancy"
               />
             ) : (

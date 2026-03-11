@@ -15,6 +15,7 @@ import { HelpCircle } from "@/app/components/ui/icons"
 import { useAuth } from "@/app/hooks/use-auth"
 import { CohortTables } from "@/app/components/dashboard/cohort-tables"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { LeadsCohortTables } from "@/app/components/dashboard/leads-cohort-tables"
 import { useState, useEffect, useCallback } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -56,6 +57,7 @@ import { PerformanceMetricsChart } from "@/app/components/dashboard/performance-
 import { LeadsTasksChart } from "@/app/components/dashboard/leads-tasks-chart"
 
 export default function DashboardPage() {
+  const { t } = useLocalization()
   const { user } = useAuth()
   const { currentSite } = useSite()
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
@@ -260,6 +262,12 @@ export default function DashboardPage() {
       setSelectedRangeType("Custom range")
     }
   }, [])
+
+  const rangeTypeLabel = selectedRangeType === "Today"
+    ? (t('dashboard.range.today') || 'Today')
+    : selectedRangeType === "This month"
+      ? (t('dashboard.range.thisMonth') || 'This month')
+      : (t('dashboard.range.custom') || 'Custom range')
 
   // Validates dates to ensure they're not in the future - ENHANCED
   const validateDates = useCallback((startDate: Date, endDate: Date) => {
@@ -541,7 +549,7 @@ export default function DashboardPage() {
           <div className="flex">
             <div className="ml-3">
               <p className="text-sm text-yellow-700">
-                Navigation is temporarily blocked to protect your work. Please wait for the current operation to complete.
+                {t('dashboard.navigationBlocked') || 'Navigation is temporarily blocked to protect your work. Please wait for the current operation to complete.'}
               </p>
             </div>
           </div>
@@ -559,20 +567,20 @@ export default function DashboardPage() {
               <div className="flex items-center gap-8">
                 <TabsList>
                   {!onboardingCompleted && (
-                    <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
+                    <TabsTrigger value="onboarding">{t('dashboard.tabs.onboarding') || 'Onboarding'}</TabsTrigger>
                   )}
-                  <TabsTrigger value="performance">Performance</TabsTrigger>
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                  <TabsTrigger value="traffic">Traffic</TabsTrigger>
-                  <TabsTrigger value="costs">Cost Reports</TabsTrigger>
-                  <TabsTrigger value="sales">Sales Reports</TabsTrigger>
+                  <TabsTrigger value="performance">{t('dashboard.tabs.performance') || 'Performance'}</TabsTrigger>
+                  <TabsTrigger value="overview">{t('dashboard.tabs.overview') || 'Overview'}</TabsTrigger>
+                  <TabsTrigger value="analytics">{t('dashboard.tabs.analytics') || 'Analytics'}</TabsTrigger>
+                  <TabsTrigger value="traffic">{t('dashboard.tabs.traffic') || 'Traffic'}</TabsTrigger>
+                  <TabsTrigger value="costs">{t('dashboard.tabs.costs') || 'Cost Reports'}</TabsTrigger>
+                  <TabsTrigger value="sales">{t('dashboard.tabs.sales') || 'Sales Reports'}</TabsTrigger>
                 </TabsList>
               </div>
               {activeTab !== "onboarding" && (
                 <div className="ml-auto flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Segment:</span>
+                    <span className="text-sm text-muted-foreground">{t('dashboard.filters.segment') || 'Segment:'}</span>
                     <Select 
                       value={selectedSegment} 
                       onValueChange={handleSegmentChange}
@@ -581,7 +589,7 @@ export default function DashboardPage() {
                       <SelectTrigger className="w-[180px]">
                         <div className="flex-1 overflow-hidden">
                           <span style={{ pointerEvents: 'none' }}>
-                            <SelectValue placeholder="All segments" />
+                            <SelectValue placeholder={t('dashboard.filters.allSegments') || 'All segments'} />
                           </span>
                         </div>
                       </SelectTrigger>
@@ -590,7 +598,7 @@ export default function DashboardPage() {
                           value="all"
                           className="flex-wrap whitespace-normal"
                         >
-                          <span style={{ pointerEvents: 'none' }}>All segments</span>
+                          <span style={{ pointerEvents: 'none' }}>{t('dashboard.filters.allSegments') || 'All segments'}</span>
                         </SelectItem>
                         {segments.map((segment) => (
                           <SelectItem 
@@ -623,9 +631,15 @@ export default function DashboardPage() {
           <div className="px-4 md:px-16 pt-3 pb-4">
             <div className="flex items-center justify-between space-x-4">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight">Hi, {userName}! 👋</h2>
+                <h2 className="text-2xl font-bold tracking-tight">
+                  {(t('dashboard.greeting') || 'Hi, {userName}! 👋').replace('{userName}', userName)}
+                </h2>
                 <p className="text-muted-foreground">
-                  {`Welcome to your control panel - Viewing ${selectedRangeType} data (${format(dateRange.startDate, "MMMM d")} to ${format(dateRange.endDate, "MMMM d")} ${format(dateRange.endDate, "yyyy")})`}
+                  {(t('dashboard.subtitle') || 'Welcome to your control panel - Viewing {rangeType} data ({startDate} to {endDate} {year})')
+                    .replace('{rangeType}', rangeTypeLabel)
+                    .replace('{startDate}', format(dateRange.startDate, "MMMM d"))
+                    .replace('{endDate}', format(dateRange.endDate, "MMMM d"))
+                    .replace('{year}', format(dateRange.endDate, "yyyy"))}
                 </p>
               </div>
             </div>
@@ -686,8 +700,8 @@ export default function DashboardPage() {
                 <div className="grid gap-4 grid-cols-1">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Performance Metrics</CardTitle>
-                      <CardDescription>Conversations, engagement, meetings, and sales over time</CardDescription>
+                      <CardTitle>{t('dashboard.metrics.performance.title') || 'Performance Metrics'}</CardTitle>
+                      <CardDescription>{t('dashboard.metrics.performance.desc') || 'Conversations, engagement, meetings, and sales over time'}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <PerformanceMetricsChart 
@@ -701,8 +715,8 @@ export default function DashboardPage() {
                 <div className="grid gap-4 grid-cols-1">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Customer Success Metrics</CardTitle>
-                      <CardDescription>Daily created leads and tasks over time</CardDescription>
+                      <CardTitle>{t('dashboard.metrics.customerSuccess.title') || 'Customer Success Metrics'}</CardTitle>
+                      <CardDescription>{t('dashboard.metrics.customerSuccess.desc') || 'Daily created leads and tasks over time'}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <LeadsTasksChart
@@ -716,8 +730,8 @@ export default function DashboardPage() {
                 <div className="grid gap-4 grid-cols-1">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Token Usage</CardTitle>
-                      <CardDescription>Input vs Output token consumption over time</CardDescription>
+                      <CardTitle>{t('dashboard.metrics.tokenUsage.title') || 'Token Usage'}</CardTitle>
+                      <CardDescription>{t('dashboard.metrics.tokenUsage.desc') || 'Input vs Output token consumption over time'}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <TokenUsageChart 
@@ -799,7 +813,7 @@ export default function DashboardPage() {
                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2 h-[500px]">
                   <Card className="col-span-1 flex flex-col">
                     <CardHeader className="flex-shrink-0">
-                      <CardTitle>Overview</CardTitle>
+                      <CardTitle>{t('dashboard.overview.title') || 'Overview'}</CardTitle>
                     </CardHeader>
                     <CardContent className="pl-2 flex-1 flex flex-col">
                       <div className="flex-1">
@@ -813,7 +827,7 @@ export default function DashboardPage() {
                   </Card>
                   <Card className="col-span-1 flex flex-col">
                     <CardHeader className="flex-shrink-0">
-                      <CardTitle>Recent commercial activity</CardTitle>
+                      <CardTitle>{t('dashboard.recentActivity.title') || 'Recent commercial activity'}</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col">
                       <div className="flex-1">
@@ -835,9 +849,9 @@ export default function DashboardPage() {
                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 min-h-[160px]">
                   <Card className="col-span-1">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Clients by Segment</CardTitle>
+                      <CardTitle className="text-base">{t('dashboard.analytics.clientsBySegment.title') || 'Clients by Segment'}</CardTitle>
                       <CardDescription className="text-xs">
-                        Distribution of clients across segments
+                        {t('dashboard.analytics.clientsBySegment.desc') || 'Distribution of clients across segments'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -851,9 +865,9 @@ export default function DashboardPage() {
                   </Card>
                   <Card className="col-span-1">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Revenue by Segment</CardTitle>
+                      <CardTitle className="text-base">{t('dashboard.analytics.revenueBySegment.title') || 'Revenue by Segment'}</CardTitle>
                       <CardDescription className="text-xs">
-                        Distribution of revenue across segments
+                        {t('dashboard.analytics.revenueBySegment.desc') || 'Distribution of revenue across segments'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -868,9 +882,9 @@ export default function DashboardPage() {
                   </Card>
                   <Card className="col-span-1">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Clients by Campaign</CardTitle>
+                      <CardTitle className="text-base">{t('dashboard.analytics.clientsByCampaign.title') || 'Clients by Campaign'}</CardTitle>
                       <CardDescription className="text-xs">
-                        Distribution of clients across campaigns
+                        {t('dashboard.analytics.clientsByCampaign.desc') || 'Distribution of clients across campaigns'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -884,9 +898,9 @@ export default function DashboardPage() {
                   </Card>
                   <Card className="col-span-1">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-base">Revenue by Campaign</CardTitle>
+                      <CardTitle className="text-base">{t('dashboard.analytics.revenueByCampaign.title') || 'Revenue by Campaign'}</CardTitle>
                       <CardDescription className="text-xs">
-                        Revenue across campaigns{formattedTotal ? ` - ${formattedTotal}` : ""}
+                        {t('dashboard.analytics.revenueByCampaign.desc') || 'Revenue across campaigns'}{formattedTotal ? ` - ${formattedTotal}` : ""}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -904,9 +918,9 @@ export default function DashboardPage() {
                 <div className="grid gap-4 grid-cols-1">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Client Cohort Analysis</CardTitle>
+                      <CardTitle>{t('dashboard.analytics.clientCohort.title') || 'Client Cohort Analysis'}</CardTitle>
                       <CardDescription>
-                        Week-to-week retention metrics for users with at least 1 paid invoice (standardized).
+                        {t('dashboard.analytics.clientCohort.desc') || 'Week-to-week retention metrics for users with at least 1 paid invoice (standardized).'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -919,9 +933,9 @@ export default function DashboardPage() {
                   </Card>
                   <Card>
                     <CardHeader>
-                      <CardTitle>Lead Cohort Analysis</CardTitle>
+                      <CardTitle>{t('dashboard.analytics.leadCohort.title') || 'Lead Cohort Analysis'}</CardTitle>
                       <CardDescription>
-                        Week-to-week lead retention metrics - tracking lead engagement over time (standardized).
+                        {t('dashboard.analytics.leadCohort.desc') || 'Week-to-week lead retention metrics - tracking lead engagement over time (standardized).'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

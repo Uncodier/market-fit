@@ -29,6 +29,7 @@ import { createRequirement } from "@/app/requirements/actions"
 import { getLeadsByCampaignId } from "@/app/leads/actions"
 import { Lead } from "@/app/leads/types"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { createClient } from "@/lib/supabase/client"
 import { getSegments } from "@/app/segments/actions"
 import { 
@@ -102,7 +103,7 @@ const CAMPAIGN_STATUS_STYLES = {
 };
 
 function CampaignStatusBar({ currentStatus, onStatusChange }: CampaignStatusBarProps) {
-  // For "completed" status, we'll show a confirmation dialog
+  const { t } = useLocalization()
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   
   const handleStatusClick = (status: "active" | "pending" | "completed") => {
@@ -140,7 +141,7 @@ function CampaignStatusBar({ currentStatus, onStatusChange }: CampaignStatusBarP
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('campaigns.detail.cancel') || 'Cancel'}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => onStatusChange("completed")} 
               className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-600 dark:hover:bg-green-700"
@@ -564,6 +565,7 @@ export default function TaskDetailPage() {
       if (data.description !== undefined) updateData.description = data.description;
       if (data.priority !== undefined) updateData.priority = data.priority;
       if (data.status !== undefined) updateData.status = data.status;
+      if (updateData.status === 'draft') updateData.status = 'active';
       if (data.type !== undefined) updateData.type = data.type;
       if (data.dueDate !== undefined) updateData.dueDate = data.dueDate;
       if (data.budget !== undefined) updateData.budget = data.budget;
@@ -782,9 +784,9 @@ export default function TaskDetailPage() {
             <div className="px-16 pt-0">
               <div className="flex items-center justify-between">
                 <TabsList>
-                  <TabsTrigger value="summary">Campaign Summary</TabsTrigger>
-                  <TabsTrigger value="financials">Finances</TabsTrigger>
-                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="summary">{t('campaigns.detail.tabs.summary') || 'Campaign Summary'}</TabsTrigger>
+                  <TabsTrigger value="financials">{t('campaigns.detail.tabs.financials') || 'Finances'}</TabsTrigger>
+                  <TabsTrigger value="details">{t('campaigns.detail.tabs.details') || 'Details'}</TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-8">
                   {campaign && activeTab !== "details" && (

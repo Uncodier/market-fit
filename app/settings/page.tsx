@@ -17,6 +17,7 @@ import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/setti
 import { handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities } from "../components/settings/save-handlers"
 import { useAuthContext } from "../components/auth/auth-provider"
 import { QuickNav, type QuickNavSection } from "../components/ui/quick-nav"
+import { useLocalization } from "../context/LocalizationContext"
 
 function SettingsFormSkeleton() {
   return (
@@ -159,60 +160,61 @@ function SettingsFormSkeleton() {
 }
 
 // Section configurations for quick navigation
-const generalSections: QuickNavSection[] = [
-  { id: "site-information", title: "Site Information" },
-  { id: "web-resources", title: "Web Resources" },
+const getGeneralSections = (t: (key: string) => string): QuickNavSection[] => [
+  { id: "site-information", title: t('settings.nav.siteInfo') || "Site Information" },
+  { id: "web-resources", title: t('settings.nav.webResources') || "Web Resources" },
 ]
 
-const channelsSections: QuickNavSection[] = [
-  { id: "website-channel", title: "Website Channel" },
-  { id: "agent-email-channel", title: "Agent Email Channel" },
-  { id: "agent-whatsapp-channel", title: "Agent WhatsApp Channel" },
+const getChannelsSections = (t: (key: string) => string): QuickNavSection[] => [
+  { id: "website-channel", title: t('settings.nav.websiteChannel') || "Website Channel" },
+  { id: "agent-email-channel", title: t('settings.nav.agentEmailChannel') || "Agent Email Channel" },
+  { id: "agent-whatsapp-channel", title: t('settings.nav.agentWhatsappChannel') || "Agent WhatsApp Channel" },
 ]
 
-const getInitialSocialSections = (): QuickNavSection[] => [
+const getInitialSocialSections = (t: (key: string) => string): QuickNavSection[] => [
   { 
     id: "social-networks-section", 
-    title: "Social Networks",
+    title: t('settings.nav.socialNetworks') || "Social Networks",
     children: []
   },
 ]
 
-const getInitialTeamSections = (): QuickNavSection[] => [
+const getInitialTeamSections = (t: (key: string) => string): QuickNavSection[] => [
   { 
     id: "team-members", 
-    title: "Team Members",
+    title: t('settings.nav.teamMembers') || "Team Members",
     children: []
   },
 ]
 
-const getInitialCopywritingSections = (): QuickNavSection[] => [
+const getInitialCopywritingSections = (t: (key: string) => string): QuickNavSection[] => [
   { 
     id: "copywriting-collection", 
-    title: "Copy Sequences",
+    title: t('settings.nav.copySequences') || "Copy Sequences",
     children: []
   },
 ]
 
-const activitiesSections: QuickNavSection[] = [
+const getActivitiesSections = (t: (key: string) => string): QuickNavSection[] => [
   { 
     id: "activities", 
-    title: "Activities",
+    title: t('settings.nav.activities') || "Activities",
     children: [
-      { id: "activity-daily_resume_and_stand_up", title: "Daily Resume and Stand Up" },
-      { id: "activity-local_lead_generation", title: "Local Lead Generation" },
-      { id: "activity-icp_lead_generation", title: "ICP Lead Generation" },
-      { id: "activity-leads_initial_cold_outreach", title: "Leads Initial Cold Outreach" },
-      { id: "activity-leads_follow_up", title: "Leads Follow Up" },
-      { id: "activity-email_sync", title: "Email Sync" },
-      { id: "activity-assign_leads_to_team", title: "Assign Leads to Team" },
-      { id: "activity-notify_team_on_inbound_conversations", title: "Notify Team on Inbound Conversations" },
-      { id: "activity-supervise_conversations", title: "Supervise Conversations" },
+      { id: "activity-daily_resume_and_stand_up", title: t('settings.nav.activity.dailyResume') || "Daily Resume and Stand Up" },
+      { id: "activity-local_lead_generation", title: t('settings.nav.activity.localLead') || "Local Lead Generation" },
+      { id: "activity-icp_lead_generation", title: t('settings.nav.activity.icpLead') || "ICP Lead Generation" },
+      { id: "activity-leads_initial_cold_outreach", title: t('settings.nav.activity.leadsCold') || "Leads Initial Cold Outreach" },
+      { id: "activity-leads_follow_up", title: t('settings.nav.activity.leadsFollowUp') || "Leads Follow Up" },
+      { id: "activity-email_sync", title: t('settings.nav.activity.emailSync') || "Email Sync" },
+      { id: "activity-assign_leads_to_team", title: t('settings.nav.activity.assignLeads') || "Assign Leads to Team" },
+      { id: "activity-notify_team_on_inbound_conversations", title: t('settings.nav.activity.notifyTeam') || "Notify Team on Inbound Conversations" },
+      { id: "activity-supervise_conversations", title: t('settings.nav.activity.superviseConversations') || "Supervise Conversations" },
     ]
   },
 ]
 
 export default function SettingsPage() {
+  const { t } = useLocalization()
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
   const { theme } = useTheme()
   const { user } = useAuthContext()
@@ -220,9 +222,9 @@ export default function SettingsPage() {
   const [activeSegment, setActiveSegment] = useState("general")
   const searchParams = useSearchParams()
   const [formKey, setFormKey] = useState(0)
-  const [teamSections, setTeamSections] = useState<QuickNavSection[]>(getInitialTeamSections())
-  const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections())
-  const [socialSections, setSocialSections] = useState<QuickNavSection[]>(getInitialSocialSections())
+  const [teamSections, setTeamSections] = useState<QuickNavSection[]>(getInitialTeamSections(t))
+  const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections(t))
+  const [socialSections, setSocialSections] = useState<QuickNavSection[]>(getInitialSocialSections(t))
 
   // Simple refresh prevention specifically for settings page
   useSimpleRefreshPrevention()
@@ -234,7 +236,7 @@ export default function SettingsPage() {
       setTeamSections([
         {
           id: "team-members",
-          title: "Team Members",
+          title: t('settings.nav.teamMembers') || 'Team Members',
           children: members
         }
       ]);
@@ -253,7 +255,7 @@ export default function SettingsPage() {
       setCopywritingSections([
         {
           id: "copywriting-collection",
-          title: "Copy Sequences",
+          title: t('settings.nav.copySequences') || 'Copy Sequences',
           children: items
         }
       ]);
@@ -272,7 +274,7 @@ export default function SettingsPage() {
       setSocialSections([
         {
           id: "social-networks-section",
-          title: "Social Networks",
+          title: t('settings.nav.socialNetworks') || 'Social Networks',
           children: networks
         }
       ]);
@@ -389,13 +391,13 @@ export default function SettingsPage() {
   const getCurrentSections = (): QuickNavSection[] => {
     switch (activeSegment) {
       case "general":
-        return generalSections
+        return getGeneralSections(t)
       case "channels":
-        return channelsSections
+        return getChannelsSections(t)
       case "team":
         return teamSections
       case "activities":
-        return activitiesSections
+        return getActivitiesSections(t)
       default:
         return []
     }
@@ -409,10 +411,10 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between px-16 w-full">
             <Tabs value="general" className="w-auto">
               <TabsList>
-                <TabsTrigger value="general">General Settings</TabsTrigger>
-                <TabsTrigger value="channels">Agent Channels</TabsTrigger>
-                <TabsTrigger value="team">Team</TabsTrigger>
-                <TabsTrigger value="activities">Activities</TabsTrigger>
+                <TabsTrigger value="general">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
+                <TabsTrigger value="channels">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
+                <TabsTrigger value="team">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
+                <TabsTrigger value="activities">{t('settings.tabs.activities') || 'Activities'}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -431,7 +433,7 @@ export default function SettingsPage() {
   if (!currentSite) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-gray-500">No site selected</p>
+        <p className="text-gray-500">{t('settings.empty.noSite') || 'No site selected'}</p>
       </div>
     )
   }
@@ -442,10 +444,10 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
             <TabsList className="flex">
-              <TabsTrigger value="general" className="whitespace-nowrap">General Settings</TabsTrigger>
-              <TabsTrigger value="channels" className="whitespace-nowrap">Agent Channels</TabsTrigger>
-              <TabsTrigger value="team" className="whitespace-nowrap">Team</TabsTrigger>
-              <TabsTrigger value="activities" className="whitespace-nowrap">Activities</TabsTrigger>
+              <TabsTrigger value="general" className="whitespace-nowrap">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
+              <TabsTrigger value="channels" className="whitespace-nowrap">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
+              <TabsTrigger value="team" className="whitespace-nowrap">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
+              <TabsTrigger value="activities" className="whitespace-nowrap">{t('settings.tabs.activities') || 'Activities'}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

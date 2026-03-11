@@ -5,6 +5,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { PieChart } from "@/app/components/ui/icons"
 import { CostCategoryChart } from "@/app/components/dashboard/cost-category-chart"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface CostDistributionChartProps {
   data: Array<{
@@ -17,14 +18,15 @@ interface CostDistributionChartProps {
 }
 
 export function CostDistributionChart({ data, isLoading, dataReady }: CostDistributionChartProps) {
+  const { t } = useLocalization()
   const hasData = data && data.length > 0
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cost Distribution by Category</CardTitle>
+        <CardTitle>{t('dashboard.reports.costDistribution') || 'Cost Distribution by Category'}</CardTitle>
         <CardDescription>
-          Breakdown of costs across major expense categories.
+          {t('dashboard.reports.costDistributionDesc') || 'Breakdown of costs across major expense categories.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="relative min-h-[300px]">
@@ -49,8 +51,8 @@ export function CostDistributionChart({ data, isLoading, dataReady }: CostDistri
           <div className="w-full h-[300px]">
             <EmptyCard 
               icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
-              title="No cost distribution data"
-              description="There is no cost distribution data available for the selected period."
+              title={t('dashboard.reports.noCostDistribution') || 'No cost distribution data'}
+              description={t('dashboard.reports.noCostDistributionDesc') || 'There is no cost distribution data available for the selected period.'}
             />
           </div>
         )}

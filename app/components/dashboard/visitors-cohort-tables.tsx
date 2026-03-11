@@ -4,6 +4,7 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { format, subDays } from "date-fns"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -61,6 +62,7 @@ function getGradientBackground(value: number, isDarkMode: boolean) {
 }
 
 export function VisitorsCohortTables({ segmentId = "all", startDate: propStartDate, endDate: propEndDate }: VisitorsCohortTablesProps) {
+  const { t } = useLocalization();
   const { isDarkMode } = useTheme();
   const { currentSite } = useSite();
   const { user } = useAuth();
@@ -177,7 +179,7 @@ export function VisitorsCohortTables({ segmentId = "all", startDate: propStartDa
     return (
       <div className="space-y-8">
         <div>
-          <h3 className="text-lg font-medium mb-4">Visitor Retention by Week</h3>
+          <h3 className="text-lg font-medium mb-4">{t('dashboard.cohort.visitorRetention') || 'Visitor Retention by Week'}</h3>
           <div className="rounded-md border overflow-hidden">
             <div className="animate-pulse bg-card">
               {/* Table header */}
@@ -244,14 +246,14 @@ export function VisitorsCohortTables({ segmentId = "all", startDate: propStartDa
     <div className="space-y-8">
       {/* Visitor Cohort Table */}
       <div>
-        <h3 className="text-lg font-medium mb-4">Visitor Retention by Week</h3>
+        <h3 className="text-lg font-medium mb-4">{t('dashboard.cohort.visitorRetention') || 'Visitor Retention by Week'}</h3>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Cohort</TableHead>
+                <TableHead>{t('dashboard.cohort.cohort') || 'Cohort'}</TableHead>
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <TableHead key={i} className="text-center">Week {i + 1}</TableHead>
+                  <TableHead key={i} className="text-center">{t('dashboard.cohort.week') || 'Week'} {i + 1}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>

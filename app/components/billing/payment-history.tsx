@@ -9,6 +9,7 @@ import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { EmptyState } from "../ui/empty-state"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export interface PaymentTransaction {
   id: string
@@ -27,6 +28,7 @@ interface PaymentHistoryProps {
 }
 
 export function PaymentHistory({ className }: PaymentHistoryProps) {
+  const { t } = useLocalization()
   const { currentSite } = useSite()
   const [isDownloading, setIsDownloading] = useState(false)
   const [paymentHistory, setPaymentHistory] = useState<PaymentTransaction[]>([])
@@ -71,7 +73,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
           transaction_type: payment.transaction_type,
           amount: payment.amount,
           status: payment.status,
-          details: payment.details || { description: getDefaultDescription({ transaction_type: payment.transaction_type } as PaymentTransaction) },
+          details: payment.details || { description: getDefaultDescription({ transaction_type: payment.transaction_type } as PaymentTransaction, t) },
           credits: payment.credits,
           invoice_url: payment.invoice_url,
           created_at: payment.created_at
@@ -172,9 +174,9 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
   
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'subscription': return 'Subscription'
-      case 'credit_purchase': return 'Credit Purchase'
-      case 'refund': return 'Refund'
+      case 'subscription': return t('billing.payment.type.subscription') || 'Subscription'
+      case 'credit_purchase': return t('billing.payment.type.credits') || 'Credit Purchase'
+      case 'refund': return t('billing.payment.type.refund') || 'Refund'
       default: return type
     }
   }
@@ -224,15 +226,15 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
       {isLoading ? (
         <Card className="border dark:border-white/5 border-black/5 shadow-sm">
           <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">Payment History</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t('billing.payment.history.title') || 'Payment History'}</CardTitle>
           </CardHeader>
           <CardContent className="px-8 pb-8">
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                View your payment history and download invoices for your records.
+                {t('billing.payment.history.desc') || 'View your payment history and download invoices for your records.'}
               </p>
               <div className="text-center py-8">
-                <p className="text-muted-foreground">Loading payment history...</p>
+                <p className="text-muted-foreground">{t('billing.payment.history.loading') || 'Loading payment history...'}</p>
               </div>
             </div>
           </CardContent>
@@ -240,30 +242,30 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
       ) : paymentHistory.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-12 w-12 text-primary" />}
-          title="No payment history"
-          description="You haven't made any payments yet. Once you make a purchase, your payment history will appear here."
+          title={t('billing.payment.history.emptyTitle') || "No payment history"}
+          description={t('billing.payment.history.emptyDesc') || "You haven't made any payments yet. Once you make a purchase, your payment history will appear here."}
           className="h-[600px]"
         />
       ) : (
         <Card id="payment-history" className="border dark:border-white/5 border-black/5 shadow-sm">
           <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">Payment History</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t('billing.payment.history.title') || 'Payment History'}</CardTitle>
           </CardHeader>
           <CardContent className="px-8 pb-8">
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                View your payment history and download invoices for your records.
+                {t('billing.payment.history.desc') || 'View your payment history and download invoices for your records.'}
               </p>
               <div className="mt-6 overflow-hidden rounded-lg border">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/50">
-                      <th className="px-4 py-3 text-left font-medium">Date</th>
-                      <th className="px-4 py-3 text-left font-medium">Type</th>
-                      <th className="px-4 py-3 text-left font-medium">Amount</th>
-                      <th className="px-4 py-3 text-left font-medium">Status</th>
-                      <th className="px-4 py-3 text-left font-medium">Details</th>
-                      <th className="px-4 py-3 text-right font-medium">Invoice</th>
+                      <th className="px-4 py-3 text-left font-medium">{t('billing.payment.table.date') || 'Date'}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t('billing.payment.table.type') || 'Type'}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t('billing.payment.table.amount') || 'Amount'}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t('billing.payment.table.status') || 'Status'}</th>
+                      <th className="px-4 py-3 text-left font-medium">{t('billing.payment.table.details') || 'Details'}</th>
+                      <th className="px-4 py-3 text-right font-medium">{t('billing.payment.table.invoice') || 'Invoice'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -278,8 +280,8 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
-                          {transaction.details?.description || getDefaultDescription(transaction)}
-                          {transaction.credits && ` (${transaction.credits} credits)`}
+                          {transaction.details?.description || getDefaultDescription(transaction, t)}
+                          {transaction.credits && ` (${transaction.credits} ${t('billing.credits.credits').toLowerCase() || 'credits'})`}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button 
@@ -289,7 +291,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
                             onClick={() => handleDownloadInvoice(transaction)}
                           >
                             <Download className="h-4 w-4" />
-                            <span className="sr-only">Download Invoice</span>
+                            <span className="sr-only">{t('billing.payment.table.download') || 'Download Invoice'}</span>
                           </Button>
                         </td>
                       </tr>
@@ -306,11 +308,11 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
 }
 
 // Helper functions
-function getDefaultDescription(transaction: PaymentTransaction) {
+function getDefaultDescription(transaction: PaymentTransaction, t?: (key: string) => string) {
   switch (transaction.transaction_type) {
-    case 'subscription': return 'Subscription Payment'
-    case 'credit_purchase': return 'Credit Purchase'
-    case 'refund': return 'Refund'
-    default: return 'Transaction'
+    case 'subscription': return t?.('billing.payment.desc.sub') || 'Subscription Payment'
+    case 'credit_purchase': return t?.('billing.payment.desc.credits') || 'Credit Purchase'
+    case 'refund': return t?.('billing.payment.desc.refund') || 'Refund'
+    default: return t?.('billing.payment.desc.trans') || 'Transaction'
   }
 } 

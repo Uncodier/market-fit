@@ -5,6 +5,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useRequestController } from "@/app/hooks/useRequestController";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface LeadsContactedWidgetProps {
@@ -26,6 +27,7 @@ export function LeadsContactedWidget({
 }: LeadsContactedWidgetProps) {
   const [data, setData] = useState<LeadsContactedData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useLocalization();
   const { user } = useAuth();
   const { currentSite } = useSite();
   const { fetchWithController } = useRequestController();
@@ -79,7 +81,7 @@ export function LeadsContactedWidget({
 
   return (
     <BaseKpiWidget
-      title="Leads Contacted"
+      title={t('dashboard.widgets.leadsContacted') || 'Leads Contacted'}
       value={displayValue}
       changeText={changeText}
       isPositiveChange={(data?.percentChange || 0) > 0}

@@ -6,6 +6,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
@@ -21,17 +22,17 @@ interface RevenueData {
   periodType: string;
 }
 
-// Format period type for display
-const formatPeriodType = (periodType: string): string => {
+// Format period type for display (t for i18n)
+function formatPeriodType(periodType: string, t: (key: string) => string): string {
   switch (periodType) {
-    case "daily": return "yesterday";
-    case "weekly": return "last week";
-    case "monthly": return "last month";
-    case "quarterly": return "last quarter";
-    case "yearly": return "last year";
-    default: return "previous period";
+    case "daily": return t('dashboard.widgets.revenue.yesterday') || 'yesterday';
+    case "weekly": return t('dashboard.widgets.revenue.lastWeek') || 'last week';
+    case "monthly": return t('dashboard.widgets.revenue.lastMonth') || 'last month';
+    case "quarterly": return t('dashboard.widgets.revenue.lastQuarter') || 'last quarter';
+    case "yearly": return t('dashboard.widgets.revenue.lastYear') || 'last year';
+    default: return t('dashboard.widgets.revenue.previousPeriod') || 'previous period';
   }
-};
+}
 
 // Format currency for display
 const formatCurrency = (value: number): string => {
@@ -53,6 +54,7 @@ export function RevenueWidget({
   startDate: propStartDate,
   endDate: propEndDate
 }: RevenueWidgetProps) {
+  const { t } = useLocalization();
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
@@ -137,13 +139,13 @@ export function RevenueWidget({
   };
 
   const formattedValue = revenue ? formatCurrency(revenue.actual) : "$0";
-  const changeText = `${revenue?.percentChange || 0}% from ${formatPeriodType(revenue?.periodType || "monthly")}`;
+  const changeText = `${revenue?.percentChange || 0}% from ${formatPeriodType(revenue?.periodType || "monthly", t)}`;
   const isPositiveChange = (revenue?.percentChange || 0) > 0;
   
   return (
     <BaseKpiWidget
-      title="Revenue"
-      tooltipText="Total revenue for the selected period"
+      title={t('dashboard.widgets.revenue') || 'Revenue'}
+      tooltipText={t('dashboard.widgets.revenue.tooltip') || 'Total revenue for the selected period'}
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}

@@ -5,6 +5,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useRequestController } from "@/app/hooks/useRequestController";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface MeetingsWidgetProps {
@@ -26,6 +27,7 @@ export function MeetingsWidget({
 }: MeetingsWidgetProps) {
   const [data, setData] = useState<MeetingsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useLocalization();
   const { user } = useAuth();
   const { currentSite } = useSite();
   const { fetchWithController } = useRequestController();
@@ -79,7 +81,7 @@ export function MeetingsWidget({
 
   return (
     <BaseKpiWidget
-      title="Meetings"
+      title={t('dashboard.widgets.meetings') || 'Meetings'}
       value={displayValue}
       changeText={changeText}
       isPositiveChange={(data?.percentChange || 0) > 0}

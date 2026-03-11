@@ -66,10 +66,25 @@ export async function getConversationMessages(conversationId: string): Promise<C
       return []
     }
 
-    // Combine: pending messages first, then non-pending messages
+    // Combine: pending messages first, then non-pending messages. Deduplicate by id
+    // in case a message appears in both queries (e.g. status transition or filter edge case).
     const pendingMessages = pendingData || []
     const nonPendingMessages = nonPendingData || []
-    const sorted = [...pendingMessages, ...nonPendingMessages]
+    const seenIds = new Set<string>()
+    const combined: typeof pendingMessages = []
+    for (const m of pendingMessages) {
+      if (m?.id && !seenIds.has(m.id)) {
+        seenIds.add(m.id)
+        combined.push(m)
+      }
+    }
+    for (const m of nonPendingMessages) {
+      if (m?.id && !seenIds.has(m.id)) {
+        seenIds.add(m.id)
+        combined.push(m)
+      }
+    }
+    const sorted = combined
 
     // Debug logging to help identify ordering issues
     console.log(`🔍 [getConversationMessages] Conversation ${conversationId}:`)

@@ -2,6 +2,7 @@
 
 import { useFormContext } from "react-hook-form"
 import { useState, useEffect } from "react"
+import { useLocalization } from "../../context/LocalizationContext"
 import { type SiteFormValues, type CopywritingItem } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
@@ -86,6 +87,7 @@ const copyTypes = [
 ]
 
 export function CopywritingSection({ active, onSave, isSaving }: CopywritingSectionProps) {
+  const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const { currentSite } = useSite()
   const [copywritingList, setCopywritingList] = useState<CopywritingItem[]>([])
@@ -269,9 +271,9 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Copy Sequences</h2>
+          <h2 className="text-2xl font-semibold">{t('copywriting.section.title') || 'Copy Sequences'}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your marketing copy, scripts, and content templates
+            {t('copywriting.section.subtitle') || 'Manage your marketing copy, scripts, and content templates'}
           </p>
         </div>
         <Button
@@ -281,7 +283,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
           onClick={addCopywritingItem}
         >
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Copy Item
+          {t('copywriting.section.addItem') || 'Add Copy Item'}
         </Button>
       </div>
 
@@ -313,7 +315,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                           <IconComponent className="h-5 w-5 text-muted-foreground" />
                           <div>
                             <CardTitle className="text-lg font-semibold pt-1">
-                              {item.title || "Untitled Copy"}
+                              {item.title || (t('copywriting.section.untitled') || 'Untitled Copy')}
                             </CardTitle>
                             {item.copy_type && (
                               <p className="text-sm text-muted-foreground capitalize">
@@ -342,10 +344,10 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                         name={`copywriting.${index}.title`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Title</FormLabel>
+                            <FormLabel>{t('copywriting.form.title') || 'Title'}</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="Copy title"
+                                placeholder={t('copywriting.form.titlePlaceholder') || 'Copy title'}
                                 value={item.title || ""}
                                 onChange={(e) => {
                                   field.onChange(e)
@@ -366,7 +368,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                           name={`copywriting.${index}.copy_type`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Copy Type</FormLabel>
+                              <FormLabel>{t('copywriting.form.copyType') || 'Copy Type'}</FormLabel>
                               <FormControl>
                                 <Select
                                   value={item.copy_type}
@@ -397,7 +399,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                           name={`copywriting.${index}.status`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Status</FormLabel>
+                              <FormLabel>{t('copywriting.form.status') || 'Status'}</FormLabel>
                               <FormControl>
                                 <Select
                                   value={item.status || "draft"}
@@ -410,11 +412,11 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="draft">Draft</SelectItem>
-                                    <SelectItem value="review">Review</SelectItem>
-                                    <SelectItem value="approved">Approved</SelectItem>
-                                    <SelectItem value="published">Published</SelectItem>
-                                    <SelectItem value="archived">Archived</SelectItem>
+                                    <SelectItem value="draft">{t('copywriting.form.draft') || 'Draft'}</SelectItem>
+                                    <SelectItem value="review">{t('copywriting.form.review') || 'Review'}</SelectItem>
+                                    <SelectItem value="approved">{t('copywriting.form.approved') || 'Approved'}</SelectItem>
+                                    <SelectItem value="published">{t('copywriting.form.published') || 'Published'}</SelectItem>
+                                    <SelectItem value="archived">{t('copywriting.form.archived') || 'Archived'}</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </FormControl>
@@ -430,10 +432,10 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                         name={`copywriting.${index}.content`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Content</FormLabel>
+                            <FormLabel>{t('copywriting.form.content') || 'Content'}</FormLabel>
                             <FormControl>
                               <Textarea
-                                placeholder="Enter your copy content here..."
+                                placeholder={t('copywriting.form.contentPlaceholder') || 'Enter your copy content here...'}
                                 value={item.content || ""}
                                 onChange={(e) => {
                                   field.onChange(e)
@@ -454,10 +456,10 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                           name={`copywriting.${index}.target_audience`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Target Audience</FormLabel>
+                              <FormLabel>{t('copywriting.form.targetAudience') || 'Target Audience'}</FormLabel>
                               <FormControl>
                                 <Input
-                                  placeholder="Who is this copy for?"
+                                  placeholder={t('copywriting.form.targetAudiencePlaceholder') || 'Who is this copy for?'}
                                   value={item.target_audience || ""}
                                   onChange={(e) => {
                                     field.onChange(e)
@@ -476,10 +478,10 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                           name={`copywriting.${index}.use_case`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Use Case</FormLabel>
+                              <FormLabel>{t('copywriting.form.useCase') || 'Use Case'}</FormLabel>
                               <FormControl>
                                 <Input
-                                  placeholder="When will you use this copy?"
+                                  placeholder={t('copywriting.form.useCasePlaceholder') || 'When will you use this copy?'}
                                   value={item.use_case || ""}
                                   onChange={(e) => {
                                     field.onChange(e)
@@ -500,10 +502,10 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                         name={`copywriting.${index}.notes`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Notes</FormLabel>
+                            <FormLabel>{t('copywriting.form.notes') || 'Notes'}</FormLabel>
                             <FormControl>
                               <Textarea
-                                placeholder="Performance notes, variations, or additional context..."
+                                placeholder={t('copywriting.form.notesPlaceholder') || 'Performance notes, variations, or additional context...'}
                                 value={item.notes || ""}
                                 onChange={(e) => {
                                   field.onChange(e)
@@ -523,7 +525,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                         <div className="flex items-center justify-between w-full">
                           <div className="text-sm text-muted-foreground">
                             {item.status && (
-                              <span className="capitalize">Status: {item.status}</span>
+                              <span className="capitalize">{t('copywriting.form.statusLabel') || 'Status'}: {item.status}</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
@@ -535,23 +537,23 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
-                                  Remove Copy
+                                  {t('copywriting.form.removeCopy') || 'Remove Copy'}
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Remove Copy</AlertDialogTitle>
+                                  <AlertDialogTitle>{t('copywriting.form.removeCopyTitle') || 'Remove Copy'}</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Are you sure you want to remove this copywriting item? This action cannot be undone.
+                                    {t('copywriting.form.removeCopyDescription') || 'Are you sure you want to remove this copywriting item? This action cannot be undone.'}
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogCancel>{t('common.cancel') || 'Cancel'}</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => removeCopywritingItem(index)}
                                     className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
                                   >
-                                    Remove Copy
+                                    {t('copywriting.form.removeCopy') || 'Remove Copy'}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -562,7 +564,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                               onClick={() => handleSaveCopywritingItem(index)}
                               disabled={isSaving}
                             >
-                              {isSaving ? "Saving..." : "Save Copy"}
+                              {isSaving ? (t('copywriting.form.saving') || 'Saving...') : (t('copywriting.form.saveCopy') || 'Save Copy')}
                             </Button>
                           </div>
                         </div>

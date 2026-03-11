@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/app/components/ui/alert-dialog"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Deal status component
 interface DealStatusBarProps {
@@ -102,6 +103,7 @@ function DealStatusBar({ currentStatus, onStatusChange }: DealStatusBarProps) {
 }
 
 export default function DealPage() {
+  const { t } = useLocalization()
   const params = useParams()
   const router = useRouter()
   const [deal, setDeal] = useState<Deal | null>(null)
@@ -206,8 +208,8 @@ export default function DealPage() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">Deal not found</h2>
-          <Button onClick={() => router.push("/deals")}>Back to Deals</Button>
+          <h2 className="text-2xl font-bold">{t('deals.notFound') || 'Deal not found'}</h2>
+          <Button onClick={() => router.push("/deals")}>{t('deals.backToDeals') || 'Back to Deals'}</Button>
         </div>
       </div>
     )

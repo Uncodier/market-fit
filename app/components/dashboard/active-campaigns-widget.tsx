@@ -8,6 +8,7 @@ import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
+import { useLocalization } from "@/app/context/LocalizationContext";
 
 interface ActiveCampaignsWidgetProps {
   startDate?: Date;
@@ -21,21 +22,22 @@ interface ActiveCampaignsData {
 }
 
 // Format period type for display
-const formatPeriodType = (periodType: string): string => {
+function formatPeriodType(periodType: string, t: (key: string) => string): string {
   switch (periodType) {
-    case "daily": return "yesterday";
-    case "weekly": return "last week";
-    case "monthly": return "last month";
-    case "quarterly": return "last quarter";
-    case "yearly": return "last year";
-    default: return "previous period";
+    case "daily": return t('dashboard.widgets.revenue.yesterday') || 'yesterday';
+    case "weekly": return t('dashboard.widgets.revenue.lastWeek') || 'last week';
+    case "monthly": return t('dashboard.widgets.revenue.lastMonth') || 'last month';
+    case "quarterly": return t('dashboard.widgets.revenue.lastQuarter') || 'last quarter';
+    case "yearly": return t('dashboard.widgets.revenue.lastYear') || 'last year';
+    default: return t('dashboard.widgets.revenue.previousPeriod') || 'previous period';
   }
-};
+}
 
 export function ActiveCampaignsWidget({ 
   startDate: propStartDate,
   endDate: propEndDate
 }: ActiveCampaignsWidgetProps) {
+  const { t } = useLocalization();
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
@@ -123,13 +125,13 @@ export function ActiveCampaignsWidget({
   };
 
   const formattedValue = activeCampaigns ? activeCampaigns.actual.toString() : "0";
-  const changeText = `${activeCampaigns?.percentChange || 0}% from ${formatPeriodType(activeCampaigns?.periodType || "monthly")}`;
+  const changeText = `${activeCampaigns?.percentChange || 0}% from ${formatPeriodType(activeCampaigns?.periodType || "monthly", t)}`;
   const isPositiveChange = (activeCampaigns?.percentChange || 0) > 0;
   
   return (
     <BaseKpiWidget
-      title="Active Campaigns"
-      tooltipText="Campaigns running in the selected time period"
+      title={t('dashboard.widgets.activeCampaigns') || 'Active Campaigns'}
+      tooltipText={t('dashboard.widgets.activeCampaigns.tooltip') || 'Campaigns running in the selected time period'}
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
@@ -53,6 +54,7 @@ export function LTVWidget({
   startDate: propStartDate,
   endDate: propEndDate
 }: LTVWidgetProps) {
+  const { t } = useLocalization();
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
@@ -135,7 +137,7 @@ export function LTVWidget({
   
   return (
     <BaseKpiWidget
-      title="Lifetime Value"
+      title={t('dashboard.widgets.ltv') || 'Lifetime Value'}
       tooltipText="Average customer lifetime value"
       value={formattedValue}
       changeText={changeText}

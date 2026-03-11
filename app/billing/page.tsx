@@ -3,27 +3,34 @@
 import { useState, useEffect } from "react"
 import { BillingForm } from "../components/billing/billing-form"
 import { PaymentHistory } from "../components/billing/payment-history"
+import { CreditUsageHistory } from "../components/billing/credit-usage-history"
 import { BillingPageSkeleton } from "../components/billing/billing-skeleton"
 import { useSite } from "../context/SiteContext"
 import { StickyHeader } from "../components/ui/sticky-header"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
-// Section configurations for quick navigation
-const billingInfoSections: QuickNavSection[] = [
-  { id: "credits", title: "Credits" },
-  { id: "subscription-plan", title: "Subscription Plan" },
-  { id: "payment-method", title: "Payment Method" },
-  { id: "tax-id", title: "Tax ID" },
-  { id: "billing-address", title: "Billing Address" },
-]
+  // Section configurations for quick navigation
+  const getBillingInfoSections = (t: (key: string) => string): QuickNavSection[] => [
+    { id: "credits", title: t('billing.nav.credits') || "Credits" },
+    { id: "subscription-plan", title: t('billing.nav.plan') || "Subscription Plan" },
+    { id: "payment-method", title: t('billing.nav.payment') || "Payment Method" },
+    { id: "tax-id", title: t('billing.nav.tax') || "Tax ID" },
+    { id: "billing-address", title: t('billing.nav.address') || "Billing Address" },
+  ]
 
-const paymentHistorySections: QuickNavSection[] = [
-  { id: "payment-history", title: "Payment History" },
-]
+  const getPaymentHistorySections = (t: (key: string) => string): QuickNavSection[] => [
+    { id: "payment-history", title: t('billing.nav.history') || "Payment History" },
+  ]
+
+  const getCreditHistorySections = (t: (key: string) => string): QuickNavSection[] => [
+    { id: "credit-history", title: t('billing.nav.creditHistory') || "Credit Usage History" },
+  ]
 
 export default function BillingPage() {
+  const { t } = useLocalization()
   const { currentSite, isLoading } = useSite()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<string>("billing_info")
@@ -36,6 +43,8 @@ export default function BillingPage() {
       const tab = params.get('tab')
       if (tab === 'payment_history') {
         setActiveTab('payment_history')
+      } else if (tab === 'credit_history') {
+        setActiveTab('credit_history')
       }
     }
   }, [])
@@ -43,23 +52,25 @@ export default function BillingPage() {
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
     setActiveTab(value)
-    // Update URL
+    // Update URL without adding to history (prevents breadcrumb generation)
     const url = new URL(window.location.href)
     if (value === 'billing_info') {
       url.searchParams.delete('tab')
     } else {
       url.searchParams.set('tab', value)
     }
-    window.history.pushState({}, '', url.toString())
+    window.history.replaceState({}, '', url.toString())
   }
 
   // Get current sections based on active tab
   const getCurrentSections = (): QuickNavSection[] => {
     switch (activeTab) {
       case "billing_info":
-        return billingInfoSections
+        return getBillingInfoSections(t)
       case "payment_history":
-        return paymentHistorySections
+        return getPaymentHistorySections(t)
+      case "credit_history":
+        return getCreditHistorySections(t)
       default:
         return []
     }
@@ -79,7 +90,7 @@ export default function BillingPage() {
   if (!currentSite) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-gray-500">No site selected</p>
+        <p className="text-gray-500">{t('billing.noSite') || 'No site selected'}</p>
       </div>
     )
   }
@@ -90,8 +101,9 @@ export default function BillingPage() {
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-auto">
             <TabsList>
-              <TabsTrigger value="billing_info">Billing Info</TabsTrigger>
-              <TabsTrigger value="payment_history">Payment History</TabsTrigger>
+              <TabsTrigger value="billing_info">{t('billing.tabs.info') || 'Billing Info'}</TabsTrigger>
+              <TabsTrigger value="payment_history">{t('billing.tabs.history') || 'Payment History'}</TabsTrigger>
+              <TabsTrigger value="credit_history">{t('billing.tabs.credits') || 'Credit Usage History'}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -122,6 +134,10 @@ export default function BillingPage() {
               
               <TabsContent value="payment_history" className="mt-0 p-0">
                 <PaymentHistory />
+              </TabsContent>
+              
+              <TabsContent value="credit_history" className="mt-0 p-0">
+                <CreditUsageHistory />
               </TabsContent>
             </Tabs>
           </div>

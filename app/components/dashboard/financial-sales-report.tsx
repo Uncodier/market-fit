@@ -2,6 +2,7 @@
 
 import React from "react"
 import { useTheme } from "@/app/context/ThemeContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { HelpCircle } from "@/app/components/ui/icons"
@@ -29,6 +30,7 @@ const salesData = {
 }
 
 export function FinancialSalesReport() {
+  const { t } = useLocalization()
   const { isDarkMode } = useTheme()
   
   // Helper for percentage display with color
@@ -138,20 +140,20 @@ export function FinancialSalesReport() {
       {/* Sales by Product Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Sales by Product</CardTitle>
+          <CardTitle>{t('dashboard.reports.salesByProduct') || 'Sales by Product'}</CardTitle>
           <CardDescription>
-            Breakdown of sales performance by product.
+            {t('dashboard.reports.salesByProductDesc') || 'Breakdown of sales performance by product.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Units Sold</TableHead>
-                <TableHead className="text-right">Revenue</TableHead>
-                <TableHead className="text-right">MoM Growth</TableHead>
+                <TableHead>{t('dashboard.reports.product') || 'Product'}</TableHead>
+                <TableHead>{t('dashboard.reports.category') || 'Category'}</TableHead>
+                <TableHead className="text-right">{t('dashboard.reports.unitsSold') || 'Units Sold'}</TableHead>
+                <TableHead className="text-right">{t('dashboard.reports.revenue') || 'Revenue'}</TableHead>
+                <TableHead className="text-right">{t('dashboard.reports.momGrowth') || 'MoM Growth'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

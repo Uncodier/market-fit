@@ -32,6 +32,7 @@ import {
 } from "@/app/components/ui/alert-dialog"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { safeReload } from "@/app/utils/safe-reload"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSearchParams } from "next/navigation"
 import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
 import { CardContent } from "@/app/components/ui/card"
@@ -859,26 +860,27 @@ function AssetListItem({
 }
 
 const AssetEmptyState = ({ type }: { type: "all" | "images" | "videos" | "documents" }) => {
+  const { t } = useLocalization()
   const emptyStateProps = {
     all: {
       icon: <UploadCloud className="w-24 h-24 text-primary/40" />,
-      title: "No assets found",
-      description: "Upload your first asset to get started with your media library.",
+      title: t('assets.empty.title'),
+      description: t('assets.empty.desc'),
     },
     images: {
       icon: <Image className="w-24 h-24 text-primary/40" />,
-      title: "No images found",
-      description: "Upload images to enhance your content with visual elements.",
+      title: t('assets.empty.images'),
+      description: t('assets.empty.imagesDesc'),
     },
     videos: {
       icon: <FileVideo className="w-24 h-24 text-primary/40" />,
-      title: "No videos found",
-      description: "Upload videos to engage your audience with rich media content.",
+      title: t('assets.empty.videos'),
+      description: t('assets.empty.videosDesc'),
     },
     documents: {
       icon: <FileText className="w-24 h-24 text-primary/40" />,
-      title: "No documents found",
-      description: "Upload documents to share important information with your audience.",
+      title: t('assets.empty.documents'),
+      description: t('assets.empty.documentsDesc'),
     },
   }
 
@@ -912,6 +914,7 @@ export default function AssetsPage() {
 
 // Loading page component that doesn't use useSearchParams
 function AssetsLoadingPage() {
+  const { t } = useLocalization()
   return (
     <div className="flex-1 p-0">
       <Tabs defaultValue="all">
@@ -920,26 +923,26 @@ function AssetsLoadingPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Assets">
+                    <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.all')}>
                       <LayoutGrid size={13} />
-                      <span className="tab-label">All Assets</span>
+                      <span className="tab-label">{t('assets.tabs.all')}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Images">
+                    <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.images')}>
                       <Image size={13} />
-                      <span className="tab-label">Images</span>
+                      <span className="tab-label">{t('assets.tabs.images')}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Videos">
+                    <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.videos')}>
                       <FileVideo size={13} />
-                      <span className="tab-label">Videos</span>
+                      <span className="tab-label">{t('assets.tabs.videos')}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Documents">
+                    <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.documents')}>
                       <FileText size={13} />
-                      <span className="tab-label">Documents</span>
+                      <span className="tab-label">{t('assets.tabs.documents')}</span>
                     </TabsTrigger>
                   </TabsList>
                 <div className="relative w-64">
                   <Input 
-                    placeholder="Search assets..." 
+                    placeholder={t('assets.searchPlaceholder')}
                     className="w-full pr-16"
                     icon={<Search className="h-4 w-4 text-muted-foreground" />}
                     disabled
@@ -976,6 +979,7 @@ function AssetsLoadingPage() {
 
 // Content component that uses useSearchParams
 function AssetsContent() {
+  const { t } = useLocalization()
   const { currentSite, isLoading: isSiteLoading } = useSite()
   const [assets, setAssets] = useState<AssetWithThumbnail[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1138,27 +1142,27 @@ function AssetsContent() {
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Assets">
+                    <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.all')}>
                       <LayoutGrid size={13} />
-                      <span className="tab-label">All Assets</span>
+                      <span className="tab-label">{t('assets.tabs.all')}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Images">
+                    <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.images')}>
                       <Image size={13} />
-                      <span className="tab-label">Images</span>
+                      <span className="tab-label">{t('assets.tabs.images')}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Videos">
+                    <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.videos')}>
                       <FileVideo size={13} />
-                      <span className="tab-label">Videos</span>
+                      <span className="tab-label">{t('assets.tabs.videos')}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Documents">
+                    <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.documents')}>
                       <FileText size={13} />
-                      <span className="tab-label">Documents</span>
+                      <span className="tab-label">{t('assets.tabs.documents')}</span>
                     </TabsTrigger>
                   </TabsList>
                   <div className="relative w-64">
                     <Input 
                       data-command-k-input
-                      placeholder="Search assets..." 
+                      placeholder={t('assets.searchPlaceholder')} 
                       className="w-full pr-16" 
                       value={searchTerm}
                       onChange={(e) => handleSearch(e.target.value)}
@@ -1246,27 +1250,27 @@ function AssetsContent() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={agentId ? 'Compatible Assets' : 'All Assets'}>
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={agentId ? (t('assets.tabs.compatible') || 'Compatible Assets') : t('assets.tabs.all')}>
                     <LayoutGrid size={13} />
-                    <span className="tab-label">{agentId ? 'Compatible Assets' : 'All Assets'}</span>
+                    <span className="tab-label">{agentId ? (t('assets.tabs.compatible') || 'Compatible Assets') : t('assets.tabs.all')}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Images">
+                  <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.images')}>
                     <Image size={13} />
-                    <span className="tab-label">Images</span>
+                    <span className="tab-label">{t('assets.tabs.images')}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Videos">
+                  <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.videos')}>
                     <FileVideo size={13} />
-                    <span className="tab-label">Videos</span>
+                    <span className="tab-label">{t('assets.tabs.videos')}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Documents">
+                  <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.documents')}>
                     <FileText size={13} />
-                    <span className="tab-label">Documents</span>
+                    <span className="tab-label">{t('assets.tabs.documents')}</span>
                   </TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input 
                     data-command-k-input
-                    placeholder="Search assets..." 
+                    placeholder={t('assets.searchPlaceholder')} 
                     className="w-full pr-16" 
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}

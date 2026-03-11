@@ -7,6 +7,7 @@ import { Building, Calendar, DollarSign, Clock } from "@/app/components/ui/icons
 import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { cn } from "@/lib/utils"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface DealsKanbanProps {
   deals: Deal[]
@@ -15,6 +16,7 @@ interface DealsKanbanProps {
 }
 
 export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanbanProps) {
+  const { t } = useLocalization()
   const formatCurrency = (amount: number | null, currency: string = 'USD') => {
     if (amount === null || amount === undefined) return "-"
     return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
@@ -137,7 +139,7 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
                                             <div className="flex -space-x-2">
                                               {deal.contacts.slice(0, 3).map((contact, i) => (
                                                 <Avatar key={contact.id || i} className="h-8 w-8 border-2 border-background shadow-sm relative z-10">
-                                                  <AvatarFallback className="text-[11px] font-medium bg-primary/10 text-primary" title={contact.lead?.name || "Unknown"}>
+                                                  <AvatarFallback className="text-[11px] font-medium bg-primary/10 text-primary" title={contact.lead?.name || (t('deals.kanban.unknown') || "Unknown")}>
                                                     {(contact.lead?.name || contact.lead?.email || "U").substring(0, 2).toUpperCase()}
                                                   </AvatarFallback>
                                                 </Avatar>
@@ -151,7 +153,7 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
                                           ) : (
                                             <Building className="h-4 w-4 flex-shrink-0 text-muted-foreground/70" />
                                           )}
-                                          <span className="truncate text-sm">{deal.companies?.name || deal.company?.name || "No company"}</span>
+                                          <span className="truncate text-sm">{deal.companies?.name || deal.company?.name || (t('deals.kanban.noCompany') || "No company")}</span>
                                         </div>
                                       </div>
                                       
@@ -165,7 +167,7 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
                                                 {formatDate(deal.expected_close_date)}
                                               </>
                                             ) : (
-                                              <span className="opacity-60 text-muted-foreground/70">No close date</span>
+                                              <span className="opacity-60 text-muted-foreground/70">{t('deals.kanban.noCloseDate') || 'No close date'}</span>
                                             )}
                                           </div>
                                           
@@ -177,7 +179,7 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
                                                 ? "text-muted-foreground bg-muted/20 border-border/60 hover:bg-muted/40 transition-colors" 
                                                 : "text-muted-foreground/60 bg-transparent border-transparent"
                                             )} 
-                                            title={deal.next_task ? `Next activity: ${deal.next_task.title}${deal.next_task.scheduled_date ? ` on ${formatTaskDate(deal.next_task.scheduled_date)}` : ''}` : "Next activity: Not scheduled"}
+                                            title={deal.next_task ? `${t('deals.kanban.nextActivity') || 'Next activity:'} ${deal.next_task.title}${deal.next_task.scheduled_date ? ` ${t('deals.kanban.on') || 'on'} ${formatTaskDate(deal.next_task.scheduled_date)}` : ''}` : `${t('deals.kanban.nextActivity') || 'Next activity:'} ${t('deals.kanban.notScheduled') || 'Not scheduled'}`}
                                           >
                                             <Clock size={10} className={cn("flex-shrink-0", deal.next_task ? "text-primary/60" : "text-muted-foreground/40")} />
                                             {deal.next_task ? (

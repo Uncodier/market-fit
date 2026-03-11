@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
 import { useWidgetContext } from "@/app/context/WidgetContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { 
   differenceInDays, differenceInMonths, format, 
   addDays, addMonths, addQuarters, addYears,
@@ -30,6 +31,7 @@ interface SaleData {
 }
 
 export function Overview({ startDate: propStartDate, endDate: propEndDate, segmentId = "all" }: { startDate?: Date, endDate?: Date, segmentId?: string }) {
+  const { t } = useLocalization()
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
   const { shouldExecuteWidgets } = useWidgetContext()
@@ -389,8 +391,8 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
       <div className="w-full h-full flex items-center justify-center">
         <EmptyCard
           icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
-          title="No data available"
-          description="There is no sales data available for the selected period."
+          title={t('dashboard.overview.noData') || 'No data available'}
+          description={t('dashboard.overview.noDataDesc') || 'There is no sales data available for the selected period.'}
           showShadow={false}
           contentClassName="py-12"
         />

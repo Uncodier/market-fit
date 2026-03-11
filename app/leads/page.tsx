@@ -42,6 +42,7 @@ import { safeReload } from "@/app/utils/safe-reload"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useUserData } from "@/app/hooks/use-user-data"
 import { GroupedLeadsTable } from "@/app/leads/components/grouped-leads-table"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Cache de etapas para cada lead
 const leadJourneyStagesCache: Record<string, string> = {};
@@ -303,6 +304,7 @@ function LeadsTableSkeleton() {
 }
 
 export default function LeadsPage() {
+  const { t } = useLocalization()
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -1304,37 +1306,37 @@ export default function LeadsPage() {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Companies">
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.all') || 'All Companies'}>
                     <LayoutGrid size={13} />
-                    <span className="tab-label">All Companies</span>
+                    <span className="tab-label">{t('leads.tabs.all') || 'All Companies'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="new" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="New">
+                  <TabsTrigger value="new" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.new') || 'New'}>
                     <PlusCircle size={13} />
-                    <span className="tab-label">New</span>
+                    <span className="tab-label">{t('leads.tabs.new') || 'New'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="contacted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Contacted">
+                  <TabsTrigger value="contacted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.contacted') || 'Contacted'}>
                     <MessageSquare size={13} />
-                    <span className="tab-label">Contacted</span>
+                    <span className="tab-label">{t('leads.tabs.contacted') || 'Contacted'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Qualified">
+                  <TabsTrigger value="qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.qualified') || 'Qualified'}>
                     <Star size={13} />
-                    <span className="tab-label">Qualified</span>
+                    <span className="tab-label">{t('leads.tabs.qualified') || 'Qualified'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="cold" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Cold">
+                  <TabsTrigger value="cold" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.cold') || 'Cold'}>
                     <TrendingDown size={13} />
-                    <span className="tab-label">Cold</span>
+                    <span className="tab-label">{t('leads.tabs.cold') || 'Cold'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="converted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Converted">
+                  <TabsTrigger value="converted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.converted') || 'Converted'}>
                     <TrendingUp size={13} />
-                    <span className="tab-label">Converted</span>
+                    <span className="tab-label">{t('leads.tabs.converted') || 'Converted'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="lost" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Lost">
+                  <TabsTrigger value="lost" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.lost') || 'Lost'}>
                     <XCircle size={13} />
-                    <span className="tab-label">Lost</span>
+                    <span className="tab-label">{t('leads.tabs.lost') || 'Lost'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="not_qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Not Qualified">
+                  <TabsTrigger value="not_qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.notQualified') || 'Not Qualified'}>
                     <Ban size={13} />
-                    <span className="tab-label">Not Qualified</span>
+                    <span className="tab-label">{t('leads.tabs.notQualified') || 'Not Qualified'}</span>
                   </TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
@@ -1360,7 +1362,7 @@ export default function LeadsPage() {
                     <Badge variant="outline" className="rounded-full px-2 py-0">
                       {filters.status.length + filters.segments.length + filters.origin.length}
                     </Badge>
-                    <span className="ml-2">Clear</span>
+                    <span className="ml-2">{t('leads.filters.clear') || 'Clear'}</span>
                   </Button>
                 )}
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />

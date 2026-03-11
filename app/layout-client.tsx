@@ -14,86 +14,38 @@ import { LayoutProvider, useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
 import { usePageRefreshPrevention } from "./hooks/use-prevent-refresh"
 import { useIsMobile } from "./hooks/use-mobile-view"
+import { useLocalization } from "./context/LocalizationContext"
 
-const navigationTitles: Record<string, { title: string, helpText?: string, helpWelcomeMessage?: string, helpTask?: string }> = {
-  "/dashboard": {
-    title: "Dashboard",
-    helpText: "Open help chat",
-    helpWelcomeMessage: "Hi! How can I help you with the dashboard?",
-    helpTask: "Help with Dashboard overview and metrics"
-  },
-  "/control-center": {
-    title: "Control Center",
-    helpText: "Manage and track all your tasks across different categories and types"
-  },
-  "/segments": {
-    title: "Segments",
-    helpText: "Create and manage user segments based on behavior and attributes"
-  },
-  "/people": {
-    title: "Find People",
-    helpText: "Search and filter people profiles across sources"
-  },
-  "/content": {
-    title: "Content",
-    helpText: "Create and manage content for different segments and channels"
-  },
-  "/experiments": {
-    title: "Experiments",
-    helpText: "Design and run A/B tests and experiments"
-  },
-  "/requirements": {
-    title: "Requirements",
-    helpText: "Track and manage product requirements and features"
-  },
-  "/assets": {
-    title: "Assets",
-    helpText: "Manage and organize your media files and documents"
-  },
-  "/notifications": {
-    title: "Notifications",
-    helpText: "Stay updated with all the activity in your account"
-  },
-  "/leads": {
-    title: "Leads",
-    helpText: "Manage and track potential customers"
-  },
-  "/sales": {
-    title: "Sales",
-    helpText: "Manage and track your sales and orders"
-  },
-  "/billing": {
-    title: "Billing",
-    helpText: "Manage your subscription plans and payment methods"
-  },
-  "/robots": {
-    title: "Makinas",
-    helpText: "Manage automation makinas and scheduled workflows"
-  },
-  "/agents": {
-    title: "AI Team",
-    helpText: "Configure and manage AI team for your product"
-  },
-  "/profile": {
-    title: "Profile",
-    helpText: "Manage your account settings and preferences"
-  },
-  "/settings": {
-    title: "Settings",
-    helpText: "Configure your site settings and preferences"
-  },
-  "/create-site": {
-    title: "Create New Site",
-    helpText: "Set up a new site with your preferences and configuration"
-  },
-  "/projects": {
-    title: "Projects",
-    helpText: "Select a project to work with or create a new one"
-  },
-  "/context": {
-    title: "Project",
-    helpText: "Manage and configure your site's context and settings"
-  }
+const pathToNavKey: Record<string, string> = {
+  "/dashboard": "dashboard",
+  "/control-center": "controlCenter",
+  "/segments": "segments",
+  "/people": "people",
+  "/content": "content",
+  "/experiments": "experiments",
+  "/requirements": "requirements",
+  "/assets": "assets",
+  "/notifications": "notifications",
+  "/leads": "leads",
+  "/sales": "sales",
+  "/billing": "billing",
+  "/robots": "robots",
+  "/agents": "agents",
+  "/profile": "profile",
+  "/settings": "settings",
+  "/create-site": "createSite",
+  "/projects": "projects",
+  "/context": "context",
+}
+
+function getNavigationTitle(pathname: string, t: (key: string) => string): { title: string, helpText?: string, helpWelcomeMessage?: string, helpTask?: string } {
+  const key = pathToNavKey[pathname]
+  if (!key) return { title: t('layout.topbar.dashboard') || 'Dashboard' }
+  const title = t(`layout.nav.${key}.title`) || pathname
+  const helpText = t(`layout.nav.${key}.help`)
+  const helpWelcomeMessage = key === 'dashboard' ? (t('layout.nav.dashboard.helpWelcome') || undefined) : undefined
+  const helpTask = key === 'dashboard' ? (t('layout.nav.dashboard.helpTask') || undefined) : undefined
+  return { title, helpText: helpText || undefined, helpWelcomeMessage, helpTask }
 }
 
 /**
@@ -189,6 +141,7 @@ function LayoutClientInner({
   fetchError: string | null
   isExperimentDetailPage: boolean
 }) {
+  const { t } = useLocalization()
   const { isLayoutCollapsed, setIsLayoutCollapsed } = useLayout()
   const isMobile = useIsMobile()
   const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
@@ -215,8 +168,8 @@ function LayoutClientInner({
   let customBreadcrumb: React.ReactNode = null;
   
   if (pathname && pathname.startsWith('/chat')) {
-    pageCustomTitle = "Chat";
-    customHelpText = "Chatting with your agent";
+    pageCustomTitle = t('layout.topbar.chat') || "Chat";
+    customHelpText = t('layout.topbar.chatHelp') || "Chatting with your agent";
     
     if (breadcrumbFromEvent) {
       customBreadcrumb = breadcrumbFromEvent;
@@ -230,7 +183,7 @@ function LayoutClientInner({
   
   const currentPage = pageCustomTitle || customTitle
     ? { title: pageCustomTitle || customTitle, helpText: customHelpText, helpWelcomeMessage: undefined, helpTask: undefined }
-    : (navigationTitles[pathname] || { title: "Dashboard" });
+    : getNavigationTitle(pathname, t);
 
   // Determinar si estamos en la página de login
   const isLoginPage = pathname === '/auth/login'
@@ -252,7 +205,7 @@ function LayoutClientInner({
     )}>
         {fetchError && (
           <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
-            Error: {fetchError}
+            {t('layout.topbar.error') || 'Error'}: {fetchError === 'LAYOUT_ERROR_LOADING_SEGMENTS' ? (t('layout.topbar.errorLoadingSegments') || 'Error loading segments') : fetchError}
           </div>
         )}
         {isLoginPage ? (
@@ -389,7 +342,7 @@ export default function LayoutClient({
         setSegments(segmentsData || [])
       } catch (error) {
         console.error('Error fetching segments:', error)
-        setFetchError('Error loading segments')
+        setFetchError('LAYOUT_ERROR_LOADING_SEGMENTS')
         setRetryCount(prev => prev + 1)
       }
     }, 500)

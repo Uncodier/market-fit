@@ -24,6 +24,7 @@ import { getSegments } from "@/app/segments/actions"
 import type { Campaign } from "@/app/types"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Mock data for the Kanban board
 const mockTasks: {
@@ -556,6 +557,7 @@ function ControlCenterSkeleton() {
 }
 
 export default function CampaignsPage() {
+  const { t } = useLocalization()
   const [isLoading, setIsLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -576,16 +578,16 @@ export default function CampaignsPage() {
   // Get the current filter label
   const getFilterLabel = () => {
     if (selectedPriorities.length === 3) {
-      return "All Priorities";
+      return t('campaigns.filter.all') || "All Priorities";
     }
     if (selectedPriorities.length === 0) {
-      return "No Filters";
+      return t('campaigns.filter.none') || "No Filters";
     }
     if (selectedPriorities.length === 1) {
       const priority = selectedPriorities[0];
-      return `${priority.charAt(0).toUpperCase() + priority.slice(1)} Priority`;
+      return t(`campaigns.filter.${priority}`) || `${priority.charAt(0).toUpperCase() + priority.slice(1)} Priority`;
     }
-    return `${selectedPriorities.length} Priorities`;
+    return (t('campaigns.filter.multiple') || "{count} Priorities").replace('{count}', selectedPriorities.length.toString());
   };
   
   // Initialize command+k hook
@@ -596,6 +598,9 @@ export default function CampaignsPage() {
   campaigns.forEach(campaign => {
     // Filter campaigns by tab status
     const campaignStatus = campaign.status || "active";
+    // Si activeTab es all, mostrar active y pending (no drafts) 
+    // Si la tab es 'draft' o 'completed', usar lógica exacta
+    if (activeTab === "all" && campaignStatus === "draft") return;
     if (activeTab !== "all" && campaignStatus !== activeTab) {
       return;
     }
@@ -677,7 +682,7 @@ export default function CampaignsPage() {
         }
       } catch (error) {
         console.error("Error fetching data:", error);
-        toast.error("Failed to load data. Please try again.");
+        toast.error(t('campaigns.error.fetch') || "Failed to load data. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -693,27 +698,31 @@ export default function CampaignsPage() {
             <div className="flex items-center gap-4">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All">
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.all') || "All"}>
                     <LayoutGrid size={13} />
-                    <span className="tab-label">All</span>
+                    <span className="tab-label">{t('campaigns.tabs.all') || 'All'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Active">
+                  <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.active') || "Active"}>
                     <PlayCircle size={13} />
-                    <span className="tab-label">Active</span>
+                    <span className="tab-label">{t('campaigns.tabs.active') || 'Active'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Pending">
+                  <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.pending') || "Pending"}>
                     <Clock size={13} />
-                    <span className="tab-label">Pending</span>
+                    <span className="tab-label">{t('campaigns.tabs.pending') || 'Pending'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Completed">
+                  <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.draft') || "Draft"}>
+                    <LayoutGrid size={13} />
+                    <span className="tab-label">{t('campaigns.tabs.draft') || 'Drafts'}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.completed') || "Completed"}>
                     <CheckCircle2 size={13} />
-                    <span className="tab-label">Completed</span>
+                    <span className="tab-label">{t('campaigns.tabs.completed') || 'Completed'}</span>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
             <SearchInput
               data-command-k-input
-              placeholder="Search campaigns..."
+              placeholder={t('campaigns.search.placeholder') || "Search campaigns..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-64"
@@ -737,7 +746,7 @@ export default function CampaignsPage() {
                   }}
                   className={selectedPriorities.length === 3 ? "bg-primary/10 font-medium" : ""}
                 >
-                  All Priorities
+                  {t('campaigns.filter.all') || "All Priorities"}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={selectedPriorities.includes("high")}
@@ -750,7 +759,7 @@ export default function CampaignsPage() {
                   }}
                   className={selectedPriorities.includes("high") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
                 >
-                  High Priority
+                  {t('campaigns.filter.high') || "High Priority"}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={selectedPriorities.includes("medium")}
@@ -763,7 +772,7 @@ export default function CampaignsPage() {
                   }}
                   className={selectedPriorities.includes("medium") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
                 >
-                  Medium Priority
+                  {t('campaigns.filter.medium') || "Medium Priority"}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={selectedPriorities.includes("low")}
@@ -776,7 +785,7 @@ export default function CampaignsPage() {
                   }}
                   className={selectedPriorities.includes("low") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
                 >
-                  Low Priority
+                  {t('campaigns.filter.low') || "Low Priority"}
                 </DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -789,8 +798,8 @@ export default function CampaignsPage() {
         <ControlCenterSkeleton />
       ) : (
         <div className="px-8 pb-8">
-          <Tabs value={activeTab} className="h-auto">
-            <TabsContent value="all" className="w-full h-auto overflow-visible">
+          <Tabs value={activeTab} className="h-auto" onValueChange={setActiveTab}>
+            <TabsContent value={activeTab} className="w-full h-auto overflow-visible">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible pb-4 -mx-8">
                   <div className="flex gap-6 p-6 px-16 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
@@ -859,15 +868,15 @@ export default function CampaignsPage() {
               ) : (
                 <EmptyState
                   icon={<Target className="h-12 w-12 text-muted-foreground" />}
-                  title="No Campaigns"
-                  description="You don't have any campaigns yet. Create your first campaign to get started."
+                  title={t('campaigns.empty.title') || "No Campaigns"}
+                  description={t('campaigns.empty.desc') || "You don't have any campaigns yet. Create your first campaign to get started."}
                   features={[
                     {
-                      title: "Campaign Management",
+                      title: t('campaigns.empty.feature.title') || "Campaign Management",
                       items: [
-                        "Organize marketing initiatives",
-                        "Track performance and ROI",
-                        "Manage subtasks and deadlines"
+                        t('campaigns.empty.feature.item1') || "Organize marketing initiatives",
+                        t('campaigns.empty.feature.item2') || "Track performance and ROI",
+                        t('campaigns.empty.feature.item3') || "Manage subtasks and deadlines"
                       ]
                     }
                   ]}
@@ -944,15 +953,15 @@ export default function CampaignsPage() {
               ) : (
                 <EmptyState
                   icon={<Target className="h-12 w-12 text-muted-foreground" />}
-                  title="No Active Campaigns"
-                  description="You don't have any active campaigns yet. Create your first campaign to get started."
+                  title={t('campaigns.empty.active.title') || "No Active Campaigns"}
+                  description={t('campaigns.empty.active.desc') || "You don't have any active campaigns yet. Create your first campaign to get started."}
                   features={[
                     {
-                      title: "Campaign Management",
+                      title: t('campaigns.empty.feature.title') || "Campaign Management",
                       items: [
-                        "Organize marketing initiatives",
-                        "Track performance and ROI",
-                        "Manage subtasks and deadlines"
+                        t('campaigns.empty.feature.item1') || "Organize marketing initiatives",
+                        t('campaigns.empty.feature.item2') || "Track performance and ROI",
+                        t('campaigns.empty.feature.item3') || "Manage subtasks and deadlines"
                       ]
                     }
                   ]}
@@ -1016,15 +1025,15 @@ export default function CampaignsPage() {
               ) : (
                 <EmptyState
                   icon={<Target className="h-12 w-12 text-muted-foreground" />}
-                  title="No Pending Campaigns"
-                  description="You don't have any pending campaigns at the moment."
+                  title={t('campaigns.empty.pending.title') || "No Pending Campaigns"}
+                  description={t('campaigns.empty.pending.desc') || "You don't have any pending campaigns at the moment."}
                   features={[
                     {
-                      title: "Create New Campaign",
+                      title: t('campaigns.empty.pending.feature.title') || "Create New Campaign",
                       items: [
-                        "Set up campaign details",
-                        "Assign team members",
-                        "Schedule launch date"
+                        t('campaigns.empty.pending.feature.item1') || "Set up campaign details",
+                        t('campaigns.empty.pending.feature.item2') || "Assign team members",
+                        t('campaigns.empty.pending.feature.item3') || "Schedule launch date"
                       ]
                     }
                   ]}
@@ -1088,15 +1097,15 @@ export default function CampaignsPage() {
               ) : (
                 <EmptyState
                   icon={<Target className="h-12 w-12 text-muted-foreground" />}
-                  title="No Completed Campaigns"
-                  description="You don't have any completed campaigns yet."
+                  title={t('campaigns.empty.completed.title') || "No Completed Campaigns"}
+                  description={t('campaigns.empty.completed.desc') || "You don't have any completed campaigns yet."}
                   features={[
                     {
-                      title: "Campaign Archives",
+                      title: t('campaigns.empty.completed.feature.title') || "Campaign Archives",
                       items: [
-                        "View past performance",
-                        "Review campaign metrics",
-                        "Export reports"
+                        t('campaigns.empty.completed.feature.item1') || "View past performance",
+                        t('campaigns.empty.completed.feature.item2') || "Review campaign metrics",
+                        t('campaigns.empty.completed.feature.item3') || "Export reports"
                       ]
                     }
                   ]}

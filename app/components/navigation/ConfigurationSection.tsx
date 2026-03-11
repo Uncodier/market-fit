@@ -40,6 +40,7 @@ import {
   TooltipTrigger,
 } from "@/app/components/ui/tooltip"
 import { useTheme } from "@/app/context/ThemeContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { type LucideIcon } from "@/app/components/ui/icons"
 
 interface ConfigurationSectionProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -50,7 +51,7 @@ interface ConfigurationSectionProps extends React.HTMLAttributes<HTMLDivElement>
 }
 
 interface ConfigItem {
-  title: string;
+  titleKey: string;
   href: string;
   icon: LucideIcon;
   emoji?: string;
@@ -58,47 +59,12 @@ interface ConfigItem {
 }
 
 const configItems: ConfigItem[] = [
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Settings,
-    emoji: "⚙️",
-  },
-  {
-    title: "Agents",
-    href: "/agents",
-    icon: Cpu,
-    emoji: "✨",
-    isSettingsChild: true,
-  },
-  {
-    title: "Integrations",
-    href: "/integrations",
-    icon: Plug,
-    emoji: "🔌",
-    isSettingsChild: true,
-  },
-  {
-    title: "Billing",
-    href: "/billing",
-    icon: CreditCard,
-    emoji: "💳",
-    isSettingsChild: true,
-  },
-  {
-    title: "Security & API",
-    href: "/security",
-    icon: Shield,
-    emoji: "🔒",
-    isSettingsChild: true,
-  },
-  {
-    title: "Theme",
-    href: "#theme",
-    icon: Sun,
-    emoji: "🌓",
-    isSettingsChild: true,
-  },
+  { titleKey: "settings", href: "/settings", icon: Settings, emoji: "⚙️" },
+  { titleKey: "agents", href: "/agents", icon: Cpu, emoji: "✨", isSettingsChild: true },
+  { titleKey: "integrations", href: "/integrations", icon: Plug, emoji: "🔌", isSettingsChild: true },
+  { titleKey: "billing", href: "/billing", icon: CreditCard, emoji: "💳", isSettingsChild: true },
+  { titleKey: "security", href: "/security", icon: Shield, emoji: "🔒", isSettingsChild: true },
+  { titleKey: "theme", href: "#theme", icon: Sun, emoji: "🌓", isSettingsChild: true },
 ]
 
 
@@ -110,13 +76,11 @@ export function ConfigurationSection({
   setForceShowChildren: externalSetForceShowChildren,
   onSettingsNavigation
 }: ConfigurationSectionProps) {
+  const { t } = useLocalization()
   const pathname = usePathname()
   const router = useRouter()
   const [isChanging, setIsChanging] = useState(false)
-  // Create a dummy element ref that we'll use for focus management
   const dummyFocusRef = useRef<HTMLDivElement>(null);
-  
-  // Use theme context instead of local state
   const { isDarkMode, toggleTheme } = useTheme()
   
   // Check if Settings is active or if any settings child is active
@@ -245,7 +209,7 @@ export function ConfigurationSection({
     <div className={cn("space-y-1 py-4", className)} onMouseDown={(e) => e.preventDefault()}>
       {/* Settings is always visible */}
       {configItems.slice(0, 1).map((item, idx) => {
-        const isSettings = item.title === "Settings";
+        const isSettings = item.href === "/settings";
         const settingsActive = isSettingsActive || isSecurityActive || isBillingActive;
         
         return (
@@ -257,7 +221,7 @@ export function ConfigurationSection({
               href={item.href}
               icon={item.icon}
               emoji={item.emoji}
-              title={item.title}
+              title={t(`layout.sidebar.${item.titleKey}`) || item.titleKey}
               isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
               isCollapsed={isCollapsed}
               className="context-parent-item"
@@ -319,7 +283,7 @@ export function ConfigurationSection({
           const isActive = pathname.startsWith(item.href);
           const isTheme = item.href === "#theme";
           
-          const isBilling = item.title === "Billing";
+          const isBilling = item.href === "/billing";
           
           // Para elementos especiales que no navegarán realmente
           if (isTheme) {
@@ -329,7 +293,7 @@ export function ConfigurationSection({
                   href="#"
                   icon={isDarkMode ? Moon : Sun}
                   emoji="🌓"
-                  title={isDarkMode ? "Dark Mode" : "Light Mode"}
+                  title={isDarkMode ? (t('layout.sidebar.darkMode') || 'Dark Mode') : (t('layout.sidebar.lightMode') || 'Light Mode')}
                   isActive={false}
                   isCollapsed={isCollapsed}
                   className={!isCollapsed ? "ml-3" : ""}
@@ -363,7 +327,7 @@ export function ConfigurationSection({
                 href={item.href}
                 icon={item.icon}
                 emoji={item.emoji}
-                title={item.title}
+                title={t(`layout.sidebar.${item.titleKey}`) || item.titleKey}
                 isActive={isActive}
                 isCollapsed={isCollapsed}
                 className={!isCollapsed ? "ml-3" : ""}

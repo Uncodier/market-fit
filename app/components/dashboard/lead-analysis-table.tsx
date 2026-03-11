@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -47,6 +48,7 @@ const statusLabels = {
 };
 
 export function LeadAnalysisTable() {
+  const { t } = useLocalization();
   const [analyses, setAnalyses] = useState<LeadAnalysis[]>([]);
   const [filteredAnalyses, setFilteredAnalyses] = useState<LeadAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
@@ -249,13 +251,13 @@ export function LeadAnalysisTable() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Industry</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Completion</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('dashboard.tables.company') || 'Company'}</TableHead>
+                  <TableHead>{t('dashboard.tables.industry') || 'Industry'}</TableHead>
+                  <TableHead>{t('dashboard.tables.size') || 'Size'}</TableHead>
+                  <TableHead>{t('dashboard.tables.status') || 'Status'}</TableHead>
+                  <TableHead>{t('dashboard.tables.completion') || 'Completion'}</TableHead>
+                  <TableHead>{t('dashboard.tables.created') || 'Created'}</TableHead>
+                  <TableHead>{t('dashboard.tables.actions') || 'Actions'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
@@ -58,6 +59,7 @@ export function CACWidget({
   startDate: propStartDate,
   endDate: propEndDate
 }: CACWidgetProps) {
+  const { t } = useLocalization();
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
@@ -140,7 +142,7 @@ export function CACWidget({
   
   return (
     <BaseKpiWidget
-      title="CAC"
+      title={t('dashboard.widgets.cac') || 'CAC'}
       tooltipText="Customer Acquisition Cost"
       value={formattedValue}
       changeText={changeText}

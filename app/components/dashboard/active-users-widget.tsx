@@ -8,6 +8,7 @@ import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
+import { useLocalization } from "@/app/context/LocalizationContext";
 
 interface ActiveUsersWidgetProps {
   segmentId?: string;
@@ -22,22 +23,23 @@ interface PaidActiveUsersData {
 }
 
 // Format period type for display
-const formatPeriodType = (periodType: string): string => {
+function formatPeriodType(periodType: string, t: (key: string) => string): string {
   switch (periodType) {
-    case "daily": return "yesterday";
-    case "weekly": return "last week";
-    case "monthly": return "last month";
-    case "quarterly": return "last quarter";
-    case "yearly": return "last year";
-    default: return "previous period";
+    case "daily": return t('dashboard.widgets.revenue.yesterday') || 'yesterday';
+    case "weekly": return t('dashboard.widgets.revenue.lastWeek') || 'last week';
+    case "monthly": return t('dashboard.widgets.revenue.lastMonth') || 'last month';
+    case "quarterly": return t('dashboard.widgets.revenue.lastQuarter') || 'last quarter';
+    case "yearly": return t('dashboard.widgets.revenue.lastYear') || 'last year';
+    default: return t('dashboard.widgets.revenue.previousPeriod') || 'previous period';
   }
-};
+}
 
 export function ActiveUsersWidget({ 
   segmentId = "all",
   startDate: propStartDate,
   endDate: propEndDate
 }: ActiveUsersWidgetProps) {
+  const { t } = useLocalization();
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
@@ -113,13 +115,13 @@ export function ActiveUsersWidget({
   };
 
   const formattedValue = activeUsers?.actual?.toString() || "0";
-  const changeText = `${activeUsers?.percentChange || 0}% from ${formatPeriodType(activeUsers?.periodType || "monthly")}`;
+  const changeText = `${activeUsers?.percentChange || 0}% from ${formatPeriodType(activeUsers?.periodType || "monthly", t)}`;
   const isPositiveChange = (activeUsers?.percentChange || 0) > 0;
   
   return (
     <BaseKpiWidget
-      title="Paid Active Users"
-      tooltipText="Number of unique users who made purchases in the selected period"
+      title={t('dashboard.widgets.activeUsers.paid') || 'Paid Active Users'}
+      tooltipText={t('dashboard.widgets.activeUsers.tooltip') || 'Number of unique users who made purchases in the selected period'}
       value={formattedValue}
       changeText={changeText}
       isPositiveChange={isPositiveChange}

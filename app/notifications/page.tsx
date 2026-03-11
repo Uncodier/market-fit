@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Input } from "@/app/components/ui/input"
@@ -13,6 +14,7 @@ import { NotificationSkeleton } from "./components/NotificationSkeleton"
 import { HelpButton } from "@/app/components/ui/help-button"
 
 export default function NotificationsPage() {
+  const { t } = useLocalization()
   const {
     notifications,
     loading,
@@ -54,8 +56,8 @@ export default function NotificationsPage() {
                 onValueChange={handleTabChange}
               >
                 <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="unread">Unread</TabsTrigger>
+                  <TabsTrigger value="all">{t('notifications.tabs.all')}</TabsTrigger>
+                  <TabsTrigger value="unread">{t('notifications.tabs.unread')}</TabsTrigger>
                 </TabsList>
               </Tabs>
               
@@ -63,7 +65,7 @@ export default function NotificationsPage() {
                 <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Search notifications..."
+                  placeholder={t('notifications.searchPlaceholder')}
                   className="w-full pl-9"
                   value={searchQuery}
                   onChange={(e) => updateSearchQuery(e.target.value)}
@@ -83,7 +85,7 @@ export default function NotificationsPage() {
                   onClick={() => markAllNotificationsAsRead()}
                   disabled={!notifications.some(n => !n.is_read)}
                 >
-                  <span>Mark all as read</span>
+                  <span>{t('notifications.markAllRead')}</span>
                 </Button>
                 <Button 
                   variant="secondary" 
@@ -92,7 +94,7 @@ export default function NotificationsPage() {
                   onClick={() => deleteAllUserNotifications()}
                   disabled={notifications.length === 0}
                 >
-                  <span>Delete all</span>
+                  <span>{t('notifications.deleteAll')}</span>
                 </Button>
               </div>
             </div>
@@ -121,13 +123,13 @@ export default function NotificationsPage() {
         ) : (
           <EmptyState
             icon={<Bell className="h-12 w-12 text-muted-foreground" />}
-            title="No notifications"
+            title={t('notifications.empty.title')}
             description={
               searchQuery
-                ? "No notifications found matching your search"
+                ? t('notifications.empty.search')
                 : activeTab === "unread"
-                ? "You don't have any unread notifications"
-                : "You don't have any notifications"
+                ? t('notifications.empty.unread')
+                : t('notifications.empty.none')
             }
           />
         )}

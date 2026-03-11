@@ -33,6 +33,7 @@ import {
 } from "@/app/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
 import { safeReload } from "@/app/utils/safe-reload"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Constantes para estados
 const REQUIREMENT_STATUS = {
@@ -291,7 +292,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
               <p className="text-sm text-muted-foreground/80 line-clamp-1">{requirement.description}</p>
             </div>
             <div className="w-[100px] min-w-[100px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Type</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.type') || 'Type'}</p>
               <div className="flex justify-center">
                 <Badge variant="outline" className={`text-xs ${
                   requirement.type === 'content' ? 'bg-blue-100/20 text-blue-600 dark:text-blue-400 border-blue-300/30' :
@@ -316,15 +317,15 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
               </div>
             </div>
             <div className="w-[120px] min-w-[120px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Campaign</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.campaign') || 'Campaign'}</p>
               <p className="text-sm font-medium truncate text-center">
                 {requirement.campaignNames && requirement.campaignNames.length > 0 
                   ? requirement.campaignNames[0] 
-                  : "No campaign"}
+                  : (t('requirements.list.noCampaign') || "No campaign")}
               </p>
             </div>
             <div className="w-[100px] min-w-[100px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Status</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.status') || 'Status'}</p>
               <div className="flex justify-center">
                 {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
                   <Badge 
@@ -349,16 +350,16 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                       <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
                         <Badge variant="secondary" className={statusColors[requirement.status]}>
                           {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                            ? "In Progress" 
+                            ? (t('requirements.status.inProgress') || "In Progress") 
                             : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                              ? "On Review"
+                              ? (t('requirements.status.onReview') || "On Review")
                               : requirement.status === REQUIREMENT_STATUS.DONE
-                                ? "Done"
+                                ? (t('requirements.status.done') || "Done")
                                 : requirement.status === REQUIREMENT_STATUS.CANCELED
-                                  ? "Canceled"
+                                  ? (t('requirements.status.canceled') || "Canceled")
                                   : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                                    ? "Validated"
-                                    : "Backlog"}
+                                    ? (t('requirements.status.validated') || "Validated")
+                                    : (t('requirements.status.backlog') || "Backlog")}
                         </Badge>
                       </div>
                     </DropdownMenuTrigger>
@@ -438,11 +439,11 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
               </div>
             </div>
             <div className="w-[80px] min-w-[80px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Budget</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.budget') || 'Budget'}</p>
               <div className="flex justify-center">
                 {(requirement.metadata?.payment_status?.outsourced && requirement.metadata.payment_status.status === 'paid') || 
                  requirement.campaignOutsourced ? (
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">Paid</span>
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">{t('requirements.list.paid') || 'Paid'}</span>
                 ) : requirement.budget ? (
                   <span className="text-sm font-medium">${requirement.budget.toLocaleString()}</span>
                 ) : (
@@ -451,7 +452,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
               </div>
             </div>
             <div className="w-[180px] min-w-[180px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Segments</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.segments') || 'Segments'}</p>
               <div className="flex items-center gap-1 justify-center">
                 {requirement.segmentNames && requirement.segmentNames.length > 0 ? (
                   requirement.segmentNames.length > 1 ? (
@@ -469,7 +470,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                     </Badge>
                   )
                 ) : (
-                  <span className="text-sm text-muted-foreground">No segments</span>
+                  <span className="text-sm text-muted-foreground">{t('requirements.list.noSegments') || 'No segments'}</span>
                 )}
               </div>
             </div>
@@ -516,6 +517,7 @@ type CacheStore = {
 };
 
 export default function RequirementsPage() {
+  const { t } = useLocalization()
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [segments, setSegments] = useState<Segment[]>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description: string }>>([])
@@ -837,7 +839,7 @@ export default function RequirementsPage() {
       toast({
         title: "Error",
         variant: "destructive",
-        description: error instanceof Error ? error.message : "Error al actualizar el estado",
+        description: error instanceof Error ? error.message : t('requirements.error.updateStatus') || "Error updating status",
       })
       throw error
     }
@@ -872,7 +874,7 @@ export default function RequirementsPage() {
       toast({
         title: "Error",
         variant: "destructive",
-        description: error instanceof Error ? error.message : "Error al actualizar el estado de finalización",
+        description: error instanceof Error ? error.message : t('requirements.error.updateCompletion') || "Error updating completion status",
       })
       throw error
     }
@@ -907,7 +909,7 @@ export default function RequirementsPage() {
       toast({
         title: "Error",
         variant: "destructive",
-        description: error instanceof Error ? error.message : "Error al actualizar la prioridad",
+        description: error instanceof Error ? error.message : t('requirements.error.updatePriority') || "Error updating priority",
       })
       throw error
     }
@@ -952,7 +954,7 @@ export default function RequirementsPage() {
           
           // If no data, show an error
           if (requirements.length === 0) {
-            setVisibleError("Loading time exceeded. Please try again.");
+            setVisibleError(t('requirements.error.timeout') || "Loading time exceeded. Please try again.");
           }
         }
       }, 10000);
@@ -965,9 +967,9 @@ export default function RequirementsPage() {
   const NoSiteSelected = () => (
     <div className="flex flex-col items-center justify-center p-8 text-center h-[300px]">
       <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-xl font-medium mb-2">No site selected</h3>
+      <h3 className="text-xl font-medium mb-2">{t('requirements.noSite.title') || 'No site selected'}</h3>
       <p className="text-muted-foreground max-w-md">
-        Please create or select a site to manage its requirements.
+        {t('requirements.noSite.desc') || 'Please create or select a site to manage its requirements.'}
       </p>
     </div>
   )
@@ -1021,10 +1023,10 @@ export default function RequirementsPage() {
     // Determinar el mensaje adecuado según el contexto
     const getTabName = (tab: string): string => {
       switch (tab) {
-        case "validated": return "validated requirements";
-        case "in-progress": return "in-progress requirements";
-        case "backlog": return "backlog requirements";
-        default: return "all requirements";
+        case "validated": return t('requirements.empty.validated') || "validated requirements";
+        case "in-progress": return t('requirements.empty.inProgress') || "in-progress requirements";
+        case "backlog": return t('requirements.empty.backlog') || "backlog requirements";
+        default: return t('requirements.empty.all') || "all requirements";
       }
     };
     const tabName = getTabName(activeTab);
@@ -1032,13 +1034,13 @@ export default function RequirementsPage() {
     return (
       <EmptyState
         icon={<ClipboardList className="w-24 h-24 text-primary/40" />}
-        title={searchQuery ? "No matching requirements found" : "No requirements found"}
+        title={searchQuery ? (t('requirements.empty.searchTitle') || "No matching requirements found") : (t('requirements.empty.noTitle') || "No requirements found")}
         description={
           searchQuery 
-            ? "No results for your search. Try with other terms."
+            ? (t('requirements.empty.searchDesc') || "No results for your search. Try with other terms.")
             : requirements.length > 0 
-              ? `There are ${requirements.length} requirements in the database, but none match the current filter (${tabName}).`
-              : "No requirements created yet. Create a new one to start."
+              ? (t('requirements.empty.filterDesc') || `There are {count} requirements in the database, but none match the current filter ({tabName}).`).replace('{count}', requirements.length.toString()).replace('{tabName}', tabName)
+              : (t('requirements.empty.noDesc') || "No requirements created yet. Create a new one to start.")
         }
       />
     );
@@ -1101,25 +1103,25 @@ export default function RequirementsPage() {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Requirements">
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.all') || "All Requirements"}>
                     <LayoutGrid size={13} />
-                    <span className="tab-label">All Requirements</span>
+                    <span className="tab-label">{t('requirements.tabs.all') || 'All Requirements'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Pending">
+                  <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.pending') || "Pending"}>
                     <Clock size={13} />
-                    <span className="tab-label">Pending</span>
+                    <span className="tab-label">{t('requirements.tabs.pending') || 'Pending'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Completed">
+                  <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.completed') || "Completed"}>
                     <CheckCircle2 size={13} />
-                    <span className="tab-label">Completed</span>
+                    <span className="tab-label">{t('requirements.tabs.completed') || 'Completed'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="rejected" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Rejected">
+                  <TabsTrigger value="rejected" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.rejected') || "Rejected"}>
                     <Ban size={13} />
-                    <span className="tab-label">Rejected</span>
+                    <span className="tab-label">{t('requirements.tabs.rejected') || 'Rejected'}</span>
                   </TabsTrigger>
                 </TabsList>
                 <SearchInput
-                  placeholder="Search requirements..."
+                  placeholder={t('requirements.search') || "Search requirements..."}
                   value={searchQuery}
                   onSearch={handleSearch}
                   ref={searchInputRef}
@@ -1136,7 +1138,7 @@ export default function RequirementsPage() {
                     <Badge variant="outline" className="rounded-full px-2 py-0">
                       {filters.priority.length + filters.completionStatus.length + filters.segments.length}
                     </Badge>
-                    <span className="ml-2">Clear</span>
+                    <span className="ml-2">{t('requirements.clearFilters') || 'Clear'}</span>
                   </Button>
                 )}
                 <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
@@ -1145,11 +1147,12 @@ export default function RequirementsPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4">
-          <div className="px-8">
-            {/* Rendering for all tabs */}
-            {["all", "pending", "completed", "rejected"].map((tab) => (
-              <TabsContent key={tab} value={tab} className="space-y-4 min-h-[300px]">
+        <div className="p-8 space-y-4 bg-muted/30">
+          <div className={viewMode === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : "px-8"}>
+            <div className={viewMode === 'kanban' ? "min-w-fit px-16" : ""}>
+              {/* Rendering for all tabs */}
+              {["all", "pending", "completed", "rejected"].map((tab) => (
+                <TabsContent key={tab} value={tab} className={viewMode === 'kanban' ? "m-0 min-h-[300px]" : "space-y-4 min-h-[300px]"}>
                 {/* Case 1: Loading or initial state - prioritize loading over no site selected */}
                 {isLoading || (!currentSite && !visibleError) ? (
                   <LoadingState />
@@ -1157,7 +1160,7 @@ export default function RequirementsPage() {
                 /* Case 2: Visible error */
                 visibleError ? (
                   <div className="p-4 border border-red-300 bg-red-50 rounded-md text-red-800 mb-4">
-                    <h3 className="font-semibold mb-2">Error loading requirements</h3>
+                    <h3 className="font-semibold mb-2">{t('requirements.error.loading') || 'Error loading requirements'}</h3>
                     <p>{visibleError}</p>
                     <button 
                       onClick={() => safeReload(false, 'Requirements page error retry')} 
@@ -1206,6 +1209,9 @@ export default function RequirementsPage() {
                 )}
               </TabsContent>
             ))}
+            </div>
+            {/* Right padding spacer for scroll */}
+            {viewMode === 'kanban' && <div className="w-16 flex-shrink-0" />}
           </div>
         </div>
       </Tabs>

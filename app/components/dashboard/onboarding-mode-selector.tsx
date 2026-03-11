@@ -1,6 +1,7 @@
 "use client"
 
 import { Megaphone, Send, Bot, ArrowRight, CheckCircle2 } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export type OnboardingMode = "inbound" | "outbound" | "ai_tasks"
 
@@ -73,14 +74,15 @@ export function OnboardingModeSelector({
   completedByMode = {},
   totalByMode = {},
 }: OnboardingModeSelectorProps) {
+  const { t } = useLocalization()
   return (
     <div className="space-y-3">
       <div>
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          What do you want to set up first?
+          {t('dashboard.onboarding.selector.title') || 'What do you want to set up first?'}
         </h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Select your primary goal to see the relevant setup steps.
+          {t('dashboard.onboarding.selector.subtitle') || 'Select your primary goal to see the relevant setup steps.'}
         </p>
       </div>
 
@@ -90,6 +92,8 @@ export function OnboardingModeSelector({
           const completed = completedByMode[mode.id] ?? 0
           const total = totalByMode[mode.id] ?? mode.tasks.length
           const allDone = total > 0 && completed === total
+          const label = t(`dashboard.onboarding.mode.${mode.id === 'ai_tasks' ? 'aiTasks' : mode.id}`) || mode.label
+          const tagline = t(`dashboard.onboarding.mode.${mode.id === 'ai_tasks' ? 'aiTasks' : mode.id}.tagline`) || mode.tagline
 
           return (
             <button
@@ -142,10 +146,10 @@ export function OnboardingModeSelector({
                   {allDone ? (
                     <>
                       <CheckCircle2 size={10} />
-                      Complete
+                      {t('dashboard.onboarding.badge.complete') || 'Complete'}
                     </>
                   ) : (
-                    `${completed}/${total} done`
+                    (t('dashboard.onboarding.progressDone') || '{completed}/{total} done').replace('{completed}', String(completed)).replace('{total}', String(total))
                   )}
                 </div>
               )}

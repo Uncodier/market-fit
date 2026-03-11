@@ -67,8 +67,15 @@ export function useChatMessages(
         setIsTransitioningConversation(false)
       } else {
         // Load existing messages from the API
-        const messages = await getConversationMessages(conversationId)
-        
+        const rawMessages = await getConversationMessages(conversationId)
+        // Deduplicate by id so React never sees duplicate keys (e.g. from realtime + optimistic updates).
+        const seen = new Set<string>()
+        const messages = rawMessages.filter((m) => {
+          if (!m.id || seen.has(m.id)) return false
+          seen.add(m.id)
+          return true
+        })
+
         if (messages.length > 0) {
           setChatMessages(messages)
           setIsAgentResponding(false)
@@ -92,8 +99,14 @@ export function useChatMessages(
               table: 'messages',
               filter: `conversation_id=eq.${conversationId}`
             }, async () => {
-              // Get all updated messages to fully synchronize
-              const updatedMessages = await getConversationMessages(conversationId)
+              // Get all updated messages to fully synchronize; deduplicate by id.
+              const raw = await getConversationMessages(conversationId)
+              const seen = new Set<string>()
+              const updatedMessages = raw.filter((m) => {
+                if (!m.id || seen.has(m.id)) return false
+                seen.add(m.id)
+                return true
+              })
               setChatMessages(updatedMessages)
             })
             .subscribe((status: string) => {

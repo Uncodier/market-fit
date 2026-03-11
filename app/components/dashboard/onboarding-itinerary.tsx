@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { Progress } from "@/app/components/ui/progress"
@@ -56,7 +57,15 @@ interface OnboardingItineraryProps {
   userName?: string
 }
 
+const SECTION_TITLE_KEYS: Record<string, string> = {
+  "Inbound Setup": "inbound",
+  "Outbound Setup": "outbound",
+  "AI Tasks Setup": "aiTasks",
+  "General Setup": "general",
+}
+
 export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
+  const { t } = useLocalization()
   const router = useRouter()
   const { tasks: onboardingTasks, isLoading, isValidating, toggleTask, markAllDone } = useOnboardingValidation()
 
@@ -339,20 +348,20 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
 
   // Mode-aware labels for the KPI widgets
   const modeLabel: Record<OnboardingMode, string> = {
-    inbound: "Inbound",
-    outbound: "Outbound",
-    ai_tasks: "AI Tasks",
+    inbound: t('dashboard.onboarding.mode.inbound') || 'Inbound',
+    outbound: t('dashboard.onboarding.mode.outbound') || 'Outbound',
+    ai_tasks: t('dashboard.onboarding.mode.aiTasks') || 'AI Tasks',
   }
   const activeModeLabel = selectedMode ? modeLabel[selectedMode] : null
 
   const getStatus = useCallback(() => {
-    if (percent === 100) return { label: "Ready to Launch", emoji: "🚀" }
-    if (percent >= 80) return { label: "Almost There", emoji: "🎯" }
-    if (percent >= 60) return { label: "Making Progress", emoji: "⚡" }
-    if (percent >= 40) return { label: "Getting Started", emoji: "🔥" }
-    if (completedCount > 0) return { label: "Just Started", emoji: "🌱" }
-    return { label: "Ready to Begin", emoji: "✨" }
-  }, [percent, completedCount])
+    if (percent === 100) return { label: t('dashboard.onboarding.status.readyToLaunch') || 'Ready to Launch', emoji: '🚀' }
+    if (percent >= 80) return { label: t('dashboard.onboarding.status.almostThere') || 'Almost There', emoji: '🎯' }
+    if (percent >= 60) return { label: t('dashboard.onboarding.status.makingProgress') || 'Making Progress', emoji: '⚡' }
+    if (percent >= 40) return { label: t('dashboard.onboarding.status.gettingStarted') || 'Getting Started', emoji: '🔥' }
+    if (completedCount > 0) return { label: t('dashboard.onboarding.status.justStarted') || 'Just Started', emoji: '🌱' }
+    return { label: t('dashboard.onboarding.status.readyToBegin') || 'Ready to Begin', emoji: '✨' }
+  }, [percent, completedCount, t])
 
   const status = getStatus()
   const nextPending = scopedTasks.find((t) => !onboardingTasks[t.id])
@@ -384,12 +393,12 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
           {/* Header — greeting */}
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-              Hi, {userName || "there"}! 👋
+              {(t('dashboard.onboarding.hero.greeting') || 'Hi, {name}! 👋').replace('{name}', userName || 'there')}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {activeModeLabel
-                ? `Complete the ${activeModeLabel} setup steps to start capturing results.`
-                : "Let's get your growth engine set up and ready to capture leads!"}
+                ? (t('dashboard.onboarding.hero.subtitleMode') || 'Complete the {mode} setup steps to start capturing results.').replace('{mode}', activeModeLabel)
+                : (t('dashboard.onboarding.hero.subtitleAll') || "Let's get your growth engine set up and ready to capture leads!")}
             </p>
           </div>
 
@@ -404,28 +413,28 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
           {/* KPIs — always visible */}
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
             <div className="bg-white/70 dark:bg-gray-900/50 rounded-xl px-4 py-3 border border-white/60 dark:border-gray-700/50">
-              <p className="text-xs text-muted-foreground mb-1">Tasks</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('dashboard.onboarding.kpi.tasks') || 'Tasks'}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{completedCount}/{total}</p>
-              <p className="text-xs text-muted-foreground">{activeModeLabel ? `${activeModeLabel} steps` : "All steps"}</p>
+              <p className="text-xs text-muted-foreground">{activeModeLabel ? (t('dashboard.onboarding.kpi.stepsMode') || '{mode} steps').replace('{mode}', activeModeLabel) : (t('dashboard.onboarding.kpi.stepsAll') || 'All steps')}</p>
             </div>
             <div className="bg-white/70 dark:bg-gray-900/50 rounded-xl px-4 py-3 border border-white/60 dark:border-gray-700/50">
-              <p className="text-xs text-muted-foreground mb-1">Progress</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('dashboard.onboarding.kpi.progress') || 'Progress'}</p>
               <div className="flex items-center gap-2">
                 <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{percent}%</p>
                 <Progress value={percent} className="flex-1 h-1.5" />
               </div>
-              <p className="text-xs text-muted-foreground">{activeModeLabel ? `${activeModeLabel} setup` : "Overall setup"}</p>
+              <p className="text-xs text-muted-foreground">{activeModeLabel ? (t('dashboard.onboarding.kpi.setupMode') || '{mode} setup').replace('{mode}', activeModeLabel) : (t('dashboard.onboarding.kpi.setupOverall') || 'Overall setup')}</p>
             </div>
             <div className="bg-white/70 dark:bg-gray-900/50 rounded-xl px-4 py-3 border border-white/60 dark:border-gray-700/50">
-              <p className="text-xs text-muted-foreground mb-1">Time left</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('dashboard.onboarding.kpi.timeLeft') || 'Time left'}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{formatTime(remaining)}</p>
-              <p className="text-xs text-muted-foreground">of {formatTime(totalTime)}</p>
+              <p className="text-xs text-muted-foreground">{(t('dashboard.onboarding.kpi.of') || 'of')} {formatTime(totalTime)}</p>
             </div>
             <div className="bg-white/70 dark:bg-gray-900/50 rounded-xl px-4 py-3 border border-white/60 dark:border-gray-700/50">
-              <p className="text-xs text-muted-foreground mb-1">Status</p>
+              <p className="text-xs text-muted-foreground mb-1">{t('dashboard.onboarding.kpi.status') || 'Status'}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{status.emoji} {status.label}</p>
               <p className="text-xs text-muted-foreground truncate">
-                {nextPending && percent < 100 ? `Next: ${nextPending.title}` : "All done!"}
+                {nextPending && percent < 100 ? `${t('dashboard.onboarding.kpi.next') || 'Next'}: ${t(`dashboard.onboarding.task.${nextPending.id}.title`) || nextPending.title}` : (t('dashboard.onboarding.kpi.allDone') || 'All done!')}
               </p>
             </div>
           </div>
@@ -439,7 +448,7 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg shadow-blue-500/25 hover:shadow-xl transition-all duration-200"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
-                {activeModeLabel ? `Complete ${activeModeLabel} Setup` : "Complete Onboarding"}
+                {activeModeLabel ? (t('dashboard.onboarding.cta.completeMode') || 'Complete {mode} Setup').replace('{mode}', activeModeLabel) : (t('dashboard.onboarding.cta.completeAll') || 'Complete Onboarding')}
               </Button>
             )}
             <Button
@@ -449,7 +458,7 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
               onClick={() => window.open("https://www.calendly.com/sergio-prado", "_blank")}
             >
               <User className="h-4 w-4 mr-2" />
-              Get Human Assistance
+              {t('dashboard.onboarding.cta.getAssistance') || 'Get Human Assistance'}
             </Button>
           </div>
 
@@ -478,11 +487,11 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
                   }
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm">{section.title}</span>
+                      <span className="font-semibold text-sm">{SECTION_TITLE_KEYS[section.title] ? (t(`dashboard.onboarding.section.${SECTION_TITLE_KEYS[section.title]}`) || section.title) : section.title}</span>
                       <Badge variant="outline" className="text-xs">{sectionDone}/{section.tasks.length}</Badge>
                       {sectionPct === 100 && (
                         <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />Complete
+                          <CheckCircle2 className="h-3 w-3 mr-1" />{t('dashboard.onboarding.badge.complete') || 'Complete'}
                         </Badge>
                       )}
                     </div>
@@ -505,7 +514,7 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
                       variant="outline"
                       onClick={nextTask.onCta}
                     >
-                      {nextTask.ctaLabel}
+                      {t(`dashboard.onboarding.task.${nextTask.id}.cta`) || nextTask.ctaLabel}
                       <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
                   </div>
@@ -529,7 +538,7 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
                                 {isDone ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" /> : task.icon}
                               </div>
                               <div className="flex-1">
-                                <CardTitle className="text-sm font-medium leading-tight truncate">{task.title}</CardTitle>
+                                <CardTitle className="text-sm font-medium leading-tight truncate">{t(`dashboard.onboarding.task.${task.id}.title`) || task.title}</CardTitle>
                                 <div className="flex items-center gap-2 mt-1">
                                   <Badge variant={getPriorityColor(task.priority)} className="text-xs">{task.priority}</Badge>
                                   <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -540,16 +549,16 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
                             </div>
                             {isDone && (
                               <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 text-xs">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />Done
+                                <CheckCircle2 className="h-3 w-3 mr-1" />{t('dashboard.onboarding.done') || 'Done'}
                               </Badge>
                             )}
                           </div>
                         </CardHeader>
                         <CardContent className="pt-0">
-                          <p className="text-sm text-muted-foreground mb-4 truncate">{task.description}</p>
+                          <p className="text-sm text-muted-foreground mb-4 truncate">{t(`dashboard.onboarding.task.${task.id}.desc`) || task.description}</p>
                           <div className="flex items-center gap-2">
                             <Button size="sm" onClick={task.onCta} variant="outline" className="hover:scale-105 hover:shadow-lg transition-all duration-200">
-                              {task.ctaLabel}
+                              {t(`dashboard.onboarding.task.${task.id}.cta`) || task.ctaLabel}
                               <ExternalLink className="h-3 w-3 ml-1" />
                             </Button>
                             <Button
@@ -575,7 +584,7 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
                               onClick={() => toggleTask(task.id, !isDone)}
                               className="hover:scale-105 transition-all duration-200"
                             >
-                              {isDone ? "Undo" : "Mark done"}
+                              {isDone ? (t('dashboard.onboarding.undo') || 'Undo') : (t('dashboard.onboarding.markDone') || 'Mark done')}
                             </Button>
                           </div>
                         </CardContent>

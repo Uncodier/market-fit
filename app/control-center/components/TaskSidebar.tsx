@@ -9,6 +9,7 @@ import { TaskStatusFilter } from "./TaskStatusFilter"
 import { useTheme } from "@/app/context/ThemeContext"
 import { Check, Tag } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Emoji mapping for task types
 const TYPE_EMOJIS: Record<string, string> = {
@@ -82,6 +83,7 @@ export function TaskSidebar({
   activeFilters = 0
 }: TaskSidebarProps) {
   const { isDarkMode } = useTheme()
+  const { t } = useLocalization()
 
   // Calculate total tasks from taskCountByType since a task can only have one type
   const totalTasks = Object.values(taskCountByType).reduce((sum, count) => sum + count, 0)
@@ -121,8 +123,8 @@ export function TaskSidebar({
               <div className="h-[calc(100vh-135px)] flex items-center justify-center p-4">
                 <EmptyCard 
                   icon={<Tag className="h-8 w-8 text-muted-foreground" />}
-                  title="No task organization"
-                  description="Create categories or different task types to organize your work better."
+                  title={t('controlCenter.sidebar.empty.title') || "No task organization"}
+                  description={t('controlCenter.sidebar.empty.desc') || "Create categories or different task types to organize your work better."}
                   variant="fancy"
                   showShadow={false}
                   contentClassName="py-8"
@@ -172,7 +174,7 @@ export function TaskSidebar({
                   <div className="task-types-list" style={{ padding: '3.6px' }}>
                     <div style={{ paddingLeft: '10.8px', paddingRight: '10.8px', paddingTop: '14.4px', paddingBottom: '7.2px' }}>
                       <div className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider" style={{ gap: '7.2px', fontSize: '10.8px' }}>
-                        <span>Task Types</span>
+                        <span>{t('controlCenter.sidebar.taskTypes') || 'Task Types'}</span>
                       </div>
                     </div>
                     <div className="space-y-0.5">
@@ -196,7 +198,7 @@ export function TaskSidebar({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center" style={{ gap: '7.2px' }}>
                             <Check className="h-4 w-4" style={{ height: '14.4px', width: '14.4px' }} />
-                            <span>All Tasks</span>
+                            <span>{t('controlCenter.sidebar.allTasks') || 'All Tasks'}</span>
                           </div>
                           <Badge variant="outline">
                             {totalTasks}

@@ -28,7 +28,7 @@ export function ControlCenterHeader({
       </div>
       
       <div className={cn(
-        "w-full flex items-center justify-between transition-[padding,margin] duration-300 ease-in-out mr-16",
+        "w-full flex items-center justify-between transition-[padding,margin] duration-300 ease-in-out pr-4 lg:pr-8",
         "ml-4 md:ml-[120px]"
       )}>
         <div className="flex items-center gap-8">

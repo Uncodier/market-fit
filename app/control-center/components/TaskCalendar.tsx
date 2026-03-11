@@ -12,6 +12,8 @@ import { useCurrentTime } from "@/app/hooks/useCurrentTime"
 import { CurrentTimeIndicator } from "./CurrentTimeIndicator"
 import { Task } from "@/app/types"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 type CalendarViewMode = 'year' | 'month' | 'week' | 'day'
 
 interface Lead {
@@ -117,6 +119,7 @@ interface TaskCalendarProps {
 }
 
 export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
+  const { t } = useLocalization()
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [viewMode, setViewMode] = useState<CalendarViewMode>('month')
   const dayViewRef = useRef<HTMLDivElement>(null)
@@ -391,7 +394,15 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
     return (
       <div className="grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden h-[calc(100vh-280px)]">
         {/* Week day headers */}
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+        {[
+          t('common.days.short.sun') || 'Sun', 
+          t('common.days.short.mon') || 'Mon', 
+          t('common.days.short.tue') || 'Tue', 
+          t('common.days.short.wed') || 'Wed', 
+          t('common.days.short.thu') || 'Thu', 
+          t('common.days.short.fri') || 'Fri', 
+          t('common.days.short.sat') || 'Sat'
+        ].map((day) => (
           <div key={day} className="p-2 text-center text-sm font-medium bg-background sticky top-0 z-10">
             {day}
           </div>
@@ -661,14 +672,14 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
                     </div>
                     {remainingTasks > 0 && (
                       <div className="text-xs text-muted-foreground text-center mt-3 py-1 bg-muted/50 rounded-md">
-                        +{remainingTasks} more tasks
+                        {t('controlCenter.calendar.moreTasks')?.replace('{count}', remainingTasks.toString()) || `+${remainingTasks} more tasks`}
                       </div>
                     )}
                   </>
                 ) : (
                   <div className="flex-1 flex items-center justify-center">
                     <div className="text-xs text-muted-foreground text-center py-8 px-4 w-full">
-                      No tasks
+                      {t('controlCenter.calendar.noTasks') || 'No tasks'}
                     </div>
                   </div>
                 )}
@@ -716,7 +727,7 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
                 isToday(selectedDate.toISOString().split('T')[0]) && "bg-primary text-primary-foreground hover:bg-primary/90"
               )}
             >
-              Today
+              {t('controlCenter.calendar.today') || 'Today'}
             </Button>
           </div>
           <div className="flex items-center gap-2">
@@ -737,16 +748,16 @@ export function TaskCalendar({ tasks, onTaskClick }: TaskCalendarProps) {
               onValueChange={(value: string) => value && setViewMode(value as CalendarViewMode)}
             >
               <ToggleGroupItem value="year" aria-label="Year view" className="px-3">
-                Year
+                {t('controlCenter.calendar.year') || 'Year'}
               </ToggleGroupItem>
               <ToggleGroupItem value="month" aria-label="Month view" className="px-3">
-                Month
+                {t('controlCenter.calendar.month') || 'Month'}
               </ToggleGroupItem>
               <ToggleGroupItem value="week" aria-label="Week view" className="px-3">
-                Week
+                {t('controlCenter.calendar.week') || 'Week'}
               </ToggleGroupItem>
               <ToggleGroupItem value="day" aria-label="Day view" className="px-3">
-                Day
+                {t('controlCenter.calendar.day') || 'Day'}
               </ToggleGroupItem>
             </ToggleGroup>
           </div>

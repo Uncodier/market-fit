@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { HelpCircle } from "@/app/components/ui/icons"
@@ -55,20 +56,20 @@ export function FinancialCostsReport({ categories = defaultData.categories }: Fi
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cost Breakdown</CardTitle>
+        <CardTitle>{t('dashboard.reports.costBreakdown') || 'Cost Breakdown'}</CardTitle>
         <CardDescription>
-          Detailed analysis of costs by category.
+          {t('dashboard.reports.costBreakdownDesc') || 'Detailed analysis of costs by category.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-right">Previous</TableHead>
-              <TableHead className="text-right">% of Total</TableHead>
-              <TableHead className="text-right">MoM Change</TableHead>
+              <TableHead>{t('dashboard.reports.category') || 'Category'}</TableHead>
+              <TableHead className="text-right">{t('dashboard.reports.amount') || 'Amount'}</TableHead>
+              <TableHead className="text-right">{t('dashboard.reports.previous') || 'Previous'}</TableHead>
+              <TableHead className="text-right">{t('dashboard.reports.percentOfTotal') || '% of Total'}</TableHead>
+              <TableHead className="text-right">{t('dashboard.reports.momChange') || 'MoM Change'}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

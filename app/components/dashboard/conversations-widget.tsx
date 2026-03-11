@@ -3,6 +3,7 @@
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useEffect, useState } from "react"
 
 interface ConversationsData {
@@ -20,6 +21,7 @@ export function ConversationsWidget({
   startDate: Date
   endDate: Date 
 }) {
+  const { t } = useLocalization()
   const { user } = useAuth()
   const { currentSite } = useSite()
   const [data, setData] = useState<ConversationsData | null>(null)
@@ -63,22 +65,22 @@ export function ConversationsWidget({
 
   const formatPeriodType = (periodType: string) => {
     switch (periodType) {
-      case "daily": return "yesterday";
-      case "weekly": return "last week";
-      case "monthly": return "last month";
-      case "quarterly": return "last quarter";
-      case "yearly": return "last year";
-      default: return "last period";
+      case "daily": return t('dashboard.widgets.revenue.yesterday') || 'yesterday';
+      case "weekly": return t('dashboard.widgets.revenue.lastWeek') || 'last week';
+      case "monthly": return t('dashboard.widgets.revenue.lastMonth') || 'last month';
+      case "quarterly": return t('dashboard.widgets.revenue.lastQuarter') || 'last quarter';
+      case "yearly": return t('dashboard.widgets.revenue.lastYear') || 'last year';
+      default: return t('dashboard.widgets.revenue.previousPeriod') || 'last period';
     }
   };
 
   const changeText = error 
-    ? "Error loading data" 
+    ? (t('dashboard.widgets.errorLoading') || 'Error loading data')
     : `${data?.percentChange || 0}% from ${formatPeriodType(data?.periodType || "monthly")}`;
 
   return (
     <BaseKpiWidget
-      title="Conversations"
+      title={t('dashboard.widgets.conversations') || 'Conversations'}
       value={data?.actual || 0}
       changeText={changeText}
       isPositiveChange={(data?.percentChange || 0) > 0}

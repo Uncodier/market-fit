@@ -6,6 +6,7 @@ import { Pagination } from "@/app/components/ui/pagination"
 import { Deal, STAGE_STYLES } from "@/app/deals/types"
 import { Clock } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface DealsTableProps {
   deals: Deal[]
@@ -26,6 +27,7 @@ export function DealsTable({
   onItemsPerPageChange,
   onDealClick
 }: DealsTableProps) {
+  const { t } = useLocalization()
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalDeals / itemsPerPage)
   
@@ -59,12 +61,12 @@ export function DealsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[200px]">Deal Name</TableHead>
-              <TableHead className="w-[140px] min-w-[140px]">Company</TableHead>
-              <TableHead className="w-[120px] min-w-[120px]">Amount</TableHead>
-              <TableHead className="w-[130px] min-w-[130px]">Stage</TableHead>
-              <TableHead className="w-[130px] min-w-[130px]">Score</TableHead>
-              <TableHead className="w-[160px] min-w-[160px]">Next Activity</TableHead>
+              <TableHead className="min-w-[150px]">{t('deals.table.name') || 'Deal Name'}</TableHead>
+              <TableHead className="w-[140px] min-w-[140px]">{t('deals.table.company') || 'Company'}</TableHead>
+              <TableHead className="w-[120px] min-w-[120px]">{t('deals.table.amount') || 'Amount'}</TableHead>
+              <TableHead className="w-[130px] min-w-[130px]">{t('deals.table.stage') || 'Stage'}</TableHead>
+              <TableHead className="w-[130px] min-w-[130px]">{t('deals.table.score') || 'Score'}</TableHead>
+              <TableHead className="w-[260px] min-w-[260px]">{t('deals.table.nextActivity') || 'Next Activity'}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -79,7 +81,7 @@ export function DealsTable({
                     <div className="space-y-0.5">
                       <p className="font-medium text-sm line-clamp-2" title={deal.name}>{deal.name}</p>
                       <p className="text-xs text-muted-foreground line-clamp-1">
-                        {deal.expected_close_date ? `Closes: ${new Date(deal.expected_close_date).toLocaleDateString()}` : "No close date"}
+                        {deal.expected_close_date ? `${t('deals.table.closes') || 'Closes:'} ${new Date(deal.expected_close_date).toLocaleDateString()}` : (t('deals.table.noCloseDate') || "No close date")}
                       </p>
                     </div>
                   </TableCell>
@@ -108,7 +110,7 @@ export function DealsTable({
                         <span className="text-xs font-medium">{deal.qualification_score}</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Unscored</span>
+                      <span className="text-xs text-muted-foreground">{t('deals.table.unscored') || 'Unscored'}</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -119,12 +121,12 @@ export function DealsTable({
                           ? "text-muted-foreground bg-muted/20 border-border/60 hover:bg-muted/40 transition-colors" 
                           : "text-muted-foreground/60 bg-transparent border-transparent"
                       )}
-                      title={deal.next_task ? `Next activity: ${deal.next_task.title}${deal.next_task.scheduled_date ? ` on ${formatTaskDate(deal.next_task.scheduled_date)}` : ''}` : "Next activity: Not scheduled"}
+                      title={deal.next_task ? `${t('deals.table.nextActivityPrefix') || 'Next activity:'} ${deal.next_task.title}${deal.next_task.scheduled_date ? ` ${t('deals.table.on') || 'on'} ${formatTaskDate(deal.next_task.scheduled_date)}` : ''}` : `${t('deals.table.nextActivityPrefix') || 'Next activity:'} ${t('deals.table.notScheduled') || 'Not scheduled'}`}
                     >
                       <Clock size={12} className={cn("flex-shrink-0", deal.next_task ? "text-primary/60" : "text-muted-foreground/40")} />
                       {deal.next_task ? (
                         <span className="flex items-center gap-1.5 truncate">
-                          <span className="truncate max-w-[80px] font-medium">{deal.next_task.title}</span>
+                          <span className="truncate max-w-[160px] font-medium">{deal.next_task.title}</span>
                           {deal.next_task.scheduled_date && (
                             <span className="flex-shrink-0 opacity-70 border-l border-border/50 pl-1.5 whitespace-nowrap">
                               {formatTaskDate(deal.next_task.scheduled_date)}
@@ -132,7 +134,7 @@ export function DealsTable({
                           )}
                         </span>
                       ) : (
-                        <span className="truncate">Not scheduled</span>
+                        <span className="truncate">{t('deals.table.notScheduled') || 'Not scheduled'}</span>
                       )}
                     </div>
                   </TableCell>
@@ -141,7 +143,7 @@ export function DealsTable({
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
-                  No deals found.
+                  {t('deals.table.noDeals') || 'No deals found.'}
                 </TableCell>
               </TableRow>
             )}
@@ -151,7 +153,7 @@ export function DealsTable({
       <div className="flex items-center justify-between px-6 py-4 border-t">
         <div className="flex items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{Math.min(indexOfFirstItem + 1, totalDeals || 1)}</span> to <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalDeals)}</span> of <span className="font-medium">{totalDeals}</span> deals
+            {t('deals.table.showing') || 'Showing'} <span className="font-medium">{Math.min(indexOfFirstItem + 1, totalDeals || 1)}</span> {t('deals.table.to') || 'to'} <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalDeals)}</span> {t('deals.table.of') || 'of'} <span className="font-medium">{totalDeals}</span> {t('deals.table.dealsCount') || 'deals'}
           </p>
           <Select
             value={itemsPerPage.toString()}

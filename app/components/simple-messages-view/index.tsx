@@ -703,7 +703,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         <div 
           className={cn(
             "w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0 mx-auto transition-all duration-300",
-            isEmpty ? "flex flex-col gap-3 -mt-12" : "block"
+            isEmpty ? "flex flex-col gap-3 -mt-12" : "flex flex-col w-full"
           )}
         >
         {/* Floating Step Indicator - Expandable */}

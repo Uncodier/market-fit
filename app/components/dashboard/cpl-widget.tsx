@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
@@ -53,6 +54,7 @@ export function CPLWidget({
   startDate: propStartDate,
   endDate: propEndDate
 }: CPLWidgetProps) {
+  const { t } = useLocalization();
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
@@ -133,7 +135,7 @@ export function CPLWidget({
   
   return (
     <BaseKpiWidget
-      title="CPL"
+      title={t('dashboard.widgets.cpl') || 'CPL'}
       tooltipText="Cost Per Lead"
       value={formattedValue}
       changeText={changeText}

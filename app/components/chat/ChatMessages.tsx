@@ -1131,9 +1131,11 @@ export function ChatMessages({
                     new Date(processedMessages[index-1].timestamp), 
                     new Date(msg.timestamp)
                   );
-                
+                // Use id + index so duplicate message ids don't cause React key warnings
+                const rowKey = msg.id ? `${msg.id}-${index}` : `idx-${index}`;
+
                 return (
-                  <React.Fragment key={msg.id || index}>
+                  <React.Fragment key={rowKey}>
                     {showDateSeparator && (
                       <div className="flex justify-center my-8">
                         <Badge variant="outline" className="px-3 py-1 text-xs bg-background/80 backdrop-blur">

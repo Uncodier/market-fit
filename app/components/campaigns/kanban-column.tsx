@@ -7,6 +7,7 @@ import "./kanban.css"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { navigateToCampaign } from "@/app/hooks/use-navigation-history"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface KanbanColumnProps {
   title: string
@@ -53,6 +54,7 @@ interface KanbanColumnProps {
 }
 
 export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnProps) {
+  const { t } = useLocalization()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const router = useRouter()
 
@@ -111,10 +113,10 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
             </div>
             <div className="flex items-center gap-2">
               <div className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full font-inter whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
-                {filteredTasks.length} {filteredTasks.length === 1 ? 'camp.' : 'camp.'}
+                {filteredTasks.length} {t('campaigns.kanban.campShort') || 'camp.'}
               </div>
               <div className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded-full font-inter whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
-                {requirementsCount} {requirementsCount === 1 ? 'req.' : 'req.'}
+                {requirementsCount} {t('campaigns.kanban.reqShort') || 'req.'}
               </div>
             </div>
           </>
@@ -131,7 +133,7 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
           ))}
           {filteredTasks.length === 0 && (
             <div className="text-xs text-muted-foreground p-4 text-center bg-muted/20 rounded-md">
-              No campaigns match your search
+              {t('campaigns.kanban.noMatch') || 'No campaigns match your search'}
             </div>
           )}
         </div>

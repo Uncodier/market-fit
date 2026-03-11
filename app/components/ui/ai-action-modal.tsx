@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { 
   Dialog, 
   DialogContent, 
@@ -29,6 +30,7 @@ import { Progress } from "@/app/components/ui/progress"
 import { Textarea } from "@/app/components/ui/textarea"
 import { sendErrorReport } from "@/app/services/support-service"
 import { checkApiConnection, diagnoseApiConnection } from "@/app/services/ai-service"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { toast } from "sonner"
 import { safeReload } from "../../utils/safe-reload"
 import { JsonHighlighter } from "@/app/components/agents/json-highlighter"
@@ -86,6 +88,7 @@ export function AIActionModal({
 }: AIActionModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [timeElapsed, setTimeElapsed] = useState(0)
@@ -105,6 +108,8 @@ export function AIActionModal({
   const [showEstimatedTime, setShowEstimatedTime] = useState(true)
   const [timeRemaining, setTimeRemaining] = useState(estimatedTime)
   const [isProcessing, setIsProcessing] = useState(false)
+  const { t } = useLocalization()
+  const router = useRouter()
 
   // Reset state when modal opens
   useEffect(() => {
@@ -205,6 +210,7 @@ export function AIActionModal({
       setIsProcessing(true);
       setIsLoading(true);
       setError(null);
+      setErrorCode(null);
       setProgress(0);
       setTimeElapsed(0);
       setApiResponse(null);
@@ -225,6 +231,9 @@ export function AIActionModal({
         if (result) {
           // Si el resultado tiene una propiedad success y es false, es un error
           if (result.success === false) {
+            if (result.code) {
+              setErrorCode(result.code);
+            }
             // Si el resultado tiene una propiedad rawResponse, es un error HTML u otro tipo de respuesta no JSON
             if (result.rawResponse) {
               setApiResponse(result.rawResponse);
@@ -724,7 +733,7 @@ export function AIActionModal({
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <BarChart className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">AI Credits</span>
+                  <span className="text-sm font-medium">{t('layout.modal.ai.aiCredits')}</span>
                 </div>
                 <Badge variant={hasEnoughCredits ? "outline" : "destructive"} className="font-mono">
                   {creditsAvailable} / {creditsRequired}
@@ -732,11 +741,11 @@ export function AIActionModal({
               </div>
               
               <div className="text-xs text-muted-foreground">
-                This action will use {creditsRequired} AI credit{creditsRequired !== 1 ? 's' : ''}.
+                {t('layout.modal.ai.creditsUsage').replace('{{count}}', String(creditsRequired))}
                 {!hasEnoughCredits && (
                   <div className="flex items-center gap-1 mt-1 text-destructive">
                     <XCircle className="h-3 w-3" />
-                    <span>Not enough credits available</span>
+                    <span>{t('layout.modal.ai.notEnoughCredits')}</span>
                   </div>
                 )}
               </div>
@@ -744,7 +753,7 @@ export function AIActionModal({
               {/* Leyenda de resultados movida del footer al cuerpo */}
               <div className="flex items-center gap-1 mt-2 pt-2 border-t dark:border-white/5 border-black/5/30 text-xs text-muted-foreground">
                 <HelpCircle className="h-3 w-3" />
-                <span>Results may vary based on your data</span>
+                <span>{t('layout.modal.ai.resultsMayVary')}</span>
               </div>
             </div>
           )}
@@ -779,17 +788,17 @@ export function AIActionModal({
                 
                 <div className="text-center space-y-1">
                   {isCompleted ? (
-                    <p className="font-medium text-green-600">Process completed successfully!</p>
+                    <p className="font-medium text-green-600">{t('layout.modal.ai.processCompleted')}</p>
                   ) : (
                     <p className="font-medium">{processingMessages[currentMessageIndex]}</p>
                   )}
                   
                   <p className="text-sm text-muted-foreground">
                     {isCompleted 
-                      ? `Completed in ${formatTime(timeElapsed)}`
+                      ? `${t('layout.modal.ai.completedIn')} ${formatTime(timeElapsed)}`
                       : isOvertime 
-                        ? `Elapsed time: ${formatTime(timeElapsed)}` 
-                        : `Estimated time: ${formatTime(estimatedTime - timeElapsed)}`
+                        ? `${t('layout.modal.ai.elapsedTime')}: ${formatTime(timeElapsed)}` 
+                        : `${t('layout.modal.ai.estimatedTime')}: ${formatTime(estimatedTime - timeElapsed)}`
                     }
                   </p>
                   
@@ -797,7 +806,7 @@ export function AIActionModal({
                   {isOvertime && !isCompleted && (
                     <div className="flex items-center justify-center gap-1 text-amber-500 text-xs mt-1">
                       <HelpCircle className="h-3 w-3" />
-                      <span>This is taking longer than expected. Please wait...</span>
+                      <span>{t('layout.modal.ai.takingLonger')}</span>
                     </div>
                   )}
                 </div>
@@ -807,9 +816,9 @@ export function AIActionModal({
               <div className="space-y-2">
                 <Progress value={progress} className={`h-2 ${isCompleted ? 'bg-green-100' : ''}`} />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Starting</span>
-                  <span>Processing</span>
-                  <span>Completing</span>
+                  <span>{t('layout.modal.ai.starting')}</span>
+                  <span>{t('layout.modal.ai.processingStep')}</span>
+                  <span>{t('layout.modal.ai.completing')}</span>
                 </div>
               </div>
             </div>
@@ -818,29 +827,29 @@ export function AIActionModal({
           {/* Error state */}
           {error && (
             <div className="space-y-4 mt-2">
-              <div className={`rounded-lg p-4 ${serverError ? 'bg-destructive/10 border border-destructive/20' : 'bg-amber-50 border border-amber-200'}`}>
+              <div className={`rounded-lg p-4 ${serverError || errorCode === 'INSUFFICIENT_CREDITS' ? 'bg-destructive/10 border border-destructive/20' : 'bg-amber-50 border border-amber-200'}`}>
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5">
-                    {serverError ? (
+                    {serverError || errorCode === 'INSUFFICIENT_CREDITS' ? (
                       <XCircle className="h-5 w-5 text-destructive" />
                     ) : (
                       <AlertTriangle className="h-5 w-5 text-amber-500" />
                     )}
                   </div>
                   <div className="space-y-1 w-full overflow-hidden">
-                    <h3 className={`text-sm font-medium ${serverError ? 'text-destructive' : 'text-amber-800'}`}>
-                      {serverError ? (
+                    <h3 className={`text-sm font-medium ${serverError || errorCode === 'INSUFFICIENT_CREDITS' ? 'text-destructive' : 'text-amber-800'}`}>
+                      {errorCode === 'INSUFFICIENT_CREDITS' ? t('layout.modal.ai.insufficientCredits') : serverError ? (
                         error?.includes("Cannot connect to API server") || 
                         error?.includes("Network error") || 
                         error?.includes("Connection refused") 
-                          ? 'Connection Error' 
-                          : 'Server Error'
-                      ) : 'Process Failed'}
+                          ? t('layout.modal.ai.connectionError') 
+                          : t('layout.modal.ai.serverError')
+                      ) : t('layout.modal.ai.processFailed')}
                     </h3>
-                    <p className={`text-sm break-words ${serverError ? 'text-destructive/90' : 'text-amber-700'}`}>
+                    <p className={`text-sm break-words ${serverError || errorCode === 'INSUFFICIENT_CREDITS' ? 'text-destructive/90' : 'text-amber-700'}`}>
                       {error}
                     </p>
-                    {serverError && (
+                    {serverError && errorCode !== 'INSUFFICIENT_CREDITS' && (
                       <p className="text-xs text-destructive/80 mt-1">
                         {error?.includes("Cannot connect to API server") || 
                          error?.includes("Network error") || 
@@ -851,7 +860,7 @@ export function AIActionModal({
                     )}
                     
                     {/* Botón de prueba de conexión dentro de la sección de error */}
-                    {serverError && (
+                    {serverError && errorCode !== 'INSUFFICIENT_CREDITS' && (
                       <div className="mt-3">
                         <Button
                           type="button"
@@ -864,12 +873,12 @@ export function AIActionModal({
                           {isTestingConnection ? (
                             <>
                               <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                              Testing Connection...
+                              {t('layout.modal.ai.testingConnection')}
                             </>
                           ) : (
                             <>
                               <Globe className="h-4 w-4" />
-                              Test Connection
+                              {t('layout.modal.ai.testConnection')}
                             </>
                           )}
                         </Button>
@@ -883,7 +892,7 @@ export function AIActionModal({
                               <XCircle className="h-4 w-4 text-red-500" />
                             )}
                             <span className={connectionStatus === "success" ? "text-green-500" : "text-red-500"}>
-                              {connectionStatus === "success" ? "Connected" : "Connection Failed"}
+                              {connectionStatus === "success" ? t('layout.modal.ai.connected') : t('layout.modal.ai.connectionFailed')}
                             </span>
                             <Button
                               type="button"
@@ -892,7 +901,7 @@ export function AIActionModal({
                               onClick={() => setShowConnectionDetails(!showConnectionDetails)}
                               className="h-6 px-2"
                             >
-                              {showConnectionDetails ? "Hide Details" : "Show Details"}
+                              {showConnectionDetails ? t('layout.modal.ai.hideDetails') : t('layout.modal.ai.showDetails')}
                             </Button>
                           </div>
                         )}
@@ -917,18 +926,18 @@ export function AIActionModal({
               </div>
 
               {/* Display API response if available */}
-              {apiResponse && (
+              {apiResponse && errorCode !== 'INSUFFICIENT_CREDITS' && (
                 <div className={`rounded-lg p-3 text-sm ${serverError ? 'bg-destructive/5 border border-destructive/20' : 'bg-muted'} w-full`}>
                   <div className="flex justify-between items-center mb-1">
                     <div className="font-medium">
-                      {serverError ? 'Server Error Response:' : 'API Response:'}
+                      {serverError ? t('layout.modal.ai.serverErrorResponse') : t('layout.modal.ai.apiResponse')}
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-6 w-6 p-0" 
                       onClick={() => copyToClipboard(apiResponse)}
-                      title="Copy to clipboard"
+                      title={t('layout.modal.ai.copyToClipboard')}
                     >
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
@@ -940,21 +949,23 @@ export function AIActionModal({
               )}
               
               {/* Error feedback form */}
-              <div className="space-y-3 border-t pt-3">
-                <div>
-                  <label htmlFor="error-feedback" className="text-sm font-medium">
-                    Help us improve by describing what happened:
-                  </label>
-                  <Textarea
-                    id="error-feedback"
-                    placeholder="What were you trying to do when this error occurred?"
-                    className="resize-none h-16 mt-1"
-                    value={userFeedback}
-                    onChange={(e) => setUserFeedback(e.target.value)}
-                    disabled={reportSent}
-                  />
+              {errorCode !== 'INSUFFICIENT_CREDITS' && (
+                <div className="space-y-3 border-t pt-3">
+                  <div>
+                    <label htmlFor="error-feedback" className="text-sm font-medium">
+                      {t('layout.modal.ai.helpImprove')}
+                    </label>
+                    <Textarea
+                      id="error-feedback"
+                      placeholder={t('layout.modal.ai.feedbackPlaceholder')}
+                      className="resize-none h-16 mt-1"
+                      value={userFeedback}
+                      onChange={(e) => setUserFeedback(e.target.value)}
+                      disabled={reportSent}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
           
@@ -963,7 +974,7 @@ export function AIActionModal({
             <div className="flex flex-col gap-2 mb-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
-                  Estimated time: {Math.ceil(timeRemaining / 60)} min {timeRemaining % 60 > 0 ? timeRemaining % 60 + " sec" : ""}
+                  {t('layout.modal.ai.estimatedTime')}: {Math.ceil(timeRemaining / 60)} min {timeRemaining % 60 > 0 ? timeRemaining % 60 + " sec" : ""}
                 </div>
               </div>
               <Progress value={0} className="h-1" />
@@ -983,7 +994,7 @@ export function AIActionModal({
                   setIsOpen(false);
                 }}
               >
-                Close
+                {t('layout.modal.ai.close')}
               </Button>
             ) : error ? (
               <>
@@ -994,40 +1005,57 @@ export function AIActionModal({
                     setIsOpen(false);
                   }}
                 >
-                  Close
+                  {t('layout.modal.ai.close')}
                 </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleAction}
-                  disabled={isSendingReport}
-                >
-                  <RefreshCw className="mr-1 h-3 w-3" />
-                  Try Again
-                </Button>
-                <Button
-                  variant={reportSent ? "ghost" : "secondary"}
-                  size="sm"
-                  onClick={handleSendErrorReport}
-                  disabled={isSendingReport || reportSent || !userFeedback.trim()}
-                >
-                  {isSendingReport ? (
-                    <>
-                      <div className="mr-1 h-3 w-3 animate-pulse bg-muted rounded" />
-                      Sending...
-                    </>
-                  ) : reportSent ? (
-                    <>
-                      <Check className="mr-1 h-3 w-3" />
-                      Report Sent
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="mr-1 h-3 w-3" />
-                      Send Report
-                    </>
-                  )}
-                </Button>
+                
+                {errorCode === 'INSUFFICIENT_CREDITS' ? (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      setIsOpen(false);
+                      router.push('/billing?tab=billing_info');
+                    }}
+                  >
+                    {t('layout.modal.ai.goToBilling')}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleAction}
+                    disabled={isSendingReport}
+                  >
+                    <RefreshCw className="mr-1 h-3 w-3" />
+                    {t('layout.modal.ai.tryAgain')}
+                  </Button>
+                )}
+                
+                {errorCode !== 'INSUFFICIENT_CREDITS' && (
+                  <Button
+                    variant={reportSent ? "ghost" : "secondary"}
+                    size="sm"
+                    onClick={handleSendErrorReport}
+                    disabled={isSendingReport || reportSent || !userFeedback.trim()}
+                  >
+                    {isSendingReport ? (
+                      <>
+                        <div className="mr-1 h-3 w-3 animate-pulse bg-muted rounded" />
+                        {t('layout.modal.ai.sending')}
+                      </>
+                    ) : reportSent ? (
+                      <>
+                        <Check className="mr-1 h-3 w-3" />
+                        {t('layout.modal.ai.reportSent')}
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="mr-1 h-3 w-3" />
+                        {t('layout.modal.ai.sendReport')}
+                      </>
+                    )}
+                  </Button>
+                )}
               </>
             ) : (
               <>
@@ -1036,7 +1064,7 @@ export function AIActionModal({
                   onClick={() => setIsOpen(false)}
                   disabled={isLoading}
                 >
-                  Cancel
+                  {t('layout.modal.ai.cancel')}
                 </Button>
                 <Button
                   onClick={handleAction}
@@ -1046,12 +1074,12 @@ export function AIActionModal({
                   {isProcessing ? (
                     <>
                       <div className="h-4 w-4 animate-pulse bg-white/20 rounded" />
-                      Processing...
+                      {t('layout.modal.ai.processingButton')}
                     </>
                   ) : (
                     <>
                       <BarChart className="h-4 w-4" />
-                      {actionLabel || "Start"}
+                      {actionLabel || t('layout.modal.ai.start')}
                     </>
                   )}
                 </Button>

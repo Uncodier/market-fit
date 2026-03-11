@@ -16,6 +16,7 @@ import { BillingData, billingService } from "@/app/services/billing-service"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/app/hooks/use-auth"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 const billingFormSchema = z.object({
   plan: z.enum(["commission", "startup", "enterprise"]).default("commission"),
@@ -46,6 +47,7 @@ interface BillingFormProps {
 }
 
 export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmitEnd }: BillingFormProps) {
+  const { t } = useLocalization()
   const { currentSite, updateBilling, refreshSites } = useSite()
   const { user } = useAuth()
   const [creditsToBuy, setCreditsToBuy] = useState<number | null>(null)
@@ -76,26 +78,26 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
 
   // Get contextual button text based on current and selected plan
   const getPlanButtonText = () => {
-    if (isSavingPlan) return "Processing..."
+    if (isSavingPlan) return t('billing.form.processing') || "Processing..."
     
     const currentPlan = currentSite?.billing?.plan || "commission"
     
     const selectedPlan = form.watch("plan")
 
     // If user is on a paid plan AND selected plan is same, they should manage subscription
-    if (currentPlan !== "commission" && currentPlan === selectedPlan) return "Manage Subscription"
+    if (currentPlan !== "commission" && currentPlan === selectedPlan) return t('billing.form.manageSub') || "Manage Subscription"
     
-    if (currentPlan === selectedPlan) return "Current Plan"
+    if (currentPlan === selectedPlan) return t('billing.form.currentPlan') || "Current Plan"
     
     const planOrder = { commission: 0, startup: 1, enterprise: 2 }
     
     if (planOrder[selectedPlan] > planOrder[currentPlan]) {
-      return "Upgrade"
+      return t('billing.form.upgrade') || "Upgrade"
     } else if (planOrder[selectedPlan] < planOrder[currentPlan]) {
-      return "Downgrade"
+      return t('billing.form.downgrade') || "Downgrade"
     }
     
-    return "Switch Plan"
+    return t('billing.form.switchPlan') || "Switch Plan"
   }
 
   const handleManageSubscription = async () => {
@@ -260,20 +262,20 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
       <div className="space-y-8">
         <Card id="credits" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">Credits</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t('billing.credits.title') || 'Credits'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-8 px-8 pb-8">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="text-3xl font-bold">
-                    {currentSite?.billing?.credits_available !== undefined ? currentSite.billing.credits_available : 0} <span className="text-sm font-medium text-muted-foreground">credits available</span>
+                    {currentSite?.billing?.credits_available !== undefined ? currentSite.billing.credits_available : 0} <span className="text-sm font-medium text-muted-foreground">{t('billing.credits.available') || 'credits available'}</span>
                   </div>
-                  <div className="text-sm text-muted-foreground mt-1">Your credits will reset on the first day of each month</div>
-                  <div className="text-sm text-muted-foreground mt-1">Credits are used for inference tokens, ads, and third-party services</div>
+                  <div className="text-sm text-muted-foreground mt-1">{t('billing.credits.reset') || 'Your credits will reset on the first day of each month'}</div>
+                  <div className="text-sm text-muted-foreground mt-1">{t('billing.credits.usage') || 'Credits are used for inference tokens, ads, and third-party services'}</div>
                 </div>
                 <div className="flex items-center gap-4">
                   <Button variant="outline" className="h-10" type="button" onClick={() => window.location.href = "/billing?tab=payment_history"}>
-                    View usage history
+                    {t('billing.credits.viewHistory') || 'View usage history'}
                   </Button>
                 </div>
               </div>
@@ -286,9 +288,9 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   )}
                   onClick={() => setCreditsToBuy(20)}
                 >
-                  <div className="font-medium mb-2">20 Credits</div>
+                  <div className="font-medium mb-2">20 {t('billing.credits.credits') || 'Credits'}</div>
                   <div className="text-2xl font-bold mb-2">$20</div>
-                  <div className="text-sm text-muted-foreground">$1.00 per credit</div>
+                  <div className="text-sm text-muted-foreground">$1.00 {t('billing.credits.perCredit') || 'per credit'}</div>
                 </div>
                 
                 <div 
@@ -298,10 +300,10 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   )}
                   onClick={() => setCreditsToBuy(52)}
                 >
-                  <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs py-0.5 px-2 rounded-full">1.5% discount</div>
-                  <div className="font-medium mb-2">52 Credits</div>
+                  <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs py-0.5 px-2 rounded-full">1.5% {t('billing.credits.discount') || 'discount'}</div>
+                  <div className="font-medium mb-2">52 {t('billing.credits.credits') || 'Credits'}</div>
                   <div className="text-2xl font-bold mb-2">$49.25</div>
-                  <div className="text-sm text-muted-foreground">$0.95 per credit</div>
+                  <div className="text-sm text-muted-foreground">$0.95 {t('billing.credits.perCredit') || 'per credit'}</div>
                 </div>
                 
                 <div 
@@ -311,10 +313,10 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   )}
                   onClick={() => setCreditsToBuy(515)}
                 >
-                  <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs py-0.5 px-2 rounded-full">3% discount</div>
-                  <div className="font-medium mb-2">515 Credits</div>
+                  <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs py-0.5 px-2 rounded-full">3% {t('billing.credits.discount') || 'discount'}</div>
+                  <div className="font-medium mb-2">515 {t('billing.credits.credits') || 'Credits'}</div>
                   <div className="text-2xl font-bold mb-2">$500</div>
-                  <div className="text-sm text-muted-foreground">$0.97 per credit</div>
+                  <div className="text-sm text-muted-foreground">$0.97 {t('billing.credits.perCredit') || 'per credit'}</div>
                 </div>
               </div>
             </CardContent>
@@ -329,14 +331,14 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
               }}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
-              Purchase
+              {t('billing.credits.purchase') || 'Purchase'}
             </Button>
           </CardFooter>
         </Card>
         
         <Card id="subscription-plan" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">Subscription Plan</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t('billing.plan.title') || 'Subscription Plan'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-8 px-8 pb-8">
               <FormField
@@ -344,7 +346,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                 name="plan"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Current Plan</FormLabel>
+                    <FormLabel className="text-sm font-medium text-foreground">{t('billing.plan.current') || 'Current Plan'}</FormLabel>
                     <FormControl>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div 
@@ -356,10 +358,10 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                           )}
                           onClick={() => handlePlanClick("commission")}
                         >
-                          <div className="font-medium mb-2">12-Month POC</div>
+                          <div className="font-medium mb-2">{t('billing.plan.poc.title') || '12-Month POC'}</div>
                           <div className="text-2xl font-bold mb-2">$27</div>
-                          <div className="text-sm text-muted-foreground">Basic features</div>
-                          <div className="text-sm text-muted-foreground mt-1">USD/year paid at the end of the year</div>
+                          <div className="text-sm text-muted-foreground">{t('billing.plan.poc.features') || 'Basic features'}</div>
+                          <div className="text-sm text-muted-foreground mt-1">{t('billing.plan.poc.desc') || 'USD/year paid at the end of the year'}</div>
                         </div>
                         
                         <div 
@@ -371,10 +373,10 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                           )}
                           onClick={() => handlePlanClick("startup")}
                         >
-                          <div className="font-medium mb-2">Startup</div>
+                          <div className="font-medium mb-2">{t('billing.plan.startup.title') || 'Startup'}</div>
                           <div className="text-2xl font-bold mb-2">$99</div>
-                          <div className="text-sm text-muted-foreground">Startup features</div>
-                          <div className="text-sm text-muted-foreground mt-1">100 credits/month</div>
+                          <div className="text-sm text-muted-foreground">{t('billing.plan.startup.features') || 'Startup features'}</div>
+                          <div className="text-sm text-muted-foreground mt-1">100 {t('billing.plan.creditsPerMonth') || 'credits/month'}</div>
                         </div>
                         
                         <div 
@@ -386,10 +388,10 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                           )}
                           onClick={() => handlePlanClick("enterprise")}
                         >
-                          <div className="font-medium mb-2">Enterprise</div>
+                          <div className="font-medium mb-2">{t('billing.plan.enterprise.title') || 'Enterprise'}</div>
                           <div className="text-2xl font-bold mb-2">$500</div>
-                          <div className="text-sm text-muted-foreground">Enterprise features</div>
-                          <div className="text-sm text-muted-foreground mt-1">1000 credits/month</div>
+                          <div className="text-sm text-muted-foreground">{t('billing.plan.enterprise.features') || 'Enterprise features'}</div>
+                          <div className="text-sm text-muted-foreground mt-1">1000 {t('billing.plan.creditsPerMonth') || 'credits/month'}</div>
                         </div>
                       </div>
                     </FormControl>
@@ -406,10 +408,10 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                     <div className="space-y-0.5">
                       <div className="font-medium flex items-center">
                         <RotateCcw className="mr-2 h-4 w-4 text-muted-foreground" />
-                        Auto-renew subscription
+                        {t('billing.plan.autoRenew') || 'Auto-renew subscription'}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Automatically renew your subscription when it expires
+                        {t('billing.plan.autoRenewDesc') || 'Automatically renew your subscription when it expires'}
                       </div>
                     </div>
                     <FormControl>
@@ -426,7 +428,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                 <div className="flex items-center gap-3 text-sm text-muted-foreground bg-muted/50 p-4 rounded-md border dark:border-white/5 border-black/5/50 mt-6">
                   <Info className="h-5 w-5 flex-shrink-0 text-blue-500" />
                   <p>
-                    You will be redirected to our secure Stripe portal to manage your subscription, including upgrades, downgrades to the free plan, or cancellations.
+                    {t('billing.plan.stripeNotice') || 'You will be redirected to our secure Stripe portal to manage your subscription, including upgrades, downgrades to the free plan, or cancellations.'}
                   </p>
                 </div>
               )}
@@ -446,27 +448,27 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
         {form.watch("plan") !== "commission" && (
         <Card id="payment-method" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">Payment Method</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t('billing.payment.title') || 'Payment Method'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 px-8 pb-8">
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-900/30">
-                  <h4 className="font-medium mb-2 text-blue-700 dark:text-blue-400">Secure Payment via Stripe</h4>
+                  <h4 className="font-medium mb-2 text-blue-700 dark:text-blue-400">{t('billing.payment.secureTitle') || 'Secure Payment via Stripe'}</h4>
                   <p className="text-sm text-blue-600 dark:text-blue-300 mb-3">
-                    Payment details will be collected securely through Stripe Checkout when you save your plan.
+                    {t('billing.payment.secureDesc') || 'Payment details will be collected securely through Stripe Checkout when you save your plan.'}
                   </p>
                   <ul className="text-sm space-y-1 text-blue-600 dark:text-blue-300">
-                    <li>• Industry-leading security and encryption</li>
-                    <li>• Support for multiple payment methods</li>
-                    <li>• PCI DSS compliant payment processing</li>
-                    <li>• 3D Secure authentication included</li>
+                    <li>• {t('billing.payment.secureItem1') || 'Industry-leading security and encryption'}</li>
+                    <li>• {t('billing.payment.secureItem2') || 'Support for multiple payment methods'}</li>
+                    <li>• {t('billing.payment.secureItem3') || 'PCI DSS compliant payment processing'}</li>
+                    <li>• {t('billing.payment.secureItem4') || '3D Secure authentication included'}</li>
                   </ul>
                         </div>
                 
                 {currentSite?.billing?.masked_card_number && (
                   <div className="bg-muted/30 rounded-lg p-4 border dark:border-white/5 border-black/5/30">
-                    <h4 className="font-medium mb-2">Current Payment Method</h4>
+                    <h4 className="font-medium mb-2">{t('billing.payment.currentMethod') || 'Current Payment Method'}</h4>
                     <p className="text-sm text-muted-foreground">
-                      Card ending in {currentSite.billing.masked_card_number.slice(-4)}
+                      {t('billing.payment.cardEnding') || 'Card ending in'} {currentSite.billing.masked_card_number.slice(-4)}
                     </p>
                   </div>
                 )}
@@ -476,7 +478,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
 
         <Card id="tax-id" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">Tax ID</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t('billing.tax.title') || 'Tax ID'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-8 px-8 pb-8">
               <FormField
@@ -484,13 +486,13 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                 name="tax_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Tax ID</FormLabel>
+                    <FormLabel className="text-sm font-medium text-foreground">{t('billing.tax.label') || 'Tax ID'}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
                           className="pl-12 h-12 text-base" 
-                          placeholder="Tax ID / VAT Number"
+                          placeholder={t('billing.tax.placeholder') || "Tax ID / VAT Number"}
                           {...field} 
                         />
                       </div>
@@ -506,14 +508,14 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
               onClick={handleSaveTaxId}
               disabled={isSavingTaxId}
             >
-              {isSavingTaxId ? "Saving..." : "Save"}
+              {isSavingTaxId ? (t('common.saving') || "Saving...") : (t('common.save') || "Save")}
             </Button>
           </CardFooter>
         </Card>
         
         <Card id="billing-address" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">Billing Address</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t('billing.address.title') || 'Billing Address'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-8 px-8 pb-8">
               <FormField
@@ -521,7 +523,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                 name="billing_address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">Street Address</FormLabel>
+                    <FormLabel className="text-sm font-medium text-foreground">{t('billing.address.street') || 'Street Address'}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -543,7 +545,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   name="billing_city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">City</FormLabel>
+                      <FormLabel className="text-sm font-medium text-foreground">{t('billing.address.city') || 'City'}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -564,7 +566,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   name="billing_postal_code"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">Postal Code</FormLabel>
+                      <FormLabel className="text-sm font-medium text-foreground">{t('billing.address.postal') || 'Postal Code'}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -585,7 +587,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
                   name="billing_country"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-foreground">Country</FormLabel>
+                      <FormLabel className="text-sm font-medium text-foreground">{t('billing.address.country') || 'Country'}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -608,7 +610,7 @@ export function BillingForm({ id, initialData, onSuccess, onSubmitStart, onSubmi
               onClick={handleSaveBillingAddress}
               disabled={isSavingBillingAddress}
             >
-              {isSavingBillingAddress ? "Saving..." : "Save"}
+              {isSavingBillingAddress ? (t('common.saving') || "Saving...") : (t('common.save') || "Save")}
             </Button>
           </CardFooter>
         </Card>

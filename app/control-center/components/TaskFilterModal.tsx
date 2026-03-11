@@ -28,23 +28,25 @@ import {
   User
 } from "@/app/components/ui/icons"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 // Define task stages based on journey stages
-const TASK_STAGES = [
-  { id: "awareness", name: "Awareness" },
-  { id: "consideration", name: "Consideration" },
-  { id: "decision", name: "Decision" },
-  { id: "purchase", name: "Purchase" },
-  { id: "retention", name: "Retention" },
-  { id: "referral", name: "Referral" }
+const getTaskStages = (t: (key: string) => string) => [
+  { id: "awareness", name: t('controlCenter.stages.awareness') || "Awareness" },
+  { id: "consideration", name: t('controlCenter.stages.consideration') || "Consideration" },
+  { id: "decision", name: t('controlCenter.stages.decision') || "Decision" },
+  { id: "purchase", name: t('controlCenter.stages.purchase') || "Purchase" },
+  { id: "retention", name: t('controlCenter.stages.retention') || "Retention" },
+  { id: "referral", name: t('controlCenter.stages.referral') || "Referral" }
 ]
 
 // Define task statuses
-const TASK_STATUSES = [
-  { id: "pending", name: "Pending" },
-  { id: "in_progress", name: "In Progress" },
-  { id: "completed", name: "Completed" },
-  { id: "failed", name: "Failed" },
-  { id: "canceled", name: "Canceled" }
+const getTaskStatuses = (t: (key: string) => string) => [
+  { id: "pending", name: t('controlCenter.status.pending') || "Pending" },
+  { id: "in_progress", name: t('controlCenter.status.inProgress') || "In Progress" },
+  { id: "completed", name: t('controlCenter.status.completed') || "Completed" },
+  { id: "failed", name: t('controlCenter.status.failed') || "Failed" },
+  { id: "canceled", name: t('controlCenter.status.canceled') || "Canceled" }
 ]
 
 // Define tipos para los filtros
@@ -72,6 +74,11 @@ export function TaskFilterModal({
   leads,
   users
 }: TaskFilterModalProps) {
+  const { t } = useLocalization()
+  
+  const TASK_STAGES = getTaskStages(t)
+  const TASK_STATUSES = getTaskStatuses(t)
+
   // Estado local para los filtros
   const [localFilters, setLocalFilters] = React.useState<TaskFilters>({
     stage: [...filters.stage],
@@ -201,13 +208,13 @@ export function TaskFilterModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Filter Tasks
+            {t('controlCenter.filter.title') || 'Filter Tasks'}
           </DialogTitle>
           <DialogDescription>
-            Apply filters to narrow down your tasks list.
+            {t('controlCenter.filter.desc') || 'Apply filters to narrow down your tasks list.'}
             {getTotalActiveFilters() > 0 && (
               <Badge variant="outline" className="ml-2">
-                {getTotalActiveFilters()} active filters
+                {(t('controlCenter.filter.active') || '{count} active filters').replace('{count}', getTotalActiveFilters().toString())}
               </Badge>
             )}
           </DialogDescription>
@@ -222,7 +229,7 @@ export function TaskFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Tag className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Stage</h3>
+                <h3 className="font-medium">{t('controlCenter.filter.stage') || 'Stage'}</h3>
                 {localFilters.stage.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.stage.length}
@@ -268,7 +275,7 @@ export function TaskFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Status</h3>
+                <h3 className="font-medium">{t('controlCenter.filter.status') || 'Status'}</h3>
                 {localFilters.status.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.status.length}
@@ -314,7 +321,7 @@ export function TaskFilterModal({
             >
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Lead</h3>
+                <h3 className="font-medium">{t('controlCenter.filter.lead') || 'Lead'}</h3>
                 {localFilters.leadId.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.leadId.length}
@@ -354,8 +361,8 @@ export function TaskFilterModal({
                     options={leads.map(lead => ({ value: lead.id, label: lead.name }))}
                     value=""
                     onValueChange={handleLeadChange}
-                    placeholder="Search leads..."
-                    emptyMessage="No leads found"
+                    placeholder={t('controlCenter.filter.searchLeads') || "Search leads..."}
+                    emptyMessage={t('controlCenter.filter.noLeads') || "No leads found"}
                     icon={<User className="h-4 w-4" />}
                   />
                 </div>
@@ -371,7 +378,7 @@ export function TaskFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Assignee</h3>
+                <h3 className="font-medium">{t('controlCenter.filter.assignee') || 'Assignee'}</h3>
                 {localFilters.assigneeId.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.assigneeId.length}
@@ -411,8 +418,8 @@ export function TaskFilterModal({
                     options={users.map(user => ({ value: user.id, label: user.name }))}
                     value=""
                     onValueChange={handleAssigneeChange}
-                    placeholder="Search users..."
-                    emptyMessage="No users found"
+                    placeholder={t('controlCenter.filter.searchUsers') || "Search users..."}
+                    emptyMessage={t('controlCenter.filter.noUsers') || "No users found"}
                     icon={<Users className="h-4 w-4" />}
                   />
                 </div>
@@ -430,17 +437,17 @@ export function TaskFilterModal({
               size="sm"
             >
               <RotateCcw className="h-4 w-4" />
-              Reset
+              {t('controlCenter.filter.reset') || 'Reset'}
             </Button>
           ) : (
             <div></div>
           )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>
-              Cancel
+              {t('controlCenter.filter.cancel') || 'Cancel'}
             </Button>
             <Button onClick={handleApplyFilters}>
-              Apply Filters
+              {t('controlCenter.filter.apply') || 'Apply Filters'}
             </Button>
           </div>
         </DialogFooter>

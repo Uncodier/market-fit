@@ -10,6 +10,8 @@ import { ChevronLeft, ChevronRight, MessageSquare, Clock, PlayCircle, CheckCircl
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Task } from "@/app/types"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 interface ExtendedTask extends Task {
   leadName?: string
   assigneeName?: string
@@ -37,38 +39,38 @@ const STATUS_STYLES = {
 }
 
 // Define task statuses with colors and icons for the table
-const TASK_STATUSES = [
+const getTaskStatuses = (t: (key: string) => string) => [
   { 
     id: "pending", 
-    name: "Pending", 
+    name: t('controlCenter.status.pending') || "Pending", 
     icon: Clock,
     color: "bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200",
     bgColor: "bg-yellow-50 dark:bg-yellow-950/30"
   },
   { 
     id: "in_progress", 
-    name: "In Progress", 
+    name: t('controlCenter.status.inProgress') || "In Progress", 
     icon: PlayCircle,
     color: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200",
     bgColor: "bg-blue-50 dark:bg-blue-950/30"
   },
   { 
     id: "completed", 
-    name: "Completed", 
+    name: t('controlCenter.status.completed') || "Completed", 
     icon: CheckCircle2,
     color: "bg-green-50 text-green-700 hover:bg-green-100 border-green-200",
     bgColor: "bg-green-50 dark:bg-green-950/30"
   },
   { 
     id: "failed", 
-    name: "Failed", 
+    name: t('controlCenter.status.failed') || "Failed", 
     icon: XCircle,
     color: "bg-red-50 text-red-700 hover:bg-red-100 border-red-200",
     bgColor: "bg-red-50 dark:bg-red-950/30"
   },
   { 
     id: "canceled", 
-    name: "Canceled", 
+    name: t('controlCenter.status.canceled') || "Canceled", 
     icon: Ban,
     color: "bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200",
     bgColor: "bg-orange-50 dark:bg-orange-950/30"
@@ -124,6 +126,9 @@ export function TasksTable({
   onTaskClick,
   categories
 }: TasksTableProps) {
+  const { t } = useLocalization()
+  const TASK_STATUSES = getTaskStatuses(t)
+
   // State for individual pagination per status
   const [statusPages, setStatusPages] = useState<Record<string, number>>(() => {
     const initialPages: Record<string, number> = {}
@@ -198,7 +203,7 @@ export function TasksTable({
                 <h3 className="text-lg font-semibold text-foreground">{status.name}</h3>
               </div>
               <Badge variant="outline" className="text-sm">
-                {statusItems.length} {statusItems.length === 1 ? 'task' : 'tasks'}
+                {statusItems.length} {statusItems.length === 1 ? (t('controlCenter.table.task') || 'task') : (t('controlCenter.table.tasks') || 'tasks')}
               </Badge>
             </div>
             
@@ -208,12 +213,12 @@ export function TasksTable({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[80px] min-w-[80px] max-w-[80px]">ID</TableHead>
-                    <TableHead className="min-w-[200px]">Title</TableHead>
-                    <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Stage</TableHead>
-                    <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Lead</TableHead>
-                    <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Assignee</TableHead>
-                    <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Due Date</TableHead>
-                    <TableHead className="w-[100px] min-w-[100px] max-w-[100px] text-right">Actions</TableHead>
+                    <TableHead className="min-w-[200px]">{t('controlCenter.table.title') || 'Title'}</TableHead>
+                    <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">{t('controlCenter.table.stage') || 'Stage'}</TableHead>
+                    <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">{t('controlCenter.table.lead') || 'Lead'}</TableHead>
+                    <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">{t('controlCenter.table.assignee') || 'Assignee'}</TableHead>
+                    <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">{t('controlCenter.table.dueDate') || 'Due Date'}</TableHead>
+                    <TableHead className="w-[100px] min-w-[100px] max-w-[100px] text-right">{t('controlCenter.table.actions') || 'Actions'}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -283,7 +288,7 @@ export function TasksTable({
                   ) : (
                     <TableRow>
                       <TableCell colSpan={7} className="h-24 text-center">
-                        No tasks found for this status.
+                        {t('controlCenter.table.noTasks') || 'No tasks found for this status.'}
                       </TableCell>
                     </TableRow>
                   )}
@@ -295,7 +300,7 @@ export function TasksTable({
                 <div className="flex items-center justify-between px-6 py-4 border-t">
                   <div className="flex items-center gap-4">
                     <p className="text-sm text-muted-foreground">
-                      Showing <span className="font-medium">{Math.min(startIndex + 1, statusItems.length)}</span> to <span className="font-medium">{Math.min(startIndex + statusItemsPerPage, statusItems.length)}</span> of <span className="font-medium">{statusItems.length}</span> tasks
+                      {t('sales.table.showing') || 'Showing'} <span className="font-medium">{Math.min(startIndex + 1, statusItems.length)}</span> {t('sales.table.to') || 'to'} <span className="font-medium">{Math.min(startIndex + statusItemsPerPage, statusItems.length)}</span> {t('sales.table.of') || 'of'} <span className="font-medium">{statusItems.length}</span> {t('controlCenter.table.tasks') || 'tasks'}
                     </p>
                     <Select
                       value={statusItemsPerPage.toString()}
@@ -342,7 +347,7 @@ export function TasksTable({
       {tasks.length === 0 && (
         <Card>
           <div className="h-24 flex items-center justify-center text-center">
-            <p className="text-muted-foreground">No tasks found.</p>
+            <p className="text-muted-foreground">{t('controlCenter.table.noTasksAll') || 'No tasks found.'}</p>
           </div>
         </Card>
       )}

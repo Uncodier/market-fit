@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { Badge } from "@/app/components/ui/badge";
 import { EmptyCard } from "@/app/components/ui/empty-card";
 import { ClipboardList, Circle } from "@/app/components/ui/icons";
@@ -75,26 +76,23 @@ function getInitials(name: string | undefined | null): string {
     .join("");
 }
 
-// Función para formatear fechas
-function formatDate(dateString: string): string {
+// Format relative date; pass t for localized strings
+function formatDate(dateString: string, t: (key: string) => string): string {
   try {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
     
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1) return t('dashboard.recent.justNow') || 'Just now';
+    if (diffMins < 60) return (t('dashboard.recent.minutesAgo') || '{n}m ago').replace('{n}', String(diffMins));
     
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) return (t('dashboard.recent.hoursAgo') || '{n}h ago').replace('{n}', String(diffHours));
     
-    // For dates older than 24 hours but in the current year
     if (date.getFullYear() === now.getFullYear()) {
       return format(date, 'MMM d');
     }
-    
-    // For dates in previous years
     return format(date, 'MMM d, yyyy');
   } catch (e) {
     console.error('Error formatting date:', e);
@@ -127,6 +125,7 @@ export function RecentActivity({
   startDate,
   endDate
 }: RecentActivityProps) {
+  const { t } = useLocalization();
   const { currentSite } = useSite();
   const { fetchWithController, getSignalForEndpoint } = useRequestController();
   const router = useRouter();
@@ -283,7 +282,7 @@ export function RecentActivity({
       <div className="h-full flex items-center justify-center py-8">
         <EmptyCard
           icon={<ClipboardList className="h-10 w-10 text-muted-foreground" />}
-          title="Error loading activities"
+          title={t('dashboard.recent.errorLoading') || 'Error loading activities'}
           description={error}
           showShadow={false}
           contentClassName="py-12"
@@ -297,8 +296,8 @@ export function RecentActivity({
       <div className="h-full flex items-center justify-center py-6">
         <EmptyCard
           icon={<ClipboardList className="h-6 w-6 text-muted-foreground" />}
-          title="No recent activity"
-          description="When leads complete tasks, they will appear here."
+          title={t('dashboard.recent.noActivity') || 'No recent activity'}
+          description={t('dashboard.recent.noActivityDesc') || 'When leads complete tasks, they will appear here.'}
           showShadow={false}
           contentClassName="py-12"
           className="flex-1 flex flex-col items-center justify-center"
@@ -327,7 +326,7 @@ export function RecentActivity({
           <div className="ml-4 space-y-1 flex-1 pr-4">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-medium text-foreground leading-snug line-clamp-1 overflow-hidden">
-                {activity.user.name} | {activity.action || activity.title || "Performed an action"}
+                {activity.user.name} | {activity.action || activity.title || (t('dashboard.recent.performedAction') || 'Performed an action')}
                 {activity.segment && 
                   <span> on <span className="font-medium">{activity.segment}</span></span>
                 }
@@ -344,7 +343,7 @@ export function RecentActivity({
           </div>
           <div className="ml-auto text-xs text-muted-foreground">
             <span title={new Date(activity.date).toLocaleString()}>
-              {formatDate(activity.date)}
+              {formatDate(activity.date, t)}
             </span>
           </div>
         </div>

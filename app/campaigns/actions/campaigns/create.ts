@@ -14,7 +14,7 @@ export async function createCampaign(values: CampaignFormValues) {
       title: values.title,
       description: values.description,
       priority: values.priority,
-      status: "active",
+      status: values.status && values.status !== 'draft' ? values.status : "active",
       due_date: values.dueDate,
       type: values.type,
       site_id: values.site_id,

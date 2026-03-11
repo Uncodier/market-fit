@@ -4,9 +4,10 @@ import React, { useEffect, useState } from "react";
 import { CostReports } from "@/app/components/dashboard/cost-reports";
 import { Separator } from "@/app/components/ui/separator";
 import { subDays } from "date-fns";
+import { useLocalization } from "@/app/context/LocalizationContext";
 
-// Función principal de la página de costos
 export default function CostsPage() {
+  const { t } = useLocalization();
   // Inicializamos fechas por defecto
   const [startDate, setStartDate] = useState<Date>(() => {
     const date = new Date();
@@ -49,9 +50,9 @@ export default function CostsPage() {
     <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
       <div className="flex items-center justify-between space-y-2">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Costs</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t('costs.title') || 'Costs'}</h2>
           <p className="text-muted-foreground">
-            View and analyze your business costs in this report.
+            {t('costs.description') || 'View and analyze your business costs in this report.'}
           </p>
         </div>
       </div>

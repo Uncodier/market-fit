@@ -39,6 +39,7 @@ import { markUINavigation } from "@/app/hooks/use-navigation-history"
 import { NavigationLink } from "./NavigationLink"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Add Cpu icon for AI representation
 const Cpu = ({ className = "", ...props }: { className?: string, [key: string]: any }) => (
@@ -74,136 +75,55 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   onMobileClose?: () => void
 }
 
-// Main navigation items (always visible at top)
+// Main navigation items (always visible at top) - key used for i18n
 const mainNavigationItems = [
-  {
-    title: "Dashboards",
-    href: "/dashboard",
-    icon: Home,
-    emoji: "🏠",
-  },
+  { key: "dashboard", href: "/dashboard", icon: Home, emoji: "🏠" },
 ]
 
 // Human in the Loop category
 const humanInTheLoopItems = [
-  {
-    title: "Control Center",
-    href: "/control-center",
-    icon: Rocket,
-    emoji: "🚀",
-  },
-  {
-    title: "Content",
-    href: "/content",
-    icon: FileText,
-    emoji: "📄",
-  },
-  {
-    title: "AI Goals",
-    href: "/requirements",
-    icon: CheckSquare,
-    emoji: "✅",
-  },
-  {
-    title: "Find People",
-    href: "/people",
-    icon: Search,
-    emoji: "🔍",
-  },
-  {
-    title: "Leads",
-    href: "/leads",
-    icon: Users,
-    emoji: "👥",
-  },
-  {
-    title: "Deals",
-    href: "/deals",
-    icon: Briefcase, // Using Briefcase icon
-    emoji: "🤝",
-  },
-  {
-    title: "Conversations",
-    href: "/chat",
-    icon: MessageSquare,
-    emoji: "💬",
-  },
+  { key: "controlCenter", href: "/control-center", icon: Rocket, emoji: "🚀" },
+  { key: "content", href: "/content", icon: FileText, emoji: "📄" },
+  { key: "requirements", href: "/requirements", icon: CheckSquare, emoji: "✅" },
+  { key: "people", href: "/people", icon: Search, emoji: "🔍" },
+  { key: "leads", href: "/leads", icon: Users, emoji: "👥" },
+  { key: "deals", href: "/deals", icon: Briefcase, emoji: "🤝" },
+  { key: "chat", href: "/chat", icon: MessageSquare, emoji: "💬" },
 ]
 
 // Robots category
 const robotsItems = [
-  {
-    title: "AI Agents",
-    href: "/robots",
-    icon: Bot,
-    emoji: "🤖",
-  },
+  { key: "robots", href: "/robots", icon: Bot, emoji: "🤖" },
 ]
 
 // Context section - main item
-const contextMainItem = {
-  title: "Project",
-  href: "/context",
-  icon: LayoutGrid,
-  emoji: "🏢",
-}
+const contextMainItem = { key: "context", href: "/context", icon: LayoutGrid, emoji: "🏢" }
 
 // Context children items
 const contextChildrenItems = [
-  {
-    title: "Campaigns",
-    href: "/campaigns",
-    icon: Target,
-    emoji: "🎯",
-  },
-  {
-    title: "Segments",
-    href: "/segments",
-    icon: Tag,
-    emoji: "🏷️",
-  },
-  {
-    title: "Assets",
-    href: "/assets",
-    icon: FolderOpen,
-    emoji: "📁",
-  },
-  {
-    title: "Sales",
-    href: "/sales",
-    icon: DollarSign,
-    emoji: "💰",
-  },
+  { key: "campaigns", href: "/campaigns", icon: Target, emoji: "🎯" },
+  { key: "segments", href: "/segments", icon: Tag, emoji: "🏷️" },
+  { key: "assets", href: "/assets", icon: FolderOpen, emoji: "📁" },
+  { key: "sales", href: "/sales", icon: DollarSign, emoji: "💰" },
 ]
 
-// Profile section - main item (clicking goes to profile)
-const profileMainItem = {
-  title: "Account",
-  href: "/profile",
-  icon: User,
-  emoji: "👤",
-}
+// Profile section - main item
+const profileMainItem = { key: "account", href: "/profile", icon: User, emoji: "👤" }
 
 import { CreditsWidget } from "./CreditsWidget"
 
-// Category header component
-const CategoryHeader = ({ title, isCollapsed }: { title: string, isCollapsed: boolean }) => {
-  const getEmoji = (title: string) => {
-    switch (title) {
-      case "Human in the Loop":
-        return "💪"
-      case "Project":
-        return "🏢"
-      default:
-        return ""
-    }
+// Category header component - titleKey is layout.category.* key
+const CategoryHeader = ({ titleKey, title, isCollapsed }: { titleKey?: string, title: string, isCollapsed: boolean }) => {
+  const getEmoji = (key: string | undefined) => {
+    if (key === "humanInTheLoop") return "💪"
+    if (key === "project") return "🏢"
+    return ""
   }
-  
   return (
     <div className="px-3" style={{ paddingTop: '7.2px', paddingBottom: '7.2px' }}>
       {!isCollapsed && (
         <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2" style={{ fontSize: '10.8px' }}>
-          <span className="text-sm">{getEmoji(title)}</span>
+          <span className="text-sm">{getEmoji(titleKey)}</span>
           {title}
         </h3>
       )}
@@ -218,6 +138,7 @@ export function Sidebar({
   isMobileOpen = false,
   onMobileClose
 }: SidebarProps) {
+  const { t } = useLocalization()
   const pathname = usePathname()
   const router = useRouter()
   const { user, isLoading } = useAuth()
@@ -446,7 +367,7 @@ export function Sidebar({
                 href={item.href}
                 icon={item.icon}
                 emoji={item.emoji}
-                title={item.title}
+                title={t(`layout.sidebar.${item.key}`) || item.key}
                 isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                 isCollapsed={renderCollapsed}
               />
@@ -465,23 +386,23 @@ export function Sidebar({
                   href={item.href}
                   icon={item.icon}
                   emoji={item.emoji}
-                  title={item.title}
+                  title={t(`layout.sidebar.${item.key}`) || item.key}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                   isCollapsed={renderCollapsed}
                 >
-                  {item.title === "Control Center" && (
+                  {item.href === "/control-center" && (
                     <ControlCenterBadge isActive={pathname.startsWith("/control-center")} />
                   )}
-                  {item.title === "Content" && (
+                  {item.href === "/content" && (
                     <ContentBadge isActive={pathname.startsWith("/content")} />
                   )}
-                  {item.title === "AI Goals" && (
+                  {item.href === "/requirements" && (
                     <RequirementsBadge isActive={pathname.startsWith("/requirements")} />
                   )}
-                  {item.title === "Leads" && (
+                  {item.href === "/leads" && (
                     <LeadsBadge isActive={pathname.startsWith("/leads")} />
                   )}
-                  {item.title === "Conversations" && (
+                  {item.href === "/chat" && (
                     <ChatsBadge isActive={pathname.startsWith("/chat")} />
                   )}
                 </MenuItem>
@@ -501,11 +422,11 @@ export function Sidebar({
                   href={item.href}
                   icon={item.icon}
                   emoji={item.emoji}
-                  title={item.title}
+                  title={t(`layout.sidebar.${item.key}`) || item.key}
                   isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
                   isCollapsed={renderCollapsed}
                 >
-                  {item.title === "AI Agents" && (
+                  {item.href === "/robots" && (
                     <RobotsBadge isActive={pathname.startsWith("/robots")} />
                   )}
                 </MenuItem>
@@ -533,7 +454,7 @@ export function Sidebar({
               href={contextMainItem.href}
               icon={contextMainItem.icon}
               emoji={contextMainItem.emoji}
-              title={contextMainItem.title}
+              title={t(`layout.sidebar.${contextMainItem.key}`) || contextMainItem.key}
               isActive={pathname.startsWith(contextMainItem.href)}
               isCollapsed={renderCollapsed}
               className="context-parent-item"
@@ -592,12 +513,12 @@ export function Sidebar({
                   href={item.href}
                   icon={item.icon}
                   emoji={item.emoji}
-                  title={item.title}
+                  title={t(`layout.sidebar.${item.key}`) || item.key}
                   isActive={pathname.startsWith(item.href)}
                   isCollapsed={renderCollapsed}
                   className={!renderCollapsed ? "ml-3" : ""}
                 >
-                  {item.title === "Campaigns" && (
+                  {item.href === "/campaigns" && (
                     <CampaignsBadge isActive={pathname.startsWith("/campaigns")} />
                   )}
                 </MenuItem>
@@ -613,43 +534,43 @@ export function Sidebar({
             setForceShowChildren={setForceShowSettingsChildren}
             onSettingsNavigation={handleSettingsNavigation}
           />
+          
+          {/* Notifications item */}
+          <div className={cn("relative mt-2", renderCollapsed ? "w-8 mx-auto" : "w-full")} style={{ marginTop: '0.5rem' }}>
+            <MenuItem
+              href="/notifications"
+              icon={Bell}
+              emoji="🔔"
+              title="Notifications"
+              isActive={pathname.startsWith('/notifications')}
+              isCollapsed={renderCollapsed}
+            />
+            {/* Notification badge */}
+            {!renderCollapsed && (
+              <div className="absolute top-[6px] right-2 z-10 pointer-events-none">
+                <NotificationBadge isActive={pathname.startsWith("/notifications")} />
+              </div>
+            )}
+            {renderCollapsed && (
+              <div className="absolute -top-1 -right-1 z-10 pointer-events-none transform scale-90">
+                <NotificationBadge isActive={pathname.startsWith("/notifications")} />
+              </div>
+            )}
+          </div>
         </div>
+        
         {/* Profile Section - Collapsible */}
-        <div className="border-t dark:border-white/5 border-black/5">
+        <div className="border-t dark:border-white/5 border-black/5 mt-auto">
           <div className={cn("flex flex-col space-y-1 py-4", renderCollapsed ? "px-[14px] items-center" : "px-3")}>
-            
-            {/* Notifications item */}
-            <div className={cn("relative", renderCollapsed ? "w-8 mx-auto" : "w-full")}>
-              <MenuItem
-                href="/notifications"
-                icon={Bell}
-                emoji="🔔"
-                title="Notifications"
-                isActive={pathname.startsWith('/notifications')}
-                isCollapsed={renderCollapsed}
-              />
-              {/* Notification badge */}
-              {!renderCollapsed && (
-                <div className="absolute top-[6px] right-2 z-10 pointer-events-none">
-                  <NotificationBadge isActive={pathname.startsWith("/notifications")} />
-                </div>
-              )}
-              {renderCollapsed && (
-                <div className="absolute -top-1 -right-1 z-10 pointer-events-none transform scale-90">
-                  <NotificationBadge isActive={pathname.startsWith("/notifications")} />
-                </div>
-              )}
-            </div>
-
             {/* Profile main item */}
             <div 
-              className="relative mt-1"
+              className="relative"
             >
               <MenuItem
                 href={profileMainItem.href}
                 icon={profileMainItem.icon}
                 emoji={profileMainItem.emoji}
-                title={user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Account'}
+                title={user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || (t('layout.sidebar.account') || 'Account')}
                 subtitle={user?.email || ''}
                 avatarUrl={user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
                 isActive={pathname.startsWith('/profile')}

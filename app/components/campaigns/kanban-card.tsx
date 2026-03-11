@@ -11,6 +11,7 @@ import { navigateToRequirement, navigateToCampaign } from "@/app/hooks/use-navig
 import { Button } from "@/app/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import React from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface SubTask {
   id: string
@@ -90,6 +91,7 @@ export function KanbanCard({
   metadata,
   onCardClick
 }: KanbanCardProps) {
+  const { t } = useLocalization()
   const [expanded, setExpanded] = useState(false)
   const router = useRouter()
   
@@ -272,9 +274,9 @@ export function KanbanCard({
                   )}
                 >
                   {metadata.payment_status.outsourced && metadata.payment_status.status === 'paid' 
-                    ? `Paid - ${metadata.payment_status.outsource_provider || 'Outsourced'}`
-                    : metadata.payment_status.status === 'paid' ? 'Paid' : 
-                      metadata.payment_status.status === 'failed' ? 'Payment Failed' : 'Payment Pending'}
+                    ? `${t('campaigns.kanban.card.paid') || 'Paid'} - ${metadata.payment_status.outsource_provider || (t('campaigns.kanban.card.outsourced') || 'Outsourced')}`
+                    : metadata.payment_status.status === 'paid' ? (t('campaigns.kanban.card.paid') || 'Paid') : 
+                      metadata.payment_status.status === 'failed' ? (t('campaigns.kanban.card.paymentFailed') || 'Payment Failed') : (t('campaigns.kanban.card.paymentPending') || 'Payment Pending')}
                 </span>
               </div>
             )}
@@ -289,22 +291,22 @@ export function KanbanCard({
           onClick={handleToggleExpand}
           role="button"
           aria-expanded={expanded}
-          title={expanded ? "Click to hide details" : "Click to show details"}
+          title={expanded ? (t('campaigns.kanban.card.hideDetails') || "Click to hide details") : (t('campaigns.kanban.card.showDetails') || "Click to show details")}
         >
           <div className="flex gap-3">
             {isOutsourced ? (
               <div className="flex items-center">
                 <ExternalLink className="h-3.5 w-3.5 text-blue-600 mr-1.5" />
-                <span className="text-xs font-medium text-blue-600 mr-1">Outsourced</span>
+                <span className="text-xs font-medium text-blue-600 mr-1">{t('campaigns.kanban.card.outsourced') || 'Outsourced'}</span>
                 <span className="text-xs text-muted-foreground truncate max-w-[80px]">
-                  {outsourcingStatus === 'paid' ? 'Paid' : outsourcingStatus}
+                  {outsourcingStatus === 'paid' ? (t('campaigns.kanban.card.paid') || 'Paid') : outsourcingStatus}
                 </span>
               </div>
             ) : hasRequirements && (
               <div className="flex items-center">
                 <ClipboardList className="h-3.5 w-3.5 text-primary mr-1.5" />
                 <span className="text-xs font-medium text-primary mr-1">{pendingRequirements.length}</span>
-                <span className="text-xs text-muted-foreground truncate max-w-[60px]">pending</span>
+                <span className="text-xs text-muted-foreground truncate max-w-[60px]">{t('campaigns.kanban.card.pending') || 'pending'}</span>
               </div>
             )}
           </div>
@@ -337,13 +339,13 @@ export function KanbanCard({
             {/* Requirements section - Only shown in expanded view */}
             {hasPendingRequirements && (
               <div className="pt-2 border-t w-full">
-                <h4 className="text-xs font-medium mb-2">Pending Requirements ({pendingRequirements.length})</h4>
+                <h4 className="text-xs font-medium mb-2">{t('campaigns.kanban.card.pendingReqs') || 'Pending Requirements'} ({pendingRequirements.length})</h4>
                 <div className="w-full text-xs overflow-visible">
                   <div className="w-full border rounded-md overflow-hidden">
                     <table className="w-full">
                       <thead className="bg-muted/30 h-8">
                         <tr>
-                          <th className="h-7 text-xs font-medium w-full text-left px-2">Title</th>
+                          <th className="h-7 text-xs font-medium w-full text-left px-2">{t('campaigns.kanban.card.tableTitle') || 'Title'}</th>
                         </tr>
                       </thead>
                       <tbody>

@@ -63,14 +63,14 @@ import { useCommandK } from "@/app/hooks/use-command-k"
 import { safeReload } from "@/app/utils/safe-reload"
 import { TrendsSection, TrendsColumn } from "@/app/components/trends"
 import { cn } from "@/lib/utils"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
-// Definimos los tipos de estado del contenido
 const CONTENT_STATUSES = [
-  { id: 'draft', name: 'Draft' },
-  { id: 'review', name: 'In Review' },
-  { id: 'approved', name: 'Approved' },
-  { id: 'published', name: 'Published' },
-  { id: 'archived', name: 'Archived' }
+  { id: 'draft' },
+  { id: 'review' },
+  { id: 'approved' },
+  { id: 'published' },
+  { id: 'archived' }
 ]
 
 // Colores para los diferentes estados
@@ -113,6 +113,7 @@ interface ContentDetailProps {
 }
 
 function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDetailProps) {
+  const { t } = useLocalization()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -153,7 +154,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
   };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Not set'
+    if (!dateString) return t('content.detail.notSet')
     return new Date(dateString).toLocaleDateString(undefined, {
       year: 'numeric',
       month: 'long',
@@ -184,12 +185,12 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
       }
       
       setIsEditing(false)
-      toast.success("Content updated successfully")
+      toast.success(t('content.toast.contentUpdated'))
       // Close the panel to refresh the content
       onClose()
     } catch (error) {
       console.error("Error updating content:", error)
-      toast.error("Failed to update content")
+      toast.error(t('content.toast.contentFailed'))
     } finally {
       setIsSaving(false)
     }
@@ -222,12 +223,12 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 <FileText className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-xs text-muted-foreground">Title</p>
+                <p className="text-xs text-muted-foreground">{t('content.detail.title')}</p>
                 <Input
                   value={editForm.title}
                   onChange={(e) => setEditForm({...editForm, title: e.target.value})}
                   className="h-12 text-sm font-semibold"
-                  placeholder="Content title"
+                  placeholder={t('content.detail.titlePlaceholder')}
                 />
               </div>
             </div>
@@ -241,7 +242,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
         {/* Content Information */}
         <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
           <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-            Content Information
+            {t('content.detail.contentInfo')}
           </h3>
           
           <div className="grid gap-4">
@@ -250,28 +251,28 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 {CONTENT_TYPE_ICONS[content.type]}
               </div>
               <div className="flex-1">
-                <p className="text-xs text-muted-foreground mb-[5px]">Content Type</p>
+                <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.contentType')}</p>
                 {isEditing ? (
                   <Select 
                     value={editForm.type} 
                     onValueChange={(value: "blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page") => setEditForm({...editForm, type: value})}
                   >
                     <SelectTrigger className="h-12 text-sm">
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder={t('content.detail.selectType')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="blog_post">Blog Post</SelectItem>
-                      <SelectItem value="video">Video</SelectItem>
-                      <SelectItem value="podcast">Podcast</SelectItem>
-                      <SelectItem value="social_post">Social Media Post</SelectItem>
-                      <SelectItem value="newsletter">Newsletter</SelectItem>
-                      <SelectItem value="case_study">Case Study</SelectItem>
-                      <SelectItem value="whitepaper">Whitepaper</SelectItem>
-                      <SelectItem value="infographic">Infographic</SelectItem>
-                      <SelectItem value="webinar">Webinar</SelectItem>
-                      <SelectItem value="ebook">E-Book</SelectItem>
-                      <SelectItem value="ad">Advertisement</SelectItem>
-                      <SelectItem value="landing_page">Landing Page</SelectItem>
+                      <SelectItem value="blog_post">{t('content.types.blog_post')}</SelectItem>
+                      <SelectItem value="video">{t('content.types.video')}</SelectItem>
+                      <SelectItem value="podcast">{t('content.types.podcast')}</SelectItem>
+                      <SelectItem value="social_post">{t('content.types.social_post')}</SelectItem>
+                      <SelectItem value="newsletter">{t('content.types.newsletter')}</SelectItem>
+                      <SelectItem value="case_study">{t('content.types.case_study')}</SelectItem>
+                      <SelectItem value="whitepaper">{t('content.types.whitepaper')}</SelectItem>
+                      <SelectItem value="infographic">{t('content.types.infographic')}</SelectItem>
+                      <SelectItem value="webinar">{t('content.types.webinar')}</SelectItem>
+                      <SelectItem value="ebook">{t('content.types.ebook')}</SelectItem>
+                      <SelectItem value="ad">{t('content.types.ad')}</SelectItem>
+                      <SelectItem value="landing_page">{t('content.types.landing_page')}</SelectItem>
                     </SelectContent>
                   </Select>
                 ) : (
@@ -285,9 +286,9 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 <FileText className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-xs text-muted-foreground mb-[5px]">Status</p>
+                <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.status')}</p>
                 <Badge className={STATUS_COLORS[content.status]}>
-                  {content.status.charAt(0).toUpperCase() + content.status.slice(1)}
+                  {t(`content.status.${content.status}`)}
                 </Badge>
               </div>
             </div>
@@ -297,14 +298,14 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 <Users className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-xs text-muted-foreground mb-[5px]">Segment</p>
+                <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.segment')}</p>
                 {isEditing ? (
                   <Select value={editForm.segment_id} onValueChange={(value) => setEditForm({...editForm, segment_id: value})}>
                     <SelectTrigger className="h-12 text-sm">
-                      <SelectValue placeholder="Select segment" />
+                      <SelectValue placeholder={t('content.detail.selectSegment')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No segment</SelectItem>
+                      <SelectItem value="none">{t('content.detail.noSegment')}</SelectItem>
                       {segments.map((segment) => (
                         <SelectItem key={segment.id} value={segment.id}>
                           {segment.name}
@@ -323,16 +324,16 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 <FileText className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-xs text-muted-foreground mb-[5px]">Description</p>
+                <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.description')}</p>
                 {isEditing ? (
                   <Textarea
                     value={editForm.description}
                     onChange={(e) => setEditForm({...editForm, description: e.target.value})}
                     className="min-h-[80px] text-sm"
-                    placeholder="Enter a brief description"
+                    placeholder={t('content.detail.descriptionPlaceholder')}
                   />
                 ) : (
-                  <p className="text-sm">{content.description || 'No description'}</p>
+                  <p className="text-sm">{content.description || t('content.detail.noDescription')}</p>
                 )}
               </div>
             </div>
@@ -343,7 +344,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 <BarChart className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-xs text-muted-foreground mb-[5px]">Performance Rating</p>
+                <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.performanceRating')}</p>
                 <div className="py-1">
                   <StarRating 
                     rating={editForm.performance_rating} 
@@ -372,7 +373,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                     <FileText className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-[5px]">Word Count</p>
+                    <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.wordCount')}</p>
                     <p className="text-sm font-medium">{content.word_count}</p>
                   </div>
                 </div>
@@ -384,7 +385,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                     <FileText className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-[5px]">Reading Time</p>
+                    <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.readingTime')}</p>
                     <p className="text-sm font-medium">{content.estimated_reading_time} min</p>
                   </div>
                 </div>
@@ -396,7 +397,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                     <BarChart className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-[5px]">SEO Score</p>
+                    <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.seoScore')}</p>
                     <p className="text-sm font-medium">{content.seo_score}</p>
                   </div>
                 </div>
@@ -417,7 +418,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 <CalendarIcon className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-[5px]">Created</p>
+                <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.created')}</p>
                 <p className="text-sm font-medium">
                   {formatDate(content.created_at)}
                 </p>
@@ -429,7 +430,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 <RotateCcw className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-[5px]">Updated</p>
+                <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.updated')}</p>
                 <p className="text-sm font-medium">
                   {formatDate(content.updated_at)}
                 </p>
@@ -442,7 +443,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                   <Globe className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-[5px]">Published</p>
+                  <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.published')}</p>
                   <p className="text-sm font-medium">
                     {formatDate(content.published_at)}
                   </p>
@@ -464,7 +465,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 <Input
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
-                  placeholder="Add a tag"
+                  placeholder={t('content.detail.addTag')}
                   className="h-10"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -492,7 +493,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                     </Badge>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">No tags added yet</p>
+                  <p className="text-sm text-muted-foreground">{t('content.detail.noTagsYet')}</p>
                 )}
               </div>
             </div>
@@ -747,6 +748,7 @@ function ContentKanban({
   isLoadingCampaigns?: boolean
   assetsByContentId?: Record<string, ContentAssetWithDetails[]>
 }) {
+  const { t } = useLocalization()
   const [items, setItems] = useState<Record<string, ContentItem[]>>({})
 
   useEffect(() => {
@@ -836,7 +838,7 @@ function ContentKanban({
     } catch (error) {
       // Revert on error
       console.error('Error updating content status:', error)
-      toast.error('Failed to update content status')
+      toast.error(t('content.toast.statusFailed'))
       
       // Revert to original state - rebuild from contentItems
       const revertedItems: Record<string, ContentItem[]> = {}
@@ -858,14 +860,14 @@ function ContentKanban({
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full flex flex-col justify-start flex-1 min-h-0 self-stretch flex-grow min-w-0">
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 min-w-fit">
+        <div className="flex gap-4 min-w-fit items-start pt-0 mt-0 flex-1 flex-row w-full h-full min-h-0 items-stretch self-stretch flex-grow min-w-0">
           {CONTENT_STATUSES.map(status => (
-            <div key={status.id} className="flex-shrink-0 w-80">
-              <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
+            <div key={status.id} className="flex-shrink-0 w-80 h-full flex flex-col justify-start self-stretch min-h-0 self-stretch flex-grow min-w-0">
+              <div className="bg-background rounded-t-md p-3 border-b border-x border-t flex-none">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-sm">{status.name}</h3>
+                  <h3 className="font-medium text-sm">{t(`content.status.${status.id}`)}</h3>
                   <Badge variant="outline" className="text-xs">
                     {items[status.id]?.length || 0}
                   </Badge>
@@ -876,7 +878,7 @@ function ContentKanban({
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="bg-muted/30 rounded-b-md p-2 border-b border-x"
+                    className="bg-muted/30 rounded-b-md p-2 border-b border-x flex-1 h-full overflow-y-auto min-h-0 min-h-0"
                   >
                     {items[status.id]?.length > 0 ? (
                       items[status.id].map((item, index) => (
@@ -942,7 +944,7 @@ function ContentTable({
   onRatingChange?: (contentId: string, rating: number) => void
   assetsByContentId?: Record<string, ContentAssetWithDetails[]>
 }) {
-  // State for individual pagination per status
+  const { t } = useLocalization()
   const [statusPages, setStatusPages] = useState<Record<string, number>>(() => {
     const initialPages: Record<string, number> = {}
     CONTENT_STATUSES.forEach(status => {
@@ -986,13 +988,13 @@ function ContentTable({
       performance_rating: rating,
       skipRevalidation: true // Prevent automatic page refresh
     }).then(() => {
-      toast.success("Performance rating updated", {
+      toast.success(t('content.toast.ratingUpdated'), {
         position: "bottom-right",
         duration: 2000
       });
     }).catch(error => {
       console.error("Error updating rating:", error);
-      toast.error("Failed to update rating");
+      toast.error(t('content.toast.ratingFailed'));
     });
   };
 
@@ -1042,9 +1044,9 @@ function ContentTable({
           <div key={status.id} className="space-y-3">
             {/* Status Header */}
             <div className="flex items-center gap-3 px-1">
-              <h3 className="text-lg font-semibold text-foreground">{status.name}</h3>
+              <h3 className="text-lg font-semibold text-foreground">{t(`content.status.${status.id}`)}</h3>
               <Badge variant="outline" className="text-sm">
-                {statusItems.length} {statusItems.length === 1 ? 'item' : 'items'}
+                {statusItems.length} {statusItems.length === 1 ? (t('content.item') || 'item') : (t('content.items') || 'items')}
               </Badge>
             </div>
             
@@ -1053,11 +1055,11 @@ function ContentTable({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[64px] min-w-[64px] max-w-[64px]">Asset</TableHead>
-                    <TableHead className="min-w-[200px]">Title</TableHead>
-                    <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
-                    <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Campaign</TableHead>
-                    <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Performance</TableHead>
+                    <TableHead className="w-[64px] min-w-[64px] max-w-[64px]">{t('content.table.asset')}</TableHead>
+                    <TableHead className="min-w-[200px]">{t('content.table.title')}</TableHead>
+                    <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">{t('content.table.segment')}</TableHead>
+                    <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">{t('content.table.campaign')}</TableHead>
+                    <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">{t('content.table.performance')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1197,11 +1199,11 @@ function ContentTableSkeleton() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[200px]">Title</TableHead>
-                  <TableHead className="w-[100px] min-w-[100px] max-w-[100px]">Type</TableHead>
-                  <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
-                  <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Campaign</TableHead>
-                  <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Performance</TableHead>
+                  <TableHead className="min-w-[200px]">{t('content.table.title')}</TableHead>
+                  <TableHead className="w-[100px] min-w-[100px] max-w-[100px]">{t('content.table.type')}</TableHead>
+                  <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">{t('content.table.segment')}</TableHead>
+                  <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">{t('content.table.campaign')}</TableHead>
+                  <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">{t('content.table.performance')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1280,6 +1282,7 @@ function ContentFiltersDialog({
   onFiltersChange: (filters: ContentFilters) => void
   segments: Array<{ id: string; name: string }>
 }) {
+  const { t } = useLocalization()
   const [localFilters, setLocalFilters] = useState<ContentFilters>({...filters})
   // Estado para las secciones expandidas
   const [expandedSections, setExpandedSections] = useState({
@@ -1414,7 +1417,7 @@ function ContentFiltersDialog({
             >
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Status</h3>
+                <h3 className="font-medium">{t('content.filter.status')}</h3>
                 {localFilters.status.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.status.length}
@@ -1443,7 +1446,7 @@ function ContentFiltersDialog({
                         className="text-sm cursor-pointer flex items-center gap-1.5"
                       >
                         <Badge className={`${getStatusBadgeClass(status.id)} text-xs px-1.5 py-0`}>
-                          {status.name}
+                          {t(`content.status.${status.id}`)}
                         </Badge>
                       </Label>
                     </div>
@@ -1461,7 +1464,7 @@ function ContentFiltersDialog({
             >
               <div className="flex items-center gap-2">
                 <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Content Type</h3>
+                <h3 className="font-medium">{t('content.filter.contentType')}</h3>
                 {localFilters.type.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.type.length}
@@ -1576,7 +1579,7 @@ function ContentFiltersDialog({
               >
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-medium">Segments</h3>
+                  <h3 className="font-medium">{t('content.filter.segments')}</h3>
                   {localFilters.segments.length > 0 && (
                     <Badge variant="outline" className="ml-2">
                       {localFilters.segments.length}
@@ -1632,17 +1635,17 @@ function ContentFiltersDialog({
 
 function ContentSkeleton() {
   return (
-    <div className="w-full">
-      <div className="flex gap-4 min-w-fit">
+    <div className="w-full h-full flex flex-col justify-start flex-1 min-h-0 self-stretch flex-grow min-w-0">
+      <div className="flex gap-4 min-w-fit items-start pt-0 mt-0 flex-1 flex-row w-full h-full min-h-0 items-stretch self-stretch">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex-shrink-0 w-80">
-            <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
+          <div key={i} className="flex-shrink-0 w-80 h-full flex flex-col justify-start self-stretch min-h-0 self-stretch flex-grow min-w-0">
+            <div className="bg-background rounded-t-md p-3 border-b border-x border-t flex-none">
               <div className="flex items-center justify-between">
                 <Skeleton className="h-5 w-24" />
                 <Skeleton className="h-5 w-8" />
               </div>
             </div>
-            <div className="bg-muted/30 rounded-b-md border-b border-x p-2">
+            <div className="bg-muted/30 rounded-b-md border-b border-x p-2 flex-1 h-full overflow-y-auto min-h-0 min-h-0">
               {Array.from({ length: 3 }).map((_, j) => (
                 <Card key={j} className="mb-2">
                   <CardContent className="p-3">
@@ -1668,6 +1671,7 @@ function ContentSkeleton() {
 }
 
 export default function ContentPage() {
+  const { t } = useLocalization()
   const { currentSite } = useSite()
   const router = useRouter()
   const [contentItems, setContentItems] = useState<ContentItem[]>([])
@@ -1728,7 +1732,7 @@ export default function ContentPage() {
       }
     } catch (error) {
       console.error("Error fetching content:", error)
-      toast.error("An error occurred while loading content")
+      toast.error(t('content.toast.loadError'))
     } finally {
       setIsLoading(false)
     }
@@ -1742,7 +1746,7 @@ export default function ContentPage() {
       const { segments, error } = await getSegments(currentSite.id)
       
       if (error) {
-        toast.error("Failed to load segments: " + error)
+        toast.error(t('content.toast.segmentsError') + (error ? `: ${error}` : ''))
         return
       }
       
@@ -1756,7 +1760,7 @@ export default function ContentPage() {
       }
     } catch (error) {
       console.error("Error loading segments:", error)
-      toast.error("An error occurred while loading segments")
+      toast.error(t('content.toast.segmentsError'))
     }
   }
 
@@ -1850,7 +1854,7 @@ export default function ContentPage() {
       toast.success(`Content status updated to ${newStatus}`)
     } catch (error) {
       console.error("Error updating content status:", error)
-      toast.error("Failed to update content status")
+      toast.error(t('content.toast.statusFailed'))
       throw error // Re-throw to trigger the revert in kanban
     }
   }
@@ -1906,44 +1910,44 @@ export default function ContentPage() {
 
 
   return (
-    <div className="h-full flex flex-col min-w-0 w-full">
-      <Tabs defaultValue="all">
+    <div className="h-full flex flex-col min-w-0 w-full justify-start flex-1 h-full">
+      <Tabs defaultValue="all" className="flex-1 flex flex-col justify-start w-full h-full">
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Content">
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.all')}>
                     <LayoutGrid size={13} />
-                    <span className="tab-label">All Content</span>
+                    <span className="tab-label">{t('content.tabs.all')}</span>
                     <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="blog_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Blog Posts">
+                  <TabsTrigger value="blog_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.blog')}>
                     <FileText size={13} />
-                    <span className="tab-label">Blog Posts</span>
+                    <span className="tab-label">{t('content.tabs.blog')}</span>
                     <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'blog_post').length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="video" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Videos">
+                  <TabsTrigger value="video" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.video')}>
                     <FileVideo size={13} />
-                    <span className="tab-label">Videos</span>
+                    <span className="tab-label">{t('content.tabs.video')}</span>
                     <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'video').length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="social_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Social Media">
+                  <TabsTrigger value="social_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.social')}>
                     <Globe size={13} />
-                    <span className="tab-label">Social Media</span>
+                    <span className="tab-label">{t('content.tabs.social')}</span>
                     <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'social_post').length}
                     </Badge>
                   </TabsTrigger>
-                  <TabsTrigger value="ad" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Ads">
+                  <TabsTrigger value="ad" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.ads')}>
                     <Megaphone size={13} />
-                    <span className="tab-label">Ads</span>
+                    <span className="tab-label">{t('content.tabs.ads')}</span>
                     <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
                       {contentItems.filter(item => item.type === 'ad').length}
                     </Badge>
@@ -1989,7 +1993,7 @@ export default function ContentPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-6 bg-muted/30">
+        <div className="p-8 space-y-6 bg-muted/30 flex-1 flex flex-col justify-start w-full h-full">
           {/* Trends Section - Only for Table View */}
           {viewType === 'table' && (
             <div className="px-8">
@@ -1998,18 +2002,18 @@ export default function ContentPage() {
           )}
           
           {/* Main Content Layout */}
-          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : "px-8"}>
-            <div className={viewType === 'kanban' ? "flex gap-4 min-w-fit px-16" : ""}>
+          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8 flex-1 flex flex-col justify-start" : "px-8"}>
+            <div className={viewType === 'kanban' ? "flex items-start gap-4 min-w-fit px-8 pt-0 mt-0 flex-1 flex-row" : ""}>
               {/* Left Sidebar - Trends Column (Only for Kanban View) */}
               {viewType === 'kanban' && (
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 pt-0 mt-0 flex flex-col justify-start">
                   <TrendsColumn segments={segments} currentSiteId={currentSite?.id} />
                 </div>
               )}
               
               {/* Main Content Area */}
-              <div className={viewType === 'kanban' ? "flex-1" : ""}>
-                <TabsContent value="all" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
+              <div className={viewType === 'kanban' ? "flex-1 pt-0 mt-0 flex flex-col justify-start" : ""}>
+                <TabsContent value="all" className={viewType === 'kanban' ? "m-0 flex-1 flex flex-col justify-start" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2040,7 +2044,7 @@ export default function ContentPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="blog_post" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
+            <TabsContent value="blog_post" className={viewType === 'kanban' ? "m-0 flex-1 flex flex-col justify-start" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2071,7 +2075,7 @@ export default function ContentPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="video" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
+            <TabsContent value="video" className={viewType === 'kanban' ? "m-0 flex-1 flex flex-col justify-start" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2102,7 +2106,7 @@ export default function ContentPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="social_post" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
+            <TabsContent value="social_post" className={viewType === 'kanban' ? "m-0 flex-1 flex flex-col justify-start w-full h-full min-h-0 self-stretch flex-grow min-w-0 flex-1" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2133,7 +2137,7 @@ export default function ContentPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="ad" className={viewType === 'kanban' ? "m-0" : "space-y-4"}>
+            <TabsContent value="ad" className={viewType === 'kanban' ? "m-0 flex-1 flex flex-col justify-start w-full h-full min-h-0 self-stretch flex-grow min-w-0 flex-1" : "space-y-4"}>
               {isLoading ? (
                 viewType === 'kanban' ? <ContentSkeleton /> : <ContentTableSkeleton />
               ) : viewType === 'kanban' ? (
@@ -2176,7 +2180,7 @@ export default function ContentPage() {
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <SheetContent className="sm:max-w-full">
           <SheetHeader>
-            <SheetTitle>Content Details</SheetTitle>
+            <SheetTitle>{t('content.sheet.details')}</SheetTitle>
           </SheetHeader>
           {selectedContent && (
             <ContentDetail 

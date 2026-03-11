@@ -45,7 +45,6 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
   return (
     <div
       className="step-indicator-root flex-none w-full mb-4 shrink-0"
-      style={{ width: '100%', minWidth: '100%' }}
     >
       <div className="mx-auto" style={{ width: '100%', maxWidth: '800px' }}>
         <div className="rounded-lg backdrop-blur-sm border shadow-lg transition-all duration-500 bg-background/95 dark:border-white/5 border-black/5">

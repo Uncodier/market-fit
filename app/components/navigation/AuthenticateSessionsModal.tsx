@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,7 @@ export function AuthenticateSessionsModal({
   const [sessions, setSessions] = useState<AutomationSession[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticating, setIsAuthenticating] = useState<string | null>(null)
+  const { t } = useLocalization()
   const { currentSite } = useSite()
 
   useEffect(() => {
@@ -139,10 +141,10 @@ export function AuthenticateSessionsModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Authenticate Robot Session
+            {t('layout.modal.auth.title')}
           </DialogTitle>
           <DialogDescription>
-            Select an authentication session to apply to the active robot instance.
+            {t('layout.modal.auth.desc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -167,7 +169,7 @@ export function AuthenticateSessionsModal({
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-semibold text-base truncate">{session.name}</h3>
                           <Badge variant={session.is_valid ? 'default' : 'destructive'}>
-                            {session.is_valid ? 'Valid' : 'Invalid'}
+                            {session.is_valid ? t('layout.modal.auth.valid') : t('layout.modal.auth.invalid')}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -176,11 +178,11 @@ export function AuthenticateSessionsModal({
                           <span className="text-muted-foreground/60">•</span>
                           <span className="capitalize">{session.auth_type}</span>
                           <span className="text-muted-foreground/60">•</span>
-                          <span>Used {session.usage_count} times</span>
+                          <span>{t('layout.modal.auth.usedTimes').replace('{{count}}', String(session.usage_count))}</span>
                         </div>
                         {session.last_used_at && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            Last used: {formatDate(session.last_used_at)}
+                            {t('layout.modal.auth.lastUsed')}: {formatDate(session.last_used_at)}
                           </p>
                         )}
                       </div>
@@ -197,10 +199,10 @@ export function AuthenticateSessionsModal({
                         {isAuthenticating === session.id ? (
                           <>
                             <div className="h-3.5 w-3.5 animate-spin rounded-full font-inter border-2 border-current border-t-transparent mr-2" />
-                            Authenticating...
+                            {t('layout.modal.auth.authenticating')}
                           </>
                         ) : (
-                          'Authenticate'
+                          t('layout.modal.auth.authenticate')
                         )}
                       </Button>
                     </div>
@@ -212,8 +214,8 @@ export function AuthenticateSessionsModal({
             <div className="flex flex-col items-center justify-center min-h-[300px] w-full">
               <EmptyCard
                 icon={<Bot className="h-10 w-10 text-muted-foreground" />}
-                title="No authentication sessions"
-                description="Authentication sessions will appear here when you save them from an active robot instance."
+                title={t('layout.modal.auth.noSessions')}
+                description={t('layout.modal.auth.noSessionsDesc')}
               />
             </div>
           )}

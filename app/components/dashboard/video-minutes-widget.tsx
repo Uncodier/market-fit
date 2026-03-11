@@ -5,6 +5,7 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useRequestController } from "@/app/hooks/useRequestController";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface VideoMinutesWidgetProps {
@@ -24,6 +25,7 @@ export function VideoMinutesWidget({
   endDate, 
   segmentId = "all" 
 }: VideoMinutesWidgetProps) {
+  const { t } = useLocalization();
   const [data, setData] = useState<VideoMinutesData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
@@ -67,10 +69,10 @@ export function VideoMinutesWidget({
 
   const formatPeriodType = (periodType: string) => {
     switch (periodType) {
-      case "daily": return "yesterday";
-      case "weekly": return "last week";
-      case "monthly": return "last month";
-      default: return "previous period";
+      case "daily": return t('dashboard.widgets.revenue.yesterday') || 'yesterday';
+      case "weekly": return t('dashboard.widgets.revenue.lastWeek') || 'last week';
+      case "monthly": return t('dashboard.widgets.revenue.lastMonth') || 'last month';
+      default: return t('dashboard.widgets.revenue.previousPeriod') || 'previous period';
     }
   };
 
@@ -79,7 +81,7 @@ export function VideoMinutesWidget({
 
   return (
     <BaseKpiWidget
-      title="Video Minutes"
+      title={t('dashboard.widgets.videoMinutes') || 'Video Minutes'}
       value={displayValue}
       changeText={changeText}
       isPositiveChange={(data?.percentChange || 0) > 0}

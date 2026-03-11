@@ -39,6 +39,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Segment } from "@/app/types/segments"
 import { useRouter } from "next/navigation"
 import { navigateToSegment } from "@/app/hooks/use-navigation-history"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 
 type AdPlatform = "facebook" | "google" | "linkedin" | "twitter"
@@ -122,26 +123,26 @@ function SegmentCard({
                   </p>
                 </div>
                 <div className="w-[120px] min-w-[120px] flex-shrink-0">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Audience</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('segments.labels.audience') || 'Audience'}</p>
                   <p className="text-sm font-medium truncate text-center">{getDisplayValue(segment.audience)}</p>
                 </div>
                 <div className="w-[80px] min-w-[80px] flex-shrink-0">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Language</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('segments.labels.language') || 'Language'}</p>
                   <p className="text-sm font-medium text-center">{segment.language ? segment.language.toUpperCase() : 'N/A'}</p>
                 </div>
                 <div className="w-[80px] min-w-[80px] flex-shrink-0 hidden lg:block">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Size</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('segments.labels.size') || 'Size'}</p>
                   <p className="text-sm font-medium text-center">{getDisplayValue(segment.size, 'number')}</p>
                 </div>
                 <div className="w-[80px] min-w-[80px] flex-shrink-0">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Engagement</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('segments.labels.engagement') || 'Engagement'}</p>
                   <p className="text-sm font-medium text-center">{segment.engagement ? `${segment.engagement}%` : 'N/A'}</p>
                 </div>
                 <div className="w-[120px] min-w-[120px] flex-shrink-0 pl-4" onClick={(e) => e.stopPropagation()}>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">Status</p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('segments.labels.status') || 'Status'}</p>
                   <div className="flex items-center justify-center gap-0.5">
                     <span className={`text-xs font-medium text-center truncate ${activeSegments[segment.id] ? 'text-green-500' : 'text-yellow-500'}`}>
-                      {activeSegments[segment.id] ? "Active" : "Draft"}
+                      {activeSegments[segment.id] ? (t('segments.tabs.active') || 'Active') : (t('segments.tabs.draft') || 'Draft')}
                     </span>
                     <Switch 
                       checked={activeSegments[segment.id]} 
@@ -372,6 +373,7 @@ function SegmentRowSkeleton() {
 }
 
 export default function SegmentsPage() {
+  const { t } = useLocalization()
   const [segments, setSegments] = useState<Segment[]>([])
   const [filteredSegments, setFilteredSegments] = useState<Segment[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -744,24 +746,24 @@ export default function SegmentsPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Segments">
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.all') || 'All Segments'}>
                     <LayoutGrid size={13} />
-                    <span className="tab-label">All Segments</span>
+                    <span className="tab-label">{t('segments.tabs.all') || 'All Segments'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Active">
+                  <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.active') || 'Active'}>
                     <CheckCircle2 size={13} />
-                    <span className="tab-label">Active</span>
+                    <span className="tab-label">{t('segments.tabs.active') || 'Active'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Draft">
+                  <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.draft') || 'Draft'}>
                     <PenSquare size={13} />
-                    <span className="tab-label">Draft</span>
+                    <span className="tab-label">{t('segments.tabs.draft') || 'Draft'}</span>
                   </TabsTrigger>
                 </TabsList>
                   <div className="relative w-64">
                     <Input
                       ref={searchInputRef}
                       type="text"
-                      placeholder="Search segments..."
+                      placeholder={t('segments.searchPlaceholder') || 'Search segments...'}
                       className="w-full"
                       value={searchTerm}
                       onChange={handleSearchChange}
@@ -824,24 +826,24 @@ export default function SegmentsPage() {
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="All Segments">
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.all') || 'All Segments'}>
                     <LayoutGrid size={13} />
-                    <span className="tab-label">All Segments</span>
+                    <span className="tab-label">{t('segments.tabs.all') || 'All Segments'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Active">
+                  <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.active') || 'Active'}>
                     <CheckCircle2 size={13} />
-                    <span className="tab-label">Active</span>
+                    <span className="tab-label">{t('segments.tabs.active') || 'Active'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title="Draft">
+                  <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.draft') || 'Draft'}>
                     <PenSquare size={13} />
-                    <span className="tab-label">Draft</span>
+                    <span className="tab-label">{t('segments.tabs.draft') || 'Draft'}</span>
                   </TabsTrigger>
                 </TabsList>
                 <div className="relative w-64">
                   <Input
                     ref={searchInputRef}
                     type="text"
-                    placeholder="Search segments..."
+                    placeholder={t('segments.searchPlaceholder') || 'Search segments...'}
                     className="w-full pr-16"
                     value={searchTerm}
                     onChange={handleSearchChange}

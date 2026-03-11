@@ -4,6 +4,7 @@ import * as React from "react"
 import { useState, useEffect } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { format, subDays } from "date-fns"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -61,6 +62,7 @@ function getGradientBackground(value: number, isDarkMode: boolean) {
 }
 
 export function LeadsCohortTables({ segmentId = "all", startDate: propStartDate, endDate: propEndDate }: LeadsCohortTablesProps) {
+  const { t } = useLocalization();
   const { isDarkMode } = useTheme();
   const { currentSite } = useSite();
   const { user } = useAuth();
@@ -173,7 +175,7 @@ export function LeadsCohortTables({ segmentId = "all", startDate: propStartDate,
     return (
       <div className="space-y-8">
         <div>
-          <h3 className="text-lg font-medium mb-4">Lead Retention by Week</h3>
+          <h3 className="text-lg font-medium mb-4">{t('dashboard.cohort.leadRetention') || 'Lead Retention by Week'}</h3>
           <div className="rounded-md border overflow-hidden">
             <div className="animate-pulse bg-card">
               {/* Table header */}
@@ -219,8 +221,8 @@ export function LeadsCohortTables({ segmentId = "all", startDate: propStartDate,
     return (
       <EmptyCard 
         icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
-        title="Error loading lead cohort data"
-        description="There was an error loading the lead retention data. Please try again."
+        title={t('dashboard.cohort.errorLoading') || 'Error loading lead cohort data'}
+        description={t('dashboard.cohort.errorLoadingDesc') || 'There was an error loading the lead retention data. Please try again.'}
       />
     );
   }
@@ -230,8 +232,8 @@ export function LeadsCohortTables({ segmentId = "all", startDate: propStartDate,
     return (
       <EmptyCard 
         icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
-        title="No lead cohort data available"
-        description="There is no lead retention data available for the selected period."
+        title={t('dashboard.cohort.noData') || 'No lead cohort data available'}
+        description={t('dashboard.cohort.noDataDesc') || 'There is no lead retention data available for the selected period.'}
       />
     );
   }
@@ -243,15 +245,15 @@ export function LeadsCohortTables({ segmentId = "all", startDate: propStartDate,
     <div className="space-y-8">
       {/* Lead Cohort Table */}
       <div>
-        <h3 className="text-lg font-medium mb-4">Lead Retention by Week</h3>
+        <h3 className="text-lg font-medium mb-4">{t('dashboard.cohort.leadRetention') || 'Lead Retention by Week'}</h3>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Cohort</TableHead>
+                <TableHead>{t('dashboard.cohort.cohort') || 'Cohort'}</TableHead>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <TableHead key={i} className="text-center">
-                    Week {i + 1}
+                    {t('dashboard.cohort.week') || 'Week'} {i + 1}
                   </TableHead>
                 ))}
               </TableRow>

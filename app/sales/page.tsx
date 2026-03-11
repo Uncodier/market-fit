@@ -17,6 +17,7 @@ import { toast } from "sonner"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import React from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Separator } from "@/app/components/ui/separator"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
@@ -74,6 +75,7 @@ function SalesTable({
   onPrintSale,
   onRegisterPayment
 }: SalesTableProps) {
+  const { t } = useLocalization()
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalSales / itemsPerPage)
   const { segments } = useSalesContext()
@@ -81,10 +83,10 @@ function SalesTable({
   
   // Function to get segment name from its ID
   const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return "No Segment"
-    if (!segments || !Array.isArray(segments)) return "Unknown Segment"
+    if (!segmentId) return t('sales.noSegment') || "No Segment"
+    if (!segments || !Array.isArray(segments)) return t('sales.unknownSegment') || "Unknown Segment"
     const segment = segments.find(s => s.id === segmentId)
-    return segment?.name || "Unknown Segment"
+    return segment?.name || t('sales.unknownSegment') || "Unknown Segment"
   }
 
   // Function to truncate text
@@ -118,15 +120,15 @@ function SalesTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[250px]">Product</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Amount Due</TableHead>
-            <TableHead>Customer</TableHead>
-            <TableHead>Segment</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Source</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="w-[250px]">{t('sales.table.product') || 'Product'}</TableHead>
+            <TableHead>{t('sales.table.amount') || 'Amount'}</TableHead>
+            <TableHead>{t('sales.table.amountDue') || 'Amount Due'}</TableHead>
+            <TableHead>{t('sales.table.customer') || 'Customer'}</TableHead>
+            <TableHead>{t('sales.table.segment') || 'Segment'}</TableHead>
+            <TableHead>{t('sales.table.status') || 'Status'}</TableHead>
+            <TableHead>{t('sales.table.source') || 'Source'}</TableHead>
+            <TableHead>{t('sales.table.date') || 'Date'}</TableHead>
+            <TableHead className="text-right">{t('sales.table.actions') || 'Actions'}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -150,7 +152,7 @@ function SalesTable({
                     {formatCurrency(sale.amount_due)}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {sale.leadName || "Anonymous Customer"}
+                    {sale.leadName || t('sales.table.anonymousCustomer') || "Anonymous Customer"}
                   </TableCell>
                   <TableCell className="font-medium">
                     {truncateText(getSegmentName(sale.segmentId))}
@@ -203,8 +205,8 @@ function SalesTable({
                 <TableCell colSpan={9} className="h-24 text-center">
                   <EmptyCard
                     icon={<ShoppingCart className="h-16 w-16 text-muted-foreground" />}
-                    title="No sales found"
-                    description="It seems like you haven't made any sales yet."
+                    title={t('sales.table.empty.title') || "No sales found"}
+                    description={t('sales.table.empty.desc') || "It seems like you haven't made any sales yet."}
                   />
                 </TableCell>
               </TableRow>
@@ -212,7 +214,7 @@ function SalesTable({
         </TableBody>
         <tfoot className="border-t">
           <tr>
-            <TableCell className="font-semibold">Total</TableCell>
+            <TableCell className="font-semibold">{t('sales.table.total') || 'Total'}</TableCell>
             <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
             <TableCell className="font-semibold text-primary">{formatCurrency(totalAmountDue)}</TableCell>
             <TableCell colSpan={6}></TableCell>
@@ -222,7 +224,7 @@ function SalesTable({
       <div className="flex items-center justify-between px-6 py-4 border-t">
         <div className="flex items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{Math.min(indexOfFirstItem + 1, totalSales)}</span> to <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalSales)}</span> of <span className="font-medium">{totalSales}</span> sales
+            {t('sales.table.showing') || 'Showing'} <span className="font-medium">{Math.min(indexOfFirstItem + 1, totalSales)}</span> {t('sales.table.to') || 'to'} <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalSales)}</span> {t('sales.table.of') || 'of'} <span className="font-medium">{totalSales}</span> {t('sales.table.sales') || 'sales'}
           </p>
           <Select
             value={itemsPerPage.toString()}
@@ -649,31 +651,31 @@ export default function SalesPage() {
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="All Sales">
+                    <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.all') || "All Sales"}>
                       <LayoutGrid size={13} />
-                      <span className="tab-label">All Sales</span>
+                      <span className="tab-label">{t('sales.tabs.all') || 'All Sales'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="Pending">
+                    <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.pending') || "Pending"}>
                       <Clock size={13} />
-                      <span className="tab-label">Pending</span>
+                      <span className="tab-label">{t('sales.tabs.pending') || 'Pending'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="Completed">
+                    <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.completed') || "Completed"}>
                       <CheckCircle2 size={13} />
-                      <span className="tab-label">Completed</span>
+                      <span className="tab-label">{t('sales.tabs.completed') || 'Completed'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="cancelled" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="Cancelled">
+                    <TabsTrigger value="cancelled" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.cancelled') || "Cancelled"}>
                       <Ban size={13} />
-                      <span className="tab-label">Cancelled</span>
+                      <span className="tab-label">{t('sales.tabs.cancelled') || 'Cancelled'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="refunded" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title="Refunded">
+                    <TabsTrigger value="refunded" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.refunded') || "Refunded"}>
                       <RotateCcw size={13} />
-                      <span className="tab-label">Refunded</span>
+                      <span className="tab-label">{t('sales.tabs.refunded') || 'Refunded'}</span>
                     </TabsTrigger>
                   </TabsList>
                   <div className="relative w-64">
                     <Input 
                       data-command-k-input
-                      placeholder="Search sales..." 
+                      placeholder={t('sales.search.placeholder') || "Search sales..."}
                       className="w-full pr-16" 
                       icon={<Search className="h-4 w-4 text-muted-foreground" />}
                       value={searchQuery}

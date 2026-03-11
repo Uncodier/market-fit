@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
@@ -36,6 +37,7 @@ export function ActiveSegmentsWidget({
   startDate: propStartDate,
   endDate: propEndDate
 }: ActiveSegmentsWidgetProps) {
+  const { t } = useLocalization();
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
@@ -150,7 +152,7 @@ export function ActiveSegmentsWidget({
 
   return (
     <BaseKpiWidget
-      title="Active Segments"
+      title={t('dashboard.widgets.activeSegments') || 'Active Segments'}
       tooltipText={`Number of active user segments for site: ${currentSite?.name || currentSite?.id}`}
       value={formattedValue}
       changeText={changeText || ""}

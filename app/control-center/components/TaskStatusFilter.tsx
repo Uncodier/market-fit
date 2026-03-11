@@ -7,6 +7,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Button } from "@/app/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 type StatusFilterType = 'all' | 'new' | 'completed'
 
 interface TaskStatusFilterProps {
@@ -17,18 +19,6 @@ interface TaskStatusFilterProps {
   className?: string
 }
 
-const getFilterConfig = () => ({
-  all: {
-    label: "All"
-  },
-  new: {
-    label: "New"
-  },
-  completed: {
-    label: "Completed"
-  }
-})
-
 export const TaskStatusFilter = memo(function TaskStatusFilter({
   selectedFilter,
   onFilterChange,
@@ -36,6 +26,20 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
   activeFilters = 0,
   className
 }: TaskStatusFilterProps) {
+  const { t } = useLocalization()
+  
+  const getFilterConfig = () => ({
+    all: {
+      label: t('controlCenter.statusFilter.all') || "All"
+    },
+    new: {
+      label: t('controlCenter.statusFilter.new') || "New"
+    },
+    completed: {
+      label: t('controlCenter.statusFilter.completed') || "Completed"
+    }
+  })
+
   const filterConfig = getFilterConfig()
   
   return (
@@ -46,7 +50,7 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
           onValueChange={(value) => onFilterChange(value as StatusFilterType)}
           className="flex items-center justify-center"
         >
-          <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+          <TabsList className="h-8 p-0.5 bg-muted/50 rounded-full">
             <TooltipProvider delayDuration={300}>
               {(Object.keys(filterConfig) as StatusFilterType[]).map((filter) => {
                 const config = filterConfig[filter]
@@ -56,7 +60,7 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
                     <TooltipTrigger asChild>
                       <TabsTrigger
                         value={filter}
-                        className="h-7 px-3 flex items-center justify-center rounded-full transition-colors duration-200 text-xs font-medium"
+                        className="h-7 px-3 flex items-center justify-center rounded-full transition-all duration-200 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border/50"
                       >
                         {config.label}
                       </TabsTrigger>
@@ -90,7 +94,7 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={6}>
-                {activeFilters > 0 ? `Filters (${activeFilters} active)` : "Filters"}
+                {activeFilters > 0 ? (t('controlCenter.statusFilter.activeFilters') || `Filters ({count} active)`).replace('{count}', activeFilters.toString()) : (t('controlCenter.statusFilter.filters') || "Filters")}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

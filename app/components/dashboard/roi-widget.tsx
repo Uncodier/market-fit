@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useRequestController } from "@/app/hooks/useRequestController";
@@ -39,6 +40,7 @@ export function ROIWidget({
   startDate: propStartDate,
   endDate: propEndDate
 }: ROIWidgetProps) {
+  const { t } = useLocalization();
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
@@ -119,7 +121,7 @@ export function ROIWidget({
   
   return (
     <BaseKpiWidget
-      title="ROI"
+      title={t('dashboard.widgets.roi') || 'ROI'}
       tooltipText="Return on Investment"
       value={formattedValue}
       changeText={changeText}

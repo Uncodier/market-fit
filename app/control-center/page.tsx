@@ -22,6 +22,7 @@ import { getUserData } from "@/app/services/user-service"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { navigateToTask } from "@/app/hooks/use-navigation-history"
 import React from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface ExtendedTask extends Task {
   leadName?: string
@@ -37,6 +38,7 @@ interface TaskCounts {
 }
 
 export default function ControlCenterPage() {
+  const { t } = useLocalization()
   const router = useRouter()
   const { currentSite } = useSite()
   const { isLayoutCollapsed } = useLayout()
@@ -714,8 +716,8 @@ export default function ControlCenterPage() {
             <div className="h-full flex items-center justify-center">
               <EmptyState 
                 icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
-                title="No tasks found"
-                description={searchQuery ? "Try adjusting your search or filters to find what you're looking for." : "There are no tasks to display at this time."}
+                title={t('controlCenter.empty.title') || "No tasks found"}
+                description={searchQuery ? (t('controlCenter.empty.searchDesc') || "Try adjusting your search or filters to find what you're looking for.") : (t('controlCenter.empty.desc') || "There are no tasks to display at this time.")}
                 variant="fancy"
               />
             </div>

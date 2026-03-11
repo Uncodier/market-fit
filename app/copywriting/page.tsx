@@ -47,18 +47,20 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { useRouter } from "next/navigation"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 // Copywriting types
-const COPYWRITING_TYPES = [
-  { id: 'tweet', label: 'Tweet', icon: Hash },
-  { id: 'pitch', label: 'Pitch', icon: Target },
-  { id: 'blurb', label: 'Blurb', icon: FileText },
-  { id: 'cold_email', label: 'Cold Email', icon: Mail },
-  { id: 'cold_call', label: 'Cold Call Script', icon: Phone },
-  { id: 'social_post', label: 'Social Media Post', icon: MessageSquare },
-  { id: 'ad_copy', label: 'Ad Copy', icon: Globe },
-  { id: 'headline', label: 'Headline', icon: PenTool },
-  { id: 'description', label: 'Product Description', icon: FileText },
-  { id: 'landing_page', label: 'Landing Page Copy', icon: Globe }
+const getCopywritingTypes = (t: (key: string) => string) => [
+  { id: 'tweet', label: t('copywriting.types.tweet') || 'Tweet', icon: Hash },
+  { id: 'pitch', label: t('copywriting.types.pitch') || 'Pitch', icon: Target },
+  { id: 'blurb', label: t('copywriting.types.blurb') || 'Blurb', icon: FileText },
+  { id: 'cold_email', label: t('copywriting.types.coldEmail') || 'Cold Email', icon: Mail },
+  { id: 'cold_call', label: t('copywriting.types.coldCall') || 'Cold Call Script', icon: Phone },
+  { id: 'social_post', label: t('copywriting.types.socialPost') || 'Social Media Post', icon: MessageSquare },
+  { id: 'ad_copy', label: t('copywriting.types.adCopy') || 'Ad Copy', icon: Globe },
+  { id: 'headline', label: t('copywriting.types.headline') || 'Headline', icon: PenTool },
+  { id: 'description', label: t('copywriting.types.description') || 'Product Description', icon: FileText },
+  { id: 'landing_page', label: t('copywriting.types.landingPage') || 'Landing Page Copy', icon: Globe }
 ] as const
 
 type CopywritingType = typeof COPYWRITING_TYPES[number]['id']
@@ -131,6 +133,8 @@ function CopywritingSkeleton() {
     </div>
   )
 }
+
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Create copywriting dialog
 interface CreateCopywritingDialogProps {

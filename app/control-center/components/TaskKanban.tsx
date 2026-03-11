@@ -16,6 +16,8 @@ import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
 import { navigateToLead } from "@/app/hooks/use-navigation-history"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 interface ExtendedTask extends Task {
   leadName?: string
   assigneeName?: string
@@ -38,12 +40,12 @@ interface TaskKanbanProps {
 }
 
 // Define task statuses
-const TASK_STATUSES = [
-  { id: "pending", name: "Pending", icon: <Clock className="h-4 w-4" /> },
-  { id: "in_progress", name: "In Progress", icon: <PlayCircle className="h-4 w-4" /> },
-  { id: "completed", name: "Completed", icon: <CheckCircle2 className="h-4 w-4" /> },
-  { id: "failed", name: "Failed", icon: <XCircle className="h-4 w-4" /> },
-  { id: "canceled", name: "Canceled", icon: <Ban className="h-4 w-4" /> }
+const getTaskStatuses = (t: (key: string) => string) => [
+  { id: "pending", name: t('controlCenter.status.pending') || "Pending", icon: <Clock className="h-4 w-4" /> },
+  { id: "in_progress", name: t('controlCenter.status.inProgress') || "In Progress", icon: <PlayCircle className="h-4 w-4" /> },
+  { id: "completed", name: t('controlCenter.status.completed') || "Completed", icon: <CheckCircle2 className="h-4 w-4" /> },
+  { id: "failed", name: t('controlCenter.status.failed') || "Failed", icon: <XCircle className="h-4 w-4" /> },
+  { id: "canceled", name: t('controlCenter.status.canceled') || "Canceled", icon: <Ban className="h-4 w-4" /> }
 ]
 
 // Status styles
@@ -94,6 +96,7 @@ const getSerialNumber = (serialId: string) => {
 }
 
 export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagination, onLoadMore, totalCounts }: TaskKanbanProps) {
+  const { t } = useLocalization()
   const router = useRouter()
   const { currentSite } = useSite()
   const [localTasks, setLocalTasks] = React.useState(tasks)
@@ -101,6 +104,8 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
   React.useEffect(() => {
     setLocalTasks(tasks)
   }, [tasks])
+
+  const TASK_STATUSES = getTaskStatuses(t)
 
   const tasksByStatus = TASK_STATUSES.reduce((acc, status) => {
     const statusTasks = localTasks
@@ -387,7 +392,7 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
                       ))
                     ) : (
                       <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-                        No tasks found
+                        {t('controlCenter.kanban.noTasks') || 'No tasks found'}
                       </div>
                     )}
                     {provided.placeholder}
@@ -405,9 +410,9 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
                           {kanbanPagination[status.id].isLoading ? (
                             <div className="flex items-center gap-2">
                               <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                              <span>Loading</span>
+                              <span>{t('controlCenter.kanban.loading') || 'Loading'}</span>
                             </div>
-                          ) : "Load More"}
+                          ) : (t('controlCenter.kanban.loadMore') || "Load More")}
                         </Button>
                       </div>
                     )}

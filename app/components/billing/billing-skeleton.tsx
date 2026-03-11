@@ -96,6 +96,7 @@ export function BillingPageSkeleton() {
             <TabsList>
               <TabsTrigger value="billing_info">Billing Info</TabsTrigger>
               <TabsTrigger value="payment_history">Payment History</TabsTrigger>
+              <TabsTrigger value="credit_history">Credit Usage History</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
