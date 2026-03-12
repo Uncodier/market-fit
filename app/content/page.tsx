@@ -864,7 +864,7 @@ function ContentKanban({
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 min-w-fit items-start pt-0 mt-0 flex-1 flex-row w-full h-full min-h-0 items-stretch self-stretch flex-grow min-w-0">
           {CONTENT_STATUSES.map(status => (
-            <div key={status.id} className="flex-shrink-0 w-80 h-full flex flex-col justify-start self-stretch min-h-0 self-stretch flex-grow min-w-0">
+            <div key={status.id} className="flex-shrink-0 w-80 h-fit max-h-full flex flex-col justify-start min-h-0">
               <div className="bg-background rounded-t-md p-3 border-b border-x border-t flex-none">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium text-sm">{t(`content.status.${status.id}`)}</h3>
@@ -878,7 +878,7 @@ function ContentKanban({
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="bg-muted/30 rounded-b-md p-2 border-b border-x flex-1 h-full overflow-y-auto min-h-0 min-h-0"
+                    className="bg-muted/30 rounded-b-md p-2 border-b border-x overflow-y-auto min-h-[100px]"
                   >
                     {items[status.id]?.length > 0 ? (
                       items[status.id].map((item, index) => (

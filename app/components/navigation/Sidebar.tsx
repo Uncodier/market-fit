@@ -541,7 +541,7 @@ export function Sidebar({
               href="/notifications"
               icon={Bell}
               emoji="🔔"
-              title="Notifications"
+              title={t('layout.sidebar.notifications') || "Notifications"}
               isActive={pathname.startsWith('/notifications')}
               isCollapsed={renderCollapsed}
             />

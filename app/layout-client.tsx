@@ -158,6 +158,16 @@ function LayoutClientInner({
     }
   }, [isMobile])
 
+  // Fix: Clean up body pointer-events and close mobile sidebar on navigation
+  useEffect(() => {
+    // Sometimes Radix UI components (Dialogs, Dropdowns) leave pointer-events: none 
+    // on body when navigating before they fully close, causing clicks to be ignored
+    document.body.style.pointerEvents = '';
+    
+    // Also ensure mobile sidebar closes on navigation
+    setIsMobileSidebarOpen(false);
+  }, [pathname])
+
   // Pages that need full-height layout (no scroll, fixed height container)
   const isChatPage = pathname && pathname.startsWith('/chat');
   const isRobotsPage = pathname && pathname.startsWith('/robots');

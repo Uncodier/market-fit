@@ -12,6 +12,7 @@ import { HelpButton } from "../ui/help-button"
 import { useEffect, useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { useNavigationHistory } from "@/app/hooks/use-navigation-history"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -34,6 +35,7 @@ export function TopBarTitle({
   breadcrumb,
   ...props 
 }: TopBarTitleProps) {
+  const { t } = useLocalization()
   const pathname = usePathname()
   const [searchParams, setSearchParams] = useState<string>("")
   const [customTitle, setCustomTitle] = useState<string | null>(null)
@@ -65,26 +67,26 @@ export function TopBarTitle({
     
     const firstSegment = pathSegments[0]
     const routeTitles: Record<string, string> = {
-      'dashboard': 'Dashboard',
-      'agents': 'Agents',
-      'segments': 'Segments',
-      'experiments': 'Experiments',
-      'requirements': 'Requirements',
-      'leads': 'Leads',
-      'assets': 'Assets',
-      'content': 'Content',
-      'settings': 'Settings',
-      'profile': 'Profile',
-      'help': 'Help',
-      'chat': 'Chat',
-      'campaigns': 'Campaigns',
-      'control-center': 'Control Center',
-      'billing': 'Billing',
-      'robots': 'Makina'
+      'dashboard': t('layout.sidebar.dashboard') || 'Dashboard',
+      'agents': t('layout.sidebar.agents') || 'Agents',
+      'segments': t('layout.sidebar.segments') || 'Segments',
+      'experiments': t('layout.sidebar.experiments') || 'Experiments',
+      'requirements': t('layout.sidebar.requirements') || 'Requirements',
+      'leads': t('layout.sidebar.leads') || 'Leads',
+      'assets': t('layout.sidebar.assets') || 'Assets',
+      'content': t('layout.sidebar.content') || 'Content',
+      'settings': t('layout.sidebar.settings') || 'Settings',
+      'profile': t('layout.sidebar.profile') || 'Profile',
+      'help': t('common.help') || 'Help',
+      'chat': t('layout.sidebar.chat') || 'Chat',
+      'campaigns': t('layout.sidebar.campaigns') || 'Campaigns',
+      'control-center': t('layout.sidebar.controlCenter') || 'Control Center',
+      'billing': t('layout.sidebar.billing') || 'Billing',
+      'robots': t('layout.sidebar.robots') || 'Makina'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
-  }, [pathname])
+  }, [pathname, t])
 
   // Set the default title when the pathname changes
   useEffect(() => {

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { Progress } from "@/app/components/ui/progress"
 import { useRouter } from "next/navigation"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface CreditsWidgetProps {
   className?: string
@@ -14,6 +15,7 @@ interface CreditsWidgetProps {
 export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
   const { currentSite } = useSite()
   const router = useRouter()
+  const { t } = useLocalization()
   
   // Default values
   const defaultMonthlyCredits = 30
@@ -111,8 +113,8 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
             </div>
           </TooltipTrigger>
           <TooltipContent side="right" className="z-[9999]">
-            <p>Manage credits</p>
-            <p className="text-xs text-muted-foreground">{creditsAvailable} / {totalCredits} available</p>
+            <p>{t('layout.sidebar.manageCredits') || 'Manage credits'}</p>
+            <p className="text-xs text-muted-foreground">{creditsAvailable} / {totalCredits} {t('layout.sidebar.creditsAvailable') || 'available'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -131,7 +133,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1.5">
                   <span className="text-xs">⚡</span>
-                  Credits
+                  {t('layout.sidebar.credits') || 'Credits'}
                 </span>
                 <span className={cn(
                   "text-xs font-bold",
@@ -152,7 +154,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
             </div>
           </TooltipTrigger>
           <TooltipContent side="right" className="z-[9999]">
-            <p>Manage credits</p>
+            <p>{t('layout.sidebar.manageCredits') || 'Manage credits'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

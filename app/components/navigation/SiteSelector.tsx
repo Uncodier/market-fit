@@ -19,6 +19,7 @@ import { useEffect, useState } from "react"
 import { Site } from "@/app/context/SiteContext"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Button } from "../ui/button"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface SiteSelectorProps {
   isCollapsed?: boolean
@@ -28,6 +29,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   const { sites, currentSite, setCurrentSite, isLoading, refreshSites } = useSite()
   const { user } = useAuth()
   const router = useRouter()
+  const { t } = useLocalization()
   const [isMounted, setIsMounted] = useState(false)
   const [filter, setFilter] = useState<'all' | 'owned' | 'shared'>('all')
   
@@ -115,7 +117,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
           <div className="flex flex-col min-w-0 flex-1">
             <span className="font-medium truncate">{currentSite.name}</span>
             <span className="text-xs text-muted-foreground truncate">
-              {currentSite.url || "Sin URL"}
+              {currentSite.url || (t('layout.sidebar.noUrl') || "No URL")}
             </span>
           </div>
         )}
@@ -140,7 +142,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
             </svg>
           </div>
           {!isCollapsed && (
-            <span className="text-sm font-medium flex-1">Create your first project</span>
+            <span className="text-sm font-medium flex-1">{t('layout.sidebar.createFirstProject') || 'Create your first project'}</span>
           )}
         </div>
       </div>
@@ -185,13 +187,13 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                 >
                   <TabsList className="w-full">
                     <TabsTrigger value="all" className="flex-1 text-xs">
-                      All
+                      {t('layout.sidebar.all') || 'All'}
                     </TabsTrigger>
                     <TabsTrigger value="owned" className="flex-1 text-xs">
-                      My Projects
+                      {t('layout.sidebar.myProjects') || 'My Projects'}
                     </TabsTrigger>
                     <TabsTrigger value="shared" className="flex-1 text-xs">
-                      Shared
+                      {t('layout.sidebar.shared') || 'Shared'}
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -204,10 +206,10 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                   {filter === 'shared' ? (
                     <div className="flex flex-col items-center gap-2">
                       <Users className="h-5 w-5 text-muted-foreground/70" />
-                      <p>No shared projects</p>
+                      <p>{t('layout.sidebar.noSharedProjects') || 'No shared projects'}</p>
                     </div>
                   ) : (
-                    <p>No projects found</p>
+                    <p>{t('layout.sidebar.noProjectsFound') || 'No projects found'}</p>
                   )}
                 </div>
               ) : (
@@ -247,7 +249,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                                   ? "bg-white/20 text-gray-900" 
                                   : "bg-blue-100 text-blue-700"
                               )}>
-                                Shared
+                                {t('layout.sidebar.shared') || 'Shared'}
                               </span>
                             )}
                           </div>
@@ -255,7 +257,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                             "text-xs truncate",
                             isSelected ? "text-white/70" : "text-muted-foreground"
                           )}>
-                            {site.url || "No URL"}
+                            {site.url || (t('layout.sidebar.noUrl') || "No URL")}
                           </span>
                         </div>
                         {isSelected && (
@@ -277,7 +279,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                   onClick={() => router.push("/create-site")}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Add New Project
+                  {t('layout.sidebar.addNewProject') || 'Add New Project'}
                 </Button>
               </div>
             </DropdownMenuContent>

@@ -242,13 +242,14 @@ export default function ContextPage() {
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
   const { theme } = useTheme()
   const { user } = useAuthContext()
+  const { t } = useLocalization()
   const [isSaving, setIsSaving] = useState(false)
   const [activeSegment, setActiveSegment] = useState("company")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [confirmationName, setConfirmationName] = useState("")
   const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections())
-  const [companySectionsState, setCompanySectionsState] = useState<QuickNavSection[]>(getInitialCompanySections())
+  const [companySectionsState, setCompanySectionsState] = useState<QuickNavSection[]>(getCompanySections(t))
 
   // Simple refresh prevention specifically for context page
   useSimpleRefreshPrevention()
