@@ -50,6 +50,19 @@ import { useRouter } from "next/navigation"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Copywriting types
+const COPYWRITING_TYPES = [
+  { id: 'tweet', label: 'Tweet', icon: Hash },
+  { id: 'pitch', label: 'Pitch', icon: Target },
+  { id: 'blurb', label: 'Blurb', icon: FileText },
+  { id: 'cold_email', label: 'Cold Email', icon: Mail },
+  { id: 'cold_call', label: 'Cold Call Script', icon: Phone },
+  { id: 'social_post', label: 'Social Media Post', icon: MessageSquare },
+  { id: 'ad_copy', label: 'Ad Copy', icon: Globe },
+  { id: 'headline', label: 'Headline', icon: PenTool },
+  { id: 'description', label: 'Product Description', icon: FileText },
+  { id: 'landing_page', label: 'Landing Page Copy', icon: Globe }
+] as const
+
 const getCopywritingTypes = (t: (key: string) => string) => [
   { id: 'tweet', label: t('copywriting.types.tweet') || 'Tweet', icon: Hash },
   { id: 'pitch', label: t('copywriting.types.pitch') || 'Pitch', icon: Target },
@@ -133,8 +146,6 @@ function CopywritingSkeleton() {
     </div>
   )
 }
-
-import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Create copywriting dialog
 interface CreateCopywritingDialogProps {
