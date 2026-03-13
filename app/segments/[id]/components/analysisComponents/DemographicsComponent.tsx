@@ -17,7 +17,7 @@ import {
   getLinkedInEducationDisplay,
   getJobExperienceDisplay
 } from "./utils";
-import type { Segment } from "../../page";
+import type { Segment } from "../../types";
 
 interface DemographicsComponentProps extends Pick<BaseAnalysisComponentProps, 
   'selectedAdPlatform' | 'copyStates' | 'copyToClipboard' | 'isDarkMode'> {

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import type { Segment } from "../page"
+import type { Segment } from "../types"
 import { useTheme } from '@/app/context/ThemeContext'
 import { 
   NewAdPlatformType,

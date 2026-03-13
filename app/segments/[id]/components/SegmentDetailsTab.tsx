@@ -13,7 +13,7 @@ import { Trash2, AlertTriangle, Copy } from "@/app/components/ui/icons"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { Switch } from "@/app/components/ui/switch"
 import { toast } from "sonner"
-import type { Segment } from "../page"
+import type { Segment } from "../types"
 import { updateSegment, deleteSegment } from "../../actions"
 
 interface SegmentDetailsTabProps {

@@ -5,7 +5,7 @@ import { Button } from "@/app/components/ui/button";
 import { Copy, TrendingUp } from "@/app/components/ui/icons";
 import { BaseAnalysisComponentProps } from "./types";
 import { getPlatformDisplayName, getKeywordsForPlatform, getAudienceProfile } from "./utils";
-import type { Segment } from "../../page";
+import type { Segment } from "../../types";
 
 interface MarketPenetrationComponentProps extends Pick<BaseAnalysisComponentProps, 
   'selectedAdPlatform'> {

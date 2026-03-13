@@ -16,7 +16,7 @@ import {
   getFacebookRegionsDisplay,
   getTikTokLocationsDisplay
 } from "./utils";
-import type { Segment } from "../../page";
+import type { Segment } from "../../types";
 import { Badge } from "@/app/components/ui/badge";
 
 interface RegionalDistributionComponentProps extends Pick<BaseAnalysisComponentProps, 

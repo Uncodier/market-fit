@@ -5,7 +5,7 @@ import { Button } from "@/app/components/ui/button";
 import { Copy } from "@/app/components/ui/icons";
 import { BaseAnalysisComponentProps, NewAdPlatformType } from "./types";
 import { getPlatformDisplayName, getAudienceProfile, getBehaviorForPlatform } from "./utils";
-import type { Segment } from "../../page";
+import type { Segment } from "../../types";
 
 interface BehaviorComponentProps extends Pick<BaseAnalysisComponentProps, 
   'selectedAdPlatform' | 'copyStates' | 'copyToClipboard'> {

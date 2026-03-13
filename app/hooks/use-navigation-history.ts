@@ -371,7 +371,7 @@ export function useNavigationHistory() {
       
       // Check if it's just a query param change on a root route (e.g. /dashboard?tab=x)
       // This allows direct navigation to tabs/filters without wiping history if we're already in the app
-      const isParamOnRoot = isRootRoute(currentPathname) && queryString.length > 0
+      const isParamOnRoot = isRootRoute(pathname) && queryString.length > 0
       
       // If there's NO existing history, this is a fresh direct entry (typed URL or external link)
       // Reset breadcrumb to start fresh
@@ -411,9 +411,24 @@ export function useNavigationHistory() {
     
     if (lastItem) {
       const lastPathname = lastItem.path.split('?')[0]
+      const lastQueryString = lastItem.path.split('?')[1] || ''
+      const lastParams = new URLSearchParams(lastQueryString)
       
       // If path is identical
       isParamChangeOnSamePath = pathname === lastPathname
+      
+      // Special case for robots: /robots (list) vs /robots?instance=... (detail)
+      // Going from list to detail should NOT be considered "same path"
+      // Going from detail to detail IS "same path" (so it replaces)
+      if (pathname === '/robots' && lastPathname === '/robots') {
+        const hasInstanceNow = searchParams.has('instance')
+        const hadInstanceBefore = lastParams.has('instance')
+        
+        // If transitioning between list and detail, don't treat as same path param change
+        if (hasInstanceNow !== hadInstanceBefore) {
+          isParamChangeOnSamePath = false
+        }
+      }
     }
     
     if (isParamChangeOnSamePath) {
@@ -454,17 +469,30 @@ export function useNavigationHistory() {
       
       // Extract base path and check if path has ID segment
       // E.g., /control-center/abc-123 → { basePath: '/control-center', hasId: true, segments: 2 }
-      const getPathInfo = (path: string) => {
+      // E.g., /robots?instance=123 → { basePath: '/robots', hasId: true, segments: 1 }
+      const getPathInfo = (path: string, urlParams: URLSearchParams) => {
         const segments = path.split('/').filter(Boolean)
+        const basePath = segments.length > 0 ? `/${segments[0]}` : path
+        
+        let hasId = segments.length > 1
+        
+        // Special case for robots
+        if (basePath === '/robots') {
+          hasId = urlParams.has('instance')
+        }
+        
         return {
-          basePath: segments.length > 0 ? `/${segments[0]}` : path,
-          hasId: segments.length > 1,
+          basePath,
+          hasId,
           segments: segments.length
         }
       }
       
-      const currentPathInfo = getPathInfo(currentPathname)
-      const lastPathInfo = getPathInfo(lastPathname)
+      const currentParams = new URLSearchParams(fullPath.split('?')[1] || '')
+      const lastParams = new URLSearchParams(lastItem.path.split('?')[1] || '')
+      
+      const currentPathInfo = getPathInfo(currentPathname, currentParams)
+      const lastPathInfo = getPathInfo(lastPathname, lastParams)
       
       // If base path is the same, check if we should replace or add
       if (currentPathInfo.basePath === lastPathInfo.basePath) {
@@ -496,10 +524,6 @@ export function useNavigationHistory() {
         // CASE 2: /leads/id1 → /leads/id2 (detail to detail)
         // both have ID in path = REPLACE last item
         else if (lastPathInfo.hasId && currentPathInfo.hasId) {
-          // Check query params
-          const currentParams = new URLSearchParams(fullPath.split('?')[1] || '')
-          const lastParams = new URLSearchParams(lastItem.path.split('?')[1] || '')
-          
           // Check if only query params changed (for subpages)
           const paramChangedOnly = currentPathname === lastPathname;
                                  
@@ -554,10 +578,6 @@ export function useNavigationHistory() {
         // CASE 3: /chat?id=1 → /chat?id=2 (same depth, query param change)
         // same segments count, query param changed = REPLACE last item
         else if (currentPathInfo.segments === lastPathInfo.segments) {
-          // Check query params
-          const currentParams = new URLSearchParams(fullPath.split('?')[1] || '')
-          const lastParams = new URLSearchParams(lastItem.path.split('?')[1] || '')
-          
           // Check if only query param changed
           const paramChangedOnly = currentPathname === lastPathname;
                                  
@@ -640,8 +660,43 @@ export function useNavigationHistory() {
       timestamp: Date.now()
     }
     
+    let itemsToAdd = [newItem]
+    
+    // Check if we are jumping into a detail route directly from outside
+    const segments = currentPathname.split('/').filter(Boolean)
+    const basePath = segments.length > 0 ? `/${segments[0]}` : currentPathname
+    const currentParamsLocal = new URLSearchParams(fullPath.split('?')[1] || '')
+    let hasId = segments.length > 1
+    
+    if (basePath === '/robots') {
+      hasId = currentParamsLocal.has('instance')
+    }
+    
+    if (hasId) {
+      const baseExists = history.items.some(item => item.path === basePath)
+      
+      if (!baseExists) {
+        const baseLabel = generateLabel(basePath, null)
+        const baseItem: HistoryItem = {
+          path: basePath,
+          label: baseLabel,
+          timestamp: Date.now() - 1
+        }
+        
+        // When navigating to a detail page of a completely different section (e.g. from Content to Makina/Robot),
+        // we should start a fresh breadcrumb rather than appending to the previous section.
+        const newHistory: NavigationHistory = {
+          items: [baseItem, newItem]
+        }
+        setHistory(newHistory)
+        saveHistory(newHistory)
+        previousPathRef.current = fullPath
+        return
+      }
+    }
+    
     const newHistory: NavigationHistory = {
-      items: [...history.items, newItem]
+      items: [...history.items, ...itemsToAdd]
     }
     setHistory(newHistory)
     saveHistory(newHistory)
