@@ -37,6 +37,7 @@ export function CampaignRevenueDonut({
   endDate,
   onTotalUpdate
 }: CampaignRevenueDonutProps) {
+  const { t } = useLocalization()
   const { currentSite } = useSite()
   const { user } = useAuth()
   const [campaignData, setCampaignData] = useState<CampaignData[]>([])

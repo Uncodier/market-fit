@@ -117,6 +117,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
   onUpdateCompletionStatus: (id: string, status: CompletionStatusType) => Promise<void>,
   onUpdatePriority: (id: string, priority: "high" | "medium" | "low") => Promise<void>
 }) {
+  const { t } = useLocalization()
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [isUpdatingCompletion, setIsUpdatingCompletion] = useState(false)
   const [isUpdatingPriority, setIsUpdatingPriority] = useState(false)

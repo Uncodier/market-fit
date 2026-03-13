@@ -156,6 +156,7 @@ function CampaignStatusBar({ currentStatus, onStatusChange }: CampaignStatusBarP
 }
 
 export default function TaskDetailPage() {
+  const { t } = useLocalization()
   const params = useParams();
   const router = useRouter();
   const { currentSite } = useSite();

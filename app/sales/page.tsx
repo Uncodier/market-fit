@@ -397,6 +397,7 @@ function PrintSaleDialog({ sale, open, onOpenChange, onConfirm }: PrintSaleDialo
 }
 
 export default function SalesPage() {
+  const { t } = useLocalization()
   const [sales, setSales] = useState<Sale[]>([])
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string }>>([])

@@ -43,6 +43,7 @@ const defaultData = {
 
 export function FinancialCostsReport({ categories = defaultData.categories }: FinancialCostsReportProps) {
   const { isDarkMode } = useTheme()
+  const { t } = useLocalization()
   
   // Calculate totals safely
   const totalCosts = categories.reduce((sum, cat) => sum + (cat.amount || 0), 0)

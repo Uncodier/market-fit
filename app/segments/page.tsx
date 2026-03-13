@@ -93,6 +93,7 @@ function SegmentCard({
   handleConfigureUrl: (segmentId: string) => void;
   navigateToSegmentDetail: (id: string, name: string) => void;
 }) {
+  const { t } = useLocalization()
   return (
     <Collapsible
       key={segment.id}

@@ -1183,6 +1183,7 @@ function ContentTable({
 }
 
 function ContentTableSkeleton() {
+  const { t } = useLocalization()
   return (
     <div className="space-y-6">
       {/* Simulate multiple status sections */}

@@ -22,6 +22,7 @@ interface FinancialSalesBreakdownProps {
 
 export function FinancialSalesBreakdown({ categories = [] }: FinancialSalesBreakdownProps) {
   const { isDarkMode } = useTheme();
+  const { t } = useLocalization();
   
   // Calculate totals safely
   const totalSales = categories.reduce((sum, cat) => sum + (cat.amount || 0), 0);
