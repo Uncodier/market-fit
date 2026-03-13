@@ -47,7 +47,6 @@ import { toast } from "sonner"
 import { safeReload } from "@/app/utils/safe-reload"
 import { SegmentStatusWidget } from "./components/SegmentStatusWidget"
 import { NewAdPlatformType } from "./components/analysisComponents"
-import SegmentDetailsTab from "./components/SegmentDetailsTab"
 
 export type AdPlatform = "facebook" | "google" | "linkedin" | "tiktok"
 

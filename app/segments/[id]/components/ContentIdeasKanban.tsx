@@ -4,7 +4,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Button } from "@/app/components/ui/button"
 import { FileText, Copy, BarChart, CalendarIcon, FileVideo, Download, Link, Mail } from "@/app/components/ui/icons"
-import { Segment } from "../page"
+import type { Segment } from "../page"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 
 // Define content types for columns

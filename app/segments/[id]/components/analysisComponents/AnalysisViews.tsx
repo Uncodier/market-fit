@@ -1,4 +1,4 @@
-import { Segment } from "../../page";
+import type { Segment } from "../../page";
 import { PerformanceMetricsComponent } from "./PerformanceMetricsComponent";
 import { MarketPenetrationComponent } from "./MarketPenetrationComponent";
 import { BehaviorComponent } from "./BehaviorComponent";

@@ -4,7 +4,7 @@ import {
   CalendarIcon, User as GraduationCap, Circle as DollarSign, MessageSquare,
   TrendingUp as Target, HelpCircle, CheckCircle2, Tag
 } from "@/app/components/ui/icons";
-import { Segment } from "../page";
+import type { Segment } from "../page";
 import { DemographicsTab } from "./icpTabs/DemographicsTab";
 import { PsychographicsTab } from "./icpTabs/PsychographicsTab";
 import { CustomAttributesTab } from "./icpTabs/CustomAttributesTab";

@@ -1,7 +1,7 @@
 import { NewAdPlatformType } from "./types";
 import { dummyAudienceData, regionData } from "./data";
 import { LocationData } from "@/app/components/WorldMapComponent";
-import { Segment } from "../../page";
+import type { Segment } from "../../page";
 
 // Get platform display name
 export const getPlatformDisplayName = (platform: NewAdPlatformType): string => {

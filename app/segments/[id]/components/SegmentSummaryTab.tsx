@@ -13,7 +13,35 @@ import {
 } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { useTheme } from '@/app/context/ThemeContext'
-import { Segment, getDisplayValue, chartData } from "../page"
+import type { Segment } from "../page"
+
+// Dummy data for the chart
+const chartData = [
+  { name: "Jan", total: 1200 },
+  { name: "Feb", total: 1900 },
+  { name: "Mar", total: 1500 },
+  { name: "Apr", total: 1700 },
+  { name: "May", total: 2400 },
+  { name: "Jun", total: 2100 },
+  { name: "Jul", total: 2300 },
+  { name: "Aug", total: 2800 },
+  { name: "Sep", total: 3200 },
+  { name: "Oct", total: 2900 },
+  { name: "Nov", total: 3500 },
+  { name: "Dec", total: 3700 }
+]
+
+function getDisplayValue(value: string | number | null | undefined, type: 'text' | 'number' = 'text'): string {
+  if (value === undefined || value === null || value === '') return 'N/A'
+  if (type === 'number') {
+    if (typeof value === 'number') {
+      return value.toLocaleString()
+    } else if (typeof value === 'string' && !isNaN(Number(value))) {
+      return Number(value).toLocaleString()
+    }
+  }
+  return String(value)
+}
 
 interface SegmentSummaryTabProps {
   segment: Segment

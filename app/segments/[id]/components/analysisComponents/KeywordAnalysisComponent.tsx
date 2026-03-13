@@ -6,7 +6,7 @@ import { Copy, TrendingUp } from "@/app/components/ui/icons";
 import { BaseAnalysisComponentProps } from "./types";
 import { getPlatformDisplayName } from "./utils";
 import { getKeywordsForPlatform } from "./utils";
-import { Segment } from "../../page";
+import type { Segment } from "../../page";
 
 interface MarketPenetrationComponentProps extends Pick<BaseAnalysisComponentProps, 
   'selectedAdPlatform'> {

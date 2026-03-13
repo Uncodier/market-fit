@@ -1,4 +1,4 @@
-import { Segment } from "../../page";
+import type { Segment } from "../../page";
 
 // Define our new platform type
 export type NewAdPlatformType = "facebookAds" | "googleAds" | "linkedInAds" | "tiktokAds";
