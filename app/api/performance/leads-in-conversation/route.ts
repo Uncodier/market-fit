@@ -23,66 +23,103 @@ export async function GET(request: NextRequest) {
     const previousStart = new Date(previousEnd.getTime() - periodLength);
 
     // Get leads with messages FROM them in current period
-    let currentQuery = supabase
-      .from("leads")
-      .select(`
-        id,
-        conversations!inner(
+    let currentData: any[] = [];
+    let hasMoreCurrent = true;
+    let fromCurrent = 0;
+    const stepCurrent = 1000;
+
+    while (hasMoreCurrent) {
+      let currentQuery = supabase
+        .from("leads")
+        .select(`
           id,
-          messages!inner(
+          conversations!inner(
             id,
-            created_at,
-            role
+            messages!inner(
+              id,
+              created_at,
+              role
+            )
           )
-        )
-      `)
-      .eq("site_id", siteId)
-      .eq("conversations.messages.role", "user")
-      .gte("conversations.messages.created_at", startDate)
-      .lte("conversations.messages.created_at", endDate);
+        `)
+        .eq("site_id", siteId)
+        .eq("conversations.messages.role", "user")
+        .gte("conversations.messages.created_at", startDate)
+        .lte("conversations.messages.created_at", endDate)
+        .range(fromCurrent, fromCurrent + stepCurrent - 1);
 
-    if (segmentId && segmentId !== "all") {
-      currentQuery = currentQuery.eq("segment_id", segmentId);
-    }
+      if (segmentId && segmentId !== "all") {
+        currentQuery = currentQuery.eq("segment_id", segmentId);
+      }
 
-    const { data: currentData, error: currentError } = await currentQuery;
+      const { data: batchCurrent, error: currentError } = await currentQuery;
 
-    if (currentError) {
-      console.error("Error fetching current leads in conversation:", currentError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly"
-      });
+      if (currentError) {
+        console.error("Error fetching current leads in conversation:", currentError);
+        return NextResponse.json({
+          actual: 0,
+          percentChange: 0,
+          periodType: "monthly"
+        });
+      }
+
+      if (batchCurrent && batchCurrent.length > 0) {
+        currentData = [...currentData, ...batchCurrent];
+        fromCurrent += stepCurrent;
+        if (batchCurrent.length < stepCurrent) {
+          hasMoreCurrent = false;
+        }
+      } else {
+        hasMoreCurrent = false;
+      }
     }
 
     // Get leads with messages FROM them in previous period
-    let previousQuery = supabase
-      .from("leads")
-      .select(`
-        id,
-        conversations!inner(
+    let previousData: any[] = [];
+    let hasMorePrevious = true;
+    let fromPrevious = 0;
+    const stepPrevious = 1000;
+
+    while (hasMorePrevious) {
+      let previousQuery = supabase
+        .from("leads")
+        .select(`
           id,
-          messages!inner(
+          conversations!inner(
             id,
-            created_at,
-            role
+            messages!inner(
+              id,
+              created_at,
+              role
+            )
           )
-        )
-      `)
-      .eq("site_id", siteId)
-      .eq("conversations.messages.role", "user")
-      .gte("conversations.messages.created_at", previousStart.toISOString())
-      .lte("conversations.messages.created_at", previousEnd.toISOString());
+        `)
+        .eq("site_id", siteId)
+        .eq("conversations.messages.role", "user")
+        .gte("conversations.messages.created_at", previousStart.toISOString())
+        .lte("conversations.messages.created_at", previousEnd.toISOString())
+        .range(fromPrevious, fromPrevious + stepPrevious - 1);
 
-    if (segmentId && segmentId !== "all") {
-      previousQuery = previousQuery.eq("segment_id", segmentId);
-    }
+      if (segmentId && segmentId !== "all") {
+        previousQuery = previousQuery.eq("segment_id", segmentId);
+      }
 
-    const { data: previousData, error: previousError } = await previousQuery;
+      const { data: batchPrevious, error: previousError } = await previousQuery;
 
-    if (previousError) {
-      console.error("Error fetching previous leads in conversation:", previousError);
+      if (previousError) {
+        console.error("Error fetching previous leads in conversation:", previousError);
+        break;
+      }
+
+      if (batchPrevious && batchPrevious.length > 0) {
+        previousData = [...previousData, ...batchPrevious];
+        fromPrevious += stepPrevious;
+        if (batchPrevious.length < stepPrevious) {
+          hasMorePrevious = false;
+        }
+      } else {
+        hasMorePrevious = false;
+      }
     }
 
     const currentCount = currentData?.length || 0;

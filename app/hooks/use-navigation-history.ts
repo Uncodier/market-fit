@@ -300,6 +300,29 @@ export function useNavigationHistory() {
     
     // Handle root routes (base routes without IDs like /leads, /content)
     if (isRoot) {
+      // Find if we're already on this root route in history and just changing query params (like tab)
+      const lastItem = history.items[history.items.length - 1]
+      const lastPathname = lastItem ? lastItem.path.split('?')[0] : ''
+      
+      // Check if we're navigating within the same root route
+      if (lastPathname === pathname) {
+        // Just update the last item's path with new query params
+        const label = generateLabel(pathname, searchParams)
+        const updatedItem: HistoryItem = {
+          path: fullPath,
+          label,
+          timestamp: Date.now()
+        }
+        
+        const newHistory: NavigationHistory = {
+          items: [...history.items.slice(0, -1), updatedItem]
+        }
+        setHistory(newHistory)
+        saveHistory(newHistory)
+        previousPathRef.current = fullPath
+        return
+      }
+
       // If it's UI navigation (coming from another page in the app)
       // Reset breadcrumb and start with this new base route
       if (!isDirect) {
@@ -346,9 +369,13 @@ export function useNavigationHistory() {
     if (isDirect) {
       const hasExistingHistory = history.items.length > 0
       
+      // Check if it's just a query param change on a root route (e.g. /dashboard?tab=x)
+      // This allows direct navigation to tabs/filters without wiping history if we're already in the app
+      const isParamOnRoot = isRootRoute(currentPathname) && queryString.length > 0
+      
       // If there's NO existing history, this is a fresh direct entry (typed URL or external link)
       // Reset breadcrumb to start fresh
-      if (!hasExistingHistory) {
+      if (!hasExistingHistory && !isParamOnRoot) {
         const newHistory: NavigationHistory = { items: [] }
         setHistory(newHistory)
         saveHistory(newHistory)
@@ -378,6 +405,35 @@ export function useNavigationHistory() {
     // FIRST: Check if this route already exists in history (navigation back to previous page)
     const existingIndex = history.items.findIndex(item => item.path === fullPath)
     
+    // Check if this is just a query param change on the exact same base path
+    const lastItem = history.items[history.items.length - 1]
+    let isParamChangeOnSamePath = false
+    
+    if (lastItem) {
+      const lastPathname = lastItem.path.split('?')[0]
+      
+      // If path is identical
+      isParamChangeOnSamePath = pathname === lastPathname
+    }
+    
+    if (isParamChangeOnSamePath) {
+      // Just update the last item's path and label, don't grow history
+      const label = generateLabel(pathname, searchParams)
+      const updatedItem: HistoryItem = {
+        path: fullPath,
+        label,
+        timestamp: Date.now()
+      }
+      
+      const newHistory: NavigationHistory = {
+        items: [...history.items.slice(0, -1), updatedItem]
+      }
+      setHistory(newHistory)
+      saveHistory(newHistory)
+      previousPathRef.current = fullPath
+      return
+    }
+    
     if (existingIndex !== -1) {
       // Navigate back to existing item (remove items after it)
       
@@ -392,7 +448,6 @@ export function useNavigationHistory() {
     
     // Check if only the ID changed (same base path, different ID in query or path)
     const currentPathname = fullPath.split('?')[0]
-    const lastItem = history.items[history.items.length - 1]
     
     if (lastItem) {
       const lastPathname = lastItem.path.split('?')[0]
@@ -445,6 +500,26 @@ export function useNavigationHistory() {
           const currentParams = new URLSearchParams(fullPath.split('?')[1] || '')
           const lastParams = new URLSearchParams(lastItem.path.split('?')[1] || '')
           
+          // Check if only query params changed (for subpages)
+          const paramChangedOnly = currentPathname === lastPathname;
+                                 
+          if (paramChangedOnly) {
+            const label = generateLabel(pathname, searchParams)
+            const updatedItem: HistoryItem = {
+              path: fullPath,
+              label,
+              timestamp: Date.now()
+            }
+            
+            const newHistory: NavigationHistory = {
+              items: [...history.items.slice(0, -1), updatedItem]
+            }
+            setHistory(newHistory)
+            saveHistory(newHistory)
+            previousPathRef.current = fullPath
+            return
+          }
+          
           // Common ID parameter names that indicate selection change
           const idParams = ['id', 'agentId', 'conversationId', 'leadId', 'segmentId', 'campaignId', 'experimentId', 'requirementId', 'contentId', 'saleId', 'robotId', 'instance']
           
@@ -483,6 +558,26 @@ export function useNavigationHistory() {
           const currentParams = new URLSearchParams(fullPath.split('?')[1] || '')
           const lastParams = new URLSearchParams(lastItem.path.split('?')[1] || '')
           
+          // Check if only query param changed
+          const paramChangedOnly = currentPathname === lastPathname;
+                                 
+          if (paramChangedOnly) {
+            const label = generateLabel(pathname, searchParams)
+            const updatedItem: HistoryItem = {
+              path: fullPath,
+              label,
+              timestamp: Date.now()
+            }
+            
+            const newHistory: NavigationHistory = {
+              items: [...history.items.slice(0, -1), updatedItem]
+            }
+            setHistory(newHistory)
+            saveHistory(newHistory)
+            previousPathRef.current = fullPath
+            return
+          }
+          
           // Common ID parameter names that indicate selection change
           const idParams = ['id', 'agentId', 'conversationId', 'leadId', 'segmentId', 'campaignId', 'experimentId', 'requirementId', 'contentId', 'saleId', 'robotId', 'instance']
           
@@ -492,6 +587,29 @@ export function useNavigationHistory() {
             const lastId = lastParams.get(param)
             return currentId !== lastId && (currentId || lastId)
           })
+          
+          // CRITICAL: Prevent adding new history items when only the 'tab' parameter changes
+          // e.g. dashboard?tab=overview -> dashboard?tab=traffic
+          const tabChangedOnly = !queryIdChanged && 
+                                currentParams.get('tab') !== lastParams.get('tab');
+          
+          // If only tab changed, just replace the last item to update URL without growing breadcrumb
+          if (tabChangedOnly) {
+            const label = generateLabel(pathname, searchParams)
+            const updatedItem: HistoryItem = {
+              path: fullPath,
+              label,
+              timestamp: Date.now()
+            }
+            
+            const newHistory: NavigationHistory = {
+              items: [...history.items.slice(0, -1), updatedItem]
+            }
+            setHistory(newHistory)
+            saveHistory(newHistory)
+            previousPathRef.current = fullPath
+            return
+          }
           
           // If query param changed, replace the last item
           if (queryIdChanged) {

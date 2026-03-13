@@ -18,34 +18,51 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createServiceClient();
 
-  try {
-    console.log(`[ClientConversion API] Calculating conversion for site: ${siteId}, segment: ${segmentId || 'all'}, dates: ${startDate} to ${endDate}`);
-    
-    // Get all leads from the period
-    let leadsQuery = supabase
-      .from('leads')
-      .select('id, created_at')
-      .eq('site_id', siteId)
-      .gte('created_at', startDate)
-      .lte('created_at', endDate);
-
-    if (segmentId && segmentId !== 'all') {
-      leadsQuery = leadsQuery.eq('segment_id', segmentId);
-    }
-
-    const { data: allLeads, error: leadsError } = await leadsQuery;
-
-    if (leadsError) {
-      console.error('[ClientConversion API] Error fetching leads:', leadsError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly"
-      });
-    }
-
-    const totalLeads = allLeads?.length || 0;
-    console.log(`[ClientConversion API] Found ${totalLeads} total leads`);
+    try {
+      console.log(`[ClientConversion API] Calculating conversion for site: ${siteId}, segment: ${segmentId || 'all'}, dates: ${startDate} to ${endDate}`);
+      
+      let allLeads: any[] = [];
+      let hasMoreLeads = true;
+      let fromLeads = 0;
+      const stepLeads = 1000;
+  
+      while (hasMoreLeads) {
+        let leadsQuery = supabase
+          .from('leads')
+          .select('id, created_at')
+          .eq('site_id', siteId)
+          .gte('created_at', startDate)
+          .lte('created_at', endDate)
+          .range(fromLeads, fromLeads + stepLeads - 1);
+  
+        if (segmentId && segmentId !== 'all') {
+          leadsQuery = leadsQuery.eq('segment_id', segmentId);
+        }
+  
+        const { data: batchLeads, error: leadsError } = await leadsQuery;
+  
+        if (leadsError) {
+          console.error('[ClientConversion API] Error fetching leads:', leadsError);
+          return NextResponse.json({
+            actual: 0,
+            percentChange: 0,
+            periodType: "monthly"
+          });
+        }
+  
+        if (batchLeads && batchLeads.length > 0) {
+          allLeads = [...allLeads, ...batchLeads];
+          fromLeads += stepLeads;
+          if (batchLeads.length < stepLeads) {
+            hasMoreLeads = false;
+          }
+        } else {
+          hasMoreLeads = false;
+        }
+      }
+  
+      const totalLeads = allLeads.length;
+      console.log(`[ClientConversion API] Found ${totalLeads} total leads`);
 
     if (totalLeads === 0) {
       return NextResponse.json({
@@ -56,25 +73,37 @@ export async function GET(request: NextRequest) {
     }
 
     // Get leads that have at least one sale (invoice)
-    const leadIds = allLeads?.map(lead => lead.id) || [];
+    const leadIds = allLeads.map(lead => lead.id) || [];
     
-    const { data: leadsWithSales, error: salesError } = await supabase
-      .from('sales')
-      .select('lead_id')
-      .in('lead_id', leadIds)
-      .not('lead_id', 'is', null);
+    // Process sales in chunks of 500 to avoid overly large IN clauses
+    const CHUNK_SIZE = 500;
+    let leadsWithSales: any[] = [];
+    
+    for (let i = 0; i < leadIds.length; i += CHUNK_SIZE) {
+      const chunk = leadIds.slice(i, i + CHUNK_SIZE);
+      
+      const { data: chunkSales, error: salesError } = await supabase
+        .from('sales')
+        .select('lead_id')
+        .in('lead_id', chunk)
+        .not('lead_id', 'is', null);
 
-    if (salesError) {
-      console.error('[ClientConversion API] Error fetching sales:', salesError);
-      return NextResponse.json({
-        actual: 0,
-        percentChange: 0,
-        periodType: "monthly"
-      });
+      if (salesError) {
+        console.error('[ClientConversion API] Error fetching sales:', salesError);
+        return NextResponse.json({
+          actual: 0,
+          percentChange: 0,
+          periodType: "monthly"
+        });
+      }
+      
+      if (chunkSales) {
+        leadsWithSales = [...leadsWithSales, ...chunkSales];
+      }
     }
 
     // Count unique leads that have at least one sale
-    const uniqueLeadsWithSales = new Set(leadsWithSales?.map(sale => sale.lead_id) || []).size;
+    const uniqueLeadsWithSales = new Set(leadsWithSales.map(sale => sale.lead_id)).size;
     
     // Calculate conversion rate
     const currentConversionRate = totalLeads > 0 ? (uniqueLeadsWithSales / totalLeads) * 100 : 0;
@@ -91,32 +120,65 @@ export async function GET(request: NextRequest) {
     console.log(`[ClientConversion API] Previous period: ${previousStart.toISOString()} to ${previousEnd.toISOString()}`);
 
     // Get previous period leads
-    let prevLeadsQuery = supabase
-      .from('leads')
-      .select('id, created_at')
-      .eq('site_id', siteId)
-      .gte('created_at', previousStart.toISOString())
-      .lte('created_at', previousEnd.toISOString());
+    let prevLeads: any[] = [];
+    let hasMorePrevLeads = true;
+    let fromPrevLeads = 0;
+    const stepPrevLeads = 1000;
 
-    if (segmentId && segmentId !== 'all') {
-      prevLeadsQuery = prevLeadsQuery.eq('segment_id', segmentId);
+    while (hasMorePrevLeads) {
+      let prevLeadsQuery = supabase
+        .from('leads')
+        .select('id, created_at')
+        .eq('site_id', siteId)
+        .gte('created_at', previousStart.toISOString())
+        .lte('created_at', previousEnd.toISOString())
+        .range(fromPrevLeads, fromPrevLeads + stepPrevLeads - 1);
+
+      if (segmentId && segmentId !== 'all') {
+        prevLeadsQuery = prevLeadsQuery.eq('segment_id', segmentId);
+      }
+
+      const { data: batchPrevLeads, error: prevLeadsError } = await prevLeadsQuery;
+      
+      if (prevLeadsError) {
+        break;
+      }
+
+      if (batchPrevLeads && batchPrevLeads.length > 0) {
+        prevLeads = [...prevLeads, ...batchPrevLeads];
+        fromPrevLeads += stepPrevLeads;
+        if (batchPrevLeads.length < stepPrevLeads) {
+          hasMorePrevLeads = false;
+        }
+      } else {
+        hasMorePrevLeads = false;
+      }
     }
-
-    const { data: prevLeads, error: prevLeadsError } = await prevLeadsQuery;
     
-    const prevTotalLeads = prevLeads?.length || 0;
+    const prevTotalLeads = prevLeads.length;
     let previousConversionRate = 0;
 
     if (prevTotalLeads > 0) {
-      const prevLeadIds = prevLeads?.map(lead => lead.id) || [];
+      const prevLeadIds = prevLeads.map(lead => lead.id) || [];
       
-      const { data: prevLeadsWithSales } = await supabase
-        .from('sales')
-        .select('lead_id')
-        .in('lead_id', prevLeadIds)
-        .not('lead_id', 'is', null);
+      const CHUNK_SIZE = 500;
+      let prevLeadsWithSales: any[] = [];
+      
+      for (let i = 0; i < prevLeadIds.length; i += CHUNK_SIZE) {
+        const chunk = prevLeadIds.slice(i, i + CHUNK_SIZE);
+        
+        const { data: chunkSales } = await supabase
+          .from('sales')
+          .select('lead_id')
+          .in('lead_id', chunk)
+          .not('lead_id', 'is', null);
+          
+        if (chunkSales) {
+          prevLeadsWithSales = [...prevLeadsWithSales, ...chunkSales];
+        }
+      }
 
-      const prevUniqueLeadsWithSales = new Set(prevLeadsWithSales?.map(sale => sale.lead_id) || []).size;
+      const prevUniqueLeadsWithSales = new Set(prevLeadsWithSales.map(sale => sale.lead_id)).size;
       previousConversionRate = (prevUniqueLeadsWithSales / prevTotalLeads) * 100;
     }
     

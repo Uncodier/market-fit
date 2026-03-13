@@ -65,19 +65,37 @@ export async function GET(request: Request) {
 
     console.log(`[Leads Cohorts API] Using ${periodType} periods (always weekly for cohorts)`);
 
-    // Fetch all leads for the site
-    const { data: leads, error: leadsError } = await supabase
-      .from("leads")
-      .select("id, email, created_at, segment_id")
-      .eq("site_id", siteId)
-      .order("created_at", { ascending: false });
+    // Fetch all leads for the site using pagination to avoid the 1000 rows limit
+    let leads: any[] = [];
+    let hasMoreLeads = true;
+    let fromLeads = 0;
+    const stepLeads = 1000;
 
-    if (leadsError) {
-      console.error("Error fetching leads:", leadsError);
-      return NextResponse.json({ error: "Failed to fetch leads" }, { status: 500 });
+    while (hasMoreLeads) {
+      const { data: batchLeads, error: leadsError } = await supabase
+        .from("leads")
+        .select("id, email, created_at, segment_id")
+        .eq("site_id", siteId)
+        .order("created_at", { ascending: false })
+        .range(fromLeads, fromLeads + stepLeads - 1);
+
+      if (leadsError) {
+        console.error("Error fetching leads:", leadsError);
+        return NextResponse.json({ error: "Failed to fetch leads" }, { status: 500 });
+      }
+
+      if (batchLeads && batchLeads.length > 0) {
+        leads = [...leads, ...batchLeads];
+        fromLeads += stepLeads;
+        if (batchLeads.length < stepLeads) {
+          hasMoreLeads = false;
+        }
+      } else {
+        hasMoreLeads = false;
+      }
     }
 
-    console.log(`[Leads Cohorts API] Found ${leads?.length || 0} leads for the site`);
+    console.log(`[Leads Cohorts API] Found ${leads.length || 0} leads for the site`);
 
     // If no leads found, return empty result
     if (!leads || leads.length === 0) {

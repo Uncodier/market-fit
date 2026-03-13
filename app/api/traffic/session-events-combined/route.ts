@@ -81,20 +81,48 @@ export async function GET(request: NextRequest) {
 
     // Use ONLY session_events table to derive both metrics for consistency
     // CRITICAL: Filter by event_type to count only actual page views, not all events
-    let query = supabase
-      .from('session_events')
-      .select('created_at, referrer, visitor_id')
-      .eq('site_id', siteId)
-      .eq('event_type', 'pageview')  // Only count actual page views
-      .gte('created_at', startDate)
-      .lte('created_at', endDate);
+    
+    let allEvents: any[] = [];
+    let eventsError = null;
+    let hasMore = true;
+    let from = 0;
+    const step = 1000;
 
-    // Add segment filter if specified and not "all"
-    if (segmentId && segmentId !== 'all') {
-      query = query.eq('segment_id', segmentId);
+    // Fetch in batches to avoid the 1000 row limit from Supabase PostgREST
+    while (hasMore) {
+      let query = supabase
+        .from('session_events')
+        .select('created_at, referrer, visitor_id')
+        .eq('site_id', siteId)
+        .eq('event_type', 'pageview')  // Only count actual page views
+        .gte('created_at', startDate)
+        .lte('created_at', endDate)
+        .range(from, from + step - 1);
+
+      // Add segment filter if specified and not "all"
+      if (segmentId && segmentId !== 'all') {
+        query = query.eq('segment_id', segmentId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        eventsError = error;
+        break;
+      }
+
+      if (data && data.length > 0) {
+        allEvents = [...allEvents, ...data];
+        from += step;
+        
+        // If we got fewer records than the step, we've reached the end
+        if (data.length < step) {
+          hasMore = false;
+        }
+      } else {
+        hasMore = false;
+      }
     }
-
-    const { data: allEvents, error: eventsError } = await query;
 
     console.log('Combined page visits query result:', {
       eventsCount: allEvents?.length || 0,
