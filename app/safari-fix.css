@@ -1366,58 +1366,7 @@ html.safari [data-hide-in-safari] {
 
 /* ============================================
    Safari: Chat input min-width fix
-   Safari collapses flex/fixed containers; enforce min-width 100% on mobile, 800px on desktop
+   REMOVED to prevent overriding max-width and breaking mx-auto centering.
    ============================================ */
-@media not all and (min-resolution:.001dpcm) {
-  @supports (-webkit-appearance:none) {
-    @media (min-width: 768px) {
-      .chat-input-container {
-        width: 100% !important;
-      }
-      .chat-input-container > div,
-      .chat-input-container form,
-      .chat-input-container [class*="max-w"],
-      .chat-input-container .step-indicator-root {
-        width: 100% !important;
-        max-width: 800px !important;
-      }
-      .chat-input-container .step-indicator-root .mx-auto {
-        width: 100% !important;
-        max-width: 800px !important;
-      }
-      .chat-input-container textarea {
-        width: 100% !important;
-      }
-    }
-  }
-}
-
-@media (min-width: 768px) {
-  html.safari .chat-input-container {
-    width: 100% !important;
-  }
-
-  html.safari .chat-input-container > div,
-  html.safari .chat-input-container form,
-  html.safari .chat-input-container [class*="max-w"],
-  html.safari .chat-input-container .step-indicator-root {
-    width: 100% !important;
-    max-width: 800px !important;
-  }
-
-  html.safari .chat-input-container .step-indicator-root .mx-auto {
-    width: 100% !important;
-    max-width: 800px !important;
-  }
-
-  html.safari .chat-input-container textarea {
-    width: 100% !important;
-  }
-
-  html.safari .chat-input-container.fixed,
-  html.safari .chat-input-container[class*="fixed"] {
-    width: 100% !important;
-  }
-}
 
 /* Plan / StepIndicator: same min-width cascade as chat input (800 → 760) */

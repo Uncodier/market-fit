@@ -56,6 +56,10 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
   // Otherwise show primary color
   const isOverLimit = creditsAvailable < 0
   
+  // Format for display
+  const displayTotal = Math.round(totalCredits)
+  const displayAvailable = Number(creditsAvailable.toFixed(3))
+
   const handleBuyCredits = (e: React.MouseEvent) => {
     e.stopPropagation()
     router.push('/billing')
@@ -114,7 +118,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
           </TooltipTrigger>
           <TooltipContent side="right" className="z-[9999]">
             <p>{t('layout.sidebar.manageCredits') || 'Manage credits'}</p>
-            <p className="text-xs text-muted-foreground">{creditsAvailable} / {totalCredits} {t('layout.sidebar.creditsAvailable') || 'available'}</p>
+            <p className="text-xs text-muted-foreground">{displayAvailable} / {displayTotal} {t('layout.sidebar.creditsAvailable') || 'available'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -139,7 +143,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
                   "text-xs font-bold",
                   isOverLimit ? "text-destructive" : "text-foreground"
                 )}>
-                  {creditsAvailable} / {totalCredits}
+                  {displayAvailable} / {displayTotal}
                 </span>
               </div>
               

@@ -123,11 +123,30 @@ export function ChatHeader({
   const leadEmail = leadData?.email
   const leadPhone = leadData?.phone
 
+  // Calculate dynamic left offset for fixed positioning
+  const getLeftOffset = () => {
+    if (typeof window === 'undefined') return '0px';
+    if (window.innerWidth < 768) return '0px'; // Mobile full width
+    
+    // We know layout sidebar is either 64px or 256px
+    const isSidebarCollapsed = document.querySelector('.sidebar')?.classList.contains('collapsed');
+    const sidebarWidth = isSidebarCollapsed ? 64 : 256;
+    
+    // Chat list width
+    const chatListWidth = isChatListCollapsed ? 0 : 319;
+    
+    return `${sidebarWidth + chatListWidth}px`;
+  };
+
   return (
     <div
       data-toolbar-font
-      className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] max-h-[71px] min-h-[71px] flex items-center overflow-hidden relative w-full z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2" 
-      style={{ backdropFilter: 'blur(10px)' }}>
+      className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] flex items-center z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2 fixed top-[64px] right-0 transition-all duration-300 ease-in-out" 
+      style={{ 
+        backdropFilter: 'blur(10px)',
+        left: getLeftOffset(),
+        width: `calc(100% - ${getLeftOffset()})`,
+      }}>
       
       {/* Back Button for Mobile */}
       {onBack && (

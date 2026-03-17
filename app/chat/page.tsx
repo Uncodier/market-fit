@@ -586,10 +586,10 @@ function ChatPageContent() {
         isDeleting={isDeletingConversation}
       />
       
-      <div className="flex h-full relative overflow-hidden">
+            <div className="flex h-full relative overflow-visible w-full bg-background flex-row">
       {/* Chat list */}
       <div className={cn(
-        "h-full transition-[width,opacity] duration-300 ease-in-out",
+        "h-full transition-all duration-300 ease-in-out z-20 bg-background flex-shrink-0",
         hasSelectedConversation ? "hidden md:block" : "w-full",
         !hasSelectedConversation && "md:w-[319px]",
         isChatListCollapsed ? "md:w-0 md:opacity-0" : "md:w-[319px]"
@@ -604,14 +604,13 @@ function ChatPageContent() {
       
       {/* Main chat content */}
       <div className={cn(
-        "flex flex-col h-full transition-[margin] duration-300 ease-in-out flex-1",
-        !hasSelectedConversation ? "hidden md:flex" : "flex",
-        isChatListCollapsed ? "ml-0" : "ml-0"
+        "flex flex-col h-full transition-[margin] duration-300 ease-in-out flex-1 min-w-0 min-h-0 relative",
+        !hasSelectedConversation ? "hidden md:flex" : "flex"
       )}>
-        {/* Chat header with agent and lead info */}
-        <div className="relative flex-none w-full z-10">
-          {/* Header with agent and lead info */}
-          <ChatHeader 
+              {/* Chat header with agent and lead info */}
+              <div className="w-full z-[50]">
+                {/* Header with agent and lead info */}
+                <ChatHeader 
             agentId={agentId}
             agentName={agentName}
             currentAgent={currentAgent}
@@ -630,24 +629,26 @@ function ChatPageContent() {
             onBack={handleBackToMobileList}
           />
         </div>
-        
+
         {/* Chat messages area */}
-        <ChatMessages 
-          chatMessages={chatMessages}
-          isLoadingMessages={isLoadingMessages}
-          isAgentResponding={isAgentResponding}
-          isTransitioningConversation={isTransitioningConversation}
-          messagesEndRef={messagesEndRef}
-          containerRef={messagesContainerRef}
-          agentId={agentId}
-          agentName={agentName}
-          isAgentOnlyConversation={isAgentOnlyConversation}
-          isLead={Boolean(leadData && (leadData.id || (leadData as any)?.lead_id))}
-          leadData={leadData}
-          conversationId={conversationId}
-          onRetryMessage={handleRetryMessage}
-          onMessagesUpdate={setChatMessages}
-        />
+        <div className="flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px]">
+          <ChatMessages 
+            chatMessages={chatMessages}
+            isLoadingMessages={isLoadingMessages}
+            isAgentResponding={isAgentResponding}
+            isTransitioningConversation={isTransitioningConversation}
+            messagesEndRef={messagesEndRef}
+            containerRef={messagesContainerRef}
+            agentId={agentId}
+            agentName={agentName}
+            isAgentOnlyConversation={isAgentOnlyConversation}
+            isLead={Boolean(leadData && (leadData.id || (leadData as any)?.lead_id))}
+            leadData={leadData}
+            conversationId={conversationId}
+            onRetryMessage={handleRetryMessage}
+            onMessagesUpdate={setChatMessages}
+          />
+        </div>
         
         {/* Message input area */}
         {hasSelectedConversation && (

@@ -114,17 +114,37 @@ export const ChatInput = memo(function ChatInput({
     return null
   }
   
+  // Calculate dynamic left offset for fixed positioning
+  const getLeftOffset = () => {
+    if (typeof window === 'undefined') return '0px';
+    if (window.innerWidth < 768) return '0px'; // Mobile full width
+    
+    // We know layout sidebar is either 64px or 256px
+    const isSidebarCollapsed = document.querySelector('.sidebar')?.classList.contains('collapsed');
+    const sidebarWidth = isSidebarCollapsed ? 64 : 256;
+    
+    // Chat list width
+    const chatListWidth = isChatListCollapsed ? 0 : 319;
+    
+    return `${sidebarWidth + chatListWidth}px`;
+  };
+
   return (
     <div 
       className={cn(
-        "sticky bottom-0 flex-none chat-input-container transition-[padding,margin] duration-300 ease-in-out bg-background/95 z-10 pb-[15px] w-full"
+        "fixed bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10 w-full"
       )}
+      style={{
+        left: getLeftOffset(),
+        width: `calc(100% - ${getLeftOffset()})`,
+        maxWidth: `calc(100% - ${getLeftOffset()})`
+      }}
     >
       <div className="w-full">
-        <div className="max-w-[800px] w-full mx-auto px-4 md:px-0">
+        <div className="max-w-[calc(100%-240px)] mx-auto relative pb-[20px] px-4 md:px-0">
           <form onSubmit={handleSubmit} className="relative w-full">
             <div className="relative w-full">
-              <OptimizedTextarea
+        <OptimizedTextarea
                 ref={externalRef ?? internalRef}
                 onChange={handleChange}
                 onKeyDown={handleKeyDownInternal}
@@ -167,38 +187,38 @@ export const ChatInput = memo(function ChatInput({
               </div>
               
               {/* Channel selector centered */}
-              <div className="absolute bottom-[15px] left-1/2 -translate-x-1/2 w-fit flex items-center justify-center" style={{ zIndex: 52 }}>
-                <ChannelSelector
-                  selectedChannel={selectedChannel}
-                  onChannelChange={setSelectedChannel}
-                  availableChannels={availableChannels}
-                  isUpdating={isUpdatingChannel}
-                />
-              </div>
-              
-              {/* Action buttons on the left (currently hidden) */}
-              <div className="absolute bottom-[15px] left-[15px] flex space-x-1 hidden">
-                <Button 
-                  type="button" 
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-xl h-[35.1px] w-[35.1px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
-                  title="Attach file"
-                >
-                  <Icons.Link className="h-4.5 w-4.5" />
-                  <span className="sr-only">Attach file</span>
-                </Button>
-                <Button 
-                  type="button" 
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-xl h-[35.1px] w-[35.1px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
-                  title="Web search"
-                >
-                  <Icons.Search className="h-4.5 w-4.5" />
-                  <span className="sr-only">Web search</span>
-                </Button>
-              </div>
+      <div className="absolute bottom-[15px] left-1/2 -translate-x-1/2 w-fit flex items-center justify-center" style={{ zIndex: 52 }}>
+        <ChannelSelector
+          selectedChannel={selectedChannel}
+          onChannelChange={setSelectedChannel}
+          availableChannels={availableChannels}
+          isUpdating={isUpdatingChannel}
+        />
+      </div>
+      
+      {/* Action buttons on the left (currently hidden) */}
+      <div className="absolute bottom-[15px] left-[15px] flex space-x-1 hidden">
+        <Button 
+          type="button" 
+          size="icon"
+          variant="ghost"
+          className="rounded-xl h-[35.1px] w-[35.1px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
+          title="Attach file"
+        >
+          <Icons.Link className="h-4.5 w-4.5" />
+          <span className="sr-only">Attach file</span>
+        </Button>
+        <Button 
+          type="button" 
+          size="icon"
+          variant="ghost"
+          className="rounded-xl h-[35.1px] w-[35.1px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
+          title="Web search"
+        >
+          <Icons.Search className="h-4.5 w-4.5" />
+          <span className="sr-only">Web search</span>
+        </Button>
+      </div>
             </div>
           </form>
         </div>

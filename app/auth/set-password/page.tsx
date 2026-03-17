@@ -100,7 +100,6 @@ function SetPasswordContent() {
 
     setIsLoading(true)
 
-    // Track if we're redirecting on success to avoid clearing loading state
     let isRedirecting = false
 
     try {
@@ -132,7 +131,7 @@ function SetPasswordContent() {
         if (isSessionError) {
           toast.error("Your session has expired. Please request a new password reset link.")
           setTimeout(() => {
-            router.push('/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.'))
+            window.location.href = '/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.')
           }, 2000)
           setIsLoading(false)
           return
@@ -141,11 +140,9 @@ function SetPasswordContent() {
         // Try to parse error message as JSON (in case it's a stringified JSON)
         let parsedError: { code?: string; message: string } | null = null
         try {
-          // Check if error.message is a JSON string
           if (error.message && error.message.startsWith('{')) {
             parsedError = JSON.parse(error.message)
           } else if (error.message && error.message.includes('code') && error.message.includes('message')) {
-            // Try to extract JSON from the message
             const jsonMatch = error.message.match(/\{.*\}/)
             if (jsonMatch) {
               parsedError = JSON.parse(jsonMatch[0])
@@ -155,17 +152,13 @@ function SetPasswordContent() {
           // If parsing fails, continue with regular error handling
         }
 
-        // Check if error object itself has code and message properties
         if (!parsedError && error && typeof error === 'object') {
-          // Check direct properties
           if ('code' in error && 'message' in error) {
             parsedError = {
               code: (error as any).code,
               message: (error as any).message
             }
-          }
-          // Check if error.details contains the error information
-          else if ('details' in error && (error as any).details) {
+          } else if ('details' in error && (error as any).details) {
             const details = (error as any).details
             if (typeof details === 'object' && 'code' in details && 'message' in details) {
               parsedError = {
@@ -182,7 +175,6 @@ function SetPasswordContent() {
           }
         }
 
-        // If we have a parsed error with message, display it in the error card
         if (parsedError && parsedError.message) {
           setApiError({
             code: parsedError.code,
@@ -192,7 +184,6 @@ function SetPasswordContent() {
           return
         }
         
-        // For other errors, show in error card if possible, otherwise use toast
         setApiError({
           message: error.message || "Failed to set password"
         })
@@ -202,14 +193,14 @@ function SetPasswordContent() {
 
       console.log('✅ Password set successfully')
       
+      // Send success toast right away so the user knows it worked!
+      toast.success("Password set successfully!")
+      setApiError(null)
+      isRedirecting = true
+      
       // Refresh session to ensure it's valid before redirecting
       console.log('🔄 Refreshing session after password update...')
       const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.getSession()
-      
-      if (refreshError) {
-        console.warn('[Set Password] Session refresh warning:', refreshError.message)
-        // Continue with redirect even if refresh has warning
-      }
       
       if (!refreshedSession || !refreshedSession.user) {
         console.error('[Set Password] No session after password update, attempting to get user...')
@@ -217,76 +208,31 @@ function SetPasswordContent() {
         
         if (userError || !user) {
           console.error('[Set Password] Failed to get user after password update')
-          setApiError({
-            message: 'Password updated but session could not be verified. Please sign in again.'
-          })
-          setIsLoading(false)
           
-          // Redirect to auth page after delay
+          // Instead of throwing an error here, treat it as a success but request re-login.
+          toast.info("Please sign in with your new password.")
+          
           setTimeout(() => {
-            router.push('/auth?error=' + encodeURIComponent('Please sign in with your new password.'))
-          }, 3000)
+            window.location.href = '/auth?message=' + encodeURIComponent('Password updated successfully. Please sign in with your new password.')
+          }, 2000)
           return
         }
       }
       
       console.log('[Set Password] Session verified, user:', refreshedSession?.user?.email || 'verified')
-      toast.success("Password set successfully!")
-
-      // Clear any previous errors
-      setApiError(null)
 
       // Redirect to the original destination or dashboard
-      const targetUrl = redirectTo ? decodeURIComponent(redirectTo) : '/robots'
+      const targetUrl = redirectTo ? decodeURIComponent(redirectTo) : '/projects'
       console.log('🔄 Redirecting to:', targetUrl)
       
-      // Mark that we're redirecting - don't clear loading state
-      // The redirect will unmount the component anyway
-      isRedirecting = true
-      
-      // Small delay to ensure session cookies are set and auth state is updated
       await new Promise(resolve => setTimeout(resolve, 500))
       
-      // Use router.push first for better Next.js integration
-      // Fallback to window.location.href if router.push doesn't work
-      try {
-        console.log('[Set Password] Attempting router.push to:', targetUrl)
-        
-        // router.push returns a promise in Next.js 13+
-        // If it succeeds, the component will unmount and redirect happens
-        // If it fails or doesn't redirect, the fallback timer will catch it
-        await router.push(targetUrl)
-        
-        // Set up a fallback timer to check if redirect actually happened
-        // This will only fire if we're still on the set-password page after 2 seconds
-        // If redirect succeeds, component unmounts and timer is automatically cleaned up
-        setTimeout(() => {
-          if (typeof window !== 'undefined' && window.location.pathname === '/auth/set-password') {
-            console.warn('[Set Password] Router.push may have failed, using window.location.href as fallback')
-            try {
-              window.location.href = targetUrl
-            } catch (fallbackError) {
-              console.error('[Set Password] Fallback redirect also failed:', fallbackError)
-              // Last resort: try replacing the location
-              window.location.replace(targetUrl)
-            }
-          }
-        }, 2000)
-      } catch (redirectError) {
-        console.error('[Set Password] Redirect error:', redirectError)
-        // Force redirect using window.location.href
-        try {
-          window.location.href = targetUrl
-        } catch (hrefError) {
-          console.error('[Set Password] window.location.href failed, trying replace:', hrefError)
-          window.location.replace(targetUrl)
-        }
-      }
+      // Use window.location.href directly to force full reload and ensure server cookies are applied
+      window.location.href = targetUrl
 
     } catch (error: any) {
       console.error('❌ Password setup error:', error)
       
-      // Check for session errors FIRST, before parsing
       const errorMessage = error?.message || ''
       const errorCode = error?.code || ''
       const isSessionError = 
@@ -300,13 +246,12 @@ function SetPasswordContent() {
       if (isSessionError) {
         toast.error("Your session has expired. Please request a new password reset link.")
         setTimeout(() => {
-          router.push('/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.'))
+          window.location.href = '/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.')
         }, 2000)
         setIsLoading(false)
         return
       }
       
-      // Try to parse error as API error response
       let parsedError: { code?: string; message: string } | null = null
       try {
         if (error?.message && typeof error.message === 'string') {
@@ -320,16 +265,13 @@ function SetPasswordContent() {
           }
         }
         
-        // Check if error itself has code and message
         if (!parsedError && error && typeof error === 'object' && 'code' in error && 'message' in error) {
           parsedError = {
             code: (error as any).code,
             message: (error as any).message
           }
         }
-      } catch (parseError) {
-        // If parsing fails, use default error
-      }
+      } catch (parseError) {}
 
       if (parsedError && parsedError.message) {
         setApiError({
@@ -342,8 +284,7 @@ function SetPasswordContent() {
         })
       }
     } finally {
-      // Only clear loading state if we're not redirecting
-      // On success, we want to keep the loading state visible during the redirect
+      // Clean up loading state if we failed, or if we are redirecting we keep it true
       if (!isRedirecting) {
         setIsLoading(false)
       }

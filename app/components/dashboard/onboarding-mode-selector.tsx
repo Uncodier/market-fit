@@ -86,7 +86,7 @@ export function OnboardingModeSelector({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {MODES.map((mode) => {
           const isActive = selected === mode.id
           const completed = completedByMode[mode.id] ?? 0
@@ -100,7 +100,7 @@ export function OnboardingModeSelector({
               key={mode.id}
               onClick={() => onSelect(mode.id)}
               className={`
-                relative text-left rounded-xl border-2 p-4 transition-all duration-200
+                relative flex flex-col items-start text-left rounded-xl border-2 p-5 transition-all duration-200 h-full w-full
                 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
                 ${isActive
                   ? `${mode.activeBorder} ${mode.bg} shadow-md -translate-y-0.5`
@@ -110,49 +110,60 @@ export function OnboardingModeSelector({
             >
               {/* Active indicator */}
               {isActive && (
-                <span className={`absolute top-3 right-3 h-2 w-2 rounded-full font-inter ${mode.activeBg}`} />
+                <span className={`absolute top-4 right-4 h-2 w-2 rounded-full font-inter ${mode.activeBg}`} />
               )}
 
-              {/* Icon */}
-              <div className={`inline-flex items-center justify-center h-10 w-10 rounded-lg mb-3 ${isActive ? "bg-white/50 dark:bg-white/10" : "bg-gray-100 dark:bg-gray-800"}`}>
-                <span className={isActive ? mode.color : "text-gray-500 dark:text-gray-400"}>
-                  {mode.icon}
-                </span>
+              {/* Header: Icon + Label + Progress Pill */}
+              <div className="flex items-center justify-between w-full mb-2 pr-2">
+                <div className="flex items-center gap-3.5">
+                  <div className={`inline-flex items-center justify-center h-10 w-10 rounded-lg flex-shrink-0 ${isActive ? "bg-white/50 dark:bg-white/10" : "bg-gray-100 dark:bg-gray-800"}`}>
+                    <span className={isActive ? mode.color : "text-gray-500 dark:text-gray-400"}>
+                      {mode.icon}
+                    </span>
+                  </div>
+                  <div className={`font-semibold text-base ${isActive ? mode.color : "text-gray-900 dark:text-gray-100"}`}>
+                    {mode.label}
+                  </div>
+                </div>
+
+                {/* Progress pill */}
+                {total > 0 && (
+                  <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full font-inter ${allDone ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" : isActive ? `${mode.bg} ${mode.color}` : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
+                    {allDone ? (
+                      <>
+                        <CheckCircle2 size={12} />
+                        {t('dashboard.onboarding.badge.complete') || 'Complete'}
+                      </>
+                    ) : (
+                      (t('dashboard.onboarding.progressDone') || '{completed}/{total} done').replace('{completed}', String(completed)).replace('{total}', String(total))
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Label + tagline */}
-              <div className="mb-2">
-                <div className={`font-semibold text-sm ${isActive ? mode.color : "text-gray-800 dark:text-gray-200"}`}>
-                  {mode.label}
-                </div>
-                <div className="text-xs text-muted-foreground leading-tight mt-0.5">
+              {/* Tagline */}
+              <div className="mb-4 flex-shrink-0 w-full pl-[54px] pr-2">
+                <div className="text-sm text-muted-foreground leading-snug">
                   {mode.tagline}
                 </div>
               </div>
 
               {/* Task list */}
-              <ul className="space-y-1 mb-3">
-                {mode.tasks.map((task) => (
-                  <li key={task} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <ArrowRight size={10} className="flex-shrink-0 opacity-60" />
-                    {task}
-                  </li>
-                ))}
+              <ul className="space-y-2.5 mb-2 flex-grow w-full pl-[54px]">
+                {mode.tasks.map((task, index) => {
+                  const isTaskDone = index < completed;
+                  return (
+                    <li key={task} className={`flex items-start gap-2.5 text-sm ${isTaskDone ? 'text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`}>
+                      {isTaskDone ? (
+                        <CheckCircle2 size={14} className="flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <ArrowRight size={14} className="flex-shrink-0 opacity-60 mt-0.5" />
+                      )}
+                      <span className={`leading-tight ${isTaskDone ? 'line-through' : ''}`}>{task}</span>
+                    </li>
+                  );
+                })}
               </ul>
-
-              {/* Progress pill */}
-              {total > 0 && (
-                <div className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-inter ${allDone ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400" : isActive ? `${mode.bg} ${mode.color}` : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"}`}>
-                  {allDone ? (
-                    <>
-                      <CheckCircle2 size={10} />
-                      {t('dashboard.onboarding.badge.complete') || 'Complete'}
-                    </>
-                  ) : (
-                    (t('dashboard.onboarding.progressDone') || '{completed}/{total} done').replace('{completed}', String(completed)).replace('{total}', String(total))
-                  )}
-                </div>
-              )}
             </button>
           )
         })}

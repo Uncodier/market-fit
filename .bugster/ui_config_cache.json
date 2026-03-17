@@ -1,0 +1,21 @@
+{
+  "U60j4oWDJS0sa6Z77mTz": {
+    "config": {
+      "project_id": "U60j4oWDJS0sa6Z77mTz",
+      "x_vercel_protection_bypass": null,
+      "preferences": {
+        "tests": {
+          "always_run": null,
+          "limit": 50,
+          "headless": false,
+          "silent": false,
+          "verbose": false,
+          "only_affected": false,
+          "parallel": 5,
+          "output": null
+        }
+      }
+    },
+    "timestamp": 1773709949.011183
+  }
+}

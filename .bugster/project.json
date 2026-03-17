@@ -13,6 +13,11 @@
         "name": "Next.js",
         "dir_path": "/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/"
       }
-    ]
+    ],
+    "commands": {
+      "test": {
+        "firstExecuted": true
+      }
+    }
   }
 }

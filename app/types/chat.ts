@@ -36,7 +36,7 @@ export interface ChatMessage {
   metadata?: {
     command_status?: "failed" | "pending" | "success"
     error_message?: string
-    status?: "pending" | "sent" | "delivered" | "failed"
+    status?: "pending" | "sent" | "delivered" | "failed" | "accepted"
     [key: string]: any
   }
   // Información del remitente (para retrocompatibilidad en la UI)

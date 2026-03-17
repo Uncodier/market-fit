@@ -608,14 +608,26 @@ function OnboardingSkeleton() {
       <div className="space-y-3">
         <Skeleton className="h-5 w-56" />
         <Skeleton className="h-4 w-80" />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border-2 border-gray-200 p-4 space-y-3">
-              <Skeleton className="h-10 w-10 rounded-lg" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-3 w-32" />
-              <div className="space-y-1.5">
-                {[1, 2, 3].map((j) => <Skeleton key={j} className="h-3 w-28" />)}
+            <div key={i} className="rounded-xl border-2 border-gray-200 dark:border-gray-800 p-5 flex flex-col items-start w-full">
+              <div className="flex items-center justify-between w-full mb-2 pr-2">
+                <div className="flex items-center gap-3.5">
+                  <Skeleton className="h-10 w-10 rounded-lg flex-shrink-0" />
+                  <Skeleton className="h-5 w-24" />
+                </div>
+                <Skeleton className="h-6 w-16 rounded-full" />
+              </div>
+              <div className="mb-4 w-full pl-[54px] pr-2">
+                <Skeleton className="h-4 w-full max-w-[200px]" />
+              </div>
+              <div className="space-y-2.5 mb-2 w-full pl-[54px]">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="flex items-center gap-2.5">
+                    <Skeleton className="h-3.5 w-3.5 rounded-full flex-shrink-0" />
+                    <Skeleton className="h-3.5 w-full max-w-[180px]" />
+                  </div>
+                ))}
               </div>
             </div>
           ))}

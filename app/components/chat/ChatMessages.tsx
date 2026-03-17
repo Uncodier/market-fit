@@ -882,7 +882,7 @@ export function ChatMessages({
         msg.id === message.id
           ? {
               ...msg,
-              metadata: updatedCustomData
+              metadata: updatedCustomData as ChatMessage["metadata"]
             }
           : msg
       )
@@ -960,7 +960,7 @@ export function ChatMessages({
         msg.id === message.id
           ? {
               ...msg,
-              metadata: updatedCustomData
+              metadata: updatedCustomData as ChatMessage["metadata"]
             }
           : msg
       )
@@ -1059,7 +1059,7 @@ export function ChatMessages({
 
   if (!hasSelectedConversation) {
     return (
-      <div className="flex-1 overflow-y-auto py-6 transition-colors duration-300 ease-in-out pb-6">
+      <div className="flex-1 py-6 transition-colors duration-300 ease-in-out pb-6">
         <EmptyState
           icon={<MessageSquare className="h-12 w-12" />}
           title="No conversation selected"
@@ -1071,14 +1071,14 @@ export function ChatMessages({
   }
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto py-6 transition-colors duration-300 ease-in-out pb-6 min-w-0">
-      <div className="max-w-[95%] md:max-w-[calc(100%-240px)] mx-auto min-w-0">
+    <div ref={containerRef} className="flex-1 py-6 transition-colors duration-300 ease-in-out pb-[180px] min-w-0 w-full transition-all">
+      <div className="max-w-[calc(100%-240px)] mx-auto min-w-0 px-4 md:px-0">
         {(isLoadingMessages || isTransitioningConversation) ? (
           <div className="space-y-6 w-full">
             {[1, 2, 3].map((i) => (
               <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"} animate-pulse`}>
                 {i % 2 === 0 ? (
-                  <div className="flex items-start gap-3 max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0">
+                  <div className="flex items-start gap-3 max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0">
                     <div className="flex-shrink-0 mt-1">
                       <div className="w-8 h-8 rounded-full font-inter font-bold bg-primary/20"></div>
                     </div>
@@ -1099,7 +1099,7 @@ export function ChatMessages({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start justify-end gap-3 max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0">
+                  <div className="flex items-start justify-end gap-3 max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0">
                     <div className="space-y-2 w-[350px]">
                       <div className="rounded-lg p-4 bg-background" style={{ 
                         boxShadow: 'var(--shadow-sm)',
@@ -1152,7 +1152,7 @@ export function ChatMessages({
                     >
                       {/* Team Member Messages - Left aligned when there is a lead */}
                       {msg.role === "team_member" && hasLead ? (
-                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0">
                           <div className="flex flex-col min-w-0 group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
@@ -1268,7 +1268,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : msg.role === "team_member" && !hasLead && !msg.isCurrentUserMessage ? (
-                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 items-end">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
@@ -1386,7 +1386,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : /* Lead/Visitor Messages - Amber avatar, right aligned */ msg.role === "user" ? (
-                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 items-end">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
@@ -1510,7 +1510,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "agent" || msg.role === "assistant") ? (
-                        <div className="max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 group">
+                        <div className="max-w-[calc(100%-240px)] min-w-0 group px-4 md:px-0">
                           <div className="flex items-center mb-1 gap-2">
                             <div className="relative">
                               <Avatar className={`h-7 w-7 border ${(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? 'border-blue-500/20' : 'border-primary/10'}`}>
@@ -1637,7 +1637,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "team_member" && !hasLead && msg.isCurrentUserMessage) ? (
-                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 items-end">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/20">
@@ -1749,7 +1749,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : /* Visitor Messages - Amber avatar, right aligned */ (msg.role === "visitor") ? (
-                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0 items-end">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
@@ -1861,7 +1861,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (
-                        <div className="flex flex-col max-w-[95%] md:max-w-[calc(100%-240px)] min-w-0">
+                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0">
                         <div 
                             className={`rounded-lg px-4 pt-4 pb-2 transition-all duration-300 ease-in-out text-foreground group overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""
@@ -1998,8 +1998,8 @@ export function ChatMessages({
             <div className="h-8"></div>
           </div>
         )}
-        {/* Elemento de referencia para el scroll automático - desplazado del fondo para mejor visualización */}
-        <div ref={messagesEndRef} className="pt-4 pb-8"></div>
+        {/* Elemento de referencia para el scroll automático */}
+        <div ref={messagesEndRef} className="h-[20px]"></div>
       </div>
       
       {/* Edit Message Modal */}
