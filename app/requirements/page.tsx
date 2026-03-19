@@ -1114,19 +1114,19 @@ export default function RequirementsPage() {
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.all') === 'requirements.tabs.all' ? 'All Requirements' : t('requirements.tabs.all')}>
-                    <LayoutGrid size={13} />
+                    <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('requirements.tabs.all') === 'requirements.tabs.all' ? 'All Requirements' : t('requirements.tabs.all')}</span>
                   </TabsTrigger>
                   <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.pending') === 'requirements.tabs.pending' ? 'Pending' : t('requirements.tabs.pending')}>
-                    <Clock size={13} />
+                    <Clock size={13} className="md:!hidden" />
                     <span className="tab-label">{t('requirements.tabs.pending') === 'requirements.tabs.pending' ? 'Pending' : t('requirements.tabs.pending')}</span>
                   </TabsTrigger>
                   <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.completed') === 'requirements.tabs.completed' ? 'Completed' : t('requirements.tabs.completed')}>
-                    <CheckCircle2 size={13} />
+                    <CheckCircle2 size={13} className="md:!hidden" />
                     <span className="tab-label">{t('requirements.tabs.completed') === 'requirements.tabs.completed' ? 'Completed' : t('requirements.tabs.completed')}</span>
                   </TabsTrigger>
                   <TabsTrigger value="rejected" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.rejected') === 'requirements.tabs.rejected' ? 'Rejected' : t('requirements.tabs.rejected')}>
-                    <Ban size={13} />
+                    <Ban size={13} className="md:!hidden" />
                     <span className="tab-label">{t('requirements.tabs.rejected') === 'requirements.tabs.rejected' ? 'Rejected' : t('requirements.tabs.rejected')}</span>
                   </TabsTrigger>
                 </TabsList>
@@ -1137,6 +1137,7 @@ export default function RequirementsPage() {
                     onSearch={handleSearch}
                     ref={searchInputRef}
                     className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                    alwaysExpanded={false}
                   />
                   
                   <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>

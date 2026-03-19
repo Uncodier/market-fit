@@ -72,7 +72,7 @@ export function SafariCloseButtonAbsolute({
     <button
       ref={buttonRef}
       onClick={onClick}
-      className={`safari-close-button-abs absolute z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground ${className}`}
+      className={`safari-close-button-abs absolute z-50 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground ${className}`}
       aria-label="Close"
       type="button"
       style={{

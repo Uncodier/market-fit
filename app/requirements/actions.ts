@@ -232,7 +232,7 @@ interface UpdateRequirementData {
   segments: string[]
   campaigns: string[]
   campaign_id: string
-  outsourceInstructions?: string // No se usa, este campo no existe en la DB
+  outsourceInstructions?: string
 }
 
 export async function updateRequirement(data: UpdateRequirementData) {
@@ -252,6 +252,7 @@ export async function updateRequirement(data: UpdateRequirementData) {
         completion_status: data.completionStatus,
         source: data.source,
         budget: data.budget,
+        instructions: data.outsourceInstructions,
         updated_at: new Date().toISOString()
       })
       .eq("id", data.id)

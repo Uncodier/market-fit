@@ -67,7 +67,7 @@ export const EditStepModal: React.FC<EditStepModalProps> = ({
               id="description"
               value={description}
               onChange={(e) => onDescriptionChange(e.target.value)}
-              className="col-span-3 min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              className="col-span-3 min-h-[80px] px-3 py-2 text-sm rounded-md border border-input bg-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
               placeholder="Describe what this step involves..."
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.ctrlKey) {

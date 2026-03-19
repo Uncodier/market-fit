@@ -25,6 +25,7 @@ import { SimpleMessagesViewProps, InstanceLog, SelectedContextIds, ImageParamete
 // Import hooks
 import { useInstanceLogs } from './hooks/useInstanceLogs'
 import { useInstancePlans } from './hooks/useInstancePlans'
+import { useRequirementStatus } from './hooks/useRequirementStatus'
 import { useRobotInstance } from './hooks/useRobotInstance'
 import { useMessageSending } from './hooks/useMessageSending'
 import { useStepManagement } from './hooks/useStepManagement'
@@ -38,6 +39,7 @@ import { MessageItem } from './components/MessageItem'
 import { ToolCallItem } from './components/ToolCallItem'
 import { ToolCallGroupItem } from './components/ToolCallGroupItem'
 import { CompletedPlanCard } from './components/CompletedPlanCard'
+import { RequirementStatusCard } from './components/RequirementStatusCard'
 import { StepIndicator } from './components/StepIndicator'
 import { EditStepModal } from './components/EditStepModal'
 import { StepCompletedItem } from './components/StepCompletedItem'
@@ -329,6 +331,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   })
 
   const {
+    requirementStatuses,
+    loadStatuses: loadRequirementStatuses
+  } = useRequirementStatus(activeRobotInstance)
+
+  const {
     isEditModalOpen,
     editingStep,
     editTitle,
@@ -418,10 +425,21 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   
   // Calculate timeline for Explorer view
   const timelineItems: Array<{
-    type: 'log' | 'completed_plan'
+    type: 'log' | 'completed_plan' | 'requirement_status'
     timestamp: string
     data: any
   }> = []
+
+  // Add requirement statuses
+  if (requirementStatuses && requirementStatuses.length > 0) {
+    requirementStatuses.forEach(status => {
+      timelineItems.push({
+        type: 'requirement_status',
+        timestamp: status.created_at,
+        data: status
+      })
+    })
+  }
   
   logs.forEach(log => {
     timelineItems.push({
@@ -657,6 +675,14 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                     <CompletedPlanCard 
                       key={`plan-${item.data.id}`}
                       plan={item.data}
+                    />
+                  )
+                }
+                if (item.type === 'requirement_status') {
+                  return (
+                    <RequirementStatusCard 
+                      key={`req-status-${item.data.id}`}
+                      status={item.data}
                     />
                   )
                 }

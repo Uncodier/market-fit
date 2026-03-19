@@ -125,6 +125,41 @@ interface CompanyGroup {
   isExpanded: boolean
 }
 
+type LeadSortOption = "newest" | "oldest" | "nearest_due_date" | "last_updated"
+
+const getDateTimestamp = (dateValue?: string | null): number | null => {
+  if (!dateValue) return null
+  const timestamp = new Date(dateValue).getTime()
+  return Number.isNaN(timestamp) ? null : timestamp
+}
+
+const getLeadSortComparator = (sortBy: LeadSortOption) => {
+  const now = Date.now()
+
+  return (a: Lead, b: Lead) => {
+    const createdA = getDateTimestamp(a.created_at) ?? 0
+    const createdB = getDateTimestamp(b.created_at) ?? 0
+
+    if (sortBy === "oldest") return createdA - createdB
+    if (sortBy === "newest") return createdB - createdA
+
+    if (sortBy === "last_updated") {
+      const updatedA = getDateTimestamp(a.updated_at) ?? createdA
+      const updatedB = getDateTimestamp(b.updated_at) ?? createdB
+      return updatedB - updatedA
+    }
+
+    const dueA = getDateTimestamp(a.last_contact)
+    const dueB = getDateTimestamp(b.last_contact)
+    const distanceA = dueA === null ? Number.POSITIVE_INFINITY : Math.abs(dueA - now)
+    const distanceB = dueB === null ? Number.POSITIVE_INFINITY : Math.abs(dueB - now)
+
+    if (distanceA !== distanceB) return distanceA - distanceB
+
+    return createdB - createdA
+  }
+}
+
 // Función para determinar el lead más avanzado de una empresa
 const getMostAdvancedLead = (leads: Lead[], journeyStages: Record<string, string>): Lead => {
   if (!leads || leads.length === 0) throw new Error('No leads provided to getMostAdvancedLead')
@@ -151,7 +186,12 @@ const getMostAdvancedLead = (leads: Lead[], journeyStages: Record<string, string
 }
 
 // Función para agrupar leads por empresa
-const groupLeadsByCompany = (leads: Lead[], journeyStages: Record<string, string>, expandedCompanies: Record<string, boolean>): CompanyGroup[] => {
+const groupLeadsByCompany = (
+  leads: Lead[],
+  journeyStages: Record<string, string>,
+  expandedCompanies: Record<string, boolean>,
+  sortBy: LeadSortOption
+): CompanyGroup[] => {
   if (!leads || !Array.isArray(leads)) return []
   
   const groups: Record<string, CompanyGroup> = {}
@@ -176,35 +216,32 @@ const groupLeadsByCompany = (leads: Lead[], journeyStages: Record<string, string
     groups[companyKey].leadCount = groups[companyKey].leads.length
   })
   
-  // Determinar el lead más avanzado para cada empresa y ordenar leads por fecha
+  const leadComparator = getLeadSortComparator(sortBy)
+
+  // Determinar el lead más avanzado para cada empresa y ordenar leads
   Object.values(groups).forEach(group => {
-    // Ordenar leads dentro del grupo del más nuevo al más viejo
-    group.leads.sort((a, b) => {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    })
+    group.leads.sort(leadComparator)
     
     group.mostAdvancedLead = getMostAdvancedLead(group.leads, journeyStages)
     group.mostAdvancedStage = journeyStages[group.mostAdvancedLead.id] || 'not_contacted'
   })
   
   return Object.values(groups).sort((a, b) => {
-    // Ordenar por fecha del lead más reciente primero (para que empresas con leads nuevos aparezcan arriba)
-    const aNewestDate = new Date(a.leads[0].created_at).getTime() // Ya están ordenados del más nuevo al más viejo
-    const bNewestDate = new Date(b.leads[0].created_at).getTime()
-    
-    if (aNewestDate !== bNewestDate) {
-      return bNewestDate - aNewestDate // Más reciente primero
+    const representativeLeadA = a.leads[0]
+    const representativeLeadB = b.leads[0]
+    const primarySort = leadComparator(representativeLeadA, representativeLeadB)
+
+    if (primarySort !== 0) {
+      return primarySort
     }
     
-    // Si tienen la misma fecha más reciente, ordenar por etapa más avanzada
     const aStageIndex = JOURNEY_STAGE_ORDER.indexOf(a.mostAdvancedStage)
     const bStageIndex = JOURNEY_STAGE_ORDER.indexOf(b.mostAdvancedStage)
     
     if (aStageIndex !== bStageIndex) {
-      return bStageIndex - aStageIndex // Más avanzado primero
+      return bStageIndex - aStageIndex
     }
     
-    // Si tienen la misma etapa, ordenar por fecha de creación del lead más avanzado
     return new Date(b.mostAdvancedLead.created_at).getTime() - new Date(a.mostAdvancedLead.created_at).getTime()
   })
 }
@@ -343,7 +380,7 @@ export default function LeadsPage() {
   const [reloadingLeads, setReloadingLeads] = useState<Set<string>>(new Set())
   const [searchTotalCount, setSearchTotalCount] = useState<number | null>(null)
   const [allLeadsTotalCount, setAllLeadsTotalCount] = useState<number | null>(null)
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
+  const [sortBy, setSortBy] = useState<LeadSortOption>("newest")
 
   // Kanban pagination state for leads
   const [kanbanPagination, setKanbanPagination] = useState<Record<string, { page: number; hasMore: boolean; isLoading: boolean }>>({
@@ -910,12 +947,7 @@ export default function LeadsPage() {
       })
     }
     
-    // Sort by created_at descending (newest first - más nuevo al más viejo)
-    filtered = filtered.sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime()
-      const dateB = new Date(b.created_at).getTime()
-      return dateB - dateA
-    })
+    filtered = filtered.sort(getLeadSortComparator(sortBy))
     
     return filtered
   }
@@ -924,7 +956,7 @@ export default function LeadsPage() {
   
   // Agrupar leads por empresa
   const companyGroups = useMemo(() => {
-    const groups = groupLeadsByCompany(filteredLeads || [], leadJourneyStages || {}, expandedCompanies || {})
+    const groups = groupLeadsByCompany(filteredLeads || [], leadJourneyStages || {}, expandedCompanies || {}, sortBy)
     
     // Log what companies are being shown on the page
     console.log(`📊 Page: Showing ${groups.length} companies for tab "${activeTab}"`)
@@ -933,7 +965,7 @@ export default function LeadsPage() {
     })
     
     return groups
-  }, [filteredLeads, leadJourneyStages, expandedCompanies, activeTab])
+  }, [filteredLeads, leadJourneyStages, expandedCompanies, activeTab, sortBy])
   
   const totalPages = Math.ceil((companyGroups?.length || 0) / itemsPerPage)
   
@@ -1309,52 +1341,68 @@ export default function LeadsPage() {
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.all') || 'All Companies'}>
-                    <LayoutGrid size={13} />
+                    <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.all') || 'All Companies'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="new" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.new') || 'New'}>
-                    <PlusCircle size={13} />
+                    <PlusCircle size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.new') || 'New'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="contacted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.contacted') || 'Contacted'}>
-                    <MessageSquare size={13} />
+                    <MessageSquare size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.contacted') || 'Contacted'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.qualified') || 'Qualified'}>
-                    <Star size={13} />
+                    <Star size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.qualified') || 'Qualified'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="cold" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.cold') || 'Cold'}>
-                    <TrendingDown size={13} />
+                    <TrendingDown size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.cold') || 'Cold'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="converted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.converted') || 'Converted'}>
-                    <TrendingUp size={13} />
+                    <TrendingUp size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.converted') || 'Converted'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="lost" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.lost') || 'Lost'}>
-                    <XCircle size={13} />
+                    <XCircle size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.lost') || 'Lost'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="not_qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.notQualified') || 'Not Qualified'}>
-                    <Ban size={13} />
+                    <Ban size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.notQualified') || 'Not Qualified'}</span>
                   </TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-2">
+                  <SearchInput
+                    placeholder="Search leads..."
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                    alwaysExpanded={false}
+                  />
+
+                  <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
+                    <Filter className="h-4 w-4" />
+                  </Button>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('leads.sortBy') === 'leads.sortBy' ? 'Sort by' : t('leads.sortBy')}>
                         <ListOrdered className="h-4 w-4" />
                         <span className="hidden sm:inline font-normal">
-                          {sortBy === "newest" 
+                          {sortBy === "newest"
                             ? (t('leads.sort.newest') === 'leads.sort.newest' ? 'Newest' : t('leads.sort.newest'))
-                            : (t('leads.sort.oldest') === 'leads.sort.oldest' ? 'Oldest' : t('leads.sort.oldest'))}
+                            : sortBy === "oldest"
+                              ? (t('leads.sort.oldest') === 'leads.sort.oldest' ? 'Oldest' : t('leads.sort.oldest'))
+                              : sortBy === "nearest_due_date"
+                                ? "Nearest due date"
+                                : "Last updated"}
                         </span>
                         <ChevronDown className="h-3 w-3 opacity-50" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuContent align="start" className="w-52">
                       <DropdownMenuItem 
                         className="cursor-pointer"
                         onClick={() => setSortBy("newest")}
@@ -1369,19 +1417,22 @@ export default function LeadsPage() {
                         <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
                         {t('leads.sort.oldest') === 'leads.sort.oldest' ? 'Oldest' : t('leads.sort.oldest')}
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("nearest_due_date")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "nearest_due_date" ? "opacity-100" : "opacity-0")} />
+                        Nearest due date
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("last_updated")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "last_updated" ? "opacity-100" : "opacity-0")} />
+                        Last updated
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  <SearchInput
-                    placeholder="Search leads..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                  />
-
-                  <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
-                    <Filter className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
               <div className="ml-auto flex items-center gap-4">

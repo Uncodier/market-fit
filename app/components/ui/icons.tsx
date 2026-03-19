@@ -1907,6 +1907,25 @@ export const Reply = ({ className = "", size = 18, ...props }: IconProps) => (
   </IconWrapper>
 )
 
+// Activity
+export const Activity = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  </IconWrapper>
+)
+
+// Github
+export const Github = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.24c3-.34 6-1.53 6-6.36 0-1.4-.5-2.5-1.3-3.45.1-.3.6-1.63-.1-3.41 0 0-1.1-.35-3.6 1.35a12.08 12.08 0 0 0-6.6 0c-2.5-1.7-3.6-1.35-3.6-1.35-.7 1.78-.2 3.11-.1 3.41-.8.9-1.3 2.05-1.3 3.45 0 4.83 3 6 6 6.36-1 3.24-1 4.54-1 4.54" />
+      <path d="M9 20c-3 1-4-1-5-2.5" />
+    </svg>
+  </IconWrapper>
+)
+
 // Store
 export const Store = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>

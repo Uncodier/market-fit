@@ -1807,6 +1807,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     placeholder="Search tools..."
                     value={toolSearch}
                     onSearch={setToolSearch}
+                    onChange={(e) => setToolSearch(e.target.value)}
                   />
                 )}
                 {activeTab === "triggers" && (
@@ -1814,6 +1815,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     placeholder="Search triggers..."
                     value={triggerSearch}
                     onSearch={setTriggerSearch}
+                    onChange={(e) => setTriggerSearch(e.target.value)}
                   />
                 )}
                 {activeTab === "integrations" && (
@@ -1821,6 +1823,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     placeholder="Search integrations..."
                     value={integrationSearch}
                     onSearch={setIntegrationSearch}
+                    onChange={(e) => setIntegrationSearch(e.target.value)}
                   />
                 )}
                 {activeTab === "context" && (
@@ -1828,6 +1831,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     placeholder="Search context files..."
                     value={contextSearch}
                     onSearch={setContextSearch}
+                    onChange={(e) => setContextSearch(e.target.value)}
                   />
                 )}
                 {activeTab === "activities" && (
@@ -1835,6 +1839,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     placeholder="Search activities..."
                     value={activitySearch}
                     onSearch={setActivitySearch}
+                    onChange={(e) => setActivitySearch(e.target.value)}
                   />
                 )}
               </div>

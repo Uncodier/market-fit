@@ -32,9 +32,10 @@ interface ContextSelectorModalProps {
   onContextChange: (context: SelectedContext) => void
   selectedContext: SelectedContext
   isBrowserVisible?: boolean
+  hideChips?: boolean
 }
 
-export function ContextSelectorModal({ onContextChange, selectedContext, isBrowserVisible = false }: ContextSelectorModalProps) {
+export function ContextSelectorModal({ onContextChange, selectedContext, isBrowserVisible = false, hideChips = false }: ContextSelectorModalProps) {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("leads")
   const [searchTerm, setSearchTerm] = useState("")
@@ -348,10 +349,15 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
           >
             @
             <span className="ml-1">context</span>
+            {hideChips && totalSelected > 0 && (
+              <Badge variant="outline" className="ml-1.5 h-5 px-1.5 py-0 text-[10px] flex items-center justify-center">
+                {totalSelected}
+              </Badge>
+            )}
           </Button>
           
           {/* Show individual chips for selected items */}
-          {displayItems.map(item => (
+          {!hideChips && displayItems.map(item => (
             <Badge key={item.id} variant="outline" className="h-6 px-2 text-xs flex items-center gap-1 group" interactive={true}>
               <span>{item.name.length > 15 ? `${item.name.substring(0, 15)}...` : item.name}</span>
               <button
@@ -367,7 +373,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
           ))}
           
           {/* Show "+X" chip if more than 4 items */}
-          {extraCount > 0 && (
+          {!hideChips && extraCount > 0 && (
             <Badge variant="outline" className="h-6 px-2 text-xs">
               +{extraCount}
             </Badge>

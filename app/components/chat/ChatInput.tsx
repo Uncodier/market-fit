@@ -149,7 +149,7 @@ export const ChatInput = memo(function ChatInput({
                 onChange={handleChange}
                 onKeyDown={handleKeyDownInternal}
                 placeholder="Message..."
-                className="resize-none w-full py-4 pl-8 pr-[54px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out pt-4"
+                className="resize-none w-full py-4 pl-8 pr-[54px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset text-base box-border transition-all duration-300 ease-in-out pt-4"
                 disabled={isLoading}
                 style={{
                   lineHeight: '1.5',
@@ -173,7 +173,7 @@ export const ChatInput = memo(function ChatInput({
                   className={cn(
                     "rounded-[9999px] h-[35.1px] w-[35.1px] transition-[background-color,box-shadow] duration-200",
                     canSend
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-100"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset opacity-100"
                       : "text-muted-foreground opacity-50 hover:bg-transparent"
                   )}
                 >

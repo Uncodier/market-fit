@@ -14,6 +14,11 @@ import { ControlCenterHeader } from "./components/ControlCenterHeader"
 import { ViewSelector } from "@/app/components/view-selector"
 import { TaskCalendar } from "@/app/control-center/components/TaskCalendar"
 import { TaskFilterModal, TaskFilters } from "./components/TaskFilterModal"
+import { TaskStatusFilter } from "./components/TaskStatusFilter"
+import { SearchInput } from "@/app/components/ui/search-input"
+import { Filter } from "@/app/components/ui/icons"
+import { Button } from "@/app/components/ui/button"
+import { Badge } from "@/app/components/ui/badge"
 import { ControlCenterSkeleton } from "./components/ControlCenterSkeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { ClipboardList, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
@@ -62,7 +67,7 @@ export default function ControlCenterPage() {
     assigneeId: []
   })
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'completed'>('all')
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
+  const [sortBy, setSortBy] = useState<"priority" | "newest" | "oldest" | "dueDateNearest" | "dueDateOldest">("priority")
 
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
@@ -634,9 +639,30 @@ export default function ControlCenterPage() {
 
     return true
   }).sort((a, b) => {
+    if (sortBy === 'priority') {
+      const priorityDiff = (b.priority || 0) - (a.priority || 0)
+      if (priorityDiff !== 0) return priorityDiff
+
+      const dateA = new Date(a.scheduled_date || 0).getTime()
+      const dateB = new Date(b.scheduled_date || 0).getTime()
+      return dateA - dateB
+    }
+
+    if (sortBy === 'dueDateNearest') {
+      const dueDateA = new Date(a.scheduled_date || 0).getTime()
+      const dueDateB = new Date(b.scheduled_date || 0).getTime()
+      return dueDateA - dueDateB
+    }
+
+    if (sortBy === 'dueDateOldest') {
+      const dueDateA = new Date(a.scheduled_date || 0).getTime()
+      const dueDateB = new Date(b.scheduled_date || 0).getTime()
+      return dueDateB - dueDateA
+    }
+
     const dateA = new Date(a.created_at || 0).getTime()
     const dateB = new Date(b.created_at || 0).getTime()
-    
+
     if (sortBy === 'newest') return dateB - dateA
     if (sortBy === 'oldest') return dateA - dateB
     return 0
@@ -670,7 +696,7 @@ export default function ControlCenterPage() {
       {/* Sidebar - hidden on mobile */}
       <div 
         className={cn(
-          "hidden md:block fixed h-screen transition-[width,opacity,left] duration-200 ease-in-out z-10",
+          "hidden md:block fixed h-screen transition-[width,opacity,left] duration-300 ease-in-out z-[100]",
           isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
         )}
         style={{ 
@@ -698,7 +724,7 @@ export default function ControlCenterPage() {
       {/* Main content */}
       <div 
         className={cn(
-          "flex flex-col h-full flex-1 min-w-0 transition-[padding] duration-200 ease-in-out",
+          "flex flex-col h-full flex-1 min-w-0 transition-[margin] duration-300 ease-in-out",
           !isSidebarCollapsed && "md:ml-[319px]"
         )}
       >
@@ -708,42 +734,105 @@ export default function ControlCenterPage() {
             isSidebarCollapsed={isSidebarCollapsed}
             toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             leftContent={
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 gap-2 rounded-full px-4" title={t('controlCenter.sortBy') === 'controlCenter.sortBy' ? 'Sort by' : t('controlCenter.sortBy')}>
-                    <ListOrdered className="h-4 w-4" />
-                    <span className="hidden sm:inline font-normal">
-                      {sortBy === "newest" 
-                        ? (t('controlCenter.sort.newest') === 'controlCenter.sort.newest' ? 'Newest' : t('controlCenter.sort.newest'))
-                        : (t('controlCenter.sort.oldest') === 'controlCenter.sort.oldest' ? 'Oldest' : t('controlCenter.sort.oldest'))}
-                    </span>
-                    <ChevronDown className="h-3 w-3 opacity-50" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-40">
-                  <DropdownMenuItem 
-                    className="cursor-pointer"
-                    onClick={() => setSortBy("newest")}
-                  >
-                    <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                    {t('controlCenter.sort.newest') === 'controlCenter.sort.newest' ? 'Newest' : t('controlCenter.sort.newest')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className="cursor-pointer"
-                    onClick={() => setSortBy("oldest")}
-                  >
-                    <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                    {t('controlCenter.sort.oldest') === 'controlCenter.sort.oldest' ? 'Oldest' : t('controlCenter.sort.oldest')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-4 lg:gap-8 overflow-hidden">
+                <TaskStatusFilter
+                  selectedFilter={statusFilter}
+                  onFilterChange={setStatusFilter}
+                  className="px-0 py-0 border-0 min-h-0"
+                />
+                <div className="flex items-center gap-2">
+                  <SearchInput
+                    placeholder={t('controlCenter.search') === 'controlCenter.search' ? 'Search tasks...' : t('controlCenter.search')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                    alwaysExpanded={false}
+                  />
+
+                  <Button variant="secondary" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={() => setIsFilterModalOpen(true)}>
+                    <Filter className="h-4 w-4" />
+                    {getTotalActiveFilters() > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
+                        {getTotalActiveFilters()}
+                      </span>
+                    )}
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 gap-2 rounded-full px-4" title={t('controlCenter.sortBy') === 'controlCenter.sortBy' ? 'Sort by' : t('controlCenter.sortBy')}>
+                        <ListOrdered className="h-4 w-4" />
+                        <span className="hidden sm:inline font-normal">
+                          {sortBy === "priority"
+                            ? "Priority"
+                            : sortBy === "newest"
+                              ? (t('controlCenter.sort.newest') === 'controlCenter.sort.newest' ? 'Newest' : t('controlCenter.sort.newest'))
+                              : sortBy === "oldest"
+                                ? (t('controlCenter.sort.oldest') === 'controlCenter.sort.oldest' ? 'Oldest' : t('controlCenter.sort.oldest'))
+                                : sortBy === "dueDateNearest"
+                                  ? "Due Date (Nearest)"
+                                  : "Due Date (Oldest)"}
+                        </span>
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-40">
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("priority")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "priority" ? "opacity-100" : "opacity-0")} />
+                        Priority
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("newest")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                        {t('controlCenter.sort.newest') === 'controlCenter.sort.newest' ? 'Newest' : t('controlCenter.sort.newest')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("oldest")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                        {t('controlCenter.sort.oldest') === 'controlCenter.sort.oldest' ? 'Oldest' : t('controlCenter.sort.oldest')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("dueDateNearest")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "dueDateNearest" ? "opacity-100" : "opacity-0")} />
+                        Due Date (Nearest)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("dueDateOldest")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "dueDateOldest" ? "opacity-100" : "opacity-0")} />
+                        Due Date (Oldest)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
             }
             rightContent={
-              <ViewSelector
-                currentView={viewType}
-                onViewChange={(view) => setViewType(view)}
-                showCalendar={true}
-              />
+              <div className="flex items-center gap-4">
+                {getTotalActiveFilters() > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setFilters({ stage: [], status: [], leadId: [], assigneeId: [] })}>
+                    <Badge variant="outline" className="rounded-full px-2 py-0">
+                      {getTotalActiveFilters()}
+                    </Badge>
+                    <span className="ml-2">{t('controlCenter.filters.clear') || 'Clear'}</span>
+                  </Button>
+                )}
+                <ViewSelector
+                  currentView={viewType}
+                  onViewChange={(view) => setViewType(view)}
+                  showCalendar={true}
+                />
+              </div>
             }
           />
         </div>
@@ -764,6 +853,7 @@ export default function ControlCenterPage() {
               {viewType === "kanban" ? (
                 <TaskKanban
                   tasks={filteredTasks}
+                  sortBy={sortBy}
                   onUpdateTaskStatus={handleUpdateTaskStatus}
                   onTaskClick={handleTaskClick}
                   kanbanPagination={kanbanPagination}

@@ -436,7 +436,7 @@ export function CampaignSummary({
                     <div className="flex items-center gap-2 mb-3">
                       <ExternalLink className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300 uppercase tracking-wider">
-                        Campaign Outsourced
+                        Assigned to Agents
                       </h3>
                     </div>
                     <div className="space-y-2">
@@ -485,7 +485,7 @@ export function CampaignSummary({
                   <>
                     <div className="bg-muted/40 rounded-lg p-4 border dark:border-white/5 border-black/5/30">
                       <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                        Outsource Instructions
+                        Agent Instructions
                       </h3>
                       
                       <div className="space-y-4 max-w-full">
@@ -501,7 +501,7 @@ export function CampaignSummary({
                         </div>
                         
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Instructions for Outsourcing</Label>
+                          <Label className="text-sm font-medium">Instructions for Agents</Label>
                           <div className="min-h-[150px] w-full resize-none text-sm bg-muted/20 p-3 rounded-md border">
                             {campaign.outsourceInstructions || 
                               "Implement this campaign according to the project specifications and timeline. Follow best practices for execution and reporting."}
@@ -537,7 +537,7 @@ export function CampaignSummary({
                     
                     <div>
                       <Button className="w-full" onClick={() => router.push(`/outsource/checkout?campaignId=${campaign.id}`)}>
-                        Outsource Campaign
+                        Send to Agents
                       </Button>
                     </div>
                   </>

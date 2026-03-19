@@ -876,9 +876,6 @@ function ContentKanban({
               <div className="bg-background rounded-t-md p-3 border-b border-x border-t flex-none">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium text-sm">{t(`content.status.${status.id}`)}</h3>
-                  <Badge variant="outline" className="text-xs">
-                    {items[status.id]?.length || 0}
-                  </Badge>
                 </div>
               </div>
               <Droppable droppableId={status.id}>
@@ -1706,7 +1703,7 @@ export default function ContentPage() {
   const [assetsByContentId, setAssetsByContentId] = useState<Record<string, ContentAssetWithDetails[]>>({})
 
   // Sort state
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rate_desc" | "rate_asc">("newest")
 
   // Initialize command+k hook
   useCommandK()
@@ -1829,9 +1826,19 @@ export default function ContentPage() {
     filtered = filtered.sort((a, b) => {
       const dateA = new Date(a.created_at || 0).getTime()
       const dateB = new Date(b.created_at || 0).getTime()
+      const rateA = a.performance_rating ?? 0
+      const rateB = b.performance_rating ?? 0
       
       if (currentSort === 'newest') return dateB - dateA
       if (currentSort === 'oldest') return dateA - dateB
+      if (currentSort === 'rate_desc') {
+        if (rateB !== rateA) return rateB - rateA
+        return dateB - dateA
+      }
+      if (currentSort === 'rate_asc') {
+        if (rateA !== rateB) return rateA - rateB
+        return dateB - dateA
+      }
       return 0
     })
     
@@ -1950,50 +1957,64 @@ export default function ContentPage() {
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.all')}>
-                    <LayoutGrid size={13} />
+                    <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('content.tabs.all')}</span>
-                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
-                      {contentItems.length}
-                    </Badge>
                   </TabsTrigger>
                   <TabsTrigger value="blog_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.blog')}>
-                    <FileText size={13} />
+                    <FileText size={13} className="md:!hidden" />
                     <span className="tab-label">{t('content.tabs.blog')}</span>
-                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
-                      {contentItems.filter(item => item.type === 'blog_post').length}
-                    </Badge>
                   </TabsTrigger>
                   <TabsTrigger value="video" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.video')}>
-                    <FileVideo size={13} />
+                    <FileVideo size={13} className="md:!hidden" />
                     <span className="tab-label">{t('content.tabs.video')}</span>
-                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
-                      {contentItems.filter(item => item.type === 'video').length}
-                    </Badge>
                   </TabsTrigger>
                   <TabsTrigger value="social_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.social')}>
-                    <Globe size={13} />
+                    <Globe size={13} className="md:!hidden" />
                     <span className="tab-label">{t('content.tabs.social')}</span>
-                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
-                      {contentItems.filter(item => item.type === 'social_post').length}
-                    </Badge>
                   </TabsTrigger>
                   <TabsTrigger value="ad" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.ads')}>
-                    <Megaphone size={13} />
+                    <Megaphone size={13} className="md:!hidden" />
                     <span className="tab-label">{t('content.tabs.ads')}</span>
-                    <Badge variant="secondary" className="tab-badge ml-1 bg-muted text-[10px] h-4 px-1.5 rounded-full">
-                      {contentItems.filter(item => item.type === 'ad').length}
-                    </Badge>
                   </TabsTrigger>
                 </TabsList>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <SearchInput
+                  placeholder="Search content..."
+                  value={searchTerm}
+                  onSearch={handleSearchChange}
+                  className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                  alwaysExpanded={false}
+                />
+
+                  <Button 
+                    variant="secondary" 
+                    size={(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "default" : "icon"}
+                    className={cn(
+                      "h-9 rounded-full",
+                      (filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "px-3" : "w-9"
+                    )}
+                    onClick={() => setIsFiltersDialogOpen(true)}
+                  >
+                    <Filter className="h-4 w-4" />
+                    {(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) && (
+                      <Badge variant="secondary" className="ml-2">
+                        {filters.status.length + filters.type.length + filters.segments.length}
+                      </Badge>
+                    )}
+                  </Button>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('content.sortBy') === 'content.sortBy' ? 'Sort by' : t('content.sortBy')}>
                         <ListOrdered className="h-4 w-4" />
                         <span className="hidden sm:inline font-normal">
-                          {sortBy === "newest" 
+                          {sortBy === "newest"
                             ? (t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest'))
-                            : (t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest'))}
+                            : sortBy === "oldest"
+                              ? (t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest'))
+                              : sortBy === "rate_desc"
+                                ? (t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc'))
+                                : (t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc'))}
                         </span>
                         <ChevronDown className="h-3 w-3 opacity-50" />
                       </Button>
@@ -2013,32 +2034,22 @@ export default function ContentPage() {
                         <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
                         {t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest')}
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("rate_desc")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_desc" ? "opacity-100" : "opacity-0")} />
+                        {t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("rate_asc")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_asc" ? "opacity-100" : "opacity-0")} />
+                        {t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc')}
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  <SearchInput
-                    placeholder="Search content..."
-                    value={searchTerm}
-                    onSearch={handleSearchChange}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                  />
-
-                  <Button 
-                    variant="secondary" 
-                    size={(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "default" : "icon"}
-                    className={cn(
-                      "h-9 rounded-full",
-                      (filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "px-3" : "w-9"
-                    )}
-                    onClick={() => setIsFiltersDialogOpen(true)}
-                  >
-                    <Filter className="h-4 w-4" />
-                    {(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) && (
-                      <Badge variant="secondary" className="ml-2">
-                        {filters.status.length + filters.type.length + filters.segments.length}
-                      </Badge>
-                    )}
-                  </Button>
                 </div>
               </div>
               <div className="ml-auto">
@@ -2064,8 +2075,12 @@ export default function ContentPage() {
             <div className={viewType === 'kanban' ? "flex items-start gap-4 min-w-fit px-8 pt-0 mt-0 flex-1 flex-row" : ""}>
               {/* Left Sidebar - Trends Column (Only for Kanban View) */}
               {viewType === 'kanban' && (
-                <div className="flex-shrink-0 pt-0 mt-0 flex flex-col justify-start">
-                  <TrendsColumn segments={segments} currentSiteId={currentSite?.id} />
+                <div className="flex-shrink-0 pt-0 mt-0 flex flex-col justify-start self-stretch min-h-0">
+                  <TrendsColumn
+                    className="self-stretch"
+                    segments={segments}
+                    currentSiteId={currentSite?.id}
+                  />
                 </div>
               )}
               

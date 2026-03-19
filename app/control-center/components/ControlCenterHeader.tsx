@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils"
 import { SidebarToggle } from "./SidebarToggle"
-import { SearchInput } from "@/app/components/ui/search-input"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 
@@ -22,8 +21,7 @@ export function ControlCenterHeader({
   const { t } = useLocalization()
 
   return (
-    <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      {/* SidebarToggle positioned absolutely - hidden on mobile */}
+    <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[99] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="hidden md:block">
         <SidebarToggle
           isCollapsed={isSidebarCollapsed}
@@ -33,7 +31,7 @@ export function ControlCenterHeader({
       </div>
       
       <div className={cn(
-        "w-full flex items-center justify-between transition-[padding,margin] duration-300 ease-in-out pr-4 lg:pr-8",
+        "w-full flex items-center justify-between transition-[padding,margin] duration-300 ease-in-out px-4 lg:px-8",
         "ml-14 md:ml-[72px]"
       )}>
         <div className="flex items-center gap-2">
@@ -45,4 +43,4 @@ export function ControlCenterHeader({
       </div>
     </div>
   )
-} 
+}

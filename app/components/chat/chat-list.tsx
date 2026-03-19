@@ -7,7 +7,7 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Search, MessageSquare, Check, X } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { Input } from "@/app/components/ui/input"
+import { SearchInput } from "@/app/components/ui/search-input"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { ConversationListItem } from "@/app/types/chat"
@@ -23,13 +23,25 @@ import { ChannelFilter } from "./ChannelFilter"
 // Componente para renderizar esqueletos de carga
 function ConversationSkeleton() {
   return (
-    <div className="py-3 px-4 border-b dark:border-white/5 border-black/5 w-full" style={{ boxSizing: 'border-box' }}>
-      <div className="flex items-center justify-between mb-1">
-        <Skeleton className="h-4 w-[70%]" />
-        <Skeleton className="h-3 w-[15%]" />
+    <div className="w-full text-left py-3 px-4 rounded-none border-b dark:border-white/5 border-black/5" style={{ boxSizing: 'border-box' }}>
+      <div className="flex items-center justify-between mb-1 gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <Skeleton className="h-4 w-[60%]" />
+          <Skeleton className="h-4 w-16 rounded-full" />
+        </div>
       </div>
-      <Skeleton className="h-3 w-[90%] mt-2" />
-      <Skeleton className="h-3 w-[40%] mt-2" />
+      <div className="mt-1">
+        <Skeleton className="h-3 w-[85%]" />
+      </div>
+      <div className="flex justify-between items-center mt-2">
+        <div className="flex items-center gap-1">
+          <Skeleton className="h-3 w-3 rounded-full" />
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-1" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+        <Skeleton className="h-3 w-10" />
+      </div>
     </div>
   )
 }
@@ -982,21 +994,20 @@ export function ChatList({
         "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         "fixed w-full md:w-[319px] z-[999]"
       )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
-        <div className="relative w-[80%]">
-          <Input
+        <div className="relative w-[90%] flex justify-center">
+          <SearchInput
             placeholder="Search conversations..."
             value={searchQuery}
+            onSearch={setSearchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={cn(
-              "h-12 w-full rounded-md",
+              "w-full h-11 text-sm rounded-md",
               isDarkMode ? "bg-background border-input" : "bg-white"
             )}
-            data-command-k-input="true"
-            icon={<Search className="h-4 w-4 text-muted-foreground" />}
+            containerClassName="w-full"
+            alwaysExpanded={true}
+            shortcut="K"
           />
-          <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-            <span className="text-xs">⌘</span>K
-          </kbd>
         </div>
       </div>
       

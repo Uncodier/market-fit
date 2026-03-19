@@ -2,7 +2,7 @@
 
 import React, { memo } from "react"
 import { cn } from "@/lib/utils"
-import { Filter } from "@/app/components/ui/icons"
+import { Filter, LayoutGrid, Activity, CheckCircle2 } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Button } from "@/app/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
@@ -30,27 +30,30 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
   
   const getFilterConfig = () => ({
     all: {
-      label: t('controlCenter.statusFilter.all') || "All"
+      label: t('controlCenter.statusFilter.all') || "All",
+      icon: <LayoutGrid size={13} className="md:!hidden" />
     },
     new: {
-      label: t('controlCenter.statusFilter.new') || "New"
+      label: t('controlCenter.statusFilter.new') || "New",
+      icon: <Activity size={13} className="md:!hidden" />
     },
     completed: {
-      label: t('controlCenter.statusFilter.completed') || "Completed"
+      label: t('controlCenter.statusFilter.completed') || "Completed",
+      icon: <CheckCircle2 size={13} className="md:!hidden" />
     }
   })
 
   const filterConfig = getFilterConfig()
   
   return (
-    <div className={cn("px-4 py-3 border-b border-border/30 flex items-center justify-center min-h-[56px]", className)}>
+    <div className={cn("flex items-center justify-center", className)}>
       <div className="flex items-center justify-center w-full gap-3">
         <Tabs 
           value={selectedFilter} 
           onValueChange={(value) => onFilterChange(value as StatusFilterType)}
           className="flex items-center justify-center"
         >
-          <TabsList className="h-8 p-0.5 bg-muted/50 rounded-full">
+          <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
             <TooltipProvider delayDuration={300}>
               {(Object.keys(filterConfig) as StatusFilterType[]).map((filter) => {
                 const config = filterConfig[filter]
@@ -60,9 +63,19 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
                     <TooltipTrigger asChild>
                       <TabsTrigger
                         value={filter}
-                        className="h-7 px-3 flex items-center justify-center rounded-full transition-all duration-200 text-xs font-medium border border-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:border-transparent"
+                        className={cn(
+                          "h-7 px-3 flex items-center justify-center gap-1.5 rounded-full transition-all duration-200 text-xs font-medium border border-transparent",
+                          "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border",
+                          filter === selectedFilter
+                            ? "bg-background text-foreground shadow-md ring-1 ring-border"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        )}
+                        title={config.label}
                       >
-                        {config.label}
+                        {config.icon}
+                        <span className="tab-label">
+                          {config.label}
+                        </span>
                       </TabsTrigger>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" sideOffset={6}>

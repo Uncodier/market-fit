@@ -207,7 +207,7 @@ html.safari .absolute.top-0.z-\[1000\].flex.items-center.h-\[71px\] {
 }
 
 /* Corrección para todos los iconos SVG en Safari */
-html.safari button svg,
+html.safari button:not([role="tab"]) svg,
 html.safari a svg,
 html.safari [class*="input"] svg,
 html.safari [class*="select"] svg,
@@ -222,14 +222,14 @@ html.safari [role="menuitem"] svg {
 }
 
 /* Fixes específicos para botones */
-html.safari button {
+html.safari button:not([role="tab"]) {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-html.safari button svg {
+html.safari button:not([role="tab"]) svg {
   margin: auto !important;
 }
 
@@ -1370,3 +1370,26 @@ html.safari [data-hide-in-safari] {
    ============================================ */
 
 /* Plan / StepIndicator: same min-width cascade as chat input (800 → 760) */
+/* Force hide icons in tab triggers on desktop */
+@media (min-width: 768px) {
+  [role="tab"]:has(.tab-label) .safari-icon-fix,
+  [role="tab"]:has(.tab-label) svg,
+  [data-state]:has(.tab-label) .safari-icon-fix,
+  [data-state]:has(.tab-label) svg,
+  button:has(.tab-label) .safari-icon-fix,
+  button:has(.tab-label) svg,
+  html.safari [role="tab"]:has(.tab-label) .safari-icon-fix,
+  html.safari [role="tab"]:has(.tab-label) svg,
+  html.safari button:has(.tab-label) .safari-icon-fix,
+  html.safari button:has(.tab-label) svg {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    position: absolute !important;
+  }
+}

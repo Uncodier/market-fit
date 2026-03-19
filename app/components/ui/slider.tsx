@@ -45,7 +45,7 @@ const Slider = React.forwardRef<
         <>
           <SliderPrimitive.Thumb 
             className={cn(
-              "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", 
+              "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50", 
               isStyleSliderThumb ? "slider-thumb" : colorClass
             )}
             style={{ borderRadius: '9999px' }}
@@ -53,7 +53,7 @@ const Slider = React.forwardRef<
           />
           <SliderPrimitive.Thumb 
             className={cn(
-              "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", 
+              "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50", 
               isStyleSliderThumb ? "slider-thumb" : colorClass
             )}
             style={{ borderRadius: '9999px' }}
@@ -63,7 +63,7 @@ const Slider = React.forwardRef<
       ) : (
         <SliderPrimitive.Thumb 
           className={cn(
-            "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", 
+            "block h-7 w-7 rounded-full border-3 border-primary bg-background shadow-md hover:scale-110 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50", 
             isStyleSliderThumb ? "slider-thumb" : colorClass
           )}
           style={{ borderRadius: '9999px' }}

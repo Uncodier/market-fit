@@ -13,76 +13,84 @@ export function MessagesSkeleton() {
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-6 w-full min-w-0 pb-[220px] min-h-0">
         <div className="w-full max-w-4xl mx-auto px-4 min-w-0">
         <div className="space-y-6">
-        {/* System message */}
-        <div className="flex flex-col w-full items-start group">
-          <div className="flex items-center mb-1 gap-2">
-            <Skeleton className="h-7 w-7 rounded-full" />
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-3 w-12 rounded-full" />
-            <Skeleton className="h-3 w-16" />
-          </div>
-          <div className="w-full">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-80" />
-              <Skeleton className="h-4 w-64" />
-              <div className="bg-muted p-2 rounded space-y-1">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-3 w-32" />
+        {/* System/Agent message */}
+        <div className="flex justify-start">
+          <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
+            <div className="flex items-center mb-1 gap-2">
+              <div className="relative">
+                <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
+              </div>
+              <Skeleton className="h-4 w-24 bg-primary/10" />
+            </div>
+            <div className="ml-9 rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
+              <Skeleton className="h-4 w-[90%] mb-3" />
+              <Skeleton className="h-4 w-[75%] mb-3" />
+              <Skeleton className="h-4 w-[85%] mb-3" />
+              <div className="flex justify-between items-center mt-3">
+                <Skeleton className="h-3 w-1/3" />
+                <Skeleton className="h-3 w-12" />
               </div>
             </div>
           </div>
         </div>
 
         {/* User message */}
-        <div className="flex flex-col w-full min-w-0 items-end group">
-          <div className="flex items-center mb-1 gap-2 justify-end">
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-7 w-7 rounded-full" />
-          </div>
-          <div className="w-full min-w-0 overflow-hidden flex justify-end pr-8">
-            <Skeleton className="h-12 w-56 rounded-lg mr-12" />
+        <div className="flex justify-end">
+          <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0 w-full md:w-[60%]">
+            <div className="flex items-center mb-1 gap-2 flex-row-reverse">
+              <Skeleton className="h-7 w-7 rounded-full bg-amber-500/10" />
+              <Skeleton className="h-4 w-20 bg-amber-500/10" />
+            </div>
+            <div className="rounded-lg p-4 mr-9 w-full bg-muted/30 dark:bg-muted/10">
+              <Skeleton className="h-4 w-[95%] mb-3" />
+              <Skeleton className="h-4 w-[80%] mb-3" />
+              <div className="flex justify-between items-center mt-3">
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Agent message with details */}
-        <div className="flex flex-col w-full items-start group">
-          <div className="flex items-center mb-1 gap-2">
-            <Skeleton className="h-7 w-7 rounded-full" />
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-3 w-10 rounded-full" />
-            <Skeleton className="h-3 w-16" />
-          </div>
-          <div className="w-full">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-96" />
-              <Skeleton className="h-4 w-72" />
-              <Skeleton className="h-4 w-80" />
-              <div className="bg-muted p-2 rounded space-y-1">
-                <Skeleton className="h-3 w-20" />
-                <div className="space-y-1">
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-5/6" />
-                  <Skeleton className="h-3 w-4/5" />
-                </div>
+        <div className="flex justify-start">
+          <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
+            <div className="flex items-center mb-1 gap-2">
+              <div className="relative">
+                <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
+              </div>
+              <Skeleton className="h-4 w-28 bg-primary/10" />
+            </div>
+            <div className="ml-9 rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
+              <Skeleton className="h-4 w-[95%] mb-3" />
+              <Skeleton className="h-4 w-[85%] mb-3" />
+              <div className="bg-muted p-3 rounded-md mb-3 space-y-2">
+                <Skeleton className="h-3 w-20 mb-2" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-5/6" />
+                <Skeleton className="h-3 w-4/5" />
+              </div>
+              <div className="flex justify-between items-center mt-3">
+                <Skeleton className="h-3 w-1/3" />
+                <Skeleton className="h-3 w-12" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Tool result message */}
-        <div className="flex flex-col w-full items-start group">
-          <div className="flex items-center mb-1 gap-2">
-            <Skeleton className="h-7 w-7 rounded-full" />
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-3 w-12 rounded-full" />
-            <Skeleton className="h-3 w-16" />
-          </div>
-          <div className="w-full">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-64" />
-              <div className="bg-muted p-2 rounded space-y-1">
-                <Skeleton className="h-3 w-32" />
+        <div className="flex justify-start">
+          <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
+            <div className="flex items-center mb-1 gap-2">
+              <div className="relative">
+                <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
+              </div>
+              <Skeleton className="h-4 w-24 bg-primary/10" />
+            </div>
+            <div className="ml-9 rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
+              <Skeleton className="h-4 w-[80%] mb-3" />
+              <div className="bg-muted p-2 rounded-md space-y-1">
+                <Skeleton className="h-3 w-32 mb-2" />
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-3 w-3/4" />
               </div>

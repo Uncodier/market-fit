@@ -169,7 +169,7 @@
     }
     
     /* Estilos para los inputs específicamente */
-    .flex.h-10.w-full.rounded-md.border.border-input.bg-background.px-3.py-2.text-sm.ring-offset-background svg,
+    .flex.h-10.w-full.rounded-md.border.border-input.bg-background.px-3.py-2.text-sm svg,
     [class*="select-trigger"] svg {
       position: relative;
       display: block;
@@ -1057,14 +1057,14 @@ html.safari [class*="input"] + div svg {
 }
 
 /* Reglas ultras específicas para Safari y sus iconos */
-html.safari button {
+html.safari button:not([role="tab"]) {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-html.safari button svg, html.safari .button svg {
+html.safari button:not([role="tab"]) svg, html.safari .button:not([role="tab"]) svg {
   width: 16px !important;
   height: 16px !important;
   min-width: 16px !important;
@@ -1135,14 +1135,14 @@ html.safari .safari-icon-container svg {
 }
 
 /* Fixes específicos para botones con iconos en Safari */
-html.safari button {
+html.safari button:not([role="tab"]) {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-html.safari button svg {
+html.safari button:not([role="tab"]) svg {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -1660,6 +1660,28 @@ html.safari .chat-input-container[style*="fixed"] {
 @media (min-width: 768px) {
   .tab-label {
     display: inline;
+  }
+  
+  /* Force hide icons in tab triggers on desktop */
+  [role="tab"]:has(.tab-label) .safari-icon-fix,
+  [role="tab"]:has(.tab-label) svg,
+  [data-state]:has(.tab-label) .safari-icon-fix,
+  [data-state]:has(.tab-label) svg,
+  button:has(.tab-label) .safari-icon-fix,
+  button:has(.tab-label) svg,
+  html.safari [role="tab"]:has(.tab-label) .safari-icon-fix,
+  html.safari [role="tab"]:has(.tab-label) svg,
+  html.safari button:has(.tab-label) .safari-icon-fix,
+  html.safari button:has(.tab-label) svg {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    position: absolute !important;
   }
 }
 

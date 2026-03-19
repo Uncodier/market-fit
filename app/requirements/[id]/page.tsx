@@ -11,6 +11,7 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
 import { updateRequirementStatus, updateCompletionStatus, updateRequirementPriority, updateRequirementInstructions, updateRequirement, deleteRequirement } from "../actions"
 import { markdownToHTML } from "../utils"
+import { RequirementStatusList } from "./components/RequirementStatusList"
 
 // Function to convert HTML back to markdown
 const htmlToMarkdown = (html: string): string => {
@@ -128,6 +129,7 @@ import {
   AlignJustify,
   CalendarIcon,
   Globe,
+  Bot,
   Wand2,
   AlertCircle,
   Trash2,
@@ -393,9 +395,12 @@ function RequirementDetailContent() {
     ],
     content: '',
     onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      const markdown = htmlToMarkdown(html);
       setEditForm(prev => ({ 
         ...prev, 
-        instructions: editor.getHTML()
+        instructions: html,
+        outsourceInstructions: markdown // Keep in sync
       }))
     },
     editorProps: {
@@ -470,6 +475,7 @@ function RequirementDetailContent() {
         editForm.title !== (requirement.title || '') ||
         editForm.description !== (requirement.description || '') ||
         currentMarkdownInstructions !== (requirement.instructions || '') ||
+        editForm.outsourceInstructions !== (requirement.instructions || '') ||
         editForm.type !== (requirement.type || 'task') ||
         editForm.priority !== (requirement.priority || 'medium') ||
         editForm.status !== (requirement.status || 'backlog') ||
@@ -609,11 +615,11 @@ function RequirementDetailContent() {
         segments: segmentIds,
         segmentNames: segmentNames,
         campaigns: campaignIds,
-        campaignNames: campaignNames,
-        campaign_id: campaign_id, // Usar el primer campaign_id (si existe)
-        outsourceInstructions: "", // Inicializar vacío, ya que no existe en la tabla requirements
-        campaignOutsourced: campaignOutsourced,
-        metadata: requirement.metadata || {}
+          campaignNames: campaignNames,
+          campaign_id: campaign_id, // Use the first campaign_id (if it exists)
+          outsourceInstructions: requirement.instructions || "", // Initialize with instructions since it is the same field
+          campaignOutsourced: campaignOutsourced,
+          metadata: requirement.metadata || {}
       }
       
       // Debug log for metadata
@@ -632,22 +638,22 @@ function RequirementDetailContent() {
       })) || []
       
       // Process campaigns for the dropdown
-      // Y agregamos la información de segmentos a cada campaña
+      // And add the segments information to each campaign
       const formattedCampaigns = campaigns?.map((campaign: {
         id: string;
         title: string;
         description?: string;
       }) => {
-        // Para cada campaña, buscaremos los segmentos relacionados
+        // For each campaign, we will look for related segments
         const campaignWithSegments = {
-        id: campaign.id,
-        title: campaign.title,
+          id: campaign.id,
+          title: campaign.title,
           description: campaign.description || "",
           segments: [] as string[],
           segmentNames: [] as string[]
         }
         
-        // Podríamos cargar los segmentos de la campaña aquí si es necesario
+        // We could load the campaign segments here if necessary
         
         return campaignWithSegments
       }) || []
@@ -671,7 +677,7 @@ function RequirementDetailContent() {
         campaign_id: formattedRequirement.campaign_id,
         segmentNames: formattedRequirement.segmentNames,
         campaignNames: formattedRequirement.campaignNames,
-        outsourceInstructions: formattedRequirement.outsourceInstructions,
+        outsourceInstructions: formattedRequirement.instructions || "", // Keep them in sync
       })
 
       // Set editor content
@@ -853,13 +859,14 @@ function RequirementDetailContent() {
   }
 
   // Add save instructions function
-  const handleSaveChanges = async () => {
-    if (!requirement) return
+  const handleSaveChanges = async (): Promise<boolean> => {
+    if (!requirement) return false
     
     setIsSaving(true)
     try {
-      // Convert HTML instructions back to markdown for storage
-      const markdownInstructions = htmlToMarkdown(editForm.instructions);
+      // Convert HTML instructions back to markdown for storage (we'll use the outsourceInstructions if we're on the outsource tab)
+      // Since outsourceInstructions is just plain text, we don't need to convert it, but we should make sure we're saving the right one
+      const markdownInstructions = editForm.outsourceInstructions || htmlToMarkdown(editForm.instructions);
       
       // Update the requirement with instructions first
       const instructionsResult = await updateRequirementInstructions(requirement.id, markdownInstructions)
@@ -882,7 +889,7 @@ function RequirementDetailContent() {
         segments: editForm.segments,
         campaigns: editForm.campaigns,
         campaign_id: editForm.campaign_id,
-        outsourceInstructions: "" // Pasamos string vacío ya que no se usará
+        outsourceInstructions: markdownInstructions
       })
       
       if (error) {
@@ -945,9 +952,11 @@ function RequirementDetailContent() {
       
       // Refresh requirement data
       loadRequirement()
+      return true
     } catch (error) {
       console.error("Error updating requirement:", error)
       toast.error("Failed to update requirement")
+      return false
     } finally {
       setIsSaving(false)
     }
@@ -1313,7 +1322,7 @@ function RequirementDetailContent() {
                     <p className="text-xs text-muted-foreground mb-2">Add segment to requirement</p>
                     
                     {!showSegmentDropdown ? (
-                      // Solo mostrar el botón Add Segment si hay segmentos disponibles para agregar
+                      // Only show Add Segment button if there are segments available to add
                       segments.filter(segment => !editForm.segments.includes(segment.id)).length > 0 ? (
                         <Button 
                           variant="outline" 
@@ -1357,7 +1366,7 @@ function RequirementDetailContent() {
                               </SelectContent>
                             </Select>
                             
-                            {/* Solo mostrar el botón Done si hay segmentos disponibles */}
+                            {/* Only show Done button if there are segments available */}
                             <Button 
                               variant="outline" 
                               size="sm" 
@@ -1396,12 +1405,12 @@ function RequirementDetailContent() {
                       if (value !== "none") {
                         const selectedCampaign = campaigns.find(c => c.id === value);
                         if (selectedCampaign) {
-                          // Cargar los segmentos de la campaña seleccionada
+                          // Load the selected campaign segments
                           const loadCampaignSegments = async () => {
                             try {
                               const supabase = createClient();
                               
-                              // Obtener segmentos de la campaña
+                              // Get campaign segments
                               const { data: campaignSegments, error } = await supabase
                                 .from("campaign_segments")
                                 .select("segment_id")
@@ -1412,20 +1421,20 @@ function RequirementDetailContent() {
                                 return;
                               }
                               
-                              // Extraer IDs de segmentos
+                              // Extract segment IDs
                               const segmentIds = campaignSegments.map((cs: { segment_id: string }) => cs.segment_id);
                               
-                              // Obtener nombres de segmentos
+                              // Get segment names
                               const segmentNames = segmentIds.map((id: string) => {
                                 const segment = segments.find(s => s.id === id);
                                 return segment ? segment.name : "Unknown";
                               });
                               
-                              // Actualizar el formulario con la nueva campaña y sus segmentos
+                              // Update the form with the new campaign and its segments
                               setEditForm(prev => ({ 
                                 ...prev, 
                                 campaign_id: value,
-                                campaigns: [value], // Establecer campaigns como array con solo el ID seleccionado
+                                campaigns: [value], // Set campaigns as array with only the selected ID
                                 campaignNames: [selectedCampaign.title],
                                 segments: segmentIds,
                                 segmentNames: segmentNames
@@ -1441,13 +1450,13 @@ function RequirementDetailContent() {
                           loadCampaignSegments();
                         }
                       } else {
-                        // Si "none" es seleccionado, limpiar datos de campaña
+                        // If "none" is selected, clear campaign data
                         setEditForm(prev => ({ 
                           ...prev, 
                           campaign_id: "",
                           campaigns: [],
                           campaignNames: [],
-                          // También limpiar segmentos
+                          // Also clear segments
                           segments: [],
                           segmentNames: []
                         }));
@@ -1569,8 +1578,14 @@ function RequirementDetailContent() {
           />
         </div>
         <div className="flex-1 overflow-auto">
-          <div className="p-4 h-full flex flex-col">
-            <EditorContent editor={editor} className="prose prose-sm dark:prose-invert max-w-none flex-1" />
+          <div className="p-0 flex flex-col min-h-full max-w-4xl mx-auto w-full">
+            <EditorContent 
+              editor={editor} 
+              className={`prose prose-sm dark:prose-invert max-w-none flex-1 [&>.tiptap]:outline-none [&>.tiptap]:px-4 [&>.tiptap]:lg:px-8 [&>.tiptap]:py-8 ${!editor?.getText() ? '[&>.tiptap]:min-h-[calc(100vh-280px)]' : '[&>.tiptap]:min-h-[50vh]'}`} 
+            />
+            {requirement?.id && (
+              <RequirementStatusList requirementId={requirement.id} hasContent={!!editor?.getText()} />
+            )}
           </div>
         </div>
       </div>
@@ -1582,7 +1597,7 @@ function RequirementDetailContent() {
             <div className="flex-none h-[71px] border-b flex items-center justify-center px-4">
               <TabsList className="grid grid-cols-2 w-full">
                 <TabsTrigger value="info">Details</TabsTrigger>
-                <TabsTrigger value="outsource">Outsource</TabsTrigger>
+                <TabsTrigger value="outsource">Agents</TabsTrigger>
               </TabsList>
             </div>
             
@@ -1648,10 +1663,10 @@ function RequirementDetailContent() {
                       {/* Only show outsource instructions and button if not already outsourced */}
                       {!requirement?.metadata?.payment_status?.outsourced && !requirement?.campaignOutsourced && (
                         <>
-                          {/* Outsource Instructions */}
+                          {/* Agent Instructions */}
                           <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
                             <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                              Outsource Instructions
+                              Agent Instructions
                             </h3>
                             
                             <div className="space-y-4 max-w-full">
@@ -1667,15 +1682,22 @@ function RequirementDetailContent() {
                               </div>
                               
                               <div className="space-y-2">
-                                <Label className="text-sm font-medium">Instructions for Outsourcing</Label>
+                                <Label className="text-sm font-medium">Instructions for Agents</Label>
                                 <Textarea 
-                                  placeholder="Provide detailed instructions for outsourcing this requirement..." 
+                                  placeholder="Provide detailed instructions for the agents to execute this requirement..." 
                                   className="min-h-[150px] w-full resize-none text-sm"
-                                  value={editForm.outsourceInstructions}
-                                  onChange={(e) => setEditForm({...editForm, outsourceInstructions: e.target.value})}
+                                  value={editForm.outsourceInstructions || editForm.instructions}
+                                  onChange={(e) => {
+                                    setEditForm({...editForm, outsourceInstructions: e.target.value, instructions: e.target.value});
+                                    if (editor) {
+                                      const formattedHTML = markdownToHTML(e.target.value);
+                                      editor.commands.setContent(formattedHTML);
+                                    }
+                                    setUnsavedChanges(true);
+                                  }}
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                  Note: This information is for your reference only and is not saved to the database.
+                                  Note: These instructions will be sent to the agents when you click the "Send to Agents" button below. They are saved in the requirement's instructions field.
                                 </p>
                               </div>
                               
@@ -1726,12 +1748,39 @@ function RequirementDetailContent() {
                   </ScrollArea>
                 </div>
                 
-                {/* Only show outsource button if not already outsourced */}
+                {/* Only show send to agents button if not already outsourced */}
                 {!requirement?.metadata?.payment_status?.outsourced && !requirement?.campaignOutsourced && (
                   <div className="border-t p-4 bg-background mt-auto">
-                    <Button className="w-full" onClick={() => router.push(`/outsource/checkout?taskId=${params.id}`)}>
-                      <Globe className="h-4 w-4 mr-2" />
-                      Outsource Task
+                    <Button 
+                      className="w-full" 
+                      disabled={isSaving}
+                      onClick={async () => {
+                      if (unsavedChanges) {
+                        const saved = await handleSaveChanges();
+                        if (!saved) return;
+                      }
+
+                      if (params.id && typeof params.id === 'string') {
+                        const result = await updateRequirementStatus(params.id, "in-progress");
+                        if (!result.error) {
+                          toast.success("Task sent to agents successfully");
+                          router.push('/requirements');
+                        } else {
+                          toast.error("Failed to send task to agents");
+                        }
+                      }
+                    }}>
+                      {isSaving ? (
+                        <>
+                          <div className="h-4 w-4 mr-2 animate-pulse bg-current rounded-full" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Bot className="h-4 w-4 mr-2" />
+                          Send to Agents
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}

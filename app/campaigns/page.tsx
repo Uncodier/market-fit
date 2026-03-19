@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { Target, Filter, LayoutGrid, PlayCircle, Clock, CheckCircle2 } from "@/app/components/ui/icons"
+import { Target, Filter, LayoutGrid, PlayCircle, Clock, CheckCircle2, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { KanbanColumn } from "@/app/components/campaigns/kanban-column"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -13,6 +13,7 @@ import { Button } from "@/app/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu"
@@ -25,6 +26,7 @@ import type { Campaign } from "@/app/types"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { cn } from "@/lib/utils"
 
 // Mock data for the Kanban board
 const mockTasks: {
@@ -562,6 +564,7 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>(["high", "medium", "low"]);
+  const [sortBy, setSortBy] = useState<"due_date" | "oldest" | "newest" | "budget" | "roi">("due_date");
   const [activeTab, setActiveTab] = useState("all");
   const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([]);
   const [requirements, setRequirements] = useState<Array<{ 
@@ -575,26 +578,44 @@ export default function CampaignsPage() {
   }>>([]);
   const { currentSite } = useSite();
   
-  // Get the current filter label
-  const getFilterLabel = () => {
-    if (selectedPriorities.length === 3) {
-      return t('campaigns.filter.all') || "All Priorities";
-    }
-    if (selectedPriorities.length === 0) {
-      return t('campaigns.filter.none') || "No Filters";
-    }
-    if (selectedPriorities.length === 1) {
-      const priority = selectedPriorities[0];
-      return t(`campaigns.filter.${priority}`) || `${priority.charAt(0).toUpperCase() + priority.slice(1)} Priority`;
-    }
-    return (t('campaigns.filter.multiple') || "{count} Priorities").replace('{count}', selectedPriorities.length.toString());
-  };
-  
   // Initialize command+k hook
   useCommandK()
 
   // Group campaigns by type and filter by status
   const campaignsByType: { [key: string]: Campaign[] } = {};
+  const getCampaignRoi = (campaign: Campaign) => {
+    const budgetAllocated = campaign.budget?.allocated ?? 0;
+    if (budgetAllocated <= 0) return -Infinity;
+    const revenueActual = campaign.revenue?.actual ?? 0;
+    return ((revenueActual - budgetAllocated) / budgetAllocated) * 100;
+  };
+
+  const compareCampaigns = (campaignA: Campaign, campaignB: Campaign) => {
+    const dateA = new Date(campaignA.createdAt).getTime();
+    const dateB = new Date(campaignB.createdAt).getTime();
+
+    if (sortBy === "oldest") return dateA - dateB;
+    if (sortBy === "newest") return dateB - dateA;
+
+    if (sortBy === "due_date") {
+      const dueDateA = new Date(campaignA.dueDate).getTime();
+      const dueDateB = new Date(campaignB.dueDate).getTime();
+      return dueDateA - dueDateB;
+    }
+
+    if (sortBy === "budget") {
+      const budgetA = campaignA.budget?.allocated ?? 0;
+      const budgetB = campaignB.budget?.allocated ?? 0;
+      return budgetB - budgetA;
+    }
+
+    if (sortBy === "roi") {
+      return getCampaignRoi(campaignB) - getCampaignRoi(campaignA);
+    }
+
+    return 0;
+  };
+
   campaigns.forEach(campaign => {
     // Filter campaigns by tab status
     const campaignStatus = campaign.status || "active";
@@ -618,6 +639,10 @@ export default function CampaignsPage() {
     ) {
       campaignsByType[campaign.type].push(campaign);
     }
+  });
+
+  Object.keys(campaignsByType).forEach((campaignType) => {
+    campaignsByType[campaignType].sort(compareCampaigns);
   });
 
   // Fetch campaigns and requirements
@@ -699,96 +724,139 @@ export default function CampaignsPage() {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.all') || "All"}>
-                    <LayoutGrid size={13} />
+                    <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('campaigns.tabs.all') || 'All'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.active') || "Active"}>
-                    <PlayCircle size={13} />
+                    <PlayCircle size={13} className="md:!hidden" />
                     <span className="tab-label">{t('campaigns.tabs.active') || 'Active'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.pending') || "Pending"}>
-                    <Clock size={13} />
+                    <Clock size={13} className="md:!hidden" />
                     <span className="tab-label">{t('campaigns.tabs.pending') || 'Pending'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.draft') || "Draft"}>
-                    <LayoutGrid size={13} />
+                    <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('campaigns.tabs.draft') || 'Drafts'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('campaigns.tabs.completed') || "Completed"}>
-                    <CheckCircle2 size={13} />
+                    <CheckCircle2 size={13} className="md:!hidden" />
                     <span className="tab-label">{t('campaigns.tabs.completed') || 'Completed'}</span>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-            <SearchInput
-              data-command-k-input
-              placeholder={t('campaigns.search.placeholder') || "Search campaigns..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64"
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" className="h-9 gap-2">
-                  <Filter className="h-4 w-4" />
-                  {getFilterLabel()}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[200px]">
-                <DropdownMenuCheckboxItem
-                  checked={selectedPriorities.length === 3}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedPriorities(["high", "medium", "low"]);
-                    } else {
-                      setSelectedPriorities([]);
-                    }
-                  }}
-                  className={selectedPriorities.length === 3 ? "bg-primary/10 font-medium" : ""}
-                >
-                  {t('campaigns.filter.all') || "All Priorities"}
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={selectedPriorities.includes("high")}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedPriorities([...selectedPriorities, "high"]);
-                    } else {
-                      setSelectedPriorities(selectedPriorities.filter(p => p !== "high"));
-                    }
-                  }}
-                  className={selectedPriorities.includes("high") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
-                >
-                  {t('campaigns.filter.high') || "High Priority"}
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={selectedPriorities.includes("medium")}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedPriorities([...selectedPriorities, "medium"]);
-                    } else {
-                      setSelectedPriorities(selectedPriorities.filter(p => p !== "medium"));
-                    }
-                  }}
-                  className={selectedPriorities.includes("medium") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
-                >
-                  {t('campaigns.filter.medium') || "Medium Priority"}
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  checked={selectedPriorities.includes("low")}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedPriorities([...selectedPriorities, "low"]);
-                    } else {
-                      setSelectedPriorities(selectedPriorities.filter(p => p !== "low"));
-                    }
-                  }}
-                  className={selectedPriorities.includes("low") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
-                >
-                  {t('campaigns.filter.low') || "Low Priority"}
-                </DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+              <SearchInput
+                data-command-k-input
+                placeholder={t('campaigns.search.placeholder') || "Search campaigns..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-64"
+                alwaysExpanded={false}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[200px]">
+                  <DropdownMenuCheckboxItem
+                    checked={selectedPriorities.length === 3}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedPriorities(["high", "medium", "low"]);
+                      } else {
+                        setSelectedPriorities([]);
+                      }
+                    }}
+                    className={selectedPriorities.length === 3 ? "bg-primary/10 font-medium" : ""}
+                  >
+                    {t('campaigns.filter.all') || "All Priorities"}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={selectedPriorities.includes("high")}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedPriorities([...selectedPriorities, "high"]);
+                      } else {
+                        setSelectedPriorities(selectedPriorities.filter(p => p !== "high"));
+                      }
+                    }}
+                    className={selectedPriorities.includes("high") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
+                  >
+                    {t('campaigns.filter.high') || "High Priority"}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={selectedPriorities.includes("medium")}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedPriorities([...selectedPriorities, "medium"]);
+                      } else {
+                        setSelectedPriorities(selectedPriorities.filter(p => p !== "medium"));
+                      }
+                    }}
+                    className={selectedPriorities.includes("medium") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
+                  >
+                    {t('campaigns.filter.medium') || "Medium Priority"}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={selectedPriorities.includes("low")}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedPriorities([...selectedPriorities, "low"]);
+                      } else {
+                        setSelectedPriorities(selectedPriorities.filter(p => p !== "low"));
+                      }
+                    }}
+                    className={selectedPriorities.includes("low") && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
+                  >
+                    {t('campaigns.filter.low') || "Low Priority"}
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title="Sort by">
+                    <ListOrdered className="h-4 w-4" />
+                    <span className="hidden sm:inline font-normal">
+                      {sortBy === "due_date"
+                        ? "Due date"
+                        : sortBy === "oldest"
+                          ? "Oldest"
+                          : sortBy === "newest"
+                            ? "Newest"
+                            : sortBy === "budget"
+                              ? "Budget"
+                              : "ROI"}
+                    </span>
+                    <ChevronDown className="h-3 w-3 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("due_date")}>
+                    <Check className={cn("mr-2 h-4 w-4", sortBy === "due_date" ? "opacity-100" : "opacity-0")} />
+                    Due date
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
+                    <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                    Oldest
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
+                    <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                    Newest
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("budget")}>
+                    <Check className={cn("mr-2 h-4 w-4", sortBy === "budget" ? "opacity-100" : "opacity-0")} />
+                    Budget
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("roi")}>
+                    <Check className={cn("mr-2 h-4 w-4", sortBy === "roi" ? "opacity-100" : "opacity-0")} />
+                    ROI
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <CalendarDateRangePicker />
           </div>
         </div>

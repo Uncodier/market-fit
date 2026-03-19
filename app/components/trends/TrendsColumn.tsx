@@ -247,7 +247,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
   return (
     <>
       {/* Trends Column - Styled like Kanban columns */}
-      <div className="flex-shrink-0 w-80 h-fit max-h-[calc(100vh-250px)] flex flex-col justify-start">
+      <div className={`flex-shrink-0 w-80 h-fit max-h-full min-h-0 flex flex-col justify-start ${className}`}>
         <div className="bg-background rounded-t-md p-3 border-b border-x border-t flex-none">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-sm">Trends</h3>
@@ -271,7 +271,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
             </div>
           </div>
         </div>
-        <div className="bg-muted/30 rounded-b-md p-2 border-b border-x overflow-y-auto">
+        <div className="bg-muted/30 rounded-b-md p-2 border-b border-x overflow-y-auto min-h-0">
           {isLoading ? (
             renderTrendsSkeleton()
           ) : trends.length > 0 ? (

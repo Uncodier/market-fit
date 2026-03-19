@@ -168,7 +168,7 @@ export interface ToolCallGroup {
   groupId: string
 }
 
-export type TimelineItemType = 'log' | 'completed_plan' | 'tool_group'
+export type TimelineItemType = 'log' | 'completed_plan' | 'tool_group' | 'requirement_status'
 
 export interface ProcessedTimelineItem {
   type: TimelineItemType
@@ -191,17 +191,12 @@ export const groupTimelineToolCalls = (
   while (i < sortedTimeline.length) {
     const item = sortedTimeline[i]
 
-    if (item.type === 'completed_plan') {
+    if (item.type !== 'log') {
       result.push({
-        type: 'completed_plan',
+        type: item.type as TimelineItemType,
         timestamp: item.timestamp,
         data: item.data
       })
-      i++
-      continue
-    }
-
-    if (item.type !== 'log') {
       i++
       continue
     }

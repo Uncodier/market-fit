@@ -4,8 +4,6 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { Category } from "@/app/types"
 import { Badge } from "@/app/components/ui/badge"
-import { CategoriesHeader } from "./CategoriesHeader"
-import { TaskStatusFilter } from "./TaskStatusFilter"
 import { useTheme } from "@/app/context/ThemeContext"
 import { Check, Tag } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -59,12 +57,6 @@ interface TaskSidebarProps {
   taskCountByCategory: Record<string, number>
   taskCountByType: Record<string, number>
   isCollapsed: boolean
-  searchQuery: string
-  onSearchChange: (value: string) => void
-  statusFilter: StatusFilterType
-  onStatusFilterChange: (filter: StatusFilterType) => void
-  onFilterClick?: () => void
-  activeFilters?: number
 }
 
 export function TaskSidebar({
@@ -74,13 +66,7 @@ export function TaskSidebar({
   onSelectItem,
   taskCountByCategory,
   taskCountByType,
-  isCollapsed,
-  searchQuery,
-  onSearchChange,
-  statusFilter,
-  onStatusFilterChange,
-  onFilterClick,
-  activeFilters = 0
+  isCollapsed
 }: TaskSidebarProps) {
   const { isDarkMode } = useTheme()
   const { t } = useLocalization()
@@ -90,33 +76,19 @@ export function TaskSidebar({
 
   return (
     <div className={cn(
-      "h-full transition-all duration-200 ease-in-out",
+      "h-full transition-all duration-300 ease-in-out",
       !isDarkMode && "border-r",
       isCollapsed ? "w-0 opacity-0" : "w-[319px]",
+      "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60",
       // Scoped class for Safari-specific fixes
       "task-sidebar"
     )}>
-      <CategoriesHeader 
-        isDarkMode={isDarkMode} 
-        isCollapsed={isCollapsed}
-        searchQuery={searchQuery}
-        onSearchChange={onSearchChange}
-      />
-      <div className="h-[calc(100vh-64px)] overflow-hidden" style={{ paddingTop: '71px' }}>
-        <ScrollArea className={cn(
-          "h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-        )} style={{ minHeight: 'calc(100vh - 71px - 56px)' }}>
+      <div className="h-[calc(100vh-64px)] overflow-hidden">
+        <ScrollArea className="h-full" style={{ minHeight: 'calc(100vh - 64px)' }}>
           <div className={cn(
-            "w-[319px] transition-all duration-200 ease-in-out",
+            "w-[319px] transition-all duration-300 ease-in-out py-2",
             isCollapsed ? "opacity-0" : "opacity-100"
           )}>
-            {/* Status Filter - Always visible */}
-            <TaskStatusFilter
-              selectedFilter={statusFilter}
-              onFilterChange={onStatusFilterChange}
-              onFilterClick={onFilterClick}
-              activeFilters={activeFilters}
-            />
 
             {/* Show single empty state if no categories and no task types */}
             {categories.length === 0 && taskTypes.length === 0 ? (

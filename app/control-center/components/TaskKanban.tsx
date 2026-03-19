@@ -32,6 +32,7 @@ interface KanbanPaginationState {
 
 interface TaskKanbanProps {
   tasks: ExtendedTask[]
+  sortBy: "priority" | "newest" | "oldest" | "dueDateNearest" | "dueDateOldest"
   onUpdateTaskStatus: (taskId: string, newStatus: string) => Promise<void>
   onTaskClick: (task: ExtendedTask) => void
   kanbanPagination: Record<string, KanbanPaginationState>
@@ -95,7 +96,7 @@ const getSerialNumber = (serialId: string) => {
   return serialId
 }
 
-export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagination, onLoadMore, totalCounts }: TaskKanbanProps) {
+export function TaskKanban({ tasks, sortBy, onUpdateTaskStatus, onTaskClick, kanbanPagination, onLoadMore, totalCounts }: TaskKanbanProps) {
   const { t } = useLocalization()
   const router = useRouter()
   const { currentSite } = useSite()
@@ -107,10 +108,37 @@ export function TaskKanban({ tasks, onUpdateTaskStatus, onTaskClick, kanbanPagin
 
   const TASK_STATUSES = getTaskStatuses(t)
 
+  const sortTasks = React.useCallback((taskA: ExtendedTask, taskB: ExtendedTask) => {
+    if (sortBy === "priority") {
+      const priorityDiff = (taskB.priority || 0) - (taskA.priority || 0)
+      if (priorityDiff !== 0) return priorityDiff
+
+      const scheduleA = new Date(taskA.scheduled_date || 0).getTime()
+      const scheduleB = new Date(taskB.scheduled_date || 0).getTime()
+      return scheduleA - scheduleB
+    }
+
+    if (sortBy === "dueDateNearest") {
+      const dueDateA = new Date(taskA.scheduled_date || 0).getTime()
+      const dueDateB = new Date(taskB.scheduled_date || 0).getTime()
+      return dueDateA - dueDateB
+    }
+
+    if (sortBy === "dueDateOldest") {
+      const dueDateA = new Date(taskA.scheduled_date || 0).getTime()
+      const dueDateB = new Date(taskB.scheduled_date || 0).getTime()
+      return dueDateB - dueDateA
+    }
+
+    const createdA = new Date(taskA.created_at || 0).getTime()
+    const createdB = new Date(taskB.created_at || 0).getTime()
+    return sortBy === "newest" ? createdB - createdA : createdA - createdB
+  }, [sortBy])
+
   const tasksByStatus = TASK_STATUSES.reduce((acc, status) => {
     const statusTasks = localTasks
       .filter(task => task.status === status.id)
-      .sort((a, b) => (b.priority || 0) - (a.priority || 0)) // Sort by priority descending
+      .sort(sortTasks)
     
     // Apply pagination: show up to 50 tasks per column initially, then load more
     const pagination = kanbanPagination[status.id]

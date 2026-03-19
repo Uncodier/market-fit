@@ -748,15 +748,15 @@ export default function SegmentsPage() {
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.all') || 'All Segments'}>
-                    <LayoutGrid size={13} />
+                    <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('segments.tabs.all') || 'All Segments'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.active') || 'Active'}>
-                    <CheckCircle2 size={13} />
+                    <CheckCircle2 size={13} className="md:!hidden" />
                     <span className="tab-label">{t('segments.tabs.active') || 'Active'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.draft') || 'Draft'}>
-                    <PenSquare size={13} />
+                    <PenSquare size={13} className="md:!hidden" />
                     <span className="tab-label">{t('segments.tabs.draft') || 'Draft'}</span>
                   </TabsTrigger>
                 </TabsList>
@@ -828,15 +828,15 @@ export default function SegmentsPage() {
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.all') || 'All Segments'}>
-                    <LayoutGrid size={13} />
+                    <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('segments.tabs.all') || 'All Segments'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.active') || 'Active'}>
-                    <CheckCircle2 size={13} />
+                    <CheckCircle2 size={13} className="md:!hidden" />
                     <span className="tab-label">{t('segments.tabs.active') || 'Active'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('segments.tabs.draft') || 'Draft'}>
-                    <PenSquare size={13} />
+                    <PenSquare size={13} className="md:!hidden" />
                     <span className="tab-label">{t('segments.tabs.draft') || 'Draft'}</span>
                   </TabsTrigger>
                 </TabsList>

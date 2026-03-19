@@ -610,7 +610,7 @@ export function DatePicker({
               )}
               <div className="flex justify-between items-center mb-3">
                 <button 
-                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-md flex items-center justify-center border-0 bg-transparent cursor-pointer" 
+                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary rounded-md flex items-center justify-center border-0 bg-transparent cursor-pointer" 
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -624,7 +624,7 @@ export function DatePicker({
                 </button>
                 <button
                   type="button"
-                  className="font-medium text-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded px-2 py-1"
+                  className="font-medium text-base focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary rounded px-2 py-1"
                   onClick={() => {
                     // Optional: could add month/year picker functionality here
                   }}
@@ -632,7 +632,7 @@ export function DatePicker({
                   {format(currentMonth, "MMMM yyyy")}
                 </button>
                 <button 
-                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-md flex items-center justify-center border-0 bg-transparent cursor-pointer" 
+                  className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary rounded-md flex items-center justify-center border-0 bg-transparent cursor-pointer" 
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();

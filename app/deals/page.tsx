@@ -108,7 +108,7 @@ export default function DealsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [viewType, setViewType] = useMobileView("kanban")
   const { currentSite } = useSite()
-  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "value_desc" | "value_asc">("newest")
 
   const loadDeals = async (silent = false) => {
     if (!currentSite?.id) return
@@ -168,9 +168,13 @@ export default function DealsPage() {
     filtered = filtered.sort((a, b) => {
       const dateA = new Date(a.created_at || 0).getTime()
       const dateB = new Date(b.created_at || 0).getTime()
+      const valueA = a.amount || 0
+      const valueB = b.amount || 0
       
       if (sortBy === 'newest') return dateB - dateA
       if (sortBy === 'oldest') return dateA - dateB
+      if (sortBy === 'value_desc') return valueB - valueA
+      if (sortBy === 'value_asc') return valueA - valueB
       return 0
     })
 
@@ -228,31 +232,43 @@ export default function DealsPage() {
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.all') || "All Deals"}>
-                    <LayoutGrid size={13} />
+                    <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('deals.tabs.all') || 'All Deals'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="open" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.open') || "Open Deals"}>
-                    <Target size={13} />
+                    <Target size={13} className="md:!hidden" />
                     <span className="tab-label">{t('deals.tabs.openTitle') || 'Open'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="won" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.won') || "Won Deals"}>
-                    <TrendingUp size={13} />
+                    <TrendingUp size={13} className="md:!hidden" />
                     <span className="tab-label">{t('deals.tabs.wonTitle') || 'Won'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="lost" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.lost') || "Lost Deals"}>
-                    <XCircle size={13} />
+                    <XCircle size={13} className="md:!hidden" />
                     <span className="tab-label">{t('deals.tabs.lostTitle') || 'Lost'}</span>
                   </TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-2">
+                  <SearchInput
+                    placeholder={t('deals.search') || "Search deals..."}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                    alwaysExpanded={false}
+                  />
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('deals.sortBy') === 'deals.sortBy' ? 'Sort by' : t('deals.sortBy')}>
                         <ListOrdered className="h-4 w-4" />
                         <span className="hidden sm:inline font-normal">
-                          {sortBy === "newest" 
+                          {sortBy === "newest"
                             ? (t('deals.sort.newest') === 'deals.sort.newest' ? 'Newest' : t('deals.sort.newest'))
-                            : (t('deals.sort.oldest') === 'deals.sort.oldest' ? 'Oldest' : t('deals.sort.oldest'))}
+                            : sortBy === "oldest"
+                              ? (t('deals.sort.oldest') === 'deals.sort.oldest' ? 'Oldest' : t('deals.sort.oldest'))
+                              : sortBy === "value_desc"
+                                ? (t('deals.sort.valueDesc') === 'deals.sort.valueDesc' ? 'Highest Value' : t('deals.sort.valueDesc'))
+                                : (t('deals.sort.valueAsc') === 'deals.sort.valueAsc' ? 'Lowest Value' : t('deals.sort.valueAsc'))}
                         </span>
                         <ChevronDown className="h-3 w-3 opacity-50" />
                       </Button>
@@ -272,15 +288,22 @@ export default function DealsPage() {
                         <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
                         {t('deals.sort.oldest') === 'deals.sort.oldest' ? 'Oldest' : t('deals.sort.oldest')}
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("value_desc")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "value_desc" ? "opacity-100" : "opacity-0")} />
+                        {t('deals.sort.valueDesc') === 'deals.sort.valueDesc' ? 'Highest Value' : t('deals.sort.valueDesc')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("value_asc")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "value_asc" ? "opacity-100" : "opacity-0")} />
+                        {t('deals.sort.valueAsc') === 'deals.sort.valueAsc' ? 'Lowest Value' : t('deals.sort.valueAsc')}
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  <SearchInput
-                    placeholder={t('deals.search') || "Search deals..."}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                  />
                 </div>
               </div>
               <div className="ml-auto flex items-center gap-4">

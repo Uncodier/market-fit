@@ -4,8 +4,9 @@ import { Button } from "@/app/components/ui/button"
 import { Card } from "@/app/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
-import { ExternalLink, PlusCircle, Filter, Search, ChevronDown, ChevronUp, Trash2, Download, Image, FileVideo, FileText, UploadCloud, Link as LinkIcon, Unlink, TableRows, LayoutGrid } from "@/app/components/ui/icons"
+import { ExternalLink, PlusCircle, Filter, Search, ChevronDown, ChevronUp, Trash2, Download, Image, FileVideo, FileText, UploadCloud, Link as LinkIcon, Unlink, TableRows, LayoutGrid, ListOrdered, Check } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
+import { SearchInput } from "@/app/components/ui/search-input"
 import React, { useEffect, useState, Suspense } from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { getAssets, deleteAsset, attachAssetToAgent, detachAssetFromAgent, getAgentAssets, type Asset } from "@/app/assets/actions"
@@ -36,6 +37,8 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSearchParams } from "next/navigation"
 import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
 import { CardContent } from "@/app/components/ui/card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
 
 interface AssetWithThumbnail extends Asset {
   thumbnailUrl?: string
@@ -924,32 +927,29 @@ function AssetsLoadingPage() {
               <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                     <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.all')}>
-                      <LayoutGrid size={13} />
+                      <LayoutGrid size={13} className="md:!hidden" />
                       <span className="tab-label">{t('assets.tabs.all')}</span>
                     </TabsTrigger>
                     <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.images')}>
-                      <Image size={13} />
+                      <Image size={13} className="md:!hidden" />
                       <span className="tab-label">{t('assets.tabs.images')}</span>
                     </TabsTrigger>
                     <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.videos')}>
-                      <FileVideo size={13} />
+                      <FileVideo size={13} className="md:!hidden" />
                       <span className="tab-label">{t('assets.tabs.videos')}</span>
                     </TabsTrigger>
                     <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.documents')}>
-                      <FileText size={13} />
+                      <FileText size={13} className="md:!hidden" />
                       <span className="tab-label">{t('assets.tabs.documents')}</span>
                     </TabsTrigger>
                   </TabsList>
                 <div className="relative w-64">
-                  <Input 
+                  <SearchInput 
                     placeholder={t('assets.searchPlaceholder')}
-                    className="w-full pr-16"
-                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                    className="w-full"
                     disabled
+                    alwaysExpanded={false}
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
                 </div>
               </div>
               <div className="ml-auto">
@@ -988,6 +988,8 @@ function AssetsContent() {
   const [isSearching, setIsSearching] = useState(false)
   const [attachedAssetIds, setAttachedAssetIds] = useState<string[]>([])
   const [viewType, setViewType] = useState<AssetViewType>('grid')
+  const [activeTab, setActiveTab] = useState<"all" | "images" | "videos" | "documents">("all")
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
   
   // Get agent ID from URL parameters
   const searchParams = useSearchParams()
@@ -1128,6 +1130,12 @@ function AssetsContent() {
     return matchesSearch
   })
 
+  filteredAssets = filteredAssets.sort((a, b) => {
+    const dateA = new Date(a.created_at || 0).getTime()
+    const dateB = new Date(b.created_at || 0).getTime()
+    return sortBy === "newest" ? dateB - dateA : dateA - dateB
+  })
+
   const handleDeleteAsset = (assetId: string) => {
     setAssets(assets.filter(a => a.id !== assetId))
   }
@@ -1143,34 +1151,31 @@ function AssetsContent() {
                 <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                     <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.all')}>
-                      <LayoutGrid size={13} />
+                      <LayoutGrid size={13} className="md:!hidden" />
                       <span className="tab-label">{t('assets.tabs.all')}</span>
                     </TabsTrigger>
                     <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.images')}>
-                      <Image size={13} />
+                      <Image size={13} className="md:!hidden" />
                       <span className="tab-label">{t('assets.tabs.images')}</span>
                     </TabsTrigger>
                     <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.videos')}>
-                      <FileVideo size={13} />
+                      <FileVideo size={13} className="md:!hidden" />
                       <span className="tab-label">{t('assets.tabs.videos')}</span>
                     </TabsTrigger>
                     <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.documents')}>
-                      <FileText size={13} />
+                      <FileText size={13} className="md:!hidden" />
                       <span className="tab-label">{t('assets.tabs.documents')}</span>
                     </TabsTrigger>
                   </TabsList>
                   <div className="relative w-64">
-                    <Input 
+                    <SearchInput 
                       data-command-k-input
                       placeholder={t('assets.searchPlaceholder')} 
-                      className="w-full pr-16" 
+                      className="w-full" 
                       value={searchTerm}
                       onChange={(e) => handleSearch(e.target.value)}
-                      icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
+                      alwaysExpanded={false}
                     />
-                    <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
-                      <span className="text-xs">⌘</span>K
-                    </kbd>
                   </div>
                 </div>
                 <div className="ml-auto flex items-center gap-4">
@@ -1244,41 +1249,87 @@ function AssetsContent() {
 
   return (
     <div className="flex-1 p-0 bg-muted/30 min-h-[calc(100vh-64px)]">
-      <Tabs defaultValue="all">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "images" | "videos" | "documents")}>
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={agentId ? (t('assets.tabs.compatible') || 'Compatible Assets') : t('assets.tabs.all')}>
-                    <LayoutGrid size={13} />
+                    <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{agentId ? (t('assets.tabs.compatible') || 'Compatible Assets') : t('assets.tabs.all')}</span>
                   </TabsTrigger>
                   <TabsTrigger value="images" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.images')}>
-                    <Image size={13} />
+                    <Image size={13} className="md:!hidden" />
                     <span className="tab-label">{t('assets.tabs.images')}</span>
                   </TabsTrigger>
                   <TabsTrigger value="videos" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.videos')}>
-                    <FileVideo size={13} />
+                    <FileVideo size={13} className="md:!hidden" />
                     <span className="tab-label">{t('assets.tabs.videos')}</span>
                   </TabsTrigger>
                   <TabsTrigger value="documents" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('assets.tabs.documents')}>
-                    <FileText size={13} />
+                    <FileText size={13} className="md:!hidden" />
                     <span className="tab-label">{t('assets.tabs.documents')}</span>
                   </TabsTrigger>
                 </TabsList>
-                <div className="relative w-64">
-                  <Input 
-                    data-command-k-input
-                    placeholder={t('assets.searchPlaceholder')} 
-                    className="w-full pr-16" 
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    icon={<Search className={`h-4 w-4 ${isSearching ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />}
-                  />
-                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
+                <div className="flex items-center gap-2">
+                  <div className="relative w-64">
+                    <SearchInput 
+                      data-command-k-input
+                      placeholder={t('assets.searchPlaceholder')} 
+                      className="w-full" 
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      alwaysExpanded={false}
+                    />
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">
+                        <Filter className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-44">
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("all")}>
+                        <Check className={cn("mr-2 h-4 w-4", activeTab === "all" ? "opacity-100" : "opacity-0")} />
+                        {agentId ? (t('assets.tabs.compatible') || 'Compatible Assets') : t('assets.tabs.all')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("images")}>
+                        <Check className={cn("mr-2 h-4 w-4", activeTab === "images" ? "opacity-100" : "opacity-0")} />
+                        {t('assets.tabs.images')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("videos")}>
+                        <Check className={cn("mr-2 h-4 w-4", activeTab === "videos" ? "opacity-100" : "opacity-0")} />
+                        {t('assets.tabs.videos')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("documents")}>
+                        <Check className={cn("mr-2 h-4 w-4", activeTab === "documents" ? "opacity-100" : "opacity-0")} />
+                        {t('assets.tabs.documents')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title="Sort by">
+                        <ListOrdered className="h-4 w-4" />
+                        <span className="hidden sm:inline font-normal">
+                          {sortBy === "newest" ? "Newest" : "Oldest"}
+                        </span>
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-40">
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                        Newest
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                        Oldest
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
               <div className="ml-auto flex items-center gap-4">

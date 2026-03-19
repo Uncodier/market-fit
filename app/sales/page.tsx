@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
-import { Input } from "@/app/components/ui/input"
+import { SearchInput } from "@/app/components/ui/search-input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { DollarSign, ShoppingCart, Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Printer, CreditCard, Eye, LayoutGrid, Clock, CheckCircle2, Ban, RotateCcw } from "@/app/components/ui/icons"
+import { DollarSign, ShoppingCart, Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Printer, CreditCard, Eye, LayoutGrid, Clock, CheckCircle2, Ban, RotateCcw, Filter, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -34,6 +34,8 @@ import { CreateSaleDialog } from "./components/CreateSaleDialog"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
 
 // Constants
 const NO_SEGMENT = "no_segment"
@@ -408,6 +410,7 @@ export default function SalesPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [viewType, setViewType] = useMobileView("table")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "value_desc" | "value_asc">("newest")
   const [dateRange, setDateRange] = useState({
     startDate: subDays(new Date(), 30),
     endDate: new Date()
@@ -553,7 +556,18 @@ export default function SalesPage() {
       )
     }
     
-    return filtered
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.saleDate || 0).getTime()
+      const dateB = new Date(b.saleDate || 0).getTime()
+      const valueA = a.amount || 0
+      const valueB = b.amount || 0
+
+      if (sortBy === "newest") return dateB - dateA
+      if (sortBy === "oldest") return dateA - dateB
+      if (sortBy === "value_desc") return valueB - valueA
+      if (sortBy === "value_asc") return valueA - valueB
+      return 0
+    })
   }
   
   const filteredSales = getFilteredSales(activeTab)
@@ -646,45 +660,108 @@ export default function SalesPage() {
   return (
     <SalesContext.Provider value={{ segments, campaigns }}>
       <div className="flex-1 min-w-0 w-full p-0">
-        <Tabs defaultValue={activeTab} className="h-full space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full space-y-6">
           <StickyHeader>
             <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-8">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                     <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.all') || "All Sales"}>
-                      <LayoutGrid size={13} />
+                      <LayoutGrid size={13} className="md:!hidden" />
                       <span className="tab-label">{t('sales.tabs.all') || 'All Sales'}</span>
                     </TabsTrigger>
                     <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.pending') || "Pending"}>
-                      <Clock size={13} />
+                      <Clock size={13} className="md:!hidden" />
                       <span className="tab-label">{t('sales.tabs.pending') || 'Pending'}</span>
                     </TabsTrigger>
                     <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.completed') || "Completed"}>
-                      <CheckCircle2 size={13} />
+                      <CheckCircle2 size={13} className="md:!hidden" />
                       <span className="tab-label">{t('sales.tabs.completed') || 'Completed'}</span>
                     </TabsTrigger>
                     <TabsTrigger value="cancelled" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.cancelled') || "Cancelled"}>
-                      <Ban size={13} />
+                      <Ban size={13} className="md:!hidden" />
                       <span className="tab-label">{t('sales.tabs.cancelled') || 'Cancelled'}</span>
                     </TabsTrigger>
                     <TabsTrigger value="refunded" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.refunded') || "Refunded"}>
-                      <RotateCcw size={13} />
+                      <RotateCcw size={13} className="md:!hidden" />
                       <span className="tab-label">{t('sales.tabs.refunded') || 'Refunded'}</span>
                     </TabsTrigger>
                   </TabsList>
-                  <div className="relative w-64">
-                    <Input 
-                      data-command-k-input
-                      placeholder={t('sales.search.placeholder') || "Search sales..."}
-                      className="w-full pr-16" 
-                      icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
-                      <span className="text-xs">⌘</span>K
-                    </kbd>
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-64">
+                      <SearchInput
+                        data-command-k-input
+                        placeholder={t('sales.search.placeholder') || "Search sales..."}
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                        alwaysExpanded={false}
+                      />
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">
+                          <Filter className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-40">
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("all")}>
+                          <Check className={cn("mr-2 h-4 w-4", activeTab === "all" ? "opacity-100" : "opacity-0")} />
+                          {t('sales.tabs.all') || "All Sales"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("pending")}>
+                          <Check className={cn("mr-2 h-4 w-4", activeTab === "pending" ? "opacity-100" : "opacity-0")} />
+                          {t('sales.tabs.pending') || "Pending"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("completed")}>
+                          <Check className={cn("mr-2 h-4 w-4", activeTab === "completed" ? "opacity-100" : "opacity-0")} />
+                          {t('sales.tabs.completed') || "Completed"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("cancelled")}>
+                          <Check className={cn("mr-2 h-4 w-4", activeTab === "cancelled" ? "opacity-100" : "opacity-0")} />
+                          {t('sales.tabs.cancelled') || "Cancelled"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("refunded")}>
+                          <Check className={cn("mr-2 h-4 w-4", activeTab === "refunded" ? "opacity-100" : "opacity-0")} />
+                          {t('sales.tabs.refunded') || "Refunded"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title="Sort by">
+                          <ListOrdered className="h-4 w-4" />
+                          <span className="hidden sm:inline font-normal">
+                            {sortBy === "newest"
+                              ? "Newest"
+                              : sortBy === "oldest"
+                                ? "Oldest"
+                                : sortBy === "value_desc"
+                                  ? "Highest Value"
+                                  : "Lowest Value"}
+                          </span>
+                          <ChevronDown className="h-3 w-3 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-40">
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                          Newest
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                          Oldest
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_desc")}>
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "value_desc" ? "opacity-100" : "opacity-0")} />
+                          Highest Value
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_asc")}>
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "value_asc" ? "opacity-100" : "opacity-0")} />
+                          Lowest Value
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   <CalendarDateRangePicker 
                     onRangeChange={handleDateRangeChange} 

@@ -101,7 +101,7 @@ export function OnboardingModeSelector({
               onClick={() => onSelect(mode.id)}
               className={`
                 relative flex flex-col items-start text-left rounded-xl border-2 p-5 transition-all duration-200 h-full w-full
-                hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+                hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset
                 ${isActive
                   ? `${mode.activeBorder} ${mode.bg} shadow-md -translate-y-0.5`
                   : `border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-900/40 hover:${mode.bg}`

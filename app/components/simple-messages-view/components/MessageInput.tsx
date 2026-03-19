@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Image as ImageIcon, PlayCircle, Speaker, ChevronRight, Plus, X, File, ListTodo } from "@/app/components/ui/icons"
+import { MessageSquare, Image as ImageIcon, PlayCircle, Speaker, ChevronRight, Plus, X, File, ListTodo, CheckSquare } from "@/app/components/ui/icons"
 import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
@@ -8,7 +8,10 @@ import { type SelectedContextIds } from '@/app/services/context-service'
 import { MediaParametersToolbar } from './MediaParametersToolbar'
 import { ImageParameters, VideoParameters, AudioParameters, MessageAttachment } from '../types'
 import { useAttachmentUpload } from '../hooks/useAttachmentUpload'
+import { useRequirementStatus } from '../hooks/useRequirementStatus'
+import { useRouter } from 'next/navigation'
 import { useSite } from '@/app/context/SiteContext'
+import { useLocalization } from '@/app/context/LocalizationContext'
 
 interface MessageInputProps {
   message: string
@@ -59,11 +62,43 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   const [dropdownDirection, setDropdownDirection] = useState<'down' | 'up'>('down')
   const dropdownRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const { uploadFile, isUploading } = useAttachmentUpload({ 
     siteId: currentSite?.id || '',
     instanceId: activeRobotInstance?.id
   })
+
+  // Fetch requirement status for this instance
+  const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
+  const latestRequirementStatus = requirementStatuses.length > 0 ? requirementStatuses[requirementStatuses.length - 1] : null
+  const requirementId = latestRequirementStatus?.requirement_id
+  const rawRequirements = latestRequirementStatus?.requirements
+  const requirementName = Array.isArray(rawRequirements) ? rawRequirements[0]?.title : rawRequirements?.title
+
+  // Calculate dynamic placeholder based on context and requirements
+  const contextCount = Object.values(selectedContext).reduce((acc: number, curr: any) => acc + (curr?.length || 0), 0) as number
+  
+  let dynamicPlaceholder = placeholder
+  if (placeholder === 'Ask anything...' || placeholder === 'Ask anything') {
+    const askAnythingStr = t('chat.askAnything') !== 'chat.askAnything' ? t('chat.askAnything') : 'Ask anything'
+    const aboutStr = t('chat.about') !== 'chat.about' ? t('chat.about') : 'about'
+    const andStr = t('chat.and') !== 'chat.and' ? t('chat.and') : 'and'
+    const itemStr = t('chat.item') !== 'chat.item' ? t('chat.item') : 'context item'
+    const itemsStr = t('chat.items') !== 'chat.items' ? t('chat.items') : 'context items'
+    const currentItemsStr = contextCount === 1 ? itemStr : itemsStr
+    
+    if (requirementName && contextCount > 0) {
+      dynamicPlaceholder = `${askAnythingStr} ${aboutStr} ${requirementName} ${andStr} ${contextCount} ${currentItemsStr}...`
+    } else if (requirementName) {
+      dynamicPlaceholder = `${askAnythingStr} ${aboutStr} ${requirementName}...`
+    } else if (contextCount > 0) {
+      dynamicPlaceholder = `${askAnythingStr} ${aboutStr} ${contextCount} ${currentItemsStr}...`
+    } else {
+      dynamicPlaceholder = `${askAnythingStr}...`
+    }
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -137,8 +172,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                   onSubmit()
                 }
               }}
-              placeholder={placeholder}
-              className="resize-none min-h-[135px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 text-base box-border transition-all duration-300 ease-in-out"
+              placeholder={dynamicPlaceholder}
+              className="resize-none min-h-[135px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset text-base box-border transition-all duration-300 ease-in-out"
               disabled={disabled}
               style={{
                 lineHeight: '1.5',
@@ -291,6 +326,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                   selectedContext={selectedContext}
                   onContextChange={onContextChange}
                   isBrowserVisible={isBrowserVisible}
+                  hideChips={true}
                 />
               </div>
             </div>
@@ -323,7 +359,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 disabled={disabled || !message.trim()}
                 className={`rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200 ${
                   !disabled && message.trim()
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background opacity-100'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset opacity-100'
                     : 'text-muted-foreground opacity-50 hover:bg-transparent'
                 }`}
               >

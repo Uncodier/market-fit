@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef } from "react"
+import { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef, useMemo } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -17,6 +17,7 @@ import { DeleteRobotModal } from "@/app/components/robots/DeleteRobotModal"
 import { createClient } from "@/lib/supabase/client"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import "@/app/styles/iframe-containment.css"
+import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
 
 // Robot interface
 interface Robot {
@@ -1002,8 +1003,26 @@ function RobotsPageContent() {
     }
   }, [pathname, calculateMaxVisibleTabs])
 
+  const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
+  // Use a stable reference that only computes when requirementStatuses changes
+  const latestPreviewUrl = useMemo(() => {
+    if (!requirementStatuses || requirementStatuses.length === 0) return null;
+    
+    // Check ONLY the last requirement_status
+    const lastStatus = requirementStatuses[requirementStatuses.length - 1];
+    if (lastStatus.preview_url && (lastStatus.source_code || lastStatus.repo_url)) {
+      return lastStatus.preview_url;
+    }
+    
+    return null;
+  }, [requirementStatuses]);
+  
   // Compute if browser should be visible
-  const isBrowserVisible = Boolean(((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning)) || (isActivityRobot && hasMessageBeenSent)) && !pendingInstanceId)
+  const isBrowserVisible = Boolean(
+    ((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning || !!latestPreviewUrl)) || 
+    (isActivityRobot && hasMessageBeenSent)) && 
+    !pendingInstanceId
+  )
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
@@ -1094,7 +1113,7 @@ function RobotsPageContent() {
                               <DropdownMenuTrigger asChild>
                                 <button
                                   type="button"
-                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50"
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50"
                                   onClick={(e) => e.preventDefault()}
                                 >
                                   <span className="flex items-center gap-2">
@@ -1328,13 +1347,13 @@ function RobotsPageContent() {
                       <div className="absolute inset-0 flex flex-col">
                         <BrowserSkeleton />
                       </div>
-                    ) : (isActivityRobot && hasMessageBeenSent && !isInstanceRunning) ? (
+                    ) : (isActivityRobot && hasMessageBeenSent && !isInstanceRunning && !latestPreviewUrl) ? (
                       <div className="absolute inset-0 flex flex-col">
                         <BrowserSkeleton />
                       </div>
-                    ) : isInstanceRunning ? (
+                    ) : (isInstanceRunning || !!latestPreviewUrl) ? (
                       <div className="relative w-full h-full bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
-                        {connectionStatus !== 'connected' && (
+                        {connectionStatus !== 'connected' && !latestPreviewUrl && (
                           <div className="absolute top-4 left-4 z-10">
                             <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium shadow-lg backdrop-blur-sm ${
                               connectionStatus === 'reconnecting' ? 'bg-yellow-100/90 text-yellow-800 border border-yellow-200' :
@@ -1376,7 +1395,7 @@ function RobotsPageContent() {
                             </div>
                           </div>
                         )}
-                        {showConnectedIndicator && (
+                        {showConnectedIndicator && !latestPreviewUrl && (
                           <div className="absolute top-4 left-4 z-10 animate-in fade-in duration-300">
                             <div className="flex items-center justify-center w-8 h-8 rounded-lg text-sm font-medium bg-green-100/90 text-green-800 border border-green-200 shadow-lg backdrop-blur-sm">
                               <div className="w-4 h-4 bg-green-600 rounded-full animate-pulse"></div>
@@ -1384,7 +1403,7 @@ function RobotsPageContent() {
                           </div>
                         )}
                         <div className="w-full h-full flex items-center justify-center bg-background iframe-wrapper">
-                          <div className="bg-background rounded-lg shadow-2xl border border-muted-foreground/30 overflow-hidden" style={{
+                          <div className="bg-background rounded-lg shadow-2xl border border-muted-foreground/30 overflow-hidden relative" style={{
                             width: '100%',
                             maxWidth: '1024px',
                             height: 'auto',
@@ -1394,23 +1413,27 @@ function RobotsPageContent() {
                             isolation: 'isolate'
                           }}>
                             <iframe
-                              src={streamUrl || "https://www.google.com"}
-                              className="border-0 bg-background rounded-lg contained-iframe"
-                              title={streamUrl ? "Robot Browser Session" : "Google"}
-                              allowFullScreen
-                              allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
-                              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
-                              style={{
-                                width: 'calc(100% + 4px)',
-                                height: 'calc(100% + 4px)',
-                                transform: 'translate(-2px, -2px)',
-                                transformOrigin: 'center center',
-                                position: 'relative',
-                                zIndex: 1,
-                                isolation: 'isolate'
-                              }}
-                              onLoad={() => {
-                                if (streamUrl) {
+                                src={latestPreviewUrl || streamUrl || "https://www.google.com"}
+                                className="border-0 bg-background rounded-lg contained-iframe"
+                                title={latestPreviewUrl ? "Preview" : streamUrl ? "Robot Browser Session" : "Google"}
+                                allowFullScreen
+                                allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
+                                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
+                                style={{
+                                  width: 'calc(100% + 4px)',
+                                  height: 'calc(100% + 4px)',
+                                  transform: 'translate(-2px, -2px)',
+                                  transformOrigin: 'center center',
+                                  position: 'relative',
+                                  zIndex: 1,
+                                  isolation: 'isolate'
+                                }}
+                                onLoad={(e) => {
+                                  // For previews, we don't need the connection status indicator 
+                                  // since it's just an iframe rendering HTML
+                                  if (latestPreviewUrl) return;
+
+                                  if (streamUrl) {
                                   setConnectionStatus('connected')
                                   
                                   // Only show indicator if status actually changed from non-connected to connected

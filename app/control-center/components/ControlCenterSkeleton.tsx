@@ -108,10 +108,9 @@ export function ControlCenterSkeleton({
 }: ControlCenterSkeletonProps = {}) {
   return (
     <div className="flex h-full relative overflow-hidden">
-      {/* Sidebar Skeleton - desktop only, matches hidden md:block on actual page */}
       <div 
         className={cn(
-          "hidden md:block fixed h-screen transition-all duration-200 ease-in-out z-10",
+          "hidden md:block fixed h-screen transition-[width,opacity,left] duration-300 ease-in-out z-[100]",
           isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
         )}
         style={{ 
@@ -120,28 +119,11 @@ export function ControlCenterSkeleton({
         }}
       >
         <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r">
-          {/* Sidebar search header */}
-          <div className="flex items-center justify-between h-[71px] border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 w-[319px] px-6 gap-4">
-            <Skeleton className="h-6 w-32 rounded" />
-            <div className="relative w-[140px]">
-              <Skeleton className="h-8 w-full rounded-md" />
-            </div>
-          </div>
-
           {/* Sidebar content */}
-          <div className="pt-[71px]">
-            {/* Status filter tabs */}
-            <div className="px-4 py-3 border-b border-border/30 flex items-center justify-center min-h-[56px]">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 p-0.5 bg-muted/30 rounded-full">
-                  <Skeleton className="h-7 w-8 rounded-sm" />
-                  <Skeleton className="h-7 w-10 rounded-sm" />
-                  <Skeleton className="h-7 w-14 rounded-sm" />
-                </div>
-                <Skeleton className="h-8 w-8 rounded-md" />
-              </div>
-            </div>
-
+          <div className={cn(
+            "transition-all duration-300 ease-in-out py-2",
+            isSidebarCollapsed ? "opacity-0" : "opacity-100"
+          )}>
             {/* Category items */}
             <div className="p-1 space-y-0.5">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -176,29 +158,28 @@ export function ControlCenterSkeleton({
         </div>
       </div>
 
-      {/* Main content */}
       <div 
         className={cn(
-          "flex flex-col h-full flex-1 min-w-0 transition-[padding] duration-200 ease-in-out",
+          "flex flex-col h-full flex-1 min-w-0 transition-[margin] duration-300 ease-in-out",
           !isSidebarCollapsed && "md:ml-[319px]"
         )}
       >
         {/* Header - matches ControlCenterHeader */}
-        <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[99] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           {/* Sidebar toggle - desktop only */}
           <div className="hidden md:flex absolute top-0 left-0 h-[71px] items-center pl-4">
             <Skeleton className="h-8 w-8 rounded-md" />
           </div>
 
           {/* Header content */}
-          <div className="w-full flex items-center justify-between ml-4 md:ml-[72px] pr-4 lg:pr-8">
+          <div className="w-full flex items-center justify-between ml-14 md:ml-[72px] px-4 lg:px-8">
             <div className="flex items-center gap-2">
-              <Skeleton className="h-9 w-24 rounded-full" />
+              <Skeleton className="h-8 w-[200px] rounded-full" />
+              <Skeleton className="h-9 w-[200px] rounded-full" />
+              <Skeleton className="h-9 w-9 rounded-full" />
+              <Skeleton className="h-9 w-[100px] rounded-full" />
             </div>
             <div className="flex items-center gap-4">
-              {/* Mobile: title placeholder */}
-              <Skeleton className="h-5 w-32 md:hidden" />
-
               {/* View selector */}
               <Skeleton className="h-9 w-[116px] rounded-md" />
             </div>

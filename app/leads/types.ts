@@ -42,6 +42,8 @@ export interface Lead {
   campaign_id: string | null
   status: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified"
   created_at: string
+  updated_at: string
+  last_contact: string | null
   origin: string | null
   birthday: string | null
   language: string | null
