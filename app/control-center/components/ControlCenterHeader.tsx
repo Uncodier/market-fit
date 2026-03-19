@@ -2,20 +2,25 @@
 
 import { cn } from "@/lib/utils"
 import { SidebarToggle } from "./SidebarToggle"
-
+import { SearchInput } from "@/app/components/ui/search-input"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 
 interface ControlCenterHeaderProps {
   isSidebarCollapsed: boolean
   toggleSidebar: () => void
+  leftContent?: React.ReactNode
   rightContent?: React.ReactNode
 }
 
 export function ControlCenterHeader({
   isSidebarCollapsed,
   toggleSidebar,
-  rightContent
+  leftContent,
+  rightContent,
 }: ControlCenterHeaderProps) {
+  const { t } = useLocalization()
+
   return (
     <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       {/* SidebarToggle positioned absolutely - hidden on mobile */}
@@ -29,12 +34,14 @@ export function ControlCenterHeader({
       
       <div className={cn(
         "w-full flex items-center justify-between transition-[padding,margin] duration-300 ease-in-out pr-4 lg:pr-8",
-        "ml-4 md:ml-[120px]"
+        "ml-14 md:ml-[72px]"
       )}>
-        <div className="flex items-center gap-8">
-          {/* Filter button moved to TaskStatusFilter in sidebar */}
+        <div className="flex items-center gap-2">
+          {leftContent}
         </div>
-        {rightContent}
+        <div className="flex items-center gap-4">
+          {rightContent}
+        </div>
       </div>
     </div>
   )

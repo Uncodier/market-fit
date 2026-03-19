@@ -60,7 +60,7 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
                     <TooltipTrigger asChild>
                       <TabsTrigger
                         value={filter}
-                        className="h-7 px-3 flex items-center justify-center rounded-full transition-all duration-200 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border/50"
+                        className="h-7 px-3 flex items-center justify-center rounded-full transition-all duration-200 text-xs font-medium border border-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:border-transparent"
                       >
                         {config.label}
                       </TabsTrigger>

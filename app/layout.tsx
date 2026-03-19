@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { MuseoModerno, Inter } from "next/font/google"
 import "./globals.css"
 import "./safari-fix.css"
 import { Toaster } from "sonner"
@@ -8,17 +7,6 @@ import Script from 'next/script'
 import Providers from "./providers/Providers"
 import { shouldUseLayout } from './config/routes'
 import LoggerInit from './components/LoggerInit'
-
-const museoModerno = MuseoModerno({ 
-  subsets: ["latin"],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  variable: '--font-museo-moderno',
-})
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: '--font-inter',
-})
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://makinari.com'),
@@ -73,6 +61,12 @@ export default function RootLayout({
               })();
             `,
           }}
+        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Museo+Moderno:wght@300;400;500;600;700;800&display=swap"
+          rel="stylesheet"
         />
         <link rel="icon" href="/images/logo.png" type="image/png" sizes="32x32" />
         <meta name="application-name" content="MAKINARI" />
@@ -231,7 +225,7 @@ export default function RootLayout({
         )}
 
       </head>
-      <body className={`${museoModerno.className} ${museoModerno.variable} ${inter.variable} font-sans`}>
+      <body className="font-sans">
         <Providers>
           <LoggerInit />
           <main className="min-h-[100dvh] bg-background overflow-visible">

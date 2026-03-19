@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
-import { Input } from "@/app/components/ui/input"
+import { SearchInput } from "@/app/components/ui/search-input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Star, TrendingDown, Ban, TrendingUp, XCircle } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Star, TrendingDown, Ban, TrendingUp, XCircle, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -43,6 +43,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { useUserData } from "@/app/hooks/use-user-data"
 import { GroupedLeadsTable } from "@/app/leads/components/grouped-leads-table"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { cn } from "@/lib/utils"
 
 // Cache de etapas para cada lead
 const leadJourneyStagesCache: Record<string, string> = {};
@@ -342,6 +343,7 @@ export default function LeadsPage() {
   const [reloadingLeads, setReloadingLeads] = useState<Set<string>>(new Set())
   const [searchTotalCount, setSearchTotalCount] = useState<number | null>(null)
   const [allLeadsTotalCount, setAllLeadsTotalCount] = useState<number | null>(null)
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
 
   // Kanban pagination state for leads
   const [kanbanPagination, setKanbanPagination] = useState<Record<string, { page: number; hasMore: boolean; isLoading: boolean }>>({
@@ -1339,22 +1341,48 @@ export default function LeadsPage() {
                     <span className="tab-label">{t('leads.tabs.notQualified') || 'Not Qualified'}</span>
                   </TabsTrigger>
                 </TabsList>
-                <div className="relative w-64">
-                  <Input 
-                    data-command-k-input
-                    placeholder="search" 
-                    className="w-full pr-16" 
-                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                <div className="flex items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('leads.sortBy') === 'leads.sortBy' ? 'Sort by' : t('leads.sortBy')}>
+                        <ListOrdered className="h-4 w-4" />
+                        <span className="hidden sm:inline font-normal">
+                          {sortBy === "newest" 
+                            ? (t('leads.sort.newest') === 'leads.sort.newest' ? 'Newest' : t('leads.sort.newest'))
+                            : (t('leads.sort.oldest') === 'leads.sort.oldest' ? 'Oldest' : t('leads.sort.oldest'))}
+                        </span>
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-40">
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("newest")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                        {t('leads.sort.newest') === 'leads.sort.newest' ? 'Newest' : t('leads.sort.newest')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("oldest")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                        {t('leads.sort.oldest') === 'leads.sort.oldest' ? 'Oldest' : t('leads.sort.oldest')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <SearchInput
+                    placeholder="Search leads..."
                     value={searchQuery}
                     onChange={handleSearchChange}
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
+
+                  <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
+                    <Filter className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
-                  <Filter className="h-4 w-4" />
-                </Button>
               </div>
               <div className="ml-auto flex items-center gap-4">
                 {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (

@@ -1,41 +1,40 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Input } from "@/app/components/ui/input"
-import { Search } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
+
+import { SearchInput } from "@/app/components/ui/search-input"
 
 interface CategoriesHeaderProps {
   isDarkMode?: boolean
   isCollapsed?: boolean
-  searchQuery: string
-  onSearchChange: (value: string) => void
+  searchQuery?: string
+  onSearchChange?: (value: string) => void
 }
 
 export function CategoriesHeader({
   isDarkMode = false,
   isCollapsed = false,
-  searchQuery,
+  searchQuery = "",
   onSearchChange
 }: CategoriesHeaderProps) {
+  const { t } = useLocalization()
+
   return (
     <div className={cn(
-      "flex items-center justify-center h-[71px] border-b transition-all duration-300 flex-shrink-0",
+      "flex items-center justify-between h-[71px] border-b transition-all duration-300 flex-shrink-0 px-6 gap-4",
       "fixed z-[999] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-      isCollapsed ? "w-0 opacity-0" : "w-[319px]"
+      isCollapsed ? "w-0 opacity-0 px-0" : "w-[319px]"
     )}>
-      <div className="relative w-[80%]">
-        <Input 
-          data-command-k-input
-          placeholder="Search tasks..." 
+      {onSearchChange && !isCollapsed && (
+        <SearchInput 
+          placeholder={t('controlCenter.search') === 'controlCenter.search' ? 'Search tasks...' : t('controlCenter.search')} 
+          className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" 
           value={searchQuery}
+          onSearch={onSearchChange}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="h-12 w-full rounded-md"
-          icon={<Search className="h-4 w-4 text-muted-foreground" />}
         />
-        <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-          <span className="text-xs">⌘</span>K
-        </kbd>
-      </div>
+      )}
     </div>
   )
 } 

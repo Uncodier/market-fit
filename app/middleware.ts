@@ -138,6 +138,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
+  // Skip Supabase auth for ALL /api/* routes - they do their own session checks.
+  // This prevents ECONNRESET in dev: each middleware run was doing getUser+getSession
+  // against Supabase; with many parallel fetches (layout, RSC, etc.) the connection
+  // pool gets exhausted and connections go stale.
+  if (pathname.startsWith('/api/')) {
+    const res = NextResponse.next()
+    return getCorsHeaders(res)
+  }
+  
   // Redirigir /auth/login a /auth para mantener una única ruta de autenticación
   if (pathname === '/auth/login') {
     const url = request.nextUrl.clone()

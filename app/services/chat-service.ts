@@ -261,7 +261,9 @@ export async function getConversations(
   channelFilter?: 'all' | 'web' | 'email' | 'whatsapp',
   assigneeFilter?: 'all' | 'assigned' | 'ai',
   currentUserId?: string,
-  searchQuery?: string
+  searchQuery?: string,
+  initiatedByFilter?: 'all' | 'visitor' | 'agent' | 'replied',
+  tasksOnly?: boolean
 ): Promise<ConversationListItem[]> {
   try {
     console.log(`🔍 DEBUG: getConversations called for site: ${siteId}, page: ${page}, pageSize: ${pageSize}, channelFilter: ${channelFilter || 'none'}, searchQuery: ${searchQuery || 'none'}`);

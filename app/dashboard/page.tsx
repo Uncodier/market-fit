@@ -55,6 +55,8 @@ import { ImagesGeneratedWidget } from "@/app/components/dashboard/images-generat
 import { TokenUsageChart } from "@/app/components/dashboard/token-usage-chart"
 import { PerformanceMetricsChart } from "@/app/components/dashboard/performance-metrics-chart"
 import { LeadsTasksChart } from "@/app/components/dashboard/leads-tasks-chart"
+import { Switch } from "@/app/components/ui/switch"
+import { Label } from "@/app/components/ui/label"
 
 export default function DashboardPage() {
   const { t } = useLocalization()
@@ -91,6 +93,7 @@ export default function DashboardPage() {
   const userSettings = (settings as Record<string, any>) || {}
   
   // Check onboarding completion from site settings instead of user profile
+  const [showConversations, setShowConversations] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(false)
   const [activeTab, setActiveTab] = useState("onboarding")
   
@@ -699,15 +702,28 @@ export default function DashboardPage() {
                 </div>
                 <div className="grid gap-4 grid-cols-1">
                   <Card>
-                    <CardHeader>
-                      <CardTitle>{t('dashboard.metrics.performance.title') || 'Performance Metrics'}</CardTitle>
-                      <CardDescription>{t('dashboard.metrics.performance.desc') || 'Conversations, engagement, meetings, and sales over time'}</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <div className="flex flex-col space-y-1.5">
+                        <CardTitle>{t('dashboard.metrics.performance.title') || 'Performance Metrics'}</CardTitle>
+                        <CardDescription>{t('dashboard.metrics.performance.desc') || 'Conversations, engagement, meetings, and sales over time'}</CardDescription>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch 
+                          id="show-conversations" 
+                          checked={showConversations}
+                          onCheckedChange={setShowConversations}
+                        />
+                        <Label htmlFor="show-conversations" className="text-sm text-muted-foreground cursor-pointer">
+                          {t('dashboard.metrics.performance.showConversations') || 'Show Conversations'}
+                        </Label>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <PerformanceMetricsChart 
                         segmentId={selectedSegment}
                         startDate={dateRange.startDate}
                         endDate={dateRange.endDate}
+                        showConversations={showConversations}
                       />
                     </CardContent>
                   </Card>

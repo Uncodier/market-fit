@@ -544,18 +544,9 @@ export function Sidebar({
               title={t('layout.sidebar.notifications') || "Notifications"}
               isActive={pathname.startsWith('/notifications')}
               isCollapsed={renderCollapsed}
-            />
-            {/* Notification badge */}
-            {!renderCollapsed && (
-              <div className="absolute top-[6px] right-2 z-10 pointer-events-none">
-                <NotificationBadge isActive={pathname.startsWith("/notifications")} />
-              </div>
-            )}
-            {renderCollapsed && (
-              <div className="absolute -top-1 -right-1 z-10 pointer-events-none transform scale-90">
-                <NotificationBadge isActive={pathname.startsWith("/notifications")} />
-              </div>
-            )}
+            >
+              <NotificationBadge isActive={pathname.startsWith("/notifications")} />
+            </MenuItem>
           </div>
         </div>
         

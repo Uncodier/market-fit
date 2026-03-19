@@ -1059,12 +1059,12 @@ export function ChatMessages({
 
   if (!hasSelectedConversation) {
     return (
-      <div className="flex-1 py-6 transition-colors duration-300 ease-in-out pb-6">
+      <div className="min-h-full flex flex-col justify-center py-6 transition-colors duration-300 ease-in-out">
         <EmptyState
           icon={<MessageSquare className="h-12 w-12" />}
           title="No conversation selected"
           description="Select a conversation from the list or start a new one to begin chatting."
-          className="min-h-0 h-full flex items-center justify-center"
+          className="min-h-0 w-full flex items-center justify-center"
         />
       </div>
     );

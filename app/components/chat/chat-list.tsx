@@ -81,7 +81,7 @@ export function ChatList({
   const [isLoading, setIsLoading] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasEmptyResult, setHasEmptyResult] = useState(false)
-  const [combinedFilter, setCombinedFilter] = useState<'all' | 'web' | 'email' | 'whatsapp' | 'assigned' | 'ai' | 'inbound' | 'outbound' | 'tasks'>('all')
+  const [combinedFilter, setCombinedFilter] = useState<'all' | 'outbound' | 'inbound' | 'replied' | 'tasks' | 'assigned' | 'qualified'>('all')
   const { isDarkMode } = useTheme()
   const { user } = useAuthContext()
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
@@ -194,10 +194,11 @@ export function ChatList({
     try {
       // Request conversations from server with pagination and channel filter
       // Separate combined filter into channel, assignee, initiatedBy, and tasks filters
-      const channelFilter = ['web', 'email', 'whatsapp'].includes(combinedFilter) ? combinedFilter as 'web' | 'email' | 'whatsapp' : 'all'
-      const assigneeFilter = ['assigned', 'ai'].includes(combinedFilter) ? combinedFilter as 'assigned' | 'ai' : 'all'
-      const initiatedByFilter = combinedFilter === 'inbound' ? 'visitor' : combinedFilter === 'outbound' ? 'agent' : 'all'
+      const channelFilter = 'all' // Channel filters removed
+      const assigneeFilter = combinedFilter === 'assigned' ? 'assigned' : 'all'
+      const initiatedByFilter = combinedFilter === 'inbound' ? 'visitor' : combinedFilter === 'outbound' ? 'agent' : combinedFilter === 'replied' ? 'replied' : 'all'
       const tasksOnly = combinedFilter === 'tasks'
+      const qualifiedLeadsOnly = combinedFilter === 'qualified'
       
       const { getConversations } = await import('@/app/services/getConversations.client')
       const result = await getConversations(
@@ -209,7 +210,8 @@ export function ChatList({
         user?.id,
         searchQuery,
         initiatedByFilter,
-        tasksOnly
+        tasksOnly,
+        qualifiedLeadsOnly
       ) // 20 conversations per page
       console.log(`🔍 DEBUG: getConversations returned ${result.length} conversations for page ${page}`);
       
@@ -999,8 +1001,8 @@ export function ChatList({
       </div>
       
       <div className="h-[calc(100dvh-71px)] overflow-hidden flex-grow">
-        <div className="h-full overflow-auto pt-[71px]">
-          <div className="w-full">
+        <div className="h-full overflow-auto pt-[71px] flex flex-col">
+          <div className="w-full flex flex-col flex-1">
             {/* Combined Filter - always visible */}
             <ChannelFilter
               selectedFilter={combinedFilter}
@@ -1016,7 +1018,7 @@ export function ChatList({
                 ))}
               </div>
             ) : showEmptyState ? (
-              <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+              <div className="flex-1 flex items-center justify-center">
                 <div className="w-full max-w-[280px] px-4">
                   <EmptyCard
                     icon={<MessageSquare className="h-10 w-10 text-muted-foreground" />}

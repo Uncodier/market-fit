@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
-type FilterType = 'all' | 'web' | 'email' | 'whatsapp' | 'assigned' | 'ai' | 'inbound' | 'outbound' | 'tasks'
+type FilterType = 'all' | 'outbound' | 'inbound' | 'replied' | 'tasks' | 'assigned' | 'qualified'
 
 interface ChannelFilterProps {
   selectedFilter: FilterType
@@ -20,28 +20,24 @@ interface ChannelFilterProps {
 
 const getFilterConfig = (userAvatarUrl?: string | null, userName?: string) => ({
   all: {
-    icon: ({ className }: { className?: string }) => <Icons.Clock className="h-4 w-4 text-current" />,
+    icon: ({ className }: { className?: string }) => <Icons.Clock className={cn("h-4 w-4", className)} />,
     label: "All"
   },
-  inbound: {
-    icon: ({ className }: { className?: string }) => <Icons.ArrowDown className="h-4 w-4 text-current" />,
-    label: "Inbound"
-  },
   outbound: {
-    icon: ({ className }: { className?: string }) => <Icons.ArrowUp className="h-4 w-4 text-current" />,
+    icon: ({ className }: { className?: string }) => <Icons.ArrowUp className={cn("h-4 w-4", className)} />,
     label: "Outbound"
   },
-  web: {
-    icon: ({ className }: { className?: string }) => <Icons.Globe className="h-2.5 w-2.5 text-current" />,
-    label: "Web"
+  inbound: {
+    icon: ({ className }: { className?: string }) => <Icons.ArrowDown className={cn("h-4 w-4", className)} />,
+    label: "Inbound"
   },
-  email: {
-    icon: ({ className }: { className?: string }) => <Icons.Mail className="h-2.5 w-2.5 text-current" />,
-    label: "Email"
+  replied: {
+    icon: ({ className }: { className?: string }) => <Icons.Reply className={cn("h-4 w-4", className)} />,
+    label: "Replied"
   },
-  whatsapp: {
-    icon: ({ className }: { className?: string }) => <WhatsAppIcon size={16} className={className} />,
-    label: "WhatsApp"
+  tasks: {
+    icon: ({ className }: { className?: string }) => <Icons.ListTodo className={cn("h-4 w-4", className)} />,
+    label: "Tasks"
   },
   assigned: {
     icon: ({ className }: { className?: string }) => (
@@ -52,15 +48,11 @@ const getFilterConfig = (userAvatarUrl?: string | null, userName?: string) => ({
         </AvatarFallback>
       </Avatar>
     ),
-    label: "Assigned to me"
+    label: "Assigned"
   },
-  ai: {
-    icon: ({ className }: { className?: string }) => <Icons.Sparkles className="h-4 w-4 text-current" />,
-    label: "AI Team"
-  },
-  tasks: {
-    icon: ({ className }: { className?: string }) => <Icons.ListTodo className="h-4 w-4 text-current" />,
-    label: "Tasks"
+  qualified: {
+    icon: ({ className }: { className?: string }) => <Icons.CheckCircle2 className={cn("h-4 w-4", className)} />,
+    label: "Qualified+"
   }
 })
 
@@ -88,7 +80,7 @@ export const ChannelFilter = memo(function ChannelFilter({
         onValueChange={(value) => onFilterChange(value as FilterType)}
         className="w-auto flex items-center"
       >
-        <TabsList className="h-8 max-h-8 min-h-[32px] p-0.5 bg-muted/30 grid-cols-9 rounded-full font-inter flex-shrink-0">
+        <TabsList className="h-8 max-h-8 min-h-[32px] p-0.5 bg-muted/30 grid-cols-7 rounded-full font-inter flex-shrink-0">
           <TooltipProvider delayDuration={300}>
             {(Object.keys(filterConfig) as FilterType[]).map((filter) => {
               const config = filterConfig[filter]
@@ -99,9 +91,15 @@ export const ChannelFilter = memo(function ChannelFilter({
                   <TooltipTrigger asChild>
                     <TabsTrigger
                       value={filter}
-                      className="h-7 w-7 px-0 flex items-center justify-center rounded-full font-inter transition-all duration-200"
+                      className={cn(
+                        "h-7 w-7 px-0 flex items-center justify-center rounded-full font-inter transition-all duration-200 border-0 focus:outline-none focus:ring-0",
+                        "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border",
+                        filter === selectedFilter
+                          ? "bg-background text-foreground shadow-md ring-1 ring-border"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      )}
                     >
-                      <IconComponent className={filter === 'web' || filter === 'email' || filter === 'assigned' || filter === 'ai' || filter === 'inbound' || filter === 'outbound' || filter === 'all' || filter === 'tasks' ? "" : "h-3.5 w-3.5 text-current"} />
+                      <IconComponent />
                     </TabsTrigger>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" sideOffset={6}>

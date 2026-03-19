@@ -16,7 +16,7 @@ export function NotificationBadge({ isActive = false }: { isActive?: boolean }) 
   
   return (
     <Badge 
-      className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black badge-gradient-green"
+      className="h-5 min-w-[20px] px-1.5 text-xs font-semibold border-transparent text-black badge-gradient-green inline-flex items-center justify-center"
     >
       {unreadCount > 99 ? "99+" : unreadCount}
     </Badge>

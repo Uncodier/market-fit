@@ -12,19 +12,80 @@ export async function getConversations(
   assigneeFilter?: 'all' | 'assigned' | 'ai',
   currentUserId?: string,
   searchQuery?: string,
-  initiatedByFilter?: 'all' | 'visitor' | 'agent',
-  tasksOnly?: boolean
+  initiatedByFilter?: 'all' | 'visitor' | 'agent' | 'replied',
+  tasksOnly?: boolean,
+  qualifiedLeadsOnly?: boolean
 ): Promise<ConversationListItem[]> {
   try {
     const supabase = createClient();
 
     // When initiatedBy filter is active, we need to fetch more conversations
-    // to compensate for filtering, then paginate in memory
+    // to compensate for filtering, then paginate in memory (searches larger history)
     const needsPostFiltering = initiatedByFilter && initiatedByFilter !== 'all'
-    const fetchMultiplier = needsPostFiltering ? 5 : 1 // Fetch 5x more when filtering
+    const fetchMultiplier = needsPostFiltering ? 50 : 1 // Fetch 50x more for inbound/outbound
+    // "Replied" (agent started + visitor replied) is rarer - often in non-pending, so we fetch deeper
+    const isRepliedFilter = initiatedByFilter === 'replied'
+    const REPLIED_BATCH_SIZE = 1000 // Supabase default limit per query
+    const REPLIED_NON_PENDING_BATCHES = 5 // Fetch up to 5000 non-pending for replied
 
-    // Build base query parts
-    const baseSelect = `
+    // TASKS-ONLY: Two-step approach to search full history without row duplication
+    if (tasksOnly) {
+      const { data: taskRows } = await supabase
+        .from('tasks')
+        .select('conversation_id')
+        .eq('status', 'pending')
+        .eq('site_id', siteId)
+        .not('conversation_id', 'is', null)
+        .limit(3000)
+      const convIds = [...new Set((taskRows || []).map((t: any) => t.conversation_id).filter(Boolean))]
+      if (convIds.length === 0) return []
+
+      const needsAssign = assigneeFilter === 'assigned' && currentUserId
+      const needsQual = qualifiedLeadsOnly === true
+      const tasksBaseSelect = needsAssign || needsQual
+        ? `id, title, agent_id, lead_id, last_message_at, created_at, custom_data, status,
+          messages (content, created_at, role, user_id, custom_data),
+          leads!inner (assignee_id, status)`
+        : `id, title, agent_id, lead_id, last_message_at, created_at, custom_data, status,
+          messages (content, created_at, role, user_id, custom_data),
+          leads (assignee_id, status)`
+
+      let tasksQuery = supabase
+        .from('conversations')
+        .select(tasksBaseSelect)
+        .eq('site_id', siteId)
+        .eq('is_archived', false)
+        .in('id', convIds)
+      if (needsAssign) {
+        tasksQuery = tasksQuery.eq('leads.assignee_id', currentUserId)
+      }
+      if (needsQual) {
+        tasksQuery = tasksQuery.in_('leads.status', ['qualified', 'converted'])
+      }
+      if (searchQuery?.trim()) {
+        tasksQuery = tasksQuery.ilike('title', `%${searchQuery.trim().toLowerCase()}%`)
+      }
+
+      const { data: allConvs, error } = await tasksQuery.order('last_message_at', { ascending: false })
+      if (error) {
+        console.error('Error fetching conversations with tasks:', error)
+        return []
+      }
+      const sorted = (allConvs || []).sort((a: any, b: any) => {
+        const dA = new Date(a.last_message_at || a.created_at || 0).getTime()
+        const dB = new Date(b.last_message_at || b.created_at || 0).getTime()
+        return dB - dA
+      })
+      const pageConvs = sorted.slice((page - 1) * pageSize, page * pageSize)
+      return buildConversationListItems(supabase, pageConvs)
+    }
+
+    // Build base query parts - add leads!inner for assigned/qualified filters (DB-level, full history)
+    const needsAssigneeFilter = assigneeFilter === 'assigned' && currentUserId
+    const needsQualifiedFilter = qualifiedLeadsOnly === true
+    const QUALIFIED_STATUSES = ['qualified', 'converted']
+
+    let baseSelect = `
       id,
       title,
       agent_id,
@@ -46,10 +107,18 @@ export async function getConversations(
       )
     `
 
+    // When assigneeFilter=assigned or qualifiedLeadsOnly: use leads!inner so we filter at DB level (searches full history)
+    if (needsAssigneeFilter || needsQualifiedFilter) {
+      baseSelect = baseSelect.replace(
+        'leads (\n        assignee_id,\n        status\n      )',
+        'leads!inner (\n        assignee_id,\n        status\n      )'
+      )
+    }
+
     // Query 1: Get pending conversations (by status)
     let pendingQuery = supabase
       .from("conversations")
-      .select(baseSelect, { count: 'exact' })
+      .select(baseSelect, { count: needsAssigneeFilter || needsQualifiedFilter ? undefined : 'exact' })
       .eq("site_id", siteId)
       .eq("is_archived", false)
       .eq("status", "pending")
@@ -61,6 +130,17 @@ export async function getConversations(
       .eq("site_id", siteId)
       .eq("is_archived", false)
       .neq("status", "pending")
+
+    // DB-level filter: assigned (search full history, paginate 20)
+    if (needsAssigneeFilter) {
+      pendingQuery = pendingQuery.eq("leads.assignee_id", currentUserId!)
+      nonPendingQuery = nonPendingQuery.eq("leads.assignee_id", currentUserId!)
+    }
+    // DB-level filter: qualified and above (qualified, converted)
+    if (needsQualifiedFilter) {
+      pendingQuery = pendingQuery.in("leads.status", QUALIFIED_STATUSES)
+      nonPendingQuery = nonPendingQuery.in("leads.status", QUALIFIED_STATUSES)
+    }
 
     // Apply channel filter to both queries if specified
     if (channelFilter && channelFilter !== 'all') {
@@ -117,24 +197,38 @@ export async function getConversations(
     let nonPendingConversations: any[] = []
 
     if (needsPostFiltering) {
-      // When filtering by initiatedBy, we need to fetch more data for in-memory filtering
-      const fetchCount = page * pageSize * fetchMultiplier
-      
+      // When filtering by initiatedBy, we need to fetch more data for in-memory filtering.
+      // "replied" = agent started + visitor replied - most are non-pending, so we fetch
+      // multiple batches of non-pending (Supabase default limit ~1000 per query).
+      const fetchCount = Math.min(page * pageSize * fetchMultiplier, 1000) // cap per-query
+      const isRepliedFilter = initiatedByFilter === 'replied'
+      const nonPendingBatches = isRepliedFilter ? 5 : 1 // 5 batches of ~1000 = ~5000 for replied
+
       const { data: pendingData, error: pendingError } = await pendingQuery
         .order("last_message_at", { ascending: false })
         .limit(fetchCount)
-      
-      const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
-        .order("last_message_at", { ascending: false })
-        .limit(fetchCount)
-      
-      if (pendingError || nonPendingError) {
-        console.error("Error fetching conversations:", pendingError || nonPendingError)
+
+      if (pendingError) {
+        console.error("Error fetching pending conversations:", pendingError)
         return []
       }
-      
       pendingConversations = pendingData || []
-      nonPendingConversations = nonPendingData || []
+
+      // For "replied", fetch multiple batches of non-pending to search deeper into history
+      for (let batch = 0; batch < nonPendingBatches; batch++) {
+        const from = batch * 1000
+        const to = from + 999
+        const { data: batchData, error: batchError } = await nonPendingQuery
+          .order("last_message_at", { ascending: false })
+          .range(from, to)
+        if (batchError) {
+          console.error("Error fetching non-pending batch:", batchError)
+          break
+        }
+        const batchConvs = batchData || []
+        nonPendingConversations.push(...batchConvs)
+        if (batchConvs.length < 1000) break // no more data
+      }
     } else {
       // Use database-level pagination for better performance
       // We want: pending conversations first (sorted by last_message_at), then non-pending
@@ -233,6 +327,11 @@ export async function getConversations(
         } else if (initiatedByFilter === 'agent') {
           // OUTBOUND: First message must be from system/agent
           return systemRoles.includes(firstRole)
+        } else if (initiatedByFilter === 'replied') {
+          // REPLIED: First message from system/agent, and AT LEAST one subsequent message from user/visitor
+          const isOutbound = systemRoles.includes(firstRole)
+          const hasVisitorReply = sortedMessages.slice(1).some((msg: any) => userRoles.includes(msg.role))
+          return isOutbound && hasVisitorReply
         }
         
         return false
@@ -408,4 +507,78 @@ export async function getConversations(
   }
 }
 
+/** Build ConversationListItem[] from raw conversation rows (for tasks path) */
+async function buildConversationListItems(
+  supabase: ReturnType<typeof createClient>,
+  conversations: any[]
+): Promise<ConversationListItem[]> {
+  if (!conversations.length) return []
+  const agentIds = conversations.map((c: any) => c.agent_id).filter(Boolean)
+  const leadIds = conversations.map((c: any) => c.lead_id).filter(Boolean)
+  let agentsMap: Record<string, string> = {}
+  let leadsMap: Record<string, string> = {}
+  let leadStatusMap: Record<string, string> = {}
+  let assigneesMap: Record<string, string> = {}
+  let leadAssigneeMap: Record<string, string> = {}
+
+  if (agentIds.length > 0) {
+    const { data: agents } = await supabase.from("agents").select("id, name").in("id", agentIds)
+    agentsMap = (agents || []).reduce((map: Record<string, string>, a: any) => { map[a.id] = a.name; return map }, {})
+  }
+  if (leadIds.length > 0) {
+    const { data: leads } = await supabase.from("leads").select("id, name, company, assignee_id, status").in("id", leadIds)
+    if (leads?.length) {
+      const assigneeIds = [...new Set(leads.map((l: any) => l.assignee_id).filter(Boolean))]
+      if (assigneeIds.length > 0) {
+        try {
+          const { getUserData } = await import('@/app/services/user-service')
+          const results = await Promise.all(assigneeIds.map(async (id: string) => ({
+            id,
+            name: (await getUserData(id))?.name || `User ${id.substring(0, 8)}`
+          })))
+          assigneesMap = results.reduce((m: Record<string, string>, r: any) => { m[r.id] = r.name; return m }, {})
+        } catch { /* ignore */ }
+      }
+      leads.forEach((lead: any) => {
+        const companyName = lead.company?.name ?? (typeof lead.company === 'string' ? lead.company : '')
+        leadsMap[lead.id] = lead.name + (companyName ? ` (${companyName})` : '')
+        if (lead.assignee_id) leadAssigneeMap[lead.id] = lead.assignee_id
+        if (lead.status) leadStatusMap[lead.id] = lead.status
+      })
+    }
+  }
+
+  return conversations.map((conv: any) => {
+    const lastMessage = conv.messages?.length ? conv.messages[conv.messages.length - 1].content : undefined
+    const messageDate = conv.last_message_at || conv.created_at || new Date().toISOString()
+    const leadId = conv.lead_id || ""
+    const leadName = leadId ? leadsMap[leadId] : ""
+    let title = conv.title || "Untitled Conversation"
+    if (leadName && (!conv.title || conv.title === "Untitled Conversation")) title = `Chat with ${leadName}`
+    const agentId = conv.agent_id || ""
+    const assigneeId = leadId ? leadAssigneeMap[leadId] : null
+    let agentName = agentsMap[agentId] || (agentId ? "Unknown Agent" : "Agent")
+    if (assigneeId && assigneesMap[assigneeId]) agentName = assigneesMap[assigneeId]
+    const customData = conv.custom_data || {}
+    let channel = customData.channel || 'web'
+    if (channel === 'website_chat') channel = 'web'
+    const hasAcceptedMessage = conv.messages?.some((msg: any) => msg.custom_data?.status === 'accepted')
+    const hasPendingMessages = conv.messages?.some((msg: any) =>
+      msg.custom_data?.status === 'pending' || msg.custom_data?.status === 'accepted')
+    return {
+      id: conv.id || "",
+      title,
+      agentId,
+      agentName,
+      leadName: leadName || undefined,
+      leadStatus: leadIds.includes(leadId) ? leadStatusMap[leadId] : undefined,
+      lastMessage,
+      timestamp: new Date(messageDate),
+      messageCount: conv.messages?.length || 0,
+      channel: (channel as 'web' | 'email' | 'whatsapp') || 'web',
+      status: (hasPendingMessages ? 'pending' : conv.status) || 'active',
+      hasAcceptedMessage: hasAcceptedMessage || false
+    }
+  })
+}
 

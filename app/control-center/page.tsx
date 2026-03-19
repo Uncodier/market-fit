@@ -16,7 +16,8 @@ import { TaskCalendar } from "@/app/control-center/components/TaskCalendar"
 import { TaskFilterModal, TaskFilters } from "./components/TaskFilterModal"
 import { ControlCenterSkeleton } from "./components/ControlCenterSkeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { ClipboardList } from "@/app/components/ui/icons"
+import { ClipboardList, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { toast } from "react-hot-toast"
 import { getUserData } from "@/app/services/user-service"
 import { useCommandK } from "@/app/hooks/use-command-k"
@@ -61,6 +62,7 @@ export default function ControlCenterPage() {
     assigneeId: []
   })
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'completed'>('all')
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
 
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
@@ -631,6 +633,13 @@ export default function ControlCenterPage() {
     }
 
     return true
+  }).sort((a, b) => {
+    const dateA = new Date(a.created_at || 0).getTime()
+    const dateB = new Date(b.created_at || 0).getTime()
+    
+    if (sortBy === 'newest') return dateB - dateA
+    if (sortBy === 'oldest') return dateA - dateB
+    return 0
   })
 
   // Handle page change
@@ -698,6 +707,37 @@ export default function ControlCenterPage() {
           <ControlCenterHeader
             isSidebarCollapsed={isSidebarCollapsed}
             toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            leftContent={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 gap-2 rounded-full px-4" title={t('controlCenter.sortBy') === 'controlCenter.sortBy' ? 'Sort by' : t('controlCenter.sortBy')}>
+                    <ListOrdered className="h-4 w-4" />
+                    <span className="hidden sm:inline font-normal">
+                      {sortBy === "newest" 
+                        ? (t('controlCenter.sort.newest') === 'controlCenter.sort.newest' ? 'Newest' : t('controlCenter.sort.newest'))
+                        : (t('controlCenter.sort.oldest') === 'controlCenter.sort.oldest' ? 'Oldest' : t('controlCenter.sort.oldest'))}
+                    </span>
+                    <ChevronDown className="h-3 w-3 opacity-50" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-40">
+                  <DropdownMenuItem 
+                    className="cursor-pointer"
+                    onClick={() => setSortBy("newest")}
+                  >
+                    <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                    {t('controlCenter.sort.newest') === 'controlCenter.sort.newest' ? 'Newest' : t('controlCenter.sort.newest')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className="cursor-pointer"
+                    onClick={() => setSortBy("oldest")}
+                  >
+                    <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                    {t('controlCenter.sort.oldest') === 'controlCenter.sort.oldest' ? 'Oldest' : t('controlCenter.sort.oldest')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
             rightContent={
               <ViewSelector
                 currentView={viewType}
@@ -705,8 +745,6 @@ export default function ControlCenterPage() {
                 showCalendar={true}
               />
             }
-
-
           />
         </div>
 

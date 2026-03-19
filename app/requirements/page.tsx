@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
 import { Checkbox } from "@/app/components/ui/checkbox"
-import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList, FileText, Clock, LayoutGrid } from "@/app/components/ui/icons"
+import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList, FileText, Clock, LayoutGrid, ListOrdered } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
 import React, { useState, useEffect } from "react"
@@ -149,21 +149,21 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
       setIsUpdatingStatus(true)
       await onUpdateStatus(requirement.id, status)
       toast({
-        title: "Status updated",
-        description: `The requirement has been moved to ${
-          status === REQUIREMENT_STATUS.VALIDATED ? "Validated" : 
-          status === REQUIREMENT_STATUS.IN_PROGRESS ? "In Progress" :
-          status === REQUIREMENT_STATUS.ON_REVIEW ? "On Review" :
-          status === REQUIREMENT_STATUS.DONE ? "Done" :
-          status === REQUIREMENT_STATUS.CANCELED ? "Canceled" :
-          "Backlog"
+        title: t('requirements.success.statusTitle') === 'requirements.success.statusTitle' ? "Status updated" : t('requirements.success.statusTitle'),
+        description: `${t('requirements.success.statusDesc') === 'requirements.success.statusDesc' ? 'The requirement has been moved to' : t('requirements.success.statusDesc')} ${
+          status === REQUIREMENT_STATUS.VALIDATED ? (t('requirements.status.validated') === 'requirements.status.validated' ? 'Validated' : t('requirements.status.validated')) : 
+          status === REQUIREMENT_STATUS.IN_PROGRESS ? (t('requirements.status.inProgress') === 'requirements.status.inProgress' ? 'In Progress' : t('requirements.status.inProgress')) :
+          status === REQUIREMENT_STATUS.ON_REVIEW ? (t('requirements.status.onReview') === 'requirements.status.onReview' ? 'On Review' : t('requirements.status.onReview')) :
+          status === REQUIREMENT_STATUS.DONE ? (t('requirements.status.done') === 'requirements.status.done' ? 'Done' : t('requirements.status.done')) :
+          status === REQUIREMENT_STATUS.CANCELED ? (t('requirements.status.canceled') === 'requirements.status.canceled' ? 'Canceled' : t('requirements.status.canceled')) :
+          (t('requirements.status.backlog') === 'requirements.status.backlog' ? 'Backlog' : t('requirements.status.backlog'))
         }`,
       })
     } catch (error) {
       toast({
-        title: "Error",
+        title: t('requirements.error.title') === 'requirements.error.title' ? "Error" : t('requirements.error.title'),
         variant: "destructive",
-        description: "Error al actualizar el estado del requisito",
+        description: t('requirements.error.updateStatus') === 'requirements.error.updateStatus' ? "Error updating requirement status" : t('requirements.error.updateStatus'),
       })
     } finally {
       setIsUpdatingStatus(false)
@@ -175,18 +175,18 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
       setIsUpdatingCompletion(true)
       await onUpdateCompletionStatus(requirement.id, status)
       toast({
-        title: "Estado actualizado",
-        description: `El estado de finalización ha sido actualizado a ${
-          status === COMPLETION_STATUS.PENDING ? "Pendiente" : 
-          status === COMPLETION_STATUS.COMPLETED ? "Completado" : 
-          "Rechazado"
+        title: t('requirements.success.completionTitle') === 'requirements.success.completionTitle' ? "Status updated" : t('requirements.success.completionTitle'),
+        description: `${t('requirements.success.completionDesc') === 'requirements.success.completionDesc' ? 'The completion status has been updated to' : t('requirements.success.completionDesc')} ${
+          status === COMPLETION_STATUS.PENDING ? (t('requirements.completion.pending') === 'requirements.completion.pending' ? 'Pending' : t('requirements.completion.pending')) : 
+          status === COMPLETION_STATUS.COMPLETED ? (t('requirements.completion.completed') === 'requirements.completion.completed' ? 'Completed' : t('requirements.completion.completed')) : 
+          (t('requirements.completion.rejected') === 'requirements.completion.rejected' ? 'Rejected' : t('requirements.completion.rejected'))
         }`,
       })
     } catch (error) {
       toast({
-        title: "Error",
+        title: t('requirements.error.title') === 'requirements.error.title' ? "Error" : t('requirements.error.title'),
         variant: "destructive",
-        description: "Error al actualizar el estado de finalización",
+        description: t('requirements.error.updateCompletion') === 'requirements.error.updateCompletion' ? "Error updating completion status" : t('requirements.error.updateCompletion'),
       })
     } finally {
       setIsUpdatingCompletion(false)
@@ -198,17 +198,18 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
       setIsUpdatingPriority(true)
       await onUpdatePriority(requirement.id, priority)
       toast({
-        title: "Priority updated",
-        description: `The requirement priority has been updated to ${
-          priority === "high" ? "High" : 
-          priority === "medium" ? "Medium" : "Low"
+        title: t('requirements.success.priorityTitle') === 'requirements.success.priorityTitle' ? "Priority updated" : t('requirements.success.priorityTitle'),
+        description: `${t('requirements.success.priorityDesc') === 'requirements.success.priorityDesc' ? 'The requirement priority has been updated to' : t('requirements.success.priorityDesc')} ${
+          priority === "high" ? (t('requirements.priority.high') === 'requirements.priority.high' ? 'High' : t('requirements.priority.high')) : 
+          priority === "medium" ? (t('requirements.priority.medium') === 'requirements.priority.medium' ? 'Medium' : t('requirements.priority.medium')) : 
+          (t('requirements.priority.low') === 'requirements.priority.low' ? 'Low' : t('requirements.priority.low'))
         }`,
       })
     } catch (error) {
       toast({
-        title: "Error",
+        title: t('requirements.error.title') === 'requirements.error.title' ? "Error" : t('requirements.error.title'),
         variant: "destructive",
-        description: "Error al actualizar la prioridad del requisito",
+        description: t('requirements.error.updatePriority') === 'requirements.error.updatePriority' ? "Error updating priority" : t('requirements.error.updatePriority'),
       })
     } finally {
       setIsUpdatingPriority(false)
@@ -238,14 +239,14 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                 <h3 className="font-semibold text-lg truncate">{requirement.title}</h3>
                 {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
                   <Badge variant="secondary" className={`${priorityColors[requirement.priority]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}>
-                    {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                    {t(`requirements.priority.${requirement.priority}`) === `requirements.priority.${requirement.priority}` ? requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1) : t(`requirements.priority.${requirement.priority}`)}
                   </Badge>
                 ) : (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
                         <Badge variant="secondary" className={priorityColors[requirement.priority]}>
-                          {requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                          {t(`requirements.priority.${requirement.priority}`) === `requirements.priority.${requirement.priority}` ? requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1) : t(`requirements.priority.${requirement.priority}`)}
                         </Badge>
                       </div>
                     </DropdownMenuTrigger>
@@ -259,7 +260,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         }}
                       >
                         <div className="w-2 h-2 rounded-full mr-2 bg-red-500"></div>
-                        High Priority
+                        {t('requirements.priority.high') === 'requirements.priority.high' ? 'High Priority' : t('requirements.priority.high')}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="cursor-pointer"
@@ -270,7 +271,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         }}
                       >
                         <div className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></div>
-                        Medium Priority
+                        {t('requirements.priority.medium') === 'requirements.priority.medium' ? 'Medium Priority' : t('requirements.priority.medium')}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="cursor-pointer"
@@ -281,19 +282,19 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         }}
                       >
                         <div className="w-2 h-2 rounded-full mr-2 bg-blue-500"></div>
-                        Low Priority
+                        {t('requirements.priority.low') === 'requirements.priority.low' ? 'Low Priority' : t('requirements.priority.low')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
                 {isUpdatingPriority && (
-                  <span className="text-xs text-muted-foreground animate-pulse">Updating...</span>
+                  <span className="text-xs text-muted-foreground animate-pulse">{t('requirements.updating') === 'requirements.updating' ? 'Updating...' : t('requirements.updating')}</span>
                 )}
               </div>
               <p className="text-sm text-muted-foreground/80 line-clamp-1">{requirement.description}</p>
             </div>
             <div className="w-[100px] min-w-[100px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.type') || 'Type'}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.type') === 'requirements.list.type' ? 'Type' : t('requirements.list.type')}</p>
               <div className="flex justify-center">
                 <Badge variant="outline" className={`text-xs ${
                   requirement.type === 'content' ? 'bg-blue-100/20 text-blue-600 dark:text-blue-400 border-blue-300/30' :
@@ -313,20 +314,20 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                   requirement.type === 'planning' ? 'bg-amber-100/20 text-amber-600 dark:text-amber-400 border-amber-300/30' :
                   'bg-pink-100/20 text-pink-600 dark:text-pink-400 border-pink-300/30'
                 }`}>
-                  {requirement.type === 'follow_up' ? 'Follow Up' : requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)}
+                  {requirement.type === 'follow_up' ? (t('requirements.types.followUp') === 'requirements.types.followUp' ? 'Follow Up' : t('requirements.types.followUp')) : (t(`requirements.types.${requirement.type}`) === `requirements.types.${requirement.type}` ? requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1) : t(`requirements.types.${requirement.type}`))}
                 </Badge>
               </div>
             </div>
             <div className="w-[120px] min-w-[120px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.campaign') || 'Campaign'}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.campaign') === 'requirements.list.campaign' ? 'Campaign' : t('requirements.list.campaign')}</p>
               <p className="text-sm font-medium truncate text-center">
                 {requirement.campaignNames && requirement.campaignNames.length > 0 
                   ? requirement.campaignNames[0] 
-                  : (t('requirements.list.noCampaign') || "No campaign")}
+                  : (t('requirements.list.noCampaign') === 'requirements.list.noCampaign' ? 'No campaign' : t('requirements.list.noCampaign'))}
               </p>
             </div>
             <div className="w-[100px] min-w-[100px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.status') || 'Status'}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.status') === 'requirements.list.status' ? 'Status' : t('requirements.list.status')}</p>
               <div className="flex justify-center">
                 {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
                   <Badge 
@@ -334,16 +335,16 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                     className={`${statusColors[requirement.status]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
                   >
                     {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                      ? "In Progress" 
+                      ? (t('requirements.status.inProgress') === 'requirements.status.inProgress' ? 'In Progress' : t('requirements.status.inProgress')) 
                       : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                        ? "On Review"
+                        ? (t('requirements.status.onReview') === 'requirements.status.onReview' ? 'On Review' : t('requirements.status.onReview'))
                         : requirement.status === REQUIREMENT_STATUS.DONE
-                          ? "Done"
+                          ? (t('requirements.status.done') === 'requirements.status.done' ? 'Done' : t('requirements.status.done'))
                           : requirement.status === REQUIREMENT_STATUS.CANCELED
-                            ? "Canceled"
+                            ? (t('requirements.status.canceled') === 'requirements.status.canceled' ? 'Canceled' : t('requirements.status.canceled'))
                             : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                              ? "Validated"
-                              : "Backlog"}
+                              ? (t('requirements.status.validated') === 'requirements.status.validated' ? 'Validated' : t('requirements.status.validated'))
+                              : (t('requirements.status.backlog') === 'requirements.status.backlog' ? 'Backlog' : t('requirements.status.backlog'))}
                   </Badge>
                 ) : (
                   <DropdownMenu>
@@ -351,16 +352,16 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                       <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
                         <Badge variant="secondary" className={statusColors[requirement.status]}>
                           {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                            ? (t('requirements.status.inProgress') || "In Progress") 
+                            ? (t('requirements.status.inProgress') === 'requirements.status.inProgress' ? 'In Progress' : t('requirements.status.inProgress')) 
                             : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                              ? (t('requirements.status.onReview') || "On Review")
+                              ? (t('requirements.status.onReview') === 'requirements.status.onReview' ? 'On Review' : t('requirements.status.onReview'))
                               : requirement.status === REQUIREMENT_STATUS.DONE
-                                ? (t('requirements.status.done') || "Done")
+                                ? (t('requirements.status.done') === 'requirements.status.done' ? 'Done' : t('requirements.status.done'))
                                 : requirement.status === REQUIREMENT_STATUS.CANCELED
-                                  ? (t('requirements.status.canceled') || "Canceled")
+                                  ? (t('requirements.status.canceled') === 'requirements.status.canceled' ? 'Canceled' : t('requirements.status.canceled'))
                                   : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                                    ? (t('requirements.status.validated') || "Validated")
-                                    : (t('requirements.status.backlog') || "Backlog")}
+                                    ? (t('requirements.status.validated') === 'requirements.status.validated' ? 'Validated' : t('requirements.status.validated'))
+                                    : (t('requirements.status.backlog') === 'requirements.status.backlog' ? 'Backlog' : t('requirements.status.backlog'))}
                         </Badge>
                       </div>
                     </DropdownMenuTrigger>
@@ -374,7 +375,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         }}
                       >
                         <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.BACKLOG].split(" ")[0]}`}></div>
-                        Backlog
+                        {t('requirements.status.backlog') === 'requirements.status.backlog' ? 'Backlog' : t('requirements.status.backlog')}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="cursor-pointer"
@@ -385,7 +386,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         }}
                       >
                         <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.IN_PROGRESS].split(" ")[0]}`}></div>
-                        In Progress
+                        {t('requirements.status.inProgress') === 'requirements.status.inProgress' ? 'In Progress' : t('requirements.status.inProgress')}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="cursor-pointer"
@@ -396,7 +397,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         }}
                       >
                         <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.ON_REVIEW].split(" ")[0]}`}></div>
-                        On Review
+                        {t('requirements.status.onReview') === 'requirements.status.onReview' ? 'On Review' : t('requirements.status.onReview')}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="cursor-pointer"
@@ -407,7 +408,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         }}
                       >
                         <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.DONE].split(" ")[0]}`}></div>
-                        Done
+                        {t('requirements.status.done') === 'requirements.status.done' ? 'Done' : t('requirements.status.done')}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="cursor-pointer"
@@ -418,7 +419,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         }}
                       >
                         <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.VALIDATED].split(" ")[0]}`}></div>
-                        Validated
+                        {t('requirements.status.validated') === 'requirements.status.validated' ? 'Validated' : t('requirements.status.validated')}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="cursor-pointer"
@@ -429,22 +430,22 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                         }}
                       >
                         <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.CANCELED].split(" ")[0]}`}></div>
-                        Canceled
+                        {t('requirements.status.canceled') === 'requirements.status.canceled' ? 'Canceled' : t('requirements.status.canceled')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
                 {isUpdatingStatus && (
-                  <span className="text-xs text-muted-foreground animate-pulse block mt-1">Updating...</span>
+                  <span className="text-xs text-muted-foreground animate-pulse block mt-1">{t('requirements.updating') === 'requirements.updating' ? 'Updating...' : t('requirements.updating')}</span>
                 )}
               </div>
             </div>
             <div className="w-[80px] min-w-[80px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.budget') || 'Budget'}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.budget') === 'requirements.list.budget' ? 'Budget' : t('requirements.list.budget')}</p>
               <div className="flex justify-center">
                 {(requirement.metadata?.payment_status?.outsourced && requirement.metadata.payment_status.status === 'paid') || 
                  requirement.campaignOutsourced ? (
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">{t('requirements.list.paid') || 'Paid'}</span>
+                  <span className="text-sm font-medium text-green-600 dark:text-green-400">{t('requirements.list.paid') === 'requirements.list.paid' ? 'Paid' : t('requirements.list.paid')}</span>
                 ) : requirement.budget ? (
                   <span className="text-sm font-medium">${requirement.budget.toLocaleString()}</span>
                 ) : (
@@ -453,7 +454,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
               </div>
             </div>
             <div className="w-[180px] min-w-[180px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.segments') || 'Segments'}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.segments') === 'requirements.list.segments' ? 'Segments' : t('requirements.list.segments')}</p>
               <div className="flex items-center gap-1 justify-center">
                 {requirement.segmentNames && requirement.segmentNames.length > 0 ? (
                   requirement.segmentNames.length > 1 ? (
@@ -471,7 +472,7 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
                     </Badge>
                   )
                 ) : (
-                  <span className="text-sm text-muted-foreground">{t('requirements.list.noSegments') || 'No segments'}</span>
+                  <span className="text-sm text-muted-foreground">{t('requirements.list.noSegments') === 'requirements.list.noSegments' ? 'No segments' : t('requirements.list.noSegments')}</span>
                 )}
               </div>
             </div>
@@ -526,6 +527,7 @@ export default function RequirementsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sortBy, setSortBy] = useState<"priority" | "newest" | "budget">("priority")
   
   // View mode state (list or kanban)
   const [viewMode, setViewMode] = useMobileView("table")
@@ -936,14 +938,21 @@ export default function RequirementsPage() {
       );
     }
 
-    // Ordenar por prioridad: high, medium, low
+    // Ordenar según el criterio seleccionado
     filtered.sort((a, b) => {
-      const priorityOrder = { high: 0, medium: 1, low: 2 };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
+      if (sortBy === "priority") {
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      } else if (sortBy === "newest") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } else if (sortBy === "budget") {
+        return (b.budget || 0) - (a.budget || 0);
+      }
+      return 0;
     });
 
     setFilteredRequirements(filtered);
-  }, [requirements, searchQuery]);
+  }, [requirements, searchQuery, sortBy]);
 
   // Security mechanism to prevent indefinite loading
   useEffect(() => {
@@ -968,15 +977,15 @@ export default function RequirementsPage() {
   const NoSiteSelected = () => (
     <div className="flex flex-col items-center justify-center p-8 text-center h-[300px]">
       <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-xl font-medium mb-2">{t('requirements.noSite.title') || 'No site selected'}</h3>
+      <h3 className="text-xl font-medium mb-2">{t('requirements.noSite.title') === 'requirements.noSite.title' ? 'No site selected' : t('requirements.noSite.title')}</h3>
       <p className="text-muted-foreground max-w-md">
-        {t('requirements.noSite.desc') || 'Please create or select a site to manage its requirements.'}
+        {t('requirements.noSite.desc') === 'requirements.noSite.desc' ? 'Please create or select a site to manage its requirements.' : t('requirements.noSite.desc')}
       </p>
     </div>
   )
 
   const LoadingState = () => (
-    <div className="space-y-3">
+    <div className="space-y-3 min-h-[calc(100dvh-64px-71px)]">
       {[1, 2, 3].map(i => (
         <Card key={i} className="overflow-hidden border border-border">
           <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
@@ -1024,10 +1033,10 @@ export default function RequirementsPage() {
     // Determinar el mensaje adecuado según el contexto
     const getTabName = (tab: string): string => {
       switch (tab) {
-        case "validated": return t('requirements.empty.validated') || "validated requirements";
-        case "in-progress": return t('requirements.empty.inProgress') || "in-progress requirements";
-        case "backlog": return t('requirements.empty.backlog') || "backlog requirements";
-        default: return t('requirements.empty.all') || "all requirements";
+        case "validated": return t('requirements.empty.validated') === 'requirements.empty.validated' ? 'validated requirements' : t('requirements.empty.validated');
+        case "in-progress": return t('requirements.empty.inProgress') === 'requirements.empty.inProgress' ? 'in-progress requirements' : t('requirements.empty.inProgress');
+        case "backlog": return t('requirements.empty.backlog') === 'requirements.empty.backlog' ? 'backlog requirements' : t('requirements.empty.backlog');
+        default: return t('requirements.empty.all') === 'requirements.empty.all' ? 'all requirements' : t('requirements.empty.all');
       }
     };
     const tabName = getTabName(activeTab);
@@ -1035,13 +1044,13 @@ export default function RequirementsPage() {
     return (
       <EmptyState
         icon={<ClipboardList className="w-24 h-24 text-primary/40" />}
-        title={searchQuery ? (t('requirements.empty.searchTitle') || "No matching requirements found") : (t('requirements.empty.noTitle') || "No requirements found")}
+        title={searchQuery ? (t('requirements.empty.searchTitle') === 'requirements.empty.searchTitle' ? 'No matching requirements found' : t('requirements.empty.searchTitle')) : (t('requirements.empty.noTitle') === 'requirements.empty.noTitle' ? 'No requirements found' : t('requirements.empty.noTitle'))}
         description={
           searchQuery 
-            ? (t('requirements.empty.searchDesc') || "No results for your search. Try with other terms.")
+            ? (t('requirements.empty.searchDesc') === 'requirements.empty.searchDesc' ? 'No results for your search. Try with other terms.' : t('requirements.empty.searchDesc'))
             : requirements.length > 0 
-              ? (t('requirements.empty.filterDesc') || `There are {count} requirements in the database, but none match the current filter ({tabName}).`).replace('{count}', requirements.length.toString()).replace('{tabName}', tabName)
-              : (t('requirements.empty.noDesc') || "No requirements created yet. Create a new one to start.")
+              ? (t('requirements.empty.filterDesc') === 'requirements.empty.filterDesc' ? `There are {count} requirements in the database, but none match the current filter ({tabName}).` : t('requirements.empty.filterDesc')).replace('{count}', requirements.length.toString()).replace('{tabName}', tabName)
+              : (t('requirements.empty.noDesc') === 'requirements.empty.noDesc' ? 'No requirements created yet. Create a new one to start.' : t('requirements.empty.noDesc'))
         }
       />
     );
@@ -1086,7 +1095,7 @@ export default function RequirementsPage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
       {/* Modal de filtros */}
       <FilterModal
         isOpen={isFilterModalOpen}
@@ -1104,33 +1113,61 @@ export default function RequirementsPage() {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-8">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.all') || "All Requirements"}>
+                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.all') === 'requirements.tabs.all' ? 'All Requirements' : t('requirements.tabs.all')}>
                     <LayoutGrid size={13} />
-                    <span className="tab-label">{t('requirements.tabs.all') || 'All Requirements'}</span>
+                    <span className="tab-label">{t('requirements.tabs.all') === 'requirements.tabs.all' ? 'All Requirements' : t('requirements.tabs.all')}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.pending') || "Pending"}>
+                  <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.pending') === 'requirements.tabs.pending' ? 'Pending' : t('requirements.tabs.pending')}>
                     <Clock size={13} />
-                    <span className="tab-label">{t('requirements.tabs.pending') || 'Pending'}</span>
+                    <span className="tab-label">{t('requirements.tabs.pending') === 'requirements.tabs.pending' ? 'Pending' : t('requirements.tabs.pending')}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.completed') || "Completed"}>
+                  <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.completed') === 'requirements.tabs.completed' ? 'Completed' : t('requirements.tabs.completed')}>
                     <CheckCircle2 size={13} />
-                    <span className="tab-label">{t('requirements.tabs.completed') || 'Completed'}</span>
+                    <span className="tab-label">{t('requirements.tabs.completed') === 'requirements.tabs.completed' ? 'Completed' : t('requirements.tabs.completed')}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="rejected" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.rejected') || "Rejected"}>
+                  <TabsTrigger value="rejected" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.rejected') === 'requirements.tabs.rejected' ? 'Rejected' : t('requirements.tabs.rejected')}>
                     <Ban size={13} />
-                    <span className="tab-label">{t('requirements.tabs.rejected') || 'Rejected'}</span>
+                    <span className="tab-label">{t('requirements.tabs.rejected') === 'requirements.tabs.rejected' ? 'Rejected' : t('requirements.tabs.rejected')}</span>
                   </TabsTrigger>
                 </TabsList>
-                <SearchInput
-                  placeholder={t('requirements.search') || "Search requirements..."}
-                  value={searchQuery}
-                  onSearch={handleSearch}
-                  ref={searchInputRef}
-                  className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                />
-                <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
-                  <Filter className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <SearchInput
+                    placeholder={t('requirements.search') === 'requirements.search' ? 'Search requirements...' : t('requirements.search')}
+                    value={searchQuery}
+                    onSearch={handleSearch}
+                    ref={searchInputRef}
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                  />
+                  
+                  <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
+                    <Filter className="h-4 w-4" />
+                  </Button>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('requirements.sortBy') === 'requirements.sortBy' ? 'Sort by' : t('requirements.sortBy')}>
+                        <ListOrdered className="h-4 w-4" />
+                        <span className="hidden sm:inline font-normal">
+                          {sortBy === 'priority' ? (t('requirements.sort.priority') === 'requirements.sort.priority' ? 'Priority' : t('requirements.sort.priority')) :
+                           sortBy === 'newest' ? (t('requirements.sort.newest') === 'requirements.sort.newest' ? 'Newest' : t('requirements.sort.newest')) :
+                           (t('requirements.sort.budget') === 'requirements.sort.budget' ? 'Budget' : t('requirements.sort.budget'))}
+                        </span>
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onClick={() => setSortBy('priority')} className="cursor-pointer">
+                        {t('requirements.sort.priority') === 'requirements.sort.priority' ? 'Priority' : t('requirements.sort.priority')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortBy('newest')} className="cursor-pointer">
+                        {t('requirements.sort.newest') === 'requirements.sort.newest' ? 'Newest' : t('requirements.sort.newest')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortBy('budget')} className="cursor-pointer">
+                        {t('requirements.sort.budget') === 'requirements.sort.budget' ? 'Budget' : t('requirements.sort.budget')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
               <div className="ml-auto flex items-center gap-4">
                 {/* Indicador de filtros activos */}
@@ -1139,7 +1176,7 @@ export default function RequirementsPage() {
                     <Badge variant="outline" className="rounded-full px-2 py-0">
                       {filters.priority.length + filters.completionStatus.length + filters.segments.length}
                     </Badge>
-                    <span className="ml-2">{t('requirements.clearFilters') || 'Clear'}</span>
+                    <span className="ml-2">{t('requirements.clearFilters') === 'requirements.clearFilters' ? 'Clear' : t('requirements.clearFilters')}</span>
                   </Button>
                 )}
                 <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
@@ -1161,13 +1198,13 @@ export default function RequirementsPage() {
                 /* Case 2: Visible error */
                 visibleError ? (
                   <div className="p-4 border border-red-300 bg-red-50 rounded-md text-red-800 mb-4">
-                    <h3 className="font-semibold mb-2">{t('requirements.error.loading') || 'Error loading requirements'}</h3>
+                    <h3 className="font-semibold mb-2">{t('requirements.error.loading') === 'requirements.error.loading' ? 'Error loading requirements' : t('requirements.error.loading')}</h3>
                     <p>{visibleError}</p>
                     <button 
                       onClick={() => safeReload(false, 'Requirements page error retry')} 
                       className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-md"
                     >
-                      Retry
+                      {t('requirements.error.retry') === 'requirements.error.retry' ? 'Retry' : t('requirements.error.retry')}
                     </button>
                   </div>
                 ) : 

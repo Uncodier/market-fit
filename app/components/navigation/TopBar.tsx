@@ -139,17 +139,52 @@ export function TopBar({
 
       // Load campaigns for the Requirements page, Leads page, and Experiments page
       if (pathname === "/requirements" || pathname === "/leads" || pathname === "/experiments") {
-        try {
-          const campaignsResponse = await getCampaigns(currentSite.id);
-          if (campaignsResponse.error) {
-            console.error("Error loading campaigns:", campaignsResponse.error);
-            setCampaigns([]);
-          } else {
-            setCampaigns(campaignsResponse.data || []);
+        const maxRetries = 2;
+        const isNetworkError = (err: unknown) => {
+          const msg = String(err instanceof Error ? err.message : err).toLowerCase();
+          return (
+            msg.includes("fetch failed") ||
+            msg.includes("failed to fetch") ||
+            msg.includes("network") ||
+            msg.includes("econnrefused") ||
+            msg.includes("enotfound") ||
+            msg.includes("etimedout") ||
+            msg.includes("econnreset")
+          );
+        };
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            const campaignsResponse = await getCampaigns(currentSite.id);
+            if (campaignsResponse.error) {
+              const isTransient = isNetworkError(campaignsResponse.error);
+              if (isTransient && attempt < maxRetries) {
+                await new Promise((r) => setTimeout(r, 500));
+                continue;
+              }
+              // Log as warning for transient network errors (we degrade gracefully with [])
+              if (isTransient) {
+                console.warn("Campaigns unavailable (network):", campaignsResponse.error);
+              } else {
+                console.error("Error loading campaigns:", campaignsResponse.error);
+              }
+            } else {
+              setCampaigns(campaignsResponse.data || []);
+              break;
+            }
+          } catch (campaignErr) {
+            const isTransient = isNetworkError(campaignErr);
+            if (isTransient && attempt < maxRetries) {
+              await new Promise((r) => setTimeout(r, 500));
+              continue;
+            }
+            if (isTransient) {
+              console.warn("Campaigns unavailable (network):", campaignErr);
+            } else {
+              console.error("Error loading campaigns:", campaignErr);
+            }
           }
-        } catch (campaignErr) {
-          console.error("Error loading campaigns:", campaignErr);
           setCampaigns([]);
+          break;
         }
       }
     }

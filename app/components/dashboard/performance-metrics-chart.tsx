@@ -13,6 +13,7 @@ interface PerformanceMetricsChartProps {
   startDate: Date;
   endDate: Date;
   segmentId?: string;
+  showConversations?: boolean;
 }
 
 interface ChartDataPoint {
@@ -38,7 +39,8 @@ interface MetricsData {
 export function PerformanceMetricsChart({ 
   startDate, 
   endDate, 
-  segmentId = "all" 
+  segmentId = "all",
+  showConversations = false
 }: PerformanceMetricsChartProps) {
   const [data, setData] = useState<MetricsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,106 +120,108 @@ export function PerformanceMetricsChart({
           data={data.chartData}
           margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
         >
-          <CartesianGrid 
-            strokeDasharray="3 3" 
-            vertical={false} 
-            stroke={colors.grid} 
-            opacity={isDarkMode ? 0.6 : 1}
-          />
-          <XAxis 
-            dataKey="date" 
-            axisLine={false}
-            tickLine={false}
-            tick={{ fontSize: 12, fill: colors.text }}
-            tickFormatter={(value) => {
-              const date = new Date(value);
-              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            }}
-          />
-          <YAxis 
-            axisLine={false}
-            tickLine={false} 
-            tick={{ fontSize: 12, fill: colors.text }}
-            tickFormatter={(value) => value.toLocaleString()}
-          />
-          <Tooltip 
-            formatter={(value: number, name: string) => [
-              value.toLocaleString(), 
-              name === 'conversations' ? 'Conversations' :
-              name === 'engagement' ? 'Engagement' :
-              name === 'meetings' ? 'Meetings' :
-              name === 'sales' ? 'Sales' : name
-            ]}
-            labelStyle={{ fontWeight: 'bold', color: colors.tooltipText }}
-            contentStyle={{ 
-              backgroundColor: colors.tooltipBackground, 
-              border: `1px solid ${colors.tooltipBorder}`,
-              borderRadius: '0.375rem', 
-              boxShadow: isDarkMode 
-                ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3)' 
-                : '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-            }}
-            itemStyle={{ color: colors.tooltipText }}
-            labelFormatter={(value) => {
-              const date = new Date(value);
-              return date.toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric',
-                year: 'numeric'
-              });
-            }}
-          />
-          <Legend 
-            wrapperStyle={{ 
-              paddingTop: '20px',
-              color: colors.text
-            }}
-          />
-          <Line 
-            type="monotone"
-            dataKey="conversations" 
-            stroke={colors.conversations}
-            strokeWidth={2}
-            dot={{ fill: colors.conversations, strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: colors.conversations, strokeWidth: 2 }}
-            name="Conversations"
-            animationDuration={1500}
-            animationEasing="ease-out"
-          />
-          <Line 
-            type="monotone"
-            dataKey="engagement" 
-            stroke={colors.engagement}
-            strokeWidth={2}
-            dot={{ fill: colors.engagement, strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: colors.engagement, strokeWidth: 2 }}
-            name="Engagement"
-            animationDuration={1500}
-            animationEasing="ease-out"
-          />
-          <Line 
-            type="monotone"
-            dataKey="meetings" 
-            stroke={colors.meetings}
-            strokeWidth={2}
-            dot={{ fill: colors.meetings, strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: colors.meetings, strokeWidth: 2 }}
-            name="Meetings"
-            animationDuration={1500}
-            animationEasing="ease-out"
-          />
-          <Line 
-            type="monotone"
-            dataKey="sales" 
-            stroke={colors.sales}
-            strokeWidth={2}
-            dot={{ fill: colors.sales, strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6, stroke: colors.sales, strokeWidth: 2 }}
-            name="Sales"
-            animationDuration={1500}
-            animationEasing="ease-out"
-          />
-        </LineChart>
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              vertical={false} 
+              stroke={colors.grid} 
+              opacity={isDarkMode ? 0.6 : 1}
+            />
+            <XAxis 
+              dataKey="date" 
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: colors.text }}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              }}
+            />
+            <YAxis 
+              axisLine={false}
+              tickLine={false} 
+              tick={{ fontSize: 12, fill: colors.text }}
+              tickFormatter={(value) => value.toLocaleString()}
+            />
+            <Tooltip 
+              formatter={(value: number, name: string) => [
+                value.toLocaleString(), 
+                name === 'conversations' ? 'Conversations' :
+                name === 'engagement' ? 'Engagement' :
+                name === 'meetings' ? 'Meetings' :
+                name === 'sales' ? 'Sales' : name
+              ]}
+              labelStyle={{ fontWeight: 'bold', color: colors.tooltipText }}
+              contentStyle={{ 
+                backgroundColor: colors.tooltipBackground, 
+                border: `1px solid ${colors.tooltipBorder}`,
+                borderRadius: '0.375rem', 
+                boxShadow: isDarkMode 
+                  ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3)' 
+                  : '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+              }}
+              itemStyle={{ color: colors.tooltipText }}
+              labelFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric',
+                  year: 'numeric'
+                });
+              }}
+            />
+            <Legend 
+              wrapperStyle={{ 
+                paddingTop: '20px',
+                color: colors.text
+              }}
+            />
+            {showConversations && (
+              <Line 
+                type="monotone"
+                dataKey="conversations" 
+                stroke={colors.conversations}
+                strokeWidth={2}
+                dot={{ fill: colors.conversations, strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: colors.conversations, strokeWidth: 2 }}
+                name="Conversations"
+                animationDuration={1500}
+                animationEasing="ease-out"
+              />
+            )}
+            <Line 
+              type="monotone"
+              dataKey="engagement" 
+              stroke={colors.engagement}
+              strokeWidth={2}
+              dot={{ fill: colors.engagement, strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: colors.engagement, strokeWidth: 2 }}
+              name="Engagement"
+              animationDuration={1500}
+              animationEasing="ease-out"
+            />
+            <Line 
+              type="monotone"
+              dataKey="meetings" 
+              stroke={colors.meetings}
+              strokeWidth={2}
+              dot={{ fill: colors.meetings, strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: colors.meetings, strokeWidth: 2 }}
+              name="Meetings"
+              animationDuration={1500}
+              animationEasing="ease-out"
+            />
+            <Line 
+              type="monotone"
+              dataKey="sales" 
+              stroke={colors.sales}
+              strokeWidth={2}
+              dot={{ fill: colors.sales, strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: colors.sales, strokeWidth: 2 }}
+              name="Sales"
+              animationDuration={1500}
+              animationEasing="ease-out"
+            />
+          </LineChart>
       </ResponsiveContainer>
     </div>
   );

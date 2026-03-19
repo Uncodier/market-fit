@@ -121,15 +121,10 @@ export function ControlCenterSkeleton({
       >
         <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r">
           {/* Sidebar search header */}
-          <div className="flex items-center justify-center h-[71px] border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 w-[319px]">
-            <div className="relative w-[80%]">
-              <Skeleton className="h-12 w-full rounded-md" />
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <Skeleton className="h-4 w-4 rounded" />
-              </div>
-              <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                <Skeleton className="h-5 w-8 rounded" />
-              </div>
+          <div className="flex items-center justify-between h-[71px] border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 w-[319px] px-6 gap-4">
+            <Skeleton className="h-6 w-32 rounded" />
+            <div className="relative w-[140px]">
+              <Skeleton className="h-8 w-full rounded-md" />
             </div>
           </div>
 
@@ -196,13 +191,15 @@ export function ControlCenterSkeleton({
           </div>
 
           {/* Header content */}
-          <div className="w-full flex items-center justify-between ml-4 md:ml-[120px] mr-4 md:mr-16">
-            {/* Mobile: title placeholder */}
-            <Skeleton className="h-5 w-32 md:hidden" />
-            <div className="hidden md:block" />
+          <div className="w-full flex items-center justify-between ml-4 md:ml-[72px] pr-4 lg:pr-8">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-9 w-24 rounded-full" />
+            </div>
+            <div className="flex items-center gap-4">
+              {/* Mobile: title placeholder */}
+              <Skeleton className="h-5 w-32 md:hidden" />
 
-            {/* View selector */}
-            <div className="flex">
+              {/* View selector */}
               <Skeleton className="h-9 w-[116px] rounded-md" />
             </div>
           </div>

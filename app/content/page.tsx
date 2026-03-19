@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent } from "@/app/components/ui/card"
-import { Input } from "@/app/components/ui/input"
+import { SearchInput } from "@/app/components/ui/search-input"
 import { Badge } from "@/app/components/ui/badge"
 import { 
   Search, 
@@ -30,8 +30,16 @@ import {
   ChevronDown,
   Target,
   Microscope,
-  Megaphone
+  Megaphone,
+  ListOrdered,
+  Check
 } from "@/app/components/ui/icons"
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/app/components/ui/dropdown-menu"
 import { Switch } from "@/app/components/ui/switch"
 import { Pagination } from "@/app/components/ui/pagination"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
@@ -1697,6 +1705,9 @@ export default function ContentPage() {
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true)
   const [assetsByContentId, setAssetsByContentId] = useState<Record<string, ContentAssetWithDetails[]>>({})
 
+  // Sort state
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
+
   // Initialize command+k hook
   useCommandK()
 
@@ -1785,10 +1796,15 @@ export default function ContentPage() {
     }
   }
 
-  const updateFilteredContent = (search: string, currentFilters: ContentFilters, items = contentItems) => {
+  const updateFilteredContent = useCallback((
+    search: string, 
+    currentFilters: ContentFilters,
+    itemsToFilter: ContentItem[] = contentItems,
+    currentSort: typeof sortBy = sortBy
+  ) => {
     const searchLower = search.toLowerCase()
     
-    const filtered = items.filter(item => {
+    let filtered = itemsToFilter.filter(item => {
       // Filtrar por término de búsqueda
       const matchesSearch = search === '' || 
         item.title.toLowerCase().includes(searchLower) ||
@@ -1809,8 +1825,18 @@ export default function ContentPage() {
       return matchesSearch && matchesStatus && matchesType && matchesSegment
     })
     
+    // Sort logic
+    filtered = filtered.sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime()
+      const dateB = new Date(b.created_at || 0).getTime()
+      
+      if (currentSort === 'newest') return dateB - dateA
+      if (currentSort === 'oldest') return dateA - dateB
+      return 0
+    })
+    
     setFilteredContent(filtered)
-  }
+  }, [contentItems, sortBy])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value
@@ -1822,6 +1848,11 @@ export default function ContentPage() {
     setFilters(newFilters)
     updateFilteredContent(searchTerm, newFilters)
   }
+
+  // Effect to re-run sort and filter when sortBy changes
+  useEffect(() => {
+    updateFilteredContent(searchTerm, filters, contentItems, sortBy)
+  }, [sortBy, updateFilteredContent, searchTerm, filters, contentItems])
 
   const handleUpdateContentStatus = async (contentId: string, newStatus: string) => {
     try {
@@ -1954,35 +1985,61 @@ export default function ContentPage() {
                     </Badge>
                   </TabsTrigger>
                 </TabsList>
-                <div className="relative w-64">
-                  <Input 
-                    data-command-k-input
-                    placeholder="Search content..." 
-                    className="w-full pr-16" 
-                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
+                <div className="flex items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('content.sortBy') === 'content.sortBy' ? 'Sort by' : t('content.sortBy')}>
+                        <ListOrdered className="h-4 w-4" />
+                        <span className="hidden sm:inline font-normal">
+                          {sortBy === "newest" 
+                            ? (t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest'))
+                            : (t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest'))}
+                        </span>
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-40">
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("newest")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                        {t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="cursor-pointer"
+                        onClick={() => setSortBy("oldest")}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                        {t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <SearchInput
+                    placeholder="Search content..."
                     value={searchTerm}
-                    onChange={handleSearchChange}
+                    onSearch={handleSearchChange}
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                   />
-                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
+
+                  <Button 
+                    variant="secondary" 
+                    size={(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "default" : "icon"}
+                    className={cn(
+                      "h-9 rounded-full",
+                      (filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "px-3" : "w-9"
+                    )}
+                    onClick={() => setIsFiltersDialogOpen(true)}
+                  >
+                    <Filter className="h-4 w-4" />
+                    {(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) && (
+                      <Badge variant="secondary" className="ml-2">
+                        {filters.status.length + filters.type.length + filters.segments.length}
+                      </Badge>
+                    )}
+                  </Button>
                 </div>
-                <Button 
-                  variant="secondary" 
-                  size={(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "default" : "icon"}
-                  className={cn(
-                    "h-9 rounded-full",
-                    (filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "px-3" : "w-9"
-                  )}
-                  onClick={() => setIsFiltersDialogOpen(true)}
-                >
-                  <Filter className="h-4 w-4" />
-                  {(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) && (
-                    <Badge variant="secondary" className="ml-2">
-                      {filters.status.length + filters.type.length + filters.segments.length}
-                    </Badge>
-                  )}
-                </Button>
               </div>
               <div className="ml-auto">
                 <ViewSelector 

@@ -2,6 +2,11 @@ const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Mitigate ECONNRESET in dev: Node 20+ fetch uses keep-alive; stale connections cause resets.
+  ...(process.env.NODE_ENV === 'development' && {
+    httpAgentOptions: { keepAlive: false },
+    httpsAgentOptions: { keepAlive: false }
+  }),
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'rnjgeloamtszdjplmqxy.supabase.co' },

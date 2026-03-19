@@ -39,13 +39,13 @@ const PRIORITY_COLORS: Record<string, string> = {
 }
 
 // Helper to get completion status display (moved outside component)
-const getCompletionStatusDisplay = (status: string) => {
-  switch(status) {
-    case 'completed': return 'Completed';
-    case 'rejected': return 'Rejected';
-    default: return 'Pending';
+  const getCompletionStatusDisplay = (status: string) => {
+    switch(status) {
+      case 'completed': return t('requirements.completion.completed') === 'requirements.completion.completed' ? 'Completed' : t('requirements.completion.completed');
+      case 'rejected': return t('requirements.completion.rejected') === 'requirements.completion.rejected' ? 'Rejected' : t('requirements.completion.rejected');
+      default: return t('requirements.completion.pending') === 'requirements.completion.pending' ? 'Pending' : t('requirements.completion.pending');
+    }
   }
-}
 
 // Determine if a card should be draggable (moved outside component)
 const isDraggable = (requirement: { completionStatus: string }) => {
@@ -122,6 +122,15 @@ export function KanbanView({
 }: KanbanViewProps) {
   const { t } = useLocalization()
   const { toast } = useToast()
+  
+  // Helper to get completion status display (moved inside component for localization)
+  const getCompletionStatusDisplay = (status: string) => {
+    switch(status) {
+      case 'completed': return t('requirements.completion.completed') === 'requirements.completion.completed' ? 'Completed' : t('requirements.completion.completed');
+      case 'rejected': return t('requirements.completion.rejected') === 'requirements.completion.rejected' ? 'Rejected' : t('requirements.completion.rejected');
+      default: return t('requirements.completion.pending') === 'requirements.completion.pending' ? 'Pending' : t('requirements.completion.pending');
+    }
+  }
   
   // Estado para controlar qué columnas están colapsadas
   const [collapsedColumns, setCollapsedColumns] = useState<Record<string, boolean>>({});
@@ -201,15 +210,15 @@ export function KanbanView({
       await onUpdateRequirementStatus(draggableId, destination.droppableId as any)
       
       toast({
-        title: t('requirements.kanban.statusUpdated') || "Status updated",
-        description: `${t('requirements.kanban.movedTo') || 'Requirement moved to'} ${REQUIREMENT_STATUSES.find(s => s.id === destination.droppableId)?.name}`,
+        title: t('requirements.kanban.statusUpdated') === 'requirements.kanban.statusUpdated' ? "Status updated" : t('requirements.kanban.statusUpdated'),
+        description: `${t('requirements.kanban.movedTo') === 'requirements.kanban.movedTo' ? 'Requirement moved to' : t('requirements.kanban.movedTo')} ${REQUIREMENT_STATUSES.find(s => s.id === destination.droppableId)?.name}`,
       })
     } catch (error) {
       // Si hay un error, revertimos el cambio local
       toast({
-        title: "Error",
+        title: t('requirements.error.title') === 'requirements.error.title' ? "Error" : t('requirements.error.title'),
         variant: "destructive",
-        description: t('requirements.kanban.errorUpdating') || "Error updating requirement status",
+        description: t('requirements.kanban.errorUpdating') === 'requirements.kanban.errorUpdating' ? "Error updating requirement status" : t('requirements.kanban.errorUpdating'),
       })
       setRequirementsByStatus(getRequirementsByStatus())
     }
@@ -231,9 +240,9 @@ export function KanbanView({
       {hasNoRequirements ? (
         <EmptyState
           icon={<ClipboardList className="h-12 w-12 text-primary" />}
-          title={t('requirements.empty.noTitle') || "No requirements found"}
-          description={t('requirements.empty.noMatch') || "There are no requirements matching your current filters or you haven't created any requirements yet."}
-          hint={t('requirements.empty.hint') || "Try clearing your filters or create a new requirement to get started."}
+          title={t('requirements.empty.noTitle') === 'requirements.empty.noTitle' ? "No requirements found" : t('requirements.empty.noTitle')}
+          description={t('requirements.empty.noMatch') === 'requirements.empty.noMatch' ? "There are no requirements matching your current filters or you haven't created any requirements yet." : t('requirements.empty.noMatch')}
+          hint={t('requirements.empty.hint') === 'requirements.empty.hint' ? "Try clearing your filters or create a new requirement to get started." : t('requirements.empty.hint')}
         />
       ) : (
         <div className="w-full">
@@ -327,11 +336,11 @@ export function KanbanView({
                                           requirement.type === 'planning' ? 'text-amber-600 dark:text-amber-400' :
                                           'text-pink-600 dark:text-pink-400'
                                         }`}>
-                                          {requirement.type === 'follow_up' ? (t('requirements.types.followUp') || 'Follow Up') : (t(`requirements.types.${requirement.type}`) || requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1))}
+                                          {requirement.type === 'follow_up' ? (t('requirements.types.followUp') === 'requirements.types.followUp' ? 'Follow Up' : t('requirements.types.followUp')) : (t(`requirements.types.${requirement.type}`) === `requirements.types.${requirement.type}` ? requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1) : t(`requirements.types.${requirement.type}`))}
                                         </span>
                                       </div>
                                       <Badge className={`text-xs whitespace-nowrap ml-2 ${PRIORITY_COLORS[requirement.priority]}`}>
-                                        {t(`requirements.priority.${requirement.priority}`) || requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1)}
+                                        {t(`requirements.priority.${requirement.priority}`) === `requirements.priority.${requirement.priority}` ? requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1) : t(`requirements.priority.${requirement.priority}`)}
                                       </Badge>
                                     </div>
                                     
@@ -343,8 +352,8 @@ export function KanbanView({
                                     <div className="h-px bg-border/50 my-2" />
 
                                     {/* Card footer: segment badges on left, campaign and budget on right */}
-                                    <div className="flex justify-between items-center gap-2 mt-2">
-                                      {/* Segment badges on left */}
+                                    <div className="flex flex-col gap-2 mt-2">
+                                      {/* Segment badges on top/left */}
                                       <div className="flex flex-wrap items-center gap-1">
                                         {requirement.segmentNames && requirement.segmentNames.length > 0 ? (
                                           <>
@@ -354,7 +363,7 @@ export function KanbanView({
                                               </Badge>
                                             ))}
                                             {requirement.segmentNames.length > 1 && (
-                                              <Badge variant="outline" className="text-xs py-0 h-5">
+                                              <Badge variant="outline" className="text-xs py-0 h-5 shrink-0">
                                                 +{requirement.segmentNames.length - 1}
                                               </Badge>
                                             )}
@@ -362,27 +371,27 @@ export function KanbanView({
                                         ) : null}
                                       </div>
                                       
-                                      {/* Campaign and budget on right */}
-                                      <div className="flex items-center gap-2">
-                                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                                      {/* Campaign and budget on bottom/right */}
+                                      <div className="flex items-center justify-between gap-2 w-full">
+                                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 flex-1 min-w-0">
                                           {requirement.campaignNames && requirement.campaignNames.length > 0 ? (
                                             <>
-                                              <Target className="h-3 w-3" />
-                                              <span className="truncate max-w-[120px]">{requirement.campaignNames[0]}</span>
+                                              <Target className="h-3 w-3 shrink-0" />
+                                              <span className="truncate">{requirement.campaignNames[0]}</span>
                                             </>
                                           ) : (
                                             <>
-                                              <Target className="h-3 w-3" />
-                                              <span className="text-gray-500 dark:text-gray-500">{t('requirements.list.noCampaign') || 'No campaign'}</span>
+                                              <Target className="h-3 w-3 shrink-0" />
+                                              <span className="text-gray-500 dark:text-gray-500 truncate">{t('requirements.list.noCampaign') === 'requirements.list.noCampaign' ? 'No campaign' : t('requirements.list.noCampaign')}</span>
                                             </>
                                           )}
                                         </div>
                                         
-                                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 shrink-0">
                                           {requirement.budget ? (
                                             <span className="font-medium">${requirement.budget.toLocaleString()}</span>
                                           ) : (
-                                            <span className="text-gray-500 dark:text-gray-500">{t('requirements.kanban.noBudget') || 'No budget'}</span>
+                                            <span className="text-gray-500 dark:text-gray-500">{t('requirements.kanban.noBudget') === 'requirements.kanban.noBudget' ? 'No budget' : t('requirements.kanban.noBudget')}</span>
                                           )}
                                         </div>
                                       </div>
@@ -419,6 +428,15 @@ function KanbanRequirementCard({
   onClick: (requirement: Requirement) => void
 }) {
   const { t } = useLocalization()
+  
+  const getCompletionStatusDisplayCard = (status: string) => {
+    switch(status) {
+      case 'completed': return t('requirements.completion.completed') === 'requirements.completion.completed' ? 'Completed' : t('requirements.completion.completed');
+      case 'rejected': return t('requirements.completion.rejected') === 'requirements.completion.rejected' ? 'Rejected' : t('requirements.completion.rejected');
+      default: return t('requirements.completion.pending') === 'requirements.completion.pending' ? 'Pending' : t('requirements.completion.pending');
+    }
+  }
+
   return (
     <div
       ref={provided.innerRef}
@@ -456,10 +474,10 @@ function KanbanRequirementCard({
             requirement.type === 'planning' ? 'text-amber-600 dark:text-amber-400' :
             'text-pink-600 dark:text-pink-400'
                                         }`}>
-                                          {requirement.type === 'follow_up' ? (t('requirements.types.followUp') || 'Follow Up') : (t(`requirements.types.${requirement.type}`) || requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1))}
+                                          {requirement.type === 'follow_up' ? (t('requirements.types.followUp') === 'requirements.types.followUp' ? 'Follow Up' : t('requirements.types.followUp')) : (t(`requirements.types.${requirement.type}`) === `requirements.types.${requirement.type}` ? requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1) : t(`requirements.types.${requirement.type}`))}
                                         </span>
         </div>
-        <Badge className={`capitalize ${PRIORITY_COLORS[requirement.priority]}`}>{requirement.priority}</Badge>
+        <Badge className={`capitalize ${PRIORITY_COLORS[requirement.priority]}`}>{t(`requirements.priority.${requirement.priority}`) === `requirements.priority.${requirement.priority}` ? requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1) : t(`requirements.priority.${requirement.priority}`)}</Badge>
       </div>
       
       {/* Descripción sin botón de expandir */}
@@ -490,7 +508,7 @@ function KanbanRequirementCard({
                 ? <AlertCircle className="w-3 h-3" /> 
                 : <Clock className="w-3 h-3" />
             }
-            {getCompletionStatusDisplay(requirement.completionStatus)}
+            {getCompletionStatusDisplayCard(requirement.completionStatus)}
           </Badge>
         </div>
         
@@ -514,7 +532,7 @@ function KanbanRequirementCard({
           ))}
           {requirement.segmentNames.length > 3 && (
             <span className="px-1.5 py-0.5 text-xs rounded-full bg-muted/20 text-muted-foreground">
-              +{requirement.segmentNames.length - 3} {t('requirements.kanban.more') || 'more'}
+              +{requirement.segmentNames.length - 3} {t('requirements.kanban.more') === 'requirements.kanban.more' ? 'more' : t('requirements.kanban.more')}
             </span>
           )}
         </div>
@@ -523,7 +541,7 @@ function KanbanRequirementCard({
       {/* Campaign information */}
       {requirement.campaignNames && requirement.campaignNames.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2 border-t pt-2">
-          <span className="text-xs text-muted-foreground mr-1">{t('requirements.kanban.campaigns') || 'Campaigns:'}</span>
+          <span className="text-xs text-muted-foreground mr-1">{t('requirements.kanban.campaigns') === 'requirements.kanban.campaigns' ? 'Campaigns:' : t('requirements.kanban.campaigns')}</span>
           {requirement.campaignNames.slice(0, 2).map((campaign, i) => (
             <span
               key={`${requirement.id}-campaign-${i}`}
@@ -534,7 +552,7 @@ function KanbanRequirementCard({
           ))}
           {requirement.campaignNames.length > 2 && (
             <span className="px-1.5 py-0.5 text-xs rounded-full bg-muted/20 text-muted-foreground">
-              +{requirement.campaignNames.length - 2} {t('requirements.kanban.more') || 'more'}
+              +{requirement.campaignNames.length - 2} {t('requirements.kanban.more') === 'requirements.kanban.more' ? 'more' : t('requirements.kanban.more')}
             </span>
           )}
         </div>

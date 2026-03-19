@@ -56,7 +56,20 @@ export async function getCampaigns(siteId: string) {
 
     return { data: campaigns, error: null }
   } catch (error) {
-    console.error("Error in getCampaigns:", error)
+    const msg = (error instanceof Error ? error.message : String(error)).toLowerCase()
+    const isNetworkError =
+      msg.includes("fetch failed") ||
+      msg.includes("failed to fetch") ||
+      msg.includes("network") ||
+      msg.includes("econnrefused") ||
+      msg.includes("enotfound") ||
+      msg.includes("etimedout") ||
+      msg.includes("econnreset")
+    if (isNetworkError) {
+      console.warn("Campaigns fetch failed (network):", msg)
+    } else {
+      console.error("Error in getCampaigns:", error)
+    }
     return { data: null, error: error instanceof Error ? error.message : "An unknown error occurred" }
   }
 }
