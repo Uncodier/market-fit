@@ -305,17 +305,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     const isInstanceRunning = activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)
 
     if (hasConversations || isInstanceRunning) {
-      // Double rAF: first frame commits the DOM, second frame has correct layout dimensions
-      let id1: number
-      const id0 = requestAnimationFrame(() => {
-        id1 = requestAnimationFrame(() => scrollToBottom())
-      })
-      return () => {
-        cancelAnimationFrame(id0)
-        cancelAnimationFrame(id1)
-      }
+      // Usar un setTimeout para asegurar que el DOM se ha renderizado completamente
+      // y forzar a que el navegador lo dibuje (paint) antes de hacer scroll
+      const timeoutId = setTimeout(() => {
+        scrollToBottomImmediate();
+      }, 50);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [logs.length, activeRobotInstance?.id, activeRobotInstance?.status, scrollToBottom])
+  }, [logs.length, activeRobotInstance?.id, activeRobotInstance?.status, scrollToBottomImmediate])
 
   const {
     steps,
@@ -553,6 +551,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       <div
         ref={messagesContainerRef}
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-[220px] w-full min-w-0 transition-colors duration-300 ease-in-out"
+        style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
       >
         <div className="w-full max-w-4xl mx-auto px-4 min-w-0">
           {/* Spacer for sticky header and topbar blur effect */}

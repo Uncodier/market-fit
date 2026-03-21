@@ -416,19 +416,6 @@ export function useNavigationHistory() {
       
       // If path is identical
       isParamChangeOnSamePath = pathname === lastPathname
-      
-      // Special case for robots: /robots (list) vs /robots?instance=... (detail)
-      // Going from list to detail should NOT be considered "same path"
-      // Going from detail to detail IS "same path" (so it replaces)
-      if (pathname === '/robots' && lastPathname === '/robots') {
-        const hasInstanceNow = searchParams.has('instance')
-        const hadInstanceBefore = lastParams.has('instance')
-        
-        // If transitioning between list and detail, don't treat as same path param change
-        if (hasInstanceNow !== hadInstanceBefore) {
-          isParamChangeOnSamePath = false
-        }
-      }
     }
     
     if (isParamChangeOnSamePath) {
@@ -470,16 +457,11 @@ export function useNavigationHistory() {
       // Extract base path and check if path has ID segment
       // E.g., /control-center/abc-123 → { basePath: '/control-center', hasId: true, segments: 2 }
       // E.g., /robots?instance=123 → { basePath: '/robots', hasId: true, segments: 1 }
-      const getPathInfo = (path: string, urlParams: URLSearchParams) => {
+      const getPathInfo = (path: string) => {
         const segments = path.split('/').filter(Boolean)
         const basePath = segments.length > 0 ? `/${segments[0]}` : path
         
-        let hasId = segments.length > 1
-        
-        // Special case for robots
-        if (basePath === '/robots') {
-          hasId = urlParams.has('instance')
-        }
+        const hasId = segments.length > 1
         
         return {
           basePath,
@@ -491,8 +473,8 @@ export function useNavigationHistory() {
       const currentParams = new URLSearchParams(fullPath.split('?')[1] || '')
       const lastParams = new URLSearchParams(lastItem.path.split('?')[1] || '')
       
-      const currentPathInfo = getPathInfo(currentPathname, currentParams)
-      const lastPathInfo = getPathInfo(lastPathname, lastParams)
+      const currentPathInfo = getPathInfo(currentPathname)
+      const lastPathInfo = getPathInfo(lastPathname)
       
       // If base path is the same, check if we should replace or add
       if (currentPathInfo.basePath === lastPathInfo.basePath) {
@@ -665,12 +647,7 @@ export function useNavigationHistory() {
     // Check if we are jumping into a detail route directly from outside
     const segments = currentPathname.split('/').filter(Boolean)
     const basePath = segments.length > 0 ? `/${segments[0]}` : currentPathname
-    const currentParamsLocal = new URLSearchParams(fullPath.split('?')[1] || '')
-    let hasId = segments.length > 1
-    
-    if (basePath === '/robots') {
-      hasId = currentParamsLocal.has('instance')
-    }
+    const hasId = segments.length > 1
     
     if (hasId) {
       const baseExists = history.items.some(item => item.path === basePath)

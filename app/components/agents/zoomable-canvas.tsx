@@ -8,11 +8,13 @@ import { useTheme } from "@/app/context/ThemeContext"
 interface ZoomableCanvasProps {
   children: React.ReactNode
   className?: string
+  recenterDependency?: any
 }
 
 export function ZoomableCanvas({ 
   children, 
-  className
+  className,
+  recenterDependency
 }: ZoomableCanvasProps) {
   // Use the layout context to get the current state
   const { isLayoutCollapsed } = useLayout();
@@ -36,6 +38,7 @@ export function ZoomableCanvas({
   const [autoRecenterEnabled, setAutoRecenterEnabled] = useState(true); // Control if auto-recenter is enabled
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
   const [touchStartScale, setTouchStartScale] = useState<number>(1);
+  const prevRecenterDepRef = useRef(recenterDependency);
 
   // Variables for animation
   const animationRef = useRef<number | null>(null);
@@ -180,16 +183,8 @@ export function ZoomableCanvas({
     // We need accurate measurements of our visible area
     const canvasRect = canvasRef.current.getBoundingClientRect();
     
-    // Command panel width is fixed at 300px
-    const commandPanelWidth = 300;
-    
-    // We need to calculate the effective available width
-    // Start with the window width and subtract the command panel
-    const windowWidth = window.innerWidth;
-    const sidebarWidth = isLayoutCollapsed ? 72 : 240;
-    
-    // The effective available width is the window width minus sidebar and command panel
-    const availableWidth = windowWidth - sidebarWidth - commandPanelWidth;
+    // The effective available width is the canvas container's width
+    const availableWidth = canvasRect.width;
     
     // Use a small margin to avoid content touching edges
     const margin = 0.02; // 2% margin
@@ -396,15 +391,39 @@ export function ZoomableCanvas({
   // Readjust when window size or menu state changes
   useEffect(() => {
     window.addEventListener('resize', debouncedResize);
+    let timer: NodeJS.Timeout;
     
     // Readjust when menu state changes
     if (isInitialized && !isUserInteracting && autoRecenterEnabled) {
       // Avoid calling measureContent here to prevent infinite loops
-      applyContainTransform();
+      // Adding a small delay to allow DOM/flexbox animations to complete before applying transform
+      timer = setTimeout(() => {
+        applyContainTransform();
+      }, 50);
     }
     
-    return () => window.removeEventListener('resize', debouncedResize);
+    return () => {
+      window.removeEventListener('resize', debouncedResize);
+      if (timer) clearTimeout(timer);
+    };
   }, [isInitialized, isLayoutCollapsed, applyContainTransform, debouncedResize, isUserInteracting, autoRecenterEnabled]);
+
+  // Handle explicit recenter dependency
+  useEffect(() => {
+    if (isInitialized && recenterDependency !== prevRecenterDepRef.current) {
+      prevRecenterDepRef.current = recenterDependency;
+      
+      // Force a recenter and re-enable auto recentering
+      setAutoRecenterEnabled(true);
+      
+      // We might need to re-measure content if the layout drastically changed
+      const timer = setTimeout(() => {
+        applyContainTransform();
+      }, 50);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [recenterDependency, isInitialized, applyContainTransform]);
 
   // New effect to detect changes in children (like expanded cards)
   useEffect(() => {

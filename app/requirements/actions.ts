@@ -114,7 +114,7 @@ export async function createRequirement(data: RequirementFormValues) {
   }
 }
 
-export async function updateRequirementStatus(id: string, status: RequirementStatusType) {
+export async function updateRequirementStatus(id: string, status: RequirementStatusType, cycle?: string) {
   const cookieStore = cookies()
   const supabase = await createClient()
 
@@ -125,9 +125,14 @@ export async function updateRequirementStatus(id: string, status: RequirementSta
     }
   }
 
+  const updateData: any = { status }
+  if (cycle) {
+    updateData.cycle = cycle
+  }
+
   const { data: requirement, error } = await supabase
     .from("requirements")
-    .update({ status })
+    .update(updateData)
     .eq("id", id)
     .select()
     .single()
@@ -233,6 +238,7 @@ interface UpdateRequirementData {
   campaigns: string[]
   campaign_id: string
   outsourceInstructions?: string
+  metadata?: any
 }
 
 export async function updateRequirement(data: UpdateRequirementData) {
@@ -241,9 +247,7 @@ export async function updateRequirement(data: UpdateRequirementData) {
 
   try {
     // Primero actualizamos el requerimiento principal
-    const { data: requirement, error: requirementError } = await supabase
-      .from("requirements")
-      .update({
+      const updatePayload: any = {
         title: data.title,
         description: data.description,
         type: data.type,
@@ -254,7 +258,15 @@ export async function updateRequirement(data: UpdateRequirementData) {
         budget: data.budget,
         instructions: data.outsourceInstructions,
         updated_at: new Date().toISOString()
-      })
+      };
+
+      if (data.metadata) {
+        updatePayload.metadata = data.metadata;
+      }
+
+      const { data: requirement, error: requirementError } = await supabase
+        .from("requirements")
+        .update(updatePayload)
       .eq("id", data.id)
       .select()
       .single()

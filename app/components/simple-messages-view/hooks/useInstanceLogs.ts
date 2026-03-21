@@ -47,6 +47,16 @@ export const useInstanceLogs = ({
       return
     }
 
+    // Always clear logs when switching instances to avoid showing old instance's logs
+    if (activeRobotInstance.id !== currentRobotInstanceIdRef.current) {
+      setLogs([])
+      setCollapsedSystemMessages(new Set())
+      setCollapsedToolDetails(new Set())
+      setExpandedToolGroups(new Set())
+      setDebugInfo(null)
+      currentRobotInstanceIdRef.current = activeRobotInstance.id
+    }
+
     const instanceId = activeRobotInstance.id
 
     // For uninstantiated instances, still try to load logs to see if they have any

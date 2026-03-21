@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, Suspense, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
@@ -112,29 +112,32 @@ import {
   FileText as TextIcon,
   Users,
   BarChart,
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Quote,
-  Code,
-  ParagraphIcon,
-  LinkIcon,
-  ImageIcon,
   Undo,
   Redo,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
   CalendarIcon,
-  Globe,
   Bot,
   Wand2,
   AlertCircle,
   Trash2,
-  Plus
+  Plus,
+  Workflow,
+  CirclePlay,
+  Settings,
+  Zap,
+  Globe,
+  Database,
+  GripHorizontal,
+  PanelRightClose,
+  PanelRightOpen,
+  Code
 } from "@/app/components/ui/icons"
+import { ZoomableCanvas } from "@/app/components/agents/zoomable-canvas"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu"
 import {
   Select,
   SelectContent,
@@ -151,12 +154,6 @@ import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
 import HardBreak from '@tiptap/extension-hard-break'
 import '../styles/editor.css'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import {
   AlertDialog,
@@ -343,7 +340,126 @@ function RequirementDetailContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isBuilding, setIsBuilding] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasRequirementStatus, setHasRequirementStatus] = useState(false)
+  const [showRightPanel, setShowRightPanel] = useState(true)
+  const [editorHeight, setEditorHeight] = useState(400) // Default height for editor
+  const [isResizing, setIsResizing] = useState(false)
+  
+  // Custom nodes for the workflow builder
+  const [nodes, setNodes] = useState<any[]>([
+    {
+      id: 'trigger-node',
+      type: 'trigger',
+      position: { x: 50, y: 150 },
+      data: { 
+        label: 'When requirement is triggered',
+        cron: 'Run once'
+      }
+    }
+  ])
+  const [connections, setConnections] = useState<any[]>([])
+  
+  // State for workflow history (undo/redo)
+  const [workflowHistory, setWorkflowHistory] = useState<{
+    past: { nodes: any[], connections: any[] }[],
+    future: { nodes: any[], connections: any[] }[]
+  }>({ past: [], future: [] });
+  const isHistoryActionRef = useRef(false);
+  const isInitialLoadRef = useRef(true);
+
+  // Track workflow history
+  useEffect(() => {
+    // Skip initial load
+    if (isInitialLoadRef.current) {
+      if (nodes.length > 0) {
+        setWorkflowHistory({
+          past: [{ nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)) }],
+          future: []
+        });
+        isInitialLoadRef.current = false;
+      }
+      return;
+    }
+
+    if (isHistoryActionRef.current) {
+      isHistoryActionRef.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setWorkflowHistory(prev => {
+        const lastState = prev.past[prev.past.length - 1];
+        
+        // Deep compare to prevent pushing duplicate states
+        if (lastState && 
+            JSON.stringify(lastState.nodes) === JSON.stringify(nodes) && 
+            JSON.stringify(lastState.connections) === JSON.stringify(connections)) {
+          return prev;
+        }
+
+        return {
+          past: [...prev.past, { 
+            nodes: JSON.parse(JSON.stringify(nodes)), 
+            connections: JSON.parse(JSON.stringify(connections)) 
+          }],
+          future: []
+        };
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [nodes, connections]);
+
+  const handleUndoWorkflow = () => {
+    setWorkflowHistory(prev => {
+      if (prev.past.length <= 1) return prev; // Keep at least one initial state
+      
+      const newPast = [...prev.past];
+      const currentState = newPast.pop(); // Pop current state
+      const previousState = newPast[newPast.length - 1]; // Get previous state
+      
+      if (!previousState || !currentState) return prev;
+      
+      isHistoryActionRef.current = true;
+      setNodes(previousState.nodes);
+      setConnections(previousState.connections);
+      setUnsavedChanges(true);
+      
+      return {
+        past: newPast,
+        future: [currentState, ...prev.future]
+      };
+    });
+  };
+
+  const handleRedoWorkflow = () => {
+    setWorkflowHistory(prev => {
+      if (prev.future.length === 0) return prev;
+      
+      const newFuture = [...prev.future];
+      const nextState = newFuture.shift();
+      
+      if (!nextState) return prev;
+      
+      isHistoryActionRef.current = true;
+      setNodes(nextState.nodes);
+      setConnections(nextState.connections);
+      setUnsavedChanges(true);
+      
+      return {
+        past: [...prev.past, nextState],
+        future: newFuture
+      };
+    });
+  };
+  
+  // State for dragging connections
+  const [isConnecting, setIsConnecting] = useState<{fromNodeId: string, startX: number, startY: number, sourceHandle?: string} | null>(null);
+  const [currentMousePos, setCurrentMousePos] = useState<{x: number, y: number} | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false)
   const [pendingSegmentChanges, setPendingSegmentChanges] = useState<{
     pendingSegments: Array<{id: string, name: string}>,
@@ -540,6 +656,27 @@ function RequirementDetailContent() {
       if (!requirement) {
         setError("Requirement not found")
         return
+      }
+      
+      // Check if requirement has any status
+      const { data: statusData, error: statusError } = await supabase
+        .from('requirement_status')
+        .select('id')
+        .eq('requirement_id', requirement.id)
+        .limit(1)
+
+      if (!statusError && statusData && statusData.length > 0) {
+        setHasRequirementStatus(true)
+      } else {
+        setHasRequirementStatus(false)
+      }
+      
+      // Parse nodes from metadata if they exist
+      if (requirement.metadata && requirement.metadata.workflow_nodes) {
+        setNodes(requirement.metadata.workflow_nodes);
+      }
+      if (requirement.metadata && requirement.metadata.workflow_connections) {
+        setConnections(requirement.metadata.workflow_connections);
       }
       
       // Fetch segments for the site
@@ -876,6 +1013,12 @@ function RequirementDetailContent() {
       }
       
       // Update the requirement with other fields
+      const updatedMetadata = {
+        ...(requirement.metadata || {}),
+        workflow_nodes: nodes,
+        workflow_connections: connections
+      };
+
       const { error } = await updateRequirement({
         id: requirement.id,
         title: editForm.title,
@@ -889,7 +1032,8 @@ function RequirementDetailContent() {
         segments: editForm.segments,
         campaigns: editForm.campaigns,
         campaign_id: editForm.campaign_id,
-        outsourceInstructions: markdownInstructions
+        outsourceInstructions: markdownInstructions,
+        metadata: updatedMetadata
       })
       
       if (error) {
@@ -978,6 +1122,26 @@ function RequirementDetailContent() {
       toast.error(error instanceof Error ? error.message : "Failed to delete requirement")
     }
   }
+
+  const handleBuildRequirement = async () => {
+    if (unsavedChanges) {
+      const saved = await handleSaveChanges();
+      if (!saved) return;
+    }
+
+    if (params.id && typeof params.id === 'string') {
+      setIsBuilding(true);
+      const currentDate = new Date().toISOString();
+      const result = await updateRequirementStatus(params.id, "in-progress", currentDate);
+      setIsBuilding(false);
+      if (!result.error) {
+        toast.success("Build started successfully");
+        router.push('/requirements');
+      } else {
+        toast.error("Failed to start build");
+      }
+    }
+  };
 
   // Add these segment handler functions
   const handleSegmentSelect = (value: string) => {
@@ -1083,6 +1247,85 @@ function RequirementDetailContent() {
       }
     });
     window.dispatchEvent(event);
+    
+    setUnsavedChanges(true);
+  };
+
+  // Add event listeners for resizing
+  useEffect(() => {
+    if (!isResizing) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      // Limit the height to prevent it from taking the entire screen or disappearing
+      // The header is ~64px and the toolbar is ~71px, total ~135px
+      const minHeight = 150; // Minimum editor height
+      const maxHeight = window.innerHeight - 135 - 150; // Keep at least 150px for the workflow builder
+      
+      const newHeight = Math.max(minHeight, Math.min(maxHeight, e.clientY - 135));
+      setEditorHeight(newHeight);
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = ''; // Reset cursor
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    // Add a class to body to prevent text selection while resizing
+    document.body.style.cursor = 'row-resize';
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+    };
+  }, [isResizing]);
+
+  // Handlers for workflow builder
+  const handleAddNode = (type: string) => {
+    // Determine position based on the last node, or use default if it's the first node
+    let newX = 50;
+    let newY = 150;
+    
+    if (nodes.length > 0) {
+      if (type === 'trigger') {
+        // Place new triggers below existing nodes, aligned to the left
+        const maxY = Math.max(...nodes.map(n => n.position.y));
+        newX = 50;
+        newY = maxY + 200;
+      } else {
+        // Place other nodes to the right of the last node
+        const lastNode = nodes[nodes.length - 1];
+        newX = lastNode.position.x + 350; // Move 350px to the right of the last node
+        newY = lastNode.position.y;       // Keep the same Y level
+      }
+    }
+
+    const newNode = {
+      id: `node-${Date.now()}`,
+      type,
+      position: { x: newX, y: newY },
+      data: { 
+        label: `New ${type} node`,
+        ...(type === 'trigger' ? { triggerType: 'schedule', cron: 'Run once' } : {}),
+        ...(type === 'action' ? { retries: 0 } : {}),
+        ...(type === 'condition' ? { logicalOperator: 'AND' } : {})
+      }
+    };
+    setNodes([...nodes, newNode]);
+    
+    // Auto-connect to previous node if it exists and it's NOT a trigger node
+    if (nodes.length > 0 && type !== 'trigger') {
+      const lastNode = nodes[nodes.length - 1];
+      setConnections([...connections, { 
+        id: `conn-${Date.now()}`, 
+        from: lastNode.id, 
+        to: newNode.id,
+        sourceHandle: 'success'
+      }]);
+    }
     
     setUnsavedChanges(true);
   };
@@ -1575,24 +1818,819 @@ function RequirementDetailContent() {
             isSaving={isSaving} 
             onDelete={handleDeleteRequirement}
             hasUnsavedChanges={unsavedChanges}
+            isBuilding={isBuilding}
+            onBuildRequirement={handleBuildRequirement}
+            hasRequirementStatus={hasRequirementStatus}
+            handleAddNode={handleAddNode}
+            showRightPanel={showRightPanel}
+            setShowRightPanel={setShowRightPanel}
+            canUndoWorkflow={workflowHistory.past.length > 1}
+            canRedoWorkflow={workflowHistory.future.length > 0}
+            onUndoWorkflow={handleUndoWorkflow}
+            onRedoWorkflow={handleRedoWorkflow}
           />
         </div>
-        <div className="flex-1 overflow-auto">
-          <div className="p-0 flex flex-col min-h-full max-w-4xl mx-auto w-full">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          <div 
+            className="p-0 flex flex-col mx-auto w-full overflow-y-auto" 
+            style={{ flexBasis: `${editorHeight}px`, flexShrink: 0 }}
+          >
+            <div className="max-w-4xl mx-auto w-full h-full">
             <EditorContent 
               editor={editor} 
-              className={`prose prose-sm dark:prose-invert max-w-none flex-1 [&>.tiptap]:outline-none [&>.tiptap]:px-4 [&>.tiptap]:lg:px-8 [&>.tiptap]:py-8 ${!editor?.getText() ? '[&>.tiptap]:min-h-[calc(100vh-280px)]' : '[&>.tiptap]:min-h-[50vh]'}`} 
+                className={`prose prose-sm dark:prose-invert max-w-none flex-1 [&>.tiptap]:outline-none [&>.tiptap]:px-4 [&>.tiptap]:lg:px-8 [&>.tiptap]:py-8 [&>.tiptap]:min-h-full`} 
             />
-            {requirement?.id && (
-              <RequirementStatusList requirementId={requirement.id} hasContent={!!editor?.getText()} />
-            )}
+          </div>
+        </div>
+          <div className="w-full flex flex-col flex-1 border-t relative overflow-hidden">
+            <div 
+              className="absolute top-0 left-0 right-0 h-2 -mt-1 z-20 cursor-row-resize hover:bg-primary/20 transition-colors flex items-center justify-center group"
+              onMouseDown={(e) => {
+                e.preventDefault(); // Prevent text selection
+                setIsResizing(true);
+              }}
+            >
+              <div className="w-12 h-1 rounded-full bg-border group-hover:bg-primary/50 transition-colors"></div>
+      </div>
+            <div className="flex-1 overflow-hidden relative">
+              <ZoomableCanvas className="w-full h-full" recenterDependency={showRightPanel}>
+                <div className="w-full h-full relative min-h-[1000px] min-w-[1000px]">
+                  {isConnecting && currentMousePos && (
+                    <div className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 10 }}>
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                        <path 
+                          d={`M ${isConnecting.startX} ${isConnecting.startY} C ${isConnecting.startX + Math.max(50, Math.abs(currentMousePos.x - isConnecting.startX) / 2)} ${isConnecting.startY}, ${currentMousePos.x - Math.max(50, Math.abs(currentMousePos.x - isConnecting.startX) / 2)} ${currentMousePos.y}, ${currentMousePos.x} ${currentMousePos.y}`}
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2"
+                          strokeDasharray="4 4"
+                          className="text-primary/60"
+                        />
+                      </svg>
+            </div>
+                  )}
+
+                  {connections.map(conn => {
+                    const fromNode = nodes.find(n => n.id === conn.from);
+                    const toNode = nodes.find(n => n.id === conn.to);
+                    
+                    if (!fromNode || !toNode) return null;
+                    
+                    // Determine starting Y based on sourceHandle
+                    let startYOffset = 46; // default top-[40px]
+                    if (conn.sourceHandle === 'false' || conn.sourceHandle === 'fail' || conn.sourceHandle === 'fail_intent') {
+                      startYOffset = 86; // top-[80px]
+                    }
+                    if (conn.sourceHandle === 'fail_all') {
+                      startYOffset = 126; // top-[120px]
+                    }
+                    
+                    // Fixed node width and dot offset
+                    const startX = fromNode.position.x + 280; 
+                    const startY = fromNode.position.y + startYOffset;
+                    const endX = toNode.position.x;
+                    const endY = toNode.position.y + 46;
+                    
+                    // Bezier curve
+                    const controlPointX1 = startX + Math.max(50, Math.abs(endX - startX) / 2);
+                    const controlPointX2 = endX - Math.max(50, Math.abs(endX - startX) / 2);
+                    
+                    const isSelected = selectedConnectionId === conn.id;
+                    const isHovered = hoveredNodeId === conn.id;
+                    const midX = startX + (endX - startX) / 2;
+                    const midY = startY + (endY - startY) / 2;
+                    
+                    return (
+                      <div 
+                        key={conn.id} 
+                        className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" 
+                        style={{ zIndex: isSelected || isHovered ? 5 : 0 }}
+                        onMouseEnter={() => setHoveredNodeId(conn.id)}
+                        onMouseLeave={() => setHoveredNodeId(null)}
+                      >
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+                          <path 
+                            d={`M ${startX} ${startY} C ${controlPointX1} ${startY}, ${controlPointX2} ${endY}, ${endX} ${endY}`}
+                            fill="none" 
+                            stroke="transparent" 
+                            strokeWidth="24"
+                            className="cursor-pointer pointer-events-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedConnectionId(conn.id);
+                            }}
+                            onMouseEnter={() => setHoveredNodeId(conn.id)}
+                            onMouseLeave={() => setHoveredNodeId(null)}
+                          />
+                          <path 
+                            d={`M ${startX} ${startY} C ${controlPointX1} ${startY}, ${controlPointX2} ${endY}, ${endX} ${endY}`}
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth={isSelected || isHovered ? "3" : "2"}
+                            className={cn(
+                              "pointer-events-none transition-all duration-200",
+                              (isSelected || isHovered) ? "text-primary" : "text-muted-foreground/30"
+                            )}
+                          />
+                          <polygon 
+                            points={`${endX-6},${endY-4} ${endX},${endY} ${endX-6},${endY+4}`} 
+                            fill="currentColor"
+                            className={cn(
+                              "pointer-events-none transition-all duration-200",
+                              (isSelected || isHovered) ? "text-primary" : "text-muted-foreground/30"
+                            )}
+                          />
+                        </svg>
+                        
+                        <div 
+                          className={cn(
+                            "absolute pointer-events-auto transition-opacity duration-200",
+                            (isSelected || isHovered) ? "opacity-100" : "opacity-0"
+                          )}
+                          style={{ 
+                            left: midX, 
+                            top: midY,
+                            transform: 'translate(-50%, -50%)'
+                          }}
+                          onMouseEnter={() => setHoveredNodeId(conn.id)}
+                          onMouseLeave={() => setHoveredNodeId(null)}
+                        >
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="h-6 w-6 rounded-full shadow-md bg-destructive hover:bg-destructive/90 text-destructive-foreground z-20 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConnections(connections.filter(c => c.id !== conn.id));
+                              setSelectedConnectionId(null);
+                              setHoveredNodeId(null);
+                              setUnsavedChanges(true);
+                            }}
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                          </div>
+                        </div>
+                    );
+                  })}
+                  
+                  {nodes.map(node => {
+                    const isSelected = selectedConnectionId === null && hoveredNodeId === node.id;
+                    const isCurrentlyHovered = hoveredNodeId === node.id && !isConnecting;
+                    return (
+                    <div 
+                      key={node.id}
+                      className={cn(
+                        "absolute rounded-xl border bg-card shadow-sm cursor-grab active:cursor-grabbing w-[280px] flex flex-col overflow-visible transition-colors select-none",
+                        node.type === 'trigger' ? "border-primary/50 shadow-primary/5" : "border-border/60"
+                      )}
+                      style={{
+                        left: node.position.x,
+                        top: node.position.y
+                      }}
+                      onMouseEnter={() => {
+                        if (!isConnecting) setHoveredNodeId(node.id);
+                      }}
+                      onMouseLeave={() => setHoveredNodeId(null)}
+                      onMouseDown={(e) => {
+                        e.stopPropagation(); // Stop propagation to canvas
+                        setSelectedConnectionId(null);
+                        
+                        const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
+                        const scale = canvasEl ? canvasEl.getBoundingClientRect().width / canvasEl.offsetWidth : 1;
+                        
+                        const startX = e.clientX;
+                        const startY = e.clientY;
+                        const startPosX = node.position.x;
+                        const startPosY = node.position.y;
+                        
+                        const handleMouseMove = (moveEvent: MouseEvent) => {
+                          const dx = (moveEvent.clientX - startX) / scale;
+                          const dy = (moveEvent.clientY - startY) / scale;
+                          
+                          setNodes(currentNodes => currentNodes.map(n => 
+                            n.id === node.id 
+                              ? { ...n, position: { x: startPosX + dx, y: startPosY + dy } }
+                              : n
+                          ));
+                          setUnsavedChanges(true);
+                        };
+                        
+                        const handleMouseUp = () => {
+                          window.removeEventListener('mousemove', handleMouseMove);
+                          window.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        
+                        window.addEventListener('mousemove', handleMouseMove);
+                        window.addEventListener('mouseup', handleMouseUp);
+                      }}
+                    >
+                      {/* Node Header */}
+                      <div className={cn(
+                        "px-3 py-2.5 border-b flex items-center justify-between rounded-t-xl gap-2 relative",
+                        node.type === 'trigger' ? "bg-primary/5 border-primary/20" : "bg-muted/30 border-border/40"
+                      )}>
+                        {/* Drag Handle Overlay */}
+                        <div 
+                          className={cn(
+                            "absolute inset-x-0 -top-6 h-6 bg-transparent flex items-center justify-center opacity-0 transition-all duration-200 cursor-grab active:cursor-grabbing",
+                            hoveredNodeId === node.id ? "opacity-100 -translate-y-1" : ""
+                          )}
+                        >
+                          <div className="bg-background/90 px-3 py-1 rounded-t-lg border-x border-t border-border/50 shadow-sm backdrop-blur-sm flex items-center justify-center pointer-events-none">
+                            <GripHorizontal className="h-4 w-4 text-muted-foreground/60" />
+                          </div>
+                        </div>
+                              
+                        <span className="absolute -top-[18px] left-1 text-[10px] font-bold text-muted-foreground/60 pointer-events-none uppercase tracking-widest z-10 select-none">{node.type}</span>
+                        {node.type === 'trigger' ? (
+                          <div className="flex items-center gap-2 flex-1 mt-1 z-10" onMouseDown={e => e.stopPropagation()}>
+                            <Tabs 
+                              value={node.data.triggerType || 'schedule'} 
+                              onValueChange={(value) => {
+                                setNodes(nodes.map(n => 
+                                  n.id === node.id ? { ...n, data: { ...n.data, triggerType: value } } : n
+                                ));
+                                setUnsavedChanges(true);
+                              }}
+                              className="w-full"
+                            >
+                              <TabsList className="grid w-full grid-cols-3 h-8 p-1 bg-muted/50">
+                                <TabsTrigger value="schedule" className="text-[10px] py-1 px-2 h-6" title="Schedule">
+                                  <CalendarIcon className="h-3 w-3 mr-1.5 hidden sm:inline-block" />
+                                  Time
+                                </TabsTrigger>
+                                <TabsTrigger value="webhook" className="text-[10px] py-1 px-2 h-6" title="Webhook">
+                                  <Globe className="h-3 w-3 mr-1.5 hidden sm:inline-block" />
+                                  Hook
+                                </TabsTrigger>
+                                <TabsTrigger value="db_event" className="text-[10px] py-1 px-2 h-6" title="Database Event">
+                                  <Database className="h-3 w-3 mr-1.5 hidden sm:inline-block" />
+                                  DB Event
+                                </TabsTrigger>
+                              </TabsList>
+                            </Tabs>
+                          </div>
+                        ) : node.type === 'action' ? (
+                          <div className="flex items-center gap-2 flex-1 mt-1 z-10" onMouseDown={e => e.stopPropagation()}>
+                            <Tabs 
+                              value={node.data.actionType || 'agent'} 
+                              onValueChange={(value) => {
+                                setNodes(nodes.map(n => 
+                                  n.id === node.id ? { ...n, data: { ...n.data, actionType: value } } : n
+                                ));
+                                setUnsavedChanges(true);
+                              }}
+                              className="w-full"
+                            >
+                              <TabsList className="grid w-full grid-cols-3 h-8 p-1 bg-muted/50">
+                                <TabsTrigger value="agent" className="text-[10px] py-1 px-2 h-6" title="Agent">
+                                  <Bot className="h-3 w-3 mr-1.5 hidden sm:inline-block" />
+                                  Agent
+                                </TabsTrigger>
+                                <TabsTrigger value="code" className="text-[10px] py-1 px-2 h-6" title="Code">
+                                  <Code className="h-3 w-3 mr-1.5 hidden sm:inline-block" />
+                                  Code
+                                </TabsTrigger>
+                                <TabsTrigger value="api" className="text-[10px] py-1 px-2 h-6" title="API">
+                                  <Globe className="h-3 w-3 mr-1.5 hidden sm:inline-block" />
+                                  API
+                                </TabsTrigger>
+                              </TabsList>
+                            </Tabs>
+                          </div>
+                        ) : node.type === 'condition' ? (
+                          <div className="flex items-center gap-2 flex-1 mt-1 z-10" onMouseDown={e => e.stopPropagation()}>
+                            <Tabs 
+                              value={node.data.logicalOperator || 'AND'} 
+                              onValueChange={(value) => {
+                                setNodes(nodes.map(n => 
+                                  n.id === node.id ? { ...n, data: { ...n.data, logicalOperator: value } } : n
+                                ));
+                                setUnsavedChanges(true);
+                              }}
+                              className="w-full"
+                            >
+                              <TabsList className="grid w-full grid-cols-2 h-8 p-1 bg-muted/50">
+                                <TabsTrigger value="AND" className="text-[10px] py-1 px-2 h-6" title="AND (All conditions met)">
+                                  AND
+                                </TabsTrigger>
+                                <TabsTrigger value="OR" className="text-[10px] py-1 px-2 h-6" title="OR (Any condition met)">
+                                  OR
+                                </TabsTrigger>
+                              </TabsList>
+                            </Tabs>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Node Body */}
+                      <div className="p-4 flex-1" onMouseDown={e => e.stopPropagation()}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className={cn(
+                            "h-5 w-5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-opacity absolute -right-6 -top-2 cursor-pointer z-10",
+                            hoveredNodeId === node.id ? "opacity-100" : "opacity-0"
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNodes(nodes.filter(n => n.id !== node.id));
+                            setConnections(connections.filter(c => c.from !== node.id && c.to !== node.id));
+                            setUnsavedChanges(true);
+                          }}
+                          onMouseDown={(e) => {
+                            // Prevenir que el click en el botón inicie el drag del nodo
+                            e.stopPropagation();
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                        {node.type !== 'trigger' && (
+                          <div className="relative">
+                                <Textarea 
+                              value={node.data.label || ''}
+                              placeholder={`New ${node.type} description...`}
+                              className={cn(
+                                "min-h-[60px] resize-none text-sm font-medium border-transparent hover:border-border focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/30 p-1.5 -ml-1.5 transition-all bg-transparent w-[calc(100%+12px)] overflow-hidden",
+                                node.type === 'trigger' ? "focus-visible:bg-background/50" : "focus-visible:bg-background",
+                                "selection:bg-primary/20"
+                              )}
+                                  onChange={(e) => {
+                                // Adjust height automatically
+                                e.target.style.height = 'auto';
+                                e.target.style.height = e.target.scrollHeight + 'px';
+                                
+                                setNodes(nodes.map(n => 
+                                  n.id === node.id ? { ...n, data: { ...n.data, label: e.target.value } } : n
+                                ));
+                                    setUnsavedChanges(true);
+                                  }}
+                              onKeyDown={(e) => {
+                                // Stop dragging when typing
+                                e.stopPropagation();
+                              }}
+                              onMouseDown={(e) => {
+                                // Focus on textarea without triggering node drag
+                                e.stopPropagation();
+                              }}
+                            />
+                              </div>
+                        )}
+                        
+                        {node.type === 'trigger' && (
+                          <div className="relative flex flex-col gap-2" onMouseDown={e => e.stopPropagation()}>
+                            {(node.data.triggerType === 'schedule' || !node.data.triggerType) && (
+                              <div>
+                                <Select 
+                                  value={node.data.cron || 'Run once'} 
+                                  onValueChange={(value) => {
+                                    setNodes(nodes.map(n => 
+                                      n.id === node.id ? { ...n, data: { ...n.data, cron: value } } : n
+                                    ));
+                                    setUnsavedChanges(true);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-background/50 font-mono">
+                                    <div className="flex items-center gap-1.5">
+                                      <CalendarIcon className="h-3 w-3" />
+                                      <SelectValue placeholder="Schedule..." />
+                                </div>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Run once">Run once</SelectItem>
+                                    <SelectItem value="Every minute">Every minute</SelectItem>
+                                    <SelectItem value="Every 5 minutes">Every 5 minutes</SelectItem>
+                                    <SelectItem value="Hourly">Hourly</SelectItem>
+                                    <SelectItem value="Daily">Daily</SelectItem>
+                                    <SelectItem value="Weekly">Weekly</SelectItem>
+                                    <SelectItem value="Monthly">Monthly</SelectItem>
+                                    <SelectItem value="Custom CRON">Custom CRON...</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                
+                                {node.data.cron === 'Custom CRON' && (
+                                  <div className="mt-2">
+                                    <Input 
+                                      placeholder="* * * * *" 
+                                      className="h-8 font-mono text-xs bg-background/50"
+                                      value={node.data.customCron || ''}
+                                      onChange={(e) => {
+                                        setNodes(nodes.map(n => 
+                                          n.id === node.id ? { ...n, data: { ...n.data, customCron: e.target.value } } : n
+                                        ));
+                                        setUnsavedChanges(true);
+                                      }}
+                                      onMouseDown={e => e.stopPropagation()}
+                                      onKeyDown={e => e.stopPropagation()}
+                                    />
+                                    <p className="text-[9px] text-muted-foreground mt-1 ml-1">Format: min hour dom month dow</p>
+                                </div>
+                                )}
+                              </div>
+                            )}
+
+                            {node.data.triggerType === 'webhook' && (
+                              <div className="flex flex-col gap-1.5">
+                                <Input 
+                                  placeholder="/api/webhooks/..." 
+                                  className="h-8 text-xs bg-background/50 font-mono"
+                                  value={node.data.webhookPath || ''}
+                                  onChange={(e) => {
+                                    setNodes(nodes.map(n => 
+                                      n.id === node.id ? { ...n, data: { ...n.data, webhookPath: e.target.value } } : n
+                                    ));
+                                    setUnsavedChanges(true);
+                                  }}
+                                  onMouseDown={e => e.stopPropagation()}
+                                  onKeyDown={e => e.stopPropagation()}
+                                />
+                                <p className="text-[9px] text-muted-foreground ml-1">Webhook Endpoint Path</p>
+                                </div>
+                            )}
+
+                            {node.data.triggerType === 'db_event' && (
+                              <div className="flex flex-col gap-1.5">
+                                <Select 
+                                  value={node.data.dbTable || 'tasks'} 
+                                  onValueChange={(value) => {
+                                    setNodes(nodes.map(n => 
+                                      n.id === node.id ? { ...n, data: { ...n.data, dbTable: value } } : n
+                                    ));
+                                    setUnsavedChanges(true);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-background/50 font-mono">
+                                    <SelectValue placeholder="Table" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="tasks">tasks</SelectItem>
+                                    <SelectItem value="messages">messages</SelectItem>
+                                    <SelectItem value="leads">leads</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Select 
+                                  value={node.data.dbEvent || 'insert'} 
+                                  onValueChange={(value) => {
+                                    setNodes(nodes.map(n => 
+                                      n.id === node.id ? { ...n, data: { ...n.data, dbEvent: value } } : n
+                                    ));
+                                    setUnsavedChanges(true);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs bg-background/50">
+                                    <SelectValue placeholder="Event Type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="insert">INSERT</SelectItem>
+                                    <SelectItem value="update">UPDATE</SelectItem>
+                                    <SelectItem value="delete">DELETE</SelectItem>
+                                    <SelectItem value="all">ALL EVENTS</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                            </div>
+                        )}
+
+                        {node.type === 'action' && (
+                          <div className="mt-3 flex items-center justify-between px-1" onMouseDown={e => e.stopPropagation()}>
+                            <span className="text-xs text-muted-foreground font-medium">Retries</span>
+                            <Input 
+                              type="number" 
+                              min="0"
+                              max="10"
+                              className="h-7 w-16 text-xs bg-background/50 text-center focus-visible:ring-1 focus-visible:ring-primary/30"
+                              value={node.data.retries ?? 0}
+                              onChange={(e) => {
+                                setNodes(nodes.map(n => 
+                                  n.id === node.id ? { ...n, data: { ...n.data, retries: parseInt(e.target.value) || 0 } } : n
+                                ));
+                                setUnsavedChanges(true);
+                              }}
+                              onMouseDown={e => e.stopPropagation()}
+                              onKeyDown={e => e.stopPropagation()}
+                            />
+                        </div>
+                      )}
+                </div>
+                
+                      {/* Connection dots */}
+                      {node.type !== 'trigger' && (
+                        <div 
+                          className={cn(
+                            "absolute top-[40px] -left-1.5 h-3 w-3 bg-background border-2 border-muted-foreground/40 rounded-full z-10 cursor-crosshair hover:bg-muted-foreground/20 transition-all duration-200",
+                            (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId !== node.id)) ? "opacity-100 scale-125 border-primary/60 shadow-sm" : "opacity-0 scale-50"
+                          )}
+                          onMouseUp={(e) => {
+                            e.stopPropagation();
+                            if (isConnecting && isConnecting.fromNodeId !== node.id) {
+                              setConnections([...connections, {
+                                id: `conn-${Date.now()}`,
+                                from: isConnecting.fromNodeId,
+                                to: node.id,
+                                sourceHandle: isConnecting.sourceHandle
+                              }]);
+                              setIsConnecting(null);
+                              setCurrentMousePos(null);
+                              setUnsavedChanges(true);
+                            }
+                          }}
+                        ></div>
+                      )}
+
+                      {node.type === 'trigger' && (
+                        <div 
+                          className={cn(
+                            "absolute top-[40px] -right-1.5 h-3 w-3 bg-background border-2 border-muted-foreground/40 rounded-full z-10 cursor-crosshair hover:bg-muted-foreground/20 transition-all duration-200",
+                            (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId === node.id)) ? "opacity-100 scale-125 border-primary/60 shadow-sm" : "opacity-0 scale-50"
+                          )}
+                          onMouseDown={(e) => {
+                          e.stopPropagation();
+                          const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
+                          const canvasRect = canvasEl?.getBoundingClientRect();
+                          if (canvasRect && canvasEl) {
+                            const scale = canvasRect.width / canvasEl.offsetWidth;
+                            const startX = node.position.x + 280;
+                            const startY = node.position.y + 46;
+                            setIsConnecting({ fromNodeId: node.id, startX, startY });
+                            setCurrentMousePos({
+                              x: (e.clientX - canvasRect.left) / scale,
+                              y: (e.clientY - canvasRect.top) / scale
+                            });
+
+                            const handleMouseMove = (moveEvent: MouseEvent) => {
+                              const currentRect = canvasEl.getBoundingClientRect();
+                              setCurrentMousePos({
+                                x: (moveEvent.clientX - currentRect.left) / scale,
+                                y: (moveEvent.clientY - currentRect.top) / scale
+                              });
+                            };
+                            
+                            const handleMouseUp = () => {
+                              window.removeEventListener('mousemove', handleMouseMove);
+                              window.removeEventListener('mouseup', handleMouseUp);
+                              setIsConnecting(null);
+                              setCurrentMousePos(null);
+                            };
+                            
+                            window.addEventListener('mousemove', handleMouseMove);
+                            window.addEventListener('mouseup', handleMouseUp);
+                          }
+                        }}
+                        ></div>
+                      )}
+
+                      {node.type === 'action' && (
+                        <>
+                          <div 
+                            className={cn(
+                              "absolute top-[40px] -right-1.5 h-3 w-3 bg-background border-2 border-green-500/40 rounded-full z-10 cursor-crosshair hover:bg-green-500/20 transition-all duration-200",
+                              (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId === node.id)) ? "opacity-100 scale-125 border-green-500 shadow-sm" : "opacity-0 scale-50"
+                            )}
+                            title="Success"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
+                              const canvasRect = canvasEl?.getBoundingClientRect();
+                              if (canvasRect && canvasEl) {
+                                const scale = canvasRect.width / canvasEl.offsetWidth;
+                                const startX = node.position.x + 280;
+                                const startY = node.position.y + 46;
+                                setIsConnecting({ fromNodeId: node.id, startX, startY, sourceHandle: 'success' });
+                                setCurrentMousePos({
+                                  x: (e.clientX - canvasRect.left) / scale,
+                                  y: (e.clientY - canvasRect.top) / scale
+                                });
+
+                                const handleMouseMove = (moveEvent: MouseEvent) => {
+                                  const currentRect = canvasEl.getBoundingClientRect();
+                                  setCurrentMousePos({
+                                    x: (moveEvent.clientX - currentRect.left) / scale,
+                                    y: (moveEvent.clientY - currentRect.top) / scale
+                                  });
+                                };
+                                
+                                const handleMouseUp = () => {
+                                  window.removeEventListener('mousemove', handleMouseMove);
+                                  window.removeEventListener('mouseup', handleMouseUp);
+                                  setIsConnecting(null);
+                                  setCurrentMousePos(null);
+                                };
+                                
+                                window.addEventListener('mousemove', handleMouseMove);
+                                window.addEventListener('mouseup', handleMouseUp);
+                              }
+                            }}
+                          >
+                            <span className={cn(
+                              "absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-green-500 pointer-events-none transition-opacity whitespace-nowrap bg-background/80 px-1 py-0.5 rounded",
+                              hoveredNodeId === node.id ? "opacity-100" : "opacity-0"
+                            )}>Success</span>
+                          </div>
+                          <div 
+                            className={cn(
+                              "absolute top-[80px] -right-1.5 h-3 w-3 bg-background border-2 border-yellow-500/40 rounded-full z-10 cursor-crosshair hover:bg-yellow-500/20 transition-all duration-200",
+                              (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId === node.id)) ? "opacity-100 scale-125 border-yellow-500 shadow-sm" : "opacity-0 scale-50"
+                            )}
+                            title="Fail Intent"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
+                              const canvasRect = canvasEl?.getBoundingClientRect();
+                              if (canvasRect && canvasEl) {
+                                const scale = canvasRect.width / canvasEl.offsetWidth;
+                                const startX = node.position.x + 280;
+                                const startY = node.position.y + 86;
+                                setIsConnecting({ fromNodeId: node.id, startX, startY, sourceHandle: 'fail_intent' });
+                                setCurrentMousePos({
+                                  x: (e.clientX - canvasRect.left) / scale,
+                                  y: (e.clientY - canvasRect.top) / scale
+                                });
+
+                                const handleMouseMove = (moveEvent: MouseEvent) => {
+                                  const currentRect = canvasEl.getBoundingClientRect();
+                                  setCurrentMousePos({
+                                    x: (moveEvent.clientX - currentRect.left) / scale,
+                                    y: (moveEvent.clientY - currentRect.top) / scale
+                                  });
+                                };
+                                
+                                const handleMouseUp = () => {
+                                  window.removeEventListener('mousemove', handleMouseMove);
+                                  window.removeEventListener('mouseup', handleMouseUp);
+                                  setIsConnecting(null);
+                                  setCurrentMousePos(null);
+                                };
+                                
+                                window.addEventListener('mousemove', handleMouseMove);
+                                window.addEventListener('mouseup', handleMouseUp);
+                              }
+                            }}
+                          >
+                            <span className={cn(
+                              "absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-yellow-500 pointer-events-none transition-opacity whitespace-nowrap bg-background/80 px-1 py-0.5 rounded",
+                              hoveredNodeId === node.id ? "opacity-100" : "opacity-0"
+                            )}>Fail Intent</span>
+                          </div>
+                          <div 
+                            className={cn(
+                              "absolute top-[120px] -right-1.5 h-3 w-3 bg-background border-2 border-red-500/40 rounded-full z-10 cursor-crosshair hover:bg-red-500/20 transition-all duration-200",
+                              (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId === node.id)) ? "opacity-100 scale-125 border-red-500 shadow-sm" : "opacity-0 scale-50"
+                            )}
+                            title="Fails All Intents"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
+                              const canvasRect = canvasEl?.getBoundingClientRect();
+                              if (canvasRect && canvasEl) {
+                                const scale = canvasRect.width / canvasEl.offsetWidth;
+                                const startX = node.position.x + 280;
+                                const startY = node.position.y + 126;
+                                setIsConnecting({ fromNodeId: node.id, startX, startY, sourceHandle: 'fail_all' });
+                                setCurrentMousePos({
+                                  x: (e.clientX - canvasRect.left) / scale,
+                                  y: (e.clientY - canvasRect.top) / scale
+                                });
+
+                                const handleMouseMove = (moveEvent: MouseEvent) => {
+                                  const currentRect = canvasEl.getBoundingClientRect();
+                                  setCurrentMousePos({
+                                    x: (moveEvent.clientX - currentRect.left) / scale,
+                                    y: (moveEvent.clientY - currentRect.top) / scale
+                                  });
+                                };
+                                
+                                const handleMouseUp = () => {
+                                  window.removeEventListener('mousemove', handleMouseMove);
+                                  window.removeEventListener('mouseup', handleMouseUp);
+                                  setIsConnecting(null);
+                                  setCurrentMousePos(null);
+                                };
+                                
+                                window.addEventListener('mousemove', handleMouseMove);
+                                window.addEventListener('mouseup', handleMouseUp);
+                              }
+                            }}
+                          >
+                            <span className={cn(
+                              "absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-red-500 pointer-events-none transition-opacity whitespace-nowrap bg-background/80 px-1 py-0.5 rounded",
+                              hoveredNodeId === node.id ? "opacity-100" : "opacity-0"
+                            )}>Fails All Intents</span>
+                          </div>
+                        </>
+                      )}
+
+                      {node.type === 'condition' && (
+                        <>
+                          <div 
+                            className={cn(
+                              "absolute top-[40px] -right-1.5 h-3 w-3 bg-background border-2 border-blue-500/40 rounded-full z-10 cursor-crosshair hover:bg-blue-500/20 transition-all duration-200",
+                              (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId === node.id)) ? "opacity-100 scale-125 border-blue-500 shadow-sm" : "opacity-0 scale-50"
+                            )}
+                            title="If (True)"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
+                              const canvasRect = canvasEl?.getBoundingClientRect();
+                              if (canvasRect && canvasEl) {
+                                const scale = canvasRect.width / canvasEl.offsetWidth;
+                                const startX = node.position.x + 280;
+                                const startY = node.position.y + 46;
+                                setIsConnecting({ fromNodeId: node.id, startX, startY, sourceHandle: 'true' });
+                                setCurrentMousePos({
+                                  x: (e.clientX - canvasRect.left) / scale,
+                                  y: (e.clientY - canvasRect.top) / scale
+                                });
+
+                                const handleMouseMove = (moveEvent: MouseEvent) => {
+                                  const currentRect = canvasEl.getBoundingClientRect();
+                                  setCurrentMousePos({
+                                    x: (moveEvent.clientX - currentRect.left) / scale,
+                                    y: (moveEvent.clientY - currentRect.top) / scale
+                                  });
+                                };
+                                
+                                const handleMouseUp = () => {
+                                  window.removeEventListener('mousemove', handleMouseMove);
+                                  window.removeEventListener('mouseup', handleMouseUp);
+                                  setIsConnecting(null);
+                                  setCurrentMousePos(null);
+                                };
+                                
+                                window.addEventListener('mousemove', handleMouseMove);
+                                window.addEventListener('mouseup', handleMouseUp);
+                              }
+                            }}
+                          >
+                            <span className={cn(
+                              "absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-blue-500 pointer-events-none transition-opacity bg-background/80 px-1 py-0.5 rounded",
+                              hoveredNodeId === node.id ? "opacity-100" : "opacity-0"
+                            )}>If</span>
+                  </div>
+                          <div 
+                            className={cn(
+                              "absolute top-[80px] -right-1.5 h-3 w-3 bg-background border-2 border-orange-500/40 rounded-full z-10 cursor-crosshair hover:bg-orange-500/20 transition-all duration-200",
+                              (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId === node.id)) ? "opacity-100 scale-125 border-orange-500 shadow-sm" : "opacity-0 scale-50"
+                            )}
+                            title="Else (False)"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
+                              const canvasRect = canvasEl?.getBoundingClientRect();
+                              if (canvasRect && canvasEl) {
+                                const scale = canvasRect.width / canvasEl.offsetWidth;
+                                const startX = node.position.x + 280;
+                                const startY = node.position.y + 86;
+                                setIsConnecting({ fromNodeId: node.id, startX, startY, sourceHandle: 'false' });
+                                setCurrentMousePos({
+                                  x: (e.clientX - canvasRect.left) / scale,
+                                  y: (e.clientY - canvasRect.top) / scale
+                                });
+
+                                const handleMouseMove = (moveEvent: MouseEvent) => {
+                                  const currentRect = canvasEl.getBoundingClientRect();
+                                  setCurrentMousePos({
+                                    x: (moveEvent.clientX - currentRect.left) / scale,
+                                    y: (moveEvent.clientY - currentRect.top) / scale
+                                  });
+                                };
+                                
+                                const handleMouseUp = () => {
+                                  window.removeEventListener('mousemove', handleMouseMove);
+                                  window.removeEventListener('mouseup', handleMouseUp);
+                                  setIsConnecting(null);
+                                  setCurrentMousePos(null);
+                                };
+                                
+                                window.addEventListener('mousemove', handleMouseMove);
+                                window.addEventListener('mouseup', handleMouseUp);
+                              }
+                            }}
+                          >
+                            <span className={cn(
+                              "absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-orange-500 pointer-events-none transition-opacity bg-background/80 px-1 py-0.5 rounded",
+                              hoveredNodeId === node.id ? "opacity-100" : "opacity-0"
+                            )}>Else</span>
+            </div>
+                        </>
+                      )}
+                    </div>
+                    );
+                  })}
+                </div>
+              </ZoomableCanvas>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Right Panel */}
-      <div className="w-80 border-l bg-muted/30 flex flex-col h-full">
-        {editForm.budget && editForm.budget > 0 ? (
+      {showRightPanel && (
+        <div className="w-80 border-l bg-muted/30 flex flex-col h-full shrink-0">
           <Tabs defaultValue="info" className="flex flex-col h-full">
             <div className="flex-none h-[71px] border-b flex items-center justify-center px-4">
               <TabsList className="grid grid-cols-2 w-full">
@@ -1603,212 +2641,56 @@ function RequirementDetailContent() {
             
             <div className="flex-1 flex flex-col overflow-hidden">
               <TabsContent value="info" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">
-                {renderDetailsContent()}
+              {renderDetailsContent()}
               </TabsContent>
               
               <TabsContent value="outsource" className="mt-0 flex flex-col h-full data-[state=active]:flex data-[state=inactive]:hidden">
                 <div className="flex-1 overflow-hidden">
-                  <ScrollArea className="h-full">
-                    <div className="p-5 space-y-6">
-                      {/* Outsourcing Status Display */}
-                      {requirement?.metadata?.payment_status?.outsourced && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-900/30 mb-6">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                            <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300 uppercase tracking-wider">
-                              Task Outsourced
-                            </h3>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Provider:</span>
-                              <span className="text-sm text-blue-600 dark:text-blue-400">
-                                {requirement.metadata.payment_status.outsource_provider || 'External Provider'}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Payment Status:</span>
-                              <Badge className={cn(
-                                "text-xs",
-                                requirement.metadata.payment_status.status === 'paid'
-                                  ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900"
-                                  : requirement.metadata.payment_status.status === 'failed'
-                                  ? "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900"
-                                  : "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-900"
-                              )}>
-                                {requirement.metadata.payment_status.status === 'paid' ? 'Paid' : 
-                                 requirement.metadata.payment_status.status === 'failed' ? 'Failed' : 'Pending'}
-                              </Badge>
-                            </div>
-                            {requirement.metadata.payment_status.amount_paid && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Amount Paid:</span>
-                                <span className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-                                  ${requirement.metadata.payment_status.amount_paid.toLocaleString()} {requirement.metadata.payment_status.currency || 'USD'}
-                                </span>
-                              </div>
-                            )}
-                            {requirement.metadata.payment_status.payment_date && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Payment Date:</span>
-                                <span className="text-sm text-blue-600 dark:text-blue-400">
-                                  {new Date(requirement.metadata.payment_status.payment_date).toLocaleDateString()}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Only show outsource instructions and button if not already outsourced */}
-                      {!requirement?.metadata?.payment_status?.outsourced && !requirement?.campaignOutsourced && (
-                        <>
-                          {/* Agent Instructions */}
-                          <div className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                            <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
-                              Agent Instructions
-                            </h3>
-                            
-                            <div className="space-y-4 max-w-full">
-                              {/* Budget highlighted section */}
-                              <div className="bg-primary/10 p-3 rounded-md border border-primary/20">
-                                <Label className="text-sm font-semibold text-primary flex items-center gap-2 mb-2">
-                                  <BarChart className="h-4 w-4" />
-                                  Budget
-                                </Label>
-                                <div className="text-lg font-bold text-center py-1">
-                                  {editForm.budget ? `$${editForm.budget.toLocaleString()}` : "No budget specified"}
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">Instructions for Agents</Label>
-                                <Textarea 
-                                  placeholder="Provide detailed instructions for the agents to execute this requirement..." 
-                                  className="min-h-[150px] w-full resize-none text-sm"
-                                  value={editForm.outsourceInstructions || editForm.instructions}
-                                  onChange={(e) => {
-                                    setEditForm({...editForm, outsourceInstructions: e.target.value, instructions: e.target.value});
-                                    if (editor) {
-                                      const formattedHTML = markdownToHTML(e.target.value);
-                                      editor.commands.setContent(formattedHTML);
-                                    }
-                                    setUnsavedChanges(true);
-                                  }}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                  Note: These instructions will be sent to the agents when you click the "Send to Agents" button below. They are saved in the requirement's instructions field.
-                                </p>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">Timeline</Label>
-                                <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
-                                  Please complete this task within the next 2 weeks.
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">Deliverables</Label>
-                                <div className="text-muted-foreground text-sm bg-muted/40 p-2 rounded">
-                                  <ul className="list-disc pl-4 space-y-1 break-words">
-                                    <li>Complete implementation of the requirement</li>
-                                    <li>Documentation of the changes made</li>
-                                    <li>Testing report</li>
-                                  </ul>
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">Communication</Label>
-                                <div className="text-muted-foreground text-sm break-words bg-muted/40 p-2 rounded">
-                                  Please provide regular updates on progress and any questions via the project management system.
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Show status message if already outsourced and paid */}
-                      {((requirement?.metadata?.payment_status?.outsourced && requirement.metadata?.payment_status?.status === 'paid') || 
-                        requirement?.campaignOutsourced) && (
-                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-900/30">
-                          <div className="flex items-center gap-2 text-green-800 dark:text-green-300">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span className="text-sm font-medium">
-                              {requirement?.campaignOutsourced 
-                                ? "This task's campaign has been outsourced and payment has been completed."
-                                : "This task has already been outsourced and payment has been completed."}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-                
-                {/* Only show send to agents button if not already outsourced */}
-                {!requirement?.metadata?.payment_status?.outsourced && !requirement?.campaignOutsourced && (
-                  <div className="border-t p-4 bg-background mt-auto">
-                    <Button 
-                      className="w-full" 
-                      disabled={isSaving}
-                      onClick={async () => {
-                      if (unsavedChanges) {
-                        const saved = await handleSaveChanges();
-                        if (!saved) return;
-                      }
-
-                      if (params.id && typeof params.id === 'string') {
-                        const result = await updateRequirementStatus(params.id, "in-progress");
-                        if (!result.error) {
-                          toast.success("Task sent to agents successfully");
-                          router.push('/requirements');
-                        } else {
-                          toast.error("Failed to send task to agents");
-                        }
-                      }
-                    }}>
-                      {isSaving ? (
-                        <>
-                          <div className="h-4 w-4 mr-2 animate-pulse bg-current rounded-full" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Bot className="h-4 w-4 mr-2" />
-                          Send to Agents
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
+                  {requirement?.id && (
+                    <RequirementStatusList requirementId={requirement.id} hasContent={!!editor?.getText()} />
+                  )}
+            </div>
               </TabsContent>
             </div>
           </Tabs>
-        ) : (
-          <div className="flex flex-col h-full">
-            <div className="flex-none h-[71px] border-b flex items-center justify-center px-4">
-              <h3 className="text-sm font-medium">Requirement Details</h3>
-            </div>
-            
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {renderDetailsContent()}
-            </div>
           </div>
         )}
-      </div>
     </div>
   )
 }
 
-const MenuBar = ({ editor, onSave, isSaving, onDelete, hasUnsavedChanges }: { 
+const MenuBar = ({ 
+  editor, 
+  onSave, 
+  isSaving, 
+  onDelete, 
+  hasUnsavedChanges,
+  isBuilding,
+  onBuildRequirement,
+  hasRequirementStatus,
+  handleAddNode,
+  showRightPanel,
+  setShowRightPanel,
+  canUndoWorkflow,
+  canRedoWorkflow,
+  onUndoWorkflow,
+  onRedoWorkflow
+}: { 
   editor: any, 
   onSave: () => void, 
   isSaving: boolean,
   onDelete: () => void,
-  hasUnsavedChanges?: boolean
+  hasUnsavedChanges?: boolean,
+  isBuilding?: boolean,
+  onBuildRequirement?: () => void,
+  hasRequirementStatus?: boolean,
+  handleAddNode: (type: string) => void,
+  showRightPanel: boolean,
+  setShowRightPanel: (show: boolean) => void,
+  canUndoWorkflow: boolean,
+  canRedoWorkflow: boolean,
+  onUndoWorkflow: () => void,
+  onRedoWorkflow: () => void
 }) => {
   if (!editor) {
     return null
@@ -1823,7 +2705,7 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete, hasUnsavedChanges }: {
           onClick={onSave}
           disabled={isSaving || !hasUnsavedChanges}
           className={cn(
-            "flex items-center gap-2 hover:bg-primary/10 transition-all duration-200",
+            "h-9 flex items-center gap-2 hover:bg-primary/10 transition-all duration-200",
             !hasUnsavedChanges && "opacity-50"
           )}
         >
@@ -1840,176 +2722,63 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete, hasUnsavedChanges }: {
           )}
         </Button>
         <div className="w-px h-6 bg-border mx-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={editor.isActive('bold') ? 'bg-muted' : ''}
-        >
-          <Bold className="h-4 w-4" />
+
+        <Button variant="ghost" size="sm" onClick={() => handleAddNode('trigger')} className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-sm">
+          <Zap className="h-4 w-4 mr-1.5 text-primary" /> Trigger
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={editor.isActive('italic') ? 'bg-muted' : ''}
-        >
-          <Italic className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => handleAddNode('action')} className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-sm">
+          <Code className="h-4 w-4 mr-1.5 text-primary" /> Action
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={editor.isActive('bulletList') ? 'bg-muted' : ''}
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={editor.isActive('orderedList') ? 'bg-muted' : ''}
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          className={editor.isActive('blockquote') ? 'bg-muted' : ''}
-        >
-          <Quote className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          className={editor.isActive('codeBlock') ? 'bg-muted' : ''}
-        >
-          <Code className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => handleAddNode('condition')} className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-sm">
+          <Workflow className="h-4 w-4 mr-1.5 text-primary" /> Condition
         </Button>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <div className="w-px h-6 bg-border mx-1" />
+
             <Button 
-              variant="ghost" 
-              size="sm"
-              className={editor.isActive('heading') ? 'bg-muted' : ''}
-            >
-              {editor.isActive('heading', { level: 1 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H1</span>}
-              {editor.isActive('heading', { level: 2 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H2</span>}
-              {editor.isActive('heading', { level: 3 }) && <span className="w-4 h-4 inline-flex items-center justify-center font-bold">H3</span>}
-              {editor.isActive('heading', { level: 4 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H4</span>}
-              {editor.isActive('heading', { level: 5 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H5</span>}
-              {editor.isActive('heading', { level: 6 }) && <span className="w-4 h-4 inline-flex items-center justify-center text-xs font-bold">H6</span>}
-              {!editor.isActive('heading') && <ParagraphIcon className="h-4 w-4 text-sm" />}
-              <ChevronDown className="h-3 w-3 ml-1" />
+          variant="default"
+          size="default"
+          onClick={onBuildRequirement}
+          disabled={isBuilding}
+          className="h-9 flex items-center gap-2 transition-all duration-200"
+        >
+          {isBuilding ? (
+            <>
+              <div className="h-4 w-4 animate-pulse bg-primary-foreground/50 rounded" />
+              Building...
+            </>
+          ) : (
+            <>
+              <Bot className="h-4 w-4" />
+              {hasRequirementStatus ? 'Rebuild Requirement' : 'Build Requirement'}
+            </>
+          )}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => editor.chain().focus().setParagraph().run()}>
-              <ParagraphIcon className="h-4 w-4 mr-2" />
-              Paragraph
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>
-              <span className="w-4 h-4 inline-flex items-center justify-center mr-2 font-bold">H1</span>
-              Heading 1
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-              <span className="w-4 h-4 inline-flex items-center justify-center mr-2 font-bold">H2</span>
-              Heading 2
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-              <span className="w-4 h-4 inline-flex items-center justify-center mr-2 font-bold">H3</span>
-              Heading 3
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}>
-              <span className="w-4 h-4 inline-flex items-center justify-center mr-2 text-xs font-bold">H4</span>
-              Heading 4
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 5 }).run()}>
-              <span className="w-4 h-4 inline-flex items-center justify-center mr-2 text-xs font-bold">H5</span>
-              Heading 5
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => editor.chain().focus().toggleHeading({ level: 6 }).run()}>
-              <span className="w-4 h-4 inline-flex items-center justify-center mr-2 text-xs font-bold">H6</span>
-              Heading 6
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="w-px h-6 bg-border mx-1" />
         
         <Button
           variant="ghost"
           size="sm"
           onClick={() => {
-            const url = window.prompt('Enter the URL')
-            if (url) {
-              editor.chain().focus().setLink({ href: url }).run()
-            }
+            if (editor.can().undo()) editor.chain().focus().undo().run();
+            if (canUndoWorkflow) onUndoWorkflow();
           }}
-          className={editor.isActive('link') ? 'bg-muted' : ''}
-        >
-          <LinkIcon className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            const url = window.prompt('Enter the image URL')
-            if (url) {
-              editor.chain().focus().setImage({ src: url }).run()
-            }
-          }}
-        >
-          <ImageIcon className="h-4 w-4" />
-        </Button>
-        <div className="w-px h-6 bg-border mx-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          className={editor.isActive({ textAlign: 'left' }) ? 'bg-muted' : ''}
-        >
-          <AlignLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          className={editor.isActive({ textAlign: 'center' }) ? 'bg-muted' : ''}
-        >
-          <AlignCenter className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          className={editor.isActive({ textAlign: 'right' }) ? 'bg-muted' : ''}
-        >
-          <AlignRight className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-          className={editor.isActive({ textAlign: 'justify' }) ? 'bg-muted' : ''}
-        >
-          <AlignJustify className="h-4 w-4" />
-        </Button>
-        <div className="w-px h-6 bg-border mx-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
+          disabled={!editor.can().undo() && !canUndoWorkflow}
+          className="h-9 px-2 text-muted-foreground hover:text-foreground hover:bg-muted"
+          title="Undo"
         >
           <Undo className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
+          onClick={() => {
+            if (editor.can().redo()) editor.chain().focus().redo().run();
+            if (canRedoWorkflow) onRedoWorkflow();
+          }}
+          disabled={!editor.can().redo() && !canRedoWorkflow}
+          className="h-9 px-2 text-muted-foreground hover:text-foreground hover:bg-muted"
+          title="Redo"
         >
           <Redo className="h-4 w-4" />
         </Button>
@@ -2021,7 +2790,8 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete, hasUnsavedChanges }: {
             <Button
               variant="ghost"
               size="sm"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="h-9 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              title="Delete Requirement"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -2041,6 +2811,21 @@ const MenuBar = ({ editor, onSave, isSaving, onDelete, hasUnsavedChanges }: {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowRightPanel(!showRightPanel)}
+          className={cn(
+            "h-8 w-8 p-0 rounded-full text-muted-foreground hover:text-foreground",
+            showRightPanel && "text-foreground"
+          )}
+          title={showRightPanel ? "Hide panel" : "Show panel"}
+        >
+          {showRightPanel ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+        </Button>
       </div>
     </div>
   )

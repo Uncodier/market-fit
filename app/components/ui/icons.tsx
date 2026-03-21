@@ -11,7 +11,7 @@ interface IconProps {
   "aria-hidden"?: boolean
 }
 
-// Componente base para todos los iconos
+// Base Component
 const IconWrapper = ({ 
   children, 
   className = "", 
@@ -36,6 +36,26 @@ const IconWrapper = ({
     >
       {children}
     </div>
+  )
+}
+
+export function CirclePlay(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="10 8 16 12 10 16 10 8" />
+    </svg>
   )
 }
 
@@ -67,6 +87,26 @@ export const SaveIcon = ({ className = "", size = 18, ...props }: IconProps) => 
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
       <polyline points="17 21 17 13 7 13 7 21" />
       <polyline points="7 3 7 8 15 8" />
+    </svg>
+  </IconWrapper>
+)
+
+export const Globe = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  </IconWrapper>
+)
+
+export const Database = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
     </svg>
   </IconWrapper>
 )
@@ -389,16 +429,6 @@ export const Copy = ({ className = "", size = 18, ...props }: IconProps) => (
   </IconWrapper>
 )
 
-// Globe
-export const Globe = ({ className = "", size = 18, ...props }: IconProps) => (
-  <IconWrapper className={className} size={size} {...props}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="2" y1="12" x2="22" y2="12" />
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-    </svg>
-  </IconWrapper>
-)
 
 // Trash2
 export const Trash2 = ({ className = "", size = 18, ...props }: IconProps) => (
@@ -1043,24 +1073,14 @@ export function Quote({ className, ...props }: React.SVGProps<SVGSVGElement>) {
   )
 }
 
-export function Code({ className, ...props }: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={cn("h-3.5 w-3.5", className)}
-      {...props}
-    >
+export const Code = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="16 18 22 12 16 6" />
       <polyline points="8 6 2 12 8 18" />
     </svg>
-  )
-}
+  </IconWrapper>
+)
 
 export function Heading1({ className, ...props }: React.SVGProps<SVGSVGElement>) {
   return (
@@ -1325,17 +1345,6 @@ export const Info = ({ className = "", size = 18, ...props }: IconProps) => (
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="16" x2="12" y2="12" />
       <line x1="12" y1="8" x2="12.01" y2="8" />
-    </svg>
-  </IconWrapper>
-)
-
-// Database
-export const Database = ({ className = "", size = 18, ...props }: IconProps) => (
-  <IconWrapper className={className} size={size} {...props}>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <ellipse cx="12" cy="5" rx="9" ry="3" />
-      <path d="M3 5V19A9 3 0 0 0 21 19V5" />
-      <path d="M3 12A9 3 0 0 0 21 12" />
     </svg>
   </IconWrapper>
 )
@@ -1903,6 +1912,40 @@ export const Reply = ({ className = "", size = 18, ...props }: IconProps) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="9 17 4 12 9 7" />
       <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+    </svg>
+  </IconWrapper>
+)
+
+// GripHorizontal
+export const GripHorizontal = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="9" r="1" />
+      <circle cx="19" cy="9" r="1" />
+      <circle cx="5" cy="9" r="1" />
+      <circle cx="12" cy="15" r="1" />
+      <circle cx="19" cy="15" r="1" />
+      <circle cx="5" cy="15" r="1" />
+    </svg>
+  </IconWrapper>
+)
+
+export const PanelRightClose = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <line x1="15" y1="3" x2="15" y2="21" />
+      <path d="m8 9 3 3-3 3" />
+    </svg>
+  </IconWrapper>
+)
+
+export const PanelRightOpen = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <line x1="15" y1="3" x2="15" y2="21" />
+      <path d="m10 15-3-3 3-3" />
     </svg>
   </IconWrapper>
 )
