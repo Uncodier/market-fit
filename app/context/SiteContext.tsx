@@ -1113,7 +1113,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       // Update local state without full reload when preventing refresh
-      if (shouldPreventRefresh() || isOnSettingsPage()) {
+      if (shouldPreventRefresh() || isOnProtectedPage()) {
         
         // Update the current site if it's the same site being updated
         if (currentSite && currentSite.id === site.id) {
@@ -1199,7 +1199,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
         }
       }
       
-      await loadSitesWithPrevention() // Recargar los sitios
+      // 🔥 FIX: We must use loadSites() directly, not loadSitesWithPrevention()
+      // because loadSitesWithPrevention() aborts if we are on '/create-site' 
+      // leaving the sites array empty and causing a redirect loop back to create-site!
+      // Also, we optimistically update the sites array so the UI has immediate access to the new site.
+      setSites(prev => [...prev, createdSite]);
+      
+      await loadSites(); // Recargar los sitios
       
       // Si es el primer sitio, lo establecemos como actual
       if (sites.length === 0) {
@@ -1590,7 +1596,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       
       // Update local state without full reload when preventing refresh
-      if (shouldPreventRefresh() || isOnSettingsPage()) {
+      if (shouldPreventRefresh() || isOnProtectedPage()) {
         
         // Update the current site if it matches the siteId being updated
         if (currentSite && currentSite.id === siteId) {
