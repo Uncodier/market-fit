@@ -171,7 +171,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
         )}
       </DialogTrigger>
       <DialogContent 
-        className="sm:max-w-[600px]" 
+        className="sm:max-w-[600px] max-h-[90vh] flex flex-col" 
         onEscapeKeyDown={(e) => {
           if (isLoading) e.preventDefault()
         }}
@@ -182,14 +182,14 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
           if (isLoading) e.preventDefault()
         }}
       >
-        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef}>
-          <DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef} className="flex flex-col flex-1 overflow-hidden">
+          <DialogHeader className="shrink-0 mb-2">
             <DialogTitle>Create New Requirement</DialogTitle>
             <DialogDescription>
               Create a new product requirement aligned with specific segments.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-6 py-4">
+          <div className="grid gap-6 py-4 overflow-y-auto flex-1 pr-2 -mr-2 px-1">
             <div className="grid gap-2">
               <Label>Title</Label>
               <Input
@@ -481,7 +481,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
               )}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4 shrink-0 pt-2 border-t">
             <Button
               type="button"
               variant="outline"

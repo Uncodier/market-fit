@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
 import { Checkbox } from "@/app/components/ui/checkbox"
-import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList, FileText, Clock, LayoutGrid, ListOrdered } from "@/app/components/ui/icons"
+import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList, FileText, Clock, LayoutGrid, ListOrdered, X } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
 import React, { useState, useEffect } from "react"

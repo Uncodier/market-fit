@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { updateRequirementStatus, updateCompletionStatus, updateRequirementPriority, updateRequirementInstructions, updateRequirement, deleteRequirement } from "../actions"
 import { markdownToHTML } from "../utils"
 import { RequirementStatusList } from "./components/RequirementStatusList"
+import { AddSecretDialog } from "@/app/components/ui/add-secret-dialog"
 
 // Function to convert HTML back to markdown
 const htmlToMarkdown = (html: string): string => {
@@ -129,7 +130,8 @@ import {
   GripHorizontal,
   PanelRightClose,
   PanelRightOpen,
-  Code
+  Code,
+  Key
 } from "@/app/components/ui/icons"
 import { ZoomableCanvas } from "@/app/components/agents/zoomable-canvas"
 import {
@@ -227,7 +229,7 @@ interface Requirement {
 // Loading state skeleton component
 const RequirementSkeleton = () => {
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-105px)]">
       {/* Main Content Area Skeleton */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none border-b pl-[20px] pr-4 py-2 h-[71px]">
@@ -626,6 +628,7 @@ function RequirementDetailContent() {
     }
   }, [requirement, editor])
 
+
   // Main function to load requirement data
   const loadRequirement = async () => {
     setIsLoading(true)
@@ -752,11 +755,11 @@ function RequirementDetailContent() {
         segments: segmentIds,
         segmentNames: segmentNames,
         campaigns: campaignIds,
-          campaignNames: campaignNames,
-          campaign_id: campaign_id, // Use the first campaign_id (if it exists)
-          outsourceInstructions: requirement.instructions || "", // Initialize with instructions since it is the same field
-          campaignOutsourced: campaignOutsourced,
-          metadata: requirement.metadata || {}
+        campaignNames: campaignNames,
+        campaign_id: campaign_id, // Use the first campaign_id (if it exists)
+        outsourceInstructions: requirement.instructions || "", // Initialize with instructions since it is the same field
+        campaignOutsourced: campaignOutsourced,
+        metadata: requirement.metadata || {}
       }
       
       // Debug log for metadata
@@ -1143,6 +1146,32 @@ function RequirementDetailContent() {
     }
   };
 
+  // Sync state with TopBarActions
+  useEffect(() => {
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('requirement:update', {
+        detail: {
+          id: params.id,
+          isBuilding,
+          hasRequirementStatus
+        }
+      }));
+    }, 0);
+  }, [params.id, isBuilding, hasRequirementStatus]);
+
+  // Listen for build trigger from TopBarActions
+  useEffect(() => {
+    const handleBuildTrigger = () => {
+      handleBuildRequirement();
+    };
+    
+    window.addEventListener('requirement:build-trigger', handleBuildTrigger);
+    
+    return () => {
+      window.removeEventListener('requirement:build-trigger', handleBuildTrigger);
+    };
+  }, [unsavedChanges, params.id, handleSaveChanges, updateRequirementStatus]);
+
   // Add these segment handler functions
   const handleSegmentSelect = (value: string) => {
     if (!value) return;
@@ -1282,6 +1311,86 @@ function RequirementDetailContent() {
       document.body.style.cursor = '';
     };
   }, [isResizing]);
+
+  // Handle adding requirement secret
+  const handleAddRequirementSecret = async (id: string, name: string) => {
+    try {
+      const supabase = createClient();
+      
+      // Update local state first for responsiveness
+      const updatedMetadata = {
+        ...(requirement?.metadata || {}),
+        secret_id: id,
+        secret_name: name
+      };
+      
+      // Also update database
+      if (requirement) {
+        const { error } = await supabase
+          .from('requirements')
+          .update({ metadata: updatedMetadata })
+          .eq('id', requirement.id);
+          
+        if (error) throw error;
+      }
+      
+      setRequirement(prev => prev ? {
+        ...prev,
+        metadata: updatedMetadata
+      } : null);
+      
+      toast.success(`Secret ${name} linked to requirement`);
+      
+      // Auto-add secret node to workflow if it doesn't exist
+      // First, find if we already have a secret node
+      const existingSecretNodeIndex = nodes.findIndex(n => n.type === 'secret');
+      
+      if (existingSecretNodeIndex >= 0) {
+        // Update existing secret node
+        setNodes(currentNodes => currentNodes.map((n, idx) => 
+          idx === existingSecretNodeIndex 
+            ? { ...n, data: { ...n.data, secret_id: id, secret_name: name } }
+            : n
+        ));
+      } else {
+        // Find trigger node to position relative to it
+        const triggerNode = nodes.find(n => n.type === 'trigger');
+        
+        const secretNodeId = `node-secret-${Date.now()}`;
+        const newSecretNode = {
+          id: secretNodeId,
+          type: 'secret',
+          position: { 
+            // Place it to the left of the trigger node, or default position
+            x: triggerNode ? Math.max(0, triggerNode.position.x - 350) : 50, 
+            y: triggerNode ? triggerNode.position.y : 50 
+          },
+          data: { 
+            secret_id: id, 
+            secret_name: name 
+          }
+        };
+        
+        setNodes([...nodes, newSecretNode]);
+        
+        // Connect secret to trigger if trigger exists
+        if (triggerNode) {
+          setConnections([...connections, {
+            id: `conn-secret-${Date.now()}`,
+            from: secretNodeId,
+            to: triggerNode.id,
+            sourceHandle: 'success'
+          }]);
+        }
+      }
+      
+      setUnsavedChanges(true);
+      
+    } catch (error: any) {
+      console.error("Error linking secret to requirement:", error);
+      toast.error(error.message || "Failed to link secret");
+    }
+  };
 
   // Handlers for workflow builder
   const handleAddNode = (type: string) => {
@@ -1766,7 +1875,7 @@ function RequirementDetailContent() {
   // Show error state
   if (error) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center flex-col gap-4">
+      <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-105px)] items-center justify-center flex-col gap-4">
         <div className="text-destructive">
           <X className="h-16 w-16 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-center">Error Loading Requirement</h2>
@@ -1787,7 +1896,7 @@ function RequirementDetailContent() {
   // Show error if no requirement data
   if (!requirement) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center flex-col gap-4">
+      <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-105px)] items-center justify-center flex-col gap-4">
         <div className="text-destructive">
           <X className="h-16 w-16 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-center">Requirement Not Found</h2>
@@ -1808,27 +1917,26 @@ function RequirementDetailContent() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-105px)]">
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-none">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        <div className="flex-none z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <MenuBar 
             editor={editor} 
             onSave={handleSaveChanges} 
             isSaving={isSaving} 
             onDelete={handleDeleteRequirement}
             hasUnsavedChanges={unsavedChanges}
-            isBuilding={isBuilding}
-            onBuildRequirement={handleBuildRequirement}
             hasRequirementStatus={hasRequirementStatus}
             handleAddNode={handleAddNode}
             showRightPanel={showRightPanel}
             setShowRightPanel={setShowRightPanel}
             canUndoWorkflow={workflowHistory.past.length > 1}
             canRedoWorkflow={workflowHistory.future.length > 0}
-            onUndoWorkflow={handleUndoWorkflow}
-            onRedoWorkflow={handleRedoWorkflow}
-          />
+          onUndoWorkflow={handleUndoWorkflow}
+          onRedoWorkflow={handleRedoWorkflow}
+          onAddSecret={handleAddRequirementSecret}
+        />
         </div>
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           <div 
@@ -1853,7 +1961,14 @@ function RequirementDetailContent() {
               <div className="w-12 h-1 rounded-full bg-border group-hover:bg-primary/50 transition-colors"></div>
       </div>
             <div className="flex-1 overflow-hidden relative">
-              <ZoomableCanvas className="w-full h-full" recenterDependency={showRightPanel}>
+              <ZoomableCanvas 
+                className="w-full h-full" 
+                recenterDependency={showRightPanel}
+                dotColorLight="rgba(0, 0, 0, 0.15)"
+                dotColorDark="rgba(255, 255, 255, 0.15)"
+                dotSize="20px"
+                dotRadius="1.5px"
+              >
                 <div className="w-full h-full relative min-h-[1000px] min-w-[1000px]">
                   {isConnecting && currentMousePos && (
                     <div className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: 10 }}>
@@ -1973,7 +2088,7 @@ function RequirementDetailContent() {
                             <X className="h-3 w-3" />
                           </Button>
                           </div>
-                        </div>
+                      </div>
                     );
                   })}
                   
@@ -2181,6 +2296,23 @@ function RequirementDetailContent() {
                               </div>
                         )}
                         
+                        {node.type === 'secret' && (
+                          <div className="relative flex flex-col gap-2" onMouseDown={e => e.stopPropagation()}>
+                            <div className="text-xs text-muted-foreground">Secret Name</div>
+                            <div className="font-mono text-sm font-medium">{node.data.secret_name || 'Unnamed Secret'}</div>
+                            
+                            <div className="text-[10px] text-muted-foreground mt-2">Secret ID</div>
+                            <div className="text-xs font-mono text-muted-foreground truncate">{node.data.secret_id}</div>
+                            
+                            {!node.data.secret_id && (
+                              <div className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                No secret linked. Delete and recreate.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
                         {node.type === 'trigger' && (
                           <div className="relative flex flex-col gap-2" onMouseDown={e => e.stopPropagation()}>
                             {(node.data.triggerType === 'schedule' || !node.data.triggerType) && (
@@ -2297,23 +2429,75 @@ function RequirementDetailContent() {
                         )}
 
                         {node.type === 'action' && (
-                          <div className="mt-3 flex items-center justify-between px-1" onMouseDown={e => e.stopPropagation()}>
-                            <span className="text-xs text-muted-foreground font-medium">Retries</span>
-                            <Input 
-                              type="number" 
-                              min="0"
-                              max="10"
-                              className="h-7 w-16 text-xs bg-background/50 text-center focus-visible:ring-1 focus-visible:ring-primary/30"
-                              value={node.data.retries ?? 0}
-                              onChange={(e) => {
-                                setNodes(nodes.map(n => 
-                                  n.id === node.id ? { ...n, data: { ...n.data, retries: parseInt(e.target.value) || 0 } } : n
-                                ));
-                                setUnsavedChanges(true);
-                              }}
-                              onMouseDown={e => e.stopPropagation()}
-                              onKeyDown={e => e.stopPropagation()}
-                            />
+                          <div className="mt-3 flex flex-col gap-2 px-1" onMouseDown={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground font-medium">Retries</span>
+                              <Input 
+                                type="number" 
+                                min="0"
+                                max="10"
+                                className="h-7 w-16 text-xs bg-background/50 text-center focus-visible:ring-1 focus-visible:ring-primary/30"
+                                value={node.data.retries ?? 0}
+                                onChange={(e) => {
+                                  setNodes(nodes.map(n => 
+                                    n.id === node.id ? { ...n, data: { ...n.data, retries: parseInt(e.target.value) || 0 } } : n
+                                  ));
+                                  setUnsavedChanges(true);
+                                }}
+                                onMouseDown={e => e.stopPropagation()}
+                                onKeyDown={e => e.stopPropagation()}
+                              />
+                            </div>
+                            <div className="h-px bg-border/50 w-full my-1"></div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground font-medium">Secret</span>
+                              <div className="flex gap-1 items-center">
+                                {node.data.secret_id ? (
+                                  <span className="text-[10px] text-primary truncate max-w-[80px]" title={node.data.secret_name || 'Secret attached'}>
+                                    {node.data.secret_name || 'Attached'}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground italic">None</span>
+                                )}
+                                <AddSecretDialog 
+                                  onSecretCreated={(id, name) => {
+                                    setNodes(nodes.map(n => 
+                                      n.id === node.id ? { ...n, data: { ...n.data, secret_id: id, secret_name: name } } : n
+                                    ));
+                                    setUnsavedChanges(true);
+                                  }}
+                                  trigger={
+                                    <Button variant="outline" size="sm" className="h-7 text-xs px-2 whitespace-nowrap" title={node.data.secret_id ? "Change Secret" : "Add Secret"}>
+                                      <Key className="h-3 w-3 mr-1" />
+                                      {node.data.secret_id ? "Change" : "Add Secret"}
+                                    </Button>
+                                  }
+                                />
+                                {node.data.secret_id && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0" 
+                                    title="Remove Secret"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNodes(nodes.map(n => {
+                                        if (n.id === node.id) {
+                                          const newData = { ...n.data };
+                                          delete newData.secret_id;
+                                          delete newData.secret_name;
+                                          return { ...n, data: newData };
+                                        }
+                                        return n;
+                                      }));
+                                      setUnsavedChanges(true);
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                         </div>
                       )}
                 </div>
@@ -2571,56 +2755,99 @@ function RequirementDetailContent() {
                               hoveredNodeId === node.id ? "opacity-100" : "opacity-0"
                             )}>If</span>
                   </div>
-                          <div 
-                            className={cn(
-                              "absolute top-[80px] -right-1.5 h-3 w-3 bg-background border-2 border-orange-500/40 rounded-full z-10 cursor-crosshair hover:bg-orange-500/20 transition-all duration-200",
-                              (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId === node.id)) ? "opacity-100 scale-125 border-orange-500 shadow-sm" : "opacity-0 scale-50"
-                            )}
-                            title="Else (False)"
-                            onMouseDown={(e) => {
-                              e.stopPropagation();
-                              const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
-                              const canvasRect = canvasEl?.getBoundingClientRect();
-                              if (canvasRect && canvasEl) {
-                                const scale = canvasRect.width / canvasEl.offsetWidth;
-                                const startX = node.position.x + 280;
-                                const startY = node.position.y + 86;
-                                setIsConnecting({ fromNodeId: node.id, startX, startY, sourceHandle: 'false' });
-                                setCurrentMousePos({
-                                  x: (e.clientX - canvasRect.left) / scale,
-                                  y: (e.clientY - canvasRect.top) / scale
-                                });
+                              <div 
+                                className={cn(
+                                  "absolute top-[80px] -right-1.5 h-3 w-3 bg-background border-2 border-orange-500/40 rounded-full z-10 cursor-crosshair hover:bg-orange-500/20 transition-all duration-200",
+                                  (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId === node.id)) ? "opacity-100 scale-125 border-orange-500 shadow-sm" : "opacity-0 scale-50"
+                                )}
+                                title="Else (False)"
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
+                                  const canvasRect = canvasEl?.getBoundingClientRect();
+                                  if (canvasRect && canvasEl) {
+                                    const scale = canvasRect.width / canvasEl.offsetWidth;
+                                    const startX = node.position.x + 280;
+                                    const startY = node.position.y + 86;
+                                    setIsConnecting({ fromNodeId: node.id, startX, startY, sourceHandle: 'false' });
+                                    setCurrentMousePos({
+                                      x: (e.clientX - canvasRect.left) / scale,
+                                      y: (e.clientY - canvasRect.top) / scale
+                                    });
 
-                                const handleMouseMove = (moveEvent: MouseEvent) => {
-                                  const currentRect = canvasEl.getBoundingClientRect();
+                                    const handleMouseMove = (moveEvent: MouseEvent) => {
+                                      const currentRect = canvasEl.getBoundingClientRect();
+                                      setCurrentMousePos({
+                                        x: (moveEvent.clientX - currentRect.left) / scale,
+                                        y: (moveEvent.clientY - currentRect.top) / scale
+                                      });
+                                    };
+                                    
+                                    const handleMouseUp = () => {
+                                      window.removeEventListener('mousemove', handleMouseMove);
+                                      window.removeEventListener('mouseup', handleMouseUp);
+                                      setIsConnecting(null);
+                                      setCurrentMousePos(null);
+                                    };
+                                    
+                                    window.addEventListener('mousemove', handleMouseMove);
+                                    window.addEventListener('mouseup', handleMouseUp);
+                                  }
+                                }}
+                              >
+                                <span className={cn(
+                                  "absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-orange-500 pointer-events-none transition-opacity bg-background/80 px-1 py-0.5 rounded",
+                                  hoveredNodeId === node.id ? "opacity-100" : "opacity-0"
+                                )}>Else</span>
+                              </div>
+                            </>
+                          )}
+                          
+                          {node.type === 'secret' && (
+                            <div 
+                              className={cn(
+                                "absolute top-[40px] -right-1.5 h-3 w-3 bg-background border-2 border-yellow-500/40 rounded-full z-10 cursor-crosshair hover:bg-yellow-500/20 transition-all duration-200",
+                                (hoveredNodeId === node.id || (isConnecting && isConnecting.fromNodeId === node.id)) ? "opacity-100 scale-125 border-yellow-500 shadow-sm" : "opacity-0 scale-50"
+                              )}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                const canvasEl = e.currentTarget.closest('.min-w-\\[1000px\\]') as HTMLElement;
+                                const canvasRect = canvasEl?.getBoundingClientRect();
+                                if (canvasRect && canvasEl) {
+                                  const scale = canvasRect.width / canvasEl.offsetWidth;
+                                  const startX = node.position.x + 280;
+                                  const startY = node.position.y + 46;
+                                  setIsConnecting({ fromNodeId: node.id, startX, startY, sourceHandle: 'success' });
                                   setCurrentMousePos({
-                                    x: (moveEvent.clientX - currentRect.left) / scale,
-                                    y: (moveEvent.clientY - currentRect.top) / scale
+                                    x: (e.clientX - canvasRect.left) / scale,
+                                    y: (e.clientY - canvasRect.top) / scale
                                   });
-                                };
-                                
-                                const handleMouseUp = () => {
-                                  window.removeEventListener('mousemove', handleMouseMove);
-                                  window.removeEventListener('mouseup', handleMouseUp);
-                                  setIsConnecting(null);
-                                  setCurrentMousePos(null);
-                                };
-                                
-                                window.addEventListener('mousemove', handleMouseMove);
-                                window.addEventListener('mouseup', handleMouseUp);
-                              }
-                            }}
-                          >
-                            <span className={cn(
-                              "absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-orange-500 pointer-events-none transition-opacity bg-background/80 px-1 py-0.5 rounded",
-                              hoveredNodeId === node.id ? "opacity-100" : "opacity-0"
-                            )}>Else</span>
-            </div>
-                        </>
-                      )}
-                    </div>
-                    );
-                  })}
+
+                                  const handleMouseMove = (moveEvent: MouseEvent) => {
+                                    const currentRect = canvasEl.getBoundingClientRect();
+                                    setCurrentMousePos({
+                                      x: (moveEvent.clientX - currentRect.left) / scale,
+                                      y: (moveEvent.clientY - currentRect.top) / scale
+                                    });
+                                  };
+                                  
+                                  const handleMouseUp = () => {
+                                    window.removeEventListener('mousemove', handleMouseMove);
+                                    window.removeEventListener('mouseup', handleMouseUp);
+                                    setIsConnecting(null);
+                                    setCurrentMousePos(null);
+                                  };
+                                  
+                                  window.addEventListener('mousemove', handleMouseMove);
+                                  window.addEventListener('mouseup', handleMouseUp);
+                                }
+                              }}
+                            >
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               </ZoomableCanvas>
             </div>
@@ -2630,9 +2857,9 @@ function RequirementDetailContent() {
 
       {/* Right Panel */}
       {showRightPanel && (
-        <div className="w-80 border-l bg-muted/30 flex flex-col h-full shrink-0">
+        <div className="w-80 border-l bg-muted/30 flex flex-col h-full shrink-0 overflow-hidden relative">
           <Tabs defaultValue="info" className="flex flex-col h-full">
-            <div className="flex-none h-[71px] border-b flex items-center justify-center px-4">
+            <div className="flex-none h-[71px] border-b flex items-center justify-center px-4 z-10 bg-muted/95 backdrop-blur-sm">
               <TabsList className="grid grid-cols-2 w-full">
                 <TabsTrigger value="info">Details</TabsTrigger>
                 <TabsTrigger value="outsource">Agents</TabsTrigger>
@@ -2665,8 +2892,6 @@ const MenuBar = ({
   isSaving, 
   onDelete, 
   hasUnsavedChanges,
-  isBuilding,
-  onBuildRequirement,
   hasRequirementStatus,
   handleAddNode,
   showRightPanel,
@@ -2674,15 +2899,14 @@ const MenuBar = ({
   canUndoWorkflow,
   canRedoWorkflow,
   onUndoWorkflow,
-  onRedoWorkflow
+  onRedoWorkflow,
+  onAddSecret
 }: { 
   editor: any, 
   onSave: () => void, 
   isSaving: boolean,
   onDelete: () => void,
   hasUnsavedChanges?: boolean,
-  isBuilding?: boolean,
-  onBuildRequirement?: () => void,
   hasRequirementStatus?: boolean,
   handleAddNode: (type: string) => void,
   showRightPanel: boolean,
@@ -2690,7 +2914,8 @@ const MenuBar = ({
   canUndoWorkflow: boolean,
   canRedoWorkflow: boolean,
   onUndoWorkflow: () => void,
-  onRedoWorkflow: () => void
+  onRedoWorkflow: () => void,
+  onAddSecret?: (id: string, name: string) => void
 }) => {
   if (!editor) {
     return null
@@ -2734,27 +2959,18 @@ const MenuBar = ({
         </Button>
         
         <div className="w-px h-6 bg-border mx-1" />
-
-            <Button 
-          variant="default"
-          size="default"
-          onClick={onBuildRequirement}
-          disabled={isBuilding}
-          className="h-9 flex items-center gap-2 transition-all duration-200"
-        >
-          {isBuilding ? (
-            <>
-              <div className="h-4 w-4 animate-pulse bg-primary-foreground/50 rounded" />
-              Building...
-            </>
-          ) : (
-            <>
-              <Bot className="h-4 w-4" />
-              {hasRequirementStatus ? 'Rebuild Requirement' : 'Build Requirement'}
-            </>
-          )}
+        
+        <AddSecretDialog 
+          onSecretCreated={onAddSecret || (() => {})}
+          trigger={
+            <Button variant="ghost" size="sm" className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-sm">
+              <Key className="h-4 w-4 mr-1.5 text-primary" /> Add Secret
             </Button>
+          }
+        />
+        
         <div className="w-px h-6 bg-border mx-1" />
+
         
         <Button
           variant="ghost"

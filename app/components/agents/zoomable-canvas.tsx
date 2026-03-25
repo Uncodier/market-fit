@@ -9,12 +9,20 @@ interface ZoomableCanvasProps {
   children: React.ReactNode
   className?: string
   recenterDependency?: any
+  dotColorLight?: string
+  dotColorDark?: string
+  dotSize?: string
+  dotRadius?: string
 }
 
 export function ZoomableCanvas({ 
   children, 
   className,
-  recenterDependency
+  recenterDependency,
+  dotColorLight = 'rgba(0, 0, 0, 0.07)',
+  dotColorDark = 'rgba(255, 255, 255, 0.07)',
+  dotSize = '24px',
+  dotRadius = '1px'
 }: ZoomableCanvasProps) {
   // Use the layout context to get the current state
   const { isLayoutCollapsed } = useLayout();
@@ -45,57 +53,6 @@ export function ZoomableCanvas({
   const targetPositionRef = useRef({ x: 0, y: 0, scale: 1 });
   const currentPositionRef = useRef({ x: 0, y: 0, scale: 1 });
   const isAnimatingRef = useRef(false);
-
-  // Define CSS variables for the dot pattern
-  useEffect(() => {
-    // Add CSS variables for the dots pattern
-    document.documentElement.style.setProperty('--dots-color-light', 'rgba(0, 0, 0, 0.07)');
-    document.documentElement.style.setProperty('--dots-color-dark', 'rgba(255, 255, 255, 0.07)');
-    document.documentElement.style.setProperty('--dots-size', '24px');
-    document.documentElement.style.setProperty('--dots-radius', '1px');
-    
-    return () => {
-      // Clean up when component unmounts
-      document.documentElement.style.removeProperty('--dots-color-light');
-      document.documentElement.style.removeProperty('--dots-color-dark');
-      document.documentElement.style.removeProperty('--dots-size');
-      document.documentElement.style.removeProperty('--dots-radius');
-    };
-  }, []);
-
-  // Detect theme to use the correct dot color - now using the theme context
-  useEffect(() => {
-    const updateDotColor = () => {
-      // Use isDarkMode from context instead of checking manually
-      document.documentElement.style.setProperty(
-        '--theme-dots-color', 
-        isDarkMode ? 'var(--dots-color-dark)' : 'var(--dots-color-light)'
-      );
-      
-      // Update the background reference to refresh immediately
-      if (backgroundRef.current) {
-        // Force refresh by briefly hiding and showing
-        const originalDisplay = backgroundRef.current.style.display;
-        backgroundRef.current.style.display = 'none';
-        // Force reflow
-        void backgroundRef.current.offsetHeight;
-        // Restore display
-        backgroundRef.current.style.display = originalDisplay;
-      }
-    };
-
-    // Update immediately when theme changes
-    updateDotColor();
-    
-    // Observe theme changes as a fallback
-    const observer = new MutationObserver(updateDotColor);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
-
-    return () => observer.disconnect();
-  }, [isDarkMode]); // Add isDarkMode as dependency
 
   // Measure content size without transformations - optimized to avoid loops
   const measureContent = useCallback(() => {
@@ -702,14 +659,14 @@ export function ZoomableCanvas({
   }, [canvasRef]);
 
   // CSS for dot pattern background (infinite grid)
+  const currentColor = isDarkMode ? dotColorDark : dotColorLight;
   const dotPatternStyle = {
-    backgroundSize: 'var(--dots-size) var(--dots-size)',
+    backgroundSize: `${dotSize} ${dotSize}`,
     backgroundImage: `
-      radial-gradient(circle, var(--dot-color) var(--dots-radius), transparent var(--dots-radius))
+      radial-gradient(circle, ${currentColor} ${dotRadius}, transparent ${dotRadius})
     `,
     backgroundPosition: '0 0',
     backgroundColor: 'transparent',
-    '--dot-color': 'var(--theme-dots-color)',
     position: 'absolute',
     top: '-200%',    // Center pattern and extend to cover more area
     left: '-200%',   // Center pattern and extend to cover more area

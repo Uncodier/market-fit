@@ -5,8 +5,7 @@ export const requirementFormSchema = z.object({
     .min(3, { message: "El título debe tener al menos 3 caracteres" })
     .max(120, { message: "El título no puede exceder los 120 caracteres" }),
   description: z.string()
-    .min(10, { message: "La descripción debe tener al menos 10 caracteres" })
-    .max(500, { message: "La descripción no puede exceder los 500 caracteres" }),
+    .min(10, { message: "La descripción debe tener al menos 10 caracteres" }),
   type: z.enum(["content", "design", "research", "follow_up", "task", "develop", "analytics", "testing", "approval", "coordination", "strategy", "optimization", "automation", "integration", "planning", "payment"], {
     required_error: "Por favor selecciona un tipo",
   }),

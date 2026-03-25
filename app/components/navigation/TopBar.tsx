@@ -62,17 +62,42 @@ export function TopBar({
     openAIModal: (type: 'analysis' | 'icp' | 'topics') => void;
   } | null>(null);
 
+  // States for requirement detail page
+  const [requirementData, setRequirementData] = useState<{
+    id: string;
+    isBuilding: boolean;
+    hasRequirementStatus: boolean;
+  } | null>(null);
+
   // Reset states when pathname changes
   useEffect(() => {
     setIsProcessing(false);
     setSegmentData(null);
+    setRequirementData(null);
   }, [pathname]);
 
-  // Escuchar eventos de actualización del segmento
+  // Escuchar eventos de actualización del segmento y requirement
   useEffect(() => {
     const handleBreadcrumbUpdate = (event: any) => {
-      if (event.detail && event.detail.segmentData) {
-        setSegmentData(event.detail.segmentData);
+      if (event.detail) {
+        if (event.detail.segmentData) {
+          setSegmentData(event.detail.segmentData);
+        }
+        if (event.detail.requirementData) {
+          setRequirementData(event.detail.requirementData);
+        }
+      }
+    };
+    
+    // Escuchar cambios de estado en requirement
+    const handleRequirementUpdate = (event: any) => {
+      if (event.detail) {
+        setRequirementData(prevData => {
+          return {
+            ...prevData,
+            ...event.detail
+          };
+        });
       }
     };
     
@@ -93,10 +118,12 @@ export function TopBar({
     
     window.addEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
     window.addEventListener('segment:tabchange', handleSegmentTabChange as EventListener);
+    window.addEventListener('requirement:update', handleRequirementUpdate as EventListener);
     
     return () => {
       window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
       window.removeEventListener('segment:tabchange', handleSegmentTabChange as EventListener);
+      window.removeEventListener('requirement:update', handleRequirementUpdate as EventListener);
     };
   }, [segmentData]);
   
@@ -237,6 +264,7 @@ export function TopBar({
           isSecurityPage={pathname === "/security"}
           isExperimentDetailPage={isExperimentDetailPage}
           segmentData={segmentData}
+          requirementData={requirementData}
           segments={segments}
           propSegments={propSegments}
           requirements={requirements}

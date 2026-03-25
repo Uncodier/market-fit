@@ -42,7 +42,8 @@ import {
   Shield,
   BookOpen,
   LogOut,
-  Github
+  Github,
+  Bot
 } from "@/app/components/ui/icons"
 
 import { subMonths, format } from "date-fns"
@@ -595,6 +596,11 @@ interface TopBarActionsProps {
     isGeneratingTopics: boolean
     openAIModal: (type: 'analysis' | 'icp' | 'topics') => void
   } | null
+  requirementData?: {
+    id: string
+    isBuilding: boolean
+    hasRequirementStatus: boolean
+  } | null
   segments: Array<{ id: string; name: string; description: string }>
   propSegments?: Array<{ id: string; name: string; description: string }>
   requirements: Array<{ id: string; title: string; description: string }>
@@ -623,6 +629,7 @@ export function TopBarActions({
   isExperimentDetailPage = false,
   dashboardActiveTab,
   segmentData,
+  requirementData,
   segments,
   propSegments,
   requirements,
@@ -1479,6 +1486,32 @@ The success of this experiment will be measured by:
             <>
               <Cpu className="h-4 w-4 shrink-0" />
               <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.buildWithAI')}</span>
+            </>
+          )}
+        </Button>
+      )}
+      
+      {/* Requirement Detail Page Build Button */}
+      {requirementData && currentSite && (
+          <Button 
+          variant="default" 
+          size="default"
+              className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('requirement:build-trigger'));
+          }}
+          disabled={requirementData.isBuilding}
+          title={requirementData.hasRequirementStatus ? 'Rebuild Requirement' : 'Build Requirement'}
+        >
+          {requirementData.isBuilding ? (
+            <>
+              <div className="h-4 w-4 animate-pulse bg-primary-foreground/50 rounded" />
+              <span className="hidden md:inline font-inter font-medium text-sm">Building...</span>
+            </>
+          ) : (
+            <>
+              <Bot className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline font-inter font-medium text-sm">{requirementData.hasRequirementStatus ? 'Rebuild Requirement' : 'Build Requirement'}</span>
             </>
           )}
         </Button>

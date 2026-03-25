@@ -22,7 +22,6 @@ import {
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState, useEffect, useRef } from "react"
-import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Textarea } from "./ui/textarea"
 import { toast } from "sonner"
 import { useAuth } from "@/app/hooks/use-auth"
@@ -42,8 +41,7 @@ const campaignRequirementFormSchema = z.object({
     .min(3, { message: "Title must have at least 3 characters" })
     .max(120, { message: "Title cannot exceed 120 characters" }),
   description: z.string()
-    .min(10, { message: "Description must have at least 10 characters" })
-    .max(500, { message: "Description cannot exceed 500 characters" }),
+    .min(10, { message: "Description must have at least 10 characters" }),
   priority: z.enum(["high", "medium", "low"], {
     required_error: "Please select a priority",
   }),
@@ -186,7 +184,7 @@ export function CampaignRequirementDialog({
         )}
       </DialogTrigger>
       <DialogContent 
-        className="sm:max-w-[600px] p-6 md:p-8" 
+        className="sm:max-w-[600px] p-6 md:p-8 max-h-[90vh] flex flex-col" 
         onEscapeKeyDown={(e) => {
           if (isLoading) e.preventDefault()
         }}
@@ -197,15 +195,14 @@ export function CampaignRequirementDialog({
           if (isLoading) e.preventDefault()
         }}
       >
-        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef}>
-          <DialogHeader className="mb-2">
+        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef} className="flex flex-col flex-1 overflow-hidden">
+          <DialogHeader className="mb-2 shrink-0">
             <DialogTitle>Add New Requirement</DialogTitle>
             <DialogDescription>
               Create a new requirement for this campaign
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[65vh] px-2 py-1 overflow-visible">
-            <div className="grid gap-6 py-4 px-1">
+          <div className="grid gap-6 py-4 px-1 overflow-y-auto flex-1 pr-2 -mr-2">
               <div className="grid gap-3">
                 <Label>Title</Label>
                 <div className="p-[3px]">
@@ -346,8 +343,7 @@ export function CampaignRequirementDialog({
                 </div>
               </div>
             </div>
-          </ScrollArea>
-          <DialogFooter className="pt-4 mt-2">
+          <DialogFooter className="pt-4 mt-2 shrink-0 border-t">
             <Button 
               type="button" 
               variant="outline" 
