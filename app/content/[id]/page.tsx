@@ -9,7 +9,9 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
-import { updateContent, updateContentStatus, deleteContent, getContentById } from "../actions"
+import { Switch } from "@/app/components/ui/switch"
+import { DatePicker } from "@/app/components/ui/date-picker"
+import { updateContent, updateContentStatus, deleteContent, getContentById, type ContentItem } from "../actions"
 import { getContentTypeName, processMarkdownText, markdownToHTML } from "../utils"
 import { ContentAssetsGrid } from "./components/ContentAssetsGrid"
 import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
@@ -179,6 +181,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/app/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog"
+import { useSite } from "@/app/context/SiteContext"
 
 const MenuBar = ({ 
   editor, 
@@ -189,6 +200,7 @@ const MenuBar = ({
   activeTab,
   hasChanges,
   contentType,
+  contentStatus,
   onTeleprompter
 }: {
   editor: any,
@@ -199,6 +211,7 @@ const MenuBar = ({
   activeTab: 'copy' | 'instructions',
   hasChanges: boolean,
   contentType?: string,
+  contentStatus?: string,
   onTeleprompter?: () => void
 }) => {
   const currentEditor = activeTab === 'copy' ? editor : instructionsEditor
@@ -944,6 +957,12 @@ export default function ContentDetailPage() {
   const [aiPrompt, setAiPrompt] = useState('')
   const [isAiProcessing, setIsAiProcessing] = useState(false)
   const [editorsReady, setEditorsReady] = useState(false)
+  const [publishingContent, setPublishingContent] = useState<ContentItem | null>(null)
+  const [selectedNetworks, setSelectedNetworks] = useState<string[]>([])
+  const [scheduleEnabled, setScheduleEnabled] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState<Date>(new Date())
+  const { currentSite, getSettings } = useSite()
+  const [socialMedia, setSocialMedia] = useState<any[]>([])
   const [contentStyle, setContentStyle] = useState({
     tone: 50, // Formal (0) to Casual (100)
     complexity: 50, // Simple (0) to Complex (100)
@@ -1120,26 +1139,27 @@ export default function ContentDetailPage() {
   // Add effect to update the title in the topbar when content is loaded
   useEffect(() => {
     if (content) {
-      // Update the page title for the browser tab
-      document.title = `${content.title} | Content`
-      
-      // Get content type name for breadcrumb
-      const contentTypeName = getContentTypeName(content.type)
-      
-      // Emit a custom event to update the breadcrumb with content title and type
-      const event = new CustomEvent('breadcrumb:update', {
-        detail: {
-          title: `${content.title} | ${contentTypeName}`,
-          path: `/content/${content.id}`,
-          section: 'content'
-        }
-      })
-      
-      // Ensure event is dispatched after DOM is updated
-      setTimeout(() => {
-        window.dispatchEvent(event)
-        console.log('Breadcrumb update event dispatched:', content.title, 'Type:', contentTypeName)
-      }, 0)
+        // Update the page title for the browser tab
+        document.title = `${content.title} | Content`
+        
+        // Get content type name for breadcrumb
+        const contentTypeName = getContentTypeName(content.type)
+        
+        // Emit a custom event to update the breadcrumb with content title and type
+        const event = new CustomEvent('breadcrumb:update', {
+          detail: {
+            title: `${content.title} | ${contentTypeName}`,
+            path: `/content/${content.id}`,
+            section: 'content',
+            contentData: { ...content } // Clone it to ensure a fresh object is passed
+          }
+        })
+        
+        // Ensure event is dispatched after DOM is updated
+        setTimeout(() => {
+          window.dispatchEvent(event)
+          console.log('Breadcrumb update event dispatched:', content.title, 'Type:', contentTypeName)
+        }, 100)
     }
     
     // Cleanup when component unmounts
@@ -1410,6 +1430,101 @@ export default function ContentDetailPage() {
     }
   }
 
+  useEffect(() => {
+    async function loadSocialMedia() {
+      try {
+        if (!currentSite?.id) return;
+        const settings = await getSettings(currentSite.id);
+        if (settings?.social_media && Array.isArray(settings.social_media)) {
+          // Filter to only include the allowed OAuth platforms that are active
+          const allowedPlatforms = ['facebook', 'linkedin', 'tiktok', 'twitter', 'x', 'instagram'];
+          const activeSocialMedia = settings.social_media.filter(
+            (s: any) => s.isActive && allowedPlatforms.includes(s.platform?.toLowerCase())
+          );
+          setSocialMedia(activeSocialMedia);
+        }
+      } catch (error) {
+        console.error("Error loading social media settings:", error);
+      }
+    }
+    
+    loadSocialMedia();
+  }, [currentSite?.id]);
+
+  const handlePublishClick = () => {
+    setPublishingContent(content)
+    setSelectedNetworks(socialMedia.map(s => s.platform))
+  }
+
+  useEffect(() => {
+    const onPublishEvent = () => handlePublishClick();
+    window.addEventListener('content:publish', onPublishEvent);
+    return () => {
+      window.removeEventListener('content:publish', onPublishEvent);
+    };
+  }, [content, socialMedia]);
+
+  const closePublishModal = () => {
+    setPublishingContent(null)
+    setSelectedNetworks([])
+  }
+
+  const submitPublish = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!publishingContent || !currentSite?.id) return
+    if (selectedNetworks.length === 0) {
+      toast.error("Please select at least one social network")
+      return
+    }
+    
+    try {
+      const res = await fetch(`/api/integrations/outstand/posts?tenant_id=${currentSite.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content: publishingContent.title + (publishingContent.description ? `\n\n${publishingContent.description}` : ''),
+          accounts: selectedNetworks,
+          ...(scheduleEnabled && scheduledDate ? { scheduled_date: scheduledDate.toISOString() } : {})
+        })
+      });
+      
+      let data;
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch(e) {
+        throw new Error("Invalid response from server: " + text);
+      }
+      
+      if (res.ok && data.success) {
+        toast.success("Content published successfully")
+        
+        // Save the published info back to the content
+        await updateContent({
+          contentId: publishingContent.id,
+          title: publishingContent.title,
+          type: publishingContent.type as any,
+          tags: [...(publishingContent.tags || []), ...selectedNetworks.map(n => `published_${n}`)]
+        });
+        
+        // Also update status to published
+        await updateContentStatus({ contentId: publishingContent.id, status: 'published' })
+        
+        // Refresh the content
+        loadContent()
+      } else {
+        throw new Error(data?.error || "Failed to publish")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : "Failed to publish content")
+    } finally {
+      closePublishModal()
+    }
+  }
+
   const handleAiAction = async (action: string) => {
     setIsAiProcessing(true)
     try {
@@ -1562,7 +1677,6 @@ export default function ContentDetailPage() {
     }
   }
 
-  // Add state to track if user has made explicit changes
   const [hasUserMadeChanges, setHasUserMadeChanges] = useState(false)
   
   // Function to check if there are unsaved changes
@@ -1720,6 +1834,7 @@ export default function ContentDetailPage() {
             activeTab={activeTab}
             hasChanges={hasUnsavedChanges()}
             contentType={content?.type}
+            contentStatus={content?.status}
             onTeleprompter={() => {
               router.push(`/teleprompter/${content.id}`)
             }}
@@ -2356,6 +2471,98 @@ export default function ContentDetailPage() {
           </div>
         </Tabs>
       </div>
+
+      {/* Publish Modal */}
+      {publishingContent && (
+        <Dialog open={!!publishingContent} onOpenChange={(open) => !open && closePublishModal()}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Publish to Social Media</DialogTitle>
+              <DialogDescription>
+                Publish &quot;{publishingContent.title}&quot; to your connected social media accounts.
+              </DialogDescription>
+            </DialogHeader>
+          <form onSubmit={submitPublish} className="space-y-4">
+            {socialMedia.length === 0 ? (
+              <div className="bg-muted/30 p-4 rounded-md text-sm text-muted-foreground border border-border/50 text-center">
+                <p>No social accounts connected.</p>
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  onClick={() => router.push('/settings/social_network')}
+                  className="mt-2"
+                >
+                  Connect Accounts
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-4">
+                <p className="text-sm font-medium">Select Networks:</p>
+                <div className="space-y-2">
+                  {socialMedia.map((social, idx) => (
+                    <div key={idx} className="flex items-center space-x-2">
+                      <Switch 
+                        id={`social-${social.platform}`} 
+                        checked={selectedNetworks.includes(social.platform)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedNetworks(prev => [...prev, social.platform])
+                          } else {
+                            setSelectedNetworks(prev => prev.filter(p => p !== social.platform))
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor={`social-${social.platform}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2"
+                      >
+                        {social.platform === 'facebook' || social.platform === 'linkedin' || social.platform === 'tiktok' ? (
+                          <Globe className="w-4 h-4 text-primary" />
+                        ) : null}
+                        {social.platform}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="pt-4 border-t mt-4">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Switch
+                      id="schedule-post"
+                      checked={scheduleEnabled}
+                      onCheckedChange={setScheduleEnabled}
+                    />
+                    <label htmlFor="schedule-post" className="text-sm font-medium">
+                      Schedule post for later
+                    </label>
+                  </div>
+                  
+                  {scheduleEnabled && (
+                    <div className="grid gap-2 mt-4">
+                      <label className="text-xs text-muted-foreground">
+                        Select date and time
+                      </label>
+                      <DatePicker
+                        date={scheduledDate}
+                        setDate={setScheduledDate}
+                        showTimePicker={true}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closePublishModal}>Cancel</Button>
+              <Button type="submit" disabled={socialMedia.length === 0 || selectedNetworks.length === 0}>
+                {scheduleEnabled && scheduledDate ? "Schedule" : "Publish Now"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      )}
+
     </div>
   )
 } 

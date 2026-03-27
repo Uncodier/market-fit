@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent } from "@/app/components/ui/card"
+import { Input } from "@/app/components/ui/input"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Badge } from "@/app/components/ui/badge"
 import { 
@@ -41,6 +42,7 @@ import {
   DropdownMenuTrigger
 } from "@/app/components/ui/dropdown-menu"
 import { Switch } from "@/app/components/ui/switch"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { Pagination } from "@/app/components/ui/pagination"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -118,9 +120,10 @@ interface ContentDetailProps {
   onClose: () => void
   segments: Array<{ id: string; name: string }>
   onRatingChange?: (contentId: string, rating: number) => void
+  onPublish?: (content: ContentItem) => void
 }
 
-function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDetailProps) {
+function ContentDetail({ content, onClose, segments, onRatingChange, onPublish }: ContentDetailProps) {
   const { t } = useLocalization()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -223,6 +226,16 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
 
   return (
     <div className="space-y-6 pt-4">
+      <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <h2 className="text-xl font-semibold">Content Details</h2>
+        <div className="flex gap-2">
+          {onPublish && (
+            <Button size="sm" onClick={() => onPublish(content)}>
+              <Globe className="w-4 h-4 mr-2" /> Publish to Social
+            </Button>
+          )}
+        </div>
+      </div>
       <SheetHeader className="pb-6">
         {isEditing ? (
           <div className="mt-4">
@@ -234,7 +247,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 <p className="text-xs text-muted-foreground">{t('content.detail.title')}</p>
                 <Input
                   value={editForm.title}
-                  onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                  onChange={(e: any) => setEditForm({...editForm, title: e.target.value})}
                   className="h-12 text-sm font-semibold"
                   placeholder={t('content.detail.titlePlaceholder')}
                 />
@@ -472,10 +485,10 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
               <div className="flex gap-2">
                 <Input
                   value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
+                  onChange={(e: any) => setTagInput(e.target.value)}
                   placeholder={t('content.detail.addTag')}
                   className="h-10"
-                  onKeyDown={(e) => {
+                  onKeyDown={(e: any) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
                       handleAddTag()
@@ -521,9 +534,9 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-3">
+      <div className="mt-8 flex flex-col gap-3 pb-8">
         {isEditing ? (
-          <>
+          <div className="grid grid-cols-2 gap-3 w-full">
             <Button onClick={() => {
               setIsEditing(false)
               setEditForm({
@@ -548,47 +561,55 @@ function ContentDetail({ content, onClose, segments, onRatingChange }: ContentDe
                 </>
               )}
             </Button>
-          </>
+          </div>
         ) : (
-          <>
-            <Button onClick={() => {
-              setIsEditing(true)
-              setEditForm({
-                title: content.title,
-                description: content.description || '',
-                type: content.type,
-                segment_id: content.segment_id || 'none',
-                tags: content.tags || [],
-                performance_rating: content.performance_rating
-              })
-            }} variant="outline" className="w-full">
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <Button onClick={() => setIsEditing(true)} variant="outline" className="w-full">
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Button>
-            <Button onClick={onClose} variant="destructive" className="w-full">
+            <Button onClick={onClose} variant="secondary" className="w-full">
               <X className="mr-2 h-4 w-4" />
               Close
             </Button>
-          </>
+          </div>
         )}
       </div>
     </div>
   )
 }
 
-function ContentCard({ content, segments, campaigns, onClick, onRatingChange, isLoadingCampaigns, assets = [] }: { 
+function ContentCard({ content, segments, campaigns, onClick, onRatingChange, isLoadingCampaigns, assets = [], outstandPosts }: { 
   content: ContentItem, 
   segments: Array<{ id: string; name: string }>,
   campaigns: Array<{ id: string; title: string }>,
   onClick: (content: ContentItem) => void,
   onRatingChange?: (contentId: string, rating: number) => void,
   isLoadingCampaigns?: boolean,
-  assets?: ContentAssetWithDetails[]
+  assets?: ContentAssetWithDetails[],
+  outstandPosts?: any[]
 }) {
   const [carouselIndex, setCarouselIndex] = useState(0)
   const displayAssets = assets.filter((a) => a.file_type.startsWith("image/"))
   const mainAsset = displayAssets.find((a) => a.is_primary) || displayAssets[0]
   const hasCarousel = displayAssets.length > 1
+
+  // Check if content matches any Outstand social post
+  const isOutstandPost = outstandPosts && content.type === 'social_post' && content.status === 'published' 
+    ? outstandPosts.some(post => {
+        // Basic match check - can be enhanced based on how Outstand links to our content
+        return post.text && content.title && (
+          post.text.includes(content.title) || 
+          (content.description && post.text.includes(content.description.substring(0, 50)))
+        );
+      })
+    : false;
+
+  // Get platforms if it is an outstand post
+  const outstandPlatforms = isOutstandPost 
+    ? Array.from(new Set(outstandPosts?.filter(p => p.text?.includes(content.title))
+        .map(p => p.social_account?.network).filter(Boolean)))
+    : []
 
   useEffect(() => {
     if (!hasCarousel || displayAssets.length === 0) return
@@ -676,10 +697,19 @@ function ContentCard({ content, segments, campaigns, onClick, onRatingChange, is
             </div>
             <div className="flex flex-col">
               <h3 className="text-sm font-medium line-clamp-1 mt-0.5">{content.title}</h3>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span className="text-xs text-muted-foreground">{getContentTypeName(content.type)}</span>
                 <span className="text-xs text-muted-foreground">•</span>
                 <span className="text-xs text-muted-foreground">{formattedDate}</span>
+                {isOutstandPost && (
+                  <>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <Badge variant="outline" className="h-4 px-1 py-0 text-[10px] flex items-center gap-1 bg-green-500/10 text-green-600 border-green-500/20">
+                      <Globe className="w-3 h-3" />
+                      Live in Social
+                    </Badge>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -745,7 +775,8 @@ function ContentKanban({
   onContentClick,
   onRatingChange,
   isLoadingCampaigns,
-  assetsByContentId = {}
+  assetsByContentId = {},
+  outstandPosts
 }: {
   contentItems: ContentItem[]
   onUpdateContentStatus: (contentId: string, newStatus: string) => Promise<void>
@@ -755,6 +786,8 @@ function ContentKanban({
   onRatingChange?: (contentId: string, rating: number) => void
   isLoadingCampaigns?: boolean
   assetsByContentId?: Record<string, ContentAssetWithDetails[]>
+  outstandPosts?: any[]
+  onPublish?: (content: ContentItem) => void
 }) {
   const { t } = useLocalization()
   const [items, setItems] = useState<Record<string, ContentItem[]>>({})
@@ -823,7 +856,7 @@ function ContentKanban({
     const contentItem = contentItems.find(item => item.id === draggableId)
     if (!contentItem) return
 
-    // Optimistic update
+    // Only Optimistically update if not publishing
     const newItems = { ...items }
     
     // Remove from source
@@ -902,6 +935,7 @@ function ContentKanban({
                                 onRatingChange={handleRatingChange}
                                 isLoadingCampaigns={isLoadingCampaigns}
                                 assets={assetsByContentId[item.id] || []}
+                                outstandPosts={status.id === 'published' ? outstandPosts : undefined}
                               />
                             </div>
                           )}
@@ -935,7 +969,8 @@ function ContentTable({
   segments,
   campaigns,
   onRatingChange,
-  assetsByContentId = {}
+  assetsByContentId = {},
+  outstandPosts
 }: { 
   contentItems: ContentItem[]
   currentPage: number
@@ -948,6 +983,7 @@ function ContentTable({
   campaigns: Array<{ id: string; title: string }>
   onRatingChange?: (contentId: string, rating: number) => void
   assetsByContentId?: Record<string, ContentAssetWithDetails[]>
+  outstandPosts?: any[]
 }) {
   const { t } = useLocalization()
   const [statusPages, setStatusPages] = useState<Record<string, number>>(() => {
@@ -1072,6 +1108,12 @@ function ContentTable({
                     const contentAssets = assetsByContentId[content.id] || []
                     const displayAssets = contentAssets.filter((a) => a.file_type.startsWith("image/"))
                     const mainAsset = displayAssets.find((a) => a.is_primary) || displayAssets[0]
+                    
+                    const isOutstandPost = outstandPosts && content.type === 'social_post' && content.status === 'published' 
+                      ? Array.from(new Set(outstandPosts?.filter(p => p.text?.includes(content.title))
+                          .map(p => p.social_account?.network).filter(Boolean))).length > 0
+                      : false
+                    
                     return (
                     <TableRow 
                       key={content.id}
@@ -1098,7 +1140,12 @@ function ContentTable({
                       </TableCell>
                       <TableCell>
                         <div className="space-y-0.5">
-                          <p className="font-medium text-sm line-clamp-2" title={content.title}>{content.title}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-sm line-clamp-2" title={content.title}>{content.title}</p>
+                            {isOutstandPost && (
+                              <Globe className="w-3 h-3 text-green-500" />
+                            )}
+                          </div>
                           {content.description && (
                             <p className="text-xs text-muted-foreground line-clamp-2" title={content.description}>{content.description}</p>
                           )}
@@ -1676,11 +1723,14 @@ function ContentSkeleton() {
   )
 }
 
+import { fetchOutstandPosts } from "./outstand"
+
 export default function ContentPage() {
   const { t } = useLocalization()
-  const { currentSite } = useSite()
+  const { currentSite, getSettings } = useSite()
   const router = useRouter()
   const [contentItems, setContentItems] = useState<ContentItem[]>([])
+  const [socialMedia, setSocialMedia] = useState<any[]>([])
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1701,20 +1751,52 @@ export default function ContentPage() {
   const [campaigns, setCampaigns] = useState<Array<{id: string, title: string, description?: string}>>([])
   const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true)
   const [assetsByContentId, setAssetsByContentId] = useState<Record<string, ContentAssetWithDetails[]>>({})
+  const [outstandPosts, setOutstandPosts] = useState<any[]>([])
+  const [isLoadingOutstand, setIsLoadingOutstand] = useState(false)
 
   // Sort state
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rate_desc" | "rate_asc">("newest")
 
   // Initialize command+k hook
   useCommandK()
-
+  
   useEffect(() => {
     if (currentSite?.id) {
       refreshContentList()
       loadSegments()
       loadCampaigns()
+      loadOutstandPosts()
+      
+      // Load social media settings for publishing
+      const loadSettings = async () => {
+        try {
+          const settings = await getSettings(currentSite.id)
+          if (settings?.social_media) {
+            setSocialMedia(settings.social_media.filter((s: any) => s.isActive && (s.platform === 'facebook' || s.platform === 'linkedin' || s.platform === 'tiktok' || s.platform === 'twitter' || s.platform === 'x' || s.platform === 'instagram')))
+          }
+        } catch (e) {
+          console.error('Failed to load social media settings', e)
+        }
+      }
+      loadSettings()
     }
   }, [currentSite?.id])
+
+  const loadOutstandPosts = async () => {
+    if (!currentSite?.id) return
+    
+    try {
+      setIsLoadingOutstand(true)
+      const result = await fetchOutstandPosts(currentSite.id)
+      console.log('Outstand API Response:', result)
+      setOutstandPosts(result?.data || [])
+    } catch (error) {
+      console.error('Error fetching outstand posts in client:', error)
+      setOutstandPosts([])
+    } finally {
+      setIsLoadingOutstand(false)
+    }
+  }
 
   const refreshContentList = useCallback(async () => {
     if (!currentSite?.id) return
@@ -1906,6 +1988,79 @@ export default function ContentPage() {
     })
   }
 
+  const [publishingContent, setPublishingContent] = useState<ContentItem | null>(null)
+  const [selectedNetworks, setSelectedNetworks] = useState<string[]>([])
+  const [scheduleEnabled, setScheduleEnabled] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState<Date>(new Date())
+  
+  const handlePublishClick = (content: ContentItem) => {
+    setPublishingContent(content)
+    setSelectedNetworks(socialMedia.map(s => s.platform))
+  }
+
+  const closePublishModal = () => {
+    setPublishingContent(null)
+    setSelectedNetworks([])
+  }
+
+  const submitPublish = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!publishingContent || !currentSite?.id) return
+    if (selectedNetworks.length === 0) {
+      toast.error("Please select at least one social network")
+      return
+    }
+    
+    // Default mock accounts for now until fully implemented to select accounts in the modal
+    // In a real implementation this would gather selected accounts from the form
+    try {
+      const res = await fetch(`/api/integrations/outstand/posts?tenant_id=${currentSite.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content: publishingContent.title + (publishingContent.description ? `\n\n${publishingContent.description}` : ''),
+          accounts: selectedNetworks,
+          ...(scheduleEnabled && scheduledDate ? { scheduled_date: scheduledDate.toISOString() } : {})
+        })
+      });
+      
+      let data;
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch(e) {
+        throw new Error("Invalid response from server: " + text);
+      }
+      
+      if (res.ok && data.success) {
+        toast.success("Content published successfully")
+        
+        // Save the published info back to the content
+        await updateContent({
+          contentId: publishingContent.id,
+          title: publishingContent.title,
+          type: publishingContent.type,
+          tags: [...(publishingContent.tags || []), ...selectedNetworks.map(n => `published_${n}`)]
+        });
+        
+        // Also update status to published
+        await handleUpdateContentStatus(publishingContent.id, 'published')
+        
+        // Refresh the posts list
+        loadOutstandPosts()
+      } else {
+        throw new Error(data?.error || "Failed to publish")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error(error instanceof Error ? error.message : "Failed to publish content")
+    } finally {
+      closePublishModal()
+    }
+  }
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
@@ -1981,7 +2136,7 @@ export default function ContentPage() {
                 <SearchInput
                   placeholder="Search content..."
                   value={searchTerm}
-                  onSearch={handleSearchChange}
+                  onChange={handleSearchChange}
                   className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                   alwaysExpanded={false}
                 />
@@ -2099,6 +2254,8 @@ export default function ContentPage() {
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
+                  onPublish={handlePublishClick}
                 />
               ) : (
                 <ContentTable 
@@ -2113,6 +2270,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
                 />
               )}
             </TabsContent>
@@ -2130,6 +2288,8 @@ export default function ContentPage() {
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
+                  onPublish={handlePublishClick}
                 />
               ) : (
                 <ContentTable 
@@ -2144,6 +2304,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
                 />
               )}
             </TabsContent>
@@ -2161,6 +2322,7 @@ export default function ContentPage() {
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
                 />
               ) : (
                 <ContentTable 
@@ -2175,6 +2337,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
                 />
               )}
             </TabsContent>
@@ -2192,6 +2355,7 @@ export default function ContentPage() {
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
                 />
               ) : (
                 <ContentTable 
@@ -2206,6 +2370,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
                 />
               )}
             </TabsContent>
@@ -2223,6 +2388,7 @@ export default function ContentPage() {
                   onRatingChange={handleContentRatingChange}
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
                 />
               ) : (
                 <ContentTable 
@@ -2237,6 +2403,7 @@ export default function ContentPage() {
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                   assetsByContentId={assetsByContentId}
+                  outstandPosts={outstandPosts}
                 />
               )}
             </TabsContent>
@@ -2251,7 +2418,7 @@ export default function ContentPage() {
       
       {/* Content Detail Sheet */}
       <Sheet open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <SheetContent className="sm:max-w-full">
+        <SheetContent className="w-[400px] sm:w-[540px] sm:max-w-md overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{t('content.sheet.details')}</SheetTitle>
           </SheetHeader>
@@ -2264,11 +2431,103 @@ export default function ContentPage() {
               }}
               segments={segments}
               onRatingChange={handleContentRatingChange}
+              onPublish={handlePublishClick}
             />
           )}
         </SheetContent>
       </Sheet>
       
+      {/* Publish Modal */}
+      {publishingContent && (
+        <Dialog open={!!publishingContent} onOpenChange={(open) => !open && closePublishModal()}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Publish to Social Media</DialogTitle>
+              <DialogDescription>
+                Publish &quot;{publishingContent.title}&quot; to your connected social media accounts.
+              </DialogDescription>
+            </DialogHeader>
+          <form onSubmit={submitPublish} className="space-y-4">
+            {socialMedia.length === 0 ? (
+              <div className="bg-muted/30 p-4 rounded-md text-sm text-muted-foreground border border-border/50 text-center">
+                <p>No social accounts connected.</p>
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  onClick={() => router.push('/settings/social_network')}
+                  className="mt-2"
+                >
+                  Connect Accounts
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-4">
+                <p className="text-sm font-medium">Select Networks:</p>
+                <div className="space-y-2">
+                  {socialMedia.map((social, idx) => (
+                    <div key={idx} className="flex items-center space-x-2">
+                      <Switch 
+                        id={`social-${social.platform}`} 
+                        checked={selectedNetworks.includes(social.platform)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedNetworks(prev => [...prev, social.platform])
+                          } else {
+                            setSelectedNetworks(prev => prev.filter(p => p !== social.platform))
+                          }
+                        }}
+                      />
+                      <label 
+                        htmlFor={`social-${social.platform}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2"
+                      >
+                        {social.platform === 'facebook' || social.platform === 'linkedin' || social.platform === 'tiktok' ? (
+                          <Globe className="w-4 h-4 text-primary" />
+                        ) : null}
+                        {social.platform}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="pt-4 border-t mt-4">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Switch
+                      id="schedule-post"
+                      checked={scheduleEnabled}
+                      onCheckedChange={setScheduleEnabled}
+                    />
+                    <label htmlFor="schedule-post" className="text-sm font-medium">
+                      Schedule post for later
+                    </label>
+                  </div>
+                  
+                  {scheduleEnabled && (
+                    <div className="grid gap-2 mt-4">
+                      <label className="text-xs text-muted-foreground">
+                        Select date and time
+                      </label>
+                      <DatePicker
+                        date={scheduledDate}
+                        setDate={setScheduledDate}
+                        showTimePicker={true}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closePublishModal}>Cancel</Button>
+              <Button type="submit" disabled={socialMedia.length === 0 || selectedNetworks.length === 0}>
+                {scheduleEnabled && scheduledDate ? "Schedule" : "Publish Now"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      )}
+
       {/* Filters Dialog */}
       <ContentFiltersDialog 
         isOpen={isFiltersDialogOpen}

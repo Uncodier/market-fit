@@ -43,7 +43,8 @@ import {
   BookOpen,
   LogOut,
   Github,
-  Bot
+  Bot,
+  Globe
 } from "@/app/components/ui/icons"
 
 import { subMonths, format } from "date-fns"
@@ -601,6 +602,11 @@ interface TopBarActionsProps {
     isBuilding: boolean
     hasRequirementStatus: boolean
   } | null
+  contentData?: {
+    id: string
+    type: string
+    status: string
+  } | null
   segments: Array<{ id: string; name: string; description: string }>
   propSegments?: Array<{ id: string; name: string; description: string }>
   requirements: Array<{ id: string; title: string; description: string }>
@@ -630,6 +636,7 @@ export function TopBarActions({
   dashboardActiveTab,
   segmentData,
   requirementData,
+  contentData,
   segments,
   propSegments,
   requirements,
@@ -1386,6 +1393,18 @@ The success of this experiment will be measured by:
 
   return (
     <div className="flex items-center gap-4">
+      {pathname.startsWith("/content/") && pathname !== "/content/deepResearch" && (
+        <Button 
+          variant="default"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+          title={t('layout.topbar.publishToSocial') || "Publish"}
+          onClick={() => window.dispatchEvent(new CustomEvent('content:publish'))}
+        >
+          <Globe className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.publishToSocial') || "Publish"}</span>
+        </Button>
+      )}
+
       {isControlCenterPage && currentSite ? (
         <CreateTaskDialog trigger={
               <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.newTask')}>

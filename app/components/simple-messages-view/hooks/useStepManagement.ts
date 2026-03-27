@@ -54,25 +54,63 @@ export const useStepManagement = ({
     try {
       const supabase = createClient()
       
+      // Find which plan contains this step
+      const planWithStep = instancePlans.find(plan => {
+        if (plan.steps && Array.isArray(plan.steps)) {
+          return plan.steps.some((step: any) => step.id === editingStep.id)
+        }
+        return false
+      })
+
+      if (!planWithStep) {
+        toast({
+          title: "Error saving step",
+          description: "Step not found in any plan",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Update the step in the plan's steps array
+      const updatedSteps = (planWithStep.steps as any[]).map((step: any) => {
+        if (step.id === editingStep.id) {
+          return {
+            ...step,
+            title: editTitle.trim(),
+            description: editDescription.trim() || null
+          }
+        }
+        return step
+      })
+      
       // Update the plan in the database
       const { error } = await supabase
         .from('instance_plans')
         .update({
-          title: editTitle.trim(),
-          description: editDescription.trim() || null,
+          steps: updatedSteps,
           updated_at: new Date().toISOString()
         })
-        .eq('id', editingStep.id)
+        .eq('id', planWithStep.id)
 
       if (error) {
         console.error('Error updating plan:', error)
-        // Could show a toast notification here
-      } else {
-        // The real-time subscription will handle updating the local state
-        closeEditModal()
+        toast({
+          title: "Error saving step",
+          description: error.message || "Failed to update the plan",
+          variant: "destructive"
+        })
       }
+      
+      // The real-time subscription will handle updating the local state on success
+      closeEditModal()
     } catch (error) {
       console.error('Error saving step:', error)
+      toast({
+        title: "Error saving step",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive"
+      })
+      closeEditModal()
     }
   }
 
@@ -92,26 +130,39 @@ export const useStepManagement = ({
 
     try {
       const supabase = createClient()
-      
-      // Helper function to check if string is a valid UUID format
-      const isValidUUID = (str: string) => {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-        return uuidRegex.test(str)
+
+      // Find which plan contains this step
+      const planWithStep = instancePlans.find(plan => {
+        if (plan.steps && Array.isArray(plan.steps)) {
+          return plan.steps.some((step: any) => step.id === stepId)
+        }
+        return false
+      })
+
+      if (!planWithStep) {
+        toast({
+          title: "Error deleting step",
+          description: "Step not found in any plan",
+          variant: "destructive"
+        })
+        return
       }
 
-      // If stepId is a valid UUID, it's likely a plan ID itself
-      if (isValidUUID(stepId)) {
-        // Try to find the plan by ID and delete it entirely
+      // Remove the step from the plan's steps array
+      const updatedSteps = (planWithStep.steps as any[]).filter((step: any) => step.id !== stepId)
+      
+      // If no steps remain, delete the plan entirely
+      if (updatedSteps.length === 0) {
         const { error } = await supabase
           .from('instance_plans')
           .delete()
-          .eq('id', stepId)
+          .eq('id', planWithStep.id)
 
         if (error) {
           console.error('Error deleting plan:', error)
           toast({
             title: "Error deleting step",
-            description: error.message || "Failed to delete the step",
+            description: error.message || "Failed to delete the plan",
             variant: "destructive"
           })
         } else {
@@ -121,71 +172,28 @@ export const useStepManagement = ({
           })
         }
       } else {
-        // stepId is not a UUID, so it must be a step within a plan's steps array
-        // Find which plan contains this step
-        const planWithStep = instancePlans.find(plan => {
-          if (plan.steps && Array.isArray(plan.steps)) {
-            return plan.steps.some((step: any) => step.id === stepId)
-          }
-          return false
-        })
+        // Update the plan with the modified steps array
+        const { error } = await supabase
+          .from('instance_plans')
+          .update({
+            steps: updatedSteps,
+            steps_total: updatedSteps.length,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', planWithStep.id)
 
-        if (!planWithStep) {
+        if (error) {
+          console.error('Error updating plan steps:', error)
           toast({
             title: "Error deleting step",
-            description: "Step not found in any plan",
+            description: error.message || "Failed to update the plan",
             variant: "destructive"
           })
-          return
-        }
-
-        // Remove the step from the plan's steps array
-        const updatedSteps = (planWithStep.steps as any[]).filter((step: any) => step.id !== stepId)
-        
-        // If no steps remain, delete the plan entirely
-        if (updatedSteps.length === 0) {
-          const { error } = await supabase
-            .from('instance_plans')
-            .delete()
-            .eq('id', planWithStep.id)
-
-          if (error) {
-            console.error('Error deleting plan:', error)
-            toast({
-              title: "Error deleting step",
-              description: error.message || "Failed to delete the plan",
-              variant: "destructive"
-            })
-          } else {
-            toast({
-              title: "Step deleted",
-              description: "The step has been removed from the plan"
-            })
-          }
         } else {
-          // Update the plan with the modified steps array
-          const { error } = await supabase
-            .from('instance_plans')
-            .update({
-              steps: updatedSteps,
-              steps_total: updatedSteps.length,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', planWithStep.id)
-
-          if (error) {
-            console.error('Error updating plan steps:', error)
-            toast({
-              title: "Error deleting step",
-              description: error.message || "Failed to update the plan",
-              variant: "destructive"
-            })
-          } else {
-            toast({
-              title: "Step deleted",
-              description: "The step has been removed from the plan"
-            })
-          }
+          toast({
+            title: "Step deleted",
+            description: "The step has been removed from the plan"
+          })
         }
       }
     } catch (error) {
@@ -211,16 +219,56 @@ export const useStepManagement = ({
       const newStatus = currentStep.status === 'completed' ? 'pending' : 
                        currentStep.status === 'pending' ? 'in_progress' : 'completed'
       
-      // Update the plan status in the database
+      // Find which plan contains this step
+      const planWithStep = instancePlans.find(plan => {
+        if (plan.steps && Array.isArray(plan.steps)) {
+          return plan.steps.some((step: any) => step.id === stepId)
+        }
+        return false
+      })
+
+      if (!planWithStep) {
+        toast({
+          title: "Error updating step",
+          description: "Step not found in any plan",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Update the step status in the plan's steps array
+      const updatedSteps = (planWithStep.steps as any[]).map((step: any) => {
+        if (step.id === stepId) {
+          return {
+            ...step,
+            status: newStatus
+          }
+        }
+        return step
+      })
+      
+      // Check if all steps are completed or some are in progress
+      const allCompleted = updatedSteps.every(s => s.status === 'completed')
+      const someInProgress = updatedSteps.some(s => s.status === 'in_progress')
+      
+      const newPlanStatus = allCompleted ? 'completed' : 
+                            (someInProgress || newStatus === 'in_progress') ? 'in_progress' : planWithStep.status
+                            
+      // Calculate plan progress
+      const completedStepsCount = updatedSteps.filter(s => s.status === 'completed').length
+      const progressPercentage = Math.round((completedStepsCount / updatedSteps.length) * 100)
+
+      // Update the plan in the database
       const { error } = await supabase
         .from('instance_plans')
         .update({
-          status: newStatus,
-          progress_percentage: newStatus === 'completed' ? 100 : 
-                             newStatus === 'in_progress' ? 50 : 0,
+          steps: updatedSteps,
+          status: newPlanStatus,
+          progress_percentage: progressPercentage,
+          steps_completed: completedStepsCount,
           updated_at: new Date().toISOString()
         })
-        .eq('id', stepId)
+        .eq('id', planWithStep.id)
 
       if (error) {
         console.error('Error updating step status:', error)
@@ -343,6 +391,52 @@ export const useStepManagement = ({
     }
   }
 
+  const cancelPlan = async (planId: string) => {
+    if (!planId || typeof planId !== 'string') {
+      console.error('❌ Invalid planId:', planId)
+      toast({
+        title: "Error cancelling plan",
+        description: "Invalid plan ID provided",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    if (!activeRobotInstance?.id) {
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      
+      const { data, error } = await supabase
+        .from('instance_plans')
+        .update({
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', planId)
+        .select()
+
+      if (error) {
+        console.error('❌ Supabase error:', error)
+        throw new Error(error.message || 'Failed to cancel plan')
+      }
+
+      toast({
+        title: "Plan cancelled",
+        description: "The plan has been cancelled successfully"
+      })
+    } catch (error) {
+      console.error('❌ Error cancelling plan:', error)
+      toast({
+        title: "Error cancelling plan",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive"
+      })
+    }
+  }
+
   const addStep = async (planId: string, title: string) => {
     if (!activeRobotInstance?.id) return
 
@@ -430,6 +524,7 @@ export const useStepManagement = ({
     toggleStepStatus,
     pausePlan,
     resumePlan,
+    cancelPlan,
     canEditOrDeleteStep,
     addStep
   }

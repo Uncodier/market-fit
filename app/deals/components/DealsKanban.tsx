@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 
 interface DealsKanbanProps {
   deals: Deal[]
@@ -216,8 +217,16 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
                           </Draggable>
                         ))
                       ) : (
-                        <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-                          No deals
+                        <div className="flex-1 flex flex-col justify-center min-h-[160px] py-4">
+                          <EmptyCard
+                            icon={<DollarSign className="text-muted-foreground/40" size={24} />}
+                            title={t('deals.kanban.noDeals') || "No deals"}
+                            description={t('deals.kanban.noDealsDescription') || "There are no deals in this stage yet."}
+                            variant="fancy"
+                            showShadow={false}
+                            className="bg-transparent border-none shadow-none"
+                            contentClassName="min-h-[160px] pb-0 p-2"
+                          />
                         </div>
                       )}
                       {provided.placeholder}

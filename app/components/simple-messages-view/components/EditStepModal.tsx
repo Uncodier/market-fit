@@ -10,6 +10,16 @@ import {
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
+import {
+  ModalFooter,
+  ModalFooterActions,
+  ModalFooterInfo,
+} from "@/app/components/ui/modal-footer"
+import {
+  ModalHeader,
+  ModalHeaderTitle,
+  ModalHeaderDescription,
+} from "@/app/components/ui/modal-header"
 
 interface EditStepModalProps {
   open: boolean
@@ -32,14 +42,16 @@ export const EditStepModal: React.FC<EditStepModalProps> = ({
 }) => {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Edit Step</DialogTitle>
-          <DialogDescription>
-            Modify the step title and description. Press Escape or click Cancel to discard changes.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
+      <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden flex flex-col">
+        <ModalHeader className="shrink-0">
+          <div>
+            <ModalHeaderTitle>Edit Step</ModalHeaderTitle>
+            <ModalHeaderDescription>
+              Modify the step title and description. Press Escape or click Cancel to discard changes.
+            </ModalHeaderDescription>
+          </div>
+        </ModalHeader>
+        <div className="grid gap-4 p-6 overflow-y-auto">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="title" className="text-right">
               Title
@@ -78,14 +90,18 @@ export const EditStepModal: React.FC<EditStepModalProps> = ({
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={onSave} disabled={!title.trim()}>
-            Save Changes
-          </Button>
-        </DialogFooter>
+        <ModalFooter className="shrink-0">
+          <ModalFooterInfo>
+          </ModalFooterInfo>
+          <ModalFooterActions>
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={onSave} disabled={!title.trim()}>
+              Save Changes
+            </Button>
+          </ModalFooterActions>
+        </ModalFooter>
       </DialogContent>
     </Dialog>
   )

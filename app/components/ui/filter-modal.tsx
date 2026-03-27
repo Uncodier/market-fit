@@ -11,6 +11,16 @@ import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Badge } from "@/app/components/ui/badge"
+import {
+  ModalFooter,
+  ModalFooterActions,
+  ModalFooterInfo,
+} from "@/app/components/ui/modal-footer"
+import {
+  ModalHeader,
+  ModalHeaderTitle,
+  ModalHeaderDescription,
+} from "@/app/components/ui/modal-header"
 import { 
   Filter, 
   Tag, 
@@ -222,16 +232,18 @@ export function FilterModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-0">
-          <div className="flex items-center gap-2">
-            <Filter className="h-5 w-5 text-foreground" />
-            <DialogTitle className="text-xl">Filter Requirements</DialogTitle>
+      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden flex flex-col max-h-[90vh]">
+        <ModalHeader className="shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-foreground" />
+              <ModalHeaderTitle>Filter Requirements</ModalHeaderTitle>
+            </div>
+            <ModalHeaderDescription>
+              Select filters to narrow down your requirement list.
+            </ModalHeaderDescription>
           </div>
-          <DialogDescription className="mt-1.5">
-            Select filters to narrow down your requirement list.
-          </DialogDescription>
-        </DialogHeader>
+        </ModalHeader>
         
         {/* Contador de filtros activos */}
         {getTotalActiveFilters() > 0 && (
@@ -385,24 +397,28 @@ export function FilterModal({
           </div>
         </div>
         
-        <DialogFooter className="p-6 pt-4 border-t dark:border-white/5 border-black/5 flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="gap-2"
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="submit" 
-            onClick={handleApplyFilters}
-            className="gap-2"
-          >
-            <Filter className="h-4 w-4" />
-            Apply Filters
-          </Button>
-        </DialogFooter>
+        <ModalFooter className="shrink-0">
+          <ModalFooterInfo>
+          </ModalFooterInfo>
+          <ModalFooterActions>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="gap-2"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              onClick={handleApplyFilters}
+              className="gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Apply Filters
+            </Button>
+          </ModalFooterActions>
+        </ModalFooter>
       </DialogContent>
     </Dialog>
   )

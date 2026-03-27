@@ -148,7 +148,6 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
 
   useEffect(() => {
     if (currentSiteId) {
-      console.log(`🔄 [TrendsColumn] Site changed to ${currentSiteId}, reloading trends with ${segments?.length || 0} segments`)
       fetchTrends()
     }
   }, [currentSiteId, segments]) // Add segments as dependency to reload when site segments change
@@ -172,12 +171,6 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
           return acc
         }, {} as Record<string, typeof result.data.trends>)
         
-        console.log('🔍 [TrendsColumn] Trends by platform:', 
-          Object.entries(trendsByPlatform).map(([platform, trends]) => 
-            `${platform}: ${trends.length}`
-          ).join(', ')
-        )
-        
         // Take top 5 from each platform and then sort all by relevance/score
         const allTopTrends: TrendItem[] = []
         
@@ -194,7 +187,6 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
           return bScore - aScore
         })
         
-        console.log(`📊 [TrendsColumn] Final ${sortedTrends.length} trends sorted by relevance`)
         setTrends(sortedTrends)
         
         // Only show success toast if explicitly requested (e.g., on manual refresh)
@@ -202,7 +194,6 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
           toast.success(`Loaded ${sortedTrends.length} trends successfully`)
         }
       } else {
-        console.log("❌ [TrendsColumn] Failed to fetch trends:", result.error)
         toast.error("Failed to fetch trends: " + (result.error || "Unknown error"))
       }
     } catch (error) {

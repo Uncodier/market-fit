@@ -1262,7 +1262,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   
   // Function to get settings for a site
   const handleGetSettings = async (siteId: string) => {
-    if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
+    if (!supabaseRef.current || !siteId) return Promise.reject(new Error("Supabase client not initialized or no site ID"));
     
     try {
       const { data, error } = await supabaseRef.current
@@ -1271,7 +1271,22 @@ export function SiteProvider({ children }: SiteProviderProps) {
         .eq('site_id', siteId)
         .single()
       
-      if (error && error.code !== 'PGRST116') throw error // PGRST116 means no rows returned
+      if (error && error.code !== 'PGRST116') {
+        console.error(`Error loading settings for site ${siteId}:`, error);
+        throw error;
+      }
+      
+      // Parse JSON fields similar to what we do in handleSetCurrentSite
+      if (data) {
+        data.social_media = parseJsonField(data.social_media, []);
+        data.goals = parseJsonField(data.goals, {
+          quarterly: '',
+          yearly: '',
+          fiveYear: '',
+          tenYear: ''
+        });
+        // Add other fields as needed based on where it's used
+      }
       
       return data || null
     } catch (err) {
@@ -1282,6 +1297,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   }
 
   // Function to update settings
+  // Guardar settings en Supabase
   const handleUpdateSettings = async (siteId: string, settings: Partial<SiteSettings>) => {
     try {
       // Don't set isLoading to avoid UI interruptions during save

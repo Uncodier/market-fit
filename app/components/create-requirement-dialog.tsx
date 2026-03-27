@@ -24,7 +24,16 @@ import {
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState, useEffect, useRef } from "react"
-import { Switch } from "@/app/components/ui/switch"
+import {
+  ModalFooter,
+  ModalFooterActions,
+  ModalFooterInfo,
+} from "@/app/components/ui/modal-footer"
+import {
+  ModalHeader,
+  ModalHeaderTitle,
+  ModalHeaderDescription,
+} from "@/app/components/ui/modal-header"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Textarea } from "./ui/textarea"
 import { cn } from "@/lib/utils"
@@ -32,6 +41,7 @@ import { toast } from "sonner"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
 import { Checkbox } from "@/app/components/ui/checkbox"
+import { Switch } from "@/app/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -171,7 +181,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
         )}
       </DialogTrigger>
       <DialogContent 
-        className="sm:max-w-[600px] max-h-[90vh] flex flex-col" 
+        className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden" 
         onEscapeKeyDown={(e) => {
           if (isLoading) e.preventDefault()
         }}
@@ -182,14 +192,16 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
           if (isLoading) e.preventDefault()
         }}
       >
-        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef} className="flex flex-col flex-1 overflow-hidden">
-          <DialogHeader className="shrink-0 mb-2">
-            <DialogTitle>Create New Requirement</DialogTitle>
-            <DialogDescription>
-              Create a new product requirement aligned with specific segments.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 py-4 overflow-y-auto flex-1 pr-2 -mr-2 px-1">
+        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef} className="flex flex-col flex-1 overflow-hidden h-full">
+          <ModalHeader className="shrink-0">
+            <div>
+              <ModalHeaderTitle>Create New Requirement</ModalHeaderTitle>
+              <ModalHeaderDescription>
+                Create a new product requirement aligned with specific segments.
+              </ModalHeaderDescription>
+            </div>
+          </ModalHeader>
+          <div className="grid gap-6 p-6 overflow-y-auto flex-1">
             <div className="grid gap-2">
               <Label>Title</Label>
               <Input
@@ -481,25 +493,28 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
               )}
             </div>
           </div>
-          <DialogFooter className="mt-4 shrink-0 pt-2 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isLoading}
-              className="h-12"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading} className="h-12">
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                  <span>Creating</span>
-                </div>
-              ) : "Create Requirement"}
-            </Button>
-          </DialogFooter>
+          <ModalFooter className="shrink-0">
+            <ModalFooterInfo>
+            </ModalFooterInfo>
+            <ModalFooterActions>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-pulse bg-muted rounded" />
+                    <span>Creating</span>
+                  </div>
+                ) : "Create Requirement"}
+              </Button>
+            </ModalFooterActions>
+          </ModalFooter>
         </form>
       </DialogContent>
     </Dialog>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createServiceClient } from "@/lib/supabase/server"
 
 const BATCH_SIZE = 200
 
@@ -19,60 +19,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing siteId" }, { status: 400 })
     }
 
-    // Step 1: get pending conversation IDs for this site
-    const { data: convRows, error: convError } = await supabase
-      .from("conversations")
+    // Verify user has access to this site before using admin client
+    const { data: siteAccess, error: siteAccessError } = await supabase
+      .from("sites")
       .select("id")
-      .eq("site_id", siteId)
-      .eq("status", "pending")
+      .eq("id", siteId)
+      .single()
 
-    if (convError) {
-      console.error("Error fetching pending conversations:", convError)
-      return NextResponse.json({ success: false, error: convError.message }, { status: 500 })
+    if (siteAccessError || !siteAccess) {
+      console.error("User does not have access to site:", siteId)
+      return NextResponse.json({ success: false, error: "Forbidden: You don't have permissions" }, { status: 403 })
     }
 
-    if (!convRows || convRows.length === 0) {
-      return NextResponse.json({ success: true, updatedCount: 0, conversationIds: [] })
+    // Use service client for ALL operations to bypass any RLS silent failures
+    const supabaseAdmin = await createServiceClient()
+
+    // Fetch all pending messages for this site directly via inner join
+    const { data: msgs, error: msgsError } = await supabaseAdmin
+      .from("messages")
+      .select("id, conversation_id, custom_data, conversations!inner(site_id, is_archived)")
+      .eq("conversations.site_id", siteId)
+      .eq("conversations.is_archived", false)
+      .eq("custom_data->>status", "pending")
+
+    if (msgsError) {
+      console.error("Error fetching pending messages:", msgsError)
+      return NextResponse.json({ success: false, error: msgsError.message }, { status: 500 })
     }
 
-    const conversationIds = convRows.map((c) => c.id)
-
-    // Step 2: fetch messages with custom_data.status = "pending" for those conversations.
-    // Done in batches of BATCH_SIZE conversation IDs so .in() stays short.
-    const allMessages: { id: string; custom_data: Record<string, unknown> }[] = []
-
-    for (let i = 0; i < conversationIds.length; i += BATCH_SIZE) {
-      const convBatch = conversationIds.slice(i, i + BATCH_SIZE)
-
-      const { data: msgs, error: msgsError } = await supabase
-        .from("messages")
-        .select("id, custom_data")
-        .in("conversation_id", convBatch)
-        .eq("custom_data->>status", "pending")
-
-      if (msgsError) {
-        console.error("Error fetching messages batch:", msgsError)
-        continue
-      }
-      if (msgs?.length) {
-        allMessages.push(...(msgs as { id: string; custom_data: Record<string, unknown> }[]))
-      }
-    }
+    const allMessages = msgs || []
+    console.log(`Found ${allMessages.length} pending messages to accept for site ${siteId}`)
 
     if (allMessages.length === 0) {
       return NextResponse.json({ success: true, updatedCount: 0, conversationIds: [] })
     }
 
-    // Step 3: bulk-update in batches using .in("id", batchIds).
-    // Since we already have custom_data in memory, we can merge the status key
-    // per message — but to avoid N individual updates we group them by identical
-    // custom_data shape. In practice all these messages just need status → "accepted",
-    // so we update each batch with a single .in() call per unique custom_data value.
-    //
-    // Simplest correct approach: one .in() update per batch, setting the full
-    // custom_data object. Because all messages in this batch have status="pending"
-    // and we're only changing that one key, we build the merged object per message
-    // and run them in parallel — still server-side, no URL length issue.
+    // Step 2: bulk-update in batches using .eq("id", id).
     const now = new Date().toISOString()
     let failCount = 0
 
@@ -81,10 +63,10 @@ export async function POST(request: NextRequest) {
 
       const results = await Promise.all(
         batch.map((m) =>
-          supabase
+          supabaseAdmin
             .from("messages")
             .update({
-              custom_data: { ...m.custom_data, status: "accepted" },
+              custom_data: { ...(m.custom_data as Record<string, unknown>), status: "accepted" },
               updated_at: now,
             })
             .eq("id", m.id)
@@ -104,6 +86,23 @@ export async function POST(request: NextRequest) {
           failCount++
         }
       })
+    }
+
+    const conversationIds = [...new Set(allMessages.map(m => m.conversation_id))]
+
+    // Step 3: update status to 'active' for all affected conversations
+    if (conversationIds.length > 0) {
+      for (let i = 0; i < conversationIds.length; i += BATCH_SIZE) {
+        const batch = conversationIds.slice(i, i + BATCH_SIZE)
+        const { error } = await supabaseAdmin
+          .from("conversations")
+          .update({ status: "active" })
+          .in("id", batch)
+          
+        if (error) {
+          console.error("Error updating conversation status:", error.message)
+        }
+      }
     }
 
     if (failCount > 0) {

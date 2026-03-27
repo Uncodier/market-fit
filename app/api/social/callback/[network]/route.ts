@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server"
 const NETWORK_MAP: Record<string, string> = {
   facebook: "facebook",
   linkedin: "linkedin",
+  tiktok: "tiktok"
 }
 
 export async function GET(

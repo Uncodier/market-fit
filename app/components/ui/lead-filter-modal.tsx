@@ -11,6 +11,16 @@ import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Badge } from "@/app/components/ui/badge"
+import {
+  ModalFooter,
+  ModalFooterActions,
+  ModalFooterInfo,
+} from "@/app/components/ui/modal-footer"
+import {
+  ModalHeader,
+  ModalHeaderTitle,
+  ModalHeaderDescription,
+} from "@/app/components/ui/modal-header"
 import { 
   Filter, 
   Tag, 
@@ -283,23 +293,25 @@ export function LeadFilterModal({
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filter Leads
-          </DialogTitle>
-          <DialogDescription>
-            Apply filters to narrow down your leads list.
-            {getTotalActiveFilters() > 0 && (
-              <Badge variant="outline" className="ml-2">
-                {getTotalActiveFilters()} active filters
-              </Badge>
-            )}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden flex flex-col max-h-[90vh]">
+        <ModalHeader className="shrink-0">
+          <div>
+            <ModalHeaderTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filter Leads
+            </ModalHeaderTitle>
+            <ModalHeaderDescription>
+              Apply filters to narrow down your leads list.
+              {getTotalActiveFilters() > 0 && (
+                <Badge variant="outline" className="ml-2">
+                  {getTotalActiveFilters()} active filters
+                </Badge>
+              )}
+            </ModalHeaderDescription>
+          </div>
+        </ModalHeader>
         
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 p-6 overflow-y-auto flex-1">
           {/* Status Filter */}
           <div className="border rounded-lg">
             <div 
@@ -485,29 +497,33 @@ export function LeadFilterModal({
           </div>
         </div>
         
-        <DialogFooter className="flex justify-between">
-          {getTotalActiveFilters() > 0 ? (
-            <Button 
-              variant="outline" 
-              onClick={handleResetFilters}
-              className="gap-1 text-muted-foreground hover:text-foreground"
-              size="sm"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reset
-            </Button>
-          ) : (
-            <div></div>
-          )}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={handleApplyFilters}>
-              Apply Filters
-            </Button>
-          </div>
-        </DialogFooter>
+        <ModalFooter className="shrink-0">
+          <ModalFooterInfo>
+          </ModalFooterInfo>
+          <ModalFooterActions className="flex justify-between w-full">
+            {getTotalActiveFilters() > 0 ? (
+              <Button 
+                variant="outline" 
+                onClick={handleResetFilters}
+                className="gap-1 text-muted-foreground hover:text-foreground"
+                size="sm"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Reset
+              </Button>
+            ) : (
+              <div></div>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button onClick={handleApplyFilters}>
+                Apply Filters
+              </Button>
+            </div>
+          </ModalFooterActions>
+        </ModalFooter>
       </DialogContent>
     </Dialog>
   )

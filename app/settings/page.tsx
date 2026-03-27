@@ -289,7 +289,7 @@ export default function SettingsPage() {
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('segment')
-    if (tab && ["general", "channels", "team", "activities"].includes(tab)) {
+    if (tab && ["general", "channels", "team", "activities", "social"].includes(tab)) {
       setActiveSegment(tab)
     }
   }, [searchParams])
@@ -398,6 +398,8 @@ export default function SettingsPage() {
         return teamSections
       case "activities":
         return getActivitiesSections(t)
+      case "social":
+        return socialSections
       default:
         return []
     }
@@ -414,6 +416,7 @@ export default function SettingsPage() {
                 <TabsTrigger value="general">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
                 <TabsTrigger value="channels">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
+                <TabsTrigger value="social">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
                 <TabsTrigger value="activities">{t('settings.tabs.activities') || 'Activities'}</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -447,6 +450,7 @@ export default function SettingsPage() {
               <TabsTrigger value="general" className="whitespace-nowrap">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
               <TabsTrigger value="channels" className="whitespace-nowrap">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
               <TabsTrigger value="team" className="whitespace-nowrap">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
+              <TabsTrigger value="social" className="whitespace-nowrap">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
               <TabsTrigger value="activities" className="whitespace-nowrap">{t('settings.tabs.activities') || 'Activities'}</TabsTrigger>
             </TabsList>
           </Tabs>

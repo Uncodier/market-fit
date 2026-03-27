@@ -34,7 +34,6 @@ class GoogleTrendsService implements TrendService {
       ]
     }
 
-    console.log('📰 Generating news keywords for segments:', segments.map(s => s.name))
 
     const keywords: string[] = []
     const newsContexts = ['news', 'breakthrough', 'launch', 'announcement', 'report', 'study', 'research', 'development', 'funding', 'acquisition', 'partnership', 'innovation']
@@ -42,7 +41,6 @@ class GoogleTrendsService implements TrendService {
     const stopWords = ['the', 'and', 'for', 'with', 'this', 'that', 'from', 'they', 'were', 'been', 'have', 'their', 'would', 'could', 'should', 'which', 'where', 'there', 'what', 'when', 'will', 'can', 'are', 'is', 'was', 'by', 'an', 'as', 'at', 'be', 'or', 'in', 'on', 'of', 'to']
     
     segments.forEach(segment => {
-      console.log(`📊 Processing segment for news: ${segment.name}`)
       
       // Extract meaningful words from segment name
       const nameWords = segment.name.toLowerCase()
@@ -115,7 +113,6 @@ class GoogleTrendsService implements TrendService {
       })
       .slice(0, 15) // Take top 15 most relevant news keywords
 
-    console.log('📰 Generated news keywords:', uniqueKeywords)
     return uniqueKeywords
   }
 
@@ -124,7 +121,6 @@ class GoogleTrendsService implements TrendService {
       // Generate news-focused keywords from segments
       const newsKeywords = this.generateNewsKeywords(segments)
       
-      console.log(`📰 [Google News Service] Making API call with limit: ${this.config.limit}`)
       
       const response = await fetch('/api/trends/google', {
         method: 'POST',
@@ -147,12 +143,6 @@ class GoogleTrendsService implements TrendService {
       }
 
       const data = await response.json()
-      
-      console.log('📰 [Google News] API Response:', { 
-        success: data.success, 
-        newsCount: data.trends?.length || 0,
-        limit: this.config.limit 
-      })
       
       const trends: TrendItem[] = data.trends?.map((newsItem: any, index: number) => ({
         id: `google-news-${Date.now()}-${index}`,
@@ -224,14 +214,12 @@ class RedditTrendsService implements TrendService {
       ]
     }
 
-    console.log('🎯 [Reddit] Generating keywords for segments:', segments.map(s => s.name))
 
     const keywords: string[] = []
     const redditContexts = ['tips', 'advice', 'tools', 'strategy', 'success', 'growth', 'help', 'guide', 'best', 'how']
     const stopWords = ['the', 'and', 'for', 'with', 'this', 'that', 'from', 'they', 'were', 'been', 'have', 'their', 'would', 'could', 'should', 'which', 'where', 'there', 'what', 'when', 'will', 'can', 'are', 'is', 'was', 'by', 'an', 'as', 'at', 'be', 'or', 'in', 'on', 'of', 'to']
     
     segments.forEach(segment => {
-      console.log(`📊 [Reddit] Processing segment: ${segment.name}`)
       
       // Extract meaningful words from segment name
       const nameWords = segment.name.toLowerCase()
@@ -282,7 +270,6 @@ class RedditTrendsService implements TrendService {
       .filter(keyword => keyword.trim().length > 2)
       .slice(0, 15) // More keywords for better Reddit filtering
 
-    console.log('🔍 [Reddit] Generated keywords:', uniqueKeywords)
     return uniqueKeywords
   }
 
@@ -391,7 +378,6 @@ export class TrendsManager {
     this.services.set('reddit', new RedditTrendsService({ limit: 15 }))
     
     // All other platforms disabled - focus only on real data
-    console.log('🔥 [TrendsManager] Initialized with 2 REAL platforms: Google News & Reddit')
   }
 
   async getTrends(platform: TrendPlatform, segments?: Array<{ id: string; name: string; description?: string }>, limit?: number): Promise<TrendResponse> {
@@ -418,14 +404,12 @@ export class TrendsManager {
     // Temporarily update service limit if specified
     const originalLimit = service.config?.limit
     if (limit && service.config) {
-      console.log(`🔧 [TrendsManager] Setting ${platform} limit from ${originalLimit} to ${limit}`)
       service.config.limit = limit
     }
 
     // Fetch fresh data with segments
     const result = await service.fetchTrends(segments)
     
-    console.log(`📊 [TrendsManager] ${platform} returned ${result.data?.length || 0} trends`)
     
     // Restore original limit
     if (originalLimit !== undefined && service.config) {
@@ -452,14 +436,12 @@ export class TrendsManager {
       ]
     }
 
-    console.log('🎯 [TrendsManager] Extracting commercial keywords from segments:', segments.map(s => s.name))
 
     const keywords: string[] = []
     const commercialContexts = ['trends', 'news', 'breakthrough', 'innovation', 'solution', 'tool', 'strategy', 'growth', 'success', 'tips', 'guide', 'review', 'comparison', 'alternatives']
     const stopWords = ['the', 'and', 'for', 'with', 'this', 'that', 'from', 'they', 'were', 'been', 'have', 'their', 'would', 'could', 'should', 'which', 'where', 'there', 'what', 'when', 'will', 'can', 'are', 'is', 'was', 'by', 'an', 'as', 'at', 'be', 'or', 'in', 'on', 'of', 'to']
     
     segments.forEach(segment => {
-      console.log(`🔍 [TrendsManager] Processing segment: ${segment.name}`)
       
       // 1. Core segment identity
       keywords.push(segment.name)
@@ -584,14 +566,11 @@ export class TrendsManager {
       })
       .slice(0, 25) // More keywords for better commercial filtering
 
-    console.log('🔍 [TrendsManager] Commercial keywords:', uniqueKeywords.slice(0, 10))
-    console.log('💡 [TrendsManager] Pain point keywords:', uniqueKeywords.filter(k => k.includes('solution') || k.includes('solve')))
     return uniqueKeywords
   }
 
   // Advanced scoring algorithms for hotness, viralidad, and cross-platform correlation
   private calculateAdvancedScoring(allTrends: TrendItem[]): TrendItem[] {
-    console.log('🔥 [TrendsManager] Calculating advanced scoring for hotness, viralidad, and impact')
     
     // 1. CROSS-PLATFORM CORRELATION ANALYSIS
     const titleWords = new Map<string, { platforms: Set<string>, trends: TrendItem[] }>()
@@ -622,11 +601,6 @@ export class TrendsManager {
         trends: data.trends,
         crossPlatformBonus: data.platforms.size * 15 // Bonus for cross-platform presence
       }))
-    
-    console.log(`🌐 [TrendsManager] Found ${crossPlatformTopics.length} cross-platform topics:`)
-    crossPlatformTopics.slice(0, 5).forEach(topic => {
-      console.log(`  📊 "${topic.word}" - ${topic.platformCount} platforms (${Array.from(new Set(topic.trends.map(t => t.platform))).join(', ')})`)
-    })
     
     // 2. CALCULATE ENHANCED SCORES
     return allTrends.map(trend => {
@@ -764,7 +738,6 @@ export class TrendsManager {
 
   // Enhanced relevance scoring for content opportunities
   private enhanceRelevanceScoring(trends: TrendItem[], segments: Array<{ id: string; name: string; description?: string; icp?: any }>, keywords: string[]): TrendItem[] {
-    console.log('🎯 [TrendsManager] Applying SEGMENT-FOCUSED relevance scoring')
     
     const enhanced = trends.map(trend => {
       let relevanceScore = trend.score || 0
@@ -885,8 +858,6 @@ export class TrendsManager {
       return hasSegmentRelevance
     })
     
-    console.log(`🎯 [TrendsManager] Filtered ${enhanced.length - filteredTrends.length} non-segment-relevant trends`)
-    console.log(`📊 [TrendsManager] Keeping ${filteredTrends.length} segment-relevant trends`)
     
     return filteredTrends
   }
@@ -906,16 +877,11 @@ export class TrendsManager {
     const limitPerPlatform = options.limitPerPlatform || 6
     const sortBy = options.sortBy || 'relevance'
     
-    console.log(`🎯 [TrendsManager] Fetching ${limitPerPlatform} trends per platform from:`, enabledPlatforms)
-    console.log(`📊 [TrendsManager] Processing segments:`, segments?.map(s => s.name).join(', ') || 'None')
-    console.log(`🔄 [TrendsManager] Sort strategy:`, sortBy)
 
     try {
       const results = await Promise.allSettled(
         enabledPlatforms.map(async platform => {
-          console.log(`🔍 [${platform.toUpperCase()}] Fetching trends...`)
           const result = await this.getTrends(platform, segments, limitPerPlatform)
-          console.log(`✅ [${platform.toUpperCase()}] Got ${result.data?.length || 0} trends`)
           return result
         })
       )
@@ -940,7 +906,6 @@ export class TrendsManager {
       allTrends = this.calculateAdvancedScoring(allTrends)
 
       // Sort by selected strategy
-      console.log(`🔄 [TrendsManager] Applying ${sortBy} sorting strategy`)
       allTrends.sort((a, b) => {
         switch (sortBy) {
           case 'hotness':
@@ -989,48 +954,7 @@ export class TrendsManager {
       allTrends = Object.values(trendsByPlatform).flat()
 
       if (segments && segments.length > 0) {
-        console.log(`📊 [TrendsManager] Advanced Trends Analysis (${sortBy} sorting):`)
-        
-        Object.entries(trendsByPlatform).forEach(([platform, trends]) => {
-          console.log(`  🔥 ${platform.toUpperCase()}: ${trends.length} trends`)
-          
-          trends.slice(0, 2).forEach((trend, i) => {
-            const hotness = (trend as any).hotnessScore || 0
-            const viral = (trend as any).viralPotential || 0
-            const impact = (trend as any).impactScore || 0
-            const crossPlatform = (trend as any).crossPlatformTopics?.length || 0
-            const hotnessRating = (trend as any).hotnessRating || 'cool'
-            const viralRating = (trend as any).viralRating || 'stable'
-            
-            console.log(`    ${i+1}. [${sortBy.toUpperCase()}:${trend.relevanceScore || trend.score}] ${trend.title.substring(0, 35)}...`)
-            console.log(`       🔥 Hot: ${hotness} (${hotnessRating}) | 🚀 Viral: ${viral} (${viralRating}) | 💥 Impact: ${impact}`)
-            
-            if (crossPlatform > 0) {
-              const platforms = (trend as any).crossPlatformTopics?.map((t: any) => t.platforms).flat() || []
-              console.log(`       🌐 Cross-platform: ${Array.from(new Set(platforms)).join(', ')}`)
-            }
-            
-            if ((trend as any).matchedKeywords?.length > 0) {
-              const topKeywords = (trend as any).matchedKeywords.slice(0, 3).join(', ')
-              console.log(`       🎯 Keywords: ${topKeywords}`)
-            }
-          })
-        })
-        
-        // Summary of high-value opportunities by new scoring
-        const hotTrends = allTrends.filter(t => (t as any).hotnessRating === 'very-hot' || (t as any).hotnessRating === 'hot')
-        const viralTrends = allTrends.filter(t => (t as any).viralRating === 'very-viral' || (t as any).viralRating === 'viral')
-        const crossPlatformTrends = allTrends.filter(t => (t as any).crossPlatformTopics?.length > 0)
-        
-        console.log(`🔥 [TrendsManager] ${hotTrends.length} HOT trends | 🚀 ${viralTrends.length} VIRAL trends | 🌐 ${crossPlatformTrends.length} CROSS-PLATFORM trends`)
-        
-        if (crossPlatformTrends.length > 0) {
-          console.log(`🌟 [TrendsManager] TOP CROSS-PLATFORM opportunities:`)
-          crossPlatformTrends.slice(0, 3).forEach((trend, i) => {
-            const topics = (trend as any).crossPlatformTopics || []
-            console.log(`   ${i+1}. "${trend.title}" - Shared topics: ${topics.map((t: any) => t.word).join(', ')}`)
-          })
-        }
+        // Logging removed
       }
 
       return {

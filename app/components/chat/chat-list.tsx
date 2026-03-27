@@ -895,7 +895,7 @@ export function ChatList({
 
       if (!response.ok || !result.success) {
         console.error("Error accepting all pending:", result.error)
-        toast.error("Failed to accept all pending messages")
+        toast.error(result.error || "Failed to accept all pending messages")
         return
       }
 
@@ -949,7 +949,7 @@ export function ChatList({
 
       if (!response.ok || !result.success) {
         console.error("Error rejecting all pending:", result.error)
-        toast.error("Failed to reject pending messages")
+        toast.error(result.error || "Failed to reject pending messages")
         return
       }
 
@@ -969,6 +969,16 @@ export function ChatList({
       if (selectedConversationId && conversationsToDelete.includes(selectedConversationId)) {
         router.push("/chat")
       }
+
+      // Notify other parts of the UI
+      conversationsToDelete.forEach(convId => {
+        window.dispatchEvent(new CustomEvent("conversation:deleted", {
+          detail: { conversationId: convId },
+        }))
+      })
+
+      // Also dispatch a general event so that the current chat can reload its messages if needed
+      window.dispatchEvent(new CustomEvent("conversation:messages-rejected"))
 
       // Reload list to reflect conversations that had messages removed but weren't deleted
       if (loadConversationsRef.current) {

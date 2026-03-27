@@ -1981,3 +1981,15 @@ export const Store = ({ className = "", size = 18, ...props }: IconProps) => (
     </svg>
   </IconWrapper>
 )
+
+export const GitFork = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="6" r="3"/>
+      <circle cx="6" cy="18" r="3"/>
+      <circle cx="18" cy="18" r="3"/>
+      <path d="M18 15v-1a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v1"/>
+      <path d="M12 12V9"/>
+    </svg>
+  </IconWrapper>
+)

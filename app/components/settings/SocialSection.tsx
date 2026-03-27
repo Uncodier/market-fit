@@ -180,13 +180,14 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     const newSocialMedia = [{ 
       platform: "",
       isActive: false
-    }, ...currentSocialMedia]
+    } as any, ...currentSocialMedia]
     form.setValue("social_media", newSocialMedia)
   }, [form])
 
   const handleConnectAccount = useCallback(async (index: number) => {
     const social = socialMedia[index]
     if (!social?.platform || !siteId) return
+    if (social.platform !== 'facebook' && social.platform !== 'tiktok') return
     
     try {
       setIsSaving(true)
@@ -203,7 +204,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
       // 3-leg flow for Facebook and LinkedIn: OAuth redirects to OUR callback (/api/social/callback/:network).
       // We exchange code+state with outstand.so for a session token, then redirect to /settings/social_network.
       // Other networks: outstand.so receives the OAuth callback and redirects to /settings/social_network with session.
-      const is3Leg = social.platform === 'facebook' || social.platform === 'linkedin'
+      const is3Leg = social.platform === 'facebook' || (social.platform as string) === 'linkedin' || (social.platform as string) === 'tiktok'
       const redirectUri = is3Leg
         ? `${redirectOrigin}/api/social/callback/${social.platform}`
         : `${redirectOrigin}/settings/social_network?siteId=${siteId}&network=${social.platform}${isDevelopment ? `&returnTo=${encodeURIComponent(window.location.origin)}` : ''}`
@@ -431,19 +432,21 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                           </div>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => handleConnectAccount(index)}
-                        className="whitespace-nowrap"
-                      >
-                        Reconnect
-                      </Button>
+                      {(social.platform === 'facebook' || social.platform === 'tiktok') && (
+                        <Button
+                          variant="outline"
+                          type="button"
+                          onClick={() => handleConnectAccount(index)}
+                          className="whitespace-nowrap"
+                        >
+                          Reconnect
+                        </Button>
+                      )}
                     </div>
                   )}
 
                   {/* Connect/Reconnect Account - show when platform selected but not active */}
-                  {hasPlatform && !isActive && (
+                  {hasPlatform && !isActive && (social.platform === 'facebook' || social.platform === 'tiktok') && (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/30">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="w-10 h-10 rounded-full font-inter font-bold bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0 text-orange-600">
@@ -584,10 +587,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                       Saving...
                     </>
                   ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save
-                    </>
+                    "Save"
                   )}
                 </Button>
               </CardFooter>

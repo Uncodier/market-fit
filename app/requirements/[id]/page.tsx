@@ -122,6 +122,7 @@ import {
   Trash2,
   Plus,
   Workflow,
+  GitFork,
   CirclePlay,
   Settings,
   Zap,
@@ -229,7 +230,7 @@ interface Requirement {
 // Loading state skeleton component
 const RequirementSkeleton = () => {
   return (
-    <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-105px)]">
+    <div className="flex h-[calc(100dvh-64px)]">
       {/* Main Content Area Skeleton */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none border-b pl-[20px] pr-4 py-2 h-[71px]">
@@ -1398,17 +1399,46 @@ function RequirementDetailContent() {
     let newX = 50;
     let newY = 150;
     
+    let sourceHandleToConnect = 'success';
+    let nodeToConnectFrom: any = null;
+
     if (nodes.length > 0) {
       if (type === 'trigger') {
-        // Place new triggers below existing nodes, aligned to the left
-        const maxY = Math.max(...nodes.map(n => n.position.y));
-        newX = 50;
-        newY = maxY + 200;
+        // Find last available secret node
+        nodeToConnectFrom = [...nodes].reverse().find(n => n.type === 'secret' && !connections.some(c => c.from === n.id && c.sourceHandle === 'success'));
+        
+        if (nodeToConnectFrom) {
+          const maxX = Math.max(...nodes.map(n => n.position.x));
+          newX = maxX + 350;
+          newY = nodeToConnectFrom.position.y;
+          sourceHandleToConnect = 'success';
+        } else {
+          // Place new triggers below existing nodes, aligned to the left
+          const maxY = Math.max(...nodes.map(n => n.position.y));
+          newX = 50;
+          newY = maxY + 200;
+        }
       } else {
-        // Place other nodes to the right of the last node
-        const lastNode = nodes[nodes.length - 1];
-        newX = lastNode.position.x + 350; // Move 350px to the right of the last node
-        newY = lastNode.position.y;       // Keep the same Y level
+        // Place action or condition to the last available positive node
+        nodeToConnectFrom = [...nodes].reverse().find(n => {
+           // check which handle this node provides
+           const positiveHandle = n.type === 'condition' ? 'true' : 'success';
+           // check if it's connected
+           const isConnected = connections.some(c => c.from === n.id && c.sourceHandle === positiveHandle);
+           return !isConnected;
+        });
+        
+        if (nodeToConnectFrom) {
+          const maxX = Math.max(...nodes.map(n => n.position.x));
+          newX = maxX + 350;
+          newY = nodeToConnectFrom.position.y;
+          sourceHandleToConnect = nodeToConnectFrom.type === 'condition' ? 'true' : 'success';
+        } else {
+          // Fallback
+          const lastNode = nodes[nodes.length - 1];
+          newX = lastNode.position.x + 350;
+          newY = lastNode.position.y;
+        }
       }
     }
 
@@ -1425,14 +1455,22 @@ function RequirementDetailContent() {
     };
     setNodes([...nodes, newNode]);
     
-    // Auto-connect to previous node if it exists and it's NOT a trigger node
-    if (nodes.length > 0 && type !== 'trigger') {
+    // Auto-connect to identified node
+    if (nodeToConnectFrom) {
+      setConnections([...connections, { 
+        id: `conn-${Date.now()}`, 
+        from: nodeToConnectFrom.id, 
+        to: newNode.id,
+        sourceHandle: sourceHandleToConnect
+      }]);
+    } else if (nodes.length > 0 && type !== 'trigger') {
+      // Fallback: connect to the last node
       const lastNode = nodes[nodes.length - 1];
       setConnections([...connections, { 
         id: `conn-${Date.now()}`, 
         from: lastNode.id, 
         to: newNode.id,
-        sourceHandle: 'success'
+        sourceHandle: lastNode.type === 'condition' ? 'true' : 'success'
       }]);
     }
     
@@ -1875,7 +1913,7 @@ function RequirementDetailContent() {
   // Show error state
   if (error) {
     return (
-      <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-105px)] items-center justify-center flex-col gap-4">
+      <div className="flex h-[calc(100dvh-64px)] items-center justify-center flex-col gap-4">
         <div className="text-destructive">
           <X className="h-16 w-16 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-center">Error Loading Requirement</h2>
@@ -1896,7 +1934,7 @@ function RequirementDetailContent() {
   // Show error if no requirement data
   if (!requirement) {
     return (
-      <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-105px)] items-center justify-center flex-col gap-4">
+      <div className="flex h-[calc(100dvh-64px)] items-center justify-center flex-col gap-4">
         <div className="text-destructive">
           <X className="h-16 w-16 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-center">Requirement Not Found</h2>
@@ -1917,7 +1955,7 @@ function RequirementDetailContent() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-105px)]">
+    <div className="flex h-[calc(100dvh-64px)]">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <div className="flex-none z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -2955,7 +2993,7 @@ const MenuBar = ({
           <Code className="h-4 w-4 mr-1.5 text-primary" /> Action
         </Button>
         <Button variant="ghost" size="sm" onClick={() => handleAddNode('condition')} className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted font-normal text-sm">
-          <Workflow className="h-4 w-4 mr-1.5 text-primary" /> Condition
+          <GitFork className="h-4 w-4 mr-1.5 text-primary" /> Condition
         </Button>
         
         <div className="w-px h-6 bg-border mx-1" />

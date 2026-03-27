@@ -112,7 +112,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         const usedIds = new Set<string>()
         
         activePlans.forEach((plan: InstancePlan, planIndex: number) => {
-          if (plan.steps && Array.isArray(plan.steps)) {
+          if (plan.steps && Array.isArray(plan.steps) && plan.steps.length > 0) {
             // Use steps directly from the plan
             const planSteps = plan.steps.map((step: any, stepIndex: number) => {
               let stepId = step.id
@@ -136,28 +136,6 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
               }
             })
             convertedSteps = [...convertedSteps, ...planSteps]
-          } else {
-            // Fallback: use the plan itself as a single step
-            let planId = plan.id
-            
-            // Ensure unique ID
-            if (!planId || usedIds.has(planId)) {
-              planId = `plan_${planIndex}_${Math.random().toString(36).substring(7)}`
-              while (usedIds.has(planId)) {
-                planId = `plan_${planIndex}_${Math.random().toString(36).substring(7)}`
-              }
-            }
-            usedIds.add(planId)
-            
-            convertedSteps.push({
-              id: planId,
-              title: plan.title,
-              description: plan.description || undefined,
-              status: plan.status === 'in_progress' ? 'in_progress' : 
-                     plan.status === 'completed' ? 'completed' : 'pending',
-              order: convertedSteps.length + 1,
-              planId: plan.id // Track which plan this step belongs to
-            })
           }
         })
         

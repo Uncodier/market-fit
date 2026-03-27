@@ -47,11 +47,6 @@ const PRIORITY_COLORS: Record<string, string> = {
     }
   }
 
-// Determine if a card should be draggable (moved outside component)
-const isDraggable = (requirement: { completionStatus: string }) => {
-  return requirement.completionStatus === 'pending';
-}
-
 // Format date to a more readable format (moved outside component)
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
@@ -297,12 +292,11 @@ export function KanbanView({
                             }`}
                           >
                             {columnItems.map((requirement, index) => (
-                              <Draggable 
-                                key={requirement.id} 
-                                draggableId={requirement.id} 
-                                index={index}
-                                isDragDisabled={!isDraggable(requirement)}
-                              >
+                                <Draggable 
+                                  key={requirement.id} 
+                                  draggableId={requirement.id} 
+                                  index={index}
+                                >
                                 {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
                                   <div 
                                     ref={provided.innerRef}
@@ -313,7 +307,7 @@ export function KanbanView({
                                       snapshot.isDragging 
                                         ? 'shadow-lg dark:shadow-black/20 border-primary/20' 
                                         : ''
-                                    } ${!isDraggable(requirement) ? 'opacity-80' : ''}`}
+                                    }`}
                                   >
                                     <div className="flex justify-between items-start mb-2">
                                       <div className="flex-1 min-w-0">
@@ -446,7 +440,6 @@ function KanbanRequirementCard({
       className={cn(
         "mb-2 p-3 rounded-md border shadow-sm bg-card",
         snapshot.isDragging ? "border-primary/50 shadow-md" : "border-border",
-        !isDraggable(requirement) ? "opacity-75" : "",
         "cursor-pointer transition-all duration-200 hover:border-primary/50"
       )}
       style={{

@@ -1,4 +1,14 @@
 import { Button } from "@/app/components/ui/button"
+import {
+  ModalFooter,
+  ModalFooterActions,
+  ModalFooterInfo,
+} from "@/app/components/ui/modal-footer"
+import {
+  ModalHeader,
+  ModalHeaderTitle,
+  ModalHeaderDescription,
+} from "@/app/components/ui/modal-header"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   Dialog,
@@ -184,7 +194,7 @@ export function CampaignRequirementDialog({
         )}
       </DialogTrigger>
       <DialogContent 
-        className="sm:max-w-[600px] p-6 md:p-8 max-h-[90vh] flex flex-col" 
+        className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden" 
         onEscapeKeyDown={(e) => {
           if (isLoading) e.preventDefault()
         }}
@@ -195,14 +205,16 @@ export function CampaignRequirementDialog({
           if (isLoading) e.preventDefault()
         }}
       >
-        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef} className="flex flex-col flex-1 overflow-hidden">
-          <DialogHeader className="mb-2 shrink-0">
-            <DialogTitle>Add New Requirement</DialogTitle>
-            <DialogDescription>
-              Create a new requirement for this campaign
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 py-4 px-1 overflow-y-auto flex-1 pr-2 -mr-2">
+        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef} className="flex flex-col flex-1 overflow-hidden h-full">
+          <ModalHeader className="shrink-0">
+            <div>
+              <ModalHeaderTitle>Add New Requirement</ModalHeaderTitle>
+              <ModalHeaderDescription>
+                Create a new requirement for this campaign
+              </ModalHeaderDescription>
+            </div>
+          </ModalHeader>
+          <div className="grid gap-6 p-6 overflow-y-auto flex-1">
               <div className="grid gap-3">
                 <Label>Title</Label>
                 <div className="p-[3px]">
@@ -341,36 +353,40 @@ export function CampaignRequirementDialog({
                     </p>
                   )}
                 </div>
-              </div>
             </div>
-          <DialogFooter className="pt-4 mt-2 shrink-0 border-t">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={handleClose}
-              disabled={isLoading}
-              className="mr-2"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              disabled={isLoading}
-              className="gap-1"
-            >
-              {isLoading ? (
-                <>
-                  <LoadingSkeleton variant="button" size="sm" />
-                  <span>Creating...</span>
-                </>
-              ) : (
-                <>
-                  <PlusCircle className="mr-1 h-4 w-4" />
-                  Create Requirement
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+          </div>
+          <ModalFooter className="shrink-0">
+            <ModalFooterInfo>
+            </ModalFooterInfo>
+            <ModalFooterActions>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleClose}
+                disabled={isLoading}
+                className="mr-2"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                disabled={isLoading}
+                className="gap-1"
+              >
+                {isLoading ? (
+                  <>
+                    <LoadingSkeleton variant="button" size="sm" />
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="mr-1 h-4 w-4" />
+                    Create Requirement
+                  </>
+                )}
+              </Button>
+            </ModalFooterActions>
+          </ModalFooter>
         </form>
       </DialogContent>
     </Dialog>

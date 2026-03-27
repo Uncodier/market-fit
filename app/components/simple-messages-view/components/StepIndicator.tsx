@@ -12,6 +12,7 @@ interface StepIndicatorProps {
   onToggleExpanded: () => void
   onTogglePause: (planId: string) => void
   onToggleResume: (planId: string) => void
+  onCancelPlan?: (planId: string) => void
   onEditStep: (step: PlanStep) => void
   onDeleteStep: (stepId: string) => void
   onToggleStepStatus: (stepId: string) => void
@@ -31,6 +32,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
   onToggleExpanded,
   onTogglePause,
   onToggleResume,
+  onCancelPlan,
   onEditStep,
   onDeleteStep,
   onToggleStepStatus,
@@ -131,8 +133,24 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                     </>
                   )}
                   
-                  {/* Play/Pause buttons */}
+                  {/* Play/Pause/Cancel buttons */}
                   <div className="flex items-center gap-1 ml-auto">
+                    {onCancelPlan && (instancePlans.some(plan => plan.status === 'in_progress' || plan.status === 'paused' || plan.status === 'pending')) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const activePlan = instancePlans.find(plan => plan.status === 'in_progress' || plan.status === 'paused' || plan.status === 'pending')
+                          if (activePlan) {
+                            onCancelPlan(activePlan.id)
+                          }
+                        }}
+                        className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
+                        title="Cancel plan"
+                      >
+                        <X className="h-3 w-3 text-red-600" />
+                      </Button>
+                    )}
                     {instancePlans.some(plan => plan.status === 'in_progress') && (
                       <Button
                         variant="ghost"

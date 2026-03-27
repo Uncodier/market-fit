@@ -347,6 +347,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     toggleStepStatus,
     pausePlan,
     resumePlan,
+    cancelPlan,
     canEditOrDeleteStep,
     addStep
   } = useStepManagement({
@@ -385,32 +386,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       router.replace(`/robots?${params.toString()}`, { scroll: false })
     }
   }, [selectedActivity, router])
-
-  // Smart submit handler to intercept messages when a plan is active
-  const handleSmartSubmit = useCallback(async () => {
-    // Check if there is an active plan (in_progress or paused)
-    // We prioritize in_progress, then paused
-    const activePlan = instancePlans.find(p => p.status === 'in_progress') || 
-                      instancePlans.find(p => p.status === 'paused')
-    
-    // Only intercept if there's an active plan AND we are in 'ask' mode (default chat)
-    // If user is in 'robot' mode or other specific modes, let them proceed normally
-    // Also ensure message is not empty
-    if (activePlan && message.trim() && selectedActivity === 'ask') {
-      
-      // Add the message as a step
-      await addStep(activePlan.id, message)
-      
-      // Clear the message input
-      clearMessage()
-      
-      // Scroll to bottom to show the change
-      scrollToBottom()
-    } else {
-      // Normal behavior
-      handleSendMessage()
-    }
-  }, [instancePlans, message, selectedActivity, addStep, clearMessage, scrollToBottom, handleSendMessage])
 
   // Show loading skeleton when loading logs
   if (isLoadingLogs) {
@@ -751,6 +726,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
             onToggleResume={(planId: string) => {
               resumePlan(planId)
             }}
+            onCancelPlan={(planId: string) => {
+              cancelPlan(planId)
+            }}
             onEditStep={openEditModal}
             onDeleteStep={deleteStep}
             onToggleStepStatus={toggleStepStatus}
@@ -779,7 +757,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           handleMessageChange={handleMessageChange}
           onActivityChange={setSelectedActivity}
           onContextChange={setSelectedContext}
-          onSubmit={handleSmartSubmit}
+          onSubmit={handleSendMessage}
           disabled={isSendingMessage || isStartingRobot}
           placeholder={activeRobotInstance ? (isSendingMessage ? "Sending message..." : "Ask anything...") : (isStartingRobot ? "Starting robot..." : "Ask anything...")}
           textareaRef={textareaRef}

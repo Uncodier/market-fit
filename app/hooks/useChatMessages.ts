@@ -185,6 +185,13 @@ export function useChatMessages(
     document.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('focus', handleFocus)
     window.addEventListener('online', handleOnline)
+    
+    // Add event listener for when messages are globally rejected
+    const handleMessagesRejected = () => {
+      // Reload messages to pick up deletions
+      loadMessages()
+    }
+    window.addEventListener('conversation:messages-rejected', handleMessagesRejected)
 
     // Also run once on mount.
     ensureRealtimeSubscriptionHealthy()
@@ -193,8 +200,9 @@ export function useChatMessages(
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('online', handleOnline)
+      window.removeEventListener('conversation:messages-rejected', handleMessagesRejected)
     }
-  }, [ensureRealtimeSubscriptionHealthy])
+  }, [ensureRealtimeSubscriptionHealthy, loadMessages])
   
   return {
     chatMessages,
@@ -203,6 +211,7 @@ export function useChatMessages(
     isAgentResponding,
     setIsAgentResponding,
     isTransitioningConversation,
-    clearMessagesForTransition
+    clearMessagesForTransition,
+    loadMessages
   }
 } 

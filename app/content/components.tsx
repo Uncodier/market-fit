@@ -329,9 +329,9 @@ export function CreateContentDialog({
               {isCreating ? (
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                  <span>Creating</span>
+                  <span>{t('layout.nav.content.creating') || 'Creating'}</span>
                 </div>
-              ) : "Create Content"}
+              ) : t('layout.nav.content.create') || "Create Content"}
             </Button>
           </DialogFooter>
         </form>

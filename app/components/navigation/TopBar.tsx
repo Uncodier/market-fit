@@ -69,22 +69,30 @@ export function TopBar({
     hasRequirementStatus: boolean;
   } | null>(null);
 
+  const [contentData, setContentData] = useState<any>(null);
+
   // Reset states when pathname changes
   useEffect(() => {
     setIsProcessing(false);
-    setSegmentData(null);
-    setRequirementData(null);
+    // Don't reset segment/requirement/content data just on pathname change
+    // because the breadcrumb update might happen *before* the pathname change effect
+    // We'll let the breadcrumb:update event handle setting the new data.
   }, [pathname]);
 
   // Escuchar eventos de actualización del segmento y requirement
   useEffect(() => {
     const handleBreadcrumbUpdate = (event: any) => {
+      console.log('TopBar received breadcrumb:update event:', event.detail);
       if (event.detail) {
         if (event.detail.segmentData) {
           setSegmentData(event.detail.segmentData);
         }
         if (event.detail.requirementData) {
           setRequirementData(event.detail.requirementData);
+        }
+        if (event.detail.contentData) {
+          console.log('TopBar updating contentData state:', event.detail.contentData.title);
+          setContentData(event.detail.contentData);
         }
       }
     };
@@ -265,6 +273,7 @@ export function TopBar({
           isExperimentDetailPage={isExperimentDetailPage}
           segmentData={segmentData}
           requirementData={requirementData}
+          contentData={contentData}
           segments={segments}
           propSegments={propSegments}
           requirements={requirements}
