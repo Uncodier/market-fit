@@ -19,7 +19,6 @@ import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
 import { createAsset } from "@/app/assets/actions"
 import { publishOutstandPost } from "../outstand"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Globe } from "@/app/components/ui/icons"
 
 // Function to convert HTML back to markdown
 const htmlToMarkdown = (html: string): string => {
