@@ -75,6 +75,7 @@ import { safeReload } from "@/app/utils/safe-reload"
 import { TrendsSection, TrendsColumn } from "@/app/components/trends"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 
 const CONTENT_STATUSES = [
   { id: 'draft' },
@@ -2788,17 +2789,21 @@ export default function ContentPage() {
             </DialogHeader>
           <form onSubmit={submitPublish} className="space-y-4">
             {socialMedia.length === 0 ? (
-              <div className="bg-muted/30 p-4 rounded-md text-sm text-muted-foreground border border-border/50 text-center">
-                <p>No social accounts connected.</p>
-                <Button 
-                  type="button" 
-                  variant="link" 
-                  onClick={() => router.push('/settings/social_network')}
-                  className="mt-2"
-                >
-                  Connect Accounts
-                </Button>
-              </div>
+              <EmptyCard
+                icon={<Globe className="h-10 w-10 text-muted-foreground" />}
+                title="No social accounts connected"
+                description="Connect your social media accounts in settings to start publishing content directly from here."
+                actionButton={
+                  <Button 
+                    type="button" 
+                    variant="default" 
+                    onClick={() => router.push('/settings/social_network')}
+                    className="mt-2"
+                  >
+                    Connect Accounts
+                  </Button>
+                }
+              />
             ) : (
               <div className="space-y-4 pt-4">
                 <p className="text-sm font-medium">Select Networks:</p>

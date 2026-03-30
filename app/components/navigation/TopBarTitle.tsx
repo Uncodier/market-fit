@@ -47,13 +47,6 @@ export function TopBarTitle({
   const { items: historyItems, navigateTo, hasHistory } = useNavigationHistory()
   
   // States for segment detail page
-  const [segmentData, setSegmentData] = useState<{
-    id: string;
-    activeTab: string;
-    isAnalyzing: boolean;
-    isGeneratingTopics: boolean;
-    openAIModal: (type: 'analysis' | 'icp' | 'topics') => void;
-  } | null>(null);
 
   // Get the default title from the first route segment
   const getDefaultTitle = useCallback(() => {
@@ -117,37 +110,15 @@ export function TopBarTitle({
         } else {
           setParentInfo(null);
         }
-        
-        // Si se proporcionan datos del segmento para la página de detalle
-        if (event.detail.segmentData) {
-          setSegmentData(event.detail.segmentData);
-        }
-      }
-    };
-    
-    // Escuchar cambios de pestaña en la página de detalle del segmento
-    const handleSegmentTabChange = (event: any) => {
-      if (event.detail && segmentData) {
-        setSegmentData(prevData => {
-          if (!prevData) return null;
-          return {
-            ...prevData,
-            activeTab: event.detail.activeTab,
-            isAnalyzing: event.detail.isAnalyzing,
-            isGeneratingTopics: event.detail.isGeneratingTopics
-          };
-        });
       }
     };
     
     window.addEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
-    window.addEventListener('segment:tabchange', handleSegmentTabChange as EventListener);
     
     return () => {
       window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
-      window.removeEventListener('segment:tabchange', handleSegmentTabChange as EventListener);
     };
-  }, [segmentData]);
+  }, []);
 
   // Actualizar los parámetros de búsqueda cuando cambie la URL
   useEffect(() => {

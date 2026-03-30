@@ -18,6 +18,8 @@ import { ContentAssetsGrid } from "./components/ContentAssetsGrid"
 import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
 import { createAsset } from "@/app/assets/actions"
 import { publishOutstandPost } from "../outstand"
+import { EmptyCard } from "@/app/components/ui/empty-card"
+import { Globe } from "@/app/components/ui/icons"
 
 // Function to convert HTML back to markdown
 const htmlToMarkdown = (html: string): string => {
@@ -979,7 +981,7 @@ export default function ContentDetailPage() {
     performance_rating: null as number | null,
     status: 'draft' // Default status
   })
-  const [activeTab, setActiveTab] = useState<'copy' | 'instructions'>('copy')
+  const [activeTab, setActiveTab] = useState<'copy' | 'instructions' | 'ai'>('copy')
   const [aiPrompt, setAiPrompt] = useState('')
   const [isAiProcessing, setIsAiProcessing] = useState(false)
   const [editorsReady, setEditorsReady] = useState(false)
@@ -1936,7 +1938,7 @@ export default function ContentDetailPage() {
             onSave={handleSaveChanges} 
             isSaving={isSaving} 
             onDelete={handleDeleteContent}
-            activeTab={activeTab}
+            activeTab={activeTab === 'ai' ? 'copy' : activeTab}
             hasChanges={hasUnsavedChanges()}
             contentType={content?.type}
             contentStatus={content?.status}
@@ -1950,7 +1952,7 @@ export default function ContentDetailPage() {
             {/* Tab Selector - now scrolls with content */}
             <div className="flex justify-center mb-6">
               <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg">
-                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'copy' | 'instructions')}>
+                <Tabs value={activeTab === 'ai' ? 'copy' : activeTab} onValueChange={(value) => setActiveTab(value as 'copy' | 'instructions' | 'ai')}>
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="copy">Copy</TabsTrigger>
                     <TabsTrigger value="instructions">Instructions</TabsTrigger>
@@ -1961,14 +1963,14 @@ export default function ContentDetailPage() {
 
             {/* Editor Content */}
             <div className="flex-1 flex flex-col">
-              {activeTab === 'copy' ? (
+              {activeTab === 'copy' || activeTab === 'ai' ? (
                 <>
                   <EditorContent 
                     editor={editor} 
                     className="prose prose-sm dark:prose-invert max-w-none flex-1 min-h-full overflow-auto" 
                     style={{ minHeight: 'calc(100vh - 280px)' }}
                   />
-                  {content?.id && (
+                  {content?.id && activeTab === 'copy' && (
                     <ContentAssetsGrid
                       contentId={content.id}
                       refreshTrigger={assetsRefreshTrigger}
@@ -2013,12 +2015,13 @@ export default function ContentDetailPage() {
                   <ScrollArea className="flex-1">
                     <div className="p-4 space-y-6">
                       {/* Quick Actions Section */}
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <Label className="text-base font-semibold">Quick Actions</Label>
                         <div className="grid grid-cols-2 gap-2">
                           <Button
                             variant="outline"
                             size="sm"
+                            className="w-full justify-start shadow-sm"
                             onClick={() => generateContent("improve")}
                             disabled={isGenerating}
                           >
@@ -2028,6 +2031,7 @@ export default function ContentDetailPage() {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="w-full justify-start shadow-sm"
                             onClick={() => generateContent("expand")}
                             disabled={isGenerating}
                           >
@@ -2037,6 +2041,7 @@ export default function ContentDetailPage() {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="w-full justify-start shadow-sm"
                             onClick={() => generateContent("style")}
                             disabled={isGenerating}
                           >
@@ -2046,6 +2051,7 @@ export default function ContentDetailPage() {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="w-full justify-start shadow-sm"
                             onClick={() => generateContent("summarize")}
                             disabled={isGenerating}
                           >
@@ -2294,7 +2300,7 @@ export default function ContentDetailPage() {
                           {isGenerating ? (
                             <Loader className="h-4 w-4 animate-spin" />
                           ) : (
-                            <Send className="h-4 w-4" />
+                            <ChevronRight className="h-4.5 w-4.5" />
                           )}
                           <span className="sr-only">Generate Content</span>
                         </Button>
@@ -2603,17 +2609,21 @@ export default function ContentDetailPage() {
             </DialogHeader>
           <form onSubmit={submitPublish} className="space-y-4">
             {socialMedia.length === 0 ? (
-              <div className="bg-muted/30 p-4 rounded-md text-sm text-muted-foreground border border-border/50 text-center">
-                <p>No social accounts connected.</p>
-                <Button 
-                  type="button" 
-                  variant="link" 
-                  onClick={() => router.push('/settings/social_network')}
-                  className="mt-2"
-                >
-                  Connect Accounts
-                </Button>
-              </div>
+              <EmptyCard
+                icon={<Globe className="h-10 w-10 text-muted-foreground" />}
+                title="No social accounts connected"
+                description="Connect your social media accounts in settings to start publishing content directly from here."
+                actionButton={
+                  <Button 
+                    type="button" 
+                    variant="default" 
+                    onClick={() => router.push('/settings/social_network')}
+                    className="mt-2"
+                  >
+                    Connect Accounts
+                  </Button>
+                }
+              />
             ) : (
               <div className="space-y-4 pt-4">
                 <p className="text-sm font-medium">Select Networks:</p>

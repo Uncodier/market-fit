@@ -74,9 +74,17 @@ export function TopBar({
   // Reset states when pathname changes
   useEffect(() => {
     setIsProcessing(false);
-    // Don't reset segment/requirement/content data just on pathname change
-    // because the breadcrumb update might happen *before* the pathname change effect
-    // We'll let the breadcrumb:update event handle setting the new data.
+    
+    // Clear page-specific data when navigating away from those pages
+    if (!pathname.startsWith('/segments/')) {
+      setSegmentData(null);
+    }
+    if (!pathname.startsWith('/requirements/')) {
+      setRequirementData(null);
+    }
+    if (!pathname.startsWith('/content/')) {
+      setContentData(null);
+    }
   }, [pathname]);
 
   // Escuchar eventos de actualización del segmento y requirement
