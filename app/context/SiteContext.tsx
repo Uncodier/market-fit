@@ -456,6 +456,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // ✅ NEW STATES: Track sites loading attempts and session validity
   const [sitesLoadAttempted, setSitesLoadAttempted] = useState(false)
   const [hasValidSession, setHasValidSession] = useState(false)
+  const hasValidSessionRef = useRef(false)
+  
+  // Sincronizar ref con state
+  useEffect(() => {
+    hasValidSessionRef.current = hasValidSession
+  }, [hasValidSession])
+  
   // ✅ Only consider redirects after sites have actually finished loading at least once
   const [sitesLoaded, setSitesLoaded] = useState(false)
   
@@ -749,6 +756,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
     const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(
       (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED', session: any) => {
         if (event === 'SIGNED_IN') {
+          // Check if we already have a valid session (cross-tab auth sync or initial load)
+          if (hasValidSessionRef.current) {
+            // Only update session without reloading sites to avoid blocking UI
+            setHasValidSession(!!session)
+            return
+          }
+          
           setHasValidSession(true)
           setSitesLoadAttempted(false) // ✅ Reset for new load
           loadSitesWithPrevention()

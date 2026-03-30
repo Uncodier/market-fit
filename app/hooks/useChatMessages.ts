@@ -48,6 +48,23 @@ export function useChatMessages(
     }
   }, [])
   
+  const syncMessages = useCallback(async () => {
+    if (!conversationId || conversationId.startsWith("new-")) return
+    
+    try {
+      const rawMessages = await getConversationMessages(conversationId)
+      const seen = new Set<string>()
+      const messages = rawMessages.filter((m) => {
+        if (!m.id || seen.has(m.id)) return false
+        seen.add(m.id)
+        return true
+      })
+      setChatMessages(messages)
+    } catch (error) {
+      console.error("Error syncing messages:", error)
+    }
+  }, [conversationId])
+
   // Optimized message loader
   const loadMessages = useCallback(async () => {
     // Clean up any previous subscription
@@ -172,37 +189,35 @@ export function useChatMessages(
     }
   }, [conversationId, loadMessages, teardownRealtimeSubscription])
 
-  // Subscription health check: when user re-enters the tab/window, renew realtime channel if needed.
+  // Sync messages when user re-enters the tab/window.
+  // We rely on Supabase's automatic socket reconnection instead of forcing reconnects.
   useEffect(() => {
+    let debounceTimer: NodeJS.Timeout;
+
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        ensureRealtimeSubscriptionHealthy()
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+          syncMessages()
+        }, 1000)
       }
     }
-    const handleFocus = () => ensureRealtimeSubscriptionHealthy()
-    const handleOnline = () => ensureRealtimeSubscriptionHealthy()
 
     document.addEventListener('visibilitychange', handleVisibility)
-    window.addEventListener('focus', handleFocus)
-    window.addEventListener('online', handleOnline)
     
     // Add event listener for when messages are globally rejected
     const handleMessagesRejected = () => {
       // Reload messages to pick up deletions
-      loadMessages()
+      syncMessages()
     }
     window.addEventListener('conversation:messages-rejected', handleMessagesRejected)
 
-    // Also run once on mount.
-    ensureRealtimeSubscriptionHealthy()
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility)
-      window.removeEventListener('focus', handleFocus)
-      window.removeEventListener('online', handleOnline)
       window.removeEventListener('conversation:messages-rejected', handleMessagesRejected)
+      clearTimeout(debounceTimer)
     }
-  }, [ensureRealtimeSubscriptionHealthy, loadMessages])
+  }, [syncMessages])
   
   return {
     chatMessages,

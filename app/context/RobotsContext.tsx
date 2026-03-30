@@ -295,11 +295,15 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
           }, delay)
         }
       )
-      .subscribe((status: string) => {
+      .subscribe((status: string, err?: any) => {
         robotsSubscriptionStatusRef.current = status
         if (status === 'SUBSCRIBED') {
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('🔄 [RobotsContext] Subscription error - check Supabase configuration')
+          // CHANNEL_ERROR is expected temporarily when network drops or during fast tab switching.
+          // Supabase's realtime client auto-reconnects, so we don't need to log this as a critical error.
+          console.warn('🔄 [RobotsContext] Temporary subscription error (auto-reconnecting...)', err || '')
+        } else if (status === 'TIMED_OUT') {
+          console.warn('🔄 [RobotsContext] Subscription timed out (auto-reconnecting...)')
         }
       })
 
@@ -361,29 +365,28 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     }
   }, [isSiteContextReady, currentSite?.id])
 
-  // Subscription health check: when user re-enters the tab/window, renew realtime channel if needed.
+  // Solo recargar datos al volver a la pestaña (Supabase reconecta el socket automáticamente)
   useEffect(() => {
+    let debounceTimer: NodeJS.Timeout;
+    
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        ensureRealtimeHealthy()
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+          if (currentSite?.id && isSiteContextReady) {
+            refreshRobots(currentSite.id)
+          }
+        }, 1000)
       }
     }
-    const handleFocus = () => ensureRealtimeHealthy()
-    const handleOnline = () => ensureRealtimeHealthy()
 
     document.addEventListener('visibilitychange', handleVisibility)
-    window.addEventListener('focus', handleFocus)
-    window.addEventListener('online', handleOnline)
-
-    // Also run once on mount.
-    ensureRealtimeHealthy()
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility)
-      window.removeEventListener('focus', handleFocus)
-      window.removeEventListener('online', handleOnline)
+      clearTimeout(debounceTimer)
     }
-  }, [ensureRealtimeHealthy])
+  }, [currentSite?.id, isSiteContextReady, refreshRobots])
 
   // Cleanup timeout on unmount
   useEffect(() => {

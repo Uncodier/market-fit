@@ -25,6 +25,7 @@ import { Switch } from "@/app/components/ui/switch"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { ContentType, CONTENT_TYPE_NAMES } from "./utils"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface Segment {
   id: string
@@ -56,6 +57,7 @@ export function CreateContentDialog({
   trigger
 }: CreateContentDialogProps) {
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const [isOpen, setIsOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')

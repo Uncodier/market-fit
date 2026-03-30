@@ -852,156 +852,38 @@ function RobotsPageContent() {
 
   // Use ResizeObserver to track container width changes
   useEffect(() => {
-    // Retry mechanism to wait for ref to be ready (important for SPA navigation)
-    let retryCount = 0
-    const maxRetries = 10
-    let retryTimer: NodeJS.Timeout
-    let resizeObserver: ResizeObserver | null = null
-    let rafId: number
-    let handleResize: (() => void) | null = null
+    let resizeObserver: ResizeObserver | null = null;
+    let timeoutId: NodeJS.Timeout;
     
-    const setupObserver = () => {
+    const observe = () => {
       if (!tabsContainerRef.current) {
-        if (retryCount < maxRetries) {
-          retryCount++
-          retryTimer = setTimeout(setupObserver, 50)
-        }
-        return
+        timeoutId = setTimeout(observe, 100);
+        return;
       }
 
+      // Initial calculation
+      calculateMaxVisibleTabs();
+
+      let resizeTimeout: NodeJS.Timeout;
       resizeObserver = new ResizeObserver(() => {
-        calculateMaxVisibleTabs()
-      })
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          calculateMaxVisibleTabs();
+        }, 150);
+      });
 
-      resizeObserver.observe(tabsContainerRef.current)
+      resizeObserver.observe(tabsContainerRef.current);
+    };
+    
+    observe();
 
-      // Also recalculate on window resize
-      handleResize = () => {
-        calculateMaxVisibleTabs()
+    return () => {
+      clearTimeout(timeoutId);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
       }
-      window.addEventListener('resize', handleResize)
-
-      // Initial calculation - always call, no conditions
-      rafId = requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          calculateMaxVisibleTabs()
-        })
-      })
-    }
-    
-    setupObserver()
-
-    return () => {
-      if (retryTimer) clearTimeout(retryTimer)
-      if (rafId) cancelAnimationFrame(rafId)
-      if (resizeObserver) resizeObserver.disconnect()
-      if (handleResize) window.removeEventListener('resize', handleResize)
-    }
-  }, [calculateMaxVisibleTabs, allInstances.length, isLayoutCollapsed, selectedInstanceId])
-
-  // Recalculate when instances change or selectedInstanceId changes
-  // Always call - no conditions, let the calculation function handle edge cases
-  useLayoutEffect(() => {
-    // Multiple strategies to ensure execution
-    const rafId1 = requestAnimationFrame(() => {
-      calculateMaxVisibleTabs()
-    })
-    
-    const rafId2 = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        calculateMaxVisibleTabs()
-      })
-    })
-    
-    const timeoutId = setTimeout(() => {
-      calculateMaxVisibleTabs()
-    }, 100)
-    
-    return () => {
-      cancelAnimationFrame(rafId1)
-      cancelAnimationFrame(rafId2)
-      clearTimeout(timeoutId)
-    }
-  }, [allInstances.length, calculateMaxVisibleTabs, selectedInstanceId])
-
-  // Recalculate when component mounts or pathname changes
-  // This ensures it runs on SPA navigation even if pathname doesn't change
-  useEffect(() => {
-    if (pathname !== '/robots') {
-      return
-    }
-    
-    // Use multiple strategies with delays to ensure DOM is ready
-    const timeout1 = setTimeout(() => {
-      calculateMaxVisibleTabs()
-    }, 50)
-    
-    const timeout2 = setTimeout(() => {
-      calculateMaxVisibleTabs()
-    }, 100)
-    
-    const timeout3 = setTimeout(() => {
-      calculateMaxVisibleTabs()
-    }, 200)
-    
-    const rafId = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        calculateMaxVisibleTabs()
-      })
-    })
-    
-    return () => {
-      clearTimeout(timeout1)
-      clearTimeout(timeout2)
-      clearTimeout(timeout3)
-      cancelAnimationFrame(rafId)
-    }
-  }, [pathname, calculateMaxVisibleTabs, allInstances.length])
-  
-  // Also trigger when instances finish loading (for SPA navigation)
-  useEffect(() => {
-    if (pathname !== '/robots') return
-    if (isLoadingRobots || forceLoading) return
-    
-    const timeout1 = setTimeout(() => {
-      calculateMaxVisibleTabs()
-    }, 50)
-    
-    const timeout2 = setTimeout(() => {
-      calculateMaxVisibleTabs()
-    }, 150)
-    
-    return () => {
-      clearTimeout(timeout1)
-      clearTimeout(timeout2)
-    }
-  }, [isLoadingRobots, forceLoading, allInstances.length, pathname, calculateMaxVisibleTabs])
-  
-  // Force calculation on mount and periodically while on robots page (for SPA navigation)
-  useEffect(() => {
-    if (pathname !== '/robots') return
-    
-    // Immediate calculation
-    const immediateTimeout = setTimeout(() => {
-      calculateMaxVisibleTabs()
-    }, 0)
-    
-    // Periodic check every 500ms for first 2 seconds (to catch late renders)
-    let checkCount = 0
-    const maxChecks = 4
-    const intervalId = setInterval(() => {
-      checkCount++
-      calculateMaxVisibleTabs()
-      if (checkCount >= maxChecks) {
-        clearInterval(intervalId)
-      }
-    }, 500)
-    
-    return () => {
-      clearTimeout(immediateTimeout)
-      clearInterval(intervalId)
-    }
-  }, [pathname, calculateMaxVisibleTabs])
+    };
+  }, [calculateMaxVisibleTabs, allInstances.length, isLayoutCollapsed, selectedInstanceId]);
 
   const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
   // Use a stable reference that only computes when requirementStatuses changes

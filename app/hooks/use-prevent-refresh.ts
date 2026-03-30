@@ -141,25 +141,30 @@ export function useSimpleRefreshPrevention() {
     sessionStorage.setItem('preventAutoRefresh', 'true')
     sessionStorage.setItem('preventAutoRefreshReason', isCreateEditRoute ? 'create-edit-page' : 'unknown-route')
     
+    let visibilityTimeout: NodeJS.Timeout;
+    let focusTimeout: NodeJS.Timeout;
     
     // Simple approach: just prevent the visibility change actions
     const handleVisibilityChange = (e: Event) => {
       if (document.visibilityState === 'visible') {
-        // Set a flag to prevent any auto-refresh actions
-        sessionStorage.setItem('JUST_BECAME_VISIBLE', 'true')
+        if (!sessionStorage.getItem('JUST_BECAME_VISIBLE')) {
+          sessionStorage.setItem('JUST_BECAME_VISIBLE', 'true')
+        }
         
-        // Clear the flag after a short delay
-        setTimeout(() => {
+        clearTimeout(visibilityTimeout)
+        visibilityTimeout = setTimeout(() => {
           sessionStorage.removeItem('JUST_BECAME_VISIBLE')
         }, 1000)
       }
     }
     
     const handleWindowFocus = (e: Event) => {
-      sessionStorage.setItem('JUST_GAINED_FOCUS', 'true')
+      if (!sessionStorage.getItem('JUST_GAINED_FOCUS')) {
+        sessionStorage.setItem('JUST_GAINED_FOCUS', 'true')
+      }
       
-      // Clear the flag after a short delay
-      setTimeout(() => {
+      clearTimeout(focusTimeout)
+      focusTimeout = setTimeout(() => {
         sessionStorage.removeItem('JUST_GAINED_FOCUS')
       }, 1000)
     }
@@ -172,6 +177,9 @@ export function useSimpleRefreshPrevention() {
       // Cleanup
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleWindowFocus)
+      
+      clearTimeout(visibilityTimeout)
+      clearTimeout(focusTimeout)
       
       // Clean up session storage
       sessionStorage.removeItem('preventAutoRefresh')

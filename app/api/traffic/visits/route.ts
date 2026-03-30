@@ -18,16 +18,22 @@ export async function GET(request: NextRequest) {
   try {
     console.log(`[Visits API] Querying visitor_sessions for site_id: ${siteId}, dates: ${startDate} to ${endDate}`);
     
-    // Get current period visits from visitor_sessions
-    const { data: currentSessions, error: currentError } = await supabase
+    // Build query for current period visits
+    let currentQuery = supabase
       .from('visitor_sessions')
-      .select('id')
+      .select('id', { count: 'exact', head: true })
       .eq('site_id', siteId)
       .gte('created_at', startDate)
       .lte('created_at', endDate);
 
+    if (segmentId && segmentId !== 'all') {
+      currentQuery = currentQuery.eq('segment_id', segmentId);
+    }
+
+    const { count: currentVisits, error: currentError } = await currentQuery;
+
     console.log(`[Visits API] Current query result:`, { 
-      count: currentSessions?.length || 0, 
+      count: currentVisits || 0, 
       error: currentError?.message || 'none' 
     });
 
@@ -40,7 +46,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const currentVisits = currentSessions?.length || 0;
+    const actualVisits = currentVisits || 0;
     
     // Calculate previous period for comparison
     const startDateObj = new Date(startDate!);
@@ -51,28 +57,34 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Visits API] Previous period: ${previousStart.toISOString()} to ${previousEnd.toISOString()}`);
 
-    // Get previous period visits
-    const { data: previousSessions, error: previousError } = await supabase
+    // Build query for previous period visits
+    let previousQuery = supabase
       .from('visitor_sessions')
-      .select('id')
+      .select('id', { count: 'exact', head: true })
       .eq('site_id', siteId)
       .gte('created_at', previousStart.toISOString())
       .lte('created_at', previousEnd.toISOString());
 
+    if (segmentId && segmentId !== 'all') {
+      previousQuery = previousQuery.eq('segment_id', segmentId);
+    }
+
+    const { count: previousVisits, error: previousError } = await previousQuery;
+
     console.log(`[Visits API] Previous query result:`, { 
-      count: previousSessions?.length || 0, 
+      count: previousVisits || 0, 
       error: previousError?.message || 'none' 
     });
 
-    const previousVisits = previousSessions?.length || 0;
+    const prevVisitsCount = previousVisits || 0;
     
     // Calculate percentage change
-    const percentChange = previousVisits > 0 
-      ? ((currentVisits - previousVisits) / previousVisits) * 100 
+    const percentChange = prevVisitsCount > 0 
+      ? ((actualVisits - prevVisitsCount) / prevVisitsCount) * 100 
       : 0;
 
     const response = {
-      actual: currentVisits,
+      actual: actualVisits,
       percentChange: Math.round(percentChange * 10) / 10,
       periodType: "monthly"
     };

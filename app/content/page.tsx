@@ -49,7 +49,8 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
 import { getContent, createContent, updateContentStatus, updateContent, type ContentItem } from "./actions"
-import { getContentAssetsByContentIds, type ContentAssetWithDetails } from "@/app/assets/actions"
+import { fetchOutstandPosts, publishOutstandPost } from "./outstand"
+import { createAsset, getContentAssetsByContentIds, type ContentAssetWithDetails } from "@/app/assets/actions"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { toast } from "sonner"
@@ -589,27 +590,103 @@ function ContentCard({ content, segments, campaigns, onClick, onRatingChange, is
   assets?: ContentAssetWithDetails[],
   outstandPosts?: any[]
 }) {
+  const getNetworkIcon = (network: string) => {
+    switch(network.toLowerCase()) {
+      case 'linkedin':
+      case 'linkedin_profile':
+      case 'linkedin_page':
+        return <svg className="w-4 h-4 text-[#0A66C2]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>;
+      case 'facebook':
+      case 'facebook_page':
+        return <svg className="w-4 h-4 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd"/></svg>;
+      case 'x':
+      case 'twitter':
+        return <svg className="w-3.5 h-3.5 text-gray-900 dark:text-gray-100" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>;
+      case 'instagram':
+        return <svg className="w-4 h-4 text-[#E1306C]" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" clipRule="evenodd"/></svg>;
+      case 'tiktok':
+        return <svg className="w-4 h-4 text-gray-900 dark:text-gray-100" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 2.22-1.15 4.54-2.97 5.86-1.53 1.1-3.53 1.4-5.38.99-1.83-.41-3.41-1.73-4.14-3.45-.73-1.74-.6-3.79.3-5.39.95-1.68 2.76-2.73 4.69-2.83V16.1c-.81.04-1.62.24-2.28.73-.66.5-1.08 1.26-1.19 2.08-.13.91.13 1.88.75 2.51.62.63 1.58.9 2.48.79.88-.11 1.65-.67 2.02-1.45.35-.74.37-1.6.38-2.43V0h3.5v.02z"/></svg>;
+      default:
+        return <Globe className="w-4 h-4 text-muted-foreground" />;
+    }
+  }
+
+  // Define Table view specific network icon renderer
+  const getTableNetworkIcon = (network: string) => {
+    switch(network.toLowerCase()) {
+      case 'linkedin':
+      case 'linkedin_profile':
+      case 'linkedin_page':
+        return <svg className="w-3.5 h-3.5 text-[#0A66C2] shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>;
+      case 'facebook':
+      case 'facebook_page':
+        return <svg className="w-3.5 h-3.5 text-[#1877F2] shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd"/></svg>;
+      case 'x':
+      case 'twitter':
+        return <svg className="w-3.5 h-3.5 text-gray-900 dark:text-gray-100 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>;
+      case 'instagram':
+        return <svg className="w-3.5 h-3.5 text-[#E1306C] shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" clipRule="evenodd"/></svg>;
+      case 'tiktok':
+        return <svg className="w-3.5 h-3.5 text-gray-900 dark:text-gray-100 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 2.22-1.15 4.54-2.97 5.86-1.53 1.1-3.53 1.4-5.38.99-1.83-.41-3.41-1.73-4.14-3.45-.73-1.74-.6-3.79.3-5.39.95-1.68 2.76-2.73 4.69-2.83V16.1c-.81.04-1.62.24-2.28.73-.66.5-1.08 1.26-1.19 2.08-.13.91.13 1.88.75 2.51.62.63 1.58.9 2.48.79.88-.11 1.65-.67 2.02-1.45.35-.74.37-1.6.38-2.43V0h3.5v.02z"/></svg>;
+      default:
+        return <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+    }
+  }
+
   const [carouselIndex, setCarouselIndex] = useState(0)
-  const displayAssets = assets.filter((a) => a.file_type.startsWith("image/"))
+  const displayAssets = content.id.startsWith('outstand-') 
+    ? content.assets || [] 
+    : assets.filter((a) => a.file_type.startsWith("image/"))
   const mainAsset = displayAssets.find((a) => a.is_primary) || displayAssets[0]
   const hasCarousel = displayAssets.length > 1
 
-  // Check if content matches any Outstand social post
-  const isOutstandPost = outstandPosts && content.type === 'social_post' && content.status === 'published' 
+  // Check if content matches any Outstand social post or was published from our app
+  const hasPublishedTags = content.tags?.some(t => t.startsWith('published_'));
+  const isOutstandPost = hasPublishedTags || (outstandPosts && content.type === 'social_post' && ['published', 'approved', 'draft'].includes(content.status)
     ? outstandPosts.some(post => {
+        if (content.tags?.includes(`outstand_id_${post.id}`)) return true;
+        const postText = post.containers?.[0]?.content || post.text || '';
         // Basic match check - can be enhanced based on how Outstand links to our content
-        return post.text && content.title && (
-          post.text.includes(content.title) || 
-          (content.description && post.text.includes(content.description.substring(0, 50)))
+        return postText && content.title && (
+          postText.includes(content.title) || 
+          (content.description && postText.includes(content.description.substring(0, 50)))
         );
       })
-    : false;
+    : content.id.startsWith('outstand-'));
 
   // Get platforms if it is an outstand post
-  const outstandPlatforms = isOutstandPost 
-    ? Array.from(new Set(outstandPosts?.filter(p => p.text?.includes(content.title))
-        .map(p => p.social_account?.network).filter(Boolean)))
-    : []
+  let outstandPlatforms: string[] = []
+  if (content.id.startsWith('outstand-')) {
+    const post = outstandPosts?.find(p => `outstand-${p.id}` === content.id);
+    outstandPlatforms = post?.socialAccounts?.map((a: any) => a.network || (typeof a === 'string' ? a : null)).filter(Boolean) || []
+  } else if (isOutstandPost) {
+    outstandPlatforms = Array.from(new Set(outstandPosts?.filter(p => {
+      if (content.tags?.includes(`outstand_id_${p.id}`)) return true;
+      const postText = p.containers?.[0]?.content || p.text || '';
+      return postText && content.title && (postText.includes(content.title) || (content.description && postText.includes(content.description.substring(0, 50))));
+    })
+    .flatMap(p => p.socialAccounts?.map((a: any) => a.network || (typeof a === 'string' ? a : null)) || [p.social_account?.network])
+    .filter(Boolean)))
+  }
+
+  // Always include platforms from published tags
+  if (hasPublishedTags) {
+    const publishedTags = content.tags
+      ?.filter(t => t.startsWith('published_'))
+      .map(t => t.replace('published_', '')) || [];
+    if (publishedTags.length > 0) {
+      outstandPlatforms = Array.from(new Set([...outstandPlatforms, ...publishedTags]));
+    }
+  }
+
+  // Filter out any unmapped or duplicate platform fallbacks which might cause the default Globe icon
+  outstandPlatforms = outstandPlatforms.filter(p => 
+    p && 
+    p !== 'undefined' && 
+    p !== 'null' && 
+    typeof p === 'string' &&
+    !p.match(/^[0-9]+$/) // Filter out pure numeric strings (like IDs: "101600695973502")
+  );
 
   useEffect(() => {
     if (!hasCarousel || displayAssets.length === 0) return
@@ -701,16 +778,23 @@ function ContentCard({ content, segments, campaigns, onClick, onRatingChange, is
                 <span className="text-xs text-muted-foreground">{getContentTypeName(content.type)}</span>
                 <span className="text-xs text-muted-foreground">•</span>
                 <span className="text-xs text-muted-foreground">{formattedDate}</span>
-                {isOutstandPost && (
-                  <>
-                    <span className="text-xs text-muted-foreground">•</span>
-                    <Badge variant="outline" className="h-4 px-1 py-0 text-[10px] flex items-center gap-1 bg-green-500/10 text-green-600 border-green-500/20">
-                      <Globe className="w-3 h-3" />
-                      Live in Social
-                    </Badge>
-                  </>
-                )}
               </div>
+              
+              {isOutstandPost && (
+                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                  {outstandPlatforms.length > 0 ? (
+                    outstandPlatforms.map((network, index) => (
+                      <div key={index} title={network} className="shrink-0 flex items-center justify-center bg-muted/50 rounded-md w-6 h-6 border border-border/50">
+                        {getNetworkIcon(network)}
+                      </div>
+                    ))
+                  ) : (
+                    <div title="Published in Social" className="shrink-0 flex items-center justify-center bg-muted/50 rounded-md w-6 h-6 border border-border/50">
+                      <Globe className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -776,7 +860,8 @@ function ContentKanban({
   onRatingChange,
   isLoadingCampaigns,
   assetsByContentId = {},
-  outstandPosts
+  outstandPosts,
+  onPublish
 }: {
   contentItems: ContentItem[]
   onUpdateContentStatus: (contentId: string, newStatus: string) => Promise<void>
@@ -876,6 +961,11 @@ function ContentKanban({
     try {
       // Update in the database - this will also update the parent state
       await onUpdateContentStatus(draggableId, destination.droppableId)
+      
+      // If moved to approved, trigger publish modal
+      if (destination.droppableId === 'approved' && onPublish) {
+        onPublish(updatedItem)
+      }
     } catch (error) {
       // Revert on error
       console.error('Error updating content status:', error)
@@ -1106,13 +1196,56 @@ function ContentTable({
                 <TableBody>
                   {paginatedItems.map((content) => {
                     const contentAssets = assetsByContentId[content.id] || []
-                    const displayAssets = contentAssets.filter((a) => a.file_type.startsWith("image/"))
+                    const displayAssets = content.id.startsWith('outstand-') 
+                      ? content.assets || []
+                      : contentAssets.filter((a) => a.file_type.startsWith("image/"))
                     const mainAsset = displayAssets.find((a) => a.is_primary) || displayAssets[0]
                     
-                    const isOutstandPost = outstandPosts && content.type === 'social_post' && content.status === 'published' 
-                      ? Array.from(new Set(outstandPosts?.filter(p => p.text?.includes(content.title))
-                          .map(p => p.social_account?.network).filter(Boolean))).length > 0
-                      : false
+                    const hasPublishedTags = content.tags?.some(t => t.startsWith('published_'));
+                    const isOutstandPost = hasPublishedTags || (outstandPosts && content.type === 'social_post' && ['published', 'approved', 'draft'].includes(content.status)
+                      ? outstandPosts.some(post => {
+                          if (content.tags?.includes(`outstand_id_${post.id}`)) return true;
+                          const postText = post.containers?.[0]?.content || post.text || '';
+                          return postText && content.title && (
+                            postText.includes(content.title) || 
+                            (content.description && postText.includes(content.description.substring(0, 50)))
+                          );
+                        })
+                      : content.id.startsWith('outstand-'));
+
+                    // Get platforms if it is an outstand post
+                    let outstandPlatforms: string[] = []
+                    if (content.id.startsWith('outstand-')) {
+                      const post = outstandPosts?.find(p => `outstand-${p.id}` === content.id);
+                      outstandPlatforms = post?.socialAccounts?.map((a: any) => a.network || (typeof a === 'string' ? a : null)).filter(Boolean) || []
+                    } else if (isOutstandPost) {
+                      outstandPlatforms = Array.from(new Set(outstandPosts?.filter(p => {
+                        if (content.tags?.includes(`outstand_id_${p.id}`)) return true;
+                        const postText = p.containers?.[0]?.content || p.text || '';
+                        return postText && content.title && (postText.includes(content.title) || (content.description && postText.includes(content.description.substring(0, 50))));
+                      })
+                      .flatMap(p => p.socialAccounts?.map((a: any) => a.network || (typeof a === 'string' ? a : null)) || [p.social_account?.network])
+                      .filter(Boolean)))
+                    }
+
+                    // Always include platforms from published tags
+                    if (hasPublishedTags) {
+                      const publishedTags = content.tags
+                        ?.filter(t => t.startsWith('published_'))
+                        .map(t => t.replace('published_', '')) || [];
+                      if (publishedTags.length > 0) {
+                        outstandPlatforms = Array.from(new Set([...outstandPlatforms, ...publishedTags]));
+                      }
+                    }
+
+                    // Filter out any unmapped or duplicate platform fallbacks which might cause the default Globe icon
+                    outstandPlatforms = outstandPlatforms.filter(p => 
+                      p && 
+                      p !== 'undefined' && 
+                      p !== 'null' && 
+                      typeof p === 'string' &&
+                      !p.match(/^[0-9]+$/) // Filter out pure numeric strings (like IDs: "101600695973502")
+                    );
                     
                     return (
                     <TableRow 
@@ -1142,12 +1275,24 @@ function ContentTable({
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-sm line-clamp-2" title={content.title}>{content.title}</p>
-                            {isOutstandPost && (
-                              <Globe className="w-3 h-3 text-green-500" />
-                            )}
                           </div>
                           {content.description && (
                             <p className="text-xs text-muted-foreground line-clamp-2" title={content.description}>{content.description}</p>
+                          )}
+                          {isOutstandPost && (
+                            <div className="flex items-center gap-1 shrink-0 mt-1">
+                              {outstandPlatforms.length > 0 ? (
+                                outstandPlatforms.map((network, index) => (
+                                  <div key={index} title={network} className="shrink-0 flex items-center justify-center bg-muted/50 rounded-md w-5 h-5 border border-border/50">
+                                    {getTableNetworkIcon(network)}
+                                  </div>
+                                ))
+                              ) : (
+                                <div title="Published in Social" className="shrink-0 flex items-center justify-center bg-muted/50 rounded-md w-5 h-5 border border-border/50">
+                                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       </TableCell>
@@ -1723,8 +1868,6 @@ function ContentSkeleton() {
   )
 }
 
-import { fetchOutstandPosts } from "./outstand"
-
 export default function ContentPage() {
   const { t } = useLocalization()
   const { currentSite, getSettings } = useSite()
@@ -1753,6 +1896,64 @@ export default function ContentPage() {
   const [assetsByContentId, setAssetsByContentId] = useState<Record<string, ContentAssetWithDetails[]>>({})
   const [outstandPosts, setOutstandPosts] = useState<any[]>([])
   const [isLoadingOutstand, setIsLoadingOutstand] = useState(false)
+
+  const combinedContentItems = React.useMemo(() => {
+    console.log("⚙️ [Content] Building combinedContentItems. Current local items:", contentItems.length, "Outstand posts:", outstandPosts.length);
+    const newItems = [...contentItems];
+    
+    if (outstandPosts && outstandPosts.length > 0) {
+      outstandPosts.forEach(post => {
+         const postText = post.containers?.[0]?.content || post.text || '';
+         const isMatched = contentItems.some(item => {
+           if (item.tags?.includes(`outstand_id_${post.id}`)) return true;
+           return postText && item.title && (
+             postText.includes(item.title) || 
+             (item.description && postText.includes(item.description.substring(0, 50)))
+           );
+         });
+         
+         console.log(`🔍 [Content] Post from Outstand (ID: ${post.id}): matched? ${isMatched} | length: ${postText.length}`);
+         
+         if (!isMatched && postText) {
+           // Extract networks
+           const platforms = post.socialAccounts?.map((a: any) => a.network || (typeof a === 'string' ? a : null)).filter(Boolean) || [];
+           const publishedTags = platforms.map((p: string) => `published_${p}`);
+
+           newItems.push({
+             id: `outstand-${post.id}`,
+             title: postText.substring(0, 50) + (postText.length > 50 ? '...' : ''),
+             description: postText,
+             type: 'social_post',
+             content: postText,
+             text: postText,
+             instructions: null,
+             status: post.isDraft ? 'draft' : (post.scheduledAt ? 'approved' : 'published'),
+             segment_id: null,
+             campaign_id: null,
+             site_id: currentSite?.id || '',
+             author_id: null,
+             user_id: null,
+             created_at: post.createdAt || new Date().toISOString(),
+             updated_at: post.createdAt || new Date().toISOString(),
+             published_at: post.publishedAt || null,
+             tags: ['outstand_only', `outstand_id_${post.id}`, ...publishedTags],
+             word_count: postText.split(' ').length,
+             estimated_reading_time: 1,
+             seo_score: null,
+             performance_rating: null,
+             assets: post.containers?.[0]?.media?.map((m: any) => ({
+                id: m.id,
+                file_path: m.url || m.thumbnailUrl || '',
+                file_type: m.type || 'image/jpeg',
+                is_primary: true
+             })) || []
+           });
+         }
+      });
+    }
+    console.log("✅ [Content] Combined items count:", newItems.length);
+    return newItems;
+  }, [contentItems, outstandPosts, currentSite?.id]);
 
   // Sort state
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rate_desc" | "rate_asc">("newest")
@@ -1786,12 +1987,13 @@ export default function ContentPage() {
     if (!currentSite?.id) return
     
     try {
+      console.log('🔄 [Content] Fetching Outstand posts in client...')
       setIsLoadingOutstand(true)
       const result = await fetchOutstandPosts(currentSite.id)
-      console.log('Outstand API Response:', result)
+      console.log('📦 [Content] Outstand API Response:', result?.data?.length || 0, 'posts')
       setOutstandPosts(result?.data || [])
     } catch (error) {
-      console.error('Error fetching outstand posts in client:', error)
+      console.error('❌ Error fetching outstand posts in client:', error)
       setOutstandPosts([])
     } finally {
       setIsLoadingOutstand(false)
@@ -1801,6 +2003,7 @@ export default function ContentPage() {
   const refreshContentList = useCallback(async () => {
     if (!currentSite?.id) return
 
+    console.log("🔄 [Content] Fetching local Makinari content...");
     setIsLoading(true)
     try {
       const result = await getContent(currentSite.id)
@@ -1811,15 +2014,13 @@ export default function ContentPage() {
       }
       
       if (result.content) {
+        console.log(`📦 [Content] Local content received: ${result.content.length}`);
         setContentItems(result.content)
         setTotalContent(result.count)
         setFilteredContent(result.content)
         const ids = result.content.map((c: ContentItem) => c.id)
         const { byContentId } = await getContentAssetsByContentIds(ids)
         setAssetsByContentId(byContentId || {})
-        if (searchTerm || filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) {
-          updateFilteredContent(searchTerm, filters, result.content)
-        }
       }
     } catch (error) {
       console.error("Error fetching content:", error)
@@ -1827,7 +2028,7 @@ export default function ContentPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [currentSite?.id, searchTerm, filters])
+  }, [currentSite?.id])
 
   const loadSegments = async () => {
     if (!currentSite?.id) return
@@ -1878,7 +2079,7 @@ export default function ContentPage() {
   const updateFilteredContent = useCallback((
     search: string, 
     currentFilters: ContentFilters,
-    itemsToFilter: ContentItem[] = contentItems,
+    itemsToFilter: ContentItem[] = combinedContentItems,
     currentSort: typeof sortBy = sortBy
   ) => {
     const searchLower = search.toLowerCase()
@@ -1925,23 +2126,26 @@ export default function ContentPage() {
     })
     
     setFilteredContent(filtered)
-  }, [contentItems, sortBy])
+  }, [combinedContentItems, sortBy])
+
+  useEffect(() => {
+    updateFilteredContent(searchTerm, filters, combinedContentItems, sortBy)
+  }, [combinedContentItems, searchTerm, filters, sortBy, updateFilteredContent])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value
     setSearchTerm(newSearchTerm)
-    updateFilteredContent(newSearchTerm, filters)
   }
 
   const handleFiltersChange = (newFilters: ContentFilters) => {
     setFilters(newFilters)
-    updateFilteredContent(searchTerm, newFilters)
   }
 
   // Effect to re-run sort and filter when sortBy changes
-  useEffect(() => {
-    updateFilteredContent(searchTerm, filters, contentItems, sortBy)
-  }, [sortBy, updateFilteredContent, searchTerm, filters, contentItems])
+  // We don't need this effect anymore since the main useEffect handles it
+  // useEffect(() => {
+  //   updateFilteredContent(searchTerm, filters, combinedContentItems, sortBy)
+  // }, [sortBy, updateFilteredContent, searchTerm, filters, combinedContentItems])
 
   const handleUpdateContentStatus = async (contentId: string, newStatus: string) => {
     try {
@@ -1980,7 +2184,62 @@ export default function ContentPage() {
     }
   }
 
-  const handleContentClick = (content: ContentItem) => {
+  const handleContentClick = async (content: ContentItem) => {
+      if (content.id.startsWith('outstand-')) {
+        try {
+          const outstandId = content.id.replace('outstand-', '');
+          
+          // Determine tags to save: pass along whatever mock tags we assigned (including outstand_id_ and published_)
+          const tagsToSave = content.tags && content.tags.length > 0
+            ? content.tags
+            : ['outstand_only', `outstand_id_${outstandId}`];
+
+          // Save to DB first
+          const res = await createContent({
+            title: content.title,
+            description: content.description || undefined,
+            type: content.type as any,
+            siteId: currentSite!.id,
+            status: content.status,
+            tags: tagsToSave,
+            text: content.text || content.content || ''
+          });
+        
+        if (res.content) {
+          // Save assets if any
+          if (content.assets && content.assets.length > 0) {
+              const displayAssets = content.assets.filter((a: any) => a.file_type?.startsWith("image/") || a.file_type?.startsWith("video/"));
+              for (const asset of displayAssets) {
+                 await createAsset({
+                    siteId: currentSite!.id,
+                    contentId: res.content.id,
+                    url: asset.file_path,
+                    name: `outstand-asset-${outstandId}`,
+                    fileType: asset.file_type,
+                    fileSize: 0,
+                    isPrimary: asset === displayAssets[0]
+                 });
+              }
+          }
+          
+          navigateToContent({
+            contentId: res.content.id,
+            contentTitle: res.content.title,
+            router
+          });
+          return;
+        } else {
+          console.error("Failed to save outstand post, response:", res);
+          toast.error(`Failed to save post to database: ${res.error || 'Unknown error'}`);
+          return;
+        }
+      } catch (e) {
+        console.error("Error creating content from outstand post", e);
+        toast.error("Failed to save post");
+        return;
+      }
+    }
+
     navigateToContent({
       contentId: content.id,
       contentTitle: content.title,
@@ -1995,7 +2254,15 @@ export default function ContentPage() {
   
   const handlePublishClick = (content: ContentItem) => {
     setPublishingContent(content)
-    setSelectedNetworks(socialMedia.map(s => s.platform))
+    // Select all available network IDs by default, specifically pulling connected page IDs
+    // Set ensures we don't have duplicate defaults
+    const defaultIds = Array.from(new Set(socialMedia.flatMap(s => {
+      if (s.connectedPages && Array.isArray(s.connectedPages) && s.connectedPages.length > 0) {
+        return s.connectedPages.map((page: any) => page.id);
+      }
+      return s.account_id || s.accountId || s.id || null;
+    }).filter(Boolean)));
+    setSelectedNetworks(defaultIds)
   }
 
   const closePublishModal = () => {
@@ -2011,38 +2278,106 @@ export default function ContentPage() {
       return
     }
     
-    // Default mock accounts for now until fully implemented to select accounts in the modal
-    // In a real implementation this would gather selected accounts from the form
     try {
-      const res = await fetch(`/api/integrations/outstand/posts?tenant_id=${currentSite.id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          content: publishingContent.title + (publishingContent.description ? `\n\n${publishingContent.description}` : ''),
-          accounts: selectedNetworks,
-          ...(scheduleEnabled && scheduledDate ? { scheduled_date: scheduledDate.toISOString() } : {})
-        })
+      // Map selected IDs back to platform names for saving tags
+      const platformNames = selectedNetworks.map(id => {
+        const acc = socialMedia.find((s: any) => (s.account_id || s.accountId || s.id || s.platform) === id || (s.connectedPages && s.connectedPages.some((p:any) => p.id === id)));
+        return acc ? acc.platform : id;
       });
+
+      // Map selected IDs to account names or usernames for the API as expected by Outstand
+      // Use Set to remove duplicates
+      const validAccounts = Array.from(new Set(selectedNetworks.map(id => {
+        for (const social of socialMedia) {
+          if (social.connectedPages && Array.isArray(social.connectedPages)) {
+            const page = social.connectedPages.find((p: any) => p.id === id);
+            if (page) return page.name || page.username;
+          }
+          if ((social.account_id || social.accountId || social.id || social.platform) === id) {
+            return social.accountName || social.username || id;
+          }
+        }
+        return id;
+      }))).filter(n => 
+        !['facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'github', 'reddit', 'medium', 'x'].includes(n.toLowerCase())
+      );
+
+      if (validAccounts.length === 0) {
+        toast.error("Please select at least one valid connected account. Check your social media settings.")
+        return
+      }
+
+      console.log('Publishing to selected network IDs:', selectedNetworks);
+      console.log('Filtered valid accounts for API:', validAccounts);
+      console.log('Available social media settings:', socialMedia);
       
-      let data;
-      const text = await res.text();
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch(e) {
-        throw new Error("Invalid response from server: " + text);
+      const isLinkedInSelected = platformNames.some(p => p.toLowerCase().includes('linkedin'));
+      const isFacebookSelected = platformNames.some(p => p.toLowerCase().includes('facebook'));
+      const isTwitterSelected = platformNames.some(p => p.toLowerCase().includes('twitter') || p.toLowerCase().includes('x'));
+      const isInstagramSelected = platformNames.some(p => p.toLowerCase().includes('instagram'));
+      
+      // Determine what text to send based on the platform.
+      // Usually social networks expect one plain text body.
+      // If we have text/content, use it, otherwise fall back to title + description.
+      let postContent = '';
+      const fullText = publishingContent.text || publishingContent.content || '';
+      
+      if (fullText && fullText.trim().length > 0) {
+        // We have full text, which is likely the actual post body
+        postContent = fullText;
+      } else {
+        // Fallback to title and description
+        postContent = publishingContent.title;
+        if (publishingContent.description) {
+          postContent += `\n\n${publishingContent.description}`;
+        }
+      }
+
+      // Twitter character limit safeguard
+      if (isTwitterSelected && postContent.length > 280) {
+        postContent = postContent.substring(0, 277) + '...';
+      }
+
+      const payload = {
+        tenant_id: currentSite.id,
+        containers: [
+          {
+            content: postContent,
+            media: []
+          }
+        ],
+        accounts: validAccounts,
+        ...(scheduleEnabled && scheduledDate ? { scheduledAt: scheduledDate.toISOString() } : {})
       }
       
-      if (res.ok && data.success) {
+      // Close the modal early for better UX
+      closePublishModal()
+      
+      const { success, data, error } = await publishOutstandPost(currentSite.id, payload)
+      
+      if (success) {
         toast.success("Content published successfully")
         
-        // Save the published info back to the content
+        // Save the published info back to the content using platform names
+        const newPostId = data?.post?.id || data?.data?.id || data?.id;
+        const newTags = Array.from(new Set([...(publishingContent.tags || []), ...platformNames.map(n => `published_${n}`)]));
+        if (newPostId) {
+          newTags.push(`outstand_id_${newPostId}`);
+        }
+        
+        // Push platformPostIds to tags so we can track the exact publish links if needed
+        const accountsData = data?.post?.socialAccounts || data?.data?.socialAccounts || data?.socialAccounts || [];
+        accountsData.forEach((acc: any) => {
+          if (acc.platformPostId) {
+            newTags.push(`platform_post_id_${acc.platformPostId}`);
+          }
+        });
+
         await updateContent({
           contentId: publishingContent.id,
           title: publishingContent.title,
           type: publishingContent.type,
-          tags: [...(publishingContent.tags || []), ...selectedNetworks.map(n => `published_${n}`)]
+          tags: newTags
         });
         
         // Also update status to published
@@ -2051,13 +2386,14 @@ export default function ContentPage() {
         // Refresh the posts list
         loadOutstandPosts()
       } else {
-        throw new Error(data?.error || "Failed to publish")
+        throw new Error(error || "Failed to publish")
       }
     } catch (error) {
       console.error(error)
-      toast.error(error instanceof Error ? error.message : "Failed to publish content")
-    } finally {
-      closePublishModal()
+      // Hide any mention of Outstand in error message
+      const errMsg = error instanceof Error ? error.message : "Failed to publish content";
+      const cleanErrMsg = errMsg.replace(/outstand/i, 'Social Media API').replace(/API Error/i, 'Error');
+      toast.error(cleanErrMsg)
     }
   }
 
@@ -2323,6 +2659,7 @@ export default function ContentPage() {
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
                   outstandPosts={outstandPosts}
+                  onPublish={handlePublishClick}
                 />
               ) : (
                 <ContentTable 
@@ -2356,6 +2693,7 @@ export default function ContentPage() {
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
                   outstandPosts={outstandPosts}
+                  onPublish={handlePublishClick}
                 />
               ) : (
                 <ContentTable 
@@ -2389,6 +2727,7 @@ export default function ContentPage() {
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
                   outstandPosts={outstandPosts}
+                  onPublish={handlePublishClick}
                 />
               ) : (
                 <ContentTable 
@@ -2464,30 +2803,59 @@ export default function ContentPage() {
               <div className="space-y-4 pt-4">
                 <p className="text-sm font-medium">Select Networks:</p>
                 <div className="space-y-2">
-                  {socialMedia.map((social, idx) => (
+                  {socialMedia.map((social, idx) => {
+                    // Si tiene connectedPages, mostramos un checkbox por cada una
+                    if (social.connectedPages && Array.isArray(social.connectedPages) && social.connectedPages.length > 0) {
+                      return social.connectedPages.map((page: any, pageIdx: number) => {
+                        // Unique ID combining platform and page ID to avoid duplicates
+                        const uniqueId = `${social.platform}-${page.id}`;
+                        return (
+                        <div key={`${idx}-${pageIdx}`} className="flex items-center space-x-2">
+                          <Switch 
+                            id={`social-${uniqueId}`} 
+                            checked={selectedNetworks.includes(page.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedNetworks(prev => [...prev, page.id])
+                              } else {
+                                setSelectedNetworks(prev => prev.filter(p => p !== page.id))
+                              }
+                            }}
+                          />
+                          <label 
+                            htmlFor={`social-${uniqueId}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2"
+                          >
+                            {getNetworkIcon(social.platform)}
+                            {page.name || social.accountName || social.platform}
+                          </label>
+                        </div>
+                      )})
+                    }
+
+                    const networkId = social.account_id || social.accountId || social.id || social.platform;
+                    return (
                     <div key={idx} className="flex items-center space-x-2">
                       <Switch 
-                        id={`social-${social.platform}`} 
-                        checked={selectedNetworks.includes(social.platform)}
+                        id={`social-${networkId}`} 
+                        checked={selectedNetworks.includes(networkId)}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedNetworks(prev => [...prev, social.platform])
+                            setSelectedNetworks(prev => [...prev, networkId])
                           } else {
-                            setSelectedNetworks(prev => prev.filter(p => p !== social.platform))
+                            setSelectedNetworks(prev => prev.filter(p => p !== networkId))
                           }
                         }}
                       />
                       <label 
-                        htmlFor={`social-${social.platform}`}
+                        htmlFor={`social-${networkId}`}
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2"
                       >
-                        {social.platform === 'facebook' || social.platform === 'linkedin' || social.platform === 'tiktok' ? (
-                          <Globe className="w-4 h-4 text-primary" />
-                        ) : null}
-                        {social.platform}
+                        {getNetworkIcon(social.platform)}
+                        {social.accountName || social.platform}
                       </label>
                     </div>
-                  ))}
+                  )})}
                 </div>
                 
                 <div className="pt-4 border-t mt-4">
