@@ -122,6 +122,8 @@ export interface SiteSettings {
       status?: "not_configured" | "pending" | "active"
     }
     agent_email?: {
+      id?: string
+      inbox_id?: string
       domain?: "makinari.email" | "custom"
       customDomain?: string
       username?: string
@@ -139,6 +141,8 @@ export interface SiteSettings {
       error_message?: string
       created_at?: string
       data?: {
+        id?: string
+        inbox_id?: string
         domain?: "makinari.email" | "custom"
         customDomain?: string
         username?: string

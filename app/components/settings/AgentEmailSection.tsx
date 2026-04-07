@@ -127,7 +127,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
         
         const responseStatus = agentEmailData.status || responseData.status || "pending"
         const domainId = agentEmailData.domain_id || responseData.domain_id || (domain === "custom" ? customDomain : domain)
-        const inboxId = agentEmailData.id || responseData.id
+        const inboxId = agentEmailData.inbox_id || agentEmailData.id || responseData.inbox_id || responseData.id
         const dnsRecords = agentEmailData.dns_records || responseData.dns_records || []
         const domainStatus = agentEmailData.domain_status || responseData.domain_status
         const errorMessage = agentEmailData.error_message || responseData.error_message
@@ -156,6 +156,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
               displayName: responseDisplayName,
               setupRequested: responseStatus === "active" ? false : true,
               status: responseStatus,
+              inbox_id: inboxId,
               id: inboxId,
               domain_id: domainId,
               dns_records: Array.isArray(dnsRecords) && dnsRecords.length > 0 ? dnsRecords : undefined,
@@ -166,6 +167,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                 domain: (domain === "custom" ? customDomain : domain) as "makinari.email" | "custom" | undefined,
                 username: responseUsername,
                 displayName: responseDisplayName,
+                inbox_id: inboxId,
                 id: inboxId,
                 domain_id: domainId,
                 dns_records: Array.isArray(dnsRecords) && dnsRecords.length > 0 ? dnsRecords : undefined,
@@ -271,8 +273,12 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
     if (!currentSite || !siteId) return
 
     // Get inbox id from stored data
-    const inboxId = currentSite?.settings?.channels?.agent_email?.id ||
-                    currentSite?.settings?.channels?.agent_email?.data?.id
+    const agentEmail = currentSite?.settings?.channels?.agent_email
+    const inboxId = agentEmail?.inbox_id ||
+                    agentEmail?.id ||
+                    agentEmail?.data?.inbox_id ||
+                    agentEmail?.data?.id ||
+                    (agentEmail?.username && agentEmail?.domain ? `${agentEmail.username}@${agentEmail.domain === "custom" && agentEmail.customDomain ? agentEmail.customDomain : agentEmail.domain}` : undefined)
 
     if (!inboxId) {
       toast.error("Inbox ID not found. Cannot delete inbox.")

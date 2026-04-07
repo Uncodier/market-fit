@@ -1236,6 +1236,8 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
           status: (channels?.agent_email?.status ?? currentSite.settings?.channels?.agent_email?.status ?? "not_configured") as "not_configured" | "pending" | "active" | "waiting_for_verification",
           // Preserve metadata fields directly in agent_email (matching API structure)
           domain_id: currentSite.settings?.channels?.agent_email?.domain_id ?? currentSite.settings?.channels?.agent_email?.data?.domain_id,
+          inbox_id: currentSite.settings?.channels?.agent_email?.inbox_id ?? currentSite.settings?.channels?.agent_email?.data?.inbox_id,
+          id: currentSite.settings?.channels?.agent_email?.id ?? currentSite.settings?.channels?.agent_email?.data?.id,
           dns_records: currentSite.settings?.channels?.agent_email?.dns_records ?? currentSite.settings?.channels?.agent_email?.data?.dns_records,
           domain_status: currentSite.settings?.channels?.agent_email?.domain_status ?? currentSite.settings?.channels?.agent_email?.data?.domain_status,
           error_message: currentSite.settings?.channels?.agent_email?.error_message ?? currentSite.settings?.channels?.agent_email?.data?.error_message,
@@ -1246,6 +1248,8 @@ export const handleSaveChannels = async (data: SiteFormValues, options: SaveOpti
             username: channels?.agent_email?.username ?? currentSite.settings?.channels?.agent_email?.username ?? currentSite.settings?.channels?.agent_email?.data?.username,
             displayName: channels?.agent_email?.displayName ?? currentSite.settings?.channels?.agent_email?.displayName ?? currentSite.settings?.channels?.agent_email?.data?.displayName,
             domain_id: currentSite.settings?.channels?.agent_email?.domain_id ?? currentSite.settings?.channels?.agent_email?.data?.domain_id,
+            inbox_id: currentSite.settings?.channels?.agent_email?.inbox_id ?? currentSite.settings?.channels?.agent_email?.data?.inbox_id,
+            id: currentSite.settings?.channels?.agent_email?.id ?? currentSite.settings?.channels?.agent_email?.data?.id,
             dns_records: currentSite.settings?.channels?.agent_email?.dns_records ?? currentSite.settings?.channels?.agent_email?.data?.dns_records,
             domain_status: currentSite.settings?.channels?.agent_email?.domain_status ?? currentSite.settings?.channels?.agent_email?.data?.domain_status,
             error_message: currentSite.settings?.channels?.agent_email?.error_message ?? currentSite.settings?.channels?.agent_email?.data?.error_message

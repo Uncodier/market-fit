@@ -261,6 +261,8 @@ export const siteFormSchema = z.object({
       tracking_code: ""
     }),
     agent_email: z.object({
+      id: z.string().optional(),
+      inbox_id: z.string().optional(),
       domain: z.enum(["makinari.email", "custom"]).optional(),
       customDomain: z.string().optional(),
       username: z.string().optional(),
@@ -268,6 +270,8 @@ export const siteFormSchema = z.object({
       setupRequested: z.boolean().default(false),
       status: z.enum(["not_configured", "pending", "active", "waiting_for_verification"]).optional().default("not_configured")
     }).optional().default({
+      id: undefined,
+      inbox_id: undefined,
       domain: undefined,
       customDomain: "",
       username: "",
@@ -319,6 +323,8 @@ export const siteFormSchema = z.object({
       tracking_code: ""
     },
     agent_email: {
+      id: undefined,
+      inbox_id: undefined,
       domain: undefined,
       customDomain: "",
       username: "",

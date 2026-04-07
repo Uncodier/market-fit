@@ -997,8 +997,11 @@ export function ChatMessages({
   const isDelivered = (message: ChatMessage) =>
     message.metadata?.status === "delivered" || message.metadata?.status === "sent"
 
-  const renderMessageTime = (msg: ChatMessage, className = "text-xs opacity-70") => (
+  const renderMessageTime = (msg: ChatMessage, className = "text-xs opacity-70", showDate = false) => (
     <p className={`${className} inline-flex items-center gap-1`}>
+      {showDate && (
+        <span className="mr-1">{new Date(msg.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+      )}
       {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       {isDelivered(msg) && (
         <TooltipProvider>
@@ -1579,7 +1582,7 @@ export function ChatMessages({
                                 )}
                               </div>
                               <div className="flex items-center justify-end flex-1">
-                                {(msg.metadata?.status === "pending" || msg.metadata?.status === "accepted") && (
+                                {(msg.metadata?.status === "pending" || msg.metadata?.status === "accepted") ? (
                                   <>
                                     {msg.metadata?.status === "pending" && (
                                       <TooltipProvider>
@@ -1612,6 +1615,8 @@ export function ChatMessages({
                                       </TooltipProvider>
                                     )}
                                   </>
+                                ) : (
+                                  renderMessageTime(msg, "text-xs opacity-70 text-right", true)
                                 )}
                               </div>
                             </div>

@@ -453,7 +453,19 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
               variant="secondary"
               size="default"
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              onClick={() => window.open(latestSourceCodeUrl, '_blank', 'noopener noreferrer')}
+              onClick={() => {
+                const isZip = latestSourceCodeUrl.endsWith('.zip') || latestSourceCodeUrl.includes('.zip?');
+                if (isZip) {
+                  let finalUrl = latestSourceCodeUrl;
+                  if (latestSourceCodeUrl.startsWith('/')) {
+                      finalUrl = window.location.origin + latestSourceCodeUrl;
+                  }
+                  const proxyUrl = `/api/assets/proxy-zip?url=${encodeURIComponent(finalUrl)}`;
+                  window.open(proxyUrl, '_blank', 'noopener noreferrer');
+                } else {
+                  window.open(latestSourceCodeUrl, '_blank', 'noopener noreferrer');
+                }
+              }}
               title={t('layout.topbar.downloadSourceCode') || "Source Code"}
             >
               <Github className="h-4 w-4 shrink-0" />

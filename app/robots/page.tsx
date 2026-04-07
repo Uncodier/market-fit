@@ -16,6 +16,7 @@ import { BrowserSkeleton } from "@/app/components/skeletons/browser-skeleton"
 import { DeleteRobotModal } from "@/app/components/robots/DeleteRobotModal"
 import { createClient } from "@/lib/supabase/client"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { ZipViewer } from '@/app/components/simple-messages-view/components/ZipViewer'
 import "@/app/styles/iframe-containment.css"
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
 
@@ -854,6 +855,7 @@ function RobotsPageContent() {
   useEffect(() => {
     let resizeObserver: ResizeObserver | null = null;
     let timeoutId: NodeJS.Timeout;
+    let resizeTimeout: NodeJS.Timeout;
     
     const observe = () => {
       if (!tabsContainerRef.current) {
@@ -864,7 +866,6 @@ function RobotsPageContent() {
       // Initial calculation
       calculateMaxVisibleTabs();
 
-      let resizeTimeout: NodeJS.Timeout;
       resizeObserver = new ResizeObserver(() => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
@@ -879,6 +880,7 @@ function RobotsPageContent() {
 
     return () => {
       clearTimeout(timeoutId);
+      clearTimeout(resizeTimeout);
       if (resizeObserver) {
         resizeObserver.disconnect();
       }
@@ -892,8 +894,14 @@ function RobotsPageContent() {
     
     // Check ONLY the last requirement_status
     const lastStatus = requirementStatuses[requirementStatuses.length - 1];
+    
     if (lastStatus.preview_url && (lastStatus.source_code || lastStatus.repo_url)) {
       return lastStatus.preview_url;
+    }
+    
+    // Fallback: If no preview_url but repo_url points to a zip file in Supabase
+    if (!lastStatus.preview_url && lastStatus.repo_url && (lastStatus.repo_url.endsWith('.zip') || lastStatus.repo_url.includes('.zip?'))) {
+      return lastStatus.repo_url;
     }
     
     return null;
@@ -905,6 +913,9 @@ function RobotsPageContent() {
     (isActivityRobot && hasMessageBeenSent)) && 
     !pendingInstanceId
   )
+
+  const activeUrlToDisplay = latestPreviewUrl || streamUrl || "https://www.google.com"
+  const isZipUrl = typeof activeUrlToDisplay === 'string' && (activeUrlToDisplay.endsWith('.zip') || activeUrlToDisplay.includes('.zip?'))
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
@@ -1294,45 +1305,51 @@ function RobotsPageContent() {
                             contain: 'layout style paint',
                             isolation: 'isolate'
                           }}>
-                            <iframe
-                                src={latestPreviewUrl || streamUrl || "https://www.google.com"}
-                                className="border-0 bg-background rounded-lg contained-iframe"
-                                title={latestPreviewUrl ? "Preview" : streamUrl ? "Robot Browser Session" : "Google"}
-                                allowFullScreen
-                                allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
-                                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
-                                style={{
-                                  width: 'calc(100% + 4px)',
-                                  height: 'calc(100% + 4px)',
-                                  transform: 'translate(-2px, -2px)',
-                                  transformOrigin: 'center center',
-                                  position: 'relative',
-                                  zIndex: 1,
-                                  isolation: 'isolate'
-                                }}
-                                onLoad={(e) => {
-                                  // For previews, we don't need the connection status indicator 
-                                  // since it's just an iframe rendering HTML
-                                  if (latestPreviewUrl) return;
+                            {isZipUrl ? (
+                              <div className="w-full h-full flex items-center justify-center p-4">
+                                <ZipViewer url={activeUrlToDisplay} className="h-full border-0 rounded-lg shadow-none" />
+                              </div>
+                            ) : (
+                              <iframe
+                                  src={activeUrlToDisplay}
+                                  className="border-0 bg-background rounded-lg contained-iframe"
+                                  title={latestPreviewUrl ? "Preview" : streamUrl ? "Robot Browser Session" : "Google"}
+                                  allowFullScreen
+                                  allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
+                                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
+                                  style={{
+                                    width: 'calc(100% + 4px)',
+                                    height: 'calc(100% + 4px)',
+                                    transform: 'translate(-2px, -2px)',
+                                    transformOrigin: 'center center',
+                                    position: 'relative',
+                                    zIndex: 1,
+                                    isolation: 'isolate'
+                                  }}
+                                  onLoad={(e) => {
+                                    // For previews, we don't need the connection status indicator 
+                                    // since it's just an iframe rendering HTML
+                                    if (latestPreviewUrl) return;
 
-                                  if (streamUrl) {
-                                  setConnectionStatus('connected')
-                                  
-                                  // Only show indicator if status actually changed from non-connected to connected
-                                  if (prevConnectionStatusRef.current !== 'connected') {
-                                    setShowConnectedIndicator(true)
-                                  } else {
+                                    if (streamUrl) {
+                                    setConnectionStatus('connected')
+                                    
+                                    // Only show indicator if status actually changed from non-connected to connected
+                                    if (prevConnectionStatusRef.current !== 'connected') {
+                                      setShowConnectedIndicator(true)
+                                    } else {
+                                    }
+                                    prevConnectionStatusRef.current = 'connected'
+                                    
+                                    setReconnectAttempts(0)
                                   }
-                                  prevConnectionStatusRef.current = 'connected'
-                                  
-                                  setReconnectAttempts(0)
-                                }
-                              }}
-                              onError={(e) => {
-                                console.error('Iframe error:', e)
-                                handleConnectionLoss()
-                              }}
-                            />
+                                }}
+                                onError={(e) => {
+                                  console.error('Iframe error:', e)
+                                  handleConnectionLoss()
+                                }}
+                              />
+                            )}
                           </div>
                         </div>
                       </div>

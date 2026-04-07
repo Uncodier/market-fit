@@ -293,6 +293,8 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
           status: channels.whatsapp?.status || "not_configured"
         },
         agent_email: {
+          id: channels.agent_email?.id || channels.agent_email?.data?.id,
+          inbox_id: channels.agent_email?.inbox_id || channels.agent_email?.data?.inbox_id,
           domain: channels.agent_email?.domain,
           customDomain: channels.agent_email?.customDomain || "",
           username: channels.agent_email?.username || channels.agent_email?.data?.username || "",
@@ -345,6 +347,8 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
         status: "not_configured" as const
       },
       agent_email: {
+        id: undefined,
+        inbox_id: undefined,
         domain: undefined,
         customDomain: "",
         username: "",

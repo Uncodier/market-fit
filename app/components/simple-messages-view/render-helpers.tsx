@@ -3,6 +3,7 @@ import { InstanceLog, StructuredOutputResponse } from './types'
 import { getToolResult, getStructuredStyle, isBase64Image, formatBase64Image } from './utils'
 import { StructuredOutputStylesLight } from './types'
 import { SessionNeededComponent } from './components/SessionNeededComponent'
+import { ZipViewer } from './components/ZipViewer'
 
 // Helper function to render structured output based on tool_result.output
 export const renderStructuredOutput = (log: InstanceLog, isDarkMode: boolean): React.ReactElement | null => {
@@ -76,18 +77,28 @@ export const renderStructuredOutput = (log: InstanceLog, isDarkMode: boolean): R
 export const renderObjectWithImages = (obj: any, depth: number = 0, isBrowserVisible: boolean = false): React.ReactElement => {
   if (depth > 3) return <span>...</span> // Prevent infinite recursion
   
-  if (typeof obj === 'string' && isBase64Image(obj)) {
-    return (
-      <div className="mt-2">
-        <div className="text-xs text-gray-600 mb-1">Screenshot:</div>
-        <img 
-          src={formatBase64Image(obj)} 
-          alt="Screenshot" 
-          className={isBrowserVisible ? "w-full h-auto rounded border shadow-sm" : "max-w-[33vw] h-auto rounded border shadow-sm"}
-          style={{ maxHeight: '400px', maxWidth: isBrowserVisible ? '100%' : undefined }}
-        />
-      </div>
-    )
+  if (typeof obj === 'string') {
+    if (isBase64Image(obj)) {
+      return (
+        <div className="mt-2">
+          <div className="text-xs text-gray-600 mb-1">Screenshot:</div>
+          <img 
+            src={formatBase64Image(obj)} 
+            alt="Screenshot" 
+            className={isBrowserVisible ? "w-full h-auto rounded border shadow-sm" : "max-w-[33vw] h-auto rounded border shadow-sm"}
+            style={{ maxHeight: '400px', maxWidth: isBrowserVisible ? '100%' : undefined }}
+          />
+        </div>
+      )
+    }
+
+    if (obj.startsWith('http') && (obj.endsWith('.zip') || obj.includes('.zip?'))) {
+      return (
+        <div className="mt-2">
+          <ZipViewer url={obj} />
+        </div>
+      )
+    }
   }
   
   if (Array.isArray(obj)) {
