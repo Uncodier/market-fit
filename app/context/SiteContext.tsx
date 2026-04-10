@@ -842,7 +842,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       return () => {
         try {
-          sitesSubscription.unsubscribe()
+          supabaseRef.current?.removeChannel(sitesSubscription)
         } catch (error) {
           console.error("Error unsubscribing from sites channel:", error)
         }

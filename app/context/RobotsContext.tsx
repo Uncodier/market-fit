@@ -254,7 +254,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   const teardownRealtimeSubscription = useCallback(() => {
     if (robotsSubscriptionRef.current) {
       try {
-        robotsSubscriptionRef.current.unsubscribe()
+        const supabase = createClient()
+        supabase.removeChannel(robotsSubscriptionRef.current)
       } catch (e) {
         console.warn('[RobotsContext] Failed to unsubscribe from realtime channel:', e)
       } finally {

@@ -231,7 +231,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
       .subscribe()
 
     return () => {
-      subscription.unsubscribe()
+      supabase.removeChannel(subscription)
     }
   }, [activeRobotInstance?.id])
 

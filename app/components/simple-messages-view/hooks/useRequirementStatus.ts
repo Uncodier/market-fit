@@ -52,7 +52,7 @@ export const useRequirementStatus = (activeRobotInstance?: any) => {
       .subscribe()
 
     return () => {
-      subscription.unsubscribe()
+      supabase.removeChannel(subscription)
     }
   }, [activeRobotInstance?.id, loadStatuses])
 

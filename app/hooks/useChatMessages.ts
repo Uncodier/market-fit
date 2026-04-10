@@ -38,7 +38,8 @@ export function useChatMessages(
   const teardownRealtimeSubscription = useCallback(() => {
     if (messageSubscriptionRef.current) {
       try {
-        messageSubscriptionRef.current.unsubscribe()
+        const supabase = createClient()
+        supabase.removeChannel(messageSubscriptionRef.current)
       } catch (e) {
         console.warn('[useChatMessages] Failed to unsubscribe from realtime channel:', e)
       } finally {

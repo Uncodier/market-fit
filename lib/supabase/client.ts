@@ -80,13 +80,9 @@ export function createClient() {
     return createMockClient('creating-in-progress')
   }
 
-  // Si ya existe un cliente y fue creado hace menos de 5 minutos, devolver esa instancia
-  if (supabaseClient && clientCreationTimestamp) {
-    const now = Date.now()
-    const fiveMinutes = 5 * 60 * 1000
-    if (now - clientCreationTimestamp < fiveMinutes) {
-      return supabaseClient
-    }
+  // Si ya existe un cliente, devolver esa instancia (SINGLETON ESTRICTO)
+  if (supabaseClient) {
+    return supabaseClient
   }
 
   try {

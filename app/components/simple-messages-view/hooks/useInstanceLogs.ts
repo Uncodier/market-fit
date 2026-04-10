@@ -264,11 +264,22 @@ export const useInstanceLogs = ({
         setCollapsedSystemMessages(new Set())
         setCollapsedToolDetails(new Set())
         setExpandedToolGroups(new Set())
-      } else {
       }
       
       // Always load logs when there's an active instance
       loadInstanceLogs()
+
+      // Handle visibility changes to reload logs when returning to the tab
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          // Add a small delay to let Supabase reconnect if needed
+          setTimeout(() => {
+            loadInstanceLogs()
+          }, 1000)
+        }
+      }
+
+      document.addEventListener('visibilitychange', handleVisibility)
 
       // Setup real-time subscription for logs
       const supabase = createClient()
@@ -386,7 +397,8 @@ export const useInstanceLogs = ({
         .subscribe()
 
       return () => {
-        logsSubscription.unsubscribe()
+        document.removeEventListener('visibilitychange', handleVisibility)
+        supabase.removeChannel(logsSubscription)
       }
     } else {
       // Clear logs when no active instance

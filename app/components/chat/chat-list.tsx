@@ -311,7 +311,8 @@ export function ChatList({
         
         // Limpieza de cualquier suscripción existente
         if (subscriptionRef.current) {
-          subscriptionRef.current.unsubscribe();
+          supabase.removeChannel(subscriptionRef.current);
+          subscriptionRef.current = null;
         }
         
         // Crear una suscripción simple y directa usando el enfoque clásico de Supabase
@@ -630,7 +631,8 @@ export function ChatList({
       // Clean up subscription
       if (subscriptionRef.current) {
         console.log('Unsubscribing from conversations');
-        subscriptionRef.current.unsubscribe();
+        const supabase = createClient();
+        supabase.removeChannel(subscriptionRef.current);
         subscriptionRef.current = null;
       }
     }

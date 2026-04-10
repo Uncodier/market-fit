@@ -151,7 +151,7 @@ export function RequirementStatusList({
                     )}
                     {status.instance_id && (
                       <a 
-                        href={`/agents?id=${status.instance_id}`}
+                        href={`/robots?instance_id=${status.instance_id}`}
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs text-foreground/50 hover:text-foreground/80 hover:underline"

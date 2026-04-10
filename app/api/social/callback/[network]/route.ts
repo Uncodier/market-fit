@@ -21,7 +21,8 @@ const NETWORK_MAP: Record<string, string> = {
   instagram: "instagram",
   threads: "threads",
   twitter: "x",
-  x: "x"
+  x: "x",
+  youtube: "youtube"
 }
 
 export async function GET(
