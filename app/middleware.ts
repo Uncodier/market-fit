@@ -103,6 +103,26 @@ const EXCLUDED_PATHS = [
   '/api/auth/logout'
 ]
 
+// Map of common aliases that agents might use, mapping to the actual path
+const ALIAS_MAP: Record<string, string> = {
+  'instance': 'robots',
+  'instances': 'robots',
+  'chats': 'chat',
+  'messages': 'chat',
+  'conversations': 'chat',
+  'collection': 'content',
+  'collections': 'content',
+  'items': 'content',
+  'campaign': 'campaigns',
+  'deal': 'deals',
+  'lead': 'leads',
+  'person': 'people',
+  'company': 'companies',
+  'task': 'tasks',
+  'segment': 'segments',
+  'asset': 'assets'
+}
+
 // CORS headers configuration
 const getCorsHeaders = (response: NextResponse) => {
   response.headers.set('Access-Control-Allow-Origin', '*');
@@ -121,6 +141,59 @@ export async function middleware(request: NextRequest) {
   if (isSuspiciousRequest(pathname)) {
     // Avoid logging as error to keep console clean
     return new NextResponse(null, { status: 404 })
+  }
+  
+  // Handle route aliases for agent-generated URLs
+  // Patterns: /site/[siteId]/[alias](/[id])? OR /[alias](/[id])?
+  let targetAlias = null;
+  let targetId = null;
+  let isAliasMatch = false;
+  
+  // Check for /site/xxxxx/alias/id pattern
+  const sitePatternMatch = pathname.match(/^\/site\/[^\/]+\/([^\/]+)(?:\/(.*))?$/);
+  if (sitePatternMatch) {
+    targetAlias = sitePatternMatch[1];
+    targetId = sitePatternMatch[2];
+    isAliasMatch = true;
+  } else {
+    // Check for /alias/id pattern (only if it's in our alias map to avoid intercepting actual routes)
+    const directPatternMatch = pathname.match(/^\/([^\/]+)(?:\/(.*))?$/);
+    if (directPatternMatch) {
+      const potentialAlias = directPatternMatch[1];
+      if (ALIAS_MAP[potentialAlias] || potentialAlias === 'chat' || potentialAlias === 'robots') {
+        // If it's a known alias, OR if it's already the target collection but has an ID (needs query param conversion)
+        targetAlias = potentialAlias;
+        targetId = directPatternMatch[2];
+        isAliasMatch = true;
+      }
+    }
+  }
+
+  if (isAliasMatch && targetAlias) {
+    const mappedCollection = ALIAS_MAP[targetAlias] || targetAlias; // Fallback to targetAlias if it's already the right collection (e.g. they used 'chat/123')
+    
+    let redirectUrl = null;
+    const url = request.nextUrl.clone();
+    
+    // Handle special cases that need query parameters
+    if (mappedCollection === 'chat' && targetId) {
+      url.pathname = '/chat';
+      url.searchParams.set('conversationId', targetId);
+      redirectUrl = url;
+    } else if (mappedCollection === 'robots' && targetId) {
+      url.pathname = '/robots';
+      url.searchParams.set('instance', targetId);
+      redirectUrl = url;
+    } else if (mappedCollection !== targetAlias || sitePatternMatch) {
+      // General case: rewrite to canonical path
+      url.pathname = targetId ? `/${mappedCollection}/${targetId}` : `/${mappedCollection}`;
+      // Keep existing search params
+      redirectUrl = url;
+    }
+    
+    if (redirectUrl) {
+      return NextResponse.redirect(redirectUrl);
+    }
   }
   
   // Handle OPTIONS request for preflight checks (CORS)

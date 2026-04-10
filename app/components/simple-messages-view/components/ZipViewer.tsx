@@ -75,7 +75,7 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
           for (let i = 0; i < parts.length; i++) {
             const part = parts[i]
             const isLast = i === parts.length - 1
-            const isDir = zipEntry.dir ? isLast : !isLast
+            const isDir = isLast ? zipEntry.dir : true
 
             if (!currentNode.children[part]) {
               currentNode.children[part] = {

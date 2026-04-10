@@ -24,6 +24,7 @@ import {
   WhatsAppIcon,
   TelegramIcon,
   DiscordIcon,
+  ThreadsIcon,
   GlobeIcon
 } from "../ui/social-icons"
 
@@ -31,6 +32,7 @@ const SOCIAL_PLATFORMS = [
   { value: "facebook", label: "Facebook" },
   { value: "twitter", label: "Twitter" },
   { value: "instagram", label: "Instagram" },
+  { value: "threads", label: "Threads" },
   { value: "linkedin", label: "LinkedIn" },
   { value: "youtube", label: "YouTube" },
   { value: "tiktok", label: "TikTok" },
@@ -122,6 +124,7 @@ const getPlatformIcon = (platform: string | undefined, size: number = 16) => {
     case 'facebook': return <FacebookIcon size={size} />;
     case 'twitter': case 'x': return <TwitterIcon size={size} />;
     case 'instagram': return <InstagramIcon size={size} />;
+    case 'threads': return <ThreadsIcon size={size} />;
     case 'linkedin': return <LinkedInIcon size={size} />;
     case 'youtube': return <YouTubeIcon size={size} />;
     case 'tiktok': return <TikTokIcon size={size} />;
@@ -187,7 +190,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
   const handleConnectAccount = useCallback(async (index: number) => {
     const social = socialMedia[index]
     if (!social?.platform || !siteId) return
-    if (social.platform !== 'facebook' && social.platform !== 'tiktok') return
+    if (social.platform !== 'facebook' && social.platform !== 'tiktok' && social.platform !== 'instagram' && social.platform !== 'threads' && social.platform !== 'twitter' && social.platform !== 'x') return
     
     try {
       setIsSaving(true)
@@ -204,7 +207,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
       // 3-leg flow for Facebook and LinkedIn: OAuth redirects to OUR callback (/api/social/callback/:network).
       // We exchange code+state with outstand.so for a session token, then redirect to /settings/social_network.
       // Other networks: outstand.so receives the OAuth callback and redirects to /settings/social_network with session.
-      const is3Leg = social.platform === 'facebook' || (social.platform as string) === 'linkedin' || (social.platform as string) === 'tiktok'
+      const is3Leg = social.platform === 'facebook' || (social.platform as string) === 'linkedin' || (social.platform as string) === 'tiktok' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x'
       const redirectUri = is3Leg
         ? `${redirectOrigin}/api/social/callback/${social.platform}`
         : `${redirectOrigin}/settings/social_network?siteId=${siteId}&network=${social.platform}${isDevelopment ? `&returnTo=${encodeURIComponent(window.location.origin)}` : ''}`
@@ -432,7 +435,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                           </div>
                         </div>
                       </div>
-                      {(social.platform === 'facebook' || social.platform === 'tiktok') && (
+                      {(social.platform === 'facebook' || social.platform === 'tiktok' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x') && (
                         <Button
                           variant="outline"
                           type="button"
@@ -446,7 +449,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                   )}
 
                   {/* Connect/Reconnect Account - show when platform selected but not active */}
-                  {hasPlatform && !isActive && (social.platform === 'facebook' || social.platform === 'tiktok') && (
+                  {hasPlatform && !isActive && (social.platform === 'facebook' || social.platform === 'tiktok' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x') && (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/30">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="w-10 h-10 rounded-full font-inter font-bold bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0 text-orange-600">

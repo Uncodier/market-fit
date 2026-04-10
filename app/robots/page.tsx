@@ -854,8 +854,8 @@ function RobotsPageContent() {
   // Use ResizeObserver to track container width changes
   useEffect(() => {
     let resizeObserver: ResizeObserver | null = null;
-    let timeoutId: NodeJS.Timeout;
-    let resizeTimeout: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout | undefined;
+    let resizeTimeout: NodeJS.Timeout | undefined;
     
     const observe = () => {
       if (!tabsContainerRef.current) {
@@ -867,7 +867,9 @@ function RobotsPageContent() {
       calculateMaxVisibleTabs();
 
       resizeObserver = new ResizeObserver(() => {
-        clearTimeout(resizeTimeout);
+        if (resizeTimeout) {
+          clearTimeout(resizeTimeout);
+        }
         resizeTimeout = setTimeout(() => {
           calculateMaxVisibleTabs();
         }, 150);
@@ -879,8 +881,8 @@ function RobotsPageContent() {
     observe();
 
     return () => {
-      clearTimeout(timeoutId);
-      clearTimeout(resizeTimeout);
+      if (timeoutId) clearTimeout(timeoutId);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
       if (resizeObserver) {
         resizeObserver.disconnect();
       }

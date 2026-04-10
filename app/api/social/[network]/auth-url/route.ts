@@ -23,6 +23,7 @@ export async function POST(
       'twitter': 'x', // Twitter is now X
       'x': 'x',
       'instagram': 'instagram',
+      'threads': 'threads',
       'linkedin': 'linkedin',
       'youtube': 'youtube',
       'tiktok': 'tiktok',
