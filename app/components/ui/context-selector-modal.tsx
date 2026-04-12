@@ -232,22 +232,22 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
 
     if (data.length === 0 && !searchTerm.trim() && !loading) {
       const tableNames = {
-        leads: 'leads or contacts',
-        contents: 'content items',
-        requirements: 'requirements',
-        tasks: 'tasks',
-        campaigns: 'campaigns'
+        leads: 'leads o contactos',
+        contents: 'elementos de contenido',
+        requirements: 'requisitos',
+        tasks: 'tareas',
+        campaigns: 'campañas'
       }
       
       return (
         <div className="text-center py-12 min-h-[300px] flex flex-col items-center justify-center">
           <Search className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-          <h3 className="text-sm font-medium text-foreground mb-2">No {tableNames[tabKey as keyof typeof tableNames]} available</h3>
+          <h3 className="text-sm font-medium text-foreground mb-2">No hay {tableNames[tabKey as keyof typeof tableNames]} disponibles</h3>
           <p className="text-xs text-muted-foreground">
-            No {tableNames[tabKey as keyof typeof tableNames]} found in your site database
+            No se encontraron {tableNames[tabKey as keyof typeof tableNames]} en la base de datos de tu sitio
           </p>
           <p className="text-xs text-muted-foreground/70 mt-1">
-            This feature will be available once you have {tableNames[tabKey as keyof typeof tableNames]} in your system
+            Esta función estará disponible una vez que tengas {tableNames[tabKey as keyof typeof tableNames]} en tu sistema
           </p>
         </div>
       )
@@ -257,7 +257,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
       return (
         <div className="text-center py-12 min-h-[300px] flex flex-col items-center justify-center">
           <p className="text-sm text-muted-foreground">
-            No {tabKey} found matching "{searchTerm}"
+            No se encontraron {tabKey} que coincidan con "{searchTerm}"
           </p>
         </div>
       )
@@ -345,10 +345,10 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
             variant="secondary"
             size="sm"
             className="h-8 hover:bg-secondary/80 transition-colors duration-200 px-3"
-            title="Add context"
+            title="Agregar contexto"
           >
             @
-            <span className="ml-1">context</span>
+            <span className="ml-1">contexto</span>
             {hideChips && totalSelected > 0 && (
               <Badge variant="outline" className="ml-1.5 h-5 px-1.5 py-0 text-[10px] flex items-center justify-center">
                 {totalSelected}
@@ -383,9 +383,9 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
       
       <DialogContent className="max-w-2xl max-h-[80vh] min-h-[600px] flex flex-col p-0" style={{ rowGap: '0px' }}>
         <DialogHeader className="px-6 py-6">
-          <DialogTitle>Add Context</DialogTitle>
+          <DialogTitle>Agregar Contexto</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Search and select data to provide context to the robot
+            Busca y selecciona datos para proporcionar contexto a la makina
           </p>
         </DialogHeader>
 
@@ -397,7 +397,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
                 ref={searchInputRef}
                 data-command-k-input
                 type="text"
-                placeholder="Search leads, content, requirements, tasks, campaigns..."
+                placeholder="Buscar leads, contenido, requisitos, tareas, campañas..."
                 className="w-full h-12"
                 icon={<Search className="h-3.5 w-3.5 text-muted-foreground" />}
                 value={searchTerm}
@@ -409,7 +409,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
             </div>
             {searchTerm.trim().length >= 1 && (
               <p className="text-xs text-muted-foreground mt-2">
-                Searching for "{searchTerm}" across all databases...
+                Buscando "{searchTerm}" en todas las bases de datos...
               </p>
             )}
           </div>
@@ -426,7 +426,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
                 )}
               </TabsTrigger>
               <TabsTrigger value="contents" className="flex items-center gap-2">
-                📄 Content
+                📄 Contenido
                 {tabCounts.contents > 0 && (
                   <Badge variant="outline" className="h-4 px-1.5 text-xs">
                     {tabCounts.contents}
@@ -434,7 +434,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
                 )}
               </TabsTrigger>
               <TabsTrigger value="requirements" className="flex items-center gap-2">
-                📋 Requirements
+                📋 Requisitos
                 {tabCounts.requirements > 0 && (
                   <Badge variant="outline" className="h-4 px-1.5 text-xs">
                     {tabCounts.requirements}
@@ -442,7 +442,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
                 )}
               </TabsTrigger>
               <TabsTrigger value="tasks" className="flex items-center gap-2">
-                ⚡ Tasks
+                ⚡ Tareas
                 {tabCounts.tasks > 0 && (
                   <Badge variant="outline" className="h-4 px-1.5 text-xs">
                     {tabCounts.tasks}
@@ -450,7 +450,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
                 )}
               </TabsTrigger>
               <TabsTrigger value="campaigns" className="flex items-center gap-2">
-                🎯 Campaigns
+                🎯 Campañas
                 {tabCounts.campaigns > 0 && (
                   <Badge variant="outline" className="h-4 px-1.5 text-xs">
                     {tabCounts.campaigns}
@@ -482,7 +482,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
         {/* Footer */}
         <ModalFooter>
           <ModalFooterInfo>
-            {totalSelected} item{totalSelected !== 1 ? 's' : ''} selected
+            {totalSelected} elemento{totalSelected !== 1 ? 's' : ''} seleccionado{totalSelected !== 1 ? 's' : ''}
           </ModalFooterInfo>
           <ModalFooterActions>
             <Button
@@ -499,13 +499,13 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
               }}
               disabled={totalSelected === 0}
             >
-              Clear All
+              Borrar Todo
             </Button>
             <Button
               size="sm"
               onClick={() => setOpen(false)}
             >
-              Done
+              Listo
             </Button>
           </ModalFooterActions>
         </ModalFooter>

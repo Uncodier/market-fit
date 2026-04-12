@@ -202,7 +202,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
           <div className="p-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Video Details</h3>
+              <h3 className="text-lg font-semibold">Detalles del Video</h3>
             </div>
 
             {/* Action buttons */}
@@ -250,7 +250,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
               {/* Video metadata */}
               {metadata && (
                 <div>
-                  <h4 className="text-sm font-semibold mb-2">Generation Details</h4>
+                  <h4 className="text-sm font-semibold mb-2">Detalles de Generación</h4>
                   <div className="space-y-2">
                     {metadata.aspectRatio && (
                       <div className="flex justify-between text-sm">
@@ -272,7 +272,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
                     )}
                     {metadata.generated_at && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Generated:</span>
+                        <span className="text-muted-foreground">Generado:</span>
                         <span className="font-medium">
                           {new Date(metadata.generated_at).toLocaleString()}
                         </span>
@@ -284,7 +284,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
 
               {/* Video URL */}
               <div>
-                <h4 className="text-sm font-semibold mb-2">Video URL</h4>
+                <h4 className="text-sm font-semibold mb-2">URL del Video</h4>
                 <div className="p-3 bg-muted/30 rounded text-xs break-all font-mono">
                   {videoUrl}
                 </div>
@@ -292,7 +292,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
 
               {/* Video info */}
               <div>
-                <h4 className="text-sm font-semibold mb-2">Video Info</h4>
+                <h4 className="text-sm font-semibold mb-2">Información del Video</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Format:</span>

@@ -198,7 +198,7 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
     return (
       <div className="flex flex-col items-center justify-center p-8 border rounded-lg bg-card/50">
         <Loader size={24} className="animate-spin text-primary mb-2" />
-        <span className="text-sm text-muted-foreground">Extracting ZIP archive...</span>
+        <span className="text-sm text-muted-foreground">Extrayendo archivo ZIP...</span>
       </div>
     )
   }
@@ -208,7 +208,7 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
       <div className="p-4 border border-destructive/50 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center justify-between">
         <span>Error: {error}</span>
         <button onClick={() => window.open(url, '_blank')} className="px-3 py-1 bg-background rounded border text-xs hover:bg-muted">
-          Try Direct Link
+          Probar Enlace Directo
         </button>
       </div>
     )
@@ -229,7 +229,7 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
           className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded hover:bg-muted transition-colors text-muted-foreground"
         >
           <Download size={14} />
-          <span>Download ZIP</span>
+          <span>Descargar ZIP</span>
         </button>
       </div>
 
@@ -252,7 +252,7 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
               <FileText size={32} className="mb-2 opacity-50" />
-              <span className="text-sm">Select a file to view its contents</span>
+              <span className="text-sm">Selecciona un archivo para ver su contenido</span>
             </div>
           )}
         </div>

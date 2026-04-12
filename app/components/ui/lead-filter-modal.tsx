@@ -320,7 +320,7 @@ export function LeadFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Tag className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Status</h3>
+                <h3 className="font-medium">Estado</h3>
                 {localFilters.status.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.status.length}
@@ -366,7 +366,7 @@ export function LeadFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Segments</h3>
+                <h3 className="font-medium">Segmentos</h3>
                 {localFilters.segments.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.segments.length}
@@ -412,7 +412,7 @@ export function LeadFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Origin</h3>
+                <h3 className="font-medium">Origen</h3>
                 {localFilters.origin.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.origin.length}
@@ -458,7 +458,7 @@ export function LeadFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Journey Stage</h3>
+                <h3 className="font-medium">Etapa del Viaje</h3>
                 {localFilters.journeyStages.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.journeyStages.length}

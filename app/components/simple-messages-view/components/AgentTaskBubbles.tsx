@@ -9,7 +9,7 @@ const TASK_BUBBLES: Array<{
   size: 'sm' | 'md' | 'lg'
 }> = [
   {
-    text: "Write a cold email sequence for SaaS leads",
+    text: "Escribe una secuencia de correos en frío",
     color: "bg-violet-100/80 text-violet-700 border-violet-200/60 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700/40",
     position: "top-[18%] left-[12%]",
     animation: "animate-float-slow",
@@ -17,7 +17,7 @@ const TASK_BUBBLES: Array<{
     size: "md",
   },
   {
-    text: "Find ICP companies on LinkedIn",
+    text: "Encuentra empresas ICP en LinkedIn",
     color: "bg-indigo-100/80 text-indigo-700 border-indigo-200/60 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700/40",
     position: "top-[10%] right-[18%]",
     animation: "animate-float-medium",
@@ -25,7 +25,7 @@ const TASK_BUBBLES: Array<{
     size: "sm",
   },
   {
-    text: "Summarize last week's conversations",
+    text: "Resume las conversaciones de la semana pasada",
     color: "bg-pink-100/80 text-pink-700 border-pink-200/60 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-700/40",
     position: "top-[32%] left-[5%]",
     animation: "animate-float-reverse",
@@ -33,7 +33,7 @@ const TASK_BUBBLES: Array<{
     size: "sm",
   },
   {
-    text: "Generate a product demo script",
+    text: "Genera un guión de demostración del producto",
     color: "bg-emerald-100/80 text-emerald-700 border-emerald-200/60 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/40",
     position: "top-[22%] right-[6%]",
     animation: "animate-float-slow",
@@ -41,7 +41,7 @@ const TASK_BUBBLES: Array<{
     size: "md",
   },
   {
-    text: "Qualify leads from last campaign",
+    text: "Califica leads de la última campaña",
     color: "bg-cyan-100/80 text-cyan-700 border-cyan-200/60 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-700/40",
     position: "top-[42%] left-[8%]",
     animation: "animate-float-fast",
@@ -49,7 +49,7 @@ const TASK_BUBBLES: Array<{
     size: "sm",
   },
   {
-    text: "Create a 30-day content calendar",
+    text: "Crea un calendario de contenido de 30 días",
     color: "bg-rose-100/80 text-rose-700 border-rose-200/60 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-700/40",
     position: "top-[14%] left-[38%]",
     animation: "animate-float-medium",
@@ -57,7 +57,7 @@ const TASK_BUBBLES: Array<{
     size: "md",
   },
   {
-    text: "Draft follow-up messages for open deals",
+    text: "Redacta mensajes de seguimiento para tratos",
     color: "bg-teal-100/80 text-teal-700 border-teal-200/60 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-700/40",
     position: "top-[38%] right-[10%]",
     animation: "animate-float-reverse",
@@ -65,7 +65,7 @@ const TASK_BUBBLES: Array<{
     size: "md",
   },
   {
-    text: "Analyze churn risk segments",
+    text: "Analiza segmentos de riesgo de abandono",
     color: "bg-purple-100/80 text-purple-700 border-purple-200/60 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700/40",
     position: "top-[52%] left-[15%]",
     animation: "animate-float-slow",
@@ -73,7 +73,7 @@ const TASK_BUBBLES: Array<{
     size: "sm",
   },
   {
-    text: "Build an outbound campaign for Q2",
+    text: "Crea una campaña para el segundo trimestre",
     color: "bg-blue-100/80 text-blue-700 border-blue-200/60 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/40",
     position: "top-[55%] right-[14%]",
     animation: "animate-float-medium",
@@ -81,7 +81,7 @@ const TASK_BUBBLES: Array<{
     size: "md",
   },
   {
-    text: "Scrape contact info from target accounts",
+    text: "Extrae info de contacto de cuentas objetivo",
     color: "bg-amber-100/80 text-amber-700 border-amber-200/60 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/40",
     position: "top-[28%] right-[30%]",
     animation: "animate-float-fast",
@@ -89,7 +89,7 @@ const TASK_BUBBLES: Array<{
     size: "sm",
   },
   {
-    text: "Translate campaign copy to Spanish",
+    text: "Traduce el texto de la campaña al español",
     color: "bg-fuchsia-100/80 text-fuchsia-700 border-fuchsia-200/60 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-700/40",
     position: "top-[62%] left-[35%]",
     animation: "animate-float-reverse",
@@ -97,7 +97,7 @@ const TASK_BUBBLES: Array<{
     size: "sm",
   },
   {
-    text: "Generate weekly performance report",
+    text: "Genera el informe de rendimiento semanal",
     color: "bg-lime-100/80 text-lime-700 border-lime-200/60 dark:bg-lime-900/30 dark:text-lime-300 dark:border-lime-700/40",
     position: "top-[48%] right-[32%]",
     animation: "animate-float-slow",

@@ -58,7 +58,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   {assets.length > 0 ? <Folder className="h-4 w-4" /> : <Target className="h-4 w-4" />}
                   <span className="font-medium">
-                    {assets.length > 0 ? `Assets (${assets.length})` : 'Plan Steps'}
+                    {assets.length > 0 ? `Archivos (${assets.length})` : 'Pasos del plan'}
                   </span>
                 </div>
                 <Button
@@ -123,12 +123,12 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                   {allCompleted ? (
                     <>
                       <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span className="font-medium whitespace-nowrap text-green-600">All steps completed!</span>
-                      <span className="text-xs text-green-600/70">Back to step 1</span>
+                      <span className="font-medium whitespace-nowrap text-green-600">¡Todos los pasos completados!</span>
+                      <span className="text-xs text-green-600/70">Volver al paso 1</span>
                     </>
                   ) : (
                     <>
-                      <span className="font-medium whitespace-nowrap">Step {currentStep?.order || 1} of {steps.length}</span>
+                      <span className="font-medium whitespace-nowrap">Paso {currentStep?.order || 1} de {steps.length}</span>
                       <span className="text-xs truncate">- {currentStep?.title}</span>
                     </>
                   )}
@@ -146,7 +146,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                           }
                         }}
                         className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30"
-                        title="Cancel plan"
+                        title="Cancelar plan"
                       >
                         <X className="h-3 w-3 text-red-600" />
                       </Button>
@@ -162,7 +162,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                           }
                         }}
                         className="h-6 w-6 p-0 hover:bg-amber-100 dark:hover:bg-amber-900/30"
-                        title="Pause plan"
+                        title="Pausar plan"
                       >
                         <Pause className="h-3 w-3 text-amber-600" />
                       </Button>
@@ -178,7 +178,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                           }
                         }}
                         className="h-6 w-6 p-0 hover:bg-green-100 dark:hover:bg-green-900/30"
-                        title="Resume plan"
+                        title="Reanudar plan"
                       >
                         <Play className="h-3 w-3 text-green-600" />
                       </Button>
@@ -203,7 +203,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                         isCurrentStep ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'
                       }`}
                       onClick={() => canEdit && onEditStep(step)}
-                      title={canEdit ? "Click to edit step" : "Step completed"}
+                      title={canEdit ? "Haz clic para editar el paso" : "Paso completado"}
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <div className={`w-2 h-2 rounded-full font-inter flex-shrink-0 ${
@@ -226,7 +226,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                               onDeleteStep(step.id)
                             }}
                             className="h-6 w-6 p-0 hover:bg-red-100 dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Delete step"
+                            title="Eliminar paso"
                           >
                             <Trash2 className="h-3 w-3 text-red-600" />
                           </Button>
@@ -252,8 +252,8 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               onClick={() => onToggleExpanded()}
             >
               <Folder className="h-4 w-4" />
-              <span className="font-medium">Assets ({assets.length})</span>
-              <span className="text-xs">- Click to view uploaded files</span>
+              <span className="font-medium">Archivos ({assets.length})</span>
+              <span className="text-xs">- Haz clic para ver los archivos subidos</span>
               <ChevronDown className="h-3 w-3 ml-auto" />
             </div>
           ) : steps.length > 0 ? (
@@ -271,7 +271,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
                 </>
               ) : (
                 <>
-                  <span className="font-medium whitespace-nowrap">Step {currentStep?.order || 1} of {steps.length}</span>
+                      <span className="font-medium whitespace-nowrap">Paso {currentStep?.order || 1} de {steps.length}</span>
                   <span className="text-xs truncate">- {currentStep?.title}</span>
                 </>
               )}
@@ -328,14 +328,14 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               <div className="w-2 h-2 rounded-full font-inter flex-shrink-0 bg-muted-foreground/60"></div>
               {assets.length > 0 ? (
                 <>
-                  <span className="font-medium">Assets ({assets.length})</span>
-                  <span className="text-xs">- Click to view uploaded files</span>
+                  <span className="font-medium">Archivos ({assets.length})</span>
+                  <span className="text-xs">- Haz clic para ver los archivos subidos</span>
                   <ChevronDown className="h-3 w-3 ml-auto" />
                 </>
               ) : (
                 <>
-                  <span className="font-medium">No plan available</span>
-                  <span className="text-xs">- Robot will generate plan when started</span>
+                  <span className="font-medium">No hay plan disponible</span>
+                  <span className="text-xs">- La makina generará un plan al iniciar</span>
                 </>
               )}
             </div>

@@ -237,7 +237,7 @@ export function FilterModal({
           <div>
             <div className="flex items-center gap-2">
               <Filter className="h-5 w-5 text-foreground" />
-              <ModalHeaderTitle>Filter Requirements</ModalHeaderTitle>
+              <ModalHeaderTitle>Filtrar Requisitos</ModalHeaderTitle>
             </div>
             <ModalHeaderDescription>
               Select filters to narrow down your requirement list.
@@ -274,7 +274,7 @@ export function FilterModal({
             <div className="space-y-3">
               <div className="flex items-center">
                 <ChevronUp className="h-4 w-4 text-muted-foreground mr-2" />
-                <h3 className="font-medium text-sm text-foreground">Priority</h3>
+                <h3 className="font-medium text-sm text-foreground">Prioridad</h3>
               </div>
               <div className="flex flex-wrap gap-2">
                 {["high", "medium", "low"].map((priority) => (
@@ -305,7 +305,7 @@ export function FilterModal({
             <div className="space-y-3">
               <div className="flex items-center">
                 <CheckCircle2 className="h-4 w-4 text-muted-foreground mr-2" />
-                <h3 className="font-medium text-sm text-foreground">Completion Status</h3>
+                <h3 className="font-medium text-sm text-foreground">Estado de Finalización</h3>
               </div>
               <div className="flex flex-wrap gap-2">
                 {completionStatusOptions.map((status) => (
@@ -336,7 +336,7 @@ export function FilterModal({
             <div className="space-y-3">
               <div className="flex items-center">
                 <RotateCcw className="h-4 w-4 text-muted-foreground mr-2" />
-                <h3 className="font-medium text-sm text-foreground">Status</h3>
+                <h3 className="font-medium text-sm text-foreground">Estado</h3>
               </div>
               <div className="flex flex-wrap gap-2">
                 {statusOptions.map((status) => (
@@ -369,7 +369,7 @@ export function FilterModal({
                 <div className="space-y-3">
                   <div className="flex items-center">
                     <Users className="h-4 w-4 text-muted-foreground mr-2" />
-                    <h3 className="font-medium text-sm text-foreground">Segments</h3>
+                    <h3 className="font-medium text-sm text-foreground">Segmentos</h3>
                   </div>
                   <div className="space-y-2">
                     {segments.map((segment) => (

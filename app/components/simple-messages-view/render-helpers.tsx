@@ -59,7 +59,7 @@ export const renderStructuredOutput = (log: InstanceLog, isDarkMode: boolean): R
                     borderColor: style.color + '33'
                   }}
                 >
-                  Step {structuredData.step}
+                  Paso {structuredData.step}
                 </span>
               )}
             </div>

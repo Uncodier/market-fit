@@ -85,7 +85,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                       {isImage ? (
                         <img
                           src={attachment.url}
-                          alt={attachment.name || `Attachment ${index + 1}`}
+                          alt={attachment.name || `Archivo adjunto ${index + 1}`}
                           className="w-16 h-16 object-cover rounded-lg border dark:border-white/5 border-black/5 cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => window.open(attachment.url, '_blank')}
                         />
@@ -98,7 +98,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                         </div>
                       )}
                       <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity truncate">
-                        {attachment.name || `Attachment ${index + 1}`}
+                        {attachment.name || `Archivo adjunto ${index + 1}`}
                       </div>
                     </div>
                   )
@@ -163,7 +163,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         {status === 'pending' && (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full font-inter text-xs font-medium border bg-yellow-100/90 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
             <div className="w-2 h-2 bg-yellow-600 rounded-full font-inter animate-pulse"></div>
-            Pending
+            Pendiente
           </span>
         )}
         

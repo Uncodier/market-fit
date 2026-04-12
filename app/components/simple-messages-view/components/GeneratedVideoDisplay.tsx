@@ -131,8 +131,8 @@ export const GeneratedVideoDisplay: React.FC<GeneratedVideoDisplayProps> = ({
                 <source src={videoUrl} type={mimeType} />
                 <source src={videoUrl} type="video/mp4" />
                 <source src={videoUrl} type="video/webm" />
-                Your browser does not support the video tag.
-                <a href={videoUrl} download>Download video</a>
+                Tu navegador no soporta el formato de video.
+                <a href={videoUrl} download>Descargar video</a>
               </video>
               <div className="text-xs text-muted-foreground/70 mt-1">
                 Generated Video {index + 1}

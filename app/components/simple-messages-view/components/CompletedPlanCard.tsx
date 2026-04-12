@@ -32,7 +32,7 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
         meta: isDarkMode 
           ? 'text-green-500' 
           : 'text-green-600',
-        label: 'Plan Completed',
+        label: 'Plan Completado',
       }
     : isFailed
     ? {
@@ -51,7 +51,7 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
         meta: isDarkMode 
           ? 'text-red-500' 
           : 'text-red-600',
-        label: 'Plan Failed',
+        label: 'Plan Fallido',
       }
     : (isPending || isInProgress)
     ? {
@@ -70,7 +70,7 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
         meta: isDarkMode 
           ? 'text-blue-500' 
           : 'text-blue-600',
-        label: plan.plan_type === 'objective' ? 'New Objective' : 'Plan Started',
+        label: plan.plan_type === 'objective' ? 'Nuevo Objetivo' : 'Plan Iniciado',
       }
     : {
         container: isDarkMode 
@@ -88,7 +88,7 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
         meta: isDarkMode 
           ? 'text-amber-500' 
           : 'text-amber-700',
-        label: 'Plan Update',
+        label: 'Actualización del Plan',
       }
 
   return (
@@ -110,7 +110,7 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
         {isCompleted && plan.steps && Array.isArray(plan.steps) && (
           <div className="space-y-1">
             <div className={`text-xs font-medium mb-2 ${baseClasses.meta}`}>
-              Steps ({plan.steps.length}):
+              Pasos ({plan.steps.length}):
             </div>
             {plan.steps.map((step: any, stepIndex: number) => (
               <div key={step.id || stepIndex} className={`flex items-center gap-2 text-xs ${baseClasses.text}`}>
@@ -124,13 +124,13 @@ export const CompletedPlanCard: React.FC<CompletedPlanCardProps> = ({ plan }) =>
         
         <div className={`flex items-center gap-4 mt-3 text-xs ${baseClasses.meta}`}>
           {typeof plan.progress_percentage === 'number' && (
-            <span>Progress: {plan.progress_percentage}%</span>
+            <span>Progreso: {plan.progress_percentage}%</span>
           )}
           {(typeof plan.steps_completed === 'number' || typeof plan.steps_total === 'number') && (
-            <span>Steps: {plan.steps_completed || 0}/{plan.steps_total || 0}</span>
+            <span>Pasos: {plan.steps_completed || 0}/{plan.steps_total || 0}</span>
           )}
           {(plan.completed_at || plan.updated_at) && (
-            <span>{isFailed ? 'Failed' : isCompleted ? 'Completed' : 'Updated'}: {new Date(plan.completed_at || plan.updated_at!).toLocaleString()}</span>
+            <span>{isFailed ? 'Fallido' : isCompleted ? 'Completado' : 'Actualizado'}: {new Date(plan.completed_at || plan.updated_at!).toLocaleString()}</span>
           )}
         </div>
       </div>

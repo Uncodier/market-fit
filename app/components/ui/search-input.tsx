@@ -22,7 +22,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     onChange,
     showShortcut = true, 
     shortcut = "K", 
-    placeholder = "Search...", 
+    placeholder = "Buscar...", 
     className,
     containerClassName,
     value,

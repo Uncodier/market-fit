@@ -111,7 +111,7 @@ export const SessionNeededComponent: React.FC<SessionNeededComponentProps> = ({
           <div className="flex items-center gap-2 mb-1">
             <Shield className="w-4 h-4" style={{ color: isDarkMode ? '#fbbf24' : '#f57c00' }} />
             <span className="font-semibold text-sm" style={{ color: isDarkMode ? '#fbbf24' : '#f57c00' }}>
-              Authentication Required
+              Autenticación Requerida
             </span>
             {structuredData.step && (
               <span className="text-xs px-2 py-1 rounded-full font-inter border font-medium"
@@ -120,12 +120,12 @@ export const SessionNeededComponent: React.FC<SessionNeededComponentProps> = ({
                       color: isDarkMode ? '#fbbf24' : '#f57c00',
                       borderColor: (isDarkMode ? '#fbbf24' : '#f57c00') + '40'
                     }}>
-                Step {structuredData.step}
+                Paso {structuredData.step}
               </span>
             )}
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-            {platformInfo.name} authentication is required to continue with the plan.
+            La autenticación en {platformInfo.name} es necesaria para continuar con el plan.
           </div>
         </div>
       </div>
@@ -153,7 +153,7 @@ export const SessionNeededComponent: React.FC<SessionNeededComponentProps> = ({
           }}
         >
           <Key className="w-3 h-3" />
-          Provide Session
+          Proveer Sesión
         </Button>
         
         {platformInfo.url && (
@@ -164,7 +164,7 @@ export const SessionNeededComponent: React.FC<SessionNeededComponentProps> = ({
             onClick={() => window.open(platformInfo.url, '_blank')}
           >
             <ExternalLink className="w-3 h-3" />
-            Open {platformInfo.name}
+            Abrir {platformInfo.name}
           </Button>
         )}
         
@@ -174,7 +174,7 @@ export const SessionNeededComponent: React.FC<SessionNeededComponentProps> = ({
           className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700"
           onClick={handleSkipStep}
         >
-          Skip Step
+          Omitir Paso
         </Button>
       </div>
 
@@ -182,7 +182,7 @@ export const SessionNeededComponent: React.FC<SessionNeededComponentProps> = ({
       <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
         <div className="flex items-center gap-1">
           <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-          <span>You can provide authentication credentials or skip this step to continue with the plan.</span>
+          <span>Puedes proveer credenciales de autenticación u omitir este paso para continuar con el plan.</span>
         </div>
       </div>
     </div>

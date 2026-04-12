@@ -88,12 +88,12 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="25" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Low</SelectItem>
-                <SelectItem value="50" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Fair</SelectItem>
-                <SelectItem value="75" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Good</SelectItem>
-                <SelectItem value="85" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">High</SelectItem>
-                <SelectItem value="95" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Very High</SelectItem>
-                <SelectItem value="100" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Maximum</SelectItem>
+                <SelectItem value="25" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Baja</SelectItem>
+                <SelectItem value="50" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Regular</SelectItem>
+                <SelectItem value="75" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Buena</SelectItem>
+                <SelectItem value="85" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Alta</SelectItem>
+                <SelectItem value="95" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Muy Alta</SelectItem>
+                <SelectItem value="100" hideIndicator className="data-[state=checked]:bg-blue-50 data-[state=checked]:text-blue-700">Máxima</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -250,7 +250,7 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="mono" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">Mono</SelectItem>
-                <SelectItem value="stereo" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">Stereo</SelectItem>
+                <SelectItem value="stereo" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">Estéreo</SelectItem>
               </SelectContent>
             </Select>
           </div>

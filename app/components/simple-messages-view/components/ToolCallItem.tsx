@@ -195,21 +195,21 @@ Details: ${contentToCopy.details}`
         }}
         title={
           (log.screenshot_base64 || (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && toolName !== 'generate_video') || (log.details && Object.keys(log.details).length > 0))
-            ? (collapsedToolDetails.has(log.id) ? "Click to show details" : "Click to hide details")
-            : "Tool call completed"
+            ? (collapsedToolDetails.has(log.id) ? "Haz clic para mostrar detalles" : "Haz clic para ocultar detalles")
+            : "Llamada a herramienta completada"
         }
       >
         <div className="flex items-center gap-2">
           {toolName && renderToolIcon(toolName)}
           <span className="font-medium text-muted-foreground">
-            {log.log_type === 'tool_call' ? 'Tool Call' : 'Tool Result'}: {toolName || 'Unknown'}
+            {log.log_type === 'tool_call' ? 'Llamada a herramienta' : 'Resultado de herramienta'}: {toolName || 'Desconocido'}
           </span>
           
           {/* Status badge - only show for pending status */}
           {status === 'pending' && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full font-inter text-xs font-medium border bg-yellow-100/90 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
               <div className="w-2 h-2 bg-yellow-600 rounded-full font-inter animate-pulse"></div>
-              Pending
+              Pendiente
             </span>
           )}
           
@@ -220,17 +220,17 @@ Details: ${contentToCopy.details}`
           )}
           {hasError && (
             <span className="text-red-600 ml-2">
-              - {toolName === 'generate_image' || toolName === 'generate_video' ? 'Generation failed' : 'Tool failed'}
+              - {toolName === 'generate_image' || toolName === 'generate_video' ? 'Generación fallida' : 'Fallo en la herramienta'}
             </span>
           )}
           {toolName === 'generate_image' && toolResult?.output?.images && (
             <span className="text-muted-foreground/70 ml-2">
-              - Generated {toolResult.output.images.length} image(s)
+              - {toolResult.output.images.length} imagen(es) generada(s)
             </span>
           )}
           {toolName === 'generate_video' && toolResult?.output?.videos && (
             <span className="text-muted-foreground/70 ml-2">
-              - Generated {toolResult.output.videos.length} video(s)
+              - {toolResult.output.videos.length} video(s) generado(s)
             </span>
           )}
           <div className="ml-auto flex items-center gap-2">
@@ -239,7 +239,7 @@ Details: ${contentToCopy.details}`
               <button
                 onClick={handleDownloadImage}
                 className="p-1 rounded hover:bg-muted-foreground/10 transition-colors"
-                title="Download images"
+                title="Descargar imágenes"
               >
                 <Download className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
               </button>
@@ -249,7 +249,7 @@ Details: ${contentToCopy.details}`
               <button
                 onClick={handleDownloadVideo}
                 className="p-1 rounded hover:bg-muted-foreground/10 transition-colors"
-                title="Download videos"
+                title="Descargar videos"
               >
                 <Download className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
               </button>
@@ -258,7 +258,7 @@ Details: ${contentToCopy.details}`
             <button
               onClick={handleCopy}
               className="p-1 rounded hover:bg-muted-foreground/10 transition-colors"
-              title={copied ? "Copied!" : "Copy tool content"}
+              title={copied ? "¡Copiado!" : "Copiar contenido de la herramienta"}
             >
               {copied ? (
                 <Check className="h-3.5 w-3.5 text-green-600" />
@@ -326,22 +326,22 @@ Details: ${contentToCopy.details}`
                   {/* Generation details */}
                   {toolResult.output.metadata && (
                     <div>
-                      <strong>Generation Details:</strong>
+                      <strong>Detalles de Generación:</strong>
                       <div className="mt-1 text-xs bg-muted/30 rounded p-2">
                         <div className="grid grid-cols-2 gap-2">
                           {toolResult.output.metadata.size && (
                             <div>
-                              <span className="font-medium">Size:</span> {toolResult.output.metadata.size}
+                              <span className="font-medium">Tamaño:</span> {toolResult.output.metadata.size}
                             </div>
                           )}
                           {toolResult.output.metadata.quality && (
                             <div>
-                              <span className="font-medium">Quality:</span> {toolResult.output.metadata.quality}
+                              <span className="font-medium">Calidad:</span> {toolResult.output.metadata.quality}
                             </div>
                           )}
                           {toolResult.output.metadata.generated_at && (
                             <div>
-                              <span className="font-medium">Generated:</span> {new Date(toolResult.output.metadata.generated_at).toLocaleString()}
+                              <span className="font-medium">Generado:</span> {new Date(toolResult.output.metadata.generated_at).toLocaleString()}
                             </div>
                           )}
                         </div>
@@ -352,7 +352,7 @@ Details: ${contentToCopy.details}`
                   {/* Success message */}
                   {toolResult.output.message && (
                     <div>
-                      <strong>Status:</strong>
+                      <strong>Estado:</strong>
                       <div className="mt-1 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 rounded p-2">
                         {toolResult.output.message}
                       </div>
@@ -389,27 +389,27 @@ Details: ${contentToCopy.details}`
                   {/* Generation details */}
                   {toolResult.output.metadata && (
                     <div>
-                      <strong>Generation Details:</strong>
+                      <strong>Detalles de Generación:</strong>
                       <div className="mt-1 text-xs bg-muted/30 rounded p-2">
                         <div className="grid grid-cols-2 gap-2">
                           {toolResult.output.metadata.aspectRatio && (
                             <div>
-                              <span className="font-medium">Aspect Ratio:</span> {toolResult.output.metadata.aspectRatio}
+                              <span className="font-medium">Relación de Aspecto:</span> {toolResult.output.metadata.aspectRatio}
                             </div>
                           )}
                           {toolResult.output.metadata.resolution && (
                             <div>
-                              <span className="font-medium">Resolution:</span> {toolResult.output.metadata.resolution}
+                              <span className="font-medium">Resolución:</span> {toolResult.output.metadata.resolution}
                             </div>
                           )}
                           {toolResult.output.metadata.duration && (
                             <div>
-                              <span className="font-medium">Duration:</span> {toolResult.output.metadata.duration}s
+                              <span className="font-medium">Duración:</span> {toolResult.output.metadata.duration}s
                             </div>
                           )}
                           {toolResult.output.metadata.generated_at && (
                             <div>
-                              <span className="font-medium">Generated:</span> {new Date(toolResult.output.metadata.generated_at).toLocaleString()}
+                              <span className="font-medium">Generado:</span> {new Date(toolResult.output.metadata.generated_at).toLocaleString()}
                             </div>
                           )}
                         </div>
@@ -420,7 +420,7 @@ Details: ${contentToCopy.details}`
                   {/* Success message */}
                   {toolResult.output.message && (
                     <div>
-                      <strong>Status:</strong>
+                      <strong>Estado:</strong>
                       <div className="mt-1 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 rounded p-2">
                         {toolResult.output.message}
                       </div>
@@ -457,11 +457,11 @@ Details: ${contentToCopy.details}`
             
             {log.screenshot_base64 && (
               <div className="mt-2 text-muted-foreground">
-                <strong>Screenshot:</strong>
+                <strong>Captura de pantalla:</strong>
                 <div className="mt-2">
                   <img 
                     src={formatBase64Image(log.screenshot_base64)} 
-                    alt="Tool Screenshot" 
+                    alt="Captura de la herramienta" 
                     className={isBrowserVisible ? "w-full h-auto rounded border shadow-sm" : "max-w-[33vw] h-auto rounded border shadow-sm"}
                     style={{ maxHeight: '400px', maxWidth: isBrowserVisible ? '100%' : undefined }}
                   />
@@ -470,7 +470,7 @@ Details: ${contentToCopy.details}`
             )}
             {toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && toolName !== 'generate_video' && (
               <div className="mt-2 text-muted-foreground">
-                <strong>Result:</strong> 
+                <strong>Resultado:</strong> 
                 <div className="mt-1">
                   {renderObjectWithImages(toolResult, 0, isBrowserVisible)}
                 </div>
@@ -480,7 +480,7 @@ Details: ${contentToCopy.details}`
               <div className="mt-3 text-muted-foreground">
                 <div className="flex items-center gap-2 mb-2">
                   <Eye className="h-3.5 w-3.5 text-blue-600" />
-                  <strong className="text-sm text-blue-600">Details Overview:</strong>
+                  <strong className="text-sm text-blue-600">Resumen de Detalles:</strong>
                 </div>
                 <div 
                   className="rounded-lg p-3"

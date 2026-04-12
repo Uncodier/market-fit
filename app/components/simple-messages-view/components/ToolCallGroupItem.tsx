@@ -51,7 +51,7 @@ export const ToolCallGroupItem: React.FC<ToolCallGroupItemProps> = ({
         <div
           className="flex items-center gap-2 p-3"
           onClick={() => onToggleExpand(groupId)}
-          title={isExpanded ? "Click to collapse" : "Click to expand"}
+          title={isExpanded ? "Haz clic para colapsar" : "Haz clic para expandir"}
         >
           {isExpanded ? (
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70 flex-shrink-0" />
@@ -60,20 +60,20 @@ export const ToolCallGroupItem: React.FC<ToolCallGroupItemProps> = ({
           )}
           {renderToolIcon(toolName)}
           <span className="font-medium text-muted-foreground">
-            Tool Call: {displayName}
+            Llamada a herramienta: {displayName}
           </span>
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-inter text-xs font-medium bg-primary/10 text-primary">
             {totalCount}
           </span>
           {failCount > 0 && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-inter text-xs font-medium bg-red-100/90 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-              {failCount} failed
+              {failCount} fallidos
             </span>
           )}
           {pendingCount > 0 && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-inter text-xs font-medium border bg-yellow-100/90 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800">
               <div className="w-2 h-2 bg-yellow-600 rounded-full font-inter animate-pulse" />
-              {pendingCount} pending
+              {pendingCount} pendientes
             </span>
           )}
         </div>

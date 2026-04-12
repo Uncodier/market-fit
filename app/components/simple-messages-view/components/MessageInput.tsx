@@ -81,12 +81,12 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   const contextCount = Object.values(selectedContext).reduce((acc: number, curr: any) => acc + (curr?.length || 0), 0) as number
   
   let dynamicPlaceholder = placeholder
-  if (placeholder === 'Ask anything...' || placeholder === 'Ask anything') {
-    const askAnythingStr = t('chat.askAnything') !== 'chat.askAnything' ? t('chat.askAnything') : 'Ask anything'
-    const aboutStr = t('chat.about') !== 'chat.about' ? t('chat.about') : 'about'
-    const andStr = t('chat.and') !== 'chat.and' ? t('chat.and') : 'and'
-    const itemStr = t('chat.item') !== 'chat.item' ? t('chat.item') : 'context item'
-    const itemsStr = t('chat.items') !== 'chat.items' ? t('chat.items') : 'context items'
+  if (placeholder === 'Ask anything...' || placeholder === 'Ask anything' || placeholder === 'Pregunta cualquier cosa...' || placeholder === 'Pregunta cualquier cosa') {
+    const askAnythingStr = t('chat.askAnything') !== 'chat.askAnything' ? t('chat.askAnything') : 'Pregunta cualquier cosa'
+    const aboutStr = t('chat.about') !== 'chat.about' ? t('chat.about') : 'sobre'
+    const andStr = t('chat.and') !== 'chat.and' ? t('chat.and') : 'y'
+    const itemStr = t('chat.item') !== 'chat.item' ? t('chat.item') : 'elemento de contexto'
+    const itemsStr = t('chat.items') !== 'chat.items' ? t('chat.items') : 'elementos de contexto'
     const currentItemsStr = contextCount === 1 ? itemStr : itemsStr
     
     if (requirementName && contextCount > 0) {
@@ -210,11 +210,11 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                     className="h-8 hover:bg-secondary/80 transition-all duration-200 px-2 md:px-3 w-auto md:w-40 justify-center md:justify-start"
                     onClick={handleDropdownToggle}
                     title={
-                      selectedActivity === 'ask' ? 'Ask' : 
-                      selectedActivity === 'plan' ? 'Plan' :
-                      selectedActivity === 'generate-image' ? 'Generate Image' :
-                      selectedActivity === 'generate-video' ? 'Generate Video' :
-                      'Select activity'
+                      selectedActivity === 'ask' ? 'Preguntar' : 
+                      selectedActivity === 'plan' ? 'Planificar' :
+                      selectedActivity === 'generate-image' ? 'Generar Imagen' :
+                      selectedActivity === 'generate-video' ? 'Generar Video' :
+                      'Seleccionar actividad'
                     }
                   >
                     <div className="flex items-center w-full justify-center md:justify-start">
@@ -226,11 +226,11 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                       </div>
                       <div className="hidden md:flex flex-col min-w-0 ml-2">
                         <span className="truncate">
-                          {selectedActivity === 'ask' ? 'Ask' : 
-                           selectedActivity === 'plan' ? 'Plan' :
-                           selectedActivity === 'generate-image' ? 'Generate Image' :
-                           selectedActivity === 'generate-video' ? 'Generate Video' :
-                           'Select activity'}
+                          {selectedActivity === 'ask' ? 'Preguntar' : 
+                           selectedActivity === 'plan' ? 'Planificar' :
+                           selectedActivity === 'generate-image' ? 'Generar Imagen' :
+                           selectedActivity === 'generate-video' ? 'Generar Video' :
+                           'Seleccionar actividad'}
                         </span>
                       </div>
                     </div>
@@ -255,7 +255,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                             <MessageSquare className="h-[16.2px] w-[16.2px] shrink-0 text-blue-600" />
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Ask</span>
+                            <span className="truncate">Preguntar</span>
                           </div>
                         </div>
                         <div 
@@ -264,13 +264,13 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                             onActivityChange('plan')
                             setIsDropdownOpen(false)
                           }}
-                          title="Plan"
+                          title="Planificar"
                         >
                           <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
                             <ListTodo className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Plan</span>
+                            <span className="truncate">Planificar</span>
                           </div>
                         </div>
                         {/* Robot option hidden - removed per user request */}
@@ -280,13 +280,13 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                             onActivityChange('generate-image')
                             setIsDropdownOpen(false)
                           }}
-                          title="Generate Image"
+                          title="Generar Imagen"
                         >
                           <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
                             <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Generate Image</span>
+                            <span className="truncate">Generar Imagen</span>
                           </div>
                         </div>
                         <div 
@@ -295,13 +295,13 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                             onActivityChange('generate-video')
                             setIsDropdownOpen(false)
                           }}
-                          title="Generate Video"
+                          title="Generar Video"
                         >
                           <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
                             <PlayCircle className="h-[16.2px] w-[16.2px] shrink-0 text-red-600" />
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
-                            <span className="truncate">Generate Video</span>
+                            <span className="truncate">Generar Video</span>
                           </div>
                         </div>
                       </div>
@@ -345,10 +345,10 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                     ? 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     : 'text-muted-foreground opacity-50 hover:bg-transparent'
                 }`}
-                title={!activeRobotInstance?.id ? 'Start a conversation first to upload files' : 'Attach file'}
+                title={!activeRobotInstance?.id ? 'Inicia una conversación primero para subir archivos' : 'Adjuntar archivo'}
               >
                 <Plus className="h-4.5 w-4.5" />
-                <span className="sr-only">Attach file</span>
+                <span className="sr-only">Adjuntar archivo</span>
               </Button>
               
               {/* Send button */}
@@ -364,7 +364,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 }`}
               >
                 <ChevronRight className="h-4.5 w-4.5" />
-                <span className="sr-only">Send</span>
+                <span className="sr-only">Enviar</span>
               </Button>
             </div>
           </div>

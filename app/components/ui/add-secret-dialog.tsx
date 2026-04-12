@@ -92,7 +92,7 @@ export function AddSecretDialog({ onSecretCreated, trigger }: AddSecretDialogPro
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Secret Name</Label>
+              <Label htmlFor="name">Nombre del Secreto</Label>
               <Input
                 id="name"
                 value={name}
@@ -102,7 +102,7 @@ export function AddSecretDialog({ onSecretCreated, trigger }: AddSecretDialogPro
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="value">Secret Value</Label>
+              <Label htmlFor="value">Valor del Secreto</Label>
               <Input
                 id="value"
                 type="password"

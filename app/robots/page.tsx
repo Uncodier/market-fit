@@ -14,6 +14,7 @@ import { SimpleMessagesView } from "@/app/components/simple-messages-view"
 import { RobotsPageSkeleton } from "@/app/components/skeletons/robots-page-skeleton"
 import { BrowserSkeleton } from "@/app/components/skeletons/browser-skeleton"
 import { DeleteRobotModal } from "@/app/components/robots/DeleteRobotModal"
+import { InstanceBrowserModal } from "@/app/components/robots/InstanceBrowserModal"
 import { createClient } from "@/lib/supabase/client"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { ZipViewer } from '@/app/components/simple-messages-view/components/ZipViewer'
@@ -84,6 +85,8 @@ function RobotsPageContent() {
   
   // 🆕 Force loading state when entering component or changing site
   const [forceLoading, setForceLoading] = useState(true)
+  
+  const [isBrowserModalOpen, setIsBrowserModalOpen] = useState(false)
   
   // Simplified site change handling - only reset when site actually changes
   useEffect(() => {
@@ -894,16 +897,16 @@ function RobotsPageContent() {
   const latestPreviewUrl = useMemo(() => {
     if (!requirementStatuses || requirementStatuses.length === 0) return null;
     
-    // Check ONLY the last requirement_status
-    const lastStatus = requirementStatuses[requirementStatuses.length - 1];
-    
-    if (lastStatus.preview_url && (lastStatus.source_code || lastStatus.repo_url)) {
-      return lastStatus.preview_url;
-    }
-    
-    // Fallback: If no preview_url but repo_url points to a zip file in Supabase
-    if (!lastStatus.preview_url && lastStatus.repo_url && (lastStatus.repo_url.endsWith('.zip') || lastStatus.repo_url.includes('.zip?'))) {
-      return lastStatus.repo_url;
+    // Find the most recent requirement_status that has a preview
+    for (let i = requirementStatuses.length - 1; i >= 0; i--) {
+      const status = requirementStatuses[i];
+      if (status.preview_url && (status.source_code || status.repo_url)) {
+        return status.preview_url;
+      }
+      // Fallback: If no preview_url but repo_url points to a zip file in Supabase
+      if (!status.preview_url && status.repo_url && (status.repo_url.endsWith('.zip') || status.repo_url.includes('.zip?'))) {
+        return status.repo_url;
+      }
     }
     
     return null;
@@ -933,7 +936,7 @@ function RobotsPageContent() {
                       <TabsTrigger value="new">
                         <span className="flex items-center gap-2 whitespace-nowrap truncate max-w-[120px]">
                           <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">New Makina</span>
+                          <span className="truncate">Nueva Makina</span>
                         </span>
                       </TabsTrigger>
                     )}
@@ -976,7 +979,7 @@ function RobotsPageContent() {
                                 ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
                                   <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse flex-shrink-0" />
                                 ) : null)}
-                                <span className="truncate">{inst.name || `mk-${inst.id.slice(-4)}`}</span>
+                                  <span className="truncate">{inst.name || `mk-${inst.id.slice(-4)}`}</span>
                                 <span
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -984,7 +987,7 @@ function RobotsPageContent() {
                                     setIsDeleteModalOpen(true)
                                   }}
                                   className="ml-1.5 flex items-center justify-center h-4 w-4 rounded-full hover:bg-destructive/10 transition-colors cursor-pointer"
-                                  title="Delete conversation"
+                                  title="Eliminar conversación"
                                   role="button"
                                   tabIndex={0}
                                   onKeyDown={(e) => {
@@ -1004,61 +1007,19 @@ function RobotsPageContent() {
                           
                           {/* Show "..." button when there are hidden tabs */}
                           {needsOverflow && hiddenInstances.length > 0 && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50"
-                                  onClick={(e) => e.preventDefault()}
-                                >
-                                  <span className="flex items-center gap-2">
-                                    <MoreHorizontal className="h-3 w-3" />
-                                    <span>{hiddenInstances.length}</span>
-                                  </span>
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
-                                {hiddenInstances.map((inst) => (
-                                  <DropdownMenuItem
-                                    key={`overflow-${inst.id}`}
-                                    onClick={() => handleTabChangeFromOverflow(inst.id)}
-                                    className="cursor-pointer"
-                                  >
-                                    <span className="flex items-center gap-2 w-full">
-                                      <span className="flex items-center gap-2 flex-1">
-                                        {['running','active'].includes((inst as any).status) ? (
-                                          <Play className="h-3 w-3 text-green-600" />
-                                        ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
-                                          <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                                        ) : null)}
-                                        {inst.name || `mk-${inst.id.slice(-4)}`}
-                                      </span>
-                                      <span
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          setInstanceToDelete({ id: inst.id, name: inst.name || `mk-${inst.id.slice(-4)}` })
-                                          setIsDeleteModalOpen(true)
-                                        }}
-                                        className="ml-auto flex items-center justify-center h-4 w-4 rounded-full hover:bg-destructive/10 transition-colors cursor-pointer"
-                                        title="Delete conversation"
-                                        role="button"
-                                        tabIndex={0}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                            setInstanceToDelete({ id: inst.id, name: inst.name || `mk-${inst.id.slice(-4)}` })
-                                            setIsDeleteModalOpen(true)
-                                          }
-                                        }}
-                                      >
-                                        <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                                      </span>
-                                    </span>
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setIsBrowserModalOpen(true)
+                              }}
+                            >
+                              <span className="flex items-center gap-2">
+                                <MoreHorizontal className="h-3 w-3" />
+                                <span>{hiddenInstances.length}</span>
+                              </span>
+                            </button>
                           )}
                         </>
                       )
@@ -1072,7 +1033,7 @@ function RobotsPageContent() {
                   size="icon"
                   className="h-9 w-9 shrink-0 rounded-full"
                   onClick={handleCreateNewInstance}
-                  title="Create new robot instance"
+                  title="Crear nueva makina"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -1081,6 +1042,18 @@ function RobotsPageContent() {
           </div>
         </div>
       </StickyHeader>
+
+      {/* Instance Browser Modal */}
+      <InstanceBrowserModal
+        isOpen={isBrowserModalOpen}
+        onClose={() => setIsBrowserModalOpen(false)}
+        instances={allInstances as any[]}
+        onSelect={(id) => handleTabChangeFromOverflow(id)}
+        onDelete={(instance) => {
+          setInstanceToDelete({ id: instance.id, name: instance.name })
+          setIsDeleteModalOpen(true)
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
       {instanceToDelete && (
@@ -1258,32 +1231,32 @@ function RobotsPageContent() {
                               {connectionStatus === 'reconnecting' && (
                                 <>
                                   <LoadingSkeleton size="sm" className="text-yellow-600" />
-                                  <span>Reconnecting... ({reconnectAttempts}/{maxReconnectAttempts})</span>
+                                  <span>Reconectando... ({reconnectAttempts}/{maxReconnectAttempts})</span>
                                 </>
                               )}
                               {connectionStatus === 'error' && (
                                 <>
                                   <div className="w-4 h-4 bg-red-600 rounded-full"></div>
-                                  <span>Connection failed</span>
+                                  <span>Fallo de conexión</span>
                                   <button
                                     onClick={manualReconnect}
                                     className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                                     disabled={activeRobotInstance === null}
                                   >
-                                    Retry
+                                    Reintentar
                                   </button>
                                 </>
                               )}
                               {connectionStatus === 'disconnected' && (
                                 <>
                                   <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
-                                  <span>Disconnected</span>
+                                  <span>Desconectado</span>
                                   <button
                                     onClick={manualReconnect}
                                     className="ml-2 px-2 py-1 text-xs bg-primary text-white rounded hover:bg-primary/80 transition-colors"
                                     disabled={activeRobotInstance === null}
                                   >
-                                    Connect
+                                    Conectar
                                   </button>
                                 </>
                               )}
@@ -1309,10 +1282,11 @@ function RobotsPageContent() {
                           }}>
                             {isZipUrl ? (
                               <div className="w-full h-full flex items-center justify-center p-4">
-                                <ZipViewer url={activeUrlToDisplay} className="h-full border-0 rounded-lg shadow-none" />
+                                <ZipViewer key={activeUrlToDisplay} url={activeUrlToDisplay} className="h-full border-0 rounded-lg shadow-none" />
                               </div>
                             ) : (
                               <iframe
+                                  key={activeUrlToDisplay}
                                   src={activeUrlToDisplay}
                                   className="border-0 bg-background rounded-lg contained-iframe"
                                   title={latestPreviewUrl ? "Preview" : streamUrl ? "Robot Browser Session" : "Google"}

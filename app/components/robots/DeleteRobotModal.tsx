@@ -47,8 +47,8 @@ export function DeleteRobotModal({
       if (response.success) {
         console.log(`✅ Robot instance deleted successfully`)
         toast({
-          title: "Robot Deleted",
-          description: "The robot instance has been permanently deleted.",
+          title: "Makina Eliminada",
+          description: "La instancia de la makina se ha eliminado permanentemente.",
         })
         
         // Call success callback if provided
@@ -65,7 +65,7 @@ export function DeleteRobotModal({
       console.error("Error deleting robot instance:", error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete robot instance",
+        description: error instanceof Error ? error.message : "Error al eliminar la instancia de la makina",
         variant: "destructive"
       })
     } finally {
@@ -79,10 +79,10 @@ export function DeleteRobotModal({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            Delete Conversation
+            Eliminar Conversación
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this conversation? This action cannot be undone.
+            ¿Estás seguro de que deseas eliminar esta conversación? Esta acción no se puede deshacer.
           </AlertDialogDescription>
         </AlertDialogHeader>
         
@@ -93,20 +93,20 @@ export function DeleteRobotModal({
           
           <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
             <p className="text-sm font-medium text-destructive">
-              ⚠️ All robot instance data will be permanently lost
+              ⚠️ Todos los datos de la instancia de la makina se perderán permanentemente
             </p>
           </div>
           
           <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-            <li>Instance configuration and state</li>
-            <li>Chat history and messages</li>
-            <li>Plans and execution logs</li>
-            <li>All associated data</li>
+            <li>Configuración y estado de la instancia</li>
+            <li>Historial de chat y mensajes</li>
+            <li>Planes y registros de ejecución</li>
+            <li>Todos los datos asociados</li>
           </ul>
         </div>
         
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isDeleting}
@@ -115,10 +115,10 @@ export function DeleteRobotModal({
             {isDeleting ? (
               <>
                 <div className="h-4 w-4 mr-2 animate-pulse bg-muted rounded" />
-                Deleting...
+                Eliminando...
               </>
             ) : (
-              <>Delete Conversation</>
+              <>Eliminar Conversación</>
             )}
           </AlertDialogAction>
         </AlertDialogFooter>

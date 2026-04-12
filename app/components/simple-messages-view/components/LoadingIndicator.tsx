@@ -16,9 +16,9 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ isVisible })
             A
           </div>
         </div>
-        <span className="text-sm font-medium text-primary">Robot</span>
+        <span className="text-sm font-medium text-primary">Makina</span>
         <span className="text-xs px-2 py-0.5 rounded-full font-inter bg-primary/10 text-primary border border-primary/20 font-medium">
-          thinking
+          pensando
         </span>
         <span className="text-xs text-muted-foreground">
           {formatTime(new Date())}
@@ -43,10 +43,10 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ isVisible })
               <div className="w-2 h-2 rounded-full font-inter bg-primary/70 animate-bounce" style={{ animationDelay: '150ms' }} />
               <div className="w-2 h-2 rounded-full font-inter bg-primary/40 animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-            <span className="text-sm text-muted-foreground">Robot is thinking...</span>
+            <span className="text-sm text-muted-foreground">Makina está pensando...</span>
           </div>
           <p className="relative z-10 text-xs text-muted-foreground/60 mt-2 mb-0">
-            Processing your request and preparing a response
+            Procesando tu solicitud y preparando una respuesta
           </p>
         </div>
       </div>

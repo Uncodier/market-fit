@@ -30,7 +30,7 @@ export const RequirementStatusCard: React.FC<RequirementStatusCardProps> = ({ st
         meta: isDarkMode 
           ? 'text-green-500' 
           : 'text-green-600',
-        label: 'Requirement ' + status.status,
+        label: 'Requisito ' + status.status,
       }
     : isFailed
     ? {
@@ -49,7 +49,7 @@ export const RequirementStatusCard: React.FC<RequirementStatusCardProps> = ({ st
         meta: isDarkMode 
           ? 'text-red-500' 
           : 'text-red-600',
-        label: 'Requirement ' + status.status,
+        label: 'Requisito ' + status.status,
       }
     : {
         container: isDarkMode 
@@ -67,7 +67,7 @@ export const RequirementStatusCard: React.FC<RequirementStatusCardProps> = ({ st
         meta: isDarkMode 
           ? 'text-blue-500' 
           : 'text-blue-600',
-        label: 'Requirement ' + status.status,
+        label: 'Requisito ' + status.status,
       }
 
   return (
@@ -101,7 +101,7 @@ export const RequirementStatusCard: React.FC<RequirementStatusCardProps> = ({ st
               className="inline-flex items-center gap-1.5 hover:underline"
             >
               <ExternalLink className="h-3 w-3" />
-              {t('requirements.preview') || 'Preview'}
+              {t('requirements.preview') || 'Previsualización'}
             </a>
           )}
           
@@ -113,7 +113,7 @@ export const RequirementStatusCard: React.FC<RequirementStatusCardProps> = ({ st
               className="inline-flex items-center gap-1.5 hover:underline"
             >
               <ExternalLink className="h-3 w-3" />
-              {t('requirements.sourceCode') || 'Source Code'}
+              {t('requirements.sourceCode') || 'Código Fuente'}
             </a>
           )}
         </div>
