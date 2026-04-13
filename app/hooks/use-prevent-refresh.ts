@@ -38,6 +38,13 @@ const READ_ONLY_ROUTES = [
   '/billing',
   '/auth',
   '/outsource',
+  '/robots',
+  '/projects',
+  '/context',
+  '/people',
+  '/deals',
+  '/companies',
+  '/integrations',
 ]
 
 /**

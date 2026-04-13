@@ -2,15 +2,13 @@
 
 import { Sidebar } from "./components/navigation/Sidebar"
 import { TopBar } from "./components/navigation/TopBar"
-import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
-import { SiteProvider } from "./context/SiteContext"
+import { usePathname, useRouter } from "next/navigation"
+import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { Toaster } from "./components/ui/sonner"
 import { createClient } from "@/lib/supabase/client"
 import { type Segment } from "./requirements/types"
-import { ThemeProvider } from "./context/ThemeContext"
-import { LayoutProvider, useLayout } from "./context/LayoutContext"
+import { useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
 import { usePageRefreshPrevention } from "./hooks/use-prevent-refresh"
 import { useIsMobile } from "./hooks/use-mobile-view"
@@ -167,6 +165,42 @@ function LayoutClientInner({
     // Also ensure mobile sidebar closes on navigation
     setIsMobileSidebarOpen(false);
   }, [pathname])
+
+  // Fix: Clean up stale UI state when returning from background and refresh RSC
+  // after long idle to re-sync with middleware session
+  const hiddenSinceRef = useRef<number | null>(null)
+  const hasRefreshedAfterIdleRef = useRef(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    const IDLE_THRESHOLD_MS = 5 * 60 * 1000 // 5 minutes
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenSinceRef.current = Date.now()
+        hasRefreshedAfterIdleRef.current = false
+      } else if (document.visibilityState === 'visible') {
+        document.body.style.pointerEvents = ''
+
+        const hiddenDuration = hiddenSinceRef.current
+          ? Date.now() - hiddenSinceRef.current
+          : 0
+
+        if (hiddenDuration > IDLE_THRESHOLD_MS && !hasRefreshedAfterIdleRef.current) {
+          hasRefreshedAfterIdleRef.current = true
+          // After long idle the middleware may have redirected stale RSC requests
+          // to /auth (expired JWT). A soft refresh re-fetches the RSC tree with
+          // current cookies so client-side navigation works again.
+          router.refresh()
+        }
+
+        hiddenSinceRef.current = null
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [router])
 
   // Pages that need full-height layout (no scroll, fixed height container)
   const isChatPage = pathname && pathname.startsWith('/chat');
@@ -370,24 +404,23 @@ export default function LayoutClient({
   }
 
   // Mostrar la página con posible indicador de error
+  // NOTE: ThemeProvider, SiteProvider, and LayoutProvider are NOT wrapped here.
+  // They already exist in Providers.tsx (app/providers/Providers.tsx) which wraps
+  // the entire app. Duplicating them here created two independent React context
+  // instances -- RobotsProvider (in Providers.tsx) read from the OUTER SiteProvider
+  // while page components read from the INNER one, causing state desync.
   return (
-    <ThemeProvider>
-      <SiteProvider>
-        <LayoutProvider>
-          <NotificationsProvider>
-            <LayoutClientInner
-              pathname={pathname}
-              segments={segments}
-              breadcrumbFromEvent={breadcrumbFromEvent}
-              customTitle={customTitle}
-              fetchError={fetchError}
-              isExperimentDetailPage={isExperimentDetailPage}
-            >
-              {children}
-            </LayoutClientInner>
-          </NotificationsProvider>
-        </LayoutProvider>
-      </SiteProvider>
-    </ThemeProvider>
+    <NotificationsProvider>
+      <LayoutClientInner
+        pathname={pathname}
+        segments={segments}
+        breadcrumbFromEvent={breadcrumbFromEvent}
+        customTitle={customTitle}
+        fetchError={fetchError}
+        isExperimentDetailPage={isExperimentDetailPage}
+      >
+        {children}
+      </LayoutClientInner>
+    </NotificationsProvider>
   )
 } 

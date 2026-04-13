@@ -269,136 +269,136 @@ export const useInstanceLogs = ({
       // Always load logs when there's an active instance
       loadInstanceLogs()
 
-      // Handle visibility changes to reload logs when returning to the tab
+      const supabase = createClient()
+      const instanceId = activeRobotInstance.id
+      let currentChannel: ReturnType<typeof supabase.channel> | null = null
+
+      const onRealtimePayload = (payload: any) => {
+        if (payload.eventType === 'INSERT') {
+          const newLog = payload.new as InstanceLog
+
+          setLogs(prevLogs => {
+            if (newLog.log_type === 'user_action') {
+              const tempMessageIndex = prevLogs.findIndex(log =>
+                log.details?.temp_message &&
+                log.message === newLog.message &&
+                log.log_type === 'user_action'
+              )
+
+              if (tempMessageIndex !== -1) {
+                const updatedLogs = [...prevLogs]
+                updatedLogs[tempMessageIndex] = newLog
+                return updatedLogs
+              }
+            }
+
+            const isDuplicate = prevLogs.some(log => log.id === newLog.id)
+            if (isDuplicate) {
+              return prevLogs
+            }
+
+            return [...prevLogs, newLog]
+          })
+
+          if (waitingForMessageId) {
+            const isResponseToOurMessage = (
+              (newLog.log_type === 'agent_action') ||
+              (newLog.log_type === 'tool_result') ||
+              (newLog.log_type === 'system' && (
+                newLog.message.toLowerCase().includes('processing') ||
+                newLog.message.toLowerCase().includes('received') ||
+                newLog.message.toLowerCase().includes('completed') ||
+                newLog.message.toLowerCase().includes('response') ||
+                newLog.message.toLowerCase().includes('answer')
+              )) ||
+              (newLog.log_type === 'system' && newLog.message.length > 10) ||
+              (newLog.log_type !== 'user_action' && newLog.message.length > 5)
+            )
+
+            if (isResponseToOurMessage) {
+              const timeDiff = new Date(newLog.created_at).getTime() - new Date().getTime()
+              if (Math.abs(timeDiff) < 60000) {
+                onResponseReceived?.()
+              }
+            }
+          } else {
+            if (newLog.log_type !== 'user_action' && newLog.message.length > 5) {
+              onResponseReceived?.()
+            }
+          }
+
+          if (newLog.log_type === 'system' && newLog.message.length > 200) {
+            setCollapsedSystemMessages(prev => new Set(prev).add(newLog.id))
+          }
+
+          const hasToolName = newLog.tool_name || newLog.toolName
+          const isToolCall = newLog.log_type === 'tool_call' || newLog.log_type === 'tool_result'
+          const hasToolResult = newLog.tool_result && Object.keys(newLog.tool_result).length > 0
+          const hasDetails = newLog.details && Object.keys(newLog.details).length > 0
+          const hasScreenshot = newLog.screenshot_base64
+
+          if ((hasToolName || isToolCall) && (hasToolResult || hasDetails || hasScreenshot)) {
+            setCollapsedToolDetails(prev => new Set(prev).add(newLog.id))
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          setLogs(prevLogs =>
+            prevLogs.map(log =>
+              log.id === payload.new.id ? payload.new as InstanceLog : log
+            )
+          )
+        } else if (payload.eventType === 'DELETE') {
+          setLogs(prevLogs =>
+            prevLogs.filter(log => log.id !== payload.old.id)
+          )
+        }
+      }
+
+      const subscribe = () => {
+        if (currentChannel) {
+          try { supabase.removeChannel(currentChannel) } catch (_) { /* ignore */ }
+        }
+
+        const channel = supabase
+          .channel(`instance_logs_${instanceId}_${Date.now()}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'instance_logs',
+              filter: `instance_id=eq.${instanceId}`
+            },
+            onRealtimePayload
+          )
+          .subscribe((status: string, err?: any) => {
+            if (status === 'CHANNEL_ERROR') {
+              console.warn('[useInstanceLogs] Channel error, will re-subscribe on visibility change', err || '')
+            } else if (status === 'TIMED_OUT') {
+              console.warn('[useInstanceLogs] Channel timed out, will re-subscribe on visibility change')
+            }
+          })
+
+        currentChannel = channel
+      }
+
+      subscribe()
+
       const handleVisibility = () => {
         if (document.visibilityState === 'visible') {
-          // Add a small delay to let Supabase reconnect if needed
           setTimeout(() => {
             loadInstanceLogs()
+            subscribe()
           }, 1000)
         }
       }
 
       document.addEventListener('visibilitychange', handleVisibility)
 
-      // Setup real-time subscription for logs
-      const supabase = createClient()
-      
-      const logsSubscription = supabase
-        .channel(`instance_logs_${activeRobotInstance.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'instance_logs',
-            filter: `instance_id=eq.${activeRobotInstance.id}`
-          },
-          (payload: any) => {
-            if (payload.eventType === 'INSERT') {
-              const newLog = payload.new as InstanceLog
-              
-              setLogs(prevLogs => {
-                // If this is a user_action message, replace any temporary message with the same content
-                if (newLog.log_type === 'user_action') {
-                  const tempMessageIndex = prevLogs.findIndex(log => 
-                    log.details?.temp_message && 
-                    log.message === newLog.message &&
-                    log.log_type === 'user_action'
-                  )
-                  
-                  if (tempMessageIndex !== -1) {
-                    // Remove the temp message ID from tracking
-                    const tempId = prevLogs[tempMessageIndex].id
-                    // Note: Recent user message IDs tracking removed to avoid circular dependencies
-                    
-                    // Replace the temporary message with the real one
-                    const updatedLogs = [...prevLogs]
-                    updatedLogs[tempMessageIndex] = newLog
-                    return updatedLogs
-                  }
-                }
-                
-                // Double-check for duplicates by ID
-                const isDuplicate = prevLogs.some(log => log.id === newLog.id)
-                if (isDuplicate) {
-                  return prevLogs
-                }
-                
-                return [...prevLogs, newLog]
-              })
-              
-              // Stop loading animation when we get any response after sending a message
-              if (waitingForMessageId) {
-                // Check for various indicators that this is a response to our sent message
-                const isResponseToOurMessage = (
-                  // Agent action that might be responding to our message
-                  (newLog.log_type === 'agent_action') ||
-                  // Tool result that indicates processing
-                  (newLog.log_type === 'tool_result') ||
-                  // System message that indicates processing
-                  (newLog.log_type === 'system' && (
-                    newLog.message.toLowerCase().includes('processing') ||
-                    newLog.message.toLowerCase().includes('received') ||
-                    newLog.message.toLowerCase().includes('completed') ||
-                    newLog.message.toLowerCase().includes('response') ||
-                    newLog.message.toLowerCase().includes('answer')
-                  )) ||
-                  // Any log that indicates the system is responding
-                  (newLog.log_type === 'system' && newLog.message.length > 10) ||
-                  // Any log that's not a user action (indicating system response)
-                  (newLog.log_type !== 'user_action' && newLog.message.length > 5)
-                )
-                
-                if (isResponseToOurMessage) {
-                  // Additional check: make sure this log is recent (within 1 minute of sending)
-                  const timeDiff = new Date(newLog.created_at).getTime() - new Date().getTime()
-                  if (Math.abs(timeDiff) < 60000) { // Within 1 minute
-                    // Clear thinking state by calling the callback
-                    onResponseReceived?.()
-                  }
-                }
-              } else {
-                // If we're not waiting for a specific message but we're in thinking state,
-                // clear it when we get any new log that's not a user action
-                if (newLog.log_type !== 'user_action' && newLog.message.length > 5) {
-                  onResponseReceived?.()
-                }
-              }
-              
-              // Auto-collapse if it's a long system message
-              if (newLog.log_type === 'system' && newLog.message.length > 200) {
-                setCollapsedSystemMessages(prev => new Set(prev).add(newLog.id))
-              }
-              
-              // Auto-collapse tool calls that have details by default
-              const hasToolName = newLog.tool_name || newLog.toolName
-              const isToolCall = newLog.log_type === 'tool_call' || newLog.log_type === 'tool_result'
-              const hasToolResult = newLog.tool_result && Object.keys(newLog.tool_result).length > 0
-              const hasDetails = newLog.details && Object.keys(newLog.details).length > 0
-              const hasScreenshot = newLog.screenshot_base64
-              
-              if ((hasToolName || isToolCall) && (hasToolResult || hasDetails || hasScreenshot)) {
-                setCollapsedToolDetails(prev => new Set(prev).add(newLog.id))
-              }
-            } else if (payload.eventType === 'UPDATE') {
-              setLogs(prevLogs => 
-                prevLogs.map(log => 
-                  log.id === payload.new.id ? payload.new as InstanceLog : log
-                )
-              )
-            } else if (payload.eventType === 'DELETE') {
-              setLogs(prevLogs => 
-                prevLogs.filter(log => log.id !== payload.old.id)
-              )
-            }
-          }
-        )
-        .subscribe()
-
       return () => {
         document.removeEventListener('visibilitychange', handleVisibility)
-        supabase.removeChannel(logsSubscription)
+        if (currentChannel) {
+          try { supabase.removeChannel(currentChannel) } catch (_) { /* ignore */ }
+        }
       }
     } else {
       // Clear logs when no active instance

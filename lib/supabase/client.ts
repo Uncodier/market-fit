@@ -1,10 +1,11 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-// Cliente único para toda la aplicación
+// Singleton client for the entire application
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
 let clientCreationTimestamp: number | null = null
 let clientCreationError: Error | null = null
-let isClientCreating = false
+let clientCreationErrorTimestamp: number | null = null
+const ERROR_RECOVERY_MS = 30_000
 
 /**
  * Limpia un UUID de comillas extras o caracteres no válidos
@@ -62,35 +63,27 @@ export function createClient() {
     return createMockClient('missing-env')
   }
 
-  // No crear el cliente si estamos en el servidor
   if (isServerSide()) {
     console.warn('Usando cliente Supabase MOCK (server-side)')
     return createMockClient('server-side')
   }
   
-  // Verificar si hay un error previo
+  // If a previous creation attempt failed, allow retry after ERROR_RECOVERY_MS
   if (clientCreationError) {
-    console.warn('Usando cliente mock debido a error previo:', clientCreationError.message)
-    return createMockClient('previous-error')
-  }
-  
-  // Prevenir creaciones concurrentes
-  if (isClientCreating) {
-    console.warn('La creación del cliente ya está en progreso, devolviendo cliente mock temporal')
-    return createMockClient('creating-in-progress')
+    const elapsed = clientCreationErrorTimestamp ? Date.now() - clientCreationErrorTimestamp : Infinity
+    if (elapsed < ERROR_RECOVERY_MS) {
+      console.warn('Usando cliente mock debido a error previo:', clientCreationError.message)
+      return createMockClient('previous-error')
+    }
+    clientCreationError = null
+    clientCreationErrorTimestamp = null
   }
 
-  // Si ya existe un cliente, devolver esa instancia (SINGLETON ESTRICTO)
   if (supabaseClient) {
     return supabaseClient
   }
 
   try {
-    // Establecer flag para evitar creaciones concurrentes
-    isClientCreating = true
-    
-    // Solo crear un nuevo cliente si no existe o si ha expirado
-    
     clientCreationTimestamp = Date.now()
     
     supabaseClient = createBrowserClient(
@@ -138,13 +131,11 @@ export function createClient() {
             }
           }
         },
-        // Configuración adicional para Realtime
         realtime: {
           params: {
             eventsPerSecond: 10
           },
-          // Configuración básica de timeout
-          timeout: 60000 // 60 segundos de timeout para la conexión inicial
+          timeout: 60000
         },
         global: {
           headers: {
@@ -154,20 +145,15 @@ export function createClient() {
       }
     )
     
-    // Limpiar errores previos si todo salió bien
     clientCreationError = null
-    isClientCreating = false
+    clientCreationErrorTimestamp = null
     
     return supabaseClient
   } catch (error) {
-    // Guardar el error para verificaciones futuras
     clientCreationError = error instanceof Error ? error : new Error(String(error))
+    clientCreationErrorTimestamp = Date.now()
     console.error('Error creando cliente Supabase:', clientCreationError)
     
-    // Limpiar flag
-    isClientCreating = false
-    
-    // Devolver un cliente dummy en caso de error para evitar un fallo completo
     return createMockClient('error')
   }
 }
