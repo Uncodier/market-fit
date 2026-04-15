@@ -128,7 +128,7 @@ export function SimpleAgentCard({
         )}
         onClick={handleCardClick}
       >
-        <CardHeader className="pb-4 flex-none">
+        <CardHeader className="pb-4 px-5 pt-5 flex-none">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start space-x-3 min-w-0">
               <Avatar className="h-10 w-10 ring-2 ring-background flex-none">
@@ -182,12 +182,12 @@ export function SimpleAgentCard({
         )}
         
         <CardFooter className={cn(
-          "flex gap-2 flex-none",
-          showActivities ? "pt-4 pb-4" : "pt-2 pb-4"
+          "flex gap-2 flex-none px-5",
+          showActivities ? "pt-4 pb-5" : "pt-2 pb-5"
         )}>
           <Button 
             variant="outline" 
-            className="flex-1 h-9"
+            className="flex-1 h-9 rounded-xl"
             onClick={(e) => {
               e.stopPropagation();
               onManage?.(agent);
@@ -199,7 +199,7 @@ export function SimpleAgentCard({
           </Button>
           <Button 
             variant="outline" 
-            className="flex-1 h-9"
+            className="flex-1 h-9 rounded-xl"
             onClick={(e) => {
               e.stopPropagation();
               onChat?.(agent);

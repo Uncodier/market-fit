@@ -242,7 +242,7 @@ export function KanbanView({
       ) : (
         <div className="w-full">
           <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="flex gap-4 pb-4 min-w-fit min-h-[200px]">
+            <div className="flex gap-4 pb-4 min-w-fit min-h-[calc(100dvh-220px)]">
               {REQUIREMENT_STATUSES.map(status => {
                 const isCollapsed = collapsedColumns[status.id] || false;
                 const columnItems = requirementsByStatus[status.id];

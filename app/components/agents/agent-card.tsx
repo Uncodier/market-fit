@@ -67,7 +67,7 @@ export function AgentCard({
       )}
       onClick={() => onShowFunctions && onShowFunctions(agent)}
     >
-      <CardHeader className="pb-4 flex-none">
+      <CardHeader className="pb-4 px-5 pt-5 flex-none">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start space-x-3 min-w-0">
             <Avatar className="h-10 w-10 ring-2 ring-background flex-none">
@@ -100,7 +100,7 @@ export function AgentCard({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 py-2">
+      <CardContent className="flex-1 px-5 py-2">
         <div className="grid grid-cols-2 gap-2 h-full">
           {renderMetricItem("Type", agent.type.charAt(0).toUpperCase() + agent.type.slice(1))}
           {renderMetricItem("Conversations", new Intl.NumberFormat().format(agent.conversations))}
@@ -108,10 +108,10 @@ export function AgentCard({
           {renderMetricItem("Last Active", formattedDate)}
         </div>
       </CardContent>
-      <CardFooter className="pt-4 pb-4 flex gap-2 flex-none">
+      <CardFooter className="p-5 pt-4 flex gap-2 flex-none">
         <Button 
           variant="outline" 
-          className="flex-1 h-9"
+          className="flex-1 h-9 rounded-xl"
           onClick={(e) => {
             e.stopPropagation(); // Prevent card click event
             onManage?.(agent);
@@ -123,7 +123,7 @@ export function AgentCard({
         </Button>
         <Button 
           variant="outline" 
-          className="flex-1 h-9"
+          className="flex-1 h-9 rounded-xl"
           onClick={(e) => {
             e.stopPropagation(); // Prevent card click event
             onChat?.(agent);

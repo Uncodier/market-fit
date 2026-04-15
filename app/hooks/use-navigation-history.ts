@@ -33,7 +33,7 @@ const routeTitles: Record<string, string> = {
   'campaigns': 'Campaigns',
   'control-center': 'Control Center',
   'billing': 'Billing',
-  'robots': 'Makina',
+  'robots': 'Agents',
   'sales': 'Sales',
   'deals': 'Deals',
   'people': 'People',
@@ -187,7 +187,7 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
     }
   }
   
-  // For robots pages with instance name
+      // For robots pages with instance name
   if (mainSegment === 'robots') {
     // Check if there's an instance name in query params
     const instanceName = searchParams?.get('name')
@@ -198,7 +198,7 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
         ? decodedName.substring(0, 40) + '...' 
         : decodedName
     }
-    // If no name but has instance param, it will show "Makina" (from routeTitles)
+    // If no name but has instance param, it will show "Agents" (from routeTitles)
   }
   
   return label

@@ -724,15 +724,20 @@ export default function ControlCenterPage() {
       {/* Main content */}
       <div 
         className={cn(
-          "flex flex-col h-full flex-1 min-w-0 transition-[margin] duration-300 ease-in-out",
-          !isSidebarCollapsed && "md:ml-[319px]"
+          "flex flex-col h-full flex-1 min-w-0 transition-all duration-300 ease-in-out relative",
+          !isSidebarCollapsed ? "md:ml-0" : ""
         )}
+        style={{
+          marginLeft: `-${sidebarLeft}`,
+          width: `calc(100% + ${sidebarLeft})`
+        }}
       >
         {/* Header */}
         <div className="relative">
           <ControlCenterHeader
             isSidebarCollapsed={isSidebarCollapsed}
             toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            sidebarLeft={sidebarLeft}
             leftContent={
               <div className="flex items-center gap-4 lg:gap-8 overflow-hidden">
                 <TaskStatusFilter
@@ -839,18 +844,24 @@ export default function ControlCenterPage() {
 
         {/* Content */}
         <div className="flex-1 overflow-auto bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]">
-          {filteredTasks.length === 0 ? (
-            <div className="h-full flex items-center justify-center">
-              <EmptyState 
-                icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
-                title={t('controlCenter.empty.title') || "No tasks found"}
-                description={searchQuery ? (t('controlCenter.empty.searchDesc') || "Try adjusting your search or filters to find what you're looking for.") : (t('controlCenter.empty.desc') || "There are no tasks to display at this time.")}
-                variant="fancy"
-              />
-            </div>
-          ) : (
-            <div className="p-8 h-full">
-              {viewType === "kanban" ? (
+          <div 
+            className="h-full transition-all duration-300 ease-in-out"
+            style={{ 
+              paddingLeft: `calc(${sidebarLeft} + ${!isSidebarCollapsed ? "319px" : "0px"})`
+            }}
+          >
+            {filteredTasks.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <EmptyState 
+                  icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
+                  title={t('controlCenter.empty.title') || "No tasks found"}
+                  description={searchQuery ? (t('controlCenter.empty.searchDesc') || "Try adjusting your search or filters to find what you're looking for.") : (t('controlCenter.empty.desc') || "There are no tasks to display at this time.")}
+                  variant="fancy"
+                />
+              </div>
+            ) : (
+              <div className="p-8 h-full">
+                {viewType === "kanban" ? (
                 <TaskKanban
                   tasks={filteredTasks}
                   sortBy={sortBy}
@@ -879,6 +890,7 @@ export default function ControlCenterPage() {
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
 

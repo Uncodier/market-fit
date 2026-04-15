@@ -111,33 +111,36 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         // Extract steps from the plan structure
         const usedIds = new Set<string>()
         
-        activePlans.forEach((plan: InstancePlan, planIndex: number) => {
-          if (plan.steps && Array.isArray(plan.steps) && plan.steps.length > 0) {
-            // Use steps directly from the plan
-            const planSteps = plan.steps.map((step: any, stepIndex: number) => {
-              let stepId = step.id
-              
-              // Ensure unique ID - use plan ID as prefix for uniqueness across plans
-              if (!stepId || usedIds.has(stepId)) {
-                stepId = `${plan.id}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
-                while (usedIds.has(stepId)) {
-                  stepId = `${plan.id}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
-                }
+        // Find the most recently created active plan (if any)
+        const latestActivePlan = activePlans.length > 0 
+          ? [...activePlans].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+          : null;
+          
+        if (latestActivePlan && latestActivePlan.steps && Array.isArray(latestActivePlan.steps) && latestActivePlan.steps.length > 0) {
+          // Use steps directly from the plan
+          const planSteps = latestActivePlan.steps.map((step: any, stepIndex: number) => {
+            let stepId = step.id
+            
+            // Ensure unique ID - use plan ID as prefix for uniqueness across plans
+            if (!stepId || usedIds.has(stepId)) {
+              stepId = `${latestActivePlan.id}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
+              while (usedIds.has(stepId)) {
+                stepId = `${latestActivePlan.id}_step_${stepIndex}_${Math.random().toString(36).substring(7)}`
               }
-              usedIds.add(stepId)
-              
-              return {
-                id: stepId,
-                title: step.title || `Step ${stepIndex + 1}`,
-                description: step.description || undefined,
-                status: step.status || 'pending' as const,
-                order: convertedSteps.length + stepIndex + 1,
-                planId: plan.id // Track which plan this step belongs to
-              }
-            })
-            convertedSteps = [...convertedSteps, ...planSteps]
-          }
-        })
+            }
+            usedIds.add(stepId)
+            
+            return {
+              id: stepId,
+              title: step.title || `Step ${stepIndex + 1}`,
+              description: step.description || undefined,
+              status: step.status || 'pending' as const,
+              order: stepIndex + 1,
+              planId: latestActivePlan.id // Track which plan this step belongs to
+            }
+          })
+          convertedSteps = planSteps
+        }
         
         
         // Remove any duplicates before setting state

@@ -160,8 +160,8 @@ export function ControlCenterSkeleton({
 
       <div 
         className={cn(
-          "flex flex-col h-full flex-1 min-w-0 transition-[margin] duration-300 ease-in-out",
-          !isSidebarCollapsed && "md:ml-[319px]"
+          "flex flex-col h-full flex-1 min-w-0 transition-[padding] duration-300 ease-in-out",
+          !isSidebarCollapsed && "md:pl-[319px]"
         )}
       >
         {/* Header - matches ControlCenterHeader */}

@@ -18,11 +18,11 @@ export const agentStatusVariants = cva(
 )
 
 export const agentCardVariants = cva(
-  "group transition-all duration-200 ease-in-out bg-card dark:border-white/5 border-black/5",
+  "group transition-all duration-300 ease-in-out bg-card/95 backdrop-blur-sm border-2 border-black/5 dark:border-white/10 rounded-3xl shadow-[0_0_10px_rgba(0,0,0,0.05)]",
   {
     variants: {
       hover: {
-        true: "hover:shadow-lg hover:border-primary/20",
+        true: "hover:shadow-[0_0_20px_rgba(0,0,0,0.15)]",
       },
       interactive: {
         true: "cursor-pointer",
@@ -36,7 +36,7 @@ export const agentCardVariants = cva(
 )
 
 export const metricItemVariants = cva(
-  "rounded-md transition-colors duration-200",
+  "rounded-xl transition-colors duration-200 bg-muted/30",
   {
     variants: {
       hover: {

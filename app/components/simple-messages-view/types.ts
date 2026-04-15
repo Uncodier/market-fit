@@ -12,18 +12,27 @@ export interface ImageParameters {
   format: 'PNG' | 'JPG' | 'WebP'
   aspectRatio: '1:1' | '4:3' | '3:4' | '16:9' | '9:16' | '3:2' | '2:3'
   quality: number
+  expectedResults?: number
 }
 
 export interface VideoParameters {
   aspectRatio: '16:9' | '9:16' | '1:1' | '3:4' | '4:3'
   resolution: '720p' | '1080p'
   duration: number // in seconds
+  expectedResults?: number
 }
 
 export interface AudioParameters {
   format: 'MP3' | 'WAV' | 'AAC'
   sampleRate: '44.1kHz' | '48kHz'
   channels: 'mono' | 'stereo'
+  expectedResults?: number
+}
+
+export interface TextParameters {
+  length?: 'short' | 'medium' | 'long'
+  styles?: string[]
+  expectedResults?: number
 }
 
 export interface MessageAttachment {

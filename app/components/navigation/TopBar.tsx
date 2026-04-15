@@ -2,13 +2,14 @@
 
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { TopBarTitle } from "./TopBarTitle"
 import { TopBarActions } from "./TopBarActions"
 import { Button } from "../ui/button"
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
 import { Menu } from "@/app/components/ui/icons"
 
 interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -47,8 +48,24 @@ export function TopBar({
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { currentSite } = useSite()
   const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([])
+  
+  // Robot page specific mode
+  const isRobotsPage = pathname === "/robots"
+  const isImprentaMode = searchParams.get("mode") === "imprenta"
+
+  const handleRobotModeSwitch = (mode: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (mode === "imprenta") {
+      params.set("mode", "imprenta")
+    } else {
+      params.delete("mode")
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
   const [isProcessing, setIsProcessing] = useState(false);
   const [requirements, setRequirements] = useState<Array<{ id: string; title: string; description: string }>>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description: string }>>([])
@@ -247,8 +264,8 @@ export function TopBar({
       {...props}
     >
       <div className="flex h-[64px] items-center justify-between pr-4 lg:px-8 w-full max-w-full">
-        <div className="flex items-center min-w-0">
-          <Button variant="ghost" size="icon" className="md:!hidden ml-2 mr-2 font-inter" onClick={onMobileToggle}>
+        <div className="flex items-center min-w-0 flex-1">
+          <Button variant="ghost" size="icon" className="md:!hidden ml-2 mr-2 font-inter shrink-0" onClick={onMobileToggle}>
             <Menu className="h-5 w-5" />
           </Button>
           <TopBarTitle 
@@ -259,37 +276,56 @@ export function TopBar({
             isCollapsed={isCollapsed}
             onCollapse={onCollapse}
             breadcrumb={breadcrumb}
+            className="flex-1 min-w-0 pr-4"
           />
         </div>
         
-        <TopBarActions
-          isProcessing={isProcessing}
-          setIsProcessing={setIsProcessing}
-          isDashboardPage={pathname === "/dashboard"}
-          isSegmentsPage={pathname === "/segments"}
-          isExperimentsPage={pathname === "/experiments"}
-          isRequirementsPage={pathname === "/requirements"}
-          isLeadsPage={pathname === "/leads"}
-          isAgentsPage={pathname === "/agents"}
-          isAssetsPage={pathname === "/assets"}
-          isContentPage={pathname === "/content"}
-          isControlCenterPage={pathname === "/control-center"}
-          isCampaignsPage={pathname === "/campaigns"}
-          isSalesPage={pathname === "/sales"}
-          isRobotsPage={pathname === "/robots"}
-          isSecurityPage={pathname === "/security"}
-          isExperimentDetailPage={isExperimentDetailPage}
-          segmentData={segmentData}
-          requirementData={requirementData}
-          contentData={contentData}
-          segments={segments}
-          propSegments={propSegments}
-          requirements={requirements}
-          campaigns={campaigns}
-          isDealsPage={pathname === "/deals"}
-          onCreateSale={onCreateSale}
-          onCreateDeal={onCreateDeal}
-        />
+        {/* Mode Switcher for Robots page */}
+        {isRobotsPage && (
+          <div className="flex items-center justify-center shrink-0 hidden md:flex">
+            <Tabs value={isImprentaMode ? "imprenta" : "agent"} onValueChange={handleRobotModeSwitch}>
+              <TabsList className="h-9 bg-muted/50">
+                <TabsTrigger value="agent" className="px-4">
+                  Agent Mode
+                </TabsTrigger>
+                <TabsTrigger value="imprenta" className="px-4">
+                  Imprenta Mode
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
+        
+        <div className="flex items-center justify-end flex-1 min-w-0">
+          <TopBarActions
+            isProcessing={isProcessing}
+            setIsProcessing={setIsProcessing}
+            isDashboardPage={pathname === "/dashboard"}
+            isSegmentsPage={pathname === "/segments"}
+            isExperimentsPage={pathname === "/experiments"}
+            isRequirementsPage={pathname === "/requirements"}
+            isLeadsPage={pathname === "/leads"}
+            isAgentsPage={pathname === "/agents"}
+            isAssetsPage={pathname === "/assets"}
+            isContentPage={pathname === "/content"}
+            isControlCenterPage={pathname === "/control-center"}
+            isCampaignsPage={pathname === "/campaigns"}
+            isSalesPage={pathname === "/sales"}
+            isRobotsPage={pathname === "/robots"}
+            isSecurityPage={pathname === "/security"}
+            isExperimentDetailPage={isExperimentDetailPage}
+            segmentData={segmentData}
+            requirementData={requirementData}
+            contentData={contentData}
+            segments={segments}
+            propSegments={propSegments}
+            requirements={requirements}
+            campaigns={campaigns}
+            isDealsPage={pathname === "/deals"}
+            onCreateSale={onCreateSale}
+            onCreateDeal={onCreateDeal}
+          />
+        </div>
       </div>
       
       {/* Breadcrumb section - hidden on chat pages */}

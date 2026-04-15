@@ -23,8 +23,23 @@ export async function POST(request: NextRequest) {
       context, 
       system_prompt, 
       instance_id,
-      attachments 
+      instance_node_id,
+      attachments,
+      expected_results_amount
     } = body
+
+    // -------------------------------------------------------------
+    // NODE EXECUTION SETUP
+    // -------------------------------------------------------------
+    if (instance_node_id) {
+      console.log('🔄 Setting up node for async execution:', instance_node_id)
+      
+      // Mark node as running
+      await supabase
+        .from('instance_nodes')
+        .update({ status: 'running' })
+        .eq('id', instance_node_id)
+    }
 
     // Validate required fields
     if (!message || !site_id || !user_id) {
@@ -121,7 +136,9 @@ export async function POST(request: NextRequest) {
           user_id,
           context: context || null,
           system_prompt: system_prompt || null,
-          attachments: attachments || null
+          attachments: attachments || null,
+          instance_node_id: instance_node_id || null,
+          expected_results_amount: expected_results_amount || 1
         }
       })
       .select()
@@ -145,7 +162,8 @@ export async function POST(request: NextRequest) {
         message: `Message received: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`,
         details: {
           user_log_id: userLog.id,
-          processing: true
+          processing: true,
+          instance_node_id: instance_node_id || null
         }
       })
       .select()
@@ -167,7 +185,8 @@ export async function POST(request: NextRequest) {
         details: {
           user_log_id: userLog.id,
           response_type: 'assistant',
-          processing_complete: true
+          processing_complete: true,
+          instance_node_id: instance_node_id || null
         }
       })
       .select()

@@ -589,7 +589,7 @@ function ChatPageContent() {
             <div className="flex h-full relative overflow-visible w-full bg-background flex-row">
       {/* Chat list */}
       <div className={cn(
-        "h-full transition-all duration-300 ease-in-out z-20 bg-background flex-shrink-0",
+        "h-full transition-all duration-300 ease-in-out z-20 bg-background/80 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 flex-shrink-0",
         hasSelectedConversation ? "hidden md:block" : "w-full",
         !hasSelectedConversation && "md:w-[319px]",
         isChatListCollapsed ? "md:w-0 md:opacity-0" : "md:w-[319px]"
@@ -604,9 +604,15 @@ function ChatPageContent() {
       
       {/* Main chat content */}
       <div className={cn(
-        "flex flex-col h-full transition-[margin] duration-300 ease-in-out flex-1 min-w-0 min-h-0 relative",
+        "flex flex-col h-full transition-all duration-300 ease-in-out min-w-0 min-h-0 relative",
         !hasSelectedConversation ? "hidden md:flex" : "flex"
-      )}>
+      )}
+      style={{
+        marginLeft: (!isChatListCollapsed && hasSelectedConversation) ? "-319px" : "0",
+        width: (!isChatListCollapsed && hasSelectedConversation) ? "calc(100% + 319px)" : "100%",
+        flex: "1"
+      }}
+      >
               {/* Chat header with agent and lead info */}
               <div className="w-full z-[50]">
                 {/* Header with agent and lead info */}
@@ -632,38 +638,42 @@ function ChatPageContent() {
 
         {/* Chat messages area */}
         <div className="flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px]">
-          <ChatMessages 
-            chatMessages={chatMessages}
-            isLoadingMessages={isLoadingMessages}
-            isAgentResponding={isAgentResponding}
-            isTransitioningConversation={isTransitioningConversation}
-            messagesEndRef={messagesEndRef}
-            containerRef={messagesContainerRef}
-            agentId={agentId}
-            agentName={agentName}
-            isAgentOnlyConversation={isAgentOnlyConversation}
-            isLead={Boolean(leadData && (leadData.id || (leadData as any)?.lead_id))}
-            leadData={leadData}
-            conversationId={conversationId}
-            onRetryMessage={handleRetryMessage}
-            onMessagesUpdate={setChatMessages}
-          />
+          <div className="transition-all duration-300 ease-in-out h-full" style={{ paddingLeft: (!isChatListCollapsed && hasSelectedConversation) ? "319px" : "0" }}>
+            <ChatMessages 
+              chatMessages={chatMessages}
+              isLoadingMessages={isLoadingMessages}
+              isAgentResponding={isAgentResponding}
+              isTransitioningConversation={isTransitioningConversation}
+              messagesEndRef={messagesEndRef}
+              containerRef={messagesContainerRef}
+              agentId={agentId}
+              agentName={agentName}
+              isAgentOnlyConversation={isAgentOnlyConversation}
+              isLead={Boolean(leadData && (leadData.id || (leadData as any)?.lead_id))}
+              leadData={leadData}
+              conversationId={conversationId}
+              onRetryMessage={handleRetryMessage}
+              onMessagesUpdate={setChatMessages}
+            />
+          </div>
         </div>
         
         {/* Message input area */}
         {hasSelectedConversation && (
-          <ChatInput 
-            setMessage={setMessage}
-            handleMessageChange={handleMessageChange}
-            textareaRef={textareaRef}
-            isLoading={isLoading}
-            handleSendMessage={handleSendMessageSubmit}
-            handleKeyDown={handleKeyDown}
-            conversationId={conversationId}
-            isChatListCollapsed={isChatListCollapsed}
-            leadData={leadData}
-            isAgentOnlyConversation={isAgentOnlyConversation}
-          />
+          <div className="transition-all duration-300 ease-in-out" style={{ paddingLeft: (!isChatListCollapsed && hasSelectedConversation) ? "319px" : "0" }}>
+            <ChatInput 
+              setMessage={setMessage}
+              handleMessageChange={handleMessageChange}
+              textareaRef={textareaRef}
+              isLoading={isLoading}
+              handleSendMessage={handleSendMessageSubmit}
+              handleKeyDown={handleKeyDown}
+              conversationId={conversationId}
+              isChatListCollapsed={isChatListCollapsed}
+              leadData={leadData}
+              isAgentOnlyConversation={isAgentOnlyConversation}
+            />
+          </div>
         )}
       </div>
     </div>

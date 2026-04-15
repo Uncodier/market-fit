@@ -48,7 +48,7 @@ export function DeleteRobotModal({
         console.log(`✅ Robot instance deleted successfully`)
         toast({
           title: "Makina Eliminada",
-          description: "La instancia de la makina se ha eliminado permanentemente.",
+          description: "La instancia del agent se ha eliminado permanentemente.",
         })
         
         // Call success callback if provided
@@ -65,7 +65,7 @@ export function DeleteRobotModal({
       console.error("Error deleting robot instance:", error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Error al eliminar la instancia de la makina",
+        description: error instanceof Error ? error.message : "Error al eliminar la instancia del agent",
         variant: "destructive"
       })
     } finally {
@@ -93,7 +93,7 @@ export function DeleteRobotModal({
           
           <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
             <p className="text-sm font-medium text-destructive">
-              ⚠️ Todos los datos de la instancia de la makina se perderán permanentemente
+              ⚠️ Todos los datos de la instancia del agent se perderán permanentemente
             </p>
           </div>
           

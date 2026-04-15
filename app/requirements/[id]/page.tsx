@@ -2137,8 +2137,8 @@ function RequirementDetailContent() {
                     <div 
                       key={node.id}
                       className={cn(
-                        "absolute rounded-xl border bg-card shadow-sm cursor-grab active:cursor-grabbing w-[280px] flex flex-col overflow-visible transition-colors select-none",
-                        node.type === 'trigger' ? "border-primary/50 shadow-primary/5" : "border-border/60"
+                        "absolute rounded-3xl border-2 bg-card/95 backdrop-blur-sm cursor-grab active:cursor-grabbing w-[280px] flex flex-col overflow-visible transition-shadow duration-300 select-none shadow-[0_0_10px_rgba(0,0,0,0.05)] hover:shadow-[0_0_20px_rgba(0,0,0,0.15)]",
+                        node.type === 'trigger' ? "border-primary/50" : "border-black/5 dark:border-white/10"
                       )}
                       style={{
                         left: node.position.x,

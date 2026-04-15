@@ -265,11 +265,11 @@ function LayoutClientInner({
               onCollapse={handleCollapse}
               isMobileOpen={isMobileSidebarOpen}
               onMobileClose={() => setIsMobileSidebarOpen(false)}
-              className="flex-none fixed left-0 top-0 h-screen z-[200]"
+              className="flex-none fixed left-0 top-0 h-screen z-[210]"
             />
             <div 
-              className="flex-1 flex flex-col min-w-0 transition-[margin] duration-300 ease-in-out"
-              style={{ marginLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
+              className="flex-1 flex flex-col min-w-0 transition-[padding] duration-300 ease-in-out"
+              style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
             >
               <TopBar 
                 title={currentPage.title || ""}
@@ -281,7 +281,7 @@ function LayoutClientInner({
                 onMobileToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
                 segments={segments}
                 className="fixed top-0 right-0 left-0"
-                style={{ left: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
+                style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
                 breadcrumb={customBreadcrumb}
                 isExperimentDetailPage={isExperimentDetailPage}
                 onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
@@ -293,7 +293,7 @@ function LayoutClientInner({
               <main 
                 className={cn(
                   "flex-1 min-w-0",
-                  isAppPage ? "flex flex-col overflow-hidden" : "overflow-visible"
+                  (isChatPage) ? "flex flex-col overflow-hidden" : (isRobotsPage ? "flex flex-col overflow-visible" : "overflow-visible")
                 )} 
                 style={
                   isAppPage ? 

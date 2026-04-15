@@ -54,7 +54,7 @@ export function StickyHeader({
         "top-[64px] min-h-[71px]",
         className
       )}
-      style={useFixedPosition ? { left: sidebarLeft, right: 0 } : undefined}
+      style={useFixedPosition ? { left: 0, right: 0, paddingLeft: sidebarLeft } : undefined}
     >
       <div className={cn(
         "transition-[padding] duration-300 ease-in-out w-full flex items-center h-full max-w-full overflow-hidden",

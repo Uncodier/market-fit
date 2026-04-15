@@ -999,11 +999,11 @@ export function ChatList({
   }
 
   return (
-    <div className={cn("flex flex-col h-full fixed w-full md:w-[320px]", className)} style={{ maxWidth: '100%', overflow: 'hidden' }}>
+    <div className={cn("flex flex-col h-full fixed w-full md:w-[319px] bg-transparent", className)} style={{ maxWidth: '100%', overflow: 'hidden' }}>
       {/* Top bar with search input - adaptable to dark mode */}
       <div className={cn(
         "flex items-center justify-center h-[71px] max-h-[71px] min-h-[71px] border-b transition-colors duration-300 flex-shrink-0 overflow-hidden",
-        "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+        "bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent",
         "fixed w-full md:w-[319px] z-[999]"
       )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
         <div className="relative w-[90%] flex justify-center">

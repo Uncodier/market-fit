@@ -2597,21 +2597,28 @@ export default function PeopleSearchPage() {
       {/* Main content: hidden on mobile step 1, full-screen on step 2 */}
       <div 
         className={cn(
-          "flex flex-col h-full w-full transition-[padding] duration-200 ease-in-out",
+          "flex flex-col h-full w-full transition-all duration-200 ease-in-out relative",
           !showResultsOnMobile ? "hidden md:flex" : "flex"
         )}
         style={{ 
-          marginLeft: isSidebarCollapsed ? "0px" : "319px",
           maxWidth: contentMaxWidth
         }}
       >
-        <StickyHeader className="sticky-left">
+        <StickyHeader className="sticky-left relative">
           <SidebarToggle
             isCollapsed={isSidebarCollapsed}
             onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="absolute left-0 top-1/2 -translate-y-1/2 hidden md:flex"
+            className="absolute left-0 top-1/2 -translate-y-1/2 hidden md:flex z-50"
+            style={{
+              marginLeft: !isSidebarCollapsed ? "319px" : "0"
+            }}
           />
-          <div className="ml-4 md:ml-[120px] mr-4 md:mr-16 transition-all duration-300 ease-in-out">
+          <div 
+            className="ml-4 mr-4 md:mr-16 transition-all duration-300 ease-in-out"
+            style={{
+              paddingLeft: !isSidebarCollapsed ? "calc(319px + 120px)" : "120px"
+            }}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Button
@@ -2641,7 +2648,12 @@ export default function PeopleSearchPage() {
           </div>
         </StickyHeader>
         <div className={cn("flex-1 bg-muted/30 transition-colors duration-300 ease-in-out", isEmptyView ? "overflow-visible" : "overflow-auto")} style={isEmptyView ? { height: 'calc(100vh - 64px - 71px)' } : undefined}>
-          <div className={cn(isEmptyView ? "h-full" : "p-8 h-full space-y-4") }>
+          <div 
+            className={cn("h-full transition-all duration-300 ease-in-out", isEmptyView ? "" : "p-8 space-y-4")}
+            style={{ 
+              paddingLeft: !isSidebarCollapsed ? "calc(319px + 2rem)" : "2rem"
+            }}
+          >
             {isEmptyView ? (
               <EmptyState 
                 variant="fancy"

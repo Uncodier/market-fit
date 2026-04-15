@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef, us
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal } from "@/app/components/ui/icons"
+import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal, ExternalLink, RotateCw } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -18,8 +18,10 @@ import { InstanceBrowserModal } from "@/app/components/robots/InstanceBrowserMod
 import { createClient } from "@/lib/supabase/client"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { ZipViewer } from '@/app/components/simple-messages-view/components/ZipViewer'
+import { ImprentaPanel } from '@/app/components/agents/imprenta-panel'
 import "@/app/styles/iframe-containment.css"
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
+import { useIframeUrl } from "@/app/hooks/use-iframe-url"
 
 // Robot interface
 interface Robot {
@@ -87,6 +89,7 @@ function RobotsPageContent() {
   const [forceLoading, setForceLoading] = useState(true)
   
   const [isBrowserModalOpen, setIsBrowserModalOpen] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   
   // Simplified site change handling - only reset when site actually changes
   useEffect(() => {
@@ -159,6 +162,31 @@ function RobotsPageContent() {
   
   // Get instance without site filtering
   const activeRobotInstance = selectedInstanceId !== 'new' ? getInstanceById(selectedInstanceId) : null
+
+  // Update page title based on selected instance
+  useEffect(() => {
+    const title = activeRobotInstance ? (activeRobotInstance.name || `ag-${activeRobotInstance.id.slice(-4)}`) : 'Agents';
+    
+    // Use timeout to ensure this runs after navigation history updates its label
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('breadcrumb:update', { 
+        detail: { title } 
+      }));
+    }, 50);
+    
+    return () => {
+      clearTimeout(timer);
+    }
+  }, [activeRobotInstance]);
+
+  // Clean up title on unmount
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(new CustomEvent('breadcrumb:update', { 
+        detail: { title: null } 
+      }));
+    }
+  }, []);
 
   
   // Activity param for controlling explorer visibility
@@ -480,6 +508,7 @@ function RobotsPageContent() {
               // Update URL to reflect the new instance
               const params = new URLSearchParams(searchParams.toString())
               params.set('instance', newInstance.id)
+              params.set('name', newInstance.name || `ag-${newInstance.id.slice(-4)}`)
               router.replace(`/robots?${params.toString()}`)
               
               // Reset the auto-creating flag after a delay to allow for proper state updates
@@ -681,6 +710,7 @@ function RobotsPageContent() {
       // Update URL to reflect the new instance selection
       const currentParams = new URLSearchParams(searchParams.toString())
       currentParams.set('instance', newInstance.id)
+      currentParams.set('name', newInstance.name || `ag-${newInstance.id.slice(-4)}`)
       router.replace(`/robots?${currentParams.toString()}`)
     }
   }
@@ -692,12 +722,21 @@ function RobotsPageContent() {
       setLocalSelectedInstanceId(null)
       const currentParams = new URLSearchParams(searchParams.toString())
       currentParams.set('instance', 'new')
+      currentParams.delete('name')
       router.push(`/robots?${currentParams.toString()}`)
     } else {
       // Set the selected instance
       setLocalSelectedInstanceId(newInstance)
       const currentParams = new URLSearchParams(searchParams.toString())
       currentParams.set('instance', newInstance)
+      
+      const instance = getInstanceById(newInstance)
+      if (instance) {
+        currentParams.set('name', instance.name || `ag-${instance.id.slice(-4)}`)
+      } else {
+        currentParams.delete('name')
+      }
+      
       router.push(`/robots?${currentParams.toString()}`)
     }
   }
@@ -795,6 +834,9 @@ function RobotsPageContent() {
     // Update URL to reflect the new instance selection
     const currentParams = new URLSearchParams(searchParams.toString())
     currentParams.set('instance', instanceId)
+    // We don't have the full instance object here easily, but the title effect will catch it
+    // Still, try to clear the old name
+    currentParams.delete('name')
     router.replace(`/robots?${currentParams.toString()}`)
     // Disable auto-refresh to prevent subscription from interfering
     setAutoRefreshEnabled(false)
@@ -912,18 +954,24 @@ function RobotsPageContent() {
     return null;
   }, [requirementStatuses]);
   
+  // Get view mode from URL (agent vs imprenta)
+  const viewMode = searchParams.get('mode') === 'imprenta' ? 'imprenta' : 'agent'
+  
   // Compute if browser should be visible
   const isBrowserVisible = Boolean(
     ((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning || !!latestPreviewUrl)) || 
     (isActivityRobot && hasMessageBeenSent)) && 
-    !pendingInstanceId
+    !pendingInstanceId &&
+    viewMode !== 'imprenta'
   )
 
   const activeUrlToDisplay = latestPreviewUrl || streamUrl || "https://www.google.com"
   const isZipUrl = typeof activeUrlToDisplay === 'string' && (activeUrlToDisplay.endsWith('.zip') || activeUrlToDisplay.includes('.zip?'))
 
+  const { displayUrl: displayedIframeUrl, iframeSrc, handleIframeLoad } = useIframeUrl(iframeRef, activeUrlToDisplay)
+
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden relative">
+    <div className={`flex flex-col h-full w-full ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'} relative`}>
       <StickyHeader key={`${currentSite?.id}-${siteChangeKey}`} className="flex-none transition-all duration-300">
         <div className="pt-0 w-full overflow-hidden">
           <div className="flex items-center gap-4 w-full">
@@ -931,12 +979,12 @@ function RobotsPageContent() {
               <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
                 <Tabs key={`tabs-${currentSite?.id}-${siteChangeKey}`} value={selectedInstanceId} onValueChange={handleTabChange} className="flex-1 min-w-0">
                   <TabsList ref={tabsListRef} className="flex flex-nowrap justify-start w-full overflow-hidden">
-                    {/* Show New Makina tab if no instances or while loading */}
+                    {/* Show New Agent tab if no instances or while loading */}
                     {(allInstances.length === 0 || isLoadingRobots || forceLoading) && (
                       <TabsTrigger value="new">
                         <span className="flex items-center gap-2 whitespace-nowrap truncate max-w-[120px]">
                           <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">Nueva Makina</span>
+                          <span className="truncate">New Agent</span>
                         </span>
                       </TabsTrigger>
                     )}
@@ -952,7 +1000,7 @@ function RobotsPageContent() {
                       
                       // Calculate how many tabs to show
                       const showNewMakinaTab = allInstances.length === 0 || isLoadingRobots || forceLoading
-                      // Account for "New Makina" tab in maxVisibleTabs if it's shown
+                      // Account for "New Agent" tab in maxVisibleTabs if it's shown
                       const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
                       const totalTabs = sortedInstances.length
                       const needsOverflow = totalTabs > effectiveMaxTabs
@@ -979,11 +1027,11 @@ function RobotsPageContent() {
                                 ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
                                   <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse flex-shrink-0" />
                                 ) : null)}
-                                  <span className="truncate">{inst.name || `mk-${inst.id.slice(-4)}`}</span>
+                                  <span className="truncate">{inst.name || `ag-${inst.id.slice(-4)}`}</span>
                                 <span
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    setInstanceToDelete({ id: inst.id, name: inst.name || `mk-${inst.id.slice(-4)}` })
+                                    setInstanceToDelete({ id: inst.id, name: inst.name || `ag-${inst.id.slice(-4)}` })
                                     setIsDeleteModalOpen(true)
                                   }}
                                   className="ml-1.5 flex items-center justify-center h-4 w-4 rounded-full hover:bg-destructive/10 transition-colors cursor-pointer"
@@ -994,7 +1042,7 @@ function RobotsPageContent() {
                                     if (e.key === 'Enter' || e.key === ' ') {
                                       e.preventDefault()
                                       e.stopPropagation()
-                                      setInstanceToDelete({ id: inst.id, name: inst.name || `mk-${inst.id.slice(-4)}` })
+                                      setInstanceToDelete({ id: inst.id, name: inst.name || `ag-${inst.id.slice(-4)}` })
                                       setIsDeleteModalOpen(true)
                                     }
                                   }}
@@ -1033,7 +1081,7 @@ function RobotsPageContent() {
                   size="icon"
                   className="h-9 w-9 shrink-0 rounded-full"
                   onClick={handleCreateNewInstance}
-                  title="Crear nueva makina"
+                  title="Create new agent"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -1166,6 +1214,16 @@ function RobotsPageContent() {
                 // Navigate to the selected instance (update URL directly, skipping intermediate state)
                 const newParams = new URLSearchParams(searchParams.toString())
                 newParams.set('instance', targetInstanceId)
+                
+                if (targetInstanceId !== 'new') {
+                  const targetInstance = currentInstances.find(inst => inst.id === targetInstanceId)
+                  if (targetInstance) {
+                    newParams.set('name', targetInstance.name || `ag-${targetInstance.id.slice(-4)}`)
+                  }
+                } else {
+                  newParams.delete('name')
+                }
+                
                 router.replace(`/robots?${newParams.toString()}`, { scroll: false })
               } else {
                 // Prevent auto-create from triggering immediately after delete
@@ -1182,6 +1240,7 @@ function RobotsPageContent() {
                 setLocalSelectedInstanceId(null)
                 const newParams = new URLSearchParams(searchParams.toString())
                 newParams.set('instance', 'new')
+                newParams.delete('name')
                 router.replace(`/robots?${newParams.toString()}`, { scroll: false })
               }
               
@@ -1197,20 +1256,53 @@ function RobotsPageContent() {
               
               const params = new URLSearchParams(searchParams.toString())
               params.set('instance', 'new')
+              params.delete('name')
               router.replace(`/robots?${params.toString()}`)
             }
           }}
         />
       )}
       
-      <div className="absolute inset-0 flex flex-col min-h-0 overflow-hidden">
+      <div className={`absolute inset-0 flex flex-col min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
         {/* Content area - no pt-[71px] here so it can go under header */}
-        <div className="flex-1 flex flex-col min-h-0 bg-muted/30 transition-colors duration-300 ease-in-out overflow-hidden">
-          <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
+        <div className={`flex-1 flex flex-col min-h-0 ${viewMode === 'imprenta' ? 'bg-transparent' : 'bg-muted/30'} transition-colors duration-300 ease-in-out ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
+          <div className={`flex flex-col lg:flex-row flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
             {isBrowserVisible && (
               <div className="w-full lg:w-2/3 border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative">
-                <div className="flex flex-col m-0 bg-card absolute inset-x-0 bottom-0 top-[135px]">
-                  <div className="flex flex-col p-0 relative h-full">
+                <div className="grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[135px] overflow-hidden">
+                  {/* Browser navigation bar */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/40">
+                    <button
+                      onClick={() => {
+                        const frame = iframeRef.current
+                        if (frame) {
+                          frame.src = frame.src
+                        }
+                      }}
+                      className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title="Refresh"
+                    >
+                      <RotateCw className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="flex items-center gap-2 flex-1 min-w-0 bg-background/80 border border-border rounded-md px-2.5 py-1">
+                      <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <input
+                        type="text"
+                        readOnly
+                        value={displayedIframeUrl}
+                        className="flex-1 min-w-0 text-xs text-muted-foreground bg-transparent outline-none cursor-default"
+                      />
+                    </div>
+                    <button
+                      onClick={() => window.open(displayedIframeUrl, '_blank')}
+                      className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title="Open in new tab"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  {/* Browser content - 1fr fills all remaining height */}
+                  <div className="relative overflow-hidden">
                     {isResuming || isInstanceStarting ? (
                       <div className="absolute inset-0 flex flex-col">
                         <BrowserSkeleton />
@@ -1220,7 +1312,7 @@ function RobotsPageContent() {
                         <BrowserSkeleton />
                       </div>
                     ) : (isInstanceRunning || !!latestPreviewUrl) ? (
-                      <div className="relative w-full h-full bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
+                      <div className="absolute inset-0 bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
                         {connectionStatus !== 'connected' && !latestPreviewUrl && (
                           <div className="absolute top-4 left-4 z-10">
                             <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium shadow-lg backdrop-blur-sm ${
@@ -1270,64 +1362,43 @@ function RobotsPageContent() {
                             </div>
                           </div>
                         )}
-                        <div className="w-full h-full flex items-center justify-center bg-background iframe-wrapper">
-                          <div className="bg-background rounded-lg shadow-2xl border border-muted-foreground/30 overflow-hidden relative" style={{
-                            width: '100%',
-                            maxWidth: '1024px',
-                            height: 'auto',
-                            aspectRatio: '4/3',
-                            maxHeight: 'calc(100vh - 200px)',
-                            contain: 'layout style paint',
-                            isolation: 'isolate'
-                          }}>
-                            {isZipUrl ? (
-                              <div className="w-full h-full flex items-center justify-center p-4">
-                                <ZipViewer key={activeUrlToDisplay} url={activeUrlToDisplay} className="h-full border-0 rounded-lg shadow-none" />
-                              </div>
-                            ) : (
-                              <iframe
-                                  key={activeUrlToDisplay}
-                                  src={activeUrlToDisplay}
-                                  className="border-0 bg-background rounded-lg contained-iframe"
-                                  title={latestPreviewUrl ? "Preview" : streamUrl ? "Robot Browser Session" : "Google"}
-                                  allowFullScreen
-                                  allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
-                                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
-                                  style={{
-                                    width: 'calc(100% + 4px)',
-                                    height: 'calc(100% + 4px)',
-                                    transform: 'translate(-2px, -2px)',
-                                    transformOrigin: 'center center',
-                                    position: 'relative',
-                                    zIndex: 1,
-                                    isolation: 'isolate'
-                                  }}
-                                  onLoad={(e) => {
-                                    // For previews, we don't need the connection status indicator 
-                                    // since it's just an iframe rendering HTML
-                                    if (latestPreviewUrl) return;
-
-                                    if (streamUrl) {
-                                    setConnectionStatus('connected')
-                                    
-                                    // Only show indicator if status actually changed from non-connected to connected
-                                    if (prevConnectionStatusRef.current !== 'connected') {
-                                      setShowConnectedIndicator(true)
-                                    } else {
-                                    }
-                                    prevConnectionStatusRef.current = 'connected'
-                                    
-                                    setReconnectAttempts(0)
-                                  }
-                                }}
-                                onError={(e) => {
-                                  console.error('Iframe error:', e)
-                                  handleConnectionLoss()
-                                }}
-                              />
-                            )}
+                        {isZipUrl ? (
+                          <div className="w-full h-full flex items-center justify-center p-4 iframe-wrapper">
+                            <ZipViewer key={activeUrlToDisplay} url={activeUrlToDisplay} className="h-full border-0 rounded-lg shadow-none" />
                           </div>
-                        </div>
+                        ) : (
+                          <iframe
+                            ref={iframeRef}
+                            key={activeUrlToDisplay}
+                            src={iframeSrc}
+                            className="absolute inset-0 w-full h-full border-0 bg-background contained-iframe"
+                            title={latestPreviewUrl ? "Preview" : streamUrl ? "Robot Browser Session" : "Google"}
+                            allowFullScreen
+                            allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
+                            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
+                            style={{
+                              isolation: 'isolate'
+                            }}
+                            onLoad={(e) => {
+                              handleIframeLoad(e)
+
+                              if (latestPreviewUrl) return;
+
+                              if (streamUrl) {
+                                setConnectionStatus('connected')
+                                if (prevConnectionStatusRef.current !== 'connected') {
+                                  setShowConnectedIndicator(true)
+                                }
+                                prevConnectionStatusRef.current = 'connected'
+                                setReconnectAttempts(0)
+                              }
+                            }}
+                            onError={(e) => {
+                              console.error('Iframe error:', e)
+                              handleConnectionLoss()
+                            }}
+                          />
+                        )}
                       </div>
                     ) : null}
                   </div>
@@ -1335,18 +1406,24 @@ function RobotsPageContent() {
               </div>
             )}
 
-            {/* Messages View - Chat/Instance Logs */}
-            <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 overflow-hidden`}>
-              <div className="flex flex-col m-0 bg-card min-w-0 flex-1 min-h-0 overflow-hidden relative">
-                <SimpleMessagesView 
-                  key={`${currentSite?.id}-${siteChangeKey}`}
-                  className="h-full absolute inset-0"
-                  activeRobotInstance={activeRobotInstance}
-                  isBrowserVisible={isBrowserVisible}
-                  hasTopHeaderSpace={!isBrowserVisible}
-                  onMessageSent={setHasMessageBeenSent}
-                  onNewInstanceCreated={handleNewInstanceCreated}
-                />
+            {/* Messages View or Imprenta - Chat/Instance Logs */}
+            <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
+              <div className={`flex flex-col m-0 ${viewMode === 'imprenta' ? 'bg-transparent overflow-visible' : 'bg-card overflow-hidden'} min-w-0 flex-1 min-h-0 relative`}>
+                {viewMode === 'imprenta' ? (
+                  <div className="h-full absolute inset-0">
+                    <ImprentaPanel activeInstanceId={activeRobotInstance?.id} />
+                  </div>
+                ) : (
+                  <SimpleMessagesView 
+                    key={`${currentSite?.id}-${siteChangeKey}`}
+                    className="h-full absolute inset-0"
+                    activeRobotInstance={activeRobotInstance}
+                    isBrowserVisible={isBrowserVisible}
+                    hasTopHeaderSpace={!isBrowserVisible}
+                    onMessageSent={setHasMessageBeenSent}
+                    onNewInstanceCreated={handleNewInstanceCreated}
+                  />
+                )}
               </div>
             </div>
           </div>

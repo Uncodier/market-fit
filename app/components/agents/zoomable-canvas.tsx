@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useLayout } from "@/app/context/LayoutContext"
 import { Button } from "@/app/components/ui/button"
-import { ZoomIn, ZoomOut, Maximize } from "@/app/components/ui/icons"
+import { ZoomIn, ZoomOut, Maximize, LayoutGrid } from "@/app/components/ui/icons"
 import { debounce, throttle } from "lodash"
 import { useTheme } from "@/app/context/ThemeContext"
 
@@ -13,6 +13,9 @@ interface ZoomableCanvasProps {
   dotColorDark?: string
   dotSize?: string
   dotRadius?: string
+  fitOnChildrenChange?: boolean
+  extraControls?: React.ReactNode
+  onSort?: () => void
 }
 
 export function ZoomableCanvas({ 
@@ -22,7 +25,10 @@ export function ZoomableCanvas({
   dotColorLight = 'rgba(0, 0, 0, 0.07)',
   dotColorDark = 'rgba(255, 255, 255, 0.07)',
   dotSize = '24px',
-  dotRadius = '1px'
+  dotRadius = '1px',
+  fitOnChildrenChange = true,
+  extraControls,
+  onSort
 }: ZoomableCanvasProps) {
   // Use the layout context to get the current state
   const { isLayoutCollapsed } = useLayout();
@@ -47,6 +53,7 @@ export function ZoomableCanvas({
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
   const [touchStartScale, setTouchStartScale] = useState<number>(1);
   const prevRecenterDepRef = useRef(recenterDependency);
+  const prevLayoutCollapsedRef = useRef(isLayoutCollapsed);
 
   // Variables for animation
   const animationRef = useRef<number | null>(null);
@@ -102,10 +109,9 @@ export function ZoomableCanvas({
       // Remove the clone
       document.body.removeChild(clone);
       
-      // Add buffer to ensure all content is visible
       const dimensions = {
-        width: width + 100, // Add 100px buffer
-        height: height + 20
+        width: width,
+        height: height
       };
       
       // Restore all original styles in correct order
@@ -162,21 +168,13 @@ export function ZoomableCanvas({
     
     // First calculate the center point in the canvas
     const canvasCenter = canvasRect.width / 2;
+    const canvasCenterY = canvasRect.height / 2;
     
     // Then calculate what would be a centered position
-    const normalCenteredX = canvasCenter - (contentWidth / 2);
+    const finalX = canvasCenter - (contentWidth / 2);
+    const finalY = canvasCenterY - (contentSize.height * newScale / 2);
     
-    // Apply a positive offset to move the diagram to the right
-    // Instead of a negative offset that moves it left, use a positive one
-    const rightOffset = 20; // Fixed pixel value to move right
-    
-    // Combine the centered position with the right offset
-    const finalX = normalCenteredX + rightOffset;
-    
-    // Calculate vertical position with slight top offset for aesthetics
-    const newY = (canvasRect.height * 0.05);
-    
-    return { scale: newScale, x: finalX, y: newY };
+    return { scale: newScale, x: finalX, y: finalY };
   }, [contentDimensions, measureContent, isLayoutCollapsed]);
 
   // Helper function to animate to a position over time with RAF
@@ -291,12 +289,12 @@ export function ZoomableCanvas({
       
       requestAnimationFrame(() => {
         if (contentRef.current) {
-          contentRef.current.style.transition = 'none';
+          contentRef.current.style.transition = 'opacity 0.2s ease-in';
           contentRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${newScale})`;
         }
         
         if (backgroundRef.current) {
-          backgroundRef.current.style.transition = 'none';
+          backgroundRef.current.style.transition = 'opacity 0.2s ease-in';
           backgroundRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${newScale})`;
         }
       });
@@ -323,15 +321,15 @@ export function ZoomableCanvas({
     setIsZoomedIn(false);
   }, [calculateContainTransform]);
 
-  // Measure content on mount and when it changes
+  // Measure content on mount
   useEffect(() => {
     if (!isInitialized) {
-      // Allow time for DOM to fully render
+      // Use shorter timeout to avoid noticeable jump, just enough for DOM to render
       const timer = setTimeout(async () => {
         await measureContent();
         await applyContainTransform();
         setIsInitialized(true);
-      }, 500);
+      }, 50);
       
       return () => clearTimeout(timer);
     }
@@ -350,10 +348,11 @@ export function ZoomableCanvas({
     window.addEventListener('resize', debouncedResize);
     let timer: NodeJS.Timeout;
     
-    // Readjust when menu state changes
-    if (isInitialized && !isUserInteracting && autoRecenterEnabled) {
-      // Avoid calling measureContent here to prevent infinite loops
-      // Adding a small delay to allow DOM/flexbox animations to complete before applying transform
+    const layoutCollapsedChanged = prevLayoutCollapsedRef.current !== isLayoutCollapsed;
+    prevLayoutCollapsedRef.current = isLayoutCollapsed;
+    
+    // Only recenter when sidebar actually collapsed/expanded, not on other dep changes
+    if (layoutCollapsedChanged && isInitialized && !isUserInteracting && autoRecenterEnabled) {
       timer = setTimeout(() => {
         applyContainTransform();
       }, 50);
@@ -384,7 +383,7 @@ export function ZoomableCanvas({
 
   // New effect to detect changes in children (like expanded cards)
   useEffect(() => {
-    if (isInitialized && !isUserInteracting && autoRecenterEnabled) {
+    if (isInitialized && !isUserInteracting && autoRecenterEnabled && fitOnChildrenChange) {
       // Use a small delay to allow DOM to update after children change
       const timer = setTimeout(async () => {
         await measureContent();
@@ -393,7 +392,7 @@ export function ZoomableCanvas({
       
       return () => clearTimeout(timer);
     }
-  }, [children, isInitialized, measureContent, applyContainTransform, isUserInteracting, autoRecenterEnabled]);
+  }, [children, isInitialized, measureContent, applyContainTransform, isUserInteracting, autoRecenterEnabled, fitOnChildrenChange]);
 
   // Reset view button: use same algorithm as initial load
   const resetView = useCallback(() => {
@@ -511,7 +510,7 @@ export function ZoomableCanvas({
         target.closest('[role="tablist"]') || 
         target.closest('button') || 
         target.closest('input') ||
-        !contentRef.current?.contains(target)) {
+        target.closest('textarea')) {
       return;
     }
     
@@ -528,12 +527,8 @@ export function ZoomableCanvas({
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDragging) return;
     
-    // Performance optimization: use small movements threshold
     const dx = e.clientX - startDragPosition.x;
     const dy = e.clientY - startDragPosition.y;
-    
-    // Skip tiny movements to reduce processing
-    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
     
     // Allow movement in any mode
     setPosition(prev => {
@@ -588,8 +583,7 @@ export function ZoomableCanvas({
     // Skip handling if on UI elements
     const target = e.target as HTMLElement;
     if (target.closest('[role="tab"]') || 
-        target.closest('[role="tablist"]') || 
-        !contentRef.current?.contains(target)) {
+        target.closest('[role="tablist"]')) {
       return;
     }
       
@@ -690,7 +684,8 @@ export function ZoomableCanvas({
     if (target.closest('[role="tab"]') || 
         target.closest('[role="tablist"]') || 
         target.closest('button') || 
-        target.closest('input')) {
+        target.closest('input') ||
+        target.closest('textarea')) {
       return;
     }
     
@@ -718,7 +713,8 @@ export function ZoomableCanvas({
     if (target.closest('[role="tab"]') || 
         target.closest('[role="tablist"]') || 
         target.closest('button') || 
-        target.closest('input')) {
+        target.closest('input') ||
+        target.closest('textarea')) {
       return;
     }
     
@@ -761,11 +757,6 @@ export function ZoomableCanvas({
     } else if (e.touches.length === 1 && isDragging) {
       const dx = e.touches[0].clientX - startDragPosition.x;
       const dy = e.touches[0].clientY - startDragPosition.y;
-      
-      // Skip small movements
-      if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
-        return;
-      }
       
       // Direct DOM manipulation for better performance
       if (contentRef.current && backgroundRef.current) {
@@ -844,7 +835,8 @@ export function ZoomableCanvas({
           style={{ 
             transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
             transformOrigin: '0 0',
-            transition: 'none',
+            transition: 'opacity 0.2s ease-in',
+            opacity: isInitialized ? 1 : 0,
             position: 'absolute',
             display: 'inline-block',
             width: '100%',
@@ -868,7 +860,8 @@ export function ZoomableCanvas({
           style={{ 
             transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
             transformOrigin: '0 0',
-            transition: 'none',
+            transition: 'opacity 0.2s ease-in',
+            opacity: isInitialized ? 1 : 0,
             position: 'absolute',
             display: 'inline-block',
             width: 'auto',
@@ -924,10 +917,23 @@ export function ZoomableCanvas({
         >
           <Maximize className="h-4 w-4" />
         </Button>
+        {onSort && (
+          <Button
+            variant="ghost" 
+            size="icon"
+            onClick={onSort}
+            className="h-8 w-8"
+            title="Sort layout"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+        )}
         
-        <div className="ml-1 px-2 py-1 bg-accent/70 text-accent-foreground dark:bg-accent/50 text-[10px] rounded-sm font-medium border dark:border-white/5 border-black/5">
-          Drag to navigate
-        </div>
+        {extraControls && (
+          <div className="ml-1 pl-1.5 border-l border-border flex items-center">
+            {extraControls}
+          </div>
+        )}
       </div>
     </div>
   );

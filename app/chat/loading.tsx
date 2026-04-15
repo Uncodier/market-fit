@@ -23,7 +23,7 @@ export default function ChatLoading() {
       </div>
       
       {/* Main chat content skeleton */}
-      <div className="flex flex-col h-full transition-[margin] duration-300 ease-in-out flex-1 min-w-0 min-h-0 relative bg-background">
+      <div className="flex flex-col h-full transition-[padding] duration-300 ease-in-out flex-1 min-w-0 min-h-0 relative bg-background">
         
         {/* Header skeleton (fixed) */}
         <div className="w-full z-[50]">

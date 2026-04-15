@@ -123,10 +123,14 @@ export function ChatHeader({
   const leadEmail = leadData?.email
   const leadPhone = leadData?.phone
 
-  // Calculate dynamic left offset for fixed positioning
-  const getLeftOffset = () => {
-    if (typeof window === 'undefined') return '0px';
-    if (window.innerWidth < 768) return '0px'; // Mobile full width
+  // Calculate dynamic offsets for fixed positioning
+  const getPositionStyles = () => {
+    if (typeof window === 'undefined') {
+      return { left: '0px', paddingLeft: '1rem', width: '100%' };
+    }
+    if (window.innerWidth < 768) {
+      return { left: '0px', paddingLeft: '1rem', width: '100%' };
+    }
     
     // We know layout sidebar is either 64px or 256px
     const isSidebarCollapsed = document.querySelector('.sidebar')?.classList.contains('collapsed');
@@ -135,17 +139,20 @@ export function ChatHeader({
     // Chat list width
     const chatListWidth = isChatListCollapsed ? 0 : 319;
     
-    return `${sidebarWidth + chatListWidth}px`;
+    return {
+      left: `${sidebarWidth}px`,
+      paddingLeft: `calc(${chatListWidth}px + 1rem)`,
+      width: `calc(100% - ${sidebarWidth}px)`
+    };
   };
 
   return (
     <div
       data-toolbar-font
-      className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] flex items-center z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2 fixed top-[64px] right-0 transition-all duration-300 ease-in-out" 
+      className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] flex items-center z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2 fixed top-[64px] right-0 transition-all duration-300 ease-in-out pr-4" 
       style={{ 
         backdropFilter: 'blur(10px)',
-        left: getLeftOffset(),
-        width: `calc(100% - ${getLeftOffset()})`,
+        ...getPositionStyles()
       }}>
       
       {/* Back Button for Mobile */}
@@ -172,7 +179,10 @@ export function ChatHeader({
           agentId={agentId}
           leadName={isLead ? truncateLeadName(leadData?.name || "Lead") : "Visitor"}
           leadId={isLead ? leadData?.id || "" : ""}
-          className="absolute top-0 left-0"
+          className="absolute top-0 transition-all duration-300 ease-in-out"
+          style={{
+            left: !isChatListCollapsed ? "319px" : "0"
+          }}
         />
       </div>
       

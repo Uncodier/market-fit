@@ -2079,3 +2079,27 @@ with check (true);
 - `icp_hash` evita minados simultáneos duplicados por `role_query_id` + ICP.
 - `progress_percent` refleja avance con base en `processed_targets / total_targets`.
 - `anon` puede leer únicamente corridas completadas; `service_role` tiene acceso total.
+CREATE TABLE public.instance_nodes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  instance_id uuid NOT NULL,
+  parent_node_id uuid,
+  original_node_id uuid,
+  parent_instance_log_id uuid,
+  type text NOT NULL,
+  status text NOT NULL DEFAULT 'pending'
+    CHECK (status = ANY (ARRAY['pending','running','completed','failed','cancelled'])),
+  result jsonb DEFAULT '{}'::jsonb,
+  settings jsonb DEFAULT '{}'::jsonb,
+  prompt jsonb DEFAULT '{}'::jsonb,
+  site_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT timezone('utc', now()),
+  updated_at timestamptz NOT NULL DEFAULT timezone('utc', now()),
+  CONSTRAINT instance_nodes_pkey PRIMARY KEY (id),
+  CONSTRAINT instance_nodes_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES public.remote_instances(id) ON DELETE CASCADE,
+  CONSTRAINT instance_nodes_parent_node_id_fkey FOREIGN KEY (parent_node_id) REFERENCES public.instance_nodes(id) ON DELETE SET NULL,
+  CONSTRAINT instance_nodes_original_node_id_fkey FOREIGN KEY (original_node_id) REFERENCES public.instance_nodes(id) ON DELETE SET NULL,
+  CONSTRAINT instance_nodes_parent_log_id_fkey FOREIGN KEY (parent_instance_log_id) REFERENCES public.instance_logs(id) ON DELETE SET NULL,
+  CONSTRAINT instance_nodes_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.sites(id) ON DELETE CASCADE,
+  CONSTRAINT instance_nodes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);

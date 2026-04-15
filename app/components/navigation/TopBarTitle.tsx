@@ -75,7 +75,7 @@ export function TopBarTitle({
       'campaigns': t('layout.sidebar.campaigns') || 'Campaigns',
       'control-center': t('layout.sidebar.controlCenter') || 'Control Center',
       'billing': t('layout.sidebar.billing') || 'Billing',
-      'robots': t('layout.sidebar.robots') || 'Makina'
+      'robots': t('layout.sidebar.robots') || 'Agents'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
@@ -145,7 +145,7 @@ export function TopBarTitle({
   })) : null;
  
   return (
-    <div className="flex items-center gap-4">
+    <div className={cn("flex items-center gap-4 min-w-0", className)}>
       <Button
         variant="ghost"
         className="hidden md:flex h-8 w-8 p-0 ml-3.5 items-center justify-center font-inter"
@@ -162,8 +162,8 @@ export function TopBarTitle({
       </Button>
       
       {breadcrumbItems ? (
-        <nav className="flex items-center" aria-label="Breadcrumb">
-          <ol className="flex items-center">
+        <nav className="flex items-center min-w-0" aria-label="Breadcrumb">
+          <ol className="flex items-center min-w-0">
               {breadcrumbItems.map((item, index) => {
                 // Calculate dynamic font size
                 const total = breadcrumbItems.length
@@ -177,18 +177,18 @@ export function TopBarTitle({
                 }
                 
                 return (
-                  <li key={`${item.href}-${index}`} className="flex items-center">
+                  <li key={`${item.href}-${index}`} className={cn("flex items-center", isLast ? "min-w-0" : "shrink-0")}>
                     {index > 0 && (
                       <ChevronRight 
                         className={cn(
-                          "mx-1.5 text-muted-foreground/70 transition-all duration-200",
+                          "mx-1.5 text-muted-foreground/70 transition-all duration-200 shrink-0",
                           isLast ? "h-5 w-5" : "h-4 w-4"
                         )} 
                         aria-hidden={true} 
                       />
                     )}
                     {item.isCurrent ? (
-                      <span className={cn("font-semibold text-foreground transition-all duration-200 font-inter", fontSize)}>
+                      <span className={cn("font-semibold text-foreground transition-all duration-200 font-inter truncate", fontSize)}>
                         {item.label}
                       </span>
                     ) : (
@@ -200,7 +200,7 @@ export function TopBarTitle({
                           }
                         }}
                         className={cn(
-                          "font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer font-inter",
+                          "font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer font-inter truncate",
                           fontSize
                         )}
                       >
@@ -213,7 +213,7 @@ export function TopBarTitle({
           </ol>
         </nav>
       ) : (
-        <h1 className="text-2xl font-semibold text-foreground font-inter">{customTitle || getDefaultTitle()}</h1>
+        <h1 className="text-2xl font-semibold text-foreground font-inter truncate">{customTitle || getDefaultTitle()}</h1>
       )}
       
       {(helpText || helpWelcomeMessage || helpTask) && (

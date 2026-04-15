@@ -9,7 +9,7 @@
 }
 
 /* Ensure iframe content doesn't create overlays outside its bounds */
-.iframe-container iframe {
+.iframe-container iframe:not(.contained-iframe) {
   contain: layout style;
   isolation: isolate;
   position: relative;
@@ -26,7 +26,6 @@
 /* Ensure that any browser-generated dialogs or system modals 
    don't interfere with our UI elements */
 .robot-browser-session {
-  position: relative;
   isolation: isolate;
   contain: layout style paint;
   overflow: hidden;

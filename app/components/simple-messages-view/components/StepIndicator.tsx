@@ -335,7 +335,7 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               ) : (
                 <>
                   <span className="font-medium">No hay plan disponible</span>
-                  <span className="text-xs">- La makina generará un plan al iniciar</span>
+                  <span className="text-xs">- El agent generará un plan al iniciar</span>
                 </>
               )}
             </div>

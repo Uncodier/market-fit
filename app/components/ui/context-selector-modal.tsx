@@ -385,7 +385,7 @@ export function ContextSelectorModal({ onContextChange, selectedContext, isBrows
         <DialogHeader className="px-6 py-6">
           <DialogTitle>Agregar Contexto</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Busca y selecciona datos para proporcionar contexto a la makina
+            Busca y selecciona datos para proporcionar contexto al agent
           </p>
         </DialogHeader>
 

@@ -7,6 +7,7 @@ import { useUserProfile } from '../hooks/useUserProfile'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../utils/markdownComponents'
+import { InstanceNodeChildren } from './InstanceNodeChildren'
 
 interface MessageItemProps {
   log: InstanceLog
@@ -177,6 +178,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           </ReactMarkdown>
         </div>
       </div>
+      
+      {/* Branch to node feature */}
+      <InstanceNodeChildren parentLogId={log.id} instanceId={log.instance_id} />
       
     </div>
   )

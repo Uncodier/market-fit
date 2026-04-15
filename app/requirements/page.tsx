@@ -1191,7 +1191,7 @@ export default function RequirementsPage() {
             <div className={viewMode === 'kanban' ? "min-w-fit px-16" : ""}>
               {/* Rendering for all tabs */}
               {["all", "pending", "completed", "rejected"].map((tab) => (
-                <TabsContent key={tab} value={tab} className={viewMode === 'kanban' ? "m-0 min-h-[300px]" : "space-y-4 min-h-[300px]"}>
+                <TabsContent key={tab} value={tab} className={viewMode === 'kanban' ? "m-0 min-h-[calc(100dvh-220px)]" : "space-y-4 min-h-[calc(100dvh-220px)]"}>
                 {/* Case 1: Loading or initial state - prioritize loading over no site selected */}
                 {isLoading || (!currentSite && !visibleError) ? (
                   <LoadingState />
