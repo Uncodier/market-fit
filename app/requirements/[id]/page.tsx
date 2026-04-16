@@ -2175,10 +2175,12 @@ function RequirementDetailContent() {
                         const handleMouseUp = () => {
                           window.removeEventListener('mousemove', handleMouseMove);
                           window.removeEventListener('mouseup', handleMouseUp);
+                                  window.removeEventListener('click', handleMouseUp as any, { capture: true });
                         };
                         
                         window.addEventListener('mousemove', handleMouseMove);
                         window.addEventListener('mouseup', handleMouseUp);
+                                window.addEventListener('click', handleMouseUp as any, { capture: true, once: true });
                       }}
                     >
                       {/* Node Header */}
@@ -2595,12 +2597,14 @@ function RequirementDetailContent() {
                             const handleMouseUp = () => {
                               window.removeEventListener('mousemove', handleMouseMove);
                               window.removeEventListener('mouseup', handleMouseUp);
+                                  window.removeEventListener('click', handleMouseUp as any, { capture: true });
                               setIsConnecting(null);
                               setCurrentMousePos(null);
                             };
                             
                             window.addEventListener('mousemove', handleMouseMove);
                             window.addEventListener('mouseup', handleMouseUp);
+                                window.addEventListener('click', handleMouseUp as any, { capture: true, once: true });
                           }
                         }}
                         ></div>
@@ -2639,12 +2643,14 @@ function RequirementDetailContent() {
                                 const handleMouseUp = () => {
                                   window.removeEventListener('mousemove', handleMouseMove);
                                   window.removeEventListener('mouseup', handleMouseUp);
+                                  window.removeEventListener('click', handleMouseUp as any, { capture: true });
                                   setIsConnecting(null);
                                   setCurrentMousePos(null);
                                 };
                                 
                                 window.addEventListener('mousemove', handleMouseMove);
                                 window.addEventListener('mouseup', handleMouseUp);
+                                window.addEventListener('click', handleMouseUp as any, { capture: true, once: true });
                               }
                             }}
                           >
@@ -2684,12 +2690,14 @@ function RequirementDetailContent() {
                                 const handleMouseUp = () => {
                                   window.removeEventListener('mousemove', handleMouseMove);
                                   window.removeEventListener('mouseup', handleMouseUp);
+                                  window.removeEventListener('click', handleMouseUp as any, { capture: true });
                                   setIsConnecting(null);
                                   setCurrentMousePos(null);
                                 };
                                 
                                 window.addEventListener('mousemove', handleMouseMove);
                                 window.addEventListener('mouseup', handleMouseUp);
+                                window.addEventListener('click', handleMouseUp as any, { capture: true, once: true });
                               }
                             }}
                           >
@@ -2729,12 +2737,14 @@ function RequirementDetailContent() {
                                 const handleMouseUp = () => {
                                   window.removeEventListener('mousemove', handleMouseMove);
                                   window.removeEventListener('mouseup', handleMouseUp);
+                                  window.removeEventListener('click', handleMouseUp as any, { capture: true });
                                   setIsConnecting(null);
                                   setCurrentMousePos(null);
                                 };
                                 
                                 window.addEventListener('mousemove', handleMouseMove);
                                 window.addEventListener('mouseup', handleMouseUp);
+                                window.addEventListener('click', handleMouseUp as any, { capture: true, once: true });
                               }
                             }}
                           >
@@ -2779,12 +2789,14 @@ function RequirementDetailContent() {
                                 const handleMouseUp = () => {
                                   window.removeEventListener('mousemove', handleMouseMove);
                                   window.removeEventListener('mouseup', handleMouseUp);
+                                  window.removeEventListener('click', handleMouseUp as any, { capture: true });
                                   setIsConnecting(null);
                                   setCurrentMousePos(null);
                                 };
                                 
                                 window.addEventListener('mousemove', handleMouseMove);
                                 window.addEventListener('mouseup', handleMouseUp);
+                                window.addEventListener('click', handleMouseUp as any, { capture: true, once: true });
                               }
                             }}
                           >
@@ -2824,12 +2836,14 @@ function RequirementDetailContent() {
                                     const handleMouseUp = () => {
                                       window.removeEventListener('mousemove', handleMouseMove);
                                       window.removeEventListener('mouseup', handleMouseUp);
+                                  window.removeEventListener('click', handleMouseUp as any, { capture: true });
                                       setIsConnecting(null);
                                       setCurrentMousePos(null);
                                     };
                                     
                                     window.addEventListener('mousemove', handleMouseMove);
                                     window.addEventListener('mouseup', handleMouseUp);
+                                window.addEventListener('click', handleMouseUp as any, { capture: true, once: true });
                                   }
                                 }}
                               >
@@ -2872,12 +2886,14 @@ function RequirementDetailContent() {
                                   const handleMouseUp = () => {
                                     window.removeEventListener('mousemove', handleMouseMove);
                                     window.removeEventListener('mouseup', handleMouseUp);
+                                  window.removeEventListener('click', handleMouseUp as any, { capture: true });
                                     setIsConnecting(null);
                                     setCurrentMousePos(null);
                                   };
                                   
                                   window.addEventListener('mousemove', handleMouseMove);
                                   window.addEventListener('mouseup', handleMouseUp);
+                                window.addEventListener('click', handleMouseUp as any, { capture: true, once: true });
                                 }
                               }}
                             >

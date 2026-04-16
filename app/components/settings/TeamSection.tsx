@@ -9,6 +9,7 @@ import { Input } from "../ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, User, Mail, FileText, CheckCircle2, Clock, Save, RotateCcw, Loader, ChevronDown, ChevronUp } from "../ui/icons"
+import { EmptyCard } from "../ui/empty-card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Badge } from "../ui/badge"
 import { siteMembersService, type SiteMember } from "@/app/services/site-members-service"
@@ -578,9 +579,17 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
       ) : (
         <>
           {/* Team Member Cards */}
-          {teamList.map((member, index) => (
-            <Card 
-              key={index} 
+          {teamList.length === 0 ? (
+            <EmptyCard 
+              icon={<User className="h-10 w-10" />}
+              title="No team members yet"
+              description="Invite team members to collaborate on your site and manage operations."
+              variant="fancy"
+            />
+          ) : (
+            teamList.map((member, index) => (
+              <Card 
+                key={index} 
               id={`team-member-${index}`}
               className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200"
             >
@@ -864,7 +873,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                 </div>
               </CardFooter>
             </Card>
-          ))}
+          )))}
         </>
       )}
     </div>

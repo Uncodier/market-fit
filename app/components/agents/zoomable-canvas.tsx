@@ -16,6 +16,9 @@ interface ZoomableCanvasProps {
   fitOnChildrenChange?: boolean
   extraControls?: React.ReactNode
   onSort?: () => void
+  height?: string
+  minHeight?: string
+  initialOffsetY?: number
 }
 
 export function ZoomableCanvas({ 
@@ -28,7 +31,10 @@ export function ZoomableCanvas({
   dotRadius = '1px',
   fitOnChildrenChange = true,
   extraControls,
-  onSort
+  onSort,
+  height = "calc(100vh - 135px)",
+  minHeight = "600px",
+  initialOffsetY = 0
 }: ZoomableCanvasProps) {
   // Use the layout context to get the current state
   const { isLayoutCollapsed } = useLayout();
@@ -172,10 +178,10 @@ export function ZoomableCanvas({
     
     // Then calculate what would be a centered position
     const finalX = canvasCenter - (contentWidth / 2);
-    const finalY = canvasCenterY - (contentSize.height * newScale / 2);
+    const finalY = canvasCenterY - (contentSize.height * newScale / 2) + initialOffsetY;
     
     return { scale: newScale, x: finalX, y: finalY };
-  }, [contentDimensions, measureContent, isLayoutCollapsed]);
+  }, [contentDimensions, measureContent, isLayoutCollapsed, initialOffsetY]);
 
   // Helper function to animate to a position over time with RAF
   const animateToPosition = useCallback((targetX: number, targetY: number, targetScale: number, duration = 180) => {
@@ -552,6 +558,27 @@ export function ZoomableCanvas({
     e.stopPropagation();
   }, [isDragging, startDragPosition, scale]);
   
+  // Handle mouse up globally to prevent stuck drag
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        setAutoRecenterEnabled(false);
+        setTimeout(() => setIsUserInteracting(false), 200);
+      }
+    };
+    
+    if (isDragging) {
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+      window.addEventListener('click', handleGlobalMouseUp, { capture: true, once: true });
+    }
+    
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+      window.removeEventListener('click', handleGlobalMouseUp, { capture: true });
+    };
+  }, [isDragging]);
+
   // Mouse up handler for drag end
   const handleMouseUp = () => {
     if (!isDragging) return;
@@ -800,9 +827,9 @@ export function ZoomableCanvas({
       ref={wrapperRef}
       className={`${className} relative w-full`}
       style={{ 
-        height: "calc(100vh - 135px)",
-        minHeight: "600px",
-        overflow: "visible",
+        height: height,
+        minHeight: minHeight,
+        overflow: "hidden",
         cursor: isDragging ? "grabbing" : "grab",
         margin: "0 auto",
         width: "100%",
@@ -816,7 +843,7 @@ export function ZoomableCanvas({
         ref={canvasRef}
         className="w-full h-full"
         style={{ 
-          overflow: "visible",
+          overflow: "hidden",
           paddingRight: "20px",
           touchAction: "none" // Prevent browser handling of touch gestures
         }}

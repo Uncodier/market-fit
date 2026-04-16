@@ -9,6 +9,7 @@ import { Button } from "../ui/button"
 import { PlusCircle, Trash2, Save } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { useCallback, useMemo, useState, useEffect } from "react"
+import { EmptyCard } from "../ui/empty-card"
 import { 
   SocialIcon,
   FacebookIcon,
@@ -599,16 +600,12 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
         })}
         
         {socialMedia.length === 0 && (
-          <div className="text-center py-12 border border-dashed rounded-lg bg-muted/10">
-            <h3 className="text-lg font-medium mb-2">No social networks connected</h3>
-            <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-              Connect your social media accounts to display them on your website and track performance.
-            </p>
-            <Button onClick={addSocialMedia}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Your First Network
-            </Button>
-          </div>
+          <EmptyCard 
+            icon={<GlobeIcon size={40} />}
+            title="No social networks connected"
+            description="Connect your social media accounts to display them on your website and track performance."
+            variant="fancy"
+          />
         )}
       </div>
     </div>

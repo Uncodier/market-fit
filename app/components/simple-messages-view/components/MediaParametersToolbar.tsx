@@ -348,6 +348,32 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Duration Selector - Icon Button */}
+          <div className="relative">
+            <Select 
+              value={(audioParameters?.duration ?? 15).toString()} 
+              onValueChange={(value) => onAudioParameterChange('duration', parseInt(value))}
+              open={durationOpen}
+              onOpenChange={setDurationOpen}
+            >
+              <SelectTrigger 
+                hideIcon 
+                className="h-8 bg-secondary hover:bg-secondary/80 border-secondary text-xs w-auto min-w-fit"
+              >
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>{audioParameters?.duration ?? 15}s</span>
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">5s</SelectItem>
+                <SelectItem value="15" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">15s</SelectItem>
+                <SelectItem value="30" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">30s</SelectItem>
+                <SelectItem value="60" hideIndicator className="data-[state=checked]:bg-amber-50 data-[state=checked]:text-amber-700">60s</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </>
       )}
     </div>

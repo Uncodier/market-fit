@@ -1,5 +1,4 @@
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 
 export function RobotsPageSkeleton() {
   return (
@@ -187,14 +186,6 @@ export function RobotsPageSkeleton() {
                   </div>
                 </div>
               ))}
-            </div>
-
-            {/* Chat input area */}
-            <div className="border-t dark:border-white/5 border-black/5 p-4 bg-muted/20">
-              <div className="relative">
-                <Skeleton className="h-12 w-full rounded-xl" />
-                <Skeleton className="absolute bottom-2 right-2 h-8 w-8 rounded-lg" />
-              </div>
             </div>
           </div>
         </div>

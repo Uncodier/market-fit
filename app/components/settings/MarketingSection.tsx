@@ -11,6 +11,7 @@ import { Button } from "../ui/button"
 import { PlusCircle, Trash2, Tag, Link, Globe, AppWindow, ChevronDown, ChevronRight } from "../ui/icons"
 import { Slider } from "../ui/slider"
 import { Switch } from "../ui/switch"
+import { EmptyCard } from "../ui/empty-card"
 
 interface MarketingSectionProps {
   active: boolean
@@ -59,7 +60,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         setServicesList(value.services);
       }
       if (name === 'competitors' && value.competitors && Array.isArray(value.competitors)) {
-        setCompetitorList(value.competitors);
+        setCompetitorList(value.competitors as any);
       }
     });
     
@@ -440,7 +441,15 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-6 px-8 pb-8">
-          {productsList && productsList.map((product, index) => {
+          {(!productsList || productsList.length === 0) ? (
+            <EmptyCard 
+              icon={<Tag className="h-10 w-10" />}
+              title="No products added"
+              description="Add your products to help agents recommend them to customers."
+              variant="fancy"
+            />
+          ) : (
+          productsList.map((product, index) => {
             const isExpanded = expandedProducts.has(index)
             
             return (
@@ -589,7 +598,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
                 )}
               </div>
             )
-          })}
+          }))}
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
@@ -623,7 +632,15 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-6 px-8 pb-8">
-          {servicesList && servicesList.map((service, index) => {
+          {(!servicesList || servicesList.length === 0) ? (
+            <EmptyCard 
+              icon={<AppWindow className="h-10 w-10" />}
+              title="No services added"
+              description="Add your services to help agents recommend them to customers."
+              variant="fancy"
+            />
+          ) : (
+          servicesList.map((service, index) => {
             const isExpanded = expandedServices.has(index)
             
             return (
@@ -772,7 +789,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
                 )}
               </div>
             )
-          })}
+          }))}
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
@@ -806,7 +823,15 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-6 px-8 pb-8">
-          {competitorList.map((competitor, index) => (
+          {(!competitorList || competitorList.length === 0) ? (
+            <EmptyCard 
+              icon={<AppWindow className="h-10 w-10" />}
+              title="No competitors added"
+              description="Keep track of your competitors to help agents position your brand."
+              variant="fancy"
+            />
+          ) : (
+          competitorList.map((competitor, index) => (
             <div key={index} className="flex items-center space-x-2">
               <FormField
                 control={form.control}
@@ -869,7 +894,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
                 <Trash2 className="h-5 w-5" />
               </Button>
             </div>
-          ))}
+          )))}
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
@@ -903,7 +928,15 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-6 px-8 pb-8">
-          {channelsList.map((channel, index) => (
+          {(!channelsList || channelsList.length === 0) ? (
+            <EmptyCard 
+              icon={<Globe className="h-10 w-10" />}
+              title="No marketing channels"
+              description="Add the channels you use to reach your customers."
+              variant="fancy"
+            />
+          ) : (
+          channelsList.map((channel, index) => (
             <div key={index} className="flex items-center gap-2 mb-2">
               <FormField
                 control={form.control}
@@ -943,7 +976,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
                 <Trash2 className="h-5 w-5" />
               </Button>
             </div>
-          ))}
+          )))}
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 

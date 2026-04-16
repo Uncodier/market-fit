@@ -1169,9 +1169,9 @@ function AgentsPageContent() {
                   </div>
                 </StickyHeader>
               <div 
-                className="overflow-hidden"
+                className=""
                 style={{
-                  padding: viewMode === "grid" ? "16px" : "0",
+                  padding: viewMode === "grid" ? "16px" : "16px 0",
                   margin: viewMode === "grid" ? "16px 0" : "0",
                   display: "flex",
                   flexDirection: "column"
@@ -1188,15 +1188,15 @@ function AgentsPageContent() {
                               
                               {/* Lead Manager Card - Top Level */}
                               {isLoading ? (
-                                <div className="w-[458px] px-4">
-                                  <SimpleAgentCardSkeleton className="border-primary shadow-md" />
+                                <div className="w-[458px] px-4 py-8">
+                                  <SimpleAgentCardSkeleton className="shadow-md" />
                                 </div>
                               ) : (
                                 leadAgent && 
                                 (!searchQuery || 
                                  leadAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                  leadAgent.description.toLowerCase().includes(searchQuery.toLowerCase())) && 
-                                <div className="w-[458px] px-4">
+                                <div className="w-[458px] px-4 py-8">
                                   <SimpleAgentCard 
                                     agent={leadAgent} 
                                     onManage={handleManageAgent}
@@ -1205,7 +1205,7 @@ function AgentsPageContent() {
                                     showActivities={isAgentExpanded(leadAgent.id)}
                                     onExecuteActivity={handleExecuteActivity}
                                     setSelectedAgent={setSelectedAgent}
-                                    className="border-primary shadow-md"
+                                    className="shadow-md"
                                     activityStates={activityStates}
                                   />
                                 </div>
@@ -1227,9 +1227,9 @@ function AgentsPageContent() {
                               
                               {/* Data Analyst - Middle Level */}
                               {isLoading ? (
-                                <div className="flex justify-center mb-10">
+                                <div className="flex justify-center mb-10 py-8">
                                   <div className="w-[458px] px-4">
-                                    <SimpleAgentCardSkeleton className="border-primary/30 shadow-md" />
+                                    <SimpleAgentCardSkeleton className="shadow-md" />
                                   </div>
                                 </div>
                               ) : (
@@ -1238,7 +1238,7 @@ function AgentsPageContent() {
                                  dataAnalystAgent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                  dataAnalystAgent.description.toLowerCase().includes(searchQuery.toLowerCase())) && (
                                 <>
-                                  <div className="flex justify-center mb-10">
+                                  <div className="flex justify-center mb-10 py-8">
                                     <div className="w-[458px] px-4">
                                       <SimpleAgentCard 
                                         agent={dataAnalystAgent} 
@@ -1248,7 +1248,7 @@ function AgentsPageContent() {
                                         showActivities={isAgentExpanded(dataAnalystAgent.id)}
                                         onExecuteActivity={handleExecuteActivity}
                                         setSelectedAgent={setSelectedAgent}
-                                        className="border-primary/30 shadow-md"
+                                        className="shadow-md"
                                         activityStates={activityStates}
                                       />
                                     </div>
@@ -1297,8 +1297,8 @@ function AgentsPageContent() {
                                     </div>
                                     
                                     {/* Team member skeleton cards */}
-                                    <div className="pb-12">
-                                      <div className="grid grid-flow-col auto-cols-min gap-12 px-8 mt-8 min-w-full">
+                                    <div className="pb-12 pt-10">
+                                      <div className="grid grid-flow-col auto-cols-min gap-12 px-8 min-w-full">
                                         {Array.from({ length: 4 }).map((_, index) => (
                                           <div key={index} className="w-[458px] px-4">
                                             <SimpleAgentCardSkeleton />
@@ -1357,9 +1357,9 @@ function AgentsPageContent() {
                                       </div>
                                       
                                       {/* Team member cards - scrollable container */}
-                                      <div className="pb-12">
+                                      <div className="pb-12 pt-10">
                                         <div className={
-                                          `grid grid-flow-col auto-cols-min gap-12 px-8 mt-8 min-w-full`
+                                          `grid grid-flow-col auto-cols-min gap-12 px-8 min-w-full py-4`
                                         }>
                                           {filteredAgents.map((agent) => (
                                             <div key={agent.id} className="w-[458px] px-4">
@@ -1391,7 +1391,7 @@ function AgentsPageContent() {
                                                   </div>
                                                   
                                                   {agents.find(a => a.id === "7" && !a.isDisabled) && (
-                                                    <div className="w-[400px]">
+                                                    <div className="w-[400px] py-8">
                                                       <SimpleAgentCard
                                                         agent={agents.find(a => a.id === "7")!}
                                                         onManage={handleManageAgent}

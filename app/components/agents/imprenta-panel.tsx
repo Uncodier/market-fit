@@ -9,7 +9,8 @@ import { ZoomableCanvas } from "./zoomable-canvas"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
-import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, FileText, Bot, Eye, Trash2, GitFork, Link, Copy, Globe, Mail, Phone, UploadCloud } from "@/app/components/ui/icons"
+import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, FileText, Bot, Eye, Trash2, GitFork, Link, Copy, Globe, Mail, Phone, UploadCloud, Download, ZoomIn, X } from "@/app/components/ui/icons"
+import { AudioPlayer } from "./audio-player"
 import { SocialIcon } from "@/app/components/ui/social-icons"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { toast } from "sonner"
@@ -23,6 +24,8 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../simple-messages-view/utils/markdownComponents'
 
+import { ImprentaSkeleton } from "@/app/components/skeletons/imprenta-skeleton"
+
 export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string }) {
   const { currentSite } = useSite()
   const { isLayoutCollapsed } = useLayout()
@@ -34,10 +37,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [isLoading, setIsLoading] = useState(false)
   const [isUploadingAsset, setIsUploadingAsset] = useState(false)
   const [initialPrompt, setInitialPrompt] = useState("")
+  const [zoomedMedia, setZoomedMedia] = useState<{url: string, type: 'image' | 'video'} | null>(null)
   const isCreatingRootRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [dummyNodes, setDummyNodes] = useState<InstanceNode[]>([])
+  const [generatingNodeIds, setGeneratingNodeIds] = useState<Set<string>>(new Set())
 
   const [positions, setPositions] = useState<Record<string, {x: number, y: number}>>({})
   const [contexts, setContexts] = useState<any[]>([])
@@ -89,8 +94,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   }, [])
 
   // Keep refs in sync for window event listeners
-  useEffect(() => { positionsRef.current = positions }, [positions])
-  useEffect(() => { nodesRef.current = [...nodes, ...dummyNodes] }, [nodes, dummyNodes])
+  positionsRef.current = positions;
+  nodesRef.current = [...nodes, ...dummyNodes];
 
   // Reset initial prompt when changing instances
   useEffect(() => {
@@ -102,7 +107,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [textParams, setTextParams] = useState<any>({ expectedResults: 1, length: 'medium', styles: ['default'] })
   const [imageParams, setImageParams] = useState<ImageParameters>({ format: 'PNG', aspectRatio: '1:1', quality: 100, expectedResults: 1 })
   const [videoParams, setVideoParams] = useState<VideoParameters>({ aspectRatio: '16:9', resolution: '1080p', duration: 4, expectedResults: 1 })
-  const [audioParams, setAudioParams] = useState<AudioParameters>({ format: 'MP3', sampleRate: '44.1kHz', channels: 'stereo', expectedResults: 1 })
+  const [audioParams, setAudioParams] = useState<AudioParameters>({ format: 'MP3', sampleRate: '44.1kHz', channels: 'stereo', duration: 15, expectedResults: 1 })
 
   // Fetch nodes for the selected instance
   useEffect(() => {
@@ -207,6 +212,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                   return currPositions;
                 });
                 
+                setGeneratingNodeIds(prev => {
+                  const next = new Set(prev);
+                  next.add(payload.new.id);
+                  return next;
+                });
+                
                 const copy = [...prev];
                 copy.splice(index, 1);
                 return copy;
@@ -216,6 +227,18 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           })
         } else if (payload.eventType === 'UPDATE') {
           setNodes(prev => prev.map(n => n.id === payload.new.id ? payload.new as InstanceNode : n))
+          
+          if (payload.new.status === 'completed' || payload.new.status === 'failed') {
+            setGeneratingNodeIds(prev => {
+              if (prev.has(payload.new.id)) {
+                const next = new Set(prev);
+                next.delete(payload.new.id);
+                return next;
+              }
+              return prev;
+            });
+          }
+          
           // If the executed node fails or completes without a child, we might want to clear dummy children
           if (payload.new.status === 'failed' || payload.new.status === 'completed') {
             setDummyNodes(prev => {
@@ -286,6 +309,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       setDummyNodes(prev => [...prev, ...newDummies])
 
       // 1. Set the current node to running to show visual feedback immediately
+      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, status: 'running' as any } : n));
       await supabase
         .from('instance_nodes')
         .update({ status: 'running' })
@@ -295,8 +319,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       const { getSystemPromptForActivity } = await import('@/app/components/simple-messages-view/utils')
       
       // Prepare context string with media parameters
+      const currentMediaType = (node.settings as any)?.media_type || (node.type === 'prompt' ? 'text' : node.type.replace('generate-', ''));
       const contextObj: any = {
-        mediaType: (node.settings as any)?.media_type || (node.type === 'prompt' ? 'text' : node.type.replace('generate-', '')),
+        mediaType: currentMediaType,
+        output_type: currentMediaType,
         parameters: { ...((node.settings as any)?.parameters || {}) }
       };
 
@@ -328,6 +354,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         console.error('API Error Response:', response.error);
         
         // Revert node status on failure
+        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, status: 'failed' as any } : n));
         await supabase
           .from('instance_nodes')
           .update({ status: 'failed' })
@@ -344,39 +371,72 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   }
 
   const handleDeleteNode = async (nodeId: string) => {
-    const nodeToDelete = nodes.find(n => n.id === nodeId);
     // Keep a backup in case the deletion fails
     const previousNodes = [...nodes];
     
-    // Optimistic update to remove it from UI immediately
-    setNodes(prev => prev.filter(n => n.id !== nodeId))
+    const getNodesToDeleteBottomUp = (rootId: string, currentNodes: InstanceNode[]): InstanceNode[] => {
+      const result: InstanceNode[] = [];
+      
+      const traverse = (id: string) => {
+        const children = currentNodes.filter(n => n.parent_node_id === id);
+        for (const child of children) {
+          traverse(child.id);
+        }
+        const node = currentNodes.find(n => n.id === id);
+        if (node) result.push(node);
+      };
+      
+      traverse(rootId);
+      return result;
+    };
+    
+    const nodesToDelete = getNodesToDeleteBottomUp(nodeId, nodes);
+    const nodeIdsToDelete = nodesToDelete.map(n => n.id);
+    
+    if (nodesToDelete.length === 0) return;
+
+    // Optimistic update to remove them from UI immediately
+    setNodes(prev => prev.filter(n => !nodeIdsToDelete.includes(n.id)));
 
     try {
-      const { error } = await supabase
-        .from('instance_nodes')
+      // First, delete any contexts associated with these nodes to avoid foreign key constraints
+      // if they don't have ON DELETE CASCADE
+      await supabase
+        .from('instance_node_contexts')
         .delete()
-        .eq('id', nodeId)
+        .or(`target_node_id.in.(${nodeIdsToDelete.join(',')}),context_node_id.in.(${nodeIdsToDelete.join(',')})`);
+
+      // Delete the nodes (bottom-up to avoid parent-child foreign key constraints if done sequentially)
+      // We do it sequentially to be absolutely safe about FK constraints
+      for (const node of nodesToDelete) {
+        const { error } = await supabase
+          .from('instance_nodes')
+          .delete()
+          .eq('id', node.id);
+        
+        if (error) throw error;
+      }
       
-      if (error) throw error
-      
-      // Delete associated asset file if it was an imprenta uploaded file
-      if (nodeToDelete && (nodeToDelete.settings as any)?.imprenta_mode) {
-        const url = (nodeToDelete.result as any)?.outputs?.[0]?.url;
-        if (url) {
-          const urlParts = url.split('/');
-          const storagePath = urlParts[urlParts.length - 2] + '/' + urlParts[urlParts.length - 1];
-          supabase.storage.from('assets').remove([storagePath]).catch(err => {
-            console.error("Failed to delete storage asset:", err);
-          });
+      // Delete associated asset files if they were uploaded in imprenta mode
+      for (const node of nodesToDelete) {
+        if ((node.settings as any)?.imprenta_mode) {
+          const url = (node.result as any)?.outputs?.[0]?.url;
+          if (url) {
+            const urlParts = url.split('/');
+            const storagePath = urlParts[urlParts.length - 2] + '/' + urlParts[urlParts.length - 1];
+            supabase.storage.from('assets').remove([storagePath]).catch((err: any) => {
+              console.error("Failed to delete storage asset for node:", node.id, err);
+            });
+          }
         }
       }
 
-      toast.success("Node deleted")
+      toast.success(nodesToDelete.length > 1 ? `Deleted node and ${nodesToDelete.length - 1} children` : "Node deleted");
     } catch (e) {
-      console.error(e)
-      toast.error("Failed to delete node. It might have children.")
-      // Restore on failure (since there might be foreign key restrictions)
-      setNodes(previousNodes)
+      console.error(e);
+      toast.error("Failed to delete node(s)");
+      // Restore on failure
+      setNodes(previousNodes);
     }
   }
 
@@ -531,6 +591,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     
     window.addEventListener('mousemove', handleWindowMouseMove)
     window.addEventListener('mouseup', handleWindowMouseUp)
+    window.addEventListener('click', handleWindowMouseUp, { capture: true, once: true })
   }
 
   const handleWindowMouseMove = (e: MouseEvent) => {
@@ -557,19 +618,23 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     }))
   }
 
-  const handleWindowMouseUp = async () => {
+  const handleWindowMouseUp = async (e?: MouseEvent | Event) => {
     const nodeId = draggingNodeRef.current
-    if (nodeId) {
-       const nodeToUpdate = nodesRef.current.find(n => n.id === nodeId)
-       const newPos = positionsRef.current[nodeId]
-       if (nodeToUpdate && newPos) {
-          const updatedSettings = { ...((nodeToUpdate.settings as any) || {}), ui_position: newPos }
-          await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', nodeId)
-       }
-    }
+    if (!nodeId) return
+
+    // Termina el drag inmediatamente antes del await
     draggingNodeRef.current = null
     window.removeEventListener('mousemove', handleWindowMouseMove)
     window.removeEventListener('mouseup', handleWindowMouseUp)
+    window.removeEventListener('click', handleWindowMouseUp as any, { capture: true })
+
+    const nodeToUpdate = nodesRef.current.find(n => n.id === nodeId)
+    const newPos = positionsRef.current[nodeId]
+    if (nodeToUpdate && newPos) {
+       const updatedSettings = { ...((nodeToUpdate.settings as any) || {}), ui_position: newPos }
+       setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, settings: updatedSettings } : n));
+       await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', nodeId)
+    }
   }
 
   const handleConnectionStart = (e: React.MouseEvent, nodeId: string) => {
@@ -604,6 +669,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     
     window.addEventListener('mousemove', handleConnectionMove);
     window.addEventListener('mouseup', handleConnectionEnd);
+    window.addEventListener('click', handleConnectionEnd, { capture: true, once: true });
   }
 
   const handleConnectionMove = (e: MouseEvent) => {
@@ -627,11 +693,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     });
   }
 
-  const handleConnectionEnd = () => {
+  const handleConnectionEnd = (e?: MouseEvent | Event) => {
     drawingConnectionRef.current = null;
     setTempConnection(null);
     window.removeEventListener('mousemove', handleConnectionMove);
     window.removeEventListener('mouseup', handleConnectionEnd);
+    window.removeEventListener('click', handleConnectionEnd as any, { capture: true });
   }
 
   const handleConnectionDrop = async (e: React.MouseEvent, targetNodeId: string) => {
@@ -684,6 +751,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const handleUpdateContextType = async (contextId: string, type: string) => {
     try {
+      setContexts(prev => prev.map(c => c.id === contextId ? { ...c, type } : c));
       const { error } = await supabase
         .from('instance_node_contexts')
         .update({ type })
@@ -691,13 +759,57 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         
       if (error) throw error;
       
-      setContexts(prev => prev.map(c => c.id === contextId ? { ...c, type } : c));
       toast.success("Connection type updated");
     } catch (e) {
       console.error(e);
       toast.error("Failed to update connection type");
+      // Refetch contexts on failure to revert
+      const currentNodes = nodesRef.current.map(n => n.id)
+      if (currentNodes.length > 0) {
+        const { data } = await supabase.from('instance_node_contexts').select('*').in('target_node_id', currentNodes)
+        if (data) setContexts(data)
+      }
     }
   }
+
+  const renderMediaWithZoom = (url: string, type: 'image' | 'video', key: React.Key) => (
+    <div key={key} className="relative group">
+      {type === 'image' ? (
+        <img 
+          src={url} 
+          alt="Generated media" 
+          className="w-full rounded-xl object-cover object-center bg-black/10 max-h-[300px] cursor-pointer" 
+          onClick={(e) => { e.stopPropagation(); setZoomedMedia({ url, type }); }}
+        />
+      ) : (
+        <div className="relative">
+          <video 
+            src={url} 
+            controls 
+            className="w-full aspect-video rounded-xl object-cover object-center bg-black/10 max-h-[300px]" 
+            onClick={(e) => e.stopPropagation()}
+          />
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 h-8 w-8 rounded-full bg-black/50 hover:bg-black/70 text-white border-0"
+            onClick={(e) => { e.stopPropagation(); setZoomedMedia({ url, type }); }}
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+      {type === 'image' && (
+        <div 
+          className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-xl pointer-events-none flex items-center justify-center opacity-0 group-hover:opacity-100"
+        >
+          <div className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm shadow-sm">
+            <ZoomIn className="h-5 w-5" />
+          </div>
+        </div>
+      )}
+    </div>
+  )
 
   const NODE_W = 480
   const H_GAP = 80
@@ -800,8 +912,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         .sort((a, b) => nodeDepth(a.id) - nodeDepth(b.id))
 
       unpositioned.forEach(node => {
-        const d = nodeDepth(node.id)
-        const x = PAD_X + d * (NODE_W + H_GAP)
+        let x: number;
+        if (node.parent_node_id && pos[node.parent_node_id]) {
+          x = pos[node.parent_node_id].x + NODE_W + H_GAP;
+        } else {
+          const d = nodeDepth(node.id);
+          x = PAD_X + d * (NODE_W + H_GAP);
+        }
         
         const siblings = parentGroups[node.parent_node_id || '__root__']
         const positionedSiblings = siblings.filter(n => n.id !== node.id && pos[n.id])
@@ -832,27 +949,42 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         pos[node.id] = { x, y }
       })
 
-      // Re-space already-positioned siblings that may now overlap
+      // Re-space already-positioned siblings that may now overlap or have gaps
       for (const key of Object.keys(parentGroups)) {
         const sorted = parentGroups[key].filter(n => pos[n.id] && !isNaN(pos[n.id].y))
+        
+        if (sorted.length > 0 && key !== '__root__') {
+          const firstNodeId = sorted[0].id;
+          const firstNode = currentNodes.find(n => n.id === firstNodeId);
+          const hasUserPos0 = firstNode && !firstNode.id.startsWith('dummy-') && (firstNode.settings as any)?.ui_position;
+          
+          if (!hasUserPos0) {
+            const parentPos = pos[key];
+            if (parentPos && pos[firstNodeId].y !== parentPos.y) {
+              pos[firstNodeId] = { ...pos[firstNodeId], y: parentPos.y };
+            }
+          }
+        }
+        
         for (let i = 1; i < sorted.length; i++) {
           const prevNodeId = sorted[i - 1].id;
           const currNodeId = sorted[i].id;
           
           const prevBottom = pos[prevNodeId].y + h(prevNodeId)
+          const currNode = currentNodes.find(n => n.id === currNodeId);
+          const hasUserPos = currNode && !currNode.id.startsWith('dummy-') && (currNode.settings as any)?.ui_position;
+          
           if (pos[currNodeId].y < prevBottom) {
             // Only bump if they are actually colliding, but ignore exact same Y overlaps 
             // since that indicates a replacement in progress where they share the exact slot
-            // Also ignore if the previous node is a dummy, as we probably just want to overwrite it
             if (Math.abs(pos[currNodeId].y - pos[prevNodeId].y) > 1 && !prevNodeId.startsWith('dummy-')) {
               pos[currNodeId] = { ...pos[currNodeId], y: prevBottom }
             } else if (Math.abs(pos[currNodeId].y - pos[prevNodeId].y) > 1 && prevNodeId.startsWith('dummy-')) {
-              // If previous is a dummy but they aren't exactly sharing a slot, 
-              // we still want to avoid the dummy pushing down the real node aggressively, 
-              // but we need them not to overlap visually. Let's push the dummy instead if possible,
-              // or just accept the push if we have to.
               pos[currNodeId] = { ...pos[currNodeId], y: prevBottom }
             }
+          } else if (pos[currNodeId].y > prevBottom && !hasUserPos) {
+            // Pull up to close gap if it was placed automatically
+            pos[currNodeId] = { ...pos[currNodeId], y: prevBottom }
           }
         }
       }
@@ -920,14 +1052,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       }}
     >
       <div className="flex-1 relative">
-        {!activeInstanceId ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            Select an instance to view nodes
-          </div>
-        ) : isLoading ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            Loading nodes...
-          </div>
+        {!activeInstanceId || isLoading ? (
+          <ImprentaSkeleton />
         ) : (
           <div className="absolute inset-0 z-0" onClick={() => setSelectedContextId(null)}>
             <input 
@@ -942,12 +1068,24 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           dotColorLight="rgba(0, 0, 0, 0.2)" 
           dotColorDark="rgba(255, 255, 255, 0.2)"
           fitOnChildrenChange={false}
+          height="100%"
+          minHeight="100%"
+          initialOffsetY={80}
           onSort={() => {
             toast.info("Organizing layout...");
             const allNodes = [...nodes, ...dummyNodes];
             const newPositions = getLayoutPositions(allNodes, {}, nodeHeightsRef.current);
             setPositions(newPositions);
             
+            // Optimistically update nodes state
+            setNodes(prev => prev.map(n => {
+              const pos = newPositions[n.id];
+              if (pos) {
+                return { ...n, settings: { ...((n.settings as any) || {}), ui_position: pos } };
+              }
+              return n;
+            }));
+
             // Persist to DB in background
             const updates = nodes.map(n => {
               const pos = newPositions[n.id];
@@ -1102,6 +1240,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                 <SelectItem value="negative">Negative</SelectItem>
                                 <SelectItem value="context">Context</SelectItem>
                                 <SelectItem value="data">Data</SelectItem>
+                                <SelectItem value="from">From</SelectItem>
+                                <SelectItem value="to">To</SelectItem>
                               </SelectContent>
                             </Select>
                             
@@ -1143,22 +1283,69 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     const pos = positions[node.id] || { x: 100, y: 100 }
                     const hasResult = node.result && Object.keys(node.result).length > 0;
                     const isDummy = node.id.startsWith('dummy-');
+                    const isEffectivelyDummy = isDummy || (!hasResult && generatingNodeIds.has(node.id) && (node.status === 'running' || node.status === 'pending'));
                     
+                    if (isEffectivelyDummy) {
+                      return (
+                        <div 
+                          key={node.id}
+                          ref={(el) => registerNodeRef(node.id, el)}
+                          data-node-id={node.id}
+                          className="absolute group z-10"
+                          style={{ 
+                            left: pos.x, 
+                            top: pos.y,
+                          }}
+                        >
+                          <Card className="w-[480px] min-h-[280px] shadow-sm border-2 border-primary/20 bg-card/50 backdrop-blur-md rounded-3xl overflow-hidden relative flex flex-col justify-center items-center">
+                            {/* Subtle pulsing background */}
+                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-primary/5 to-transparent animate-pulse" />
+
+                            {/* Floating background orbs from fancy empty card */}
+                            <div className="absolute inset-0 pointer-events-none z-0">
+                              <div className="absolute bg-violet-500/25 rounded-full blur-2xl animate-pulse" style={{ top: '25.4%', left: '12.3%', width: '114px', height: '114px', animationDelay: '1.2s' }}></div>
+                              <div className="absolute bg-indigo-500/20 rounded-full blur-2xl animate-pulse" style={{ top: '68.1%', left: '45.7%', width: '88.4px', height: '88.4px', animationDelay: '0.5s' }}></div>
+                              <div className="absolute bg-purple-500/22 rounded-full blur-2xl animate-pulse" style={{ top: '15.8%', left: '63.2%', width: '73.6px', height: '73.6px', animationDelay: '2.1s' }}></div>
+                              <div className="absolute bg-pink-500/24 rounded-full blur-xl animate-pulse" style={{ top: '42.6%', left: '28.9%', width: '66.8px', height: '66.8px', animationDelay: '1.8s' }}></div>
+                              <div className="absolute bg-emerald-500/18 rounded-full blur-xl animate-pulse" style={{ top: '58.3%', left: '74.5%', width: '49.2px', height: '49.2px', animationDelay: '0.9s' }}></div>
+                              <div className="absolute bg-cyan-500/19 rounded-full blur-xl animate-pulse" style={{ top: '31.2%', left: '56.4%', width: '79.2px', height: '79.2px', animationDelay: '2.5s' }}></div>
+                            </div>
+
+                            <CardContent className="p-5 relative z-10 w-full h-full flex flex-col items-center justify-center space-y-6">
+                              <div className="space-y-2 text-center mt-2">
+                                <h3 className="text-base font-medium text-foreground">
+                                  Generating...
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                  Crafting your content...
+                                </p>
+                              </div>
+                              
+                              <div className="w-full space-y-3 pt-6 opacity-40 px-8 pb-2">
+                                <div className="h-2 bg-foreground/20 rounded-full w-full animate-pulse" />
+                                <div className="h-2 bg-foreground/20 rounded-full w-4/5 animate-pulse" style={{ animationDelay: '150ms' }} />
+                                <div className="h-2 bg-foreground/20 rounded-full w-2/3 animate-pulse" style={{ animationDelay: '300ms' }} />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      )
+                    }
+
                     return (
                       <div 
                         key={node.id}
                         ref={(el) => registerNodeRef(node.id, el)}
                         data-node-id={node.id}
-                        className={`absolute group cursor-grab active:cursor-grabbing ${isDummy ? 'opacity-70 animate-pulse' : ''}`}
+                        className="absolute group cursor-grab active:cursor-grabbing"
                         style={{ 
                           left: pos.x, 
                           top: pos.y,
                           zIndex: 10
                         }}
-                        onMouseDown={(e) => !isDummy && handleNodeMouseDown(e, node.id)}
+                        onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                       >
-                        {!isDummy && (
-                          <Button
+                        <Button
                             variant="destructive"
                             size="icon"
                             className="absolute -top-3 -right-3 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20 shadow-md"
@@ -1170,11 +1357,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
-                        )}
 
-                        <Card className="w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-shadow duration-300 border-2 border-black/5 dark:border-white/10 bg-card/95 backdrop-blur-sm rounded-3xl">
+                        <Card className="w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-shadow duration-300 border-2 border-foreground/10 bg-card/95 backdrop-blur-sm rounded-3xl">
                           <CardContent className="p-5 relative">
-                            {!hasResult && !isDummy && (
+                            {!hasResult && (
                               <div 
                                 className="absolute top-1/2 -translate-y-1/2 -left-3 w-4 h-4 bg-background border-2 border-muted-foreground rounded-full flex items-center justify-center z-20 hover:scale-125 transition-transform" 
                                 title="Soltar contexto aquí"
@@ -1210,7 +1396,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                 )}
                               </div>
                               
-                              {!hasResult && !isDummy && (
+                              {!hasResult && (
                                 <>
                                   {/* Media Type Selector */}
                                   <div className="flex flex-wrap items-center bg-muted/50 p-1 rounded-2xl gap-1">
@@ -1218,7 +1404,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant={node.type === 'prompt' ? 'outline' : 'ghost'} 
                                     size="sm" 
                                     className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'prompt' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'prompt' } : n));
                                       await supabase.from('instance_nodes').update({ type: 'prompt' }).eq('id', node.id)
                                     }}
                                   >
@@ -1228,7 +1416,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant={node.type === 'generate-image' ? 'outline' : 'ghost'} 
                                     size="sm" 
                                     className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'generate-image' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'generate-image' } : n));
                                       await supabase.from('instance_nodes').update({ type: 'generate-image' }).eq('id', node.id)
                                     }}
                                   >
@@ -1238,7 +1428,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant={node.type === 'generate-video' ? 'outline' : 'ghost'} 
                                     size="sm" 
                                     className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'generate-video' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'generate-video' } : n));
                                       await supabase.from('instance_nodes').update({ type: 'generate-video' }).eq('id', node.id)
                                     }}
                                   >
@@ -1248,7 +1440,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant={node.type === 'generate-audio' ? 'outline' : 'ghost'} 
                                     size="sm" 
                                     className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'generate-audio' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'generate-audio' } : n));
                                       await supabase.from('instance_nodes').update({ type: 'generate-audio' }).eq('id', node.id)
                                     }}
                                   >
@@ -1258,7 +1452,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant={node.type === 'generate-audience' ? 'outline' : 'ghost'} 
                                     size="sm" 
                                     className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'generate-audience' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'generate-audience' } : n));
                                       await supabase.from('instance_nodes').update({ type: 'generate-audience' }).eq('id', node.id)
                                     }}
                                   >
@@ -1268,7 +1464,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant={node.type === 'publish' ? 'outline' : 'ghost'} 
                                     size="sm" 
                                     className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'publish' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'publish' } : n));
                                       await supabase.from('instance_nodes').update({ type: 'publish' }).eq('id', node.id)
                                     }}
                                   >
@@ -1281,6 +1479,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   onBlur={async (e) => {
                                     const newText = e.target.value;
                                     if (newText !== node.prompt?.text) {
+                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, prompt: { ...n.prompt, text: newText } } : n));
                                       const { error } = await supabase
                                         .from('instance_nodes')
                                         .update({ prompt: { ...node.prompt, text: newText } })
@@ -1314,6 +1513,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                             const newChannels = isSelected
                                               ? current.filter((c: string) => c !== key)
                                               : [...current, key];
+                                            setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), audience_channels: newChannels } } : n));
                                             await supabase.from('instance_nodes').update({
                                               settings: { ...((node.settings as any) || {}), audience_channels: newChannels }
                                             }).eq('id', node.id);
@@ -1342,6 +1542,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                             const newDest = isSelected 
                                               ? currentDest.filter((d: string) => d !== sm.platform)
                                               : [...currentDest, sm.platform];
+                                            setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
                                             await supabase.from('instance_nodes').update({
                                               settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
                                             }).eq('id', node.id);
@@ -1364,6 +1565,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                              const newDest = isSelected 
                                                ? currentDest.filter((d: string) => d !== 'blog')
                                                : [...currentDest, 'blog'];
+                                             setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
                                              await supabase.from('instance_nodes').update({
                                                settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
                                              }).eq('id', node.id);
@@ -1389,6 +1591,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                              const newDest = isSelected 
                                                ? currentDest.filter((d: string) => d !== 'newsletter')
                                                : [...currentDest, 'newsletter'];
+                                             setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
                                              await supabase.from('instance_nodes').update({
                                                settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
                                              }).eq('id', node.id);
@@ -1414,6 +1617,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                              const newDest = isSelected 
                                                ? currentDest.filter((d: string) => d !== 'whatsapp')
                                                : [...currentDest, 'whatsapp'];
+                                             setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
                                              await supabase.from('instance_nodes').update({
                                                settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
                                              }).eq('id', node.id);
@@ -1439,24 +1643,28 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                         const currentParams = (node.settings as any)?.parameters || textParams;
                                         const newParams = { ...currentParams, [key]: value };
                                         const updatedSettings = { ...((node.settings as any) || {}), media_type: 'text', parameters: newParams };
+                                        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: updatedSettings } : n));
                                         await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
                                       }}
                                       onImageParameterChange={async (key, value) => {
                                         const currentParams = (node.settings as any)?.parameters || imageParams;
                                         const newParams = { ...currentParams, [key]: value };
                                         const updatedSettings = { ...((node.settings as any) || {}), media_type: 'image', parameters: newParams };
+                                        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: updatedSettings } : n));
                                         await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
                                       }}
                                       onVideoParameterChange={async (key, value) => {
                                         const currentParams = (node.settings as any)?.parameters || videoParams;
                                         const newParams = { ...currentParams, [key]: value };
                                         const updatedSettings = { ...((node.settings as any) || {}), media_type: 'video', parameters: newParams };
+                                        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: updatedSettings } : n));
                                         await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
                                       }}
                                       onAudioParameterChange={async (key, value) => {
                                         const currentParams = (node.settings as any)?.parameters || audioParams;
                                         const newParams = { ...currentParams, [key]: value };
                                         const updatedSettings = { ...((node.settings as any) || {}), media_type: 'audio', parameters: newParams };
+                                        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: updatedSettings } : n));
                                         await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
                                       }}
                                     />
@@ -1466,21 +1674,25 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                             )}
                             
                               {hasResult && (
+                              (() => {
+                                const extractUrl = (text: any): string => {
+                                  if (!text) return '';
+                                  const str = String(text);
+                                  const urlMatch = str.match(/https?:\/\/[^\s"'<>()]+/);
+                                  return urlMatch ? urlMatch[0] : str;
+                                };
+
+                                return (
                                 <div className="flex flex-col gap-2">
                                 {(node.result as any).outputs && Array.isArray((node.result as any).outputs) && (
                                   <div className="flex flex-col gap-2">
                                     {(node.result as any).outputs.map((outputItem: any, idx: number) => {
-                                      const url = outputItem.data?.url || outputItem.url;
-                                      if (!url) return null;
-                                      if (outputItem.type === 'image') {
-                                        return <img key={idx} src={url} alt="Generated media" className="w-full rounded-xl object-cover object-center bg-black/10 max-h-[300px]" />
-                                      }
-                                      if (outputItem.type === 'video') {
-                                        return <video key={idx} src={url} controls className="w-full rounded-xl object-cover object-center bg-black/10 max-h-[300px]" />
-                                      }
-                                      if (outputItem.type === 'audio') {
-                                        return <audio key={idx} src={url} controls className="w-full" />
-                                      }
+                                      const rawUrl = outputItem.data?.url || outputItem.url;
+                                      if (!rawUrl) return null;
+                                      const url = extractUrl(rawUrl);
+                                      if (outputItem.type === 'image') return renderMediaWithZoom(url, 'image', idx);
+                                      if (outputItem.type === 'video') return renderMediaWithZoom(url, 'video', idx);
+                                      if (outputItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
                                       return null;
                                     })}
                                   </div>
@@ -1489,15 +1701,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   <div className="flex flex-col gap-2">
                                     {(node.result as any).media.map((mediaItem: any, idx: number) => {
                                       if (!mediaItem.url) return null;
-                                      if (mediaItem.type === 'image') {
-                                        return <img key={idx} src={mediaItem.url} alt="Generated media" className="w-full rounded-xl object-cover object-center bg-black/10 max-h-[300px]" />
-                                      }
-                                      if (mediaItem.type === 'video') {
-                                        return <video key={idx} src={mediaItem.url} controls className="w-full rounded-xl object-cover object-center bg-black/10 max-h-[300px]" />
-                                      }
-                                      if (mediaItem.type === 'audio') {
-                                        return <audio key={idx} src={mediaItem.url} controls className="w-full" />
-                                      }
+                                      const url = extractUrl(mediaItem.url);
+                                      if (mediaItem.type === 'image') return renderMediaWithZoom(url, 'image', idx);
+                                      if (mediaItem.type === 'video') return renderMediaWithZoom(url, 'video', idx);
+                                      if (mediaItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
                                       return null;
                                     })}
                                   </div>
@@ -1505,29 +1712,39 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).images && Array.isArray((node.result as any).images) && (
                                   <div className="flex flex-col gap-2">
                                     {(node.result as any).images.map((img: any, idx: number) => (
-                                      img.url && <img key={idx} src={img.url} alt="Generated media" className="w-full rounded-xl object-cover object-center bg-black/10 max-h-[300px]" />
+                                      img.url && renderMediaWithZoom(extractUrl(img.url), 'image', idx)
                                     ))}
                                   </div>
                                 )}
                                 {!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && (node.result as any).image && (node.result as any).image.url && (
-                                  <img src={(node.result as any).image.url} alt="Generated media" className="w-full rounded-xl object-cover object-center bg-black/10 max-h-[300px]" />
+                                  renderMediaWithZoom(extractUrl((node.result as any).image.url), 'image', 'single-img')
                                 )}
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).video && (node.result as any).video.url && (
-                                  <video src={(node.result as any).video.url} controls className="w-full rounded-xl object-cover object-center bg-black/10 max-h-[300px]" />
+                                  renderMediaWithZoom(extractUrl((node.result as any).video.url), 'video', 'single-vid')
                                 )}
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).audio && (node.result as any).audio.url && (
-                                  <audio src={(node.result as any).audio.url} controls className="w-full" />
+                                  <AudioPlayer key={extractUrl((node.result as any).audio.url)} src={extractUrl((node.result as any).audio.url)} className="w-full" />
                                 )}
-                                {((node.result as any).text || (!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && !(node.result as any).image && !(node.result as any).video && !(node.result as any).audio && !(node.result as any).text)) && (
-                                  <div className="text-xs bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground max-h-[200px] overflow-y-auto custom-scrollbar prose prose-sm dark:prose-invert max-w-none">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                                      {(node.result as any).text 
-                                        ? String((node.result as any).text) 
-                                        : "```json\n" + JSON.stringify(node.result, null, 2) + "\n```"}
-                                    </ReactMarkdown>
-                                  </div>
-                                )}
+                                {((node.result as any).text || (!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && !(node.result as any).image && !(node.result as any).video && !(node.result as any).audio && !(node.result as any).text)) && (() => {
+                                  const hasStructuredMedia = !!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio;
+                                  let textContent = (node.result as any).text 
+                                    ? String((node.result as any).text) 
+                                    : "```json\n" + JSON.stringify(node.result, null, 2) + "\n```";
+                                  if (hasStructuredMedia && textContent) {
+                                    textContent = textContent.replace(/https?:\/\/[^\s"'<>()]+\.(wav|mp3|ogg|m4a|aac|flac|webm)/gi, '').trim();
+                                  }
+                                  if (!textContent) return null;
+                                  return (
+                                    <div className="text-xs bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground max-h-[200px] overflow-y-auto custom-scrollbar prose prose-sm dark:prose-invert max-w-none">
+                                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                                        {textContent}
+                                      </ReactMarkdown>
+                                    </div>
+                                  );
+                                })()}
                               </div>
+                              );
+                              })()
                             )}
                             
                               <div className="flex items-center justify-between pt-3 border-t border-white/5">
@@ -1537,6 +1754,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant="outline" 
                                     size="sm"
                                     className="flex-1"
+                                    disabled={!!(node.settings as any)?.imprenta_mode && !contexts.some(ctx => ctx.target_node_id === node.id)}
                                     onClick={async (e) => {
                                       e.stopPropagation();
                                       const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
@@ -1592,8 +1810,59 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   >
                                     <Copy className="h-4 w-4 mr-2" /> Copy
                                   </Button>
+                                  {(() => {
+                                      const extractUrl = (text: any): string => {
+                                        if (!text) return '';
+                                        const str = String(text);
+                                        const urlMatch = str.match(/https?:\/\/[^\s"'<>()]+/);
+                                        return urlMatch ? urlMatch[0] : str;
+                                      };
+
+                                      const res = node.result as any;
+                                      let rawAssetUrl = "";
+                                      
+                                      if (res.outputs && Array.isArray(res.outputs) && res.outputs.length > 0 && (res.outputs[0]?.data?.url || res.outputs[0]?.url)) rawAssetUrl = String(res.outputs[0].data?.url || res.outputs[0].url);
+                                      else if (res.media && Array.isArray(res.media) && res.media.length > 0 && res.media[0]?.url) rawAssetUrl = String(res.media[0].url);
+                                      else if (res.images && res.images.length > 0 && res.images[0]?.url) rawAssetUrl = String(res.images[0].url);
+                                      else if (res.image && res.image.url) rawAssetUrl = String(res.image.url);
+                                      else if (res.audio && res.audio.url) rawAssetUrl = String(res.audio.url);
+                                      else if (res.video && res.video.url) rawAssetUrl = String(res.video.url);
+                                      else if (res.url) rawAssetUrl = String(res.url);
+
+                                      const assetUrl = extractUrl(rawAssetUrl);
+                                      const isAssetUrl = assetUrl && (assetUrl.startsWith('http') || assetUrl.startsWith('data:'));
+
+                                      return isAssetUrl ? (
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm"
+                                          className="flex-1"
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            try {
+                                              const response = await fetch(assetUrl);
+                                              const blob = await response.blob();
+                                              const blobUrl = window.URL.createObjectURL(blob);
+                                              const link = document.createElement('a');
+                                              link.href = blobUrl;
+                                              link.download = assetUrl.split('/').pop()?.split('?')[0] || `asset-${Date.now()}`;
+                                              document.body.appendChild(link);
+                                              link.click();
+                                              document.body.removeChild(link);
+                                              window.URL.revokeObjectURL(blobUrl);
+                                              toast.success("Downloaded");
+                                            } catch (err) {
+                                              window.open(assetUrl, '_blank');
+                                            }
+                                          }}
+                                          title="Download Asset"
+                                        >
+                                          <Download className="w-4 h-4 mr-2" /> Download
+                                        </Button>
+                                      ) : null;
+                                  })()}
                                 </div>
-                              ) : !isDummy ? (
+                              ) : (
                                 <div className="flex w-full">
                                   <Button 
                                     variant="outline" 
@@ -1608,7 +1877,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     <Play className="w-4 h-4 mr-2" /> Generate
                                   </Button>
                                 </div>
-                              ) : null}
+                              )}
                             </div>
                             </div>
                           </CardContent>
@@ -1621,6 +1890,25 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           </div>
         )}
       </div>
+      {zoomedMedia && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setZoomedMedia(null)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh] flex justify-center items-center">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute -top-12 right-0 text-white hover:bg-white/20"
+              onClick={() => setZoomedMedia(null)}
+            >
+              <X className="w-6 h-6" />
+            </Button>
+            {zoomedMedia.type === 'image' && <img src={zoomedMedia.url} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />}
+            {zoomedMedia.type === 'video' && <video src={zoomedMedia.url} controls autoPlay className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

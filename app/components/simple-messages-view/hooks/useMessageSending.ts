@@ -135,7 +135,45 @@ export const useMessageSending = ({
 
     try {
       const contextData = await contextService.getContextData(selectedContext, currentSite.id)
-      const contextString = contextData && typeof contextData === 'object' ? JSON.stringify(contextData) : (contextData || "")
+      
+      // Determine media type and parameters
+      let mediaType = 'text'
+      let currentParams: any = {}
+      
+      if (selectedActivity === 'generate-image') {
+        mediaType = 'image'
+        currentParams = { ...imageParameters }
+      } else if (selectedActivity === 'generate-video') {
+        mediaType = 'video'
+        currentParams = { ...videoParameters }
+      } else if (selectedActivity === 'generate-audio') {
+        mediaType = 'audio'
+        currentParams = { ...audioParameters }
+      }
+      
+      let expectedResults = currentParams.expectedResults || 1
+
+      // Build contextObj
+      let contextObj: any = {}
+      if (contextData) {
+        if (typeof contextData === 'object' && !Array.isArray(contextData)) {
+           contextObj = { ...contextData }
+        } else {
+           contextObj.raw_context = contextData
+        }
+      }
+      
+      // Add parameters to context
+      contextObj.mediaType = mediaType
+      contextObj.output_type = mediaType
+      contextObj.parameters = { ...currentParams }
+      
+      // Remove expectedResults from context to prevent the LLM from duplicating output internally
+      if (contextObj.parameters.expectedResults !== undefined) {
+        delete contextObj.parameters.expectedResults
+      }
+
+      const contextString = JSON.stringify(contextObj)
       
       const { apiClient } = await import('@/app/services/api-client-service')
       const supabase = createClient()
@@ -153,7 +191,8 @@ export const useMessageSending = ({
         site_id: currentSite.id,
         user_id: user?.id,
         context: contextString,
-        system_prompt: systemPrompt
+        system_prompt: systemPrompt,
+        expected_results_amount: expectedResults
       }
       
       // For assistant messages, we don't need to create instances

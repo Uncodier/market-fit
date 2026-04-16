@@ -119,7 +119,8 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const [audioParameters, setAudioParameters] = useState<AudioParameters>({
     format: 'MP3',
     sampleRate: '44.1kHz',
-    channels: 'stereo'
+    channels: 'stereo',
+    duration: 15
   })
   
   
@@ -389,7 +390,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
 
   // Show loading skeleton when loading logs
   if (isLoadingLogs) {
-    return <MessagesSkeleton />
+    return <MessagesSkeleton showComposerSkeleton={false} />
   }
 
   // Calculate if chat is empty

@@ -117,12 +117,12 @@ export function SimpleAgentCard({
 
   return (
     <div className={cn(
-      "flex flex-col relative rounded-lg",
+      "flex flex-col relative rounded-[24px]",
       className
     )}>
       <Card 
         className={cn(
-          "h-auto flex flex-col overflow-hidden",
+          "h-auto flex flex-col",
           agentCardVariants({ hover: true }),
           hasCustomData && "border-primary/30" // Highlight personalized agents
         )}
@@ -214,7 +214,7 @@ export function SimpleAgentCard({
         
         {/* Toggle Activities Button */}
         {onToggleActivities && (
-          <div className="border-t pt-1 pb-1 flex justify-center">
+          <div className="border-t pt-1 pb-1 flex justify-center rounded-b-[22px] overflow-hidden">
             <Button 
               variant="ghost" 
               size="sm" 

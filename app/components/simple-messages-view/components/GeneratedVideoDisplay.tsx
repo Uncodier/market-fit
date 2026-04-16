@@ -298,8 +298,8 @@ export const GeneratedVideoDisplayCollapsed: React.FC<GeneratedVideoDisplayProps
               preload="metadata"
               playsInline
               muted
-              className={isBrowserVisible ? "w-full h-auto rounded-lg border shadow-sm hover:opacity-90 transition-opacity" : "max-w-[33vw] h-auto rounded-lg border shadow-sm hover:opacity-90 transition-opacity"}
-              style={{ height: 'auto', maxWidth: isBrowserVisible ? '100%' : undefined }}
+              className={isBrowserVisible ? "w-full aspect-video object-cover object-center rounded-lg border shadow-sm hover:opacity-90 transition-opacity" : "max-w-[33vw] aspect-video object-cover object-center rounded-lg border shadow-sm hover:opacity-90 transition-opacity"}
+              style={{ maxWidth: isBrowserVisible ? '100%' : undefined }}
             >
               <source src={videoUrl} type={mimeType} />
               <source src={videoUrl} type="video/mp4" />
@@ -346,8 +346,8 @@ export const GeneratedVideoDisplayCollapsed: React.FC<GeneratedVideoDisplayProps
             preload="metadata"
             playsInline
             muted
-            className={isBrowserVisible ? "w-full h-auto rounded-lg border shadow-sm hover:opacity-90 transition-opacity" : "max-w-[33vw] h-auto rounded-lg border shadow-sm hover:opacity-90 transition-opacity"}
-            style={{ height: 'auto', maxWidth: isBrowserVisible ? '100%' : undefined }}
+            className={isBrowserVisible ? "w-full aspect-video object-cover object-center rounded-lg border shadow-sm hover:opacity-90 transition-opacity" : "max-w-[33vw] aspect-video object-cover object-center rounded-lg border shadow-sm hover:opacity-90 transition-opacity"}
+            style={{ maxWidth: isBrowserVisible ? '100%' : undefined }}
           >
             <source src={currentVideoUrl} type={currentMimeType} />
             <source src={currentVideoUrl} type="video/mp4" />

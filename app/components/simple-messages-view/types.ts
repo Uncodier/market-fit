@@ -26,6 +26,7 @@ export interface AudioParameters {
   format: 'MP3' | 'WAV' | 'AAC'
   sampleRate: '44.1kHz' | '48kHz'
   channels: 'mono' | 'stereo'
+  duration?: number // in seconds
   expectedResults?: number
 }
 

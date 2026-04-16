@@ -942,12 +942,16 @@ function RobotsPageContent() {
     // Find the most recent requirement_status that has a preview
     for (let i = requirementStatuses.length - 1; i >= 0; i--) {
       const status = requirementStatuses[i];
-      if (status.preview_url && (status.source_code || status.repo_url)) {
+      if (status.preview_url) {
         return status.preview_url;
       }
       // Fallback: If no preview_url but repo_url points to a zip file in Supabase
       if (!status.preview_url && status.repo_url && (status.repo_url.endsWith('.zip') || status.repo_url.includes('.zip?'))) {
         return status.repo_url;
+      }
+      // Fallback: Check source_code if it points to a zip
+      if (!status.preview_url && status.source_code && (status.source_code.endsWith('.zip') || status.source_code.includes('.zip?'))) {
+        return status.source_code;
       }
     }
     

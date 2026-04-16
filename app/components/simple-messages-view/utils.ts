@@ -84,10 +84,10 @@ export const getSystemPromptForActivity = (
     return `Generate a video with aspect ratio: ${aspectRatio}, resolution: ${resolution}, duration: ${duration}s`
   }
   
-  if (activity === 'generate-audio' && mediaParams?.audioParameters) {
-    const { format, sampleRate, channels } = mediaParams.audioParameters
-    return `Generate audio with format: ${format}, sample rate: ${sampleRate}, channels: ${channels}`
-  }
+      if (activity === 'generate-audio' && mediaParams?.audioParameters) {
+        const { format, sampleRate, channels, duration } = mediaParams.audioParameters
+        return `Generate audio with format: ${format}, sample rate: ${sampleRate}, channels: ${channels}${duration ? `, duration: ${duration}s` : ''}`
+      }
   
   // Add attachments to system prompt if provided
   if (mediaParams?.attachments && mediaParams.attachments.length > 0) {
