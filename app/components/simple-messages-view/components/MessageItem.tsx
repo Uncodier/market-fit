@@ -1,5 +1,5 @@
 import React from 'react'
-import { User, File, Check } from "@/app/components/ui/icons"
+import { User, File } from "@/app/components/ui/icons"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { InstanceLog } from '../types'
 import { formatTime } from '../utils'
@@ -8,19 +8,21 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../utils/markdownComponents'
 import { InstanceNodeChildren } from './InstanceNodeChildren'
+import { InstanceLogCopyFeedbackBar } from './InstanceLogCopyFeedbackBar'
 
 interface MessageItemProps {
   log: InstanceLog
   isDarkMode: boolean
   isBrowserVisible?: boolean
+  collapsedSystemMessages?: Set<string>
+  onToggleSystemMessageCollapse?: (messageId: string) => void
 }
-
 
 export const MessageItem: React.FC<MessageItemProps> = ({
   log,
   isDarkMode,
   isBrowserVisible = false
-}) => {
+}: MessageItemProps) => {
   const { userProfile } = useUserProfile(log.user_id || null)
   
   // Extract status from details object
@@ -178,9 +180,32 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           </ReactMarkdown>
         </div>
       </div>
-      
-      {/* Branch to node feature */}
-      <InstanceNodeChildren parentLogId={log.id} instanceId={log.instance_id} />
+
+      {/* Copy / feedback + Branch to Node — one row; hover only (node list below stays visible) */}
+      <div className={`mt-2 w-full min-w-0 ${isBrowserVisible ? 'pl-3' : 'pl-8'}`}>
+        {log.instance_id ? (
+          <InstanceNodeChildren
+            parentLogId={log.id}
+            instanceId={log.instance_id}
+            toolbarRowClassName="opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto"
+            leading={
+              <InstanceLogCopyFeedbackBar
+                logId={log.id}
+                details={log.details as Record<string, unknown> | undefined}
+                textToCopy={log.message || ''}
+              />
+            }
+          />
+        ) : (
+          <div className="opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto">
+            <InstanceLogCopyFeedbackBar
+              logId={log.id}
+              details={log.details as Record<string, unknown> | undefined}
+              textToCopy={log.message || ''}
+            />
+          </div>
+        )}
+      </div>
       
     </div>
   )

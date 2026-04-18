@@ -2,9 +2,14 @@
 
 import { createContext, useContext, ReactNode, useState, useEffect, useRef } from 'react'
 
+export type RobotsViewMode = "agent" | "imprenta"
+
 interface LayoutContextType {
   isLayoutCollapsed: boolean
   setIsLayoutCollapsed: (collapsed: boolean) => void
+  /** Agents vs Imprenta canvas — driven by sidebar only, not URL */
+  robotsViewMode: RobotsViewMode
+  setRobotsViewMode: (mode: RobotsViewMode) => void
 }
 
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined)
@@ -22,8 +27,23 @@ export function useLayout() {
   return context
 }
 
+function readInitialRobotsViewMode(): RobotsViewMode {
+  if (typeof window === "undefined") return "agent"
+  try {
+    const path = window.location.pathname
+    if (path === "/robots" || path.startsWith("/robots/")) {
+      const sp = new URLSearchParams(window.location.search)
+      if (sp.get("mode") === "imprenta") return "imprenta"
+    }
+  } catch {
+    /* ignore */
+  }
+  return "agent"
+}
+
 export function LayoutProvider({ children, isLayoutCollapsed: initialIsCollapsed = false }: LayoutProviderProps) {
   const [isLayoutCollapsed, setIsLayoutCollapsed] = useState(initialIsCollapsed)
+  const [robotsViewMode, setRobotsViewMode] = useState<RobotsViewMode>(readInitialRobotsViewMode)
   const hasAutoCollapsedRef = useRef(false)
   const userManuallyExpandedRef = useRef(false)
   const previousWidthRef = useRef<number | null>(null)
@@ -104,7 +124,14 @@ export function LayoutProvider({ children, isLayoutCollapsed: initialIsCollapsed
   }, [isLayoutCollapsed])
 
   return (
-    <LayoutContext.Provider value={{ isLayoutCollapsed, setIsLayoutCollapsed }}>
+    <LayoutContext.Provider
+      value={{
+        isLayoutCollapsed,
+        setIsLayoutCollapsed,
+        robotsViewMode,
+        setRobotsViewMode,
+      }}
+    >
       {children}
     </LayoutContext.Provider>
   )

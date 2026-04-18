@@ -66,6 +66,14 @@ export const formatSocialMedia = (socialMedia: any[]): any[] => {
   });
 }
 
+/** Matches SocialSection "Connected" / formatSocialMedia active state for publish UIs. */
+export function isSocialMediaEntryConnected(sm: any): boolean {
+  if (!sm?.platform) return false
+  if (sm.isActive === true || sm.isActive === 1) return true
+  if (Array.isArray(sm.connectedPages) && sm.connectedPages.length > 0) return true
+  return false
+}
+
 // Convert products data to the new format with name, description, and pricing fields
 export const formatProducts = (products: any[]): any[] => {
   if (!products || !Array.isArray(products)) return [];

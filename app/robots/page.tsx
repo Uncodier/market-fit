@@ -47,12 +47,13 @@ export default function RobotsPage() {
 
 // Main content component
 function RobotsPageContent() {
-  const { isLayoutCollapsed } = useLayout()
+  const { isLayoutCollapsed, robotsViewMode, setRobotsViewMode } = useLayout()
   const { currentSite, refreshSites } = useSite()
   const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount, setAutoRefreshEnabled } = useRobots()
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const viewMode = robotsViewMode
   
   // Verify subscription on re-entry
   useEffect(() => {
@@ -71,6 +72,19 @@ function RobotsPageContent() {
       window.removeEventListener('focus', handleVisibilityChange)
     }
   }, [refreshSites])
+
+  // Legacy bookmarks used ?mode= — sync to context, then strip (no mode in URL anymore)
+  useEffect(() => {
+    if (pathname !== "/robots") return
+    const raw = searchParams.get("mode")
+    if (!raw) return
+    if (raw === "imprenta") setRobotsViewMode("imprenta")
+    if (raw === "agent") setRobotsViewMode("agent")
+    const p = new URLSearchParams(searchParams.toString())
+    p.delete("mode")
+    const q = p.toString()
+    router.replace(q ? `/robots?${q}` : "/robots", { scroll: false })
+  }, [pathname, searchParams, router, setRobotsViewMode])
   
   // No campaigns view here
 
@@ -136,11 +150,16 @@ function RobotsPageContent() {
 
   // Instance selection via URL param
   const selectedInstanceParam = searchParams.get('instance')
-  const allInstances = getAllInstances()
-  
+  const allInstances = useMemo(() => getAllInstances(), [getAllInstances])
+
+  const tabInstances = allInstances
+
   // Use local state if available, otherwise fall back to URL param, then default to "new" or first instance
   // Validate that the selected instance actually exists to avoid using deleted instances
-  let selectedInstanceId = localSelectedInstanceId || selectedInstanceParam || (allInstances.length > 0 ? allInstances[0].id : 'new')
+  let selectedInstanceId =
+    localSelectedInstanceId ||
+    selectedInstanceParam ||
+    (allInstances.length > 0 ? allInstances[0].id : "new")
   
   // If selectedInstanceId is from URL param, verify it still exists
   if (selectedInstanceId && selectedInstanceId !== 'new' && !localSelectedInstanceId) {
@@ -188,7 +207,6 @@ function RobotsPageContent() {
     }
   }, []);
 
-  
   // Activity param for controlling explorer visibility
   const activityParam = searchParams.get('activity')
   const isActivityRobot = activityParam === 'robot'
@@ -754,13 +772,13 @@ function RobotsPageContent() {
       const now = new Date()
       
       // Get current sorted instances to find the last visible one
-      const sortedInstances = [...allInstances].sort((a, b) => {
+      const sortedInstances = [...tabInstances].sort((a, b) => {
         const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
         const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
         return bTime - aTime
       })
       
-      const showNewMakinaTab = allInstances.length === 0 || isLoadingRobots || forceLoading
+      const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots || forceLoading
       const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
       const totalTabs = sortedInstances.length
       const needsOverflow = totalTabs > effectiveMaxTabs
@@ -932,7 +950,7 @@ function RobotsPageContent() {
         resizeObserver.disconnect();
       }
     };
-  }, [calculateMaxVisibleTabs, allInstances.length, isLayoutCollapsed, selectedInstanceId]);
+  }, [calculateMaxVisibleTabs, tabInstances.length, isLayoutCollapsed, selectedInstanceId]);
 
   const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
   // Use a stable reference that only computes when requirementStatuses changes
@@ -957,10 +975,7 @@ function RobotsPageContent() {
     
     return null;
   }, [requirementStatuses]);
-  
-  // Get view mode from URL (agent vs imprenta)
-  const viewMode = searchParams.get('mode') === 'imprenta' ? 'imprenta' : 'agent'
-  
+
   // Compute if browser should be visible
   const isBrowserVisible = Boolean(
     ((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning || !!latestPreviewUrl)) || 
@@ -984,7 +999,7 @@ function RobotsPageContent() {
                 <Tabs key={`tabs-${currentSite?.id}-${siteChangeKey}`} value={selectedInstanceId} onValueChange={handleTabChange} className="flex-1 min-w-0">
                   <TabsList ref={tabsListRef} className="flex flex-nowrap justify-start w-full overflow-hidden">
                     {/* Show New Agent tab if no instances or while loading */}
-                    {(allInstances.length === 0 || isLoadingRobots || forceLoading) && (
+                    {(tabInstances.length === 0 || isLoadingRobots || forceLoading) && (
                       <TabsTrigger value="new">
                         <span className="flex items-center gap-2 whitespace-nowrap truncate max-w-[120px]">
                           <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
@@ -996,14 +1011,14 @@ function RobotsPageContent() {
                     {/* Show instances with responsive overflow */}
                     {(() => {
                       // Sort instances by updated_at descending (most recently updated first)
-                      const sortedInstances = [...allInstances].sort((a, b) => {
+                      const sortedInstances = [...tabInstances].sort((a, b) => {
                         const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
                         const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
                         return bTime - aTime
                       })
                       
                       // Calculate how many tabs to show
-                      const showNewMakinaTab = allInstances.length === 0 || isLoadingRobots || forceLoading
+                      const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots || forceLoading
                       // Account for "New Agent" tab in maxVisibleTabs if it's shown
                       const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
                       const totalTabs = sortedInstances.length
@@ -1099,7 +1114,7 @@ function RobotsPageContent() {
       <InstanceBrowserModal
         isOpen={isBrowserModalOpen}
         onClose={() => setIsBrowserModalOpen(false)}
-        instances={allInstances as any[]}
+        instances={tabInstances as any[]}
         onSelect={(id) => handleTabChangeFromOverflow(id)}
         onDelete={(instance) => {
           setInstanceToDelete({ id: instance.id, name: instance.name })

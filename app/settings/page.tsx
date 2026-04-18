@@ -6,7 +6,6 @@ import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
 import { useSite } from "../context/SiteContext"
 import { useTheme } from "../context/ThemeContext"
 import { type Site, type SiteSettings } from "../context/SiteContext"
-import { Button } from "../components/ui/button"
 import { StickyHeader } from "../components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Skeleton } from "../components/ui/skeleton"
@@ -209,7 +208,7 @@ const getSkillsSections = (t: (key: string) => string): QuickNavSection[] => [
 const getActivitiesSections = (t: (key: string) => string): QuickNavSection[] => [
   { 
     id: "activities", 
-    title: t('settings.nav.activities') || "Activities",
+    title: t('settings.nav.activities') || "AI Activities",
     children: [
       { id: "activity-daily_resume_and_stand_up", title: t('settings.nav.activity.dailyResume') || "Daily Resume and Stand Up" },
       { id: "activity-local_lead_generation", title: t('settings.nav.activity.localLead') || "Local Lead Generation" },
@@ -427,10 +426,8 @@ export default function SettingsPage() {
             <Tabs value="general" className="w-auto">
               <TabsList>
                 <TabsTrigger value="general">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
-                <TabsTrigger value="channels">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
                 <TabsTrigger value="social">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
-                <TabsTrigger value="activities">{t('settings.tabs.activities') || 'Activities'}</TabsTrigger>
                 <TabsTrigger value="skills">{t('settings.tabs.skills') || 'Skills'}</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -455,22 +452,25 @@ export default function SettingsPage() {
     )
   }
 
+  const showSettingsTabBar =
+    activeSegment !== "channels" && activeSegment !== "activities"
+
   return (
     <div className="flex-1">
-      <StickyHeader>
-        <div className="flex items-center justify-between px-16 w-full">
-          <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
-            <TabsList className="flex">
-              <TabsTrigger value="general" className="whitespace-nowrap">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
-              <TabsTrigger value="channels" className="whitespace-nowrap">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
-              <TabsTrigger value="team" className="whitespace-nowrap">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
-              <TabsTrigger value="social" className="whitespace-nowrap">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
-              <TabsTrigger value="activities" className="whitespace-nowrap">{t('settings.tabs.activities') || 'Activities'}</TabsTrigger>
-              <TabsTrigger value="skills" className="whitespace-nowrap">{t('settings.tabs.skills') || 'Skills'}</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </StickyHeader>
+      {showSettingsTabBar ? (
+        <StickyHeader>
+          <div className="flex items-center justify-between px-16 w-full">
+            <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
+              <TabsList className="flex">
+                <TabsTrigger value="general" className="whitespace-nowrap">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
+                <TabsTrigger value="team" className="whitespace-nowrap">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
+                <TabsTrigger value="social" className="whitespace-nowrap">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
+                <TabsTrigger value="skills" className="whitespace-nowrap">{t('settings.tabs.skills') || 'Skills'}</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </StickyHeader>
+      ) : null}
       <div className="py-8 pb-16">
         <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
           <div className="flex-1 max-w-[880px] px-16">

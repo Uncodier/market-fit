@@ -124,6 +124,11 @@ interface FinderRequest {
   simple_event_reason?: FinderSimpleEventReason
   simple_event_date_featured_start?: string
   simple_event_date_featured_end?: string
+
+  /** Scope to people linked to a deal for the current site (requires site_id). */
+  require_deal?: boolean
+  /** Scope to people with tracked visits for the current site (requires site_id). */
+  require_site_visit?: boolean
 }
 
 // Default page size assumed by server (used for UI range display)
@@ -485,6 +490,8 @@ export default function PeopleSearchPage() {
   const [simpleEventSource, setSimpleEventSource] = useState<FinderSimpleEventSource | null>(null)
   const [simpleEventReason, setSimpleEventReason] = useState<FinderSimpleEventReason | null>(null)
   const [simpleEventDateRange, setSimpleEventDateRange] = useState<{ start?: Date; end?: Date }>({})
+  const [requireDeal, setRequireDeal] = useState(false)
+  const [requireSiteVisit, setRequireSiteVisit] = useState(false)
 
   // pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -551,6 +558,7 @@ export default function PeopleSearchPage() {
     funding: false,
     technologies: false,
     signals: false,
+    crmActivity: false,
   })
   // Persist collapsed/expanded state for Saved lists tab so it survives tab switches
   const [savedSectionOpenDefaults, setSavedSectionOpenDefaults] = useState<Record<string, boolean>>({})
@@ -670,6 +678,8 @@ export default function PeopleSearchPage() {
       setSimpleEventSource(q.simple_event_source ?? null)
       setSimpleEventReason(q.simple_event_reason ?? null)
       setSimpleEventDateRange({ start: parseDate(q.simple_event_date_featured_start), end: parseDate(q.simple_event_date_featured_end) })
+      setRequireDeal(Boolean(q.require_deal))
+      setRequireSiteVisit(Boolean(q.require_site_visit))
       // Decide which cards to open by default based on loaded query
       const openDefaults = {
         name: Boolean(
@@ -700,6 +710,7 @@ export default function PeopleSearchPage() {
         funding: Boolean(q.funding_types || typeof q.funding_total_start === 'number' || typeof q.funding_total_end === 'number' || q.funding_event_date_featured_start || q.funding_event_date_featured_end),
         technologies: Boolean(q.organization_web_technologies && q.organization_web_technologies.length),
         signals: Boolean(q.simple_event_source || q.simple_event_reason || q.simple_event_date_featured_start || q.simple_event_date_featured_end),
+        crmActivity: Boolean(q.require_deal || q.require_site_visit),
       }
       setSectionOpenDefaults(openDefaults)
       setCollapsibleVersion(v => v + 1)
@@ -1112,6 +1123,9 @@ export default function PeopleSearchPage() {
           .filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
         return ids.length ? ids : undefined
       })(),
+
+      ...(requireDeal ? { require_deal: true } : {}),
+      ...(requireSiteVisit ? { require_site_visit: true } : {}),
     }
 
     // Debug: Log the complete payload before returning
@@ -2240,6 +2254,47 @@ export default function PeopleSearchPage() {
             <div className="space-y-3">
               <h3 className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2" style={{ fontSize: '10.8px' }}>🎯 {t('people.filters.buyingIntent') || 'Buying Intent'}</h3>
               <div className="space-y-3">
+                <CollapsibleField
+                  title={t('people.filters.crm.title') || 'CRM & site activity'}
+                  defaultOpen={sectionOpenDefaults.crmActivity}
+                  countBadge={(requireDeal ? 1 : 0) + (requireSiteVisit ? 1 : 0)}
+                  onClear={() => {
+                    setRequireDeal(false)
+                    setRequireSiteVisit(false)
+                  }}
+                >
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {t('people.filters.crm.scopeHint') || 'Uses your selected site. Requires an active site.'}
+                  </p>
+                  <div className="space-y-2">
+                    <div className="py-1.5 flex items-center justify-between gap-2">
+                      <label htmlFor="filter-require-deal" className="text-sm">
+                        {t('people.filters.crm.deals') || 'Deals'}
+                      </label>
+                      <Switch
+                        id="filter-require-deal"
+                        checked={requireDeal}
+                        onCheckedChange={setRequireDeal}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      {t('people.filters.crm.dealsHint') || 'Only people associated with a deal for this site'}
+                    </p>
+                    <div className="py-1.5 flex items-center justify-between gap-2 pt-1">
+                      <label htmlFor="filter-require-site-visit" className="text-sm">
+                        {t('people.filters.crm.siteVisits') || 'Site visits'}
+                      </label>
+                      <Switch
+                        id="filter-require-site-visit"
+                        checked={requireSiteVisit}
+                        onCheckedChange={setRequireSiteVisit}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground -mt-1">
+                      {t('people.filters.crm.siteVisitsHint') || 'Only people with recorded visits to this site'}
+                    </p>
+                  </div>
+                </CollapsibleField>
                 <CollapsibleField title={t('people.filters.jobPostings.title') || "Job Postings"} defaultOpen={sectionOpenDefaults.jobPostings}>
                   <div className="space-y-4">
                     <div>
@@ -2573,7 +2628,7 @@ export default function PeopleSearchPage() {
               <Button 
                 variant="outline" 
                 className="flex-1 h-10"
-                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonNameChips([]); setPersonNameInput(""); setPersonHeadlineChips([]); setPersonHeadlineInput(""); setJobTitleChips([]); setJobTitleInput(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitleChips([]); setJobPostingTitleInput(""); setJobPostingDescriptionChips([]); setJobPostingDescriptionInput(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRange([0, 0]); setFundingRangeTouched(false); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText(""); setOrgDomains([]); setOrgDomainsInputText(""); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgLinkedinIdsInputText(""); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRoleDateSince(undefined); setRoleDateUntil(undefined); setRoleYearsOnPositionStart(""); setRoleYearsOnPositionEnd(""); }}
+                onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonNameChips([]); setPersonNameInput(""); setPersonHeadlineChips([]); setPersonHeadlineInput(""); setJobTitleChips([]); setJobTitleInput(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitleChips([]); setJobPostingTitleInput(""); setJobPostingDescriptionChips([]); setJobPostingDescriptionInput(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRange([0, 0]); setFundingRangeTouched(false); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText(""); setOrgDomains([]); setOrgDomainsInputText(""); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgLinkedinIdsInputText(""); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRequireDeal(false); setRequireSiteVisit(false); setRoleDateSince(undefined); setRoleDateUntil(undefined); setRoleYearsOnPositionStart(""); setRoleYearsOnPositionEnd(""); }}
               >
                 {t('people.search.clear') || 'Clear'}
               </Button>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
-import { Eye, EyeOff, Code, LayoutGrid, Zap, Search, Copy, Check, Download } from "@/app/components/ui/icons"
+import React, { useState, useMemo } from 'react'
+import { Eye, EyeOff, Code, LayoutGrid, Zap, Search, Download } from "@/app/components/ui/icons"
 import { InstanceLog } from '../types'
-import { getToolName, getToolResult, formatBase64Image } from '../utils'
+import { getToolName, getToolResult, formatBase64Image, getToolLogPlainTextForCopy } from '../utils'
+import { InstanceLogCopyFeedbackBar } from './InstanceLogCopyFeedbackBar'
 import { renderObjectWithImages } from '../render-helpers'
 import { GeneratedImageDisplay, GeneratedImageDisplayCollapsed } from './GeneratedImageDisplay'
 import { GeneratedVideoDisplay, GeneratedVideoDisplayCollapsed } from './GeneratedVideoDisplay'
@@ -35,34 +36,9 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
 }) => {
   const toolName = getToolName(log)
   const toolResult = getToolResult(log)
-  const [copied, setCopied] = useState(false)
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false)
   const { toast } = useToast()
-
-  // Function to copy tool content to clipboard
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent triggering the toggle details
-    
-    const contentToCopy = {
-      toolName: toolName || 'Unknown',
-      message: log.message || '',
-      result: toolResult ? JSON.stringify(toolResult, null, 2) : '',
-      details: log.details ? JSON.stringify(log.details, null, 2) : ''
-    }
-    
-    const textToCopy = `Tool: ${contentToCopy.toolName}
-Message: ${contentToCopy.message}
-Result: ${contentToCopy.result}
-Details: ${contentToCopy.details}`
-    
-    try {
-      await navigator.clipboard.writeText(textToCopy)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000) // Reset after 2 seconds
-    } catch (err) {
-      console.error('Failed to copy: ', err)
-    }
-  }
+  const copyPlainText = useMemo(() => getToolLogPlainTextForCopy(log), [log])
 
   // Function to download image
   const handleDownloadImage = async (e: React.MouseEvent) => {
@@ -168,9 +144,18 @@ Details: ${contentToCopy.details}`
   const isImageGeneration = toolName === 'generate_image' && toolResult?.output?.images
   const isVideoGeneration = toolName === 'generate_video' && toolResult?.output?.videos
   const isMediaGeneration = isImageGeneration || isVideoGeneration
-  
+
+  const hasCollapsibleElements = Boolean(
+    log.screenshot_base64 ||
+      (toolResult &&
+        Object.keys(toolResult).length > 0 &&
+        toolName !== 'generate_image' &&
+        toolName !== 'generate_video') ||
+      (log.details && Object.keys(log.details).length > 0)
+  )
+
   return (
-    <div className={`${isMediaGeneration ? 'inline-block' : 'w-full'} min-w-0 overflow-hidden`} style={isMediaGeneration ? { marginLeft: isBrowserVisible ? '0.75rem' : '2rem' } : undefined}>
+    <div className={`${isMediaGeneration ? 'inline-block' : 'w-full'} group min-w-0 overflow-hidden`} style={isMediaGeneration ? { marginLeft: isBrowserVisible ? '0.75rem' : '2rem' } : undefined}>
       <div 
         className="rounded-lg p-3 text-xs cursor-pointer hover:opacity-80 transition-all duration-200 ease-in-out"
         style={{ 
@@ -184,17 +169,12 @@ Details: ${contentToCopy.details}`
           filter: 'none'
         }}
         onClick={() => {
-          // Only toggle if there are collapsible elements
-          const hasCollapsibleElements = log.screenshot_base64 || 
-            (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && toolName !== 'generate_video') || 
-            (log.details && Object.keys(log.details).length > 0)
-          
           if (hasCollapsibleElements) {
             onToggleToolDetails(log.id)
           }
         }}
         title={
-          (log.screenshot_base64 || (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && toolName !== 'generate_video') || (log.details && Object.keys(log.details).length > 0))
+          hasCollapsibleElements
             ? (collapsedToolDetails.has(log.id) ? "Haz clic para mostrar detalles" : "Haz clic para ocultar detalles")
             : "Llamada a herramienta completada"
         }
@@ -254,21 +234,8 @@ Details: ${contentToCopy.details}`
                 <Download className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
               </button>
             )}
-            {/* Copy button */}
-            <button
-              onClick={handleCopy}
-              className="p-1 rounded hover:bg-muted-foreground/10 transition-colors"
-              title={copied ? "¡Copiado!" : "Copiar contenido de la herramienta"}
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-600" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
-              )}
-            </button>
-            
             {/* Visibility toggle - only show if there are collapsible elements */}
-            {(log.screenshot_base64 || (toolResult && Object.keys(toolResult).length > 0 && toolName !== 'generate_image' && toolName !== 'generate_video') || (log.details && Object.keys(log.details).length > 0)) && (
+            {hasCollapsibleElements && (
               collapsedToolDetails.has(log.id) ? (
                 <Eye className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
               ) : (
@@ -496,7 +463,29 @@ Details: ${contentToCopy.details}`
                 </div>
               </div>
             )}
+
+            {hasCollapsibleElements && (
+              <div className="mt-3 flex justify-start border-t border-border/50 pt-2 opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto">
+                <InstanceLogCopyFeedbackBar
+                  logId={log.id}
+                  details={log.details as Record<string, unknown> | undefined}
+                  textToCopy={copyPlainText}
+                  compact
+                />
+              </div>
+            )}
           </>
+        )}
+
+        {!hasCollapsibleElements && !collapsedToolDetails.has(log.id) && (
+          <div className="mt-3 flex justify-start border-t border-border/50 pt-2 opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto">
+            <InstanceLogCopyFeedbackBar
+              logId={log.id}
+              details={log.details as Record<string, unknown> | undefined}
+              textToCopy={copyPlainText}
+              compact
+            />
+          </div>
         )}
 
       </div>

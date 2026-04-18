@@ -1,47 +1,22 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Settings, Shield, Sun, Moon, CreditCard, Plug } from "@/app/components/ui/icons"
-
-// Add Cpu icon for AI representation
-const Cpu = ({ className = "", ...props }: { className?: string, [key: string]: any }) => (
-  <svg 
-    viewBox="0 0 24 24" 
-    width="18" 
-    height="18" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round"
-    className={className}
-    {...props}
-  >
-    <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
-    <rect x="9" y="9" width="6" height="6" />
-    <line x1="9" y1="1" x2="9" y2="4" />
-    <line x1="15" y1="1" x2="15" y2="4" />
-    <line x1="9" y1="20" x2="9" y2="23" />
-    <line x1="15" y1="20" x2="15" y2="23" />
-    <line x1="20" y1="9" x2="23" y2="9" />
-    <line x1="20" y1="14" x2="23" y2="14" />
-    <line x1="1" y1="9" x2="4" y2="9" />
-    <line x1="1" y1="14" x2="4" y2="14" />
-  </svg>
-)
-import { MenuItem } from "./MenuItem"
-import { usePathname, useRouter } from "next/navigation"
-import { useState, useEffect, useRef } from "react"
+import { Settings, Shield, CreditCard, Plug, Sun, Moon } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
+import { useTheme } from "@/app/context/ThemeContext"
+import { MenuItem, EmojiIcon } from "./MenuItem"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/app/components/ui/tooltip"
-import { useTheme } from "@/app/context/ThemeContext"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect, useRef } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { type LucideIcon } from "@/app/components/ui/icons"
+
+const SETTINGS_SECTION_EMOJI = "⚙️"
 
 interface ConfigurationSectionProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed?: boolean
@@ -58,9 +33,14 @@ interface ConfigItem {
   isSettingsChild?: boolean;
 }
 
-const configItems: ConfigItem[] = [
-  { titleKey: "settings", href: "/settings", icon: Settings, emoji: "⚙️" },
-  { titleKey: "agents", href: "/agents", icon: Cpu, emoji: "✨", isSettingsChild: true },
+const settingsChildItems: ConfigItem[] = [
+  {
+    titleKey: "settingsGeneral",
+    href: "/settings",
+    icon: Settings,
+    emoji: "⚙️",
+    isSettingsChild: true,
+  },
   { titleKey: "integrations", href: "/integrations", icon: Plug, emoji: "🔌", isSettingsChild: true },
   { titleKey: "billing", href: "/billing", icon: CreditCard, emoji: "💳", isSettingsChild: true },
   { titleKey: "security", href: "/security", icon: Shield, emoji: "🔒", isSettingsChild: true },
@@ -78,16 +58,21 @@ export function ConfigurationSection({
 }: ConfigurationSectionProps) {
   const { t } = useLocalization()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
-  const [isChanging, setIsChanging] = useState(false)
-  const dummyFocusRef = useRef<HTMLDivElement>(null);
+  const dummyFocusRef = useRef<HTMLDivElement>(null)
   const { isDarkMode, toggleTheme } = useTheme()
-  
-  // Check if Settings is active or if any settings child is active
-  const isSettingsActive = pathname.startsWith('/settings')
+
+  const settingsUrlTab =
+    searchParams.get("tab") || searchParams.get("segment") || ""
+  /** On /settings but only via Automation nav (channels / activities) — do not highlight Configuration > Settings */
+  const isAutomationOnlySettingsTab =
+    settingsUrlTab === "channels" || settingsUrlTab === "activities"
+  const isOnSettingsPath = pathname.startsWith("/settings")
+  const isSettingsSidebarRouteActive =
+    isOnSettingsPath && !isAutomationOnlySettingsTab
   const isSecurityActive = pathname.startsWith('/security')
   const isBillingActive = pathname.startsWith('/billing')
-  const isAgentsActive = pathname.startsWith('/agents')
   const isIntegrationsActive = pathname.startsWith('/integrations')
   
   // Use external state if provided, fallback to local state
@@ -106,36 +91,56 @@ export function ConfigurationSection({
     }
   };
   
-  const shouldShowSettingsChildren = isSettingsActive || isSecurityActive || isBillingActive || isAgentsActive || isIntegrationsActive || forceShowChildren
-  
-  // For animation - defining all state upfront
-  const [isEntering, setIsEntering] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const routeDrivenOpen =
+    isSettingsSidebarRouteActive ||
+    isSecurityActive ||
+    isBillingActive ||
+    isIntegrationsActive
+  const shouldShowSettingsChildren =
+    routeDrivenOpen || forceShowChildren || menuOpen
+
   const settingsSectionRef = useRef<HTMLDivElement>(null)
   const prevPathRef = useRef(pathname)
-  
+
+  useEffect(() => {
+    if (!routeDrivenOpen) {
+      setMenuOpen(false)
+    }
+  }, [routeDrivenOpen])
+
   // Reset forceShowChildren when navigating between routes (only if using internal state)
   useEffect(() => {
     // Only manage internal state if no external state is provided
     if (externalForceShowChildren === undefined) {
-      const previousPath = prevPathRef.current;
-      const isLeavingSettingsArea = (
-        (previousPath.startsWith('/settings') || 
-         previousPath.startsWith('/security') || 
-         previousPath.startsWith('/billing') ||
-         previousPath.startsWith('/agents') ||
-         previousPath.startsWith('/integrations')) &&
-        !isSettingsActive && !isSecurityActive && !isBillingActive && !isAgentsActive && !isIntegrationsActive
-      );
-      
+      const previousPath = prevPathRef.current
+      const isLeavingSettingsArea =
+        (previousPath.startsWith("/settings") ||
+          previousPath.startsWith("/security") ||
+          previousPath.startsWith("/billing") ||
+          previousPath.startsWith("/integrations")) &&
+        !isOnSettingsPath &&
+        !isSecurityActive &&
+        !isBillingActive &&
+        !isIntegrationsActive
+
       // When navigating away from settings area, hide the settings children
       if (isLeavingSettingsArea) {
-        setForceShowChildren(false);
+        setForceShowChildren(false)
       }
     }
-    
+
     // Update previous path reference
-    prevPathRef.current = pathname;
-  }, [pathname, isSettingsActive, isSecurityActive, isBillingActive, isAgentsActive, isIntegrationsActive, externalForceShowChildren, setForceShowChildren]);
+    prevPathRef.current = pathname
+  }, [
+    pathname,
+    isOnSettingsPath,
+    isSecurityActive,
+    isBillingActive,
+    isIntegrationsActive,
+    externalForceShowChildren,
+    setForceShowChildren,
+  ])
   
   // Use external navigation handler if provided, fallback to local implementation
   const handleSettingsNavigation = onSettingsNavigation || ((e: React.MouseEvent, href: string) => {
@@ -143,13 +148,13 @@ export function ConfigurationSection({
     e.stopPropagation();
     
     // If already in settings area and trying to go to settings, navigate immediately
-    if (href === '/settings' && isSettingsActive) {
+    if (href === '/settings' && isOnSettingsPath) {
       router.push(href);
       return;
     }
     
     // If not in settings area, first show children then navigate with delay
-    if (!isSettingsActive && !isSecurityActive && !isBillingActive && !isAgentsActive && !isIntegrationsActive) {
+    if (!isOnSettingsPath && !isSecurityActive && !isBillingActive && !isIntegrationsActive) {
       setForceShowChildren(true);
       
       // Navigate after delay
@@ -162,179 +167,188 @@ export function ConfigurationSection({
     }
   });
   
-  // Handle toggling settings menu
-  const toggleSettingsMenu = (e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation();
-      e.preventDefault();
-    }
-    
-    // If already in settings area, don't toggle
-    if (isSettingsActive || isSecurityActive || isBillingActive || isAgentsActive || isIntegrationsActive) return;
-    
-    // Toggle force show without triggering additional animations
-    setForceShowChildren(prev => !prev);
-  };
-  
-  // Initial animation on mount if needed
-  useEffect(() => {
-    if (shouldShowSettingsChildren) {
-      setIsEntering(true);
-      const timer = setTimeout(() => {
-        setIsEntering(false);
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-  
-  const removeFocus = () => {
-    // First try the dummy element
-    if (dummyFocusRef.current) {
-      dummyFocusRef.current.focus();
-      dummyFocusRef.current.blur();
-    }
-    
-    // Then make sure nothing is focused
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-    
-    // Finally, move focus to body as a last resort
-    document.body.focus();
-  };
-  
+  const settingsTitle = t("layout.sidebar.settings") || "Settings"
+  const tooltipContentClass =
+    "flex flex-col gap-1 bg-popover text-popover-foreground dark:border-white/5 border-black/5 shadow-lg z-[9999]"
 
+  const settingsSectionToggleButton = (
+    <button
+      type="button"
+      className={cn(
+        "group flex items-center rounded-md font-inter text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-accent-foreground",
+        isCollapsed
+          ? "mx-auto h-[32px] w-[32px] shrink-0 justify-center"
+          : "h-[32px] w-full justify-start text-left text-sm"
+      )}
+      style={
+        !isCollapsed
+          ? {
+              fontSize: "11.3px",
+              paddingLeft: 9.7,
+              paddingRight: 9.7,
+              paddingTop: 6.5,
+              paddingBottom: 6.5,
+              gap: 9.7,
+            }
+          : undefined
+      }
+      onClick={() => setMenuOpen((v) => !v)}
+      aria-expanded={shouldShowSettingsChildren}
+      aria-label={settingsTitle}
+    >
+      <div
+        className={cn(
+          "flex flex-shrink-0 items-center justify-center safari-icon-fix",
+          isCollapsed ? "h-full w-full" : "h-[24px] w-[24px]"
+        )}
+      >
+        <EmojiIcon
+          emoji={SETTINGS_SECTION_EMOJI}
+          isActive={shouldShowSettingsChildren}
+          isCollapsed={isCollapsed}
+          tone="section"
+        />
+      </div>
+      {!isCollapsed && (
+        <>
+          <span className="min-w-0 flex-1 truncate" style={{ lineHeight: "normal" }}>
+            {settingsTitle}
+          </span>
+          <span
+            className={cn(
+              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform",
+              shouldShowSettingsChildren
+                ? "rotate-90 text-primary group-hover:text-primary"
+                : "text-muted-foreground/70 group-hover:text-accent-foreground"
+            )}
+          >
+            <svg
+              width="8"
+              height="8"
+              viewBox="0 0 6 10"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M1 1L5 5L1 9"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+        </>
+      )}
+    </button>
+  )
 
   return (
-    <div className={cn("space-y-1 py-4", className)} onMouseDown={(e) => e.preventDefault()}>
-      {/* Settings is always visible */}
-      {configItems.slice(0, 1).map((item, idx) => {
-        const isSettings = item.href === "/settings";
-        const settingsActive = isSettingsActive || isSecurityActive || isBillingActive;
-        
-        return (
-          <div 
-            key={`main-${item.href}`} 
-            className={cn(isSettings && "relative")}
-          >
-            <MenuItem
-              href={item.href}
-              icon={item.icon}
-              emoji={item.emoji}
-              title={t(`layout.sidebar.${item.titleKey}`) || item.titleKey}
-              isActive={item.href !== '/' ? pathname.startsWith(item.href) : pathname === item.href}
-              isCollapsed={isCollapsed}
-              className="context-parent-item"
-              onClick={isSettings ? (e) => handleSettingsNavigation(e, item.href) : undefined}
-            >
+    <TooltipProvider delayDuration={100}>
+      <div className={cn("space-y-1", className)} onMouseDown={(e) => e.preventDefault()}>
+        <div
+          className={cn("relative", isCollapsed && "flex w-full flex-col items-center")}
+        >
+          {isCollapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{settingsSectionToggleButton}</TooltipTrigger>
+              <TooltipContent side="right" align="start" sideOffset={5} className={tooltipContentClass}>
+                <p className="font-medium">{settingsTitle}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            settingsSectionToggleButton
+          )}
 
-            </MenuItem>
-            
-            {/* Indicator for Settings that it has children */}
-            {isSettings && !isCollapsed && (
-              <div 
-                className={cn(
-                  "absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center transition-[color,transform] duration-300 cursor-pointer rounded-full font-inter safari-icon-fix",
-                  isSettingsActive
-                    ? "transform rotate-90 text-white" // White when active
-                    : settingsActive || forceShowChildren
-                      ? "transform rotate-90 text-primary" 
-                      : "transform rotate-0 text-muted-foreground/70"
-                )}
-                onClick={toggleSettingsMenu}
-              >
-                <svg 
-                  width="8" 
-                  height="8" 
-                  viewBox="0 0 6 10" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="transition-transform duration-300"
-                >
-                  <path 
-                    d="M1 1L5 5L1 9" 
-                    stroke="currentColor" 
-                    strokeWidth="1.5" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                  />
-                </svg>
-              </div>
+        <div
+          ref={settingsSectionRef}
+          className={cn(
+            "w-full transition-all duration-300 ease-in-out",
+            shouldShowSettingsChildren
+              ? "max-h-[640px] opacity-100"
+              : "max-h-0 opacity-0 overflow-hidden"
+          )}
+          style={{
+            transitionTimingFunction: shouldShowSettingsChildren
+              ? "cubic-bezier(0.4, 0, 0.2, 1)"
+              : "cubic-bezier(0.4, 0, 1, 1)",
+          }}
+        >
+          <div
+            className={cn(
+              "flex flex-col space-y-1 pb-1 pt-1",
+              isCollapsed ? "items-center px-0" : "px-3"
             )}
+          >
+            {settingsChildItems.map((item) => {
+              const isTheme = item.href === "#theme"
+
+              if (isTheme) {
+                return (
+                  <div key="settings-child-theme" className="relative">
+                    <MenuItem
+                      href="#"
+                      icon={isDarkMode ? Moon : Sun}
+                      emoji="🌓"
+                      title={
+                        isDarkMode
+                          ? t("layout.sidebar.darkMode") || "Dark Mode"
+                          : t("layout.sidebar.lightMode") || "Light Mode"
+                      }
+                      isActive={false}
+                      isCollapsed={isCollapsed}
+                      className={!isCollapsed ? "ml-3" : ""}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        toggleTheme()
+                      }}
+                    >
+                      {!isCollapsed && (
+                        <div className="ml-auto flex items-center">
+                          <Switch
+                            checked={isDarkMode}
+                            onCheckedChange={toggleTheme}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={
+                              isDarkMode ? "Disable dark mode" : "Enable dark mode"
+                            }
+                            className="data-[state=checked]:bg-primary/90 focus:outline-none focus:ring-0"
+                            style={{ outline: "none" }}
+                          />
+                        </div>
+                      )}
+                    </MenuItem>
+                  </div>
+                )
+              }
+
+              const isGeneralSettings = item.href === "/settings"
+              const isActive = isGeneralSettings
+                ? isOnSettingsPath &&
+                  (!settingsUrlTab || settingsUrlTab === "general")
+                : pathname.startsWith(item.href)
+
+              return (
+                <div key={`settings-child-${item.href}`} className="relative">
+                  <MenuItem
+                    href={item.href}
+                    icon={item.icon}
+                    emoji={item.emoji}
+                    title={t(`layout.sidebar.${item.titleKey}`) || item.titleKey}
+                    isActive={isActive}
+                    isCollapsed={isCollapsed}
+                    className={!isCollapsed ? "ml-3" : ""}
+                    onClick={
+                      isGeneralSettings
+                        ? (e) => handleSettingsNavigation(e, item.href)
+                        : undefined
+                    }
+                  />
+                </div>
+              )
+            })}
           </div>
-        );
-      })}
-      
-      {/* Container for Settings children with animation */}
-      <div 
-        ref={settingsSectionRef}
-        className={cn(
-          "transition-all duration-300 ease-in-out", 
-          shouldShowSettingsChildren ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
-        )}
-        style={{
-          transitionTimingFunction: shouldShowSettingsChildren 
-            ? 'cubic-bezier(0.4, 0, 0.2, 1)' // ease-out for showing
-            : 'cubic-bezier(0.4, 0, 1, 1)'    // ease-in for hiding (faster)
-        }}
-      >
-        {/* Settings children items - using exact same pattern as context children */}
-        {configItems.slice(1).map((item, index) => {
-          const isActive = pathname.startsWith(item.href);
-          const isTheme = item.href === "#theme";
-          
-          const isBilling = item.href === "/billing";
-          
-          // Para elementos especiales que no navegarán realmente
-          if (isTheme) {
-            return (
-              <div key={`settings-child-${item.href}`} className="relative">
-                <MenuItem
-                  href="#"
-                  icon={isDarkMode ? Moon : Sun}
-                  emoji="🌓"
-                  title={isDarkMode ? (t('layout.sidebar.darkMode') || 'Dark Mode') : (t('layout.sidebar.lightMode') || 'Light Mode')}
-                  isActive={false}
-                  isCollapsed={isCollapsed}
-                  className={!isCollapsed ? "ml-3" : ""}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleTheme();
-                  }}
-                >
-                  {!isCollapsed && (
-                    <div className="ml-auto flex items-center">
-                      <Switch
-                        checked={isDarkMode}
-                        onCheckedChange={toggleTheme}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        aria-label={isDarkMode ? "Disable dark mode" : "Enable dark mode"}
-                        className="data-[state=checked]:bg-primary/90 focus:outline-none focus:ring-0"
-                        style={{ outline: 'none' }}
-                      />
-                    </div>
-                  )}
-                </MenuItem>
-              </div>
-            );
-          }
-          
-          return (
-            <div key={`settings-child-${item.href}`} className="relative">
-              <MenuItem
-                href={item.href}
-                icon={item.icon}
-                emoji={item.emoji}
-                title={t(`layout.sidebar.${item.titleKey}`) || item.titleKey}
-                isActive={isActive}
-                isCollapsed={isCollapsed}
-                className={!isCollapsed ? "ml-3" : ""}
-              />
-            </div>
-          );
-        })}
+        </div>
       </div>
       
       {/* Hidden element for focus management - moved to the bottom */}
@@ -344,6 +358,7 @@ export function ConfigurationSection({
         aria-hidden="true"
         style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
       />
-    </div>
+      </div>
+    </TooltipProvider>
   )
-} 
+}

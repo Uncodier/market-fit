@@ -1,24 +1,33 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { Button } from "@/app/components/ui/button"
 import { GitFork as GitBranch, Play, CheckCircle, AlertCircle, Clock } from "@/app/components/ui/icons"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { useLayout } from "@/app/context/LayoutContext"
 
-export function InstanceNodeChildren({ 
-  parentLogId, 
-  instanceId 
-}: { 
-  parentLogId: string, 
-  instanceId: string 
+export function InstanceNodeChildren({
+  parentLogId,
+  instanceId,
+  leading,
+  toolbarRowClassName
+}: {
+  parentLogId: string
+  instanceId: string
+  /** Shown on the same row as Branch to Node (e.g. copy / feedback toolbar) */
+  leading?: ReactNode
+  /** e.g. hover-only: opacity + pointer-events, with group on parent */
+  toolbarRowClassName?: string
 }) {
   const [nodes, setNodes] = useState<InstanceNode[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const supabase = createClient()
   const router = useRouter()
+  const { setRobotsViewMode } = useLayout()
 
   useEffect(() => {
     const fetchNodes = async () => {
@@ -90,23 +99,32 @@ export function InstanceNodeChildren({
   }
 
   const navigateToImprenta = () => {
-    // Navigate to imprenta mode inside robots
-    router.push(`/robots?instance=${instanceId}&mode=imprenta`)
+    setRobotsViewMode("imprenta")
+    router.push(`/robots?instance=${instanceId}`)
   }
 
   return (
-    <div className="mt-2 pl-8 flex flex-col gap-2">
-      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="h-6 text-xs" 
+    <div className="flex flex-col gap-2 w-full min-w-0">
+      <div
+        className={cn(
+          'flex w-full min-w-0 flex-row flex-wrap items-center gap-x-4 gap-y-2',
+          toolbarRowClassName
+        )}
+      >
+        {leading}
+        <button
+          type="button"
           onClick={handleCreateNode}
           disabled={isLoading}
+          className={cn(
+            'inline-flex w-fit min-w-0 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border/90 bg-background px-3.5 py-1.5 text-xs font-medium text-foreground shadow-sm',
+            'transition-colors hover:bg-muted/40 disabled:pointer-events-none disabled:opacity-50',
+            'dark:border-border dark:bg-card/80'
+          )}
         >
-          <GitBranch className="w-3 h-3 mr-1" />
+          <GitBranch className="h-3.5 w-3.5 shrink-0 text-foreground/85" />
           Branch to Node
-        </Button>
+        </button>
       </div>
       
       {nodes.length > 0 && (
@@ -124,7 +142,7 @@ export function InstanceNodeChildren({
                 </span>
               </div>
               <Button variant="ghost" size="sm" className="h-5 text-[10px]" onClick={navigateToImprenta}>
-                Open in Imprenta
+                Open in Content Creator
               </Button>
             </div>
           ))}

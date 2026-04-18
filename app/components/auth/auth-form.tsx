@@ -70,8 +70,8 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
   const [mfaCode, setMfaCode] = useState('')
   const [mfaVerifying, setMfaVerifying] = useState(false)
   
-  // Get returnTo from URL or default to projects selection
-  const [finalReturnTo, setFinalReturnTo] = useState<string>('/projects')
+  // Get returnTo from URL or default to AI Agents (robots)
+  const [finalReturnTo, setFinalReturnTo] = useState<string>('/robots')
   
   const isDark = theme === 'dark'
   
@@ -108,9 +108,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     if (!returnTo && typeof window !== 'undefined') {
       const url = new URL(window.location.href)
       const urlReturnTo = url.searchParams.get('returnTo')
-      setFinalReturnTo(urlReturnTo || '/projects')
+      setFinalReturnTo(urlReturnTo || '/robots')
     } else {
-      setFinalReturnTo(returnTo || '/projects')
+      setFinalReturnTo(returnTo || '/robots')
     }
 
     // If signup data is provided, validate referral code immediately

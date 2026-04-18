@@ -15,7 +15,7 @@ export default function ProjectsPage() {
 
   const hasSites = (sites?.length || 0) > 0
 
-  // If a current site is selected, go to Makinas (robots)
+  // If a current site is selected, go to AI Agents (robots)
   useEffect(() => {
     if (!isLoading && currentSite?.id) {
       router.push("/robots")

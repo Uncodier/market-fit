@@ -20,6 +20,12 @@ import { Site } from "@/app/context/SiteContext"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Button } from "../ui/button"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/app/components/ui/tooltip"
 
 interface SiteSelectorProps {
   isCollapsed?: boolean
@@ -159,16 +165,52 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
         !isCollapsed && "w-[232px]"
       )}>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <div className={cn(
-              "flex items-center rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
-              !isCollapsed && "border dark:border-white/5 border-black/5 hover:dark:border-white/5 border-black/5/80 hover:bg-accent w-full",
-              isCollapsed && "justify-center h-[45px]",
-              isLoading && "opacity-50 cursor-wait"
-            )}>
-              {!isMounted ? <SkeletonContent /> : <MainContent />}
-            </div>
-          </DropdownMenuTrigger>
+          {isCollapsed ? (
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <div
+                      className={cn(
+                        "flex items-center rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
+                        "justify-center h-[45px]",
+                        isLoading && "opacity-50 cursor-wait"
+                      )}
+                    >
+                      {!isMounted ? <SkeletonContent /> : <MainContent />}
+                    </div>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="right"
+                  align="start"
+                  sideOffset={5}
+                  className="z-[9999] max-w-[min(280px,calc(100vw-4rem))]"
+                >
+                  <p className="font-medium truncate">
+                    {currentSite?.name ||
+                      t("layout.category.project") ||
+                      "Project"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("layout.sidebar.switchProject")}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <DropdownMenuTrigger asChild>
+              <div
+                className={cn(
+                  "flex items-center rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
+                  "border dark:border-white/5 border-black/5 hover:dark:border-white/5 border-black/5/80 hover:bg-accent w-full",
+                  isLoading && "opacity-50 cursor-wait"
+                )}
+              >
+                {!isMounted ? <SkeletonContent /> : <MainContent />}
+              </div>
+            </DropdownMenuTrigger>
+          )}
           {isMounted && !isLoading && sites.length > 0 && (
             <DropdownMenuContent 
               align={isCollapsed ? "start" : "center"}
@@ -227,7 +269,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                         )}
                         onClick={() => {
                           setCurrentSite(site)
-                          router.push("/dashboard")
+                          router.push("/robots")
                         }}
                       >
                         <MenuAvatar className="h-6 w-6 flex-shrink-0">

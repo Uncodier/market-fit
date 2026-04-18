@@ -6,6 +6,8 @@ export interface RouteConfig {
 export const routes: RouteConfig[] = [
   // Routes with layout (sidebar and topbar)
   { path: "/dashboard", hasLayout: true },
+  { path: "/costs", hasLayout: true },
+  { path: "/onboarding", hasLayout: true },
   { path: "/control-center", hasLayout: true },
   { path: "/segments", hasLayout: true },
   { path: "/content", hasLayout: true },

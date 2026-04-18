@@ -139,7 +139,7 @@ export function useAuth() {
           
           if (!isPasswordResetFlow) {
             const url = new URL(window.location.href)
-            const returnTo = url.searchParams.get('returnTo') || '/projects'
+            const returnTo = url.searchParams.get('returnTo') || '/robots'
             
             console.log('[useAuth] checkAuth: Found session, redirecting to:', returnTo, 'from path:', currentPath)
             router.push(returnTo)
@@ -190,7 +190,7 @@ export function useAuth() {
           if (currentPath.startsWith('/auth') && !isPasswordResetFlow) {
             // Obtener el returnTo desde la URL
             const url = new URL(window.location.href)
-            const returnTo = url.searchParams.get('returnTo') || '/projects'
+            const returnTo = url.searchParams.get('returnTo') || '/robots'
             
             console.log('[useAuth] SIGNED_IN event detected, redirecting to:', returnTo, 'from path:', currentPath)
             

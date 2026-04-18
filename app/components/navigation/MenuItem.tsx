@@ -20,20 +20,67 @@ interface EmojiIconProps {
   intensity?: number // 0-1, where 1 is full grayscale, 0 is no filter
   isActive?: boolean
   isCollapsed?: boolean
+  /** Slightly different tile background for sidebar section headers */
+  tone?: "default" | "section"
 }
 
-export function EmojiIcon({ emoji, className, intensity = 1, isActive = false, isCollapsed = false }: EmojiIconProps) {
+export function EmojiIcon({
+  emoji,
+  className,
+  intensity = 1,
+  isActive = false,
+  isCollapsed = false,
+  tone = "default",
+}: EmojiIconProps) {
   const { isDarkMode } = useTheme()
-  
+  const section = tone === "section"
+
   const emojiSize = isCollapsed ? 'text-sm' : 'text-sm'
+
+  const collapsedInactive = isDarkMode
+    ? section
+      ? "border-gray-600/45 bg-gray-800/45"
+      : "border-gray-700/50 bg-gray-800/30"
+    : section
+      ? "border-gray-400/40 bg-gray-200/50"
+      : "border-gray-300/50 bg-gray-100/50"
+
+  const collapsedActive = isDarkMode
+    ? section
+      ? "border-white/25 bg-white/[0.11]"
+      : "border-white/20 bg-white/10"
+    : section
+      ? "border-gray-300/55 bg-white/35"
+      : "border-white/30 bg-white/20"
+
+  const expandedInactive = isDarkMode
+    ? section
+      ? "border-gray-600/45 bg-gray-800/45"
+      : "border-gray-700/50 bg-gray-800/30"
+    : section
+      ? "border-gray-400/40 bg-gray-200/50"
+      : "border-gray-300/50 bg-gray-100/50"
+
+  const expandedActive = isDarkMode
+    ? section
+      ? "border-white/25 bg-white/[0.11]"
+      : "border-white/20 bg-white/10"
+    : section
+      ? "border-gray-300/55 bg-white/35"
+      : "border-white/30 bg-white/20"
   
-  // In collapsed mode, show only the emoji without container
+  // Collapsed sidebar: framed emoji (narrow rail)
   if (isCollapsed) {
     return (
-      <span 
-        className={cn("leading-none", emojiSize, className)}
+      <span
+        className={cn(
+          "inline-flex items-center justify-center rounded-md border flex-shrink-0",
+          "w-[22px] h-[22px]",
+          isActive ? collapsedActive : collapsedInactive,
+          className
+        )}
       >
-        {emoji}
+        <span className={cn("leading-none", emojiSize)}>{emoji}</span>
       </span>
     )
   }
@@ -47,13 +94,7 @@ export function EmojiIcon({ emoji, className, intensity = 1, isActive = false, i
         "border",
         "w-[24px] h-[24px]",
         "flex-shrink-0",
-        isActive
-          ? isDarkMode
-            ? "border-white/20 bg-white/10"
-            : "border-white/30 bg-white/20"
-          : isDarkMode 
-            ? "border-gray-700/50 bg-gray-800/30" 
-            : "border-gray-300/50 bg-gray-100/50",
+        isActive ? expandedActive : expandedInactive,
         className
       )}
       style={{

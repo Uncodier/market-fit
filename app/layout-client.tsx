@@ -34,6 +34,8 @@ const pathToNavKey: Record<string, string> = {
   "/create-site": "createSite",
   "/projects": "projects",
   "/context": "context",
+  "/costs": "costs",
+  "/onboarding": "onboarding",
 }
 
 function getNavigationTitle(pathname: string, t: (key: string) => string): { title: string, helpText?: string, helpWelcomeMessage?: string, helpTask?: string } {

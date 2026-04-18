@@ -16,6 +16,14 @@ interface NavigationHistory {
 const STORAGE_KEY = 'navigationHistory'
 const MAX_VISIBLE_ITEMS = 5
 
+/** Dispatched to clear stored breadcrumb trail (e.g. /robots vs Imprenta share one URL). */
+export const NAVIGATION_HISTORY_RESET_EVENT = 'navigation-history:reset'
+
+export function requestNavigationHistoryReset(): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(NAVIGATION_HISTORY_RESET_EVENT))
+}
+
 // Route titles mapping
 const routeTitles: Record<string, string> = {
   'dashboard': 'Dashboard',
@@ -704,6 +712,12 @@ export function useNavigationHistory() {
     setHistory(newHistory)
     saveHistory(newHistory)
   }, [])
+
+  useEffect(() => {
+    const handler = () => reset()
+    window.addEventListener(NAVIGATION_HISTORY_RESET_EVENT, handler)
+    return () => window.removeEventListener(NAVIGATION_HISTORY_RESET_EVENT, handler)
+  }, [reset])
   
   /**
    * Get visible items (last N items)

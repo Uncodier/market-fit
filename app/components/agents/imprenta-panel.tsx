@@ -25,6 +25,39 @@ import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../simple-messages-view/utils/markdownComponents'
 
 import { ImprentaSkeleton } from "@/app/components/skeletons/imprenta-skeleton"
+import { ImprentaAudienceLeadsCarousel } from "@/app/components/agents/imprenta-audience-leads-carousel"
+import type { AudienceLeadRow } from "@/app/audiences/actions"
+import { isSocialMediaEntryConnected } from "@/app/components/settings/data-adapter"
+import {
+  destinationsRequireAudience,
+  getPublishContextAnchorY,
+  getPublishContextEdgeCaption,
+  hasPublishAudienceInput,
+  hasPublishContentInput,
+  isDescendantOfAudienceNode,
+  isNormalPublishContextType,
+  isPublishAudienceSourceReady,
+  isValidPublishAudienceSource,
+  resolveAudienceSegmentIdForImprenta,
+  shouldRouteToPublishAudienceSlot,
+  PUBLISH_ANCHOR_AUDIENCE_Y,
+  PUBLISH_ANCHOR_CONTENT_Y,
+  PUBLISH_ANCHOR_CONTEXT_Y,
+  PUBLISH_ANCHOR_LABELS,
+  PUBLISH_SLOT_AUDIENCE,
+  PUBLISH_SLOT_CONTENT,
+  PUBLISH_SLOT_REFERENCE,
+  validatePublishNodeInputs,
+} from "@/app/components/agents/imprenta-publish-context"
+
+/** Treat inherited / mistaken DB copies of the parent's coordinates as invalid for child nodes. */
+function positionsNearlyEqual(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  eps = 1
+) {
+  return Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps
+}
 
 export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string }) {
   const { currentSite } = useSite()
@@ -38,7 +71,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [isUploadingAsset, setIsUploadingAsset] = useState(false)
   const [initialPrompt, setInitialPrompt] = useState("")
   const [zoomedMedia, setZoomedMedia] = useState<{url: string, type: 'image' | 'video'} | null>(null)
-  const isCreatingRootRef = useRef(false)
+  /** Prevents duplicate root inserts when parallel fetches both see an empty table before the first insert is visible. */
+  const rootCreationPendingRef = useRef<Set<string>>(new Set())
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [dummyNodes, setDummyNodes] = useState<InstanceNode[]>([])
@@ -112,22 +146,34 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   // Fetch nodes for the selected instance
   useEffect(() => {
     if (!activeInstanceId) return
+
+    let cancelled = false
     
     const fetchNodes = async () => {
       setIsLoading(true)
-      
-      const { data, error } = await supabase
-        .from('instance_nodes')
-        .select('*')
-        .eq('instance_id', activeInstanceId)
-      
-      if (!error && data) {
-        if (data.length === 0) {
-          // Auto-create an empty root node to avoid jumping UI
-          const { data: sessionData } = await supabase.auth.getSession()
-          if (sessionData?.session && !isCreatingRootRef.current) {
-            isCreatingRootRef.current = true
+      let deferLoadingEnd = false
+      try {
+        const { data, error } = await supabase
+          .from('instance_nodes')
+          .select('*')
+          .eq('instance_id', activeInstanceId)
+
+        if (cancelled) return
+
+        if (!error && data) {
+          if (data.length === 0) {
+            // Claim synchronously before any await so parallel requests cannot both insert.
+            if (rootCreationPendingRef.current.has(activeInstanceId)) {
+              deferLoadingEnd = true
+              return
+            }
+            rootCreationPendingRef.current.add(activeInstanceId)
+
             try {
+              const { data: sessionData } = await supabase.auth.getSession()
+              if (cancelled) return
+              if (!sessionData?.session) return
+
               const newNode = {
                 instance_id: activeInstanceId,
                 site_id: currentSite?.id,
@@ -140,30 +186,29 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                 result: {}
               }
               const { data: newDbNode } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
+              if (cancelled) return
               if (newDbNode) {
                 setNodes(prev => {
-                  if (prev.some(n => n.id === newDbNode.id)) return prev;
-                  return [...prev, newDbNode as InstanceNode];
+                  if (prev.some(n => n.id === newDbNode.id)) return prev
+                  return [...prev, newDbNode as InstanceNode]
                 })
               }
             } finally {
-              // We don't reset it immediately to prevent strict-mode double-fetches
-              // but we reset it after a delay so it can be re-used if needed
-              setTimeout(() => {
-                isCreatingRootRef.current = false
-              }, 1000)
+              rootCreationPendingRef.current.delete(activeInstanceId)
+            }
+          } else {
+            setNodes(data as InstanceNode[])
+            const nodeIds = data.map((n: any) => n.id)
+            if (nodeIds.length > 0) {
+              const { data: ctxData } = await supabase.from('instance_node_contexts').select('*').in('target_node_id', nodeIds)
+              if (cancelled) return
+              if (ctxData) setContexts(ctxData)
             }
           }
-        } else {
-          setNodes(data as InstanceNode[])
-          const nodeIds = data.map((n: any) => n.id)
-          if (nodeIds.length > 0) {
-            const { data: ctxData } = await supabase.from('instance_node_contexts').select('*').in('target_node_id', nodeIds)
-            if (ctxData) setContexts(ctxData)
-          }
         }
+      } finally {
+        if (!cancelled && !deferLoadingEnd) setIsLoading(false)
       }
-      setIsLoading(false)
     }
     
     fetchNodes()
@@ -279,12 +324,20 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       .subscribe()
 
     return () => {
+      cancelled = true
       subscription.unsubscribe()
       contextSubscription.unsubscribe()
     }
   }, [activeInstanceId, supabase, currentSite])
 
   const handleExecuteNode = async (node: InstanceNode) => {
+    if (node.type === "publish") {
+      const err = validatePublishNodeInputs(node, contexts, [...nodes, ...dummyNodes])
+      if (err) {
+        toast.error(err)
+        return
+      }
+    }
     toast.info("Executing node...")
     try {
       // Create a dummy placeholder child node visually
@@ -325,6 +378,21 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         output_type: currentMediaType,
         parameters: { ...((node.settings as any)?.parameters || {}) }
       };
+
+      if (node.type === 'publish') {
+        const dest = Array.isArray((node.settings as any)?.publish_destinations)
+          ? ((node.settings as any).publish_destinations as string[])
+          : []
+        contextObj.publish_destinations = dest
+        const emailReady = currentSite?.settings?.channels?.email?.status === 'synced'
+        const hasEmailDistributionSelection = dest.some(d => d === 'mail' || d === 'newsletter')
+        if (emailReady || hasEmailDistributionSelection) {
+          contextObj.distributionModes = {
+            mail: dest.includes('mail'),
+            newsletter: dest.includes('newsletter')
+          }
+        }
+      }
 
       // Remove expectedResults from context to prevent the LLM from duplicating output internally
       if (contextObj.parameters.expectedResults !== undefined) {
@@ -701,33 +769,109 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     window.removeEventListener('click', handleConnectionEnd as any, { capture: true });
   }
 
-  const handleConnectionDrop = async (e: React.MouseEvent, targetNodeId: string) => {
+  const handleConnectionDrop = async (
+    e: React.MouseEvent,
+    targetNodeId: string,
+    slot?: "content" | "context" | "audience"
+  ) => {
     e.stopPropagation();
-    if (drawingConnectionRef.current) {
+    if (!drawingConnectionRef.current) return;
       const sourceNodeId = drawingConnectionRef.current.fromNode;
-      if (sourceNodeId !== targetNodeId) {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session && currentSite) {
-          const { error } = await supabase.from('instance_node_contexts').insert({
+    if (sourceNodeId === targetNodeId) return;
+
+    const targetNode = nodesRef.current.find((n) => n.id === targetNodeId);
+    const sourceNode = nodesRef.current.find((n) => n.id === sourceNodeId);
+    if (!targetNode || !sourceNode) return;
+
+    let insertType: string | null = null;
+    if (targetNode.type === "publish" && slot === "content") {
+      if (shouldRouteToPublishAudienceSlot(sourceNode, nodesRef.current)) {
+        toast.error("Use the Audience input for Audience nodes and their downstream actions.");
+        return;
+      }
+      insertType = PUBLISH_SLOT_CONTENT;
+    } else if (targetNode.type === "publish" && slot === "context") {
+      if (shouldRouteToPublishAudienceSlot(sourceNode, nodesRef.current)) {
+        toast.error("Use the Audience input for Audience nodes and their downstream actions.");
+        return;
+      }
+      insertType = PUBLISH_SLOT_REFERENCE;
+    } else if (targetNode.type === "publish" && slot === "audience") {
+      if (!isPublishAudienceSourceReady(sourceNode, nodesRef.current)) {
+        toast.error("Link from an Audience node or from a node whose parent is an Audience node.");
+        return;
+      }
+      insertType = PUBLISH_SLOT_AUDIENCE;
+    } else if (targetNode.type === "publish") {
+      toast.error("Use the Content, Context, or Audience inputs on the left.");
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !currentSite) return;
+
+    try {
+      if (insertType === PUBLISH_SLOT_CONTENT) {
+        const stale = contexts.filter(
+          (c) =>
+            c.target_node_id === targetNodeId &&
+            c.type === PUBLISH_SLOT_CONTENT
+        );
+        for (const row of stale) {
+          await supabase.from("instance_node_contexts").delete().eq("id", row.id);
+        }
+        if (stale.length) {
+          setContexts((prev) => prev.filter((c) => !stale.some((s) => s.id === c.id)));
+        }
+      } else if (insertType === PUBLISH_SLOT_REFERENCE) {
+        const stale = contexts.filter(
+          (c) =>
+            c.target_node_id === targetNodeId &&
+            isNormalPublishContextType(c.type)
+        );
+        for (const row of stale) {
+          await supabase.from("instance_node_contexts").delete().eq("id", row.id);
+        }
+        if (stale.length) {
+          setContexts((prev) => prev.filter((c) => !stale.some((s) => s.id === c.id)));
+        }
+      } else if (insertType === PUBLISH_SLOT_AUDIENCE) {
+        const stale = contexts.filter(
+          (c) => c.target_node_id === targetNodeId && c.type === PUBLISH_SLOT_AUDIENCE
+        );
+        for (const row of stale) {
+          await supabase.from("instance_node_contexts").delete().eq("id", row.id);
+        }
+        if (stale.length) {
+          setContexts((prev) => prev.filter((c) => !stale.some((s) => s.id === c.id)));
+        }
+      }
+
+      const { error } = await supabase.from("instance_node_contexts").insert({
             target_node_id: targetNodeId,
             context_node_id: sourceNodeId,
             site_id: currentSite.id,
-            user_id: session.user.id
+        user_id: session.user.id,
+        ...(insertType ? { type: insertType } : {}),
           });
           
           if (error) {
-            if (error.code === '23505') toast.error("Context already linked");
+        if (error.code === "23505") toast.error("Context already linked");
             else toast.error("Failed to link context");
           } else {
             toast.success("Context linked!");
-            const currentNodes = nodesRef.current.map(n => n.id);
-            const { data } = await supabase.from('instance_node_contexts').select('*').in('target_node_id', currentNodes);
+        const currentNodeIds = nodesRef.current.map((n) => n.id);
+        const { data } = await supabase
+          .from("instance_node_contexts")
+          .select("*")
+          .in("target_node_id", currentNodeIds);
             if (data) setContexts(data);
           }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to link context");
         }
-      }
-    }
-  }
+  };
 
   const handleDeleteContext = async (contextId: string) => {
     try {
@@ -816,7 +960,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const V_GAP = 40
   const ROW_H = 300
   const PAD_X = 100 + sidebarWidth
-  const PAD_Y = 100 + 188
+  /** TopBar (64px) + StickyHeader min (71px); inverse of chat empty-state top inset so the root node sits in the visible band */
+  const HEADER_STACK_PX = 135
+  const PAD_Y = 100 + 188 - HEADER_STACK_PX
 
   const getLayoutPositions = (
     currentNodes: InstanceNode[],
@@ -1006,6 +1152,30 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       allNodes.forEach(n => {
         if (!n.id.startsWith('dummy-') && (n.settings as any)?.ui_position) {
           const dbPos = (n.settings as any).ui_position;
+          if (
+            typeof dbPos?.x !== 'number' ||
+            typeof dbPos?.y !== 'number' ||
+            isNaN(dbPos.x) ||
+            isNaN(dbPos.y)
+          ) {
+            return
+          }
+          // Backend often persists a copy of the parent's settings on new children; that puts
+          // ui_position on the child equal to the parent and overwrites the dummy handoff layout.
+          if (n.parent_node_id) {
+            const parentNode = allNodes.find(p => p.id === n.parent_node_id)
+            const parentDb = parentNode && (parentNode.settings as any)?.ui_position
+            const parentClean = cleaned[n.parent_node_id]
+            const overlapsParent =
+              (parentDb &&
+                typeof parentDb.x === 'number' &&
+                typeof parentDb.y === 'number' &&
+                positionsNearlyEqual(dbPos, parentDb)) ||
+              (parentClean && positionsNearlyEqual(dbPos, parentClean))
+            if (overlapsParent) {
+              return
+            }
+          }
           if (!cleaned[n.id] || cleaned[n.id].x !== dbPos.x || cleaned[n.id].y !== dbPos.y) {
             // Avoid overwriting if we are currently dragging this node
             if (draggingNodeRef.current !== n.id) {
@@ -1158,7 +1328,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     const end = positions[ctx.target_node_id]
                     if (!start || !end) return null;
                     const startCy = (nodeHeightsRef.current[ctx.context_node_id] || ROW_H) / 2
-                    const endCy = (nodeHeightsRef.current[ctx.target_node_id] || ROW_H) / 2
+                    const targetNodeForCtx = nodesRef.current.find((n) => n.id === ctx.target_node_id)
+                    const endH = nodeHeightsRef.current[ctx.target_node_id] || ROW_H
+                    const endCy = getPublishContextAnchorY(targetNodeForCtx?.type, ctx.type, endH)
                     
                     const startX = start.x + NODE_W;
                     const startY = start.y + startCy;
@@ -1198,8 +1370,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                           />
                         </svg>
                         
-                        {/* Type Label (always visible if type exists and not selected) */}
-                        {ctx.type && !isSelected && (
+                        {/* Slot / type label (always for Publish; otherwise only when typed) */}
+                        {!isSelected && (ctx.type != null || targetNodeForCtx?.type === "publish") && (
                           <div 
                             className="absolute px-2 py-0.5 bg-background border border-primary/20 text-primary text-[10px] font-medium rounded-full shadow-sm pointer-events-auto cursor-pointer"
                             style={{ 
@@ -1212,7 +1384,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                               setSelectedContextId(ctx.id);
                             }}
                           >
-                            {ctx.type}
+                            {getPublishContextEdgeCaption(targetNodeForCtx?.type, ctx.type)}
                           </div>
                         )}
                         
@@ -1240,6 +1412,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                 <SelectItem value="negative">Negative</SelectItem>
                                 <SelectItem value="context">Context</SelectItem>
                                 <SelectItem value="data">Data</SelectItem>
+                                <SelectItem value={PUBLISH_SLOT_CONTENT}>Content</SelectItem>
+                                <SelectItem value={PUBLISH_SLOT_AUDIENCE}>Audience</SelectItem>
                                 <SelectItem value="from">From</SelectItem>
                                 <SelectItem value="to">To</SelectItem>
                               </SelectContent>
@@ -1358,22 +1532,97 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                             <Trash2 className="h-3 w-3" />
                           </Button>
 
-                        <Card className="w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-shadow duration-300 border-2 border-foreground/10 bg-card/95 backdrop-blur-sm rounded-3xl">
+                        <Card
+                          className={
+                            "w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-shadow duration-300 border-2 border-foreground/10 bg-card/95 backdrop-blur-sm rounded-3xl" +
+                            (node.type === "publish" && !hasResult ? " group/publish-in" : "")
+                          }
+                        >
                           <CardContent className="p-5 relative">
-                            {!hasResult && (
+                            {!hasResult &&
+                              (node.type === "publish" ? (
+                                (() => {
+                                  const dest = Array.isArray((node.settings as any)?.publish_destinations)
+                                    ? ((node.settings as any).publish_destinations as string[])
+                                    : [];
+                                  const needAudience = destinationsRequireAudience(dest);
+                                  const allNodes = [...nodes, ...dummyNodes];
+                                  const hasCnt = hasPublishContentInput(contexts, node.id, allNodes);
+                                  const hasAud = hasPublishAudienceInput(contexts, node.id, allNodes);
+                                  const contentWarn = !hasCnt;
+                                  const audienceWarn = needAudience && !hasAud;
+                                  const anchorClass = (warn: boolean) =>
+                                    `w-4 h-4 bg-background border-2 rounded-full flex items-center justify-center shrink-0 hover:scale-125 transition-transform ${
+                                      warn ? "border-amber-500" : "border-muted-foreground"
+                                    }`;
+                                  return (
+                                    <>
+                                      <div
+                                        className="absolute -left-3 z-20 w-4 -translate-y-1/2"
+                                        style={{ top: `${PUBLISH_ANCHOR_CONTENT_Y * 100}%` }}
+                                        title="Content: any creative output (same allowed sources as Context; not Audience-branched)"
+                                      >
+                                        <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-foreground bg-muted/95 border border-border px-1.5 py-0.5 rounded-md shadow-sm opacity-0 group-hover/publish-in:opacity-100 transition-opacity whitespace-nowrap">
+                                          {PUBLISH_ANCHOR_LABELS.content}
+                                        </span>
+                                        <div
+                                          className={anchorClass(contentWarn)}
+                                          onMouseUp={(e) => handleConnectionDrop(e, node.id, "content")}
+                                        >
+                                          <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
+                                        </div>
+                                      </div>
+                                      <div
+                                        className="absolute -left-3 z-20 w-4 -translate-y-1/2"
+                                        style={{ top: `${PUBLISH_ANCHOR_CONTEXT_Y * 100}%` }}
+                                        title="Context: normal references (style, data, other nodes)"
+                                      >
+                                        <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-foreground bg-muted/95 border border-border px-1.5 py-0.5 rounded-md shadow-sm opacity-0 group-hover/publish-in:opacity-100 transition-opacity whitespace-nowrap">
+                                          {PUBLISH_ANCHOR_LABELS.context}
+                                        </span>
+                                        <div
+                                          className={anchorClass(false)}
+                                          onMouseUp={(e) => handleConnectionDrop(e, node.id, "context")}
+                                        >
+                                          <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
+                                        </div>
+                                      </div>
+                                      <div
+                                        className="absolute -left-3 z-20 w-4 -translate-y-1/2"
+                                        style={{ top: `${PUBLISH_ANCHOR_AUDIENCE_Y * 100}%` }}
+                                        title={
+                                          needAudience
+                                            ? "Audience: Audience node including audience_id: (required for Mail, WhatsApp, Newsletter)"
+                                            : "Audience: Audience node including audience_id: (optional)"
+                                        }
+                                      >
+                                        <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-foreground bg-muted/95 border border-border px-1.5 py-0.5 rounded-md shadow-sm opacity-0 group-hover/publish-in:opacity-100 transition-opacity whitespace-nowrap">
+                                          {PUBLISH_ANCHOR_LABELS.audience}
+                                        </span>
+                                        <div
+                                          className={anchorClass(audienceWarn)}
+                                          onMouseUp={(e) => handleConnectionDrop(e, node.id, "audience")}
+                                        >
+                                          <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
+                                        </div>
+                                      </div>
+                                    </>
+                                  );
+                                })()
+                              ) : (
                               <div 
                                 className="absolute top-1/2 -translate-y-1/2 -left-3 w-4 h-4 bg-background border-2 border-muted-foreground rounded-full flex items-center justify-center z-20 hover:scale-125 transition-transform" 
-                                title="Soltar contexto aquí"
+                                  title="Drop context here"
                                 onMouseUp={(e) => handleConnectionDrop(e, node.id)}
                               >
                                 <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
                               </div>
-                            )}
+                              ))}
 
                             {hasResult && (
                               <div 
                                 className="absolute top-1/2 -translate-y-1/2 -right-3 w-4 h-4 bg-background border-2 border-primary rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-20 hover:scale-125 transition-transform" 
-                                title="Arrastrar a un input de contexto"
+                                title="Drag to a context input"
                                 onMouseDown={(e) => handleConnectionStart(e, node.id)}
                               >
                                 <div className="w-1.5 h-1.5 bg-primary rounded-full pointer-events-none" />
@@ -1383,7 +1632,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-medium text-muted-foreground uppercase leading-none">
-                                  {hasResult ? 'Resultado' : node.type}
+                                  {hasResult ? 'Result' : node.type}
                                 </span>
                                 {hasResult && (
                                   <Badge variant={
@@ -1529,8 +1778,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
                                 {node.type === 'publish' && (
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    {(currentSite?.settings?.social_media || []).map((sm: any, idx: number) => {
-                                      if (!sm.platform || sm.isActive === false) return null;
+                                    {(currentSite?.settings?.social_media || []).filter(isSocialMediaEntryConnected).map((sm: any, idx: number) => {
                                       const isSelected = (node.settings as any)?.publish_destinations?.includes(sm.platform);
                                       return (
                                         <button
@@ -1555,6 +1803,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     })}
                                     
                                     {(() => {
+                                       const siteUrl = currentSite?.url && String(currentSite.url).trim()
+                                       if (!siteUrl) return null
                                        const isSelected = (node.settings as any)?.publish_destinations?.includes('blog');
                                        return (
                                          <button
@@ -1578,28 +1828,44 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     })()}
                                     
                                     {(() => {
-                                       const isNewsletterAvailable = currentSite?.settings?.channels?.email?.status === 'synced';
-                                       if (!isNewsletterAvailable) return null;
-                                       
-                                       const isSelected = (node.settings as any)?.publish_destinations?.includes('newsletter');
+                                       const isEmailDistributionAvailable = currentSite?.settings?.channels?.email?.status === 'synced';
+                                       if (!isEmailDistributionAvailable) return null;
+
+                                       const toggleDest = async (key: 'mail' | 'newsletter', e: React.MouseEvent) => {
+                                         e.stopPropagation();
+                                         const currentDest = (node.settings as any)?.publish_destinations || [];
+                                         const isOn = currentDest.includes(key);
+                                         const newDest = isOn
+                                           ? currentDest.filter((d: string) => d !== key)
+                                           : [...currentDest, key];
+                                         setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
+                                         await supabase.from('instance_nodes').update({
+                                           settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
+                                         }).eq('id', node.id);
+                                       };
+
+                                       const mailSelected = (node.settings as any)?.publish_destinations?.includes('mail');
+                                       const newsletterSelected = (node.settings as any)?.publish_destinations?.includes('newsletter');
+
                                        return (
-                                         <button
-                                           className={`h-8 px-3 rounded-xl text-xs flex items-center gap-2 border transition-colors ${isSelected ? 'bg-secondary border-secondary text-foreground' : 'bg-transparent border-transparent text-muted-foreground hover:bg-secondary/50'}`}
-                                           onClick={async (e) => {
-                                             e.stopPropagation();
-                                             const currentDest = (node.settings as any)?.publish_destinations || [];
-                                             const newDest = isSelected 
-                                               ? currentDest.filter((d: string) => d !== 'newsletter')
-                                               : [...currentDest, 'newsletter'];
-                                             setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
-                                             await supabase.from('instance_nodes').update({
-                                               settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
-                                             }).eq('id', node.id);
-                                           }}
-                                         >
-                                           <Mail className="h-4 w-4" />
-                                           <span>Newsletter</span>
-                                         </button>
+                                         <>
+                                           <button
+                                             type="button"
+                                             className={`h-8 px-3 rounded-xl text-xs flex items-center gap-2 border transition-colors ${mailSelected ? 'bg-secondary border-secondary text-foreground' : 'bg-transparent border-transparent text-muted-foreground hover:bg-secondary/50'}`}
+                                             onClick={(e) => toggleDest('mail', e)}
+                                           >
+                                             <Mail className="h-4 w-4" />
+                                             <span>Mail</span>
+                                           </button>
+                                           <button
+                                             type="button"
+                                             className={`h-8 px-3 rounded-xl text-xs flex items-center gap-2 border transition-colors ${newsletterSelected ? 'bg-secondary border-secondary text-foreground' : 'bg-transparent border-transparent text-muted-foreground hover:bg-secondary/50'}`}
+                                             onClick={(e) => toggleDest('newsletter', e)}
+                                           >
+                                             <FileText className="h-4 w-4" />
+                                             <span>Newsletter</span>
+                                           </button>
+                                         </>
                                        )
                                     })()}
                                     
@@ -1684,6 +1950,32 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
                                 return (
                                 <div className="flex flex-col gap-2">
+                                {(() => {
+                                  const allNodes = [...nodes, ...dummyNodes]
+                                  const embeddedRaw = (node.result as { audience_leads?: unknown })?.audience_leads
+                                  const embeddedLeads: AudienceLeadRow[] | undefined = Array.isArray(embeddedRaw)
+                                    ? (embeddedRaw as AudienceLeadRow[])
+                                    : undefined
+                                  const resolvedId = resolveAudienceSegmentIdForImprenta(node, allNodes)
+                                  const audienceId =
+                                    resolvedId ||
+                                    (embeddedLeads?.[0]?.audience_id
+                                      ? String(embeddedLeads[0].audience_id)
+                                      : "")
+                                  const showLeadsCarousel =
+                                    !!currentSite?.id &&
+                                    (isValidPublishAudienceSource(node) ||
+                                      isDescendantOfAudienceNode(node, allNodes)) &&
+                                    (!!audienceId || (embeddedLeads && embeddedLeads.length > 0))
+                                  if (!showLeadsCarousel) return null
+                                  return (
+                                    <ImprentaAudienceLeadsCarousel
+                                      audienceId={audienceId || String(embeddedLeads?.[0]?.audience_id ?? "")}
+                                      siteId={currentSite.id}
+                                      embeddedLeads={embeddedLeads}
+                                    />
+                                  )
+                                })()}
                                 {(node.result as any).outputs && Array.isArray((node.result as any).outputs) && (
                                   <div className="flex flex-col gap-2">
                                     {(node.result as any).outputs.map((outputItem: any, idx: number) => {

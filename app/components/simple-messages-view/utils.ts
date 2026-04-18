@@ -124,6 +124,18 @@ export const getToolResult = (log: InstanceLog): any => {
   return log.tool_result || log.tool_results || null
 }
 
+/** Plain text for clipboard + feedback context on tool logs */
+export const getToolLogPlainTextForCopy = (log: InstanceLog): string => {
+  const toolName = getToolName(log) || 'Unknown'
+  const toolResult = getToolResult(log)
+  const resultStr = toolResult ? JSON.stringify(toolResult, null, 2) : ''
+  const detailsStr = log.details ? JSON.stringify(log.details, null, 2) : ''
+  return `Tool: ${toolName}
+Message: ${log.message || ''}
+Result: ${resultStr}
+Details: ${detailsStr}`
+}
+
 // Helper function to get the appropriate icon for a tool
 export const getToolIcon = (toolName: string): string => {
   switch (toolName.toLowerCase()) {

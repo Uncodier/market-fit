@@ -73,7 +73,7 @@ export function TopBarTitle({
       'help': t('common.help') || 'Help',
       'chat': t('layout.sidebar.chat') || 'Chat',
       'campaigns': t('layout.sidebar.campaigns') || 'Campaigns',
-      'control-center': t('layout.sidebar.controlCenter') || 'Control Center',
+      'control-center': t('layout.sidebar.controlCenter') || 'Tasks',
       'billing': t('layout.sidebar.billing') || 'Billing',
       'robots': t('layout.sidebar.robots') || 'Agents'
     }

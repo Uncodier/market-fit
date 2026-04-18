@@ -146,12 +146,27 @@ export class ApiClientService {
       // Try to parse as JSON, but handle text responses too
       try {
         const errorData = JSON.parse(responseText);
+        const nested = errorData.error;
+        let message: string;
+        if (typeof nested === 'string') {
+          message = nested;
+        } else if (nested && typeof nested === 'object' && typeof nested.message === 'string') {
+          message = nested.message;
+          const d = nested.details;
+          if (typeof d === 'string' && d && d !== nested.message) {
+            message = `${nested.message}: ${d}`;
+          }
+        } else {
+          message =
+            (typeof errorData.message === 'string' ? errorData.message : '') ||
+            `Server error: ${response.status} ${response.statusText}`;
+        }
         return {
           success: false,
           error: {
-            message: errorData.message || errorData.error || `Server error: ${response.status} ${response.statusText}`,
-            code: errorData.code,
-            details: errorData
+            message,
+            code: errorData.code ?? (typeof nested === 'object' ? nested?.code : undefined),
+            details: typeof nested === 'object' ? nested : errorData
           },
           status: response.status
         };
@@ -174,12 +189,18 @@ export class ApiClientService {
       
       // Check if the response has a success field
       if (typeof data.success === 'boolean' && !data.success) {
+        const err = data.error;
+        let msg = (err && typeof err.message === 'string' && err.message) || 'Unknown error';
+        const d = err && typeof err.details === 'string' ? err.details : '';
+        if (d && d !== msg) {
+          msg = `${msg}: ${d}`;
+        }
         return {
           success: false,
           error: {
-            message: data.error?.message || 'Unknown error',
-            code: data.error?.code,
-            details: data.error
+            message: msg,
+            code: err?.code,
+            details: err
           },
           status: response.status
         };

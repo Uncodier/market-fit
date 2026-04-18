@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { RecentActivity } from "@/app/components/dashboard/recent-activity"
 import { Overview } from "@/app/components/dashboard/overview"
 import { SegmentDonut } from "@/app/components/dashboard/segment-donut"
@@ -17,7 +16,8 @@ import { CohortTables } from "@/app/components/dashboard/cohort-tables"
 
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { LeadsCohortTables } from "@/app/components/dashboard/leads-cohort-tables"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { getSegments } from "@/app/segments/actions"
 import { useSite } from "@/app/context/SiteContext"
@@ -35,9 +35,7 @@ import { format, subMonths, isAfter, isFuture } from "date-fns"
 import { startOfMonth } from "date-fns"
 import { isSameDay, isSameMonth } from "date-fns"
 import { useRequestController } from "@/app/hooks/useRequestController"
-import OnboardingItinerary from "@/app/components/dashboard/onboarding-itinerary"
 import { useProfile } from "@/app/hooks/use-profile"
-import { createClient } from "@/lib/supabase/client"
 import { usePageRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
 import { useContextEntities } from "@/app/hooks/use-context-entities"
 import { TasksWidget } from "@/app/components/dashboard/tasks-widget"
@@ -58,7 +56,7 @@ import { LeadsTasksChart } from "@/app/components/dashboard/leads-tasks-chart"
 import { Switch } from "@/app/components/ui/switch"
 import { Label } from "@/app/components/ui/label"
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const { t } = useLocalization()
   const { user } = useAuth()
   const { currentSite } = useSite()
@@ -67,6 +65,8 @@ export default function DashboardPage() {
   const [selectedSegment, setSelectedSegment] = useState<string>("all")
   const [isLoadingSegments, setIsLoadingSegments] = useState(false)
   const { cancelAllRequests } = useRequestController()
+  const searchParams = useSearchParams()
+  const tabFromUrlRef = useRef<string | null>(null)
   
   // Add navigation blocking and hook subscriptions
   const { shouldPreventRefresh } = usePageRefreshPrevention()
@@ -92,161 +92,40 @@ export default function DashboardPage() {
   const { settings } = useProfile()
   const userSettings = (settings as Record<string, any>) || {}
   
-  // Check onboarding completion from site settings instead of user profile
   const [showConversations, setShowConversations] = useState(false)
-  const [onboardingCompleted, setOnboardingCompleted] = useState(false)
-  const [activeTab, setActiveTab] = useState("onboarding")
-  
-  // Check onboarding completion from site settings
-  // Always verify against database to ensure accurate state
+  const [activeTab, setActiveTab] = useState("performance")
+  const router = useRouter()
+
+  // Sync report view from URL (?tab=); sidebar navigates between reports without in-page tabs.
   useEffect(() => {
-    const checkOnboardingCompletion = async () => {
-      if (!currentSite?.id) return
-      
-      const cacheKey = `onboarding_completed_${currentSite.id}`
-      
-      // Query DB to get actual onboarding state (don't rely on cache alone)
-      try {
-        const supabase = createClient()
-        const { data: siteSettings } = await supabase
-          .from('settings')
-          .select('onboarding')
-          .eq('site_id', currentSite.id)
-          .single()
-        
-        if (siteSettings?.onboarding) {
-          const onboardingTasks = siteSettings.onboarding
-          const allTaskIds = [
-            "configure_channels", "install_tracking_script", "set_business_hours",
-            "setup_branding", "setup_billing", "validate_geographic_restrictions",
-            "fine_tune_segments", "create_campaign", "setup_content", "configure_agents",
-            "complete_requirement", "publish_and_feedback", "personalize_customer_journey",
-            "assign_attribution_link", "import_leads", "pay_first_campaign", "invite_team",
-            "create_coordination_task"
-          ]
-          
-          // Check if all tasks are completed
-          const allCompleted = allTaskIds.every(taskId => onboardingTasks[taskId] === true)
-          setOnboardingCompleted(allCompleted)
-          
-          // Update cache based on actual state
-          if (allCompleted) {
-            localStorage.setItem(cacheKey, 'true')
-          } else {
-            // Clear cache if onboarding is not completed
-            localStorage.removeItem(cacheKey)
-          }
-        } else {
-          // No onboarding data found, assume not completed
-          setOnboardingCompleted(false)
-          localStorage.removeItem(cacheKey)
-        }
-      } catch (error) {
-        console.error('Error checking onboarding completion:', error)
-        // On error, don't assume completion - clear cache to force re-check
-        localStorage.removeItem(cacheKey)
-        setOnboardingCompleted(false)
-      }
+    const urlTab = searchParams.get("tab")
+    if (urlTab === "onboarding") {
+      router.replace("/onboarding")
+      return
     }
-    
-    checkOnboardingCompletion()
-  }, [currentSite?.id])
+    const validTabs = ["performance", "overview", "analytics", "traffic", "costs", "sales"] as const
+    if (urlTab && !validTabs.includes(urlTab as (typeof validTabs)[number])) {
+      router.replace("/dashboard")
+      return
+    }
+    const next =
+      urlTab && validTabs.includes(urlTab as (typeof validTabs)[number]) ? urlTab : "performance"
 
-  // Re-check onboarding completion when user returns to browser tab
-  // This ensures stale cache doesn't hide incomplete onboarding
-  useEffect(() => {
-    if (!currentSite?.id) return
-
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        // Re-verify onboarding completion from database when tab becomes visible
-        const cacheKey = `onboarding_completed_${currentSite.id}`
-        
-        try {
-          const supabase = createClient()
-          const { data: siteSettings } = await supabase
-            .from('settings')
-            .select('onboarding')
-            .eq('site_id', currentSite.id)
-            .single()
-          
-          if (siteSettings?.onboarding) {
-            const onboardingTasks = siteSettings.onboarding
-            const allTaskIds = [
-              "configure_channels", "install_tracking_script", "set_business_hours",
-              "setup_branding", "setup_billing", "validate_geographic_restrictions",
-              "fine_tune_segments", "create_campaign", "setup_content", "configure_agents",
-              "complete_requirement", "publish_and_feedback", "personalize_customer_journey",
-              "assign_attribution_link", "import_leads", "pay_first_campaign", "invite_team",
-              "create_coordination_task"
-            ]
-            
-            const allCompleted = allTaskIds.every(taskId => onboardingTasks[taskId] === true)
-            setOnboardingCompleted(allCompleted)
-            
-            // Update cache based on actual state
-            if (allCompleted) {
-              localStorage.setItem(cacheKey, 'true')
-            } else {
-              localStorage.removeItem(cacheKey)
-            }
-          } else {
-            setOnboardingCompleted(false)
-            localStorage.removeItem(cacheKey)
-          }
-        } catch (error) {
-          console.error('Error re-checking onboarding completion on visibility change:', error)
-          // Don't assume completion on error
-          localStorage.removeItem(cacheKey)
-          setOnboardingCompleted(false)
+    if (tabFromUrlRef.current !== next) {
+      if (tabFromUrlRef.current !== null) {
+        cancelAllRequests()
+        setFormattedTotal("")
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("dashboard:tabchange", { detail: { activeTab: next } })
+          )
         }
       }
+      tabFromUrlRef.current = next
+      setActiveTab(next)
     }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [currentSite?.id])
-  
-  // Update URL when tab changes and get tab from URL
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const urlTab = params.get('tab')
-      const validTabs = ['performance', 'overview', 'analytics', 'traffic', 'costs', 'sales']
-      
-      // Only include onboarding in valid tabs if not completed
-      if (!onboardingCompleted) {
-        validTabs.unshift('onboarding')
-      }
-      
-      if (urlTab && validTabs.includes(urlTab)) {
-        setActiveTab(urlTab)
-      } else {
-        // Default to onboarding if not completed, otherwise performance
-        const defaultTab = !onboardingCompleted ? "onboarding" : "performance"
-        setActiveTab(defaultTab)
-        
-        // Update URL to match
-        const url = new URL(window.location.href)
-        if (defaultTab === 'performance') {
-          url.searchParams.delete('tab')
-        } else {
-          url.searchParams.set('tab', defaultTab)
-        }
-        window.history.replaceState({}, '', url.toString())
-      }
-    }
-  }, [onboardingCompleted])
+  }, [searchParams, router, cancelAllRequests])
   const [isInitialized, setIsInitialized] = useState(false)
-
-  // If onboarding gets completed, switch away from onboarding tab
-  useEffect(() => {
-    if (onboardingCompleted && activeTab === "onboarding") {
-      setActiveTab("performance")
-    }
-  }, [onboardingCompleted, activeTab])
 
   // Determine the type of date range based on start and end dates
   const determineRangeType = useCallback((startDate: Date, endDate: Date) => {
@@ -512,38 +391,6 @@ export default function DashboardPage() {
     }
   }, [shouldPreventRefresh])
 
-  // Reset states when tab changes
-  const handleTabChange = (newTab: string) => {
-    if (newTab !== activeTab) {
-      // Check if navigation is blocked
-      if (navigationBlocked) {
-        console.log('🚫 Dashboard: Tab change blocked due to navigation prevention')
-        return
-      }
-      
-      console.log(`[Dashboard] Changing tab from ${activeTab} to ${newTab}, cancelling all requests`);
-      cancelAllRequests();
-      setActiveTab(newTab);
-      setFormattedTotal(""); // Reset formatted total when changing tabs
-      
-      // Update URL
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href)
-        if (newTab === 'performance') {
-          url.searchParams.delete('tab')
-        } else {
-          url.searchParams.set('tab', newTab)
-        }
-        window.history.pushState({}, '', url.toString())
-        
-        // Emit custom event to notify TopBarActions
-        window.dispatchEvent(new CustomEvent('dashboard:tabchange', {
-          detail: { activeTab: newTab }
-        }))
-      }
-    }
-  }
-
   return (
     <div className="flex-1 p-0">
       {/* Navigation blocking indicator */}
@@ -559,29 +406,12 @@ export default function DashboardPage() {
         </div>
       )}
       
-      <Tabs 
-        className="space-y-4"
-        value={activeTab}
-        onValueChange={handleTabChange}
-      >
+      <div className="space-y-4">
         <StickyHeader>
           <div className="px-4 md:px-16 pt-0">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-8">
-                <TabsList>
-                  {!onboardingCompleted && (
-                    <TabsTrigger value="onboarding">{t('dashboard.tabs.onboarding') || 'Onboarding'}</TabsTrigger>
-                  )}
-                  <TabsTrigger value="performance">{t('dashboard.tabs.performance') || 'Performance'}</TabsTrigger>
-                  <TabsTrigger value="overview">{t('dashboard.tabs.overview') || 'Overview'}</TabsTrigger>
-                  <TabsTrigger value="analytics">{t('dashboard.tabs.analytics') || 'Analytics'}</TabsTrigger>
-                  <TabsTrigger value="traffic">{t('dashboard.tabs.traffic') || 'Traffic'}</TabsTrigger>
-                  <TabsTrigger value="costs">{t('dashboard.tabs.costs') || 'Cost Reports'}</TabsTrigger>
-                  <TabsTrigger value="sales">{t('dashboard.tabs.sales') || 'Sales Reports'}</TabsTrigger>
-                </TabsList>
-              </div>
-              {activeTab !== "onboarding" && (
-                <div className="ml-auto flex items-center gap-4">
+            <div className="flex w-full items-center justify-end gap-8">
+              {(
+                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">{t('dashboard.filters.segment') || 'Segment:'}</span>
                     <Select 
@@ -630,7 +460,7 @@ export default function DashboardPage() {
           </div>
         </StickyHeader>
 
-        {activeTab !== "onboarding" && (
+        {(
           <div className="px-4 md:px-16 pt-3 pb-4">
             <div className="flex items-center justify-between space-x-4">
               <div>
@@ -650,12 +480,7 @@ export default function DashboardPage() {
         )}
 
         <div className="px-4 md:px-16">
-          <TabsContent value="onboarding" className="space-y-4">
-            {activeTab === "onboarding" && (
-              <OnboardingItinerary userName={userName} />
-            )}
-          </TabsContent>
-          <TabsContent value="performance" className="space-y-4">
+          <div className="space-y-4">
             {activeTab === "performance" && (
               <>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
@@ -782,8 +607,8 @@ export default function DashboardPage() {
                 </div>
               </>
             )}
-          </TabsContent>
-          <TabsContent value="overview" className="space-y-4">
+          </div>
+          <div className="space-y-4">
             {activeTab === "overview" && (
               <>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
@@ -858,8 +683,8 @@ export default function DashboardPage() {
                 </div>
               </>
             )}
-          </TabsContent>
-          <TabsContent value="analytics" className="space-y-4">
+          </div>
+          <div className="space-y-4">
             {activeTab === "analytics" && (
               <>
                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 min-h-[160px]">
@@ -966,8 +791,8 @@ export default function DashboardPage() {
                 </div>
               </>
             )}
-          </TabsContent>
-          <TabsContent value="traffic" className="space-y-4">
+          </div>
+          <div className="space-y-4">
             {activeTab === "traffic" && currentSite && (
               <TrafficReports 
                 startDate={dateRange.startDate}
@@ -976,8 +801,8 @@ export default function DashboardPage() {
                 siteId={currentSite.id}
               />
             )}
-          </TabsContent>
-          <TabsContent value="costs" className="space-y-4">
+          </div>
+          <div className="space-y-4">
             {activeTab === "costs" && (
               <CostReports 
                 startDate={dateRange.startDate}
@@ -985,8 +810,8 @@ export default function DashboardPage() {
                 segmentId={selectedSegment}
               />
             )}
-          </TabsContent>
-          <TabsContent value="sales" className="space-y-4">
+          </div>
+          <div className="space-y-4">
             {activeTab === "sales" && (
               <SalesReports 
                 startDate={dateRange.startDate}
@@ -994,9 +819,23 @@ export default function DashboardPage() {
                 segmentId={selectedSegment}
               />
             )}
-          </TabsContent>
+          </div>
         </div>
-      </Tabs>
+      </div>
     </div>
   )
-} 
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center p-8 text-sm text-muted-foreground">
+          Loading...
+        </div>
+      }
+    >
+      <DashboardPageContent />
+    </Suspense>
+  )
+}

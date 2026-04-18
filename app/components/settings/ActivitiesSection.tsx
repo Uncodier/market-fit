@@ -10,6 +10,7 @@ import { type SiteFormValues } from "./form-schema"
 import { cn } from "../../lib/utils"
 import { useState } from "react"
 import { NavigationLink } from "../navigation/NavigationLink"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface ActivitiesSectionProps {
   active: boolean
@@ -67,8 +68,10 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
 ]
 
 export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
+  const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const [isSaving, setIsSaving] = useState(false)
+  const sectionTitle = t("settings.nav.activities") || "AI Activities"
 
   const handleSave = async () => {
     if (!onSave) return
@@ -89,7 +92,7 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
     <div id="activities" className="space-y-6">
       {/* Header Section */}
       <div>
-        <h2 className="text-2xl font-semibold">Activities</h2>
+        <h2 className="text-2xl font-semibold">{sectionTitle}</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Activity schedules and days adapt to your company working days and industry best practices. Configure company business hours in 
           {" "}
