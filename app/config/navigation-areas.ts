@@ -59,6 +59,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "requirements", href: "/requirements" },
       { key: "channels", href: "/settings", settingsTab: "channels" },
       { key: "activities", href: "/settings", settingsTab: "activities" },
+      { key: "skills", href: "/settings", settingsTab: "skills" },
     ],
   },
   reports: {

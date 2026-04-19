@@ -170,28 +170,28 @@ export function MenuItem({
       
       <div
         className={cn(
-          "flex flex-col min-w-0",
-          isCollapsed ? "hidden" : "flex",
-          "justify-center"
+          "flex min-w-0 flex-1 flex-col justify-center overflow-hidden",
+          isCollapsed ? "hidden" : "flex"
         )}
-        style={{ fontSize: '11.3px', lineHeight: 1 }}
+        style={{ fontSize: "11.3px", lineHeight: 1 }}
       >
-        <span 
-          className={href.includes('settings') ? "" : "truncate"}
-          style={{ lineHeight: 'normal' }}
+        <span
+          className="block truncate whitespace-nowrap"
+          style={{ lineHeight: "normal" }}
         >
           {title}
+          {subtitle ? (
+            <span
+              className={cn(
+                "text-[9.7px] font-normal",
+                isActive ? "text-white/70" : "text-gray-400"
+              )}
+            >
+              {" "}
+              {subtitle}
+            </span>
+          ) : null}
         </span>
-        {subtitle && (
-          <span className={cn(
-            href.includes('settings') ? "" : "truncate",
-            isActive ? "text-white/70" : "text-gray-400"
-          )}
-          style={{ fontSize: '9.7px' }}
-          >
-            {subtitle}
-          </span>
-        )}
       </div>
 
       {children && !isCollapsed && (
@@ -207,11 +207,11 @@ export function MenuItem({
       className={cn(
         className,
         "flex items-center text-sm transition-colors duration-200 relative group font-inter",
-        isCollapsed 
-          ? isActive 
-            ? "rounded-md font-inter justify-center h-[32px] w-[32px]" 
+        isCollapsed
+          ? isActive
+            ? "rounded-md font-inter justify-center h-[32px] w-[32px]"
             : "rounded-md justify-center h-[32px] w-[32px]"
-          : "rounded-md justify-start h-[32px]",
+          : "min-w-0 rounded-md justify-start h-[32px] overflow-hidden",
         isActive
           ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"

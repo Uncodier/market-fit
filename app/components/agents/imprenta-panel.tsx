@@ -1,11 +1,20 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react"
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
+import { useTheme } from "@/app/context/ThemeContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { createClient } from "@/lib/supabase/client"
-import { ZoomableCanvas } from "./zoomable-canvas"
+import { ZoomableCanvas, type ZoomableViewportInfo } from "./zoomable-canvas"
+import { ImprentaParentEdgesCanvas } from "./imprenta-parent-edges-canvas"
+import {
+  worldViewportFromCanvas,
+  bboxIntersects,
+  buildNodeCellGrid,
+  collectIdsFromGrid,
+  type GraphBBox,
+} from "@/app/lib/graph-viewport"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
@@ -25,6 +34,11 @@ import remarkGfm from 'remark-gfm'
 import { markdownComponents } from '../simple-messages-view/utils/markdownComponents'
 
 import { ImprentaSkeleton } from "@/app/components/skeletons/imprenta-skeleton"
+import {
+  ImprentaLazyPreviewImage,
+  ImprentaLazyPreviewVideo,
+  ImprentaLazyCardImage,
+} from "@/app/components/agents/imprenta-lazy-media"
 import { ImprentaAudienceLeadsCarousel } from "@/app/components/agents/imprenta-audience-leads-carousel"
 import type { AudienceLeadRow } from "@/app/audiences/actions"
 import { isSocialMediaEntryConnected } from "@/app/components/settings/data-adapter"
@@ -59,6 +73,499 @@ function positionsNearlyEqual(
   return Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps
 }
 
+/** Match layout constants in ImprentaPanel (NODE_W / ROW_H). */
+const IMPRENTA_NODE_W = 480
+const IMPRENTA_ROW_H = 300
+/**
+ * World padding around the screen rect when culling nodes (smaller = more aggressive unmount).
+ * Keeps a small band so edges/nodes do not pop when panning.
+ */
+const IMPRENTA_VIEWPORT_CULL_PAD = 96
+/** Canvas scale above which full node cards render; below uses lite shells. */
+const IMPRENTA_LOD_FULL_DETAIL_SCALE = 0.4
+/**
+ * Within lite shells only (scale < IMPRENTA_LOD_FULL_DETAIL_SCALE):
+ * - micro: minimal chrome + optional tiny preview
+ * - simple: compact type layout + one small preview when images exist
+ * - rich: full lite skeleton + larger previews / extra thumbs
+ *
+ * ZoomableCanvas clamps user zoom to min 0.3 (wheel / buttons / pinch). Initial
+ * "fit" can be below that; thresholds must sit inside (~0.3 … full) so all
+ * three bands are reachable while zooming.
+ */
+const IMPRENTA_LOD_LITE_MICRO_MAX = 0.32
+const IMPRENTA_LOD_LITE_SIMPLE_MAX = 0.36
+
+type ImprentaLiteSkeletonBand = "micro" | "simple" | "rich"
+
+function imprentaLiteSkeletonBand(scale: number): ImprentaLiteSkeletonBand {
+  if (scale < IMPRENTA_LOD_LITE_MICRO_MAX) return "micro"
+  if (scale < IMPRENTA_LOD_LITE_SIMPLE_MAX) return "simple"
+  return "rich"
+}
+
+function imprentaExtractResultUrl(text: unknown): string {
+  if (!text) return ""
+  const str = String(text)
+  const urlMatch = str.match(/https?:\/\/[^\s"'<>()]+/)
+  return urlMatch ? urlMatch[0] : str
+}
+
+/** Image URLs from result only (same priority as full-card rendering). Used for low-res lite previews. */
+function collectImprentaLiteImagePreviewUrls(node: InstanceNode, max = 4): string[] {
+  const urls: string[] = []
+  const push = (raw: unknown) => {
+    const u = imprentaExtractResultUrl(raw)
+    if (u && /^https?:\/\//i.test(u) && !urls.includes(u)) urls.push(u)
+  }
+  const res = node.result as Record<string, unknown> | undefined
+  if (!res) return urls
+
+  const outputs = res.outputs as unknown[] | undefined
+  if (Array.isArray(outputs)) {
+    for (const o of outputs) {
+      if (!o || typeof o !== "object") continue
+      const item = o as Record<string, unknown>
+      if (item.type === "image") {
+        if (item.url) push(item.url)
+        const data = item.data as Record<string, unknown> | undefined
+        if (data?.url) push(data.url)
+      }
+    }
+  }
+  if (urls.length < max) {
+    const media = res.media as unknown[] | undefined
+    if (Array.isArray(media)) {
+      for (const m of media) {
+        if (!m || typeof m !== "object") continue
+        const item = m as Record<string, unknown>
+        if (item.type === "image" && item.url) push(item.url)
+      }
+    }
+  }
+  if (urls.length < max) {
+    const images = res.images as unknown[] | undefined
+    if (Array.isArray(images)) {
+      for (const img of images) {
+        if (img && typeof img === "object" && "url" in img) push((img as { url: unknown }).url)
+      }
+    }
+  }
+  if (urls.length < max) {
+    const image = res.image as { url?: unknown } | undefined
+    if (image?.url) push(image.url)
+  }
+  return urls.slice(0, max)
+}
+
+/** Video URLs from result (outputs → media → video), for lite shells when no image poster exists. */
+function collectImprentaLiteVideoPreviewUrls(node: InstanceNode, max = 2): string[] {
+  const urls: string[] = []
+  const push = (raw: unknown) => {
+    const u = imprentaExtractResultUrl(raw)
+    if (u && /^https?:\/\//i.test(u) && !urls.includes(u)) urls.push(u)
+  }
+  const res = node.result as Record<string, unknown> | undefined
+  if (!res) return urls
+
+  const outputs = res.outputs as unknown[] | undefined
+  if (Array.isArray(outputs)) {
+    for (const o of outputs) {
+      if (!o || typeof o !== "object") continue
+      const item = o as Record<string, unknown>
+      if (item.type === "video") {
+        if (item.url) push(item.url)
+        const data = item.data as Record<string, unknown> | undefined
+        if (data?.url) push(data.url)
+      }
+    }
+  }
+  if (urls.length < max) {
+    const media = res.media as unknown[] | undefined
+    if (Array.isArray(media)) {
+      for (const m of media) {
+        if (!m || typeof m !== "object") continue
+        const item = m as Record<string, unknown>
+        if (item.type === "video" && item.url) push(item.url)
+      }
+    }
+  }
+  if (urls.length < max) {
+    const video = res.video as { url?: unknown } | undefined
+    if (video?.url) push(video.url)
+  }
+  return urls.slice(0, max)
+}
+
+/** When the full card has never been measured, approximate its height from prompt + result shape (media, text, etc.). */
+function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): number {
+  let extra = 0
+  const promptText =
+    typeof (node.prompt as { text?: string } | undefined)?.text === "string"
+      ? (node.prompt as { text: string }).text
+      : ""
+  const promptLines = Math.min(28, Math.max(0, Math.ceil(promptText.length / 70)))
+  extra += promptLines * 20
+
+  const res = node.result as Record<string, unknown> | undefined
+  if (!res || Object.keys(res).length === 0) {
+    return Math.min(Math.max(rowH + extra + 32, rowH), 960)
+  }
+
+  extra += 48
+  const outputs = res.outputs as unknown[] | undefined
+  const media = res.media as unknown[] | undefined
+  const images = res.images as unknown[] | undefined
+  const image = res.image as { url?: string } | undefined
+  const video = res.video as { url?: string } | undefined
+  const audio = res.audio as { url?: string } | undefined
+  const text = res.text as string | undefined
+
+  if (Array.isArray(outputs) && outputs.length > 0) {
+    extra += Math.min(420, 120 + outputs.length * 95)
+  } else if (Array.isArray(media) && media.length > 0) {
+    extra += Math.min(440, 100 + media.length * 110)
+  } else if (Array.isArray(images) && images.length > 0) {
+    extra += Math.min(480, 90 + images.length * 220)
+  } else if (image?.url) {
+    extra += 300
+  } else if (video?.url) {
+    extra += 320
+  } else if (audio?.url) {
+    extra += 140
+  } else if (typeof text === "string" && text.length > 0) {
+    const tl = Math.min(48, Math.ceil(text.length / 62))
+    extra += tl * 22 + 48
+  } else if (res.audience_leads != null) {
+    extra += 220
+  } else {
+    extra += 100
+  }
+
+  return Math.min(Math.max(rowH + extra, rowH + 64), 1600)
+}
+
+/** Skeleton lines/blocks: higher contrast on dark canvas. */
+const skLine = "rounded-full bg-foreground/25 dark:bg-foreground/32 animate-pulse"
+const skBlock = "rounded-xl bg-muted/75 dark:bg-muted/60 border border-border animate-pulse"
+const skTab = "h-7 rounded-full bg-muted/85 dark:bg-muted/70 border border-border animate-pulse"
+const skMedia = "rounded-2xl bg-muted/80 dark:bg-muted/65 border border-border animate-pulse"
+
+/** Match full-card media width: card is IMPRENTA_NODE_W with mx-3 (12px) gutters. */
+const IMPRENTA_LITE_MEDIA_GUTTER = "mx-3"
+const IMPRENTA_LITE_MEDIA_WIDTH = "w-[calc(100%-1.5rem)]"
+
+function ImprentaLiteSkeletonBody({ node, zoomScale }: { node: InstanceNode; zoomScale: number }) {
+  const band = imprentaLiteSkeletonBand(zoomScale)
+  const type = node.type ?? "prompt"
+  const imageUrls = useMemo(() => collectImprentaLiteImagePreviewUrls(node, 4), [node.id, node.result])
+  const videoUrls = useMemo(() => collectImprentaLiteVideoPreviewUrls(node, 2), [node.id, node.result])
+
+  const tabsRich = (
+    <div className="flex flex-wrap gap-1.5 shrink-0 px-3 pt-2.5">
+      <div className={`${skTab} w-[4.5rem]`} />
+      <div className={`${skTab} w-[4.5rem] opacity-80`} />
+      <div className={`${skTab} w-20 opacity-65`} />
+      <div className={`${skTab} w-16 opacity-55`} />
+    </div>
+  )
+  const tabsSimple = (
+    <div className="flex flex-wrap gap-1.5 shrink-0 px-3 pt-2">
+      <div className={`${skTab} w-16`} />
+      <div className={`${skTab} w-14 opacity-78`} />
+    </div>
+  )
+  const tabs = band === "rich" ? tabsRich : tabsSimple
+  /** Nearer to full-card zoom: fetch previews earlier so the shell matches readability. */
+  const priorityPreviews = band === "rich"
+
+  const extraThumbs =
+    band === "rich" && imageUrls.length > 1 ? (
+      <div className="flex flex-wrap justify-center gap-2 px-3 pb-2 shrink-0">
+        {imageUrls.slice(1, 4).map((url) => (
+          <span key={url} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border/80">
+            <ImprentaLazyPreviewImage
+              url={url}
+              width={128}
+              height={128}
+              priority={priorityPreviews}
+            />
+          </span>
+        ))}
+      </div>
+    ) : null
+
+  if (band === "micro") {
+    const u = imageUrls[0]
+    const v = videoUrls[0]
+    const typedMedia = type === "generate-image" || type === "generate-video"
+    /** Full-width cover (matches full card), not a row thumbnail — any result image/video or empty image/video node. */
+    const useCoverHero = typedMedia || !!u || !!v
+
+    if (useCoverHero) {
+      const videoLayout = type === "generate-video" || (!u && !!v)
+      return (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div
+            className={`${IMPRENTA_LITE_MEDIA_GUTTER} mt-2 mb-1 ${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-xl border border-border/80 ${
+              videoLayout ? "aspect-video" : "aspect-square"
+            }`}
+          >
+            {u ? (
+              <ImprentaLazyPreviewImage
+                url={u}
+                width={videoLayout ? 640 : 512}
+                height={videoLayout ? 360 : 512}
+                priority={priorityPreviews}
+              />
+            ) : v ? (
+              <ImprentaLazyPreviewVideo url={v} priority={priorityPreviews} />
+            ) : (
+              <div className={`h-full w-full ${skMedia} rounded-none border-0`} />
+            )}
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col justify-end gap-1.5 px-3 pb-2">
+            <div className={`h-1.5 w-[92%] ${skLine}`} />
+            <div className={`h-1.5 w-[58%] ${skLine}`} style={{ animationDelay: "80ms" }} />
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5 px-3 py-2">
+        <div className={`h-1.5 w-[92%] ${skLine}`} />
+        <div className={`h-1.5 w-[58%] ${skLine}`} style={{ animationDelay: "80ms" }} />
+      </div>
+    )
+  }
+
+  if (type === "publish") {
+    return (
+      <div className="flex-1 min-h-0 flex gap-2 pl-1 pr-3 py-3">
+        <div
+          className={`flex flex-col justify-between shrink-0 ${band === "rich" ? "py-1 w-5" : "py-0.5 w-4"}`}
+        >
+          <div className="w-3.5 h-3.5 rounded-full border-2 border-primary/60 bg-background mx-auto" />
+          <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground/50 bg-background mx-auto" />
+          {band === "rich" ? (
+            <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground/50 bg-background mx-auto" />
+          ) : null}
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+          {tabs}
+          <div className={`flex-1 ${band === "rich" ? "min-h-[72px]" : "min-h-[52px]"} ${skBlock}`} />
+          {band === "rich" ? (
+            <>
+              <div className={`h-2.5 w-[78%] ${skLine}`} />
+              <div className={`h-2.5 w-[55%] ${skLine}`} style={{ animationDelay: "100ms" }} />
+            </>
+          ) : (
+            <div className={`h-2 w-[72%] ${skLine}`} />
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (type === "generate-image") {
+    return (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {tabs}
+        <div
+          className={`${IMPRENTA_LITE_MEDIA_GUTTER} mt-2 mb-2 ${IMPRENTA_LITE_MEDIA_WIDTH} aspect-square max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border`}
+        >
+          {imageUrls[0] ? (
+            <ImprentaLazyPreviewImage
+              url={imageUrls[0]}
+              width={512}
+              height={512}
+              priority={priorityPreviews}
+            />
+          ) : (
+            <div className={`h-full w-full ${skMedia} rounded-none border-0`} />
+          )}
+        </div>
+        {extraThumbs}
+        <div className="px-4 pb-3 space-y-2">
+          <div className={`h-2.5 w-[88%] ${skLine}`} />
+          {band === "rich" ? (
+            <div className={`h-2.5 w-[64%] ${skLine}`} style={{ animationDelay: "120ms" }} />
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
+  if (type === "generate-video") {
+    const u = imageUrls[0]
+    const v = videoUrls[0]
+    return (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {tabs}
+        <div
+          className={`${IMPRENTA_LITE_MEDIA_GUTTER} mt-2 mb-2 ${IMPRENTA_LITE_MEDIA_WIDTH} aspect-video max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border`}
+        >
+          {u ? (
+            <ImprentaLazyPreviewImage
+              url={u}
+              width={640}
+              height={360}
+              priority={priorityPreviews}
+            />
+          ) : v ? (
+            <ImprentaLazyPreviewVideo url={v} priority={priorityPreviews} />
+          ) : (
+            <div className={`h-full w-full ${skMedia} rounded-none border-0`} />
+          )}
+        </div>
+        {extraThumbs}
+        <div className="px-4 pb-3 space-y-2">
+          <div className={`h-2.5 w-[90%] ${skLine}`} />
+          {band === "rich" ? <div className={`h-2.5 w-[50%] ${skLine}`} /> : null}
+        </div>
+      </div>
+    )
+  }
+
+  if (type === "generate-audio") {
+    const barCount = band === "rich" ? 24 : 8
+    return (
+      <div className="flex-1 min-h-0 flex flex-col">
+        {tabs}
+        <div
+          className={`mx-3 mt-3 mb-2 flex items-end gap-0.5 px-2 rounded-xl bg-muted/65 dark:bg-muted/50 border border-border ${
+            band === "rich" ? "h-16" : "h-11"
+          }`}
+        >
+          {Array.from({ length: barCount }).map((_, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-sm bg-foreground/28 dark:bg-foreground/35 animate-pulse min-w-[3px]"
+              style={{
+                height: `${28 + ((i * 17) % 45)}%`,
+                animationDelay: `${(i % 8) * 80}ms`,
+              }}
+            />
+          ))}
+        </div>
+        <div className="px-4 pb-3 space-y-2">
+          <div className={`h-2.5 w-[70%] ${skLine}`} />
+        </div>
+      </div>
+    )
+  }
+
+  if (type === "generate-audience") {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col px-3 py-2 gap-2">
+        {tabs}
+        <div
+          className={`rounded-xl border border-border bg-muted/60 dark:bg-muted/50 space-y-2.5 ${
+            band === "rich" ? "p-3" : "p-2.5"
+          }`}
+        >
+          <div className={`h-2 w-[92%] ${skLine}`} />
+          <div className={`h-2 w-[88%] ${skLine}`} />
+          <div className={`h-2 w-[76%] ${skLine}`} />
+          {band === "rich" ? <div className={`h-2 w-[84%] ${skLine}`} /> : null}
+        </div>
+        <div className={`${band === "rich" ? "h-16" : "h-12"} rounded-lg ${skBlock}`} />
+      </div>
+    )
+  }
+
+  const uPrompt = imageUrls[0]
+  const vPrompt = videoUrls[0]
+  const promptCoverVideo = !uPrompt && !!vPrompt
+
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {tabs}
+      {uPrompt || vPrompt ? (
+        <div
+          className={`${IMPRENTA_LITE_MEDIA_GUTTER} mt-2 mb-2 ${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border ${
+            promptCoverVideo ? "aspect-video" : "aspect-square"
+          }`}
+        >
+          {uPrompt ? (
+            <ImprentaLazyPreviewImage
+              url={uPrompt}
+              width={512}
+              height={512}
+              priority={priorityPreviews}
+            />
+          ) : (
+            <ImprentaLazyPreviewVideo url={vPrompt!} priority={priorityPreviews} />
+          )}
+        </div>
+      ) : null}
+      <div
+        className={`mx-3 mt-2 mb-3 flex flex-1 flex-col gap-2.5 rounded-2xl border border-border bg-background/85 dark:bg-background/55 ${
+          band === "rich" ? "min-h-[96px] p-4" : "min-h-[72px] p-3"
+        }`}
+      >
+        <div className={`h-2.5 w-[92%] ${skLine}`} />
+        <div className={`h-2.5 w-[88%] ${skLine}`} />
+        {band === "rich" ? <div className={`h-2.5 w-[72%] ${skLine}`} /> : null}
+        <div className="min-h-[32px] flex-1 rounded-lg border border-dashed border-border bg-muted/70 dark:bg-muted/55" />
+      </div>
+      {band === "rich" ? (
+        <div className="px-3 pb-2 flex gap-2">
+          <div className={`h-6 w-24 rounded-md ${skBlock}`} />
+          <div className={`h-6 w-20 rounded-md ${skBlock} opacity-90`} />
+        </div>
+      ) : (
+        <div className="px-3 pb-2">
+          <div className={`h-5 w-28 rounded-md ${skBlock}`} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
+  node,
+  pos,
+  width,
+  height,
+  zoomScale,
+  onMouseDown,
+  registerRef,
+}: {
+  node: InstanceNode
+  pos: { x: number; y: number }
+  /** Same as full card (e.g. 480) so layout and edges stay aligned. */
+  width: number
+  /** Measured or default row height so placeholder matches real node footprint. */
+  height: number
+  /** Canvas zoom scale for progressive lite LOD (smaller = farther). */
+  zoomScale: number
+  onMouseDown: (e: React.MouseEvent) => void
+  registerRef: (el: HTMLDivElement | null) => void
+}) {
+  const label = (node.type ?? "node").replace(/-/g, " ")
+  const h = Math.max(Math.round(height), IMPRENTA_ROW_H)
+  return (
+    <div
+      ref={registerRef}
+      data-node-id={node.id}
+      data-imprenta-lite="1"
+      className="absolute z-10 cursor-grab active:cursor-grabbing rounded-3xl border-2 border-border bg-card shadow-lg shadow-black/15 dark:shadow-black/35 ring-1 ring-border/60 overflow-hidden flex flex-col pointer-events-auto box-border"
+      style={{ left: pos.x, top: pos.y, width, height: h }}
+      onMouseDown={onMouseDown}
+    >
+      <div className="shrink-0 px-4 py-3 border-b border-border bg-muted/85 dark:bg-muted/60">
+        <div className="flex items-center justify-between gap-2 min-h-[1.25rem]">
+          <span className="text-xs font-semibold capitalize text-foreground truncate">{label}</span>
+          <div className="h-2.5 w-16 rounded-full bg-foreground/22 dark:bg-foreground/30 animate-pulse shrink-0" />
+        </div>
+      </div>
+      <ImprentaLiteSkeletonBody node={node} zoomScale={zoomScale} />
+    </div>
+  )
+})
+
 export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string }) {
   const { currentSite } = useSite()
   const { isLayoutCollapsed } = useLayout()
@@ -79,6 +586,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [generatingNodeIds, setGeneratingNodeIds] = useState<Set<string>>(new Set())
 
   const [positions, setPositions] = useState<Record<string, {x: number, y: number}>>({})
+  /** rAF-batched live position while dragging so edges stay aligned without setPositions every mousemove. */
+  const [nodeDragPreview, setNodeDragPreview] = useState<{ id: string; x: number; y: number } | null>(null)
+  const nodeDragRafRef = useRef<number | null>(null)
+  const lastNodeDragPosRef = useRef<{ x: number; y: number } | null>(null)
+  const [viewportInfo, setViewportInfo] = useState<ZoomableViewportInfo | null>(null)
+  const [layoutEpoch, setLayoutEpoch] = useState(0)
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
   const [contexts, setContexts] = useState<any[]>([])
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null)
   
@@ -94,15 +608,22 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const nodeHeightsRef = useRef<Record<string, number>>({})
   const nodeElementsRef = useRef<Record<string, HTMLDivElement>>({})
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const resizeObserverRafRef = useRef<number | null>(null)
 
-  const registerNodeRef = useCallback((nodeId: string, el: HTMLDivElement | null) => {
+  const registerNodeRef = useCallback((nodeId: string, el: HTMLDivElement | null, observeForLayout = true) => {
     if (el) {
       nodeElementsRef.current[nodeId] = el
-      resizeObserverRef.current?.observe(el)
+      if (observeForLayout) resizeObserverRef.current?.observe(el)
     } else {
       const prev = nodeElementsRef.current[nodeId]
-      if (prev) resizeObserverRef.current?.unobserve(prev)
-      delete nodeElementsRef.current[nodeId]
+      if (prev) {
+        try {
+          resizeObserverRef.current?.unobserve(prev)
+        } catch {
+          /* already unobserved */
+        }
+        delete nodeElementsRef.current[nodeId]
+      }
     }
   }, [])
 
@@ -111,6 +632,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       let changed = false
       for (const entry of entries) {
         const el = entry.target as HTMLDivElement
+        if (el.dataset.imprentaLite === "1") continue
         const nodeId = el.dataset.nodeId
         if (!nodeId) continue
         const h = Math.ceil(entry.contentRect.height)
@@ -120,16 +642,105 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         }
       }
       if (changed) {
-        setPositions(prev => getLayoutPositions(nodesRef.current, prev, nodeHeightsRef.current))
+        if (resizeObserverRafRef.current != null) return
+        resizeObserverRafRef.current = requestAnimationFrame(() => {
+          resizeObserverRafRef.current = null
+          setLayoutEpoch((e) => e + 1)
+          setPositions((prev) =>
+            getLayoutPositions(nodesRef.current, prev, nodeHeightsRef.current)
+          )
+        })
       }
     })
     resizeObserverRef.current = ro
-    return () => ro.disconnect()
+    return () => {
+      if (resizeObserverRafRef.current != null) {
+        cancelAnimationFrame(resizeObserverRafRef.current)
+        resizeObserverRafRef.current = null
+      }
+      ro.disconnect()
+    }
   }, [])
 
   // Keep refs in sync for window event listeners
   positionsRef.current = positions;
   nodesRef.current = [...nodes, ...dummyNodes];
+
+  const { isDarkMode } = useTheme()
+
+  const resolvedPositions = useMemo(() => {
+    const r: Record<string, { x: number; y: number }> = {}
+    for (const n of [...nodes, ...dummyNodes]) {
+      const id = n.id
+      if (nodeDragPreview?.id === id) {
+        r[id] = { x: nodeDragPreview.x, y: nodeDragPreview.y }
+      } else {
+        r[id] = positions[id] || { x: 100, y: 100 }
+      }
+    }
+    return r
+  }, [nodes, dummyNodes, positions, nodeDragPreview])
+
+  const resolveNodePosition = useCallback(
+    (nodeId: string): { x: number; y: number } => resolvedPositions[nodeId] || { x: 100, y: 100 },
+    [resolvedPositions]
+  )
+
+  const nodeHeightsSnapshot = useMemo(
+    () => ({ ...nodeHeightsRef.current }),
+    [layoutEpoch, positions]
+  )
+
+  const visibleNodeIds = useMemo(() => {
+    const all = [...nodes, ...dummyNodes]
+    const allIds = all.map((n) => n.id)
+    if (
+      !viewportInfo ||
+      allIds.length === 0 ||
+      viewportInfo.canvasWidth < 2 ||
+      viewportInfo.canvasHeight < 2
+    ) {
+      return null
+    }
+    const vw = worldViewportFromCanvas(
+      viewportInfo.canvasWidth,
+      viewportInfo.canvasHeight,
+      viewportInfo.scale,
+      viewportInfo.position,
+      IMPRENTA_VIEWPORT_CULL_PAD
+    )
+    const grid = buildNodeCellGrid(
+      allIds,
+      resolvedPositions,
+      nodeHeightsRef.current,
+      IMPRENTA_NODE_W,
+      IMPRENTA_ROW_H
+    )
+    const candidates = collectIdsFromGrid(grid, vw)
+    const out = new Set<string>()
+    candidates.forEach((id) => {
+      const p = resolvedPositions[id]
+      if (!p) return
+      const h = nodeHeightsRef.current[id] || IMPRENTA_ROW_H
+      const bbox: GraphBBox = {
+        minX: p.x,
+        minY: p.y,
+        maxX: p.x + IMPRENTA_NODE_W,
+        maxY: p.y + h,
+      }
+      if (bboxIntersects(bbox, vw)) out.add(id)
+    })
+    return out
+  }, [nodes, dummyNodes, viewportInfo, resolvedPositions, layoutEpoch])
+
+  const onViewportTransformChange = useCallback((info: ZoomableViewportInfo) => {
+    setViewportInfo(info)
+  }, [])
+
+  const parentEdgeStroke = isDarkMode ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)"
+
+  const showFullNodeDetail =
+    !viewportInfo || viewportInfo.scale >= IMPRENTA_LOD_FULL_DETAIL_SCALE
 
   // Reset initial prompt when changing instances
   useEffect(() => {
@@ -153,15 +764,34 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       setIsLoading(true)
       let deferLoadingEnd = false
       try {
-        const { data, error } = await supabase
-          .from('instance_nodes')
-          .select('*')
-          .eq('instance_id', activeInstanceId)
+        const PAGE = 500
+        let data: InstanceNode[] = []
+        let from = 0
+        let fetchError: unknown = null
+        while (!cancelled) {
+          const { data: page, error } = await supabase
+            .from('instance_nodes')
+            .select('*')
+            .eq('instance_id', activeInstanceId)
+            .order('created_at', { ascending: true })
+            .range(from, from + PAGE - 1)
+          if (cancelled) return
+          if (error) {
+            fetchError = error as unknown
+            break
+          }
+          if (!page?.length) break
+          data = data.concat(page as InstanceNode[])
+          if (page.length < PAGE) break
+          from += PAGE
+        }
 
         if (cancelled) return
 
-        if (!error && data) {
-          if (data.length === 0) {
+        if (fetchError) {
+          console.error(fetchError)
+          toast.error("Failed to load workflow nodes")
+        } else if (data.length === 0) {
             // Claim synchronously before any await so parallel requests cannot both insert.
             if (rootCreationPendingRef.current.has(activeInstanceId)) {
               deferLoadingEnd = true
@@ -196,16 +826,24 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             } finally {
               rootCreationPendingRef.current.delete(activeInstanceId)
             }
-          } else {
-            setNodes(data as InstanceNode[])
-            const nodeIds = data.map((n: any) => n.id)
+        } else {
+            setNodes(data)
+            const nodeIds = data.map((n) => n.id)
             if (nodeIds.length > 0) {
-              const { data: ctxData } = await supabase.from('instance_node_contexts').select('*').in('target_node_id', nodeIds)
-              if (cancelled) return
-              if (ctxData) setContexts(ctxData)
+              const CTX_CHUNK = 200
+              const allCtx: any[] = []
+              for (let i = 0; i < nodeIds.length; i += CTX_CHUNK) {
+                const slice = nodeIds.slice(i, i + CTX_CHUNK)
+                const { data: ctxData } = await supabase
+                  .from("instance_node_contexts")
+                  .select("*")
+                  .in("target_node_id", slice)
+                if (cancelled) return
+                if (ctxData?.length) allCtx.push(...ctxData)
+              }
+              if (allCtx.length) setContexts(allCtx)
             }
           }
-        }
       } finally {
         if (!cancelled && !deferLoadingEnd) setIsLoading(false)
       }
@@ -656,7 +1294,17 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       x: positionsRef.current[nodeId]?.x || 0, 
       y: positionsRef.current[nodeId]?.y || 0 
     }
-    
+    lastNodeDragPosRef.current = {
+      x: dragStartNodePos.current.x,
+      y: dragStartNodePos.current.y,
+    }
+    setNodeDragPreview({
+      id: nodeId,
+      x: dragStartNodePos.current.x,
+      y: dragStartNodePos.current.y,
+    })
+    setDraggingNodeId(nodeId)
+
     window.addEventListener('mousemove', handleWindowMouseMove)
     window.addEventListener('mouseup', handleWindowMouseUp)
     window.addEventListener('click', handleWindowMouseUp, { capture: true, once: true })
@@ -676,19 +1324,38 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
     const dx = (e.clientX - dragStartPos.current.x) / scale
     const dy = (e.clientY - dragStartPos.current.y) / scale
-    
-    setPositions(prev => ({
-      ...prev,
-      [nodeId]: {
-        x: dragStartNodePos.current.x + dx,
-        y: dragStartNodePos.current.y + dy
-      }
-    }))
+
+    const nx = dragStartNodePos.current.x + dx
+    const ny = dragStartNodePos.current.y + dy
+    lastNodeDragPosRef.current = { x: nx, y: ny }
+
+    const el = nodeElementsRef.current[nodeId]
+    if (el) {
+      el.style.left = `${nx}px`
+      el.style.top = `${ny}px`
+    }
+
+    if (nodeDragRafRef.current == null) {
+      nodeDragRafRef.current = requestAnimationFrame(() => {
+        nodeDragRafRef.current = null
+        const id = draggingNodeRef.current
+        const last = lastNodeDragPosRef.current
+        if (id && last) {
+          setNodeDragPreview({ id, x: last.x, y: last.y })
+        }
+      })
+    }
   }
 
   const handleWindowMouseUp = async (e?: MouseEvent | Event) => {
     const nodeId = draggingNodeRef.current
     if (!nodeId) return
+
+    const newPos = lastNodeDragPosRef.current
+    if (nodeDragRafRef.current != null) {
+      cancelAnimationFrame(nodeDragRafRef.current)
+      nodeDragRafRef.current = null
+    }
 
     // Termina el drag inmediatamente antes del await
     draggingNodeRef.current = null
@@ -696,8 +1363,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     window.removeEventListener('mouseup', handleWindowMouseUp)
     window.removeEventListener('click', handleWindowMouseUp as any, { capture: true })
 
+    setNodeDragPreview(null)
+    setDraggingNodeId(null)
+    if (newPos) {
+      setPositions((prev) => ({ ...prev, [nodeId]: newPos }))
+    }
+
     const nodeToUpdate = nodesRef.current.find(n => n.id === nodeId)
-    const newPos = positionsRef.current[nodeId]
     if (nodeToUpdate && newPos) {
        const updatedSettings = { ...((nodeToUpdate.settings as any) || {}), ui_position: newPos }
        setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, settings: updatedSettings } : n));
@@ -919,11 +1591,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const renderMediaWithZoom = (url: string, type: 'image' | 'video', key: React.Key) => (
     <div key={key} className="relative group">
       {type === 'image' ? (
-        <img 
-          src={url} 
-          alt="Generated media" 
-          className="w-full rounded-xl object-cover object-center bg-black/10 max-h-[300px] cursor-pointer" 
-          onClick={(e) => { e.stopPropagation(); setZoomedMedia({ url, type }); }}
+        <ImprentaLazyCardImage
+          url={url}
+          alt="Generated media"
+          onOpen={() => setZoomedMedia({ url, type: "image" })}
+          className="max-h-[300px] rounded-xl bg-black/10 object-cover object-center"
         />
       ) : (
         <div className="relative">
@@ -955,10 +1627,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     </div>
   )
 
-  const NODE_W = 480
+  const NODE_W = IMPRENTA_NODE_W
   const H_GAP = 80
   const V_GAP = 40
-  const ROW_H = 300
+  const ROW_H = IMPRENTA_ROW_H
   const PAD_X = 100 + sidebarWidth
   /** TopBar (64px) + StickyHeader min (71px); inverse of chat empty-state top inset so the root node sits in the visible band */
   const HEADER_STACK_PX = 135
@@ -1196,36 +1868,45 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     })
   }, [nodes, dummyNodes])
 
-  // Calculate bounding box for canvas content size
+  // Tight artboard from node extents (no fixed 800×600 floor when nodes exist).
   const maxBounds = useMemo(() => {
-    let maxX = 800;
-    let maxY = 600;
-    
-    // Safety check to ensure we only include valid coordinates, 
-    // ignoring any leftover keys that might cause NaN jumps
+    let maxX = 0
+    let maxY = 0
+
     Object.entries(positions).forEach(([id, pos]) => {
-      if (typeof pos.x !== 'number' || typeof pos.y !== 'number' || isNaN(pos.x) || isNaN(pos.y)) return;
-      
+      if (typeof pos.x !== 'number' || typeof pos.y !== 'number' || isNaN(pos.x) || isNaN(pos.y)) return
+
       const nh = (nodeHeightsRef.current[id] || ROW_H) + 50
-      if (pos.x + NODE_W + 50 > maxX) maxX = pos.x + NODE_W + 50;
-      if (pos.y + nh > maxY) maxY = pos.y + nh;
-    });
-    return { width: maxX, height: maxY };
+      maxX = Math.max(maxX, pos.x + NODE_W + 50)
+      maxY = Math.max(maxY, pos.y + nh)
+    })
+
+    if (maxX === 0 && maxY === 0) {
+      return { width: 800, height: 600 }
+    }
+
+    return {
+      width: Math.max(maxX, 320),
+      height: Math.max(maxY, 320),
+    }
   }, [positions])
 
   return (
     <div 
-      className="h-full flex flex-col transition-all duration-300 relative"
+      className="h-full min-h-0 flex flex-col transition-[margin-left,width] duration-300 ease-out relative"
       style={{
         marginLeft: `-${sidebarWidth}px`,
         width: `calc(100% + ${sidebarWidth}px)`
       }}
     >
-      <div className="flex-1 relative">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
         {!activeInstanceId || isLoading ? (
           <ImprentaSkeleton />
         ) : (
-          <div className="absolute inset-0 z-0" onClick={() => setSelectedContextId(null)}>
+          <div
+            className="flex-1 min-h-0 overflow-hidden relative flex flex-col z-0"
+            onClick={() => setSelectedContextId(null)}
+          >
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -1234,13 +1915,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               accept="image/*,video/*,audio/*,text/plain,application/pdf"
             />
             <ZoomableCanvas 
+          className="w-full min-h-0 flex-1"
+          height="100%"
+          minHeight="100%"
           dotSize="20px" 
           dotColorLight="rgba(0, 0, 0, 0.2)" 
           dotColorDark="rgba(255, 255, 255, 0.2)"
           fitOnChildrenChange={false}
-          height="100%"
-          minHeight="100%"
-          initialOffsetY={80}
+          initialOffsetY={0}
+          onViewportTransformChange={onViewportTransformChange}
           onSort={() => {
             toast.info("Organizing layout...");
             const allNodes = [...nodes, ...dummyNodes];
@@ -1298,111 +1981,126 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         >
             <div 
               id="imprenta-canvas-content" 
-              className="relative transition-all duration-300" 
+              className="relative"
               style={{ minWidth: maxBounds.width, minHeight: maxBounds.height }}
               onClick={() => setSelectedContextId(null)}
             >
-                  {/* Draw parent connections */}
-                  {[...nodes, ...dummyNodes].map(node => {
-                    if (!node.parent_node_id || !positions[node.id] || !positions[node.parent_node_id]) return null
-                    const start = positions[node.parent_node_id]
-                    const end = positions[node.id]
-                    const startCy = (nodeHeightsRef.current[node.parent_node_id] || ROW_H) / 2
-                    const endCy = (nodeHeightsRef.current[node.id] || ROW_H) / 2
-                    return (
-                      <svg key={`edge-${node.id}`} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 0, overflow: 'visible' }}>
-                        <path
-                          d={`M ${start.x + NODE_W} ${start.y + startCy} C ${start.x + NODE_W + 50} ${start.y + startCy}, ${end.x - 50} ${end.y + endCy}, ${end.x} ${end.y + endCy}`}
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          className="text-muted-foreground/30"
-                        />
-                      </svg>
-                    )
-                  })}
-                  
-                  {/* Draw context connections */}
-                  {contexts.map(ctx => {
-                    const start = positions[ctx.context_node_id]
-                    const end = positions[ctx.target_node_id]
-                    if (!start || !end) return null;
+                  <ImprentaParentEdgesCanvas
+                    width={maxBounds.width}
+                    height={maxBounds.height}
+                    nodes={[...nodes, ...dummyNodes]}
+                    positions={resolvedPositions}
+                    nodeHeights={nodeHeightsSnapshot}
+                    nodeW={NODE_W}
+                    rowH={ROW_H}
+                    strokeStyle={parentEdgeStroke}
+                  />
+
+                  {/* Context edges: single SVG for all paths; labels/UI stay in per-context overlays. */}
+                  {contexts.length > 0 && (
+                    <svg
+                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                      style={{ zIndex: 0, overflow: 'visible' }}
+                      shapeRendering="optimizeSpeed"
+                    >
+                      {contexts.map((ctx) => {
+                        if (!positions[ctx.context_node_id] || !positions[ctx.target_node_id]) return null
+                        const start = resolveNodePosition(ctx.context_node_id)
+                        const end = resolveNodePosition(ctx.target_node_id)
+                        const startCy = (nodeHeightsRef.current[ctx.context_node_id] || ROW_H) / 2
+                        const targetNodeForCtx = nodesRef.current.find((n) => n.id === ctx.target_node_id)
+                        const endH = nodeHeightsRef.current[ctx.target_node_id] || ROW_H
+                        const endCy = getPublishContextAnchorY(targetNodeForCtx?.type, ctx.type, endH)
+                        const startX = start.x + NODE_W
+                        const startY = start.y + startCy
+                        const endX = end.x
+                        const endY = end.y + endCy
+                        const isSelected = selectedContextId === ctx.id
+                        const strokeClass = isSelected ? "text-primary" : "text-primary/50"
+                        const d = `M ${startX} ${startY} C ${startX + 50} ${startY}, ${endX - 50} ${endY}, ${endX} ${endY}`
+                        return (
+                          <g key={`ctx-edge-${ctx.id}`}>
+                            <path
+                              d={d}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={isSelected ? 4 : 2}
+                              className={`${strokeClass} stroke-dashed cursor-pointer`}
+                              strokeDasharray="4 4"
+                              style={{ pointerEvents: "stroke" }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedContextId(isSelected ? null : ctx.id)
+                              }}
+                            />
+                            <path
+                              d={d}
+                              fill="none"
+                              stroke="transparent"
+                              strokeWidth="20"
+                              className="cursor-pointer"
+                              style={{ pointerEvents: "stroke" }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedContextId(isSelected ? null : ctx.id)
+                              }}
+                            />
+                          </g>
+                        )
+                      })}
+                    </svg>
+                  )}
+
+                  {contexts.map((ctx) => {
+                    if (!positions[ctx.context_node_id] || !positions[ctx.target_node_id]) return null
+                    const start = resolveNodePosition(ctx.context_node_id)
+                    const end = resolveNodePosition(ctx.target_node_id)
                     const startCy = (nodeHeightsRef.current[ctx.context_node_id] || ROW_H) / 2
                     const targetNodeForCtx = nodesRef.current.find((n) => n.id === ctx.target_node_id)
                     const endH = nodeHeightsRef.current[ctx.target_node_id] || ROW_H
                     const endCy = getPublishContextAnchorY(targetNodeForCtx?.type, ctx.type, endH)
-                    
-                    const startX = start.x + NODE_W;
-                    const startY = start.y + startCy;
-                    const endX = end.x;
-                    const endY = end.y + endCy;
-                    
-                    const midX = (startX + endX) / 2;
-                    const midY = (startY + endY) / 2;
-                    const isSelected = selectedContextId === ctx.id;
-                    
+                    const startX = start.x + NODE_W
+                    const startY = start.y + startCy
+                    const endX = end.x
+                    const endY = end.y + endCy
+                    const midX = (startX + endX) / 2
+                    const midY = (startY + endY) / 2
+                    const isSelected = selectedContextId === ctx.id
+
                     return (
-                      <div key={`ctx-wrapper-${ctx.id}`} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: isSelected ? 30 : 0 }}>
-                        <svg className="absolute top-0 left-0 w-full h-full" style={{ overflow: 'visible' }}>
-                          <path
-                            d={`M ${startX} ${startY} C ${startX + 50} ${startY}, ${endX - 50} ${endY}, ${endX} ${endY}`}
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={isSelected ? "4" : "2"}
-                            className={`${isSelected ? 'text-primary' : 'text-primary/50'} stroke-dashed transition-all duration-200 cursor-pointer pointer-events-auto`}
-                            strokeDasharray="4 4"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedContextId(isSelected ? null : ctx.id);
-                            }}
-                          />
-                          {/* Invisible thicker path for easier clicking */}
-                          <path
-                            d={`M ${startX} ${startY} C ${startX + 50} ${startY}, ${endX - 50} ${endY}, ${endX} ${endY}`}
-                            fill="none"
-                            stroke="transparent"
-                            strokeWidth="20"
-                            className="cursor-pointer pointer-events-auto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedContextId(isSelected ? null : ctx.id);
-                            }}
-                          />
-                        </svg>
-                        
-                        {/* Slot / type label (always for Publish; otherwise only when typed) */}
+                      <div
+                        key={`ctx-wrapper-${ctx.id}`}
+                        className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                        style={{ zIndex: isSelected ? 30 : 0 }}
+                      >
                         {!isSelected && (ctx.type != null || targetNodeForCtx?.type === "publish") && (
-                          <div 
+                          <div
                             className="absolute px-2 py-0.5 bg-background border border-primary/20 text-primary text-[10px] font-medium rounded-full shadow-sm pointer-events-auto cursor-pointer"
-                            style={{ 
-                              left: midX, 
-                              top: midY, 
-                              transform: 'translate(-50%, -50%)' 
+                            style={{
+                              left: midX,
+                              top: midY,
+                              transform: "translate(-50%, -50%)",
                             }}
                             onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedContextId(ctx.id);
+                              e.stopPropagation()
+                              setSelectedContextId(ctx.id)
                             }}
                           >
                             {getPublishContextEdgeCaption(targetNodeForCtx?.type, ctx.type)}
                           </div>
                         )}
-                        
-                        {/* Floating UI for Selected Edge */}
+
                         {isSelected && (
-                          <Card 
+                          <Card
                             className="absolute pointer-events-auto shadow-xl border-primary/30 z-50 flex items-center gap-1 p-1"
-                            style={{ 
-                              left: midX, 
-                              top: midY, 
-                              transform: 'translate(-50%, -50%)' 
+                            style={{
+                              left: midX,
+                              top: midY,
+                              transform: "translate(-50%, -50%)",
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Select 
-                              value={ctx.type || "reference"} 
-                              onValueChange={(val) => handleUpdateContextType(ctx.id, val)}
-                            >
+                            <Select value={ctx.type || "reference"} onValueChange={(val) => handleUpdateContextType(ctx.id, val)}>
                               <SelectTrigger className="h-7 text-xs border-0 shadow-none focus:ring-0 bg-transparent px-2 w-[110px]">
                                 <SelectValue placeholder="Type" />
                               </SelectTrigger>
@@ -1418,12 +2116,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                 <SelectItem value="to">To</SelectItem>
                               </SelectContent>
                             </Select>
-                            
-                            <div className="w-px h-4 bg-border mx-1"></div>
-                            
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+
+                            <div className="w-px h-4 bg-border mx-1" />
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                               onClick={() => handleDeleteContext(ctx.id)}
                             >
@@ -1437,10 +2135,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
                   {/* Draw temp dragging connection */}
                   {tempConnection && positions[tempConnection.fromNode] && (() => {
-                    const fromPos = positions[tempConnection.fromNode]
+                    const fromPos = resolveNodePosition(tempConnection.fromNode)
                     const fromCy = (nodeHeightsRef.current[tempConnection.fromNode] || ROW_H) / 2
                     return (
-                      <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 50, overflow: 'visible' }}>
+                      <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 50, overflow: 'visible' }} shapeRendering="optimizeSpeed">
                         <path
                           d={`M ${fromPos.x + NODE_W} ${fromPos.y + fromCy} C ${fromPos.x + NODE_W + 50} ${fromPos.y + fromCy}, ${tempConnection.currentX - 50} ${tempConnection.currentY}, ${tempConnection.currentX} ${tempConnection.currentY}`}
                           fill="none"
@@ -1452,9 +2150,18 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     )
                   })()}
                   
-                  {/* Draw nodes */}
+                  {/* Draw nodes (virtualized + LOD when graph is large). */}
                   {[...nodes, ...dummyNodes].map(node => {
-                    const pos = positions[node.id] || { x: 100, y: 100 }
+                    const pos = resolvedPositions[node.id] || { x: 100, y: 100 }
+                    const vis = visibleNodeIds
+                    if (
+                      vis !== null &&
+                      !vis.has(node.id) &&
+                      draggingNodeId !== node.id &&
+                      tempConnection?.fromNode !== node.id
+                    ) {
+                      return null
+                    }
                     const hasResult = node.result && Object.keys(node.result).length > 0;
                     const isDummy = node.id.startsWith('dummy-');
                     const isEffectivelyDummy = isDummy || (!hasResult && generatingNodeIds.has(node.id) && (node.status === 'running' || node.status === 'pending'));
@@ -1471,19 +2178,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                             top: pos.y,
                           }}
                         >
-                          <Card className="w-[480px] min-h-[280px] shadow-sm border-2 border-primary/20 bg-card/50 backdrop-blur-md rounded-3xl overflow-hidden relative flex flex-col justify-center items-center">
-                            {/* Subtle pulsing background */}
-                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-primary/5 to-transparent animate-pulse" />
-
-                            {/* Floating background orbs from fancy empty card */}
-                            <div className="absolute inset-0 pointer-events-none z-0">
-                              <div className="absolute bg-violet-500/25 rounded-full blur-2xl animate-pulse" style={{ top: '25.4%', left: '12.3%', width: '114px', height: '114px', animationDelay: '1.2s' }}></div>
-                              <div className="absolute bg-indigo-500/20 rounded-full blur-2xl animate-pulse" style={{ top: '68.1%', left: '45.7%', width: '88.4px', height: '88.4px', animationDelay: '0.5s' }}></div>
-                              <div className="absolute bg-purple-500/22 rounded-full blur-2xl animate-pulse" style={{ top: '15.8%', left: '63.2%', width: '73.6px', height: '73.6px', animationDelay: '2.1s' }}></div>
-                              <div className="absolute bg-pink-500/24 rounded-full blur-xl animate-pulse" style={{ top: '42.6%', left: '28.9%', width: '66.8px', height: '66.8px', animationDelay: '1.8s' }}></div>
-                              <div className="absolute bg-emerald-500/18 rounded-full blur-xl animate-pulse" style={{ top: '58.3%', left: '74.5%', width: '49.2px', height: '49.2px', animationDelay: '0.9s' }}></div>
-                              <div className="absolute bg-cyan-500/19 rounded-full blur-xl animate-pulse" style={{ top: '31.2%', left: '56.4%', width: '79.2px', height: '79.2px', animationDelay: '2.5s' }}></div>
-                            </div>
+                          <Card className="w-[480px] min-h-[280px] shadow-sm border-2 border-primary/20 bg-card rounded-3xl overflow-hidden relative flex flex-col justify-center items-center">
+                            {/* Avoid backdrop-filter and large blurred layers here — very expensive on Safari. */}
+                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent animate-pulse" />
 
                             <CardContent className="p-5 relative z-10 w-full h-full flex flex-col items-center justify-center space-y-6">
                               <div className="space-y-2 text-center mt-2">
@@ -1503,6 +2200,28 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                             </CardContent>
                           </Card>
                         </div>
+                      )
+                    }
+
+                    if (!showFullNodeDetail) {
+                      const measured = nodeHeightsSnapshot[node.id]
+                      const estimated = estimateImprentaNodeContentHeight(node, ROW_H)
+                      const shellH = Math.round(
+                        measured != null && measured >= ROW_H * 0.75
+                          ? measured
+                          : Math.max(measured ?? 0, estimated, ROW_H)
+                      )
+                      return (
+                        <ImprentaLiteGraphNode
+                          key={node.id}
+                          node={node}
+                          pos={pos}
+                          width={NODE_W}
+                          height={shellH}
+                          zoomScale={viewportInfo?.scale ?? (IMPRENTA_LOD_LITE_MICRO_MAX + IMPRENTA_LOD_LITE_SIMPLE_MAX) / 2}
+                          onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+                          registerRef={(el) => registerNodeRef(node.id, el, false)}
+                        />
                       )
                     }
 
@@ -1534,7 +2253,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
                         <Card
                           className={
-                            "w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-shadow duration-300 border-2 border-foreground/10 bg-card/95 backdrop-blur-sm rounded-3xl" +
+                            "w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-shadow duration-300 border-2 border-foreground/10 bg-card rounded-3xl" +
                             (node.type === "publish" && !hasResult ? " group/publish-in" : "")
                           }
                         >

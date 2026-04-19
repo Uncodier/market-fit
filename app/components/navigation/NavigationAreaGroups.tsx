@@ -50,6 +50,7 @@ const NAV_ITEM_EMOJI: Record<string, string> = {
   requirements: "✅",
   channels: "📡",
   activities: "📋",
+  skills: "🧩",
   reportPerformance: "📈",
   reportOverview: "📋",
   reportAnalytics: "🔎",
@@ -67,6 +68,9 @@ function reportItemTitle(item: AreaNavItem, t: (k: string) => string): string {
   }
   if (item.settingsTab === "activities") {
     return t("settings.tabs.activities") || "Activities"
+  }
+  if (item.settingsTab === "skills") {
+    return t("settings.tabs.skills") || "Code agent skills"
   }
   if (item.key === "reportCosts") {
     return t("layout.sidebar.costs") || "Cost reports"
@@ -224,7 +228,7 @@ export function NavigationAreaGroups({
                   </span>
                   <span
                     className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform",
+                      "sidebar-section-chevron flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform",
                       expanded
                         ? "rotate-90 text-primary group-hover:text-primary"
                         : "text-muted-foreground/70 group-hover:text-accent-foreground"
@@ -234,6 +238,7 @@ export function NavigationAreaGroups({
                       width="8"
                       height="8"
                       viewBox="0 0 6 10"
+                      className="sidebar-section-chevron-svg"
                       fill="none"
                       xmlns="http://www.w3.org/2000/svg"
                     >

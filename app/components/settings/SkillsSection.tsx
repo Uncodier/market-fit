@@ -446,9 +446,9 @@ export function SkillsSection({ active }: SkillsSectionProps) {
   return (
     <div id="skills" className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold">{t('settings.skills.title') || 'Skills'}</h2>
+        <h2 className="text-2xl font-semibold">{t('settings.skills.title') || 'Code agent skills'}</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {t('settings.skills.description') || 'Agent skills define specialized capabilities and behavior guides for your AI agents.'}
+          {t('settings.skills.description') || 'Skill bundles for coding agents: copy into your CLI or IDE to steer behavior, constraints, and workflows for autonomous code agents.'}
         </p>
       </div>
 

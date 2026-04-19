@@ -65,9 +65,11 @@ export function ConfigurationSection({
 
   const settingsUrlTab =
     searchParams.get("tab") || searchParams.get("segment") || ""
-  /** On /settings but only via Automation nav (channels / activities) — do not highlight Configuration > Settings */
+  /** On /settings but only via Automation nav (channels / activities / skills) — do not highlight Configuration > Settings */
   const isAutomationOnlySettingsTab =
-    settingsUrlTab === "channels" || settingsUrlTab === "activities"
+    settingsUrlTab === "channels" ||
+    settingsUrlTab === "activities" ||
+    settingsUrlTab === "skills"
   const isOnSettingsPath = pathname.startsWith("/settings")
   const isSettingsSidebarRouteActive =
     isOnSettingsPath && !isAutomationOnlySettingsTab
@@ -216,7 +218,7 @@ export function ConfigurationSection({
           </span>
           <span
             className={cn(
-              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform",
+              "sidebar-section-chevron flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform",
               shouldShowSettingsChildren
                 ? "rotate-90 text-primary group-hover:text-primary"
                 : "text-muted-foreground/70 group-hover:text-accent-foreground"
@@ -228,6 +230,7 @@ export function ConfigurationSection({
               viewBox="0 0 6 10"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
+              className="sidebar-section-chevron-svg"
             >
               <path
                 d="M1 1L5 5L1 9"

@@ -1429,7 +1429,7 @@ function RobotsPageContent() {
             <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
               <div className={`flex flex-col m-0 ${viewMode === 'imprenta' ? 'bg-transparent overflow-visible' : 'bg-card overflow-hidden'} min-w-0 flex-1 min-h-0 relative`}>
                 {viewMode === 'imprenta' ? (
-                  <div className="h-full absolute inset-0">
+                  <div className="h-full min-h-0 absolute inset-0 flex flex-col">
                     <ImprentaPanel activeInstanceId={activeRobotInstance?.id} />
                   </div>
                 ) : (

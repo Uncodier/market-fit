@@ -2,8 +2,16 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useLayout } from "@/app/context/LayoutContext"
 import { Button } from "@/app/components/ui/button"
 import { ZoomIn, ZoomOut, Maximize, LayoutGrid } from "@/app/components/ui/icons"
-import { debounce, throttle } from "lodash"
+import debounce from "lodash/debounce"
 import { useTheme } from "@/app/context/ThemeContext"
+
+/** Canvas pan/zoom in screen space; use with worldViewportFromCanvas for graph culling. */
+export type ZoomableViewportInfo = {
+  scale: number
+  position: { x: number; y: number }
+  canvasWidth: number
+  canvasHeight: number
+}
 
 interface ZoomableCanvasProps {
   children: React.ReactNode
@@ -19,6 +27,15 @@ interface ZoomableCanvasProps {
   height?: string
   minHeight?: string
   initialOffsetY?: number
+  /**
+   * Measure the content layer as filling the viewport (100% × 100%) so fit/center math does not
+   * apply a large translate to center a tight shrink-wrapped box. Pair with `graphBounds` for scale.
+   */
+  measureAsViewportFill?: boolean
+  /** Intrinsic size of the graph/artboard (e.g. node bounding box) for fit scale when using viewport fill. */
+  graphBounds?: { width: number; height: number } | null
+  /** Fired when pan/zoom changes (throttled to rAF during drag). For viewport virtualization. */
+  onViewportTransformChange?: (info: ZoomableViewportInfo) => void
 }
 
 export function ZoomableCanvas({ 
@@ -34,7 +51,10 @@ export function ZoomableCanvas({
   onSort,
   height = "calc(100vh - 135px)",
   minHeight = "600px",
-  initialOffsetY = 0
+  initialOffsetY = 0,
+  measureAsViewportFill = false,
+  graphBounds = null,
+  onViewportTransformChange
 }: ZoomableCanvasProps) {
   // Use the layout context to get the current state
   const { isLayoutCollapsed } = useLayout();
@@ -44,7 +64,11 @@ export function ZoomableCanvas({
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [startDragPosition, setStartDragPosition] = useState({ x: 0, y: 0 });
+  /** Refs avoid setState on every pointer move (critical for Safari drag performance). */
+  const isDraggingRef = useRef(false);
+  const positionRef = useRef({ x: 0, y: 0 });
+  const scaleRef = useRef(1);
+  const startDragPositionRef = useRef({ x: 0, y: 0 });
   const [isZoomedIn, setIsZoomedIn] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -52,8 +76,6 @@ export function ZoomableCanvas({
   const backgroundRef = useRef<HTMLDivElement>(null);
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 });
   const [isInitialized, setIsInitialized] = useState(false);
-  const [maxZoom, setMaxZoom] = useState(1);
-  const [childrenKey, setChildrenKey] = useState(0); // Add a key to track children changes
   const [isUserInteracting, setIsUserInteracting] = useState(false); // Track user interaction
   const [autoRecenterEnabled, setAutoRecenterEnabled] = useState(true); // Control if auto-recenter is enabled
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
@@ -66,6 +88,61 @@ export function ZoomableCanvas({
   const targetPositionRef = useRef({ x: 0, y: 0, scale: 1 });
   const currentPositionRef = useRef({ x: 0, y: 0, scale: 1 });
   const isAnimatingRef = useRef(false);
+  const singleFingerPanRef = useRef(false);
+
+  const onViewportTransformChangeRef = useRef(onViewportTransformChange);
+  onViewportTransformChangeRef.current = onViewportTransformChange;
+  const viewportNotifyRafRef = useRef<number | null>(null);
+
+  const flushViewportNotify = useCallback(() => {
+    viewportNotifyRafRef.current = null;
+    const cb = onViewportTransformChangeRef.current;
+    if (!cb || !canvasRef.current) return;
+    const r = canvasRef.current.getBoundingClientRect();
+    cb({
+      scale: scaleRef.current,
+      position: { ...positionRef.current },
+      canvasWidth: r.width,
+      canvasHeight: r.height,
+    });
+  }, []);
+
+  const scheduleViewportNotify = useCallback(() => {
+    if (!onViewportTransformChangeRef.current) return;
+    if (viewportNotifyRafRef.current != null) return;
+    viewportNotifyRafRef.current = requestAnimationFrame(flushViewportNotify);
+  }, [flushViewportNotify]);
+
+  useEffect(() => {
+    return () => {
+      if (viewportNotifyRafRef.current != null) {
+        cancelAnimationFrame(viewportNotifyRafRef.current);
+        viewportNotifyRafRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isInitialized || !onViewportTransformChangeRef.current) return;
+    flushViewportNotify();
+  }, [isInitialized, scale, position, flushViewportNotify]);
+
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
+  useEffect(() => {
+    isDraggingRef.current = isDragging;
+  }, [isDragging]);
+
+  const measureAsViewportFillRef = useRef(measureAsViewportFill);
+  measureAsViewportFillRef.current = measureAsViewportFill;
+  const graphBoundsRef = useRef(graphBounds);
+  graphBoundsRef.current = graphBounds;
 
   // Measure content size without transformations - optimized to avoid loops
   const measureContent = useCallback(() => {
@@ -79,41 +156,45 @@ export function ZoomableCanvas({
       const originalStyles = {
         transform: contentRef.current.style.transform,
         width: contentRef.current.style.width,
+        height: contentRef.current.style.height,
         minWidth: contentRef.current.style.minWidth,
+        minHeight: contentRef.current.style.minHeight,
+        maxWidth: contentRef.current.style.maxWidth,
+        maxHeight: contentRef.current.style.maxHeight,
         position: contentRef.current.style.position,
         display: contentRef.current.style.display,
         overflow: contentRef.current.style.overflow,
         paddingRight: contentRef.current.style.paddingRight
       };
       
-      // Temporarily remove transformations and apply measurement styles
       contentRef.current.style.transform = 'none';
-      contentRef.current.style.width = 'auto';
-      contentRef.current.style.minWidth = 'none';
-      contentRef.current.style.position = 'static';
-      contentRef.current.style.display = 'block';
-      contentRef.current.style.overflow = 'visible';
       contentRef.current.style.paddingRight = '0';
+
+      if (measureAsViewportFillRef.current) {
+        // Match viewport: avoids shrink-wrap width driving a huge pan to "center" the artboard.
+        contentRef.current.style.width = '100%';
+        contentRef.current.style.height = '100%';
+        contentRef.current.style.minWidth = '';
+        contentRef.current.style.minHeight = '';
+        contentRef.current.style.maxWidth = '';
+        contentRef.current.style.maxHeight = '';
+        contentRef.current.style.position = 'static';
+        contentRef.current.style.display = 'block';
+        contentRef.current.style.overflow = 'visible';
+      } else {
+        // Shrink-wrapped intrinsic size (workflow / agents views).
+        contentRef.current.style.width = 'max-content';
+        contentRef.current.style.minWidth = '';
+        contentRef.current.style.position = 'static';
+        contentRef.current.style.display = 'inline-block';
+        contentRef.current.style.overflow = 'visible';
+      }
       
       // Force browser to apply style changes
       void contentRef.current.offsetWidth;
-      
-      // Clone the node to measure it without affecting the original
-      // This helps prevent layout thrashing and style conflicts
-      const clone = contentRef.current.cloneNode(true) as HTMLElement;
-      clone.style.position = 'absolute';
-      clone.style.visibility = 'hidden';
-      clone.style.left = '0';
-      clone.style.top = '0';
-      document.body.appendChild(clone);
-      
-      // Measure the cloned content
-      const rect = clone.getBoundingClientRect();
-      const width = rect.width;
-      const height = rect.height;
-      
-      // Remove the clone
-      document.body.removeChild(clone);
+
+      const width = contentRef.current.offsetWidth;
+      const height = contentRef.current.offsetHeight;
       
       const dimensions = {
         width: width,
@@ -126,8 +207,12 @@ export function ZoomableCanvas({
         contentRef.current!.style[prop] = value;
       });
       
-      // Save dimensions for future calculations
-      setContentDimensions(dimensions);
+      // Skip state update if unchanged (avoids re-render chains + memory churn on resize)
+      setContentDimensions((prev) =>
+        prev.width === dimensions.width && prev.height === dimensions.height
+          ? prev
+          : dimensions
+      );
       
       // Return the dimensions
       resolve(dimensions);
@@ -154,34 +239,49 @@ export function ZoomableCanvas({
     
     // The effective available width is the canvas container's width
     const availableWidth = canvasRect.width;
+    const availableHeight = canvasRect.height;
+
+    // WebKit often reports 0×0 on the first layout pass inside nested flex + absolute
+    // trees. Using that in Math.min yields scale(0), which hides all nodes.
+    if (availableWidth < 2 || availableHeight < 2) {
+      return { scale: 1, x: 0, y: 0 };
+    }
     
-    // Use a small margin to avoid content touching edges
-    const margin = 0.02; // 2% margin
-    
-    // Calculate scale to fit content within available area
+    const margin = 0.02;
+
+    // Viewport-fill + CSS-centered artboard: keep pan at origin; scale from graph intrinsic bounds only.
+    if (measureAsViewportFillRef.current) {
+      const gb = graphBoundsRef.current;
+      if (gb && gb.width > 0 && gb.height > 0) {
+        const scaleX = (availableWidth * (1 - margin)) / gb.width;
+        const scaleY = (availableHeight * (1 - margin)) / gb.height;
+        let newScale = Math.min(scaleX, scaleY, 1);
+        if (!Number.isFinite(newScale) || newScale <= 0) {
+          newScale = 1;
+        }
+        return { scale: newScale, x: 0, y: 0 };
+      }
+      return { scale: 1, x: 0, y: 0 };
+    }
+
     const scaleX = (availableWidth * (1 - margin)) / contentSize.width;
-    const scaleY = (canvasRect.height * (1 - margin)) / contentSize.height;
+    const scaleY = (availableHeight * (1 - margin)) / contentSize.height;
     
-    // Use the smaller scale to ensure content fits in both dimensions
-    // but limit to reasonable range
-    const newScale = Math.min(Math.min(scaleX, scaleY), 0.95);
+    let newScale = Math.min(Math.min(scaleX, scaleY), 0.95);
+    if (!Number.isFinite(newScale) || newScale <= 0) {
+      newScale = 1;
+    }
     
-    // Get the scaled content dimensions
     const contentWidth = contentSize.width * newScale;
     
-    // Calculate position to center content in the canvas
-    // The goal is to center the content visually in the available space
+    const canvasCenter = availableWidth / 2;
+    const canvasCenterY = availableHeight / 2;
     
-    // First calculate the center point in the canvas
-    const canvasCenter = canvasRect.width / 2;
-    const canvasCenterY = canvasRect.height / 2;
-    
-    // Then calculate what would be a centered position
     const finalX = canvasCenter - (contentWidth / 2);
     const finalY = canvasCenterY - (contentSize.height * newScale / 2) + initialOffsetY;
     
     return { scale: newScale, x: finalX, y: finalY };
-  }, [contentDimensions, measureContent, isLayoutCollapsed, initialOffsetY]);
+  }, [contentDimensions, measureContent, initialOffsetY]);
 
   // Helper function to animate to a position over time with RAF
   const animateToPosition = useCallback((targetX: number, targetY: number, targetScale: number, duration = 180) => {
@@ -327,32 +427,80 @@ export function ZoomableCanvas({
     setIsZoomedIn(false);
   }, [calculateContainTransform]);
 
+  // Stable debounce + latest callbacks via refs. useCallback(debounce(...), [deps]) recreated
+  // debounced functions on every dep change without cancelling the old ones → leaked closures
+  // and queued work (Safari tab reloads under memory pressure).
+  const measureContentRef = useRef(measureContent);
+  measureContentRef.current = measureContent;
+  const applyContainTransformRef = useRef(applyContainTransform);
+  applyContainTransformRef.current = applyContainTransform;
+  const interactionStateRef = useRef({
+    isInitialized: false,
+    isUserInteracting: false,
+    autoRecenterEnabled: true,
+  });
+  interactionStateRef.current = { isInitialized, isUserInteracting, autoRecenterEnabled };
+
+  const resizeDebounceRef = useRef<ReturnType<typeof debounce> | null>(null);
+  if (resizeDebounceRef.current === null) {
+    resizeDebounceRef.current = debounce(() => {
+      const s = interactionStateRef.current;
+      if (!s.isInitialized || s.isUserInteracting || !s.autoRecenterEnabled) return;
+      void (async () => {
+        try {
+          await measureContentRef.current();
+          await applyContainTransformRef.current();
+        } catch (e) {
+          console.error("ZoomableCanvas resize:", e);
+        }
+      })();
+    }, 160);
+  }
+
+  useEffect(() => {
+    return () => {
+      resizeDebounceRef.current?.cancel();
+    };
+  }, []);
+
   // Measure content on mount
   useEffect(() => {
     if (!isInitialized) {
       // Use shorter timeout to avoid noticeable jump, just enough for DOM to render
       const timer = setTimeout(async () => {
-        await measureContent();
-        await applyContainTransform();
-        setIsInitialized(true);
+        try {
+          await measureContent();
+          await applyContainTransform();
+        } catch (e) {
+          console.error("ZoomableCanvas initial layout failed:", e);
+        } finally {
+          setIsInitialized(true);
+        }
       }, 50);
       
       return () => clearTimeout(timer);
     }
   }, [isInitialized, measureContent, applyContainTransform]);
 
-  // Readjust when window size or menu state changes - debounced to prevent excessive calculations
-  const debouncedResize = useCallback(debounce(async () => {
-    if (isInitialized && !isUserInteracting && autoRecenterEnabled) {
-      await measureContent(); // Recalculate maxZoom when size changes
-      await applyContainTransform();
-    }
-  }, 100), [isInitialized, isUserInteracting, autoRecenterEnabled, measureContent, applyContainTransform]);
+  // Safari/WebKit: flex + absolute layout may settle after first paint; recentre when the
+  // canvas viewport gains a non-zero size.
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+
+    const ro = new ResizeObserver(() => {
+      resizeDebounceRef.current?.();
+      scheduleViewportNotify();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scheduleViewportNotify]);
 
   // Readjust when window size or menu state changes
   useEffect(() => {
-    window.addEventListener('resize', debouncedResize);
-    let timer: NodeJS.Timeout;
+    const onResize = () => resizeDebounceRef.current?.();
+    window.addEventListener("resize", onResize);
+    let timer: ReturnType<typeof setTimeout> | undefined;
     
     const layoutCollapsedChanged = prevLayoutCollapsedRef.current !== isLayoutCollapsed;
     prevLayoutCollapsedRef.current = isLayoutCollapsed;
@@ -360,15 +508,15 @@ export function ZoomableCanvas({
     // Only recenter when sidebar actually collapsed/expanded, not on other dep changes
     if (layoutCollapsedChanged && isInitialized && !isUserInteracting && autoRecenterEnabled) {
       timer = setTimeout(() => {
-        applyContainTransform();
+        void applyContainTransform();
       }, 50);
     }
     
     return () => {
-      window.removeEventListener('resize', debouncedResize);
+      window.removeEventListener("resize", onResize);
       if (timer) clearTimeout(timer);
     };
-  }, [isInitialized, isLayoutCollapsed, applyContainTransform, debouncedResize, isUserInteracting, autoRecenterEnabled]);
+  }, [isInitialized, isLayoutCollapsed, applyContainTransform, isUserInteracting, autoRecenterEnabled]);
 
   // Handle explicit recenter dependency
   useEffect(() => {
@@ -521,9 +669,10 @@ export function ZoomableCanvas({
     }
     
     // Allow dragging even when zoomed
+    isDraggingRef.current = true;
     setIsDragging(true);
     setIsUserInteracting(true);
-    setStartDragPosition({ x: e.clientX, y: e.clientY });
+    startDragPositionRef.current = { x: e.clientX, y: e.clientY };
     
     // Don't prevent default - only stop propagation
     e.stopPropagation();
@@ -531,40 +680,45 @@ export function ZoomableCanvas({
   
   // Mouse move handler for dragging
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
+    if (!isDraggingRef.current) return;
     
-    const dx = e.clientX - startDragPosition.x;
-    const dy = e.clientY - startDragPosition.y;
+    const dx = e.clientX - startDragPositionRef.current.x;
+    const dy = e.clientY - startDragPositionRef.current.y;
+    startDragPositionRef.current = { x: e.clientX, y: e.clientY };
     
-    // Allow movement in any mode
-    setPosition(prev => {
-      const newPosition = { x: prev.x + dx, y: prev.y + dy };
-      
-      // Apply transform directly for immediate feedback
-      if (contentRef.current) {
-        contentRef.current.style.transform = `translate3d(${newPosition.x}px, ${newPosition.y}px, 0) scale(${scale})`;
-      }
-      
-      if (backgroundRef.current) {
-        backgroundRef.current.style.transform = `translate3d(${newPosition.x}px, ${newPosition.y}px, 0) scale(${scale})`;
-      }
-      
-      return newPosition;
-    });
+    const newPosition = {
+      x: positionRef.current.x + dx,
+      y: positionRef.current.y + dy,
+    };
+    positionRef.current = newPosition;
     
-    setStartDragPosition({ x: e.clientX, y: e.clientY });
+    const s = scaleRef.current;
+    if (contentRef.current) {
+      contentRef.current.style.transform = `translate3d(${newPosition.x}px, ${newPosition.y}px, 0) scale(${s})`;
+    }
+    if (backgroundRef.current) {
+      backgroundRef.current.style.transform = `translate3d(${newPosition.x}px, ${newPosition.y}px, 0) scale(${s})`;
+    }
     
-    // Only stop propagation, don't prevent default
     e.stopPropagation();
-  }, [isDragging, startDragPosition, scale]);
+    scheduleViewportNotify();
+  }, [scheduleViewportNotify]);
   
+  const endMouseDrag = useCallback(() => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    setPosition({ ...positionRef.current });
+    setIsDragging(false);
+    setAutoRecenterEnabled(false);
+    setTimeout(() => setIsUserInteracting(false), 200);
+    scheduleViewportNotify();
+  }, [scheduleViewportNotify]);
+
   // Handle mouse up globally to prevent stuck drag
   useEffect(() => {
     const handleGlobalMouseUp = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        setAutoRecenterEnabled(false);
-        setTimeout(() => setIsUserInteracting(false), 200);
+      if (isDraggingRef.current) {
+        endMouseDrag();
       }
     };
     
@@ -577,122 +731,105 @@ export function ZoomableCanvas({
       window.removeEventListener('mouseup', handleGlobalMouseUp);
       window.removeEventListener('click', handleGlobalMouseUp, { capture: true });
     };
-  }, [isDragging]);
+  }, [isDragging, endMouseDrag]);
 
   // Mouse up handler for drag end
   const handleMouseUp = () => {
-    if (!isDragging) return;
-    
-    setIsDragging(false);
-    setAutoRecenterEnabled(false);
-    
-    // Use shorter timeout
-    setTimeout(() => {
-      setIsUserInteracting(false);
-    }, 200);
+    endMouseDrag();
   };
   
   // Mouse leave handler
   const handleMouseLeave = () => {
-    if (!isDragging) return;
-    
-    setIsDragging(false);
-    setAutoRecenterEnabled(false);
-    
-    // Use shorter timeout
-    setTimeout(() => {
-      setIsUserInteracting(false);
-    }, 200);
+    endMouseDrag();
   };
   
-  // Handle wheel for zoom and pan
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    // Skip handling if on UI elements
-    const target = e.target as HTMLElement;
-    if (target.closest('[role="tab"]') || 
-        target.closest('[role="tablist"]')) {
-      return;
-    }
-      
-    // Only handle ctrl+wheel for zooming
-    if (e.ctrlKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      
+  // Ctrl+wheel zoom: non-passive listener on the canvas only (not document) so normal page scroll stays cheap on Safari.
+  // DOM updates every event; React state is flushed at most once per frame.
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+
+    let wheelZoomRaf: number | null = null;
+
+    const flushWheelZoom = () => {
+      wheelZoomRaf = null;
       setIsUserInteracting(true);
       setAutoRecenterEnabled(false);
-      
-      // Simplify zoom calculation
-      const newScale = Math.max(scale + (e.deltaY < 0 ? 0.1 : -0.1), 0.3);
-      
-      if (canvasRef.current) {
-        const canvasRect = canvasRef.current.getBoundingClientRect();
-        const centerX = canvasRect.width / 2;
-        const centerY = canvasRect.height / 2;
-        
-        const scaleRatio = newScale / scale;
-        const newX = centerX - (centerX - position.x) * scaleRatio;
-        const newY = centerY - (centerY - position.y) * scaleRatio;
-        
-        // Apply transform directly
-        setScale(newScale);
-        setPosition({ x: newX, y: newY });
-        
-        if (contentRef.current) {
-          contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
-        }
-        
-        if (backgroundRef.current) {
-          backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
-        }
-        
-        setIsZoomedIn(newScale > 0.9);
-      }
-    }
-  }, [scale, position]);
-  
-  // Prevent scroll but keep overflow visible - simplified
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    
-    // Simplified wheel handler - only prevent default for ctrl+wheel in content
+      setScale(scaleRef.current);
+      setPosition({ ...positionRef.current });
+      setIsZoomedIn(scaleRef.current > 0.9);
+      onViewportTransformChangeRef.current?.({
+        scale: scaleRef.current,
+        position: { ...positionRef.current },
+        canvasWidth: canvasRef.current?.getBoundingClientRect().width ?? 0,
+        canvasHeight: canvasRef.current?.getBoundingClientRect().height ?? 0,
+      });
+    };
+
     const wheelHandler = (e: WheelEvent) => {
       const target = e.target as HTMLElement;
-      
-      // Skip if not in canvas or is a UI element
-      if (!canvasRef.current?.contains(target) || 
-          target.closest('[role="tab"]') || 
-          target.closest('[role="tablist"]')) {
+      if (target.closest('[role="tab"]') || target.closest('[role="tablist"]')) {
         return;
       }
-      
-      // Only prevent for ctrl+wheel zoom
-      if (e.ctrlKey) {
-        e.preventDefault();
+
+      if (!e.ctrlKey) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const prevScale = scaleRef.current;
+      const position = positionRef.current;
+      const newScale = Math.max(prevScale + (e.deltaY < 0 ? 0.1 : -0.1), 0.3);
+
+      if (!canvasRef.current) return;
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const centerX = canvasRect.width / 2;
+      const centerY = canvasRect.height / 2;
+      const scaleRatio = prevScale > 0 ? newScale / prevScale : 1;
+      const newX = centerX - (centerX - position.x) * scaleRatio;
+      const newY = centerY - (centerY - position.y) * scaleRatio;
+
+      scaleRef.current = newScale;
+      positionRef.current = { x: newX, y: newY };
+
+      if (contentRef.current) {
+        contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
+      }
+      if (backgroundRef.current) {
+        backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
+      }
+
+      if (wheelZoomRaf == null) {
+        wheelZoomRaf = requestAnimationFrame(flushWheelZoom);
       }
     };
-    
-    document.addEventListener('wheel', wheelHandler, { passive: false });
-    
+
+    el.addEventListener("wheel", wheelHandler, { passive: false });
     return () => {
-      document.removeEventListener('wheel', wheelHandler);
+      el.removeEventListener("wheel", wheelHandler);
+      if (wheelZoomRaf != null) cancelAnimationFrame(wheelZoomRaf);
     };
-  }, [canvasRef]);
+  }, []);
 
   // CSS for dot pattern background (infinite grid)
   const currentColor = isDarkMode ? dotColorDark : dotColorLight;
+  // Large tile in viewport units so pan/zoom (translate + scale from 0,0) never leaves bare corners;
+  // overflow:hidden on this layer used to clip the expanded tile and caused empty top/left bands.
+  // Smaller tile than 300vmax: Safari pays a high cost compositing huge repeating radial-gradient layers.
+  // 200vmax still covers typical pan/zoom when combined with overflow visible + canvas clip.
   const dotPatternStyle = {
     backgroundSize: `${dotSize} ${dotSize}`,
     backgroundImage: `
       radial-gradient(circle, ${currentColor} ${dotRadius}, transparent ${dotRadius})
     `,
     backgroundPosition: '0 0',
+    backgroundRepeat: 'repeat',
     backgroundColor: 'transparent',
     position: 'absolute',
-    top: '-200%',    // Center pattern and extend to cover more area
-    left: '-200%',   // Center pattern and extend to cover more area
-    width: '500%',   // Extend more for more dots
-    height: '500%',  // Extend more for more dots
+    top: '-50vmax',
+    left: '-50vmax',
+    width: '200vmax',
+    height: '200vmax',
     transformOrigin: '0 0',
     pointerEvents: 'none'
   } as React.CSSProperties;
@@ -717,21 +854,24 @@ export function ZoomableCanvas({
     }
     
     if (e.touches.length === 2) {
-      // Simplify pinch logic
+      singleFingerPanRef.current = false;
+      isDraggingRef.current = false;
+      setIsDragging(false);
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
       setTouchStartDistance(distance);
-      setTouchStartScale(scale);
+      setTouchStartScale(scaleRef.current);
       setIsUserInteracting(true);
     } else if (e.touches.length === 1) {
-      // Single touch panning
+      singleFingerPanRef.current = true;
+      isDraggingRef.current = true;
       setIsDragging(true);
       setIsUserInteracting(true);
-      setStartDragPosition({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      startDragPositionRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
-  }, [scale]);
+  }, []);
   
   // Handle touch move for pinch-to-zoom and panning
   const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
@@ -769,49 +909,53 @@ export function ZoomableCanvas({
           const canvasX = midX - rect.left;
           const canvasY = midY - rect.top;
           
-          const scaleRatio = newScale / scale;
-          const newX = canvasX - (canvasX - position.x) * scaleRatio;
-          const newY = canvasY - (canvasY - position.y) * scaleRatio;
+          const scaleRatio = newScale / scaleRef.current;
+          const newX = canvasX - (canvasX - positionRef.current.x) * scaleRatio;
+          const newY = canvasY - (canvasY - positionRef.current.y) * scaleRatio;
           
           contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
           backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
           
-          // Only update state after transform applied
           setScale(newScale);
           setPosition({ x: newX, y: newY });
+          scaleRef.current = newScale;
+          positionRef.current = { x: newX, y: newY };
+          scheduleViewportNotify();
         }
       }
-    } else if (e.touches.length === 1 && isDragging) {
-      const dx = e.touches[0].clientX - startDragPosition.x;
-      const dy = e.touches[0].clientY - startDragPosition.y;
+    } else if (e.touches.length === 1 && isDraggingRef.current && singleFingerPanRef.current) {
+      const dx = e.touches[0].clientX - startDragPositionRef.current.x;
+      const dy = e.touches[0].clientY - startDragPositionRef.current.y;
+      startDragPositionRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       
-      // Direct DOM manipulation for better performance
       if (contentRef.current && backgroundRef.current) {
-        const newX = position.x + dx;
-        const newY = position.y + dy;
-        
-        contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${scale})`;
-        backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${scale})`;
-        
-        // Update state after transform
-        setPosition({ x: newX, y: newY });
+        const newX = positionRef.current.x + dx;
+        const newY = positionRef.current.y + dy;
+        positionRef.current = { x: newX, y: newY };
+        const s = scaleRef.current;
+        contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${s})`;
+        backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${s})`;
+        scheduleViewportNotify();
       }
-      
-      setStartDragPosition({ x: e.touches[0].clientX, y: e.touches[0].clientY });
     }
-  }, [touchStartDistance, touchStartScale, scale, position, isDragging, startDragPosition]);
+  }, [touchStartDistance, touchStartScale, scheduleViewportNotify]);
   
   // Handle touch end
   const handleTouchEnd = useCallback(() => {
     setTouchStartDistance(null);
+    if (singleFingerPanRef.current) {
+      setPosition({ ...positionRef.current });
+      singleFingerPanRef.current = false;
+    }
+    isDraggingRef.current = false;
     setIsDragging(false);
     setAutoRecenterEnabled(false);
     
-    // Shorter timeout
     setTimeout(() => {
       setIsUserInteracting(false);
     }, 200);
-  }, []);
+    scheduleViewportNotify();
+  }, [scheduleViewportNotify]);
 
   // Clean up animation on unmount
   useEffect(() => {
@@ -836,22 +980,22 @@ export function ZoomableCanvas({
         backgroundColor: "transparent",
         padding: "0", 
         position: "relative",
-        transition: "all 0.2s ease-out"
       }}
     >
       <div
         ref={canvasRef}
-        className="w-full h-full"
+        className="w-full h-full min-h-0"
         style={{ 
+          position: "relative",
           overflow: "hidden",
           paddingRight: "20px",
-          touchAction: "none" // Prevent browser handling of touch gestures
+          touchAction: "none",
+          isolation: "isolate",
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -865,17 +1009,10 @@ export function ZoomableCanvas({
             transition: 'opacity 0.2s ease-in',
             opacity: isInitialized ? 1 : 0,
             position: 'absolute',
-            display: 'inline-block',
-            width: '100%',
-            height: '100%',
+            inset: 0,
+            display: 'block',
             zIndex: 0,
-            overflow: "visible",
-            willChange: 'transform',
-            backfaceVisibility: 'hidden',
-            perspective: 1000,
-            WebkitBackfaceVisibility: 'hidden',
-            WebkitPerspective: 1000,
-            WebkitTransformStyle: 'preserve-3d'
+            overflow: 'visible',
           }}
         >
           <div style={dotPatternStyle}></div>
@@ -890,6 +1027,8 @@ export function ZoomableCanvas({
             transition: 'opacity 0.2s ease-in',
             opacity: isInitialized ? 1 : 0,
             position: 'absolute',
+            top: 0,
+            left: 0,
             display: 'inline-block',
             width: 'auto',
             minWidth: 'max-content',
@@ -897,12 +1036,6 @@ export function ZoomableCanvas({
             zIndex: 1,
             overflow: "visible",
             paddingRight: "20px",
-            willChange: 'transform',
-            backfaceVisibility: 'hidden',
-            perspective: 1000,
-            WebkitBackfaceVisibility: 'hidden',
-            WebkitPerspective: 1000,
-            WebkitTransformStyle: 'preserve-3d'
           }}
         >
           {children}
