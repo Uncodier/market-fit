@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { isMakinariInternalReferrerHostname } from '@/lib/traffic/makinari-internal-referrer';
+import { isExternalReferralPageview } from '@/lib/traffic/external-referral-pageview';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -144,42 +146,47 @@ export async function GET(request: NextRequest) {
     // Initialize date buckets
     const eventsByDay = new Map<string, number>();
     const visitorsByDay = new Map<string, Set<string>>();
-    
+    const referralsByDay = new Map<string, number>();
+
     for (let i = 0; i < daysBack; i++) {
       const date = new Date(startDateObj.getTime() + i * 24 * 60 * 60 * 1000);
       const dateStr = date.toISOString().split('T')[0];
       eventsByDay.set(dateStr, 0);
       visitorsByDay.set(dateStr, new Set());
+      referralsByDay.set(dateStr, 0);
     }
 
-    // Process BOTH metrics from the same dataset (session_events)
+    // Process metrics from the same dataset (session_events)
     allEvents?.forEach((event: any) => {
       const eventDate = new Date(event.created_at);
       const dateStr = eventDate.toISOString().split('T')[0];
-      
+
       if (eventsByDay.has(dateStr)) {
-        // Count page visits (events)
         eventsByDay.set(dateStr, eventsByDay.get(dateStr)! + 1);
-        
-        // Count unique visitors from the same dataset
+
         if (event.visitor_id) {
           visitorsByDay.get(dateStr)!.add(event.visitor_id);
+        }
+
+        if (isExternalReferralPageview(event.referrer, domainsToFilter)) {
+          referralsByDay.set(dateStr, (referralsByDay.get(dateStr) || 0) + 1);
         }
       }
     });
 
-    // Convert to array format for chart with both metrics from same source
     const chartData = Array.from(eventsByDay.entries()).map(([date, pageVisits]) => {
       const uniqueVisitors = visitorsByDay.get(date)?.size || 0;
-      
+      const referralVisits = referralsByDay.get(date) || 0;
+
       return {
         date,
-        pageVisits: pageVisits,
+        pageVisits,
         uniqueVisitors,
-        label: new Date(date).toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric' 
-        })
+        referralVisits,
+        label: new Date(date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
       };
     });
 
@@ -187,34 +194,41 @@ export async function GET(request: NextRequest) {
     const referrerCounts = new Map<string, { count: number; fullUrl: string }>();
     
     allEvents?.forEach((event: any) => {
-      if (event.referrer) {
-        let referrer = event.referrer;
-        let normalizedReferrer = referrer;
-        
-        // Extract domain and normalize
-        try {
-          const url = new URL(referrer);
-          normalizedReferrer = url.hostname.toLowerCase();
-          // Remove www. prefix for consistency
-          if (normalizedReferrer.startsWith('www.')) {
-            normalizedReferrer = normalizedReferrer.substring(4);
-          }
-          
-          // Filter out localhost and same-site referrers
-          if (domainsToFilter.has(normalizedReferrer) || domainsToFilter.has('www.' + normalizedReferrer)) {
-            return; // Skip this referrer
-          }
-        } catch {
-          // If not a valid URL, keep as is (but don't filter invalid URLs)
-          normalizedReferrer = referrer;
+      const rawRef = event.referrer;
+      if (!rawRef || String(rawRef).trim() === '') {
+        const key = 'Direct';
+        if (!referrerCounts.has(key)) {
+          referrerCounts.set(key, { count: 0, fullUrl: '' });
         }
-        
-        // Group by normalized referrer, but keep track of a sample full URL
-        if (!referrerCounts.has(normalizedReferrer)) {
-          referrerCounts.set(normalizedReferrer, { count: 0, fullUrl: referrer });
-        }
-        referrerCounts.get(normalizedReferrer)!.count += 1;
+        referrerCounts.get(key)!.count += 1;
+        return;
       }
+
+      let referrer = rawRef;
+      let normalizedReferrer = referrer;
+
+      try {
+        const url = new URL(referrer);
+        normalizedReferrer = url.hostname.toLowerCase();
+        if (normalizedReferrer.startsWith('www.')) {
+          normalizedReferrer = normalizedReferrer.substring(4);
+        }
+
+        if (
+          domainsToFilter.has(normalizedReferrer) ||
+          domainsToFilter.has('www.' + normalizedReferrer) ||
+          isMakinariInternalReferrerHostname(normalizedReferrer)
+        ) {
+          return;
+        }
+      } catch {
+        normalizedReferrer = referrer;
+      }
+
+      if (!referrerCounts.has(normalizedReferrer)) {
+        referrerCounts.set(normalizedReferrer, { count: 0, fullUrl: referrer });
+      }
+      referrerCounts.get(normalizedReferrer)!.count += 1;
     });
 
     // Calculate total valid referrer events for percentage calculation
@@ -234,6 +248,8 @@ export async function GET(request: NextRequest) {
     // Calculate totals from the same dataset for consistency
     const totalUniqueVisitors = new Set(allEvents?.map(e => e.visitor_id).filter(id => id) || []).size;
     const totalPageVisits = allEvents?.length || 0;
+    const totalReferralVisits =
+      allEvents?.filter((e) => isExternalReferralPageview(e.referrer, domainsToFilter)).length ?? 0;
     
     console.log('Combined data processed from single source:', {
       totalPageVisits,
@@ -250,8 +266,9 @@ export async function GET(request: NextRequest) {
       referrersData: referrersArray,
       totals: {
         pageVisits: totalPageVisits,
-        uniqueVisitors: totalUniqueVisitors
-      }
+        uniqueVisitors: totalUniqueVisitors,
+        referralVisits: totalReferralVisits,
+      },
     });
 
   } catch (error) {

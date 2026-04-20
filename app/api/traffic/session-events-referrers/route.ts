@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { isMakinariInternalReferrerHostname } from '@/lib/traffic/makinari-internal-referrer';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -132,8 +133,12 @@ export async function GET(request: NextRequest) {
             normalizedReferrer = normalizedReferrer.substring(4);
           }
           
-          // Filter out localhost and same-site referrers
-          if (domainsToFilter.has(normalizedReferrer) || domainsToFilter.has('www.' + normalizedReferrer)) {
+          // Filter out localhost, same-site referrers, and Makinari cross-property (e.g. app.makinari.com)
+          if (
+            domainsToFilter.has(normalizedReferrer) ||
+            domainsToFilter.has('www.' + normalizedReferrer) ||
+            isMakinariInternalReferrerHostname(normalizedReferrer)
+          ) {
             return acc; // Skip this referrer
           }
         } catch (e) {

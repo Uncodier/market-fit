@@ -2,7 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import {
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 import { EmptyCard } from '@/app/components/ui/empty-card';
 import { BarChart as BarChartIcon } from '@/app/components/ui/icons';
 import { useTheme } from '@/app/context/ThemeContext';
@@ -11,6 +21,7 @@ interface SessionEventData {
   date: string;
   pageVisits: number;
   uniqueVisitors: number;
+  referralVisits?: number;
   label: string;
 }
 
@@ -24,6 +35,7 @@ interface SessionEventsChartProps {
   totals?: {
     pageVisits: number;
     uniqueVisitors: number;
+    referralVisits?: number;
   };
 }
 
@@ -40,9 +52,14 @@ export function SessionEventsChart({
   const [internalData, setInternalData] = useState<SessionEventData[]>([]);
   const [internalLoading, setInternalLoading] = useState(true);
   const [internalError, setInternalError] = useState<string | null>(null);
-  const [internalTotals, setInternalTotals] = useState<{pageVisits: number, uniqueVisitors: number}>({
+  const [internalTotals, setInternalTotals] = useState<{
+    pageVisits: number;
+    uniqueVisitors: number;
+    referralVisits?: number;
+  }>({
     pageVisits: 0,
-    uniqueVisitors: 0
+    uniqueVisitors: 0,
+    referralVisits: 0,
   });
 
   // Use prop data if provided, otherwise fetch internally
@@ -64,6 +81,8 @@ export function SessionEventsChart({
     // Unique visitors - Green
     uniqueVisitorsFill: isDarkMode ? "#34D399" : "#10B981",
     uniqueVisitorsStart: isDarkMode ? "#6EE7B7" : "#34D399",
+    // External referral pageviews — line (amber)
+    referralLine: isDarkMode ? "#FBBF24" : "#D97706",
     barHover: isDarkMode ? "rgba(129, 140, 248, 0.2)" : "rgba(99, 102, 241, 0.1)",
   };
 
@@ -99,7 +118,9 @@ export function SessionEventsChart({
         
         // Use the combined data directly
         setInternalData(result.chartData || []);
-        setInternalTotals(result.totals || { pageVisits: 0, uniqueVisitors: 0 });
+        setInternalTotals(
+          result.totals || { pageVisits: 0, uniqueVisitors: 0, referralVisits: 0 }
+        );
       } catch (err) {
         setInternalError(err instanceof Error ? err.message : 'An error occurred');
         console.error('Error fetching combined page visits:', err);
@@ -113,13 +134,19 @@ export function SessionEventsChart({
 
   const totalPageVisits = totals.pageVisits;
   const totalUniqueVisitors = totals.uniqueVisitors;
+  const totalReferralVisits = totals.referralVisits ?? 0;
+
+  const chartSeries = data.map((row) => ({
+    ...row,
+    referralVisits: row.referralVisits ?? 0,
+  }));
 
   if (loading) {
     return (
       <Card className="flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle>Page Visits vs Unique Visitors</CardTitle>
-          <div className="flex items-center space-x-6">
+          <CardTitle>Visits & referral trend</CardTitle>
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <div className="flex items-center space-x-2">
               <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
               <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>
@@ -127,6 +154,10 @@ export function SessionEventsChart({
             <div className="flex items-center space-x-2">
               <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
               <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-14 bg-muted rounded animate-pulse"></div>
+              <div className="h-4 w-28 bg-muted rounded animate-pulse"></div>
             </div>
           </div>
         </CardHeader>
@@ -136,7 +167,7 @@ export function SessionEventsChart({
             <div className="w-full h-full flex flex-col">
               
               {/* Legend skeleton - simple and clean */}
-              <div className="flex justify-center items-center space-x-6 pb-4 pt-2">
+              <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 pb-4 pt-2">
                 <div className="flex items-center space-x-2">
                   <div className="h-3 w-3 bg-muted rounded-sm animate-pulse"></div>
                   <div className="h-3 w-16 bg-muted rounded animate-pulse"></div>
@@ -144,6 +175,10 @@ export function SessionEventsChart({
                 <div className="flex items-center space-x-2">
                   <div className="h-3 w-3 bg-muted rounded-sm animate-pulse"></div>
                   <div className="h-3 w-20 bg-muted rounded animate-pulse"></div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="h-3 w-3 bg-muted rounded-sm animate-pulse"></div>
+                  <div className="h-3 w-24 bg-muted rounded animate-pulse"></div>
                 </div>
               </div>
 
@@ -201,7 +236,7 @@ export function SessionEventsChart({
     return (
       <Card className="flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
-          <CardTitle className="text-base">Page Visits vs Unique Visitors</CardTitle>
+          <CardTitle className="text-base">Visits & referral trend</CardTitle>
           <div className="h-8 flex items-center">
             <div className="text-2xl font-bold">
               0
@@ -220,20 +255,25 @@ export function SessionEventsChart({
   return (
     <Card className="flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-base">Page Visits vs Unique Visitors</CardTitle>
-        <div className="flex items-center space-x-6">
+        <CardTitle className="text-base">Visits & referral trend</CardTitle>
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
           <div className="flex items-center space-x-2">
             <div className="text-2xl font-bold">{totalPageVisits.toLocaleString()}</div>
-            <div className="text-sm text-muted-foreground">Page Visits</div>
+            <div className="text-sm text-muted-foreground">Page visits</div>
           </div>
           <div className="flex items-center space-x-2">
             <div className="text-2xl font-bold">{totalUniqueVisitors.toLocaleString()}</div>
-            <div className="text-sm text-muted-foreground">Unique Visitors</div>
+            <div className="text-sm text-muted-foreground">Unique visitors</div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="text-2xl font-bold">{totalReferralVisits.toLocaleString()}</div>
+            <div className="text-sm text-muted-foreground">Referral visits</div>
           </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
-        {data.length === 0 || (totalPageVisits === 0 && totalUniqueVisitors === 0) ? (
+        {data.length === 0 ||
+        (totalPageVisits === 0 && totalUniqueVisitors === 0 && totalReferralVisits === 0) ? (
           <div className="flex-1 w-full h-full flex items-center justify-center">
             <EmptyCard
               icon={<BarChartIcon className="h-10 w-10 text-muted-foreground" />}
@@ -244,8 +284,8 @@ export function SessionEventsChart({
         ) : (
           <div className="flex-1">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={data}
+              <ComposedChart
+                data={chartSeries}
                 margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
                 barGap={2}
                 barCategoryGap={20}
@@ -290,14 +330,14 @@ export function SessionEventsChart({
                   cursor={{ fill: colors.barHover }}
                   itemStyle={{ color: colors.tooltipText }}
                 />
-                <Legend 
-                  verticalAlign="top" 
-                  height={36}
+                <Legend
+                  verticalAlign="top"
+                  height={42}
                   iconType="rect"
-                  wrapperStyle={{ 
+                  wrapperStyle={{
                     paddingBottom: "20px",
                     fontSize: "12px",
-                    color: colors.text
+                    color: colors.text,
                   }}
                 />
                 {/* Definición de gradientes */}
@@ -311,25 +351,37 @@ export function SessionEventsChart({
                     <stop offset="100%" stopColor={colors.uniqueVisitorsFill} />
                   </linearGradient>
                 </defs>
-                <Bar 
-                  dataKey="pageVisits" 
+                <Bar
+                  dataKey="pageVisits"
                   fill="url(#pageVisitsGradient)"
                   radius={[4, 4, 0, 0]}
                   barSize={15}
-                  name="Page Visits"
+                  name="Page visits"
                   animationDuration={1500}
                   animationEasing="ease-out"
                 />
-                <Bar 
-                  dataKey="uniqueVisitors" 
+                <Bar
+                  dataKey="uniqueVisitors"
                   fill="url(#uniqueVisitorsGradient)"
                   radius={[4, 4, 0, 0]}
                   barSize={15}
-                  name="Unique Visitors"
+                  name="Unique visitors"
                   animationDuration={1500}
                   animationEasing="ease-out"
                 />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="referralVisits"
+                  name="Referral visits"
+                  stroke={colors.referralLine}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  legendType="line"
+                  animationDuration={1500}
+                  animationEasing="ease-out"
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         )}

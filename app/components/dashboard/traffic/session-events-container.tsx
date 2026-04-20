@@ -28,9 +28,14 @@ interface SessionEventsContainerProps {
 export function SessionEventsContainer({ siteId, startDate, endDate, segmentId }: SessionEventsContainerProps) {
   const [chartData, setChartData] = useState<SessionEventData[]>([]);
   const [referrersData, setReferrersData] = useState<ReferrerData[]>([]);
-  const [totals, setTotals] = useState<{pageVisits: number, uniqueVisitors: number}>({
+  const [totals, setTotals] = useState<{
+    pageVisits: number;
+    uniqueVisitors: number;
+    referralVisits?: number;
+  }>({
     pageVisits: 0,
-    uniqueVisitors: 0
+    uniqueVisitors: 0,
+    referralVisits: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +74,9 @@ export function SessionEventsContainer({ siteId, startDate, endDate, segmentId }
         
         setChartData(result.chartData || []);
         setReferrersData(result.referrersData || []);
-        setTotals(result.totals || { pageVisits: 0, uniqueVisitors: 0 });
+        setTotals(
+          result.totals || { pageVisits: 0, uniqueVisitors: 0, referralVisits: 0 }
+        );
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
         console.error('Error fetching combined page visits:', err);

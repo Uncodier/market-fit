@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createSocialSupabaseClient } from "@/app/api/social/supabase-client"
+import { getOutstandNetworkFromPath } from "@/app/api/social/network-map"
+import { syncImplicitOutstandCallback } from "@/app/api/social/lib/sync-outstand-accounts"
 
 /**
- * Outstand white-label callback for Facebook and LinkedIn.
+ * Outstand white-label callback for Facebook, LinkedIn, X, etc.
  *
  * Outstand: "The callback url lies on your app, and then you call the finalization API endpoint."
  * — "Callback lies on your app" = **Outstand** redirects to this URL with ?session= or ?error=.
@@ -10,33 +13,24 @@ import { NextRequest, NextResponse } from "next/server"
  * Doc: "We will redirect to it with a session query parameter" (it = our redirect_uri; We = Outstand).
  * https://www.outstand.so/docs/configurations/facebook#white-labeling-authentication-flow
  *
- * FLOW: We request auth-url with redirect_uri=this URL → User→Outstand→Facebook→Outstand (code+state)
+ * FLOW: We request auth-url with redirect_uri=this URL → User→Outstand→Provider→Outstand
  * → Outstand redirects HERE with ?session= or ?error= → we go to /settings/social_network, then pending+finalize.
+ *
+ * Implicit success (e.g. X): Outstand may redirect without ?session= or ?error= after OAuth success.
+ * In that case we list Outstand `/v1/social-accounts` for the tenant and merge new accounts into settings.
  */
-
-const NETWORK_MAP: Record<string, string> = {
-  facebook: "facebook",
-  linkedin: "linkedin",
-  tiktok: "tiktok",
-  instagram: "instagram",
-  threads: "threads",
-  twitter: "x",
-  x: "x",
-  youtube: "youtube"
-}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ network: string }> }
 ) {
   const { network } = await params
-  const outstandNetwork = NETWORK_MAP[network?.toLowerCase() ?? ""]
+  const outstandNetwork = getOutstandNetworkFromPath(network ?? "")
 
   // ---- LOG: Outstand redirects HERE with ?session= or ?error= ----
   const { searchParams } = request.nextUrl
   const allParams = Object.fromEntries(searchParams.entries())
   const authCookies = request.cookies.getAll().filter((c) => c.name.startsWith("sb-"))
-  // Chunked cookies are sb-*-auth-token.0, .1 — need includes(), not endsWith("-auth-token")
   const hasAuthCookie = authCookies.some((c) => c.name.includes("-auth-token"))
   const authCookieNames = authCookies.map((c) => c.name)
   const baseUrl = getBaseUrl(request)
@@ -61,16 +55,23 @@ export async function GET(
   }
 
   const session = searchParams.get("session")
-  const tenantId = searchParams.get("tenant_id")
+  const tenantFromQuery = searchParams.get("tenant_id")
+  const siteId = searchParams.get("siteId") || tenantFromQuery
   const error = searchParams.get("error")
   const errorDescription = searchParams.get("error_description")
 
-  // 1) Outstand sends error: they couldn't get or process code/state from Facebook.
+  // 1) Outstand sends error: they couldn't get or process code/state from the provider.
   if (error) {
     console.error(`[Social Callback ${network}] Outstand error:`, error, errorDescription)
     const msg =
       error === "Missing code or state parameter"
-        ? "Outstand could not process the code/state from " + network + ". Facebook's redirect_uri=outstand.so is correct (Outstand then sends you to us). In your " + network + " App: add https://www.outstand.so/app/api/socials/" + network + "/callback to Valid OAuth Redirect URIs and outstand.so to App Domains. If both are set, contact Outstand (contact@outstand.so)."
+        ? "Outstand could not process the code/state from " +
+          network +
+          ". Facebook's redirect_uri=outstand.so is correct (Outstand then sends you to us). In your " +
+          network +
+          " App: add https://www.outstand.so/app/api/socials/" +
+          network +
+          "/callback to Valid OAuth Redirect URIs and outstand.so to App Domains. If both are set, contact Outstand (contact@outstand.so)."
         : (errorDescription || error)
     const dest = new URL(`${baseUrl}/settings/social_network`)
     dest.searchParams.set("error", "oauth_failed")
@@ -89,21 +90,62 @@ export async function GET(
     const dest = new URL(`${baseUrl}/settings/social_network`)
     dest.searchParams.set("session", session)
     dest.searchParams.set("network", network)
-    if (tenantId) dest.searchParams.set("siteId", tenantId)
+    if (siteId) dest.searchParams.set("siteId", siteId)
     console.log("[Social Callback OUTSTAND→US] redirect→", dest.toString())
     return NextResponse.redirect(dest.toString())
   }
 
-  // 3) Neither session nor error — unexpected.
-  console.log("[Social Callback OUTSTAND→US] redirecting to /settings/social_network with error (no session, no error param)")
-  return redirectToSettings("No session or error in callback. Check with Outstand if the flow completed correctly.", baseUrl)
+  // 3) No explicit error: assume provider flow completed — verify via Outstand tenant account list and merge into settings.
+  if (!siteId) {
+    return redirectToSettings(
+      "Missing siteId (or tenant_id) in callback URL. Your redirect_uri must include ?siteId=<tenant> so we can verify the connection.",
+      baseUrl
+    )
+  }
+
+  const supabase = await createSocialSupabaseClient()
+  const {
+    data: { session: userSession },
+  } = await supabase.auth.getSession()
+
+  if (!userSession) {
+    const dest = new URL(`${baseUrl}/settings/social_network`)
+    dest.searchParams.set("error", "oauth_failed")
+    dest.searchParams.set(
+      "error_description",
+      "Sign in required to sync the social account. Please open the app, sign in, and connect again."
+    )
+    dest.searchParams.set("network", network)
+    return NextResponse.redirect(dest.toString())
+  }
+
+  const sync = await syncImplicitOutstandCallback({
+    supabase,
+    siteId,
+    pathNetwork: network,
+  })
+
+  if (!sync.ok) {
+    console.warn("[Social Callback OUTSTAND→US] implicit sync failed:", sync.message)
+    return redirectToSettings(sync.message, baseUrl)
+  }
+
+  console.log("[Social Callback OUTSTAND→US] implicit sync ok", {
+    mergedCount: sync.mergedCount,
+    accountsFound: sync.accountsFound,
+  })
+
+  const dest = new URL(`${baseUrl}/settings`)
+  dest.searchParams.set("tab", "social")
+  dest.searchParams.set("oauth_connected", "1")
+  dest.searchParams.set("oauth_site", siteId)
+  dest.searchParams.set("oauth_network", network)
+  return NextResponse.redirect(dest.toString())
 }
 
 const LOCAL_HOSTS = ["0.0.0.0", "127.0.0.1", "localhost"]
 
 function getBaseUrl(request?: NextRequest): string {
-  // 1) Prefer x-forwarded-* when behind tunnel/proxy: Host can be 0.0.0.0 but
-  //    x-forwarded-host has the public host (e.g. xxx.trycloudflare.com).
   if (request) {
     const fwdHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim()
     const fwdProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https"
@@ -113,7 +155,6 @@ function getBaseUrl(request?: NextRequest): string {
     }
   }
 
-  // 2) Use request origin only when it's a public host (not 0.0.0.0, 127.0.0.1, localhost).
   const reqOrigin = request?.nextUrl?.origin
   if (reqOrigin) {
     try {
@@ -126,8 +167,6 @@ function getBaseUrl(request?: NextRequest): string {
     }
   }
 
-  // 3) Local/internal host or no request: use env so redirect and our_redirect_uri
-  //    go to tunnel or production (user's cookie and OAuth redirect_uri live there).
   const u =
     process.env.SSH_TUNNEL_URL ||
     process.env.NEXT_PUBLIC_SSH_TUNNEL_URL ||

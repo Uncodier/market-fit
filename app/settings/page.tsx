@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
 import { useSite } from "../context/SiteContext"
 import { useTheme } from "../context/ThemeContext"
@@ -303,6 +304,36 @@ export default function SettingsPage() {
       setActiveSegment(tab)
     }
   }, [searchParams])
+
+  // OAuth implicit callback finished server-side (synced Outstand accounts into settings)
+  useEffect(() => {
+    const oauthConnected = searchParams.get("oauth_connected")
+    const oauthSite = searchParams.get("oauth_site")
+    const oauthNetwork = searchParams.get("oauth_network")
+    if (oauthConnected !== "1" || !oauthSite) return
+    if (!currentSite?.id) return
+
+    const stripOAuthParams = () => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete("oauth_connected")
+      params.delete("oauth_site")
+      params.delete("oauth_network")
+      const qs = params.toString()
+      router.replace(qs ? `/settings?${qs}` : "/settings", { scroll: false })
+    }
+
+    if (oauthSite !== currentSite.id) {
+      stripOAuthParams()
+      return
+    }
+
+    const label = oauthNetwork ? oauthNetwork.charAt(0).toUpperCase() + oauthNetwork.slice(1) : "Social"
+    toast.success(`${label} account connected`, {
+      description: "Your social settings have been updated.",
+    })
+    refreshSites().catch(() => {})
+    stripOAuthParams()
+  }, [searchParams, currentSite?.id, router, refreshSites])
 
   // Debug log para verificar el estado de prevención
   useEffect(() => {

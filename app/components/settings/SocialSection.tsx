@@ -209,7 +209,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
       // Other networks: outstand.so receives the OAuth callback and redirects to /settings/social_network with session.
       const is3Leg = social.platform === 'facebook' || (social.platform as string) === 'linkedin' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x' || social.platform === 'youtube'
       const redirectUri = is3Leg
-        ? `${redirectOrigin}/api/social/callback/${social.platform}`
+        ? `${redirectOrigin}/api/social/callback/${social.platform}?siteId=${encodeURIComponent(siteId)}`
         : `${redirectOrigin}/settings/social_network?siteId=${siteId}&network=${social.platform}${isDevelopment ? `&returnTo=${encodeURIComponent(window.location.origin)}` : ''}`
       
       console.log('[Social Auth] Initiating OAuth flow:', {

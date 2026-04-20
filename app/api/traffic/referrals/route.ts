@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { isMakinariInternalReferrerHostname } from "@/lib/traffic/makinari-internal-referrer";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -40,6 +41,18 @@ export async function GET(request: NextRequest) {
     const referrerCounts = new Map<string, number>();
     
     referralData?.forEach(session => {
+      // Skip sessions whose only attribution is cross-navigation within Makinari properties
+      if (!session.utm_source && session.referrer) {
+        try {
+          const u = new URL(session.referrer);
+          if (isMakinariInternalReferrerHostname(u.hostname)) {
+            return;
+          }
+        } catch {
+          /* keep non-URL referrers in the breakdown */
+        }
+      }
+
       let referrerName = 'Direct';
       
       // Check UTM source first (most reliable)
@@ -60,7 +73,7 @@ export async function GET(request: NextRequest) {
           // Extract domain from referrer URL
           const referrerUrl = new URL(session.referrer);
           const domain = referrerUrl.hostname;
-          
+
           // Normalize common referrer names
           if (domain.includes('google.com') || domain.includes('google.')) {
             referrerName = 'Google';
