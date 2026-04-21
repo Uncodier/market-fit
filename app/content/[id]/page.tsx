@@ -19,6 +19,7 @@ import { UploadAssetDialog } from "@/app/components/upload-asset-dialog"
 import { createAsset } from "@/app/assets/actions"
 import { publishOutstandPost } from "../outstand"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { isSocialMediaEntryConnected } from "@/app/components/settings/data-adapter"
 
 // Function to convert HTML back to markdown
 const htmlToMarkdown = (html: string): string => {
@@ -1541,14 +1542,22 @@ export default function ContentDetailPage() {
         return
       }
 
-      console.log('Publishing to selected network IDs:', selectedNetworks);
-      console.log('Filtered valid accounts for API:', validAccounts);
-      console.log('Available social media settings:', socialMedia);
-      
+      console.log('[submitPublish] Publishing to selected network IDs:', selectedNetworks);
+      console.log('[submitPublish] Resolved platform names:', platformNames);
+      console.log('[submitPublish] Filtered valid accounts for API:', validAccounts);
+      console.log('[submitPublish] Available social media settings:', socialMedia);
+
       const isLinkedInSelected = platformNames.some(p => p.toLowerCase().includes('linkedin'));
       const isFacebookSelected = platformNames.some(p => p.toLowerCase().includes('facebook'));
       const isTwitterSelected = platformNames.some(p => p.toLowerCase().includes('twitter') || p.toLowerCase().includes('x'));
       const isInstagramSelected = platformNames.some(p => p.toLowerCase().includes('instagram'));
+
+      console.log('[submitPublish] Platform flags:', {
+        isLinkedInSelected,
+        isFacebookSelected,
+        isTwitterSelected,
+        isInstagramSelected,
+      });
       
       // Determine what text to send based on the platform.
       // Usually social networks expect one plain text body.
@@ -1584,11 +1593,23 @@ export default function ContentDetailPage() {
         ...(scheduleEnabled && scheduledDate ? { scheduledAt: scheduledDate.toISOString() } : {})
       }
       
-      // Close the modal early for better UX
+      console.log('[submitPublish] Final payload to publishOutstandPost:', {
+        tenant_id: payload.tenant_id,
+        accounts: payload.accounts,
+        scheduledAt: payload.scheduledAt,
+        containers: payload.containers.map(c => ({
+          contentLength: c.content?.length ?? 0,
+          contentPreview: (c.content || '').slice(0, 200),
+          mediaCount: Array.isArray(c.media) ? c.media.length : 0,
+        })),
+      });
+
       closePublishModal()
-      
-      const { success, data, error } = await publishOutstandPost(currentSite.id, payload)
-      
+
+      const result = await publishOutstandPost(currentSite.id, payload)
+      const { success, data, error } = result as any
+      console.log('[submitPublish] publishOutstandPost result:', result);
+
       if (success) {
         toast.success("Content published successfully")
         
@@ -1620,10 +1641,20 @@ export default function ContentDetailPage() {
         // Refresh the content
         loadContent()
       } else {
+        console.error('[submitPublish] Publish failed:', {
+          error,
+          details: (result as any)?.details,
+          status: (result as any)?.status,
+          data,
+        });
         throw new Error(error || "Failed to publish")
       }
     } catch (error) {
-      console.error(error)
+      console.error('[submitPublish] Caught error:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        error,
+      });
       // Hide any mention of Outstand in error message
       const errMsg = error instanceof Error ? error.message : "Failed to publish content";
       const cleanErrMsg = errMsg.replace(/outstand/i, 'Social Media API').replace(/API Error/i, 'Error');
@@ -2628,6 +2659,12 @@ export default function ContentDetailPage() {
                 <p className="text-sm font-medium">Select Networks:</p>
                 <div className="space-y-2">
                   {socialMedia.map((social, idx) => {
+                    const publishReady = isSocialMediaEntryConnected(social)
+                    const publishChip = publishReady ? (
+                      <Badge variant="secondary" className="text-[10px] font-medium shrink-0 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-0">
+                        Publish ready
+                      </Badge>
+                    ) : null;
                     // Si tiene connectedPages, mostramos un checkbox por cada una
                     if (social.connectedPages && Array.isArray(social.connectedPages) && social.connectedPages.length > 0) {
                       return social.connectedPages.map((page: any, pageIdx: number) => {
@@ -2648,13 +2685,15 @@ export default function ContentDetailPage() {
                           />
                           <label 
                             htmlFor={`social-${uniqueId}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2 flex-wrap"
                           >
                             {getNetworkIcon(social.platform)}
-                            {page.name || social.accountName || social.platform}
+                            <span className="truncate">{page.name || social.accountName || social.platform}</span>
+                            {publishChip}
                           </label>
                         </div>
-                      )})
+                      );
+                    });
                     }
 
                     const networkId = social.account_id || social.accountId || social.id || social.platform;
@@ -2673,10 +2712,11 @@ export default function ContentDetailPage() {
                       />
                       <label 
                         htmlFor={`social-${networkId}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2 flex-wrap"
                       >
                         {getNetworkIcon(social.platform)}
-                        {social.accountName || social.platform}
+                        <span className="truncate">{social.accountName || social.platform}</span>
+                        {publishChip}
                       </label>
                     </div>
                   )})}

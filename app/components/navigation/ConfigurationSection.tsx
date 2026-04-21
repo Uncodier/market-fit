@@ -65,11 +65,10 @@ export function ConfigurationSection({
 
   const settingsUrlTab =
     searchParams.get("tab") || searchParams.get("segment") || ""
-  /** On /settings but only via Automation nav (channels / activities / skills) — do not highlight Configuration > Settings */
+  /** On /settings but only via Automation nav (channels / activities) — do not highlight Configuration > Settings */
   const isAutomationOnlySettingsTab =
     settingsUrlTab === "channels" ||
-    settingsUrlTab === "activities" ||
-    settingsUrlTab === "skills"
+    settingsUrlTab === "activities"
   const isOnSettingsPath = pathname.startsWith("/settings")
   const isSettingsSidebarRouteActive =
     isOnSettingsPath && !isAutomationOnlySettingsTab

@@ -195,17 +195,6 @@ const getInitialCopywritingSections = (t: (key: string) => string): QuickNavSect
   },
 ]
 
-const getSkillsSections = (t: (key: string) => string): QuickNavSection[] => [
-  {
-    id: "skills",
-    title: t('settings.nav.skills') || "Code agent skills",
-    children: [
-      { id: "skill-frontend-blog-seo", title: "Frontend Blog & SEO" },
-      { id: "skill-makinari", title: "Makinari MCP" },
-    ]
-  },
-]
-
 const getActivitiesSections = (t: (key: string) => string): QuickNavSection[] => [
   { 
     id: "activities", 
@@ -301,7 +290,7 @@ export default function SettingsPage() {
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('segment')
-    if (tab && ["general", "channels", "team", "activities", "social", "skills"].includes(tab)) {
+    if (tab && ["general", "channels", "team", "activities", "social"].includes(tab)) {
       setActiveSegment(tab)
     }
   }, [searchParams])
@@ -442,8 +431,6 @@ export default function SettingsPage() {
         return getActivitiesSections(t)
       case "social":
         return socialSections
-      case "skills":
-        return getSkillsSections(t)
       default:
         return []
     }
@@ -460,7 +447,6 @@ export default function SettingsPage() {
                 <TabsTrigger value="general">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
                 <TabsTrigger value="team">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
                 <TabsTrigger value="social">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
-                <TabsTrigger value="skills">{t('settings.tabs.skills') || 'Code agent skills'}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -486,8 +472,7 @@ export default function SettingsPage() {
 
   const showSettingsTabBar =
     activeSegment !== "channels" &&
-    activeSegment !== "activities" &&
-    activeSegment !== "skills"
+    activeSegment !== "activities"
 
   return (
     <div className="flex-1">
@@ -499,7 +484,6 @@ export default function SettingsPage() {
                 <TabsTrigger value="general" className="whitespace-nowrap">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
                 <TabsTrigger value="team" className="whitespace-nowrap">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
                 <TabsTrigger value="social" className="whitespace-nowrap">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
-                <TabsTrigger value="skills" className="whitespace-nowrap">{t('settings.tabs.skills') || 'Code agent skills'}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>

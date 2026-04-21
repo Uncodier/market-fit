@@ -2,8 +2,22 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { useLayout } from "@/app/context/LayoutContext"
 import { Button } from "@/app/components/ui/button"
 import { ZoomIn, ZoomOut, Maximize, LayoutGrid } from "@/app/components/ui/icons"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import debounce from "lodash/debounce"
 import { useTheme } from "@/app/context/ThemeContext"
+import type { ViewportStore } from "@/app/lib/imprenta-viewport-store"
+
+/**
+ * Returns true when the event target is an editable field, so canvas
+ * shortcuts don't hijack typing.
+ */
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true
+  if (target.isContentEditable) return true
+  return false
+}
 
 /** Canvas pan/zoom in screen space; use with worldViewportFromCanvas for graph culling. */
 export type ZoomableViewportInfo = {
@@ -36,6 +50,23 @@ interface ZoomableCanvasProps {
   graphBounds?: { width: number; height: number } | null
   /** Fired when pan/zoom changes (throttled to rAF during drag). For viewport virtualization. */
   onViewportTransformChange?: (info: ZoomableViewportInfo) => void
+  /**
+   * Optional external store so sibling canvases (edges, nodes) can subscribe to transform
+   * changes without re-rendering the React tree. Writes occur on the same rAF boundary
+   * as `onViewportTransformChange`.
+   */
+  viewportStore?: ViewportStore
+  /**
+   * Rendered in the canvas container at screen space, above the background and below the
+   * transformed content. Canvases that do their own world-to-screen mapping go here so
+   * they stay viewport-sized (bitmap O(screen) instead of O(world)).
+   */
+  screenSpaceBehind?: React.ReactNode
+  /**
+   * Rendered at screen space *above* the transformed content. For overlays that must not
+   * be occluded by DOM nodes.
+   */
+  screenSpaceFront?: React.ReactNode
 }
 
 export function ZoomableCanvas({ 
@@ -54,7 +85,10 @@ export function ZoomableCanvas({
   initialOffsetY = 0,
   measureAsViewportFill = false,
   graphBounds = null,
-  onViewportTransformChange
+  onViewportTransformChange,
+  viewportStore,
+  screenSpaceBehind,
+  screenSpaceFront,
 }: ZoomableCanvasProps) {
   // Use the layout context to get the current state
   const { isLayoutCollapsed } = useLayout();
@@ -92,23 +126,30 @@ export function ZoomableCanvas({
 
   const onViewportTransformChangeRef = useRef(onViewportTransformChange);
   onViewportTransformChangeRef.current = onViewportTransformChange;
+  const viewportStoreRef = useRef(viewportStore);
+  viewportStoreRef.current = viewportStore;
   const viewportNotifyRafRef = useRef<number | null>(null);
 
   const flushViewportNotify = useCallback(() => {
     viewportNotifyRafRef.current = null;
-    const cb = onViewportTransformChangeRef.current;
-    if (!cb || !canvasRef.current) return;
+    if (!canvasRef.current) return;
     const r = canvasRef.current.getBoundingClientRect();
-    cb({
+    const info: ZoomableViewportInfo = {
       scale: scaleRef.current,
       position: { ...positionRef.current },
       canvasWidth: r.width,
       canvasHeight: r.height,
-    });
+    };
+    const store = viewportStoreRef.current;
+    if (store) {
+      store.set(info);
+    }
+    const cb = onViewportTransformChangeRef.current;
+    if (cb) cb(info);
   }, []);
 
   const scheduleViewportNotify = useCallback(() => {
-    if (!onViewportTransformChangeRef.current) return;
+    if (!onViewportTransformChangeRef.current && !viewportStoreRef.current) return;
     if (viewportNotifyRafRef.current != null) return;
     viewportNotifyRafRef.current = requestAnimationFrame(flushViewportNotify);
   }, [flushViewportNotify]);
@@ -123,9 +164,16 @@ export function ZoomableCanvas({
   }, []);
 
   useEffect(() => {
-    if (!isInitialized || !onViewportTransformChangeRef.current) return;
+    if (!isInitialized) return;
+    if (!onViewportTransformChangeRef.current && !viewportStoreRef.current) return;
     flushViewportNotify();
   }, [isInitialized, scale, position, flushViewportNotify]);
+
+  useEffect(() => {
+    const store = viewportStoreRef.current;
+    if (!store) return;
+    store.setInteracting(isUserInteracting);
+  }, [isUserInteracting]);
 
   useEffect(() => {
     positionRef.current = position;
@@ -319,9 +367,7 @@ export function ZoomableCanvas({
         contentRef.current.style.transform = `translate3d(${targetX}px, ${targetY}px, 0) scale(${targetScale})`;
       }
       
-      if (backgroundRef.current) {
-        backgroundRef.current.style.transform = `translate3d(${targetX}px, ${targetY}px, 0) scale(${targetScale})`;
-      }
+      applyBackgroundTransformRef.current(targetX, targetY, targetScale);
       
       return;
     }
@@ -354,9 +400,7 @@ export function ZoomableCanvas({
         contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
       }
       
-      if (backgroundRef.current) {
-        backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
-      }
+      applyBackgroundTransformRef.current(newX, newY, newScale);
       
       // Update state less frequently to avoid React re-renders
       // Only update state at beginning, middle and end for better performance
@@ -398,11 +442,7 @@ export function ZoomableCanvas({
           contentRef.current.style.transition = 'opacity 0.2s ease-in';
           contentRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${newScale})`;
         }
-        
-        if (backgroundRef.current) {
-          backgroundRef.current.style.transition = 'opacity 0.2s ease-in';
-          backgroundRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${newScale})`;
-        }
+        applyBackgroundTransformRef.current(x, y, newScale);
       });
     }
   }, [animateToPosition]);
@@ -416,10 +456,7 @@ export function ZoomableCanvas({
     if (contentRef.current) {
       contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
     }
-    
-    if (backgroundRef.current) {
-      backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
-    }
+    applyBackgroundTransformRef.current(newX, newY, newScale);
     
     // Update state
     setScale(newScale);
@@ -561,10 +598,7 @@ export function ZoomableCanvas({
         if (contentRef.current) {
           contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
         }
-        
-        if (backgroundRef.current) {
-          backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
-        }
+        applyBackgroundTransformRef.current(newX, newY, newScale);
         
         // Update state
         setScale(newScale);
@@ -603,10 +637,7 @@ export function ZoomableCanvas({
       if (contentRef.current) {
         contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
       }
-      
-      if (backgroundRef.current) {
-        backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
-      }
+      applyBackgroundTransformRef.current(newX, newY, newScale);
       
       // Update state
       setScale(newScale);
@@ -643,10 +674,7 @@ export function ZoomableCanvas({
       if (contentRef.current) {
         contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
       }
-      
-      if (backgroundRef.current) {
-        backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
-      }
+      applyBackgroundTransformRef.current(newX, newY, newScale);
       
       // Update state
       setScale(newScale);
@@ -696,9 +724,7 @@ export function ZoomableCanvas({
     if (contentRef.current) {
       contentRef.current.style.transform = `translate3d(${newPosition.x}px, ${newPosition.y}px, 0) scale(${s})`;
     }
-    if (backgroundRef.current) {
-      backgroundRef.current.style.transform = `translate3d(${newPosition.x}px, ${newPosition.y}px, 0) scale(${s})`;
-    }
+    applyBackgroundTransformRef.current(newPosition.x, newPosition.y, s);
     
     e.stopPropagation();
     scheduleViewportNotify();
@@ -758,12 +784,14 @@ export function ZoomableCanvas({
       setScale(scaleRef.current);
       setPosition({ ...positionRef.current });
       setIsZoomedIn(scaleRef.current > 0.9);
-      onViewportTransformChangeRef.current?.({
+      const info: ZoomableViewportInfo = {
         scale: scaleRef.current,
         position: { ...positionRef.current },
         canvasWidth: canvasRef.current?.getBoundingClientRect().width ?? 0,
         canvasHeight: canvasRef.current?.getBoundingClientRect().height ?? 0,
-      });
+      };
+      viewportStoreRef.current?.set(info);
+      onViewportTransformChangeRef.current?.(info);
     };
 
     const wheelHandler = (e: WheelEvent) => {
@@ -795,9 +823,7 @@ export function ZoomableCanvas({
       if (contentRef.current) {
         contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
       }
-      if (backgroundRef.current) {
-        backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
-      }
+      applyBackgroundTransformRef.current(newX, newY, newScale);
 
       if (wheelZoomRaf == null) {
         wheelZoomRaf = requestAnimationFrame(flushWheelZoom);
@@ -811,28 +837,28 @@ export function ZoomableCanvas({
     };
   }, []);
 
-  // CSS for dot pattern background (infinite grid)
+  // Dot pattern: painted directly on the canvas-sized container via background-repeat.
+  // Pan is applied as background-position and zoom as background-size, so the grid is
+  // infinite within the canvas regardless of pan distance or zoom level. Using a
+  // transformed giant tile (old approach) left bare bands on deep pans / zoom-outs
+  // because the tile edges eventually entered the viewport.
   const currentColor = isDarkMode ? dotColorDark : dotColorLight;
-  // Large tile in viewport units so pan/zoom (translate + scale from 0,0) never leaves bare corners;
-  // overflow:hidden on this layer used to clip the expanded tile and caused empty top/left bands.
-  // Smaller tile than 300vmax: Safari pays a high cost compositing huge repeating radial-gradient layers.
-  // 200vmax still covers typical pan/zoom when combined with overflow visible + canvas clip.
-  const dotPatternStyle = {
-    backgroundSize: `${dotSize} ${dotSize}`,
-    backgroundImage: `
-      radial-gradient(circle, ${currentColor} ${dotRadius}, transparent ${dotRadius})
-    `,
-    backgroundPosition: '0 0',
-    backgroundRepeat: 'repeat',
-    backgroundColor: 'transparent',
-    position: 'absolute',
-    top: '-50vmax',
-    left: '-50vmax',
-    width: '200vmax',
-    height: '200vmax',
-    transformOrigin: '0 0',
-    pointerEvents: 'none'
-  } as React.CSSProperties;
+  const dotSizeNum = parseFloat(dotSize) || 24;
+  const dotRadiusNum = parseFloat(dotRadius) || 1;
+  // `closest-side` makes the gradient extent = half the tile side; stop in % so the dot
+  // radius scales proportionally with backgroundSize (consistent look at any zoom).
+  const dotStopPct = Math.min(50, Math.max(0, (dotRadiusNum / (dotSizeNum / 2)) * 100));
+  const dotBackgroundImage = `radial-gradient(circle closest-side, ${currentColor} ${dotStopPct}%, transparent ${dotStopPct}%)`;
+
+  /** Mirror the content transform onto the dot pattern by updating bgSize + bgPosition. */
+  const applyBackgroundTransformRef = useRef<(x: number, y: number, s: number) => void>(() => {});
+  applyBackgroundTransformRef.current = (x: number, y: number, s: number) => {
+    const el = backgroundRef.current;
+    if (!el) return;
+    const size = dotSizeNum * s;
+    el.style.backgroundSize = `${size}px ${size}px`;
+    el.style.backgroundPosition = `${x}px ${y}px`;
+  };
 
   // Update cursor when drag state changes
   useEffect(() => {
@@ -900,7 +926,7 @@ export function ZoomableCanvas({
       const newScale = Math.max(Math.min(touchStartScale * scaleFactor, 2), 0.3);
       
       // Apply direct transform for better performance
-      if (contentRef.current && backgroundRef.current) {
+      if (contentRef.current) {
         const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
         
@@ -914,7 +940,7 @@ export function ZoomableCanvas({
           const newY = canvasY - (canvasY - positionRef.current.y) * scaleRatio;
           
           contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
-          backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
+          applyBackgroundTransformRef.current(newX, newY, newScale);
           
           setScale(newScale);
           setPosition({ x: newX, y: newY });
@@ -928,13 +954,13 @@ export function ZoomableCanvas({
       const dy = e.touches[0].clientY - startDragPositionRef.current.y;
       startDragPositionRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       
-      if (contentRef.current && backgroundRef.current) {
+      if (contentRef.current) {
         const newX = positionRef.current.x + dx;
         const newY = positionRef.current.y + dy;
         positionRef.current = { x: newX, y: newY };
         const s = scaleRef.current;
         contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${s})`;
-        backgroundRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${s})`;
+        applyBackgroundTransformRef.current(newX, newY, s);
         scheduleViewportNotify();
       }
     }
@@ -965,6 +991,35 @@ export function ZoomableCanvas({
       }
     };
   }, []);
+
+  // Keyboard shortcuts: +/- zoom, 1 fit, Shift+L sort layout. Skip when typing.
+  const onSortRef = useRef(onSort);
+  onSortRef.current = onSort;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isEditableTarget(e.target)) return;
+      // Don't interfere with browser zoom (Cmd/Ctrl +/-) or existing system shortcuts.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        zoomIn();
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        zoomOut();
+      } else if (e.key === "1" && !e.shiftKey) {
+        e.preventDefault();
+        resetView();
+      } else if (e.shiftKey && (e.key === "L" || e.key === "l")) {
+        if (onSortRef.current) {
+          e.preventDefault();
+          onSortRef.current();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [zoomIn, zoomOut, resetView]);
 
   return (
     <div 
@@ -1000,24 +1055,39 @@ export function ZoomableCanvas({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Dot pattern background layer that moves with content */}
-        <div 
+        {/* Dot pattern background: fills the canvas; pan/zoom via bg-position + bg-size
+            so the pattern is effectively infinite (no bare edges on deep pans / zoom-out). */}
+        <div
           ref={backgroundRef}
-          style={{ 
-            transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
-            transformOrigin: '0 0',
-            transition: 'opacity 0.2s ease-in',
-            opacity: isInitialized ? 1 : 0,
+          style={{
             position: 'absolute',
             inset: 0,
-            display: 'block',
             zIndex: 0,
-            overflow: 'visible',
+            pointerEvents: 'none',
+            backgroundImage: dotBackgroundImage,
+            backgroundSize: `${dotSizeNum * scale}px ${dotSizeNum * scale}px`,
+            backgroundPosition: `${position.x}px ${position.y}px`,
+            backgroundRepeat: 'repeat',
+            backgroundColor: 'transparent',
+            transition: 'opacity 0.2s ease-in',
+            opacity: isInitialized ? 1 : 0,
           }}
-        >
-          <div style={dotPatternStyle}></div>
-        </div>
+        />
         
+        {/* Screen-space layer below the content (e.g. canvas-drawn edges). */}
+        {screenSpaceBehind && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 1,
+              pointerEvents: "none",
+            }}
+          >
+            {screenSpaceBehind}
+          </div>
+        )}
+
         {/* Content with transformation */}
         <div 
           ref={contentRef}
@@ -1033,68 +1103,133 @@ export function ZoomableCanvas({
             width: 'auto',
             minWidth: 'max-content',
             height: 'auto',
-            zIndex: 1,
+            zIndex: 2,
             overflow: "visible",
             paddingRight: "20px",
+            // NOTE: deliberately NO `will-change: transform` here. The content
+            // wrapper spans the full graph bounding box (which can be very
+            // large); promoting it to its own GPU layer forced Safari to
+            // rasterize a huge texture that often did not fit in VRAM and
+            // fell back to software compositing, making pan *slower*.
           }}
         >
           {children}
         </div>
-      </div>
 
-      {/* Zoom control panel with fixed position */}
-      <div 
-        className="fixed bottom-8 flex items-center gap-1.5 bg-background/95 backdrop-blur-sm p-1.5 rounded-lg shadow-md border dark:border-white/5 border-black/5 z-50"
-        style={{ 
-          left: `${isLayoutCollapsed ? 92 : 268}px`, 
-          transition: 'left 0.2s ease-out' // Smooth transition when position changes
-        }}
-      >
-        <Button
-          variant="ghost" 
-          size="icon"
-          onClick={zoomIn}
-          className="h-8 w-8"
-          aria-label="Zoom in"
-        >
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost" 
-          size="icon"
-          onClick={zoomOut}
-          className="h-8 w-8"
-          aria-label="Zoom out"
-        >
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost" 
-          size="icon"
-          onClick={resetView}
-          className="h-8 w-8"
-          aria-label="Reset view"
-        >
-          <Maximize className="h-4 w-4" />
-        </Button>
-        {onSort && (
-          <Button
-            variant="ghost" 
-            size="icon"
-            onClick={onSort}
-            className="h-8 w-8"
-            title="Sort layout"
+        {/* Screen-space layer above the content (e.g. hit-testing / hover overlays).
+            The wrapper itself is transparent to pointer events; children opt in via their own styles. */}
+        {screenSpaceFront && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 3,
+              pointerEvents: "none",
+            }}
           >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-        )}
-        
-        {extraControls && (
-          <div className="ml-1 pl-1.5 border-l border-border flex items-center">
-            {extraControls}
+            {screenSpaceFront}
           </div>
         )}
       </div>
+
+      {/* Zoom control panel with fixed position */}
+      <TooltipProvider delayDuration={200}>
+        <div
+          className="fixed bottom-8 flex items-center gap-1.5 bg-background/95 backdrop-blur-sm p-1.5 rounded-lg shadow-md border dark:border-white/5 border-black/5 z-50"
+          style={{
+            left: `${isLayoutCollapsed ? 92 : 268}px`,
+            transition: 'left 0.2s ease-out' // Smooth transition when position changes
+          }}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={zoomIn}
+                className="h-8 w-8"
+                aria-label="Zoom in"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6}>
+              <span className="flex items-center gap-2">
+                Zoom in
+                <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">+</kbd>
+              </span>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={zoomOut}
+                className="h-8 w-8"
+                aria-label="Zoom out"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6}>
+              <span className="flex items-center gap-2">
+                Zoom out
+                <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">−</kbd>
+              </span>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={resetView}
+                className="h-8 w-8"
+                aria-label="Fit to screen"
+              >
+                <Maximize className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6}>
+              <span className="flex items-center gap-2">
+                Fit to screen
+                <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">1</kbd>
+              </span>
+            </TooltipContent>
+          </Tooltip>
+
+          {onSort && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onSort}
+                  className="h-8 w-8"
+                  aria-label="Sort layout"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6}>
+                <span className="flex items-center gap-2">
+                  Sort layout
+                  <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">Shift L</kbd>
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {extraControls && (
+            <div className="ml-1 pl-1.5 border-l border-border flex items-center">
+              {extraControls}
+            </div>
+          )}
+        </div>
+      </TooltipProvider>
     </div>
   );
 }

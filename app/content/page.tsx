@@ -78,6 +78,7 @@ import { TrendsSection, TrendsColumn } from "@/app/components/trends"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { isSocialMediaEntryConnected } from "@/app/components/settings/data-adapter"
 
 const CONTENT_STATUSES = [
   { id: 'draft' },
@@ -2834,6 +2835,12 @@ export default function ContentPage() {
                 <p className="text-sm font-medium">Select Networks:</p>
                 <div className="space-y-2">
                   {socialMedia.map((social, idx) => {
+                    const publishReady = isSocialMediaEntryConnected(social)
+                    const publishChip = publishReady ? (
+                      <Badge variant="secondary" className="text-[10px] font-medium shrink-0 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-0">
+                        Publish ready
+                      </Badge>
+                    ) : null;
                     // Si tiene connectedPages, mostramos un checkbox por cada una
                     if (social.connectedPages && Array.isArray(social.connectedPages) && social.connectedPages.length > 0) {
                       return social.connectedPages.map((page: any, pageIdx: number) => {
@@ -2854,10 +2861,11 @@ export default function ContentPage() {
                           />
                           <label 
                             htmlFor={`social-${uniqueId}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2 flex-wrap"
                           >
                             {getNetworkIcon(social.platform)}
-                            {page.name || social.accountName || social.platform}
+                            <span className="truncate">{page.name || social.accountName || social.platform}</span>
+                            {publishChip}
                           </label>
                         </div>
                       );
@@ -2880,10 +2888,11 @@ export default function ContentPage() {
                       />
                       <label 
                         htmlFor={`social-${networkId}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize flex items-center gap-2 flex-wrap"
                       >
                         {getNetworkIcon(social.platform)}
-                        {social.accountName || social.platform}
+                        <span className="truncate">{social.accountName || social.platform}</span>
+                        {publishChip}
                       </label>
                     </div>
                   );

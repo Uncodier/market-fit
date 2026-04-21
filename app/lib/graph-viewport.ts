@@ -91,3 +91,18 @@ export function collectIdsFromGrid(
   }
   return out
 }
+
+/**
+ * Stable key for a viewport rectangle quantized to grid cells. Subscribers can compare
+ * the key across pan frames and skip expensive recomputes (visible set, DOM full-card mount)
+ * when the viewport still covers the same cells.
+ */
+export function quantizeViewport(viewport: GraphBBox, cellSize = DEFAULT_CELL): string {
+  const x0 = Math.floor(viewport.minX / cellSize)
+  const x1 = Math.floor(viewport.maxX / cellSize)
+  const y0 = Math.floor(viewport.minY / cellSize)
+  const y1 = Math.floor(viewport.maxY / cellSize)
+  return `${x0},${y0},${x1},${y1}`
+}
+
+export { DEFAULT_CELL }

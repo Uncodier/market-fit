@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef, us
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal, ExternalLink, RotateCw } from "@/app/components/ui/icons"
+import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -226,6 +226,7 @@ function RobotsPageContent() {
   const prevSiteIdRef = useRef<string | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [instanceToDelete, setInstanceToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [deletingInstanceIds, setDeletingInstanceIds] = useState<Set<string>>(new Set())
   
   // Refs and state for responsive tabs
   const tabsContainerRef = useRef<HTMLDivElement>(null)
@@ -1038,7 +1039,9 @@ function RobotsPageContent() {
                       
                       return (
                         <>
-                          {visibleInstances.map((inst) => (
+                          {visibleInstances.map((inst) => {
+                            const isDeletingInstance = deletingInstanceIds.has(inst.id)
+                            return (
                             <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id}>
                               <span className="flex items-center gap-2 max-w-[120px]">
                                 {['running','active'].includes((inst as any).status) ? (
@@ -1050,14 +1053,21 @@ function RobotsPageContent() {
                                 <span
                                   onClick={(e) => {
                                     e.stopPropagation()
+                                    if (isDeletingInstance) return
                                     setInstanceToDelete({ id: inst.id, name: inst.name || `ag-${inst.id.slice(-4)}` })
                                     setIsDeleteModalOpen(true)
                                   }}
-                                  className="ml-1.5 flex items-center justify-center h-4 w-4 rounded-full hover:bg-destructive/10 transition-colors cursor-pointer"
-                                  title="Eliminar conversación"
+                                  className={`ml-1.5 flex items-center justify-center h-4 w-4 rounded-full transition-colors ${
+                                    isDeletingInstance
+                                      ? "cursor-default"
+                                      : "hover:bg-destructive/10 cursor-pointer"
+                                  }`}
+                                  title={isDeletingInstance ? "Eliminando..." : "Eliminar conversación"}
                                   role="button"
-                                  tabIndex={0}
+                                  tabIndex={isDeletingInstance ? -1 : 0}
+                                  aria-disabled={isDeletingInstance}
                                   onKeyDown={(e) => {
+                                    if (isDeletingInstance) return
                                     if (e.key === 'Enter' || e.key === ' ') {
                                       e.preventDefault()
                                       e.stopPropagation()
@@ -1066,11 +1076,16 @@ function RobotsPageContent() {
                                     }
                                   }}
                                 >
-                                  <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                  {isDeletingInstance ? (
+                                    <Loader className="h-3 w-3 text-destructive" size={12} />
+                                  ) : (
+                                    <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                  )}
                                 </span>
                               </span>
                             </TabsTrigger>
-                          ))}
+                            )
+                          })}
                           
                           {/* Show "..." button when there are hidden tabs */}
                           {needsOverflow && hiddenInstances.length > 0 && (
@@ -1120,6 +1135,7 @@ function RobotsPageContent() {
           setInstanceToDelete({ id: instance.id, name: instance.name })
           setIsDeleteModalOpen(true)
         }}
+        deletingInstanceIds={deletingInstanceIds}
       />
 
       {/* Delete Confirmation Modal */}
@@ -1134,6 +1150,21 @@ function RobotsPageContent() {
           }}
           instanceId={instanceToDelete.id}
           instanceName={instanceToDelete.name}
+          onDeleteStart={(id) => {
+            setDeletingInstanceIds(prev => {
+              const next = new Set(prev)
+              next.add(id)
+              return next
+            })
+          }}
+          onDeleteError={(id) => {
+            setDeletingInstanceIds(prev => {
+              if (!prev.has(id)) return prev
+              const next = new Set(prev)
+              next.delete(id)
+              return next
+            })
+          }}
           onDeleteSuccess={async () => {
             
             // Save the deleted instance ID before clearing state
@@ -1277,6 +1308,15 @@ function RobotsPageContent() {
               params.set('instance', 'new')
               params.delete('name')
               router.replace(`/robots?${params.toString()}`)
+            } finally {
+              if (deletedInstanceId) {
+                setDeletingInstanceIds(prev => {
+                  if (!prev.has(deletedInstanceId)) return prev
+                  const next = new Set(prev)
+                  next.delete(deletedInstanceId)
+                  return next
+                })
+              }
             }
           }}
         />

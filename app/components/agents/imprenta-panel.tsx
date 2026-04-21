@@ -8,17 +8,26 @@ import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { createClient } from "@/lib/supabase/client"
 import { ZoomableCanvas, type ZoomableViewportInfo } from "./zoomable-canvas"
 import { ImprentaParentEdgesCanvas } from "./imprenta-parent-edges-canvas"
+import { ImprentaNodesCanvas } from "./imprenta-nodes-canvas"
 import {
   worldViewportFromCanvas,
   bboxIntersects,
   buildNodeCellGrid,
   collectIdsFromGrid,
+  quantizeViewport,
   type GraphBBox,
 } from "@/app/lib/graph-viewport"
+import {
+  createViewportStore,
+  type ViewportSnapshot,
+  type ViewportStore,
+} from "@/app/lib/imprenta-viewport-store"
+import { getImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
-import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, FileText, Bot, Eye, Trash2, GitFork, Link, Copy, Globe, Mail, Phone, UploadCloud, Download, ZoomIn, X } from "@/app/components/ui/icons"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { Plus, Play, RotateCcw as RefreshCw, AlertCircle, FileText, Bot, Eye, Trash2, GitFork, Link, Copy, Globe, Mail, Phone, Tag, UploadCloud, Download, ZoomIn, X } from "@/app/components/ui/icons"
 import { AudioPlayer } from "./audio-player"
 import { SocialIcon } from "@/app/components/ui/social-icons"
 import { InstanceNode } from "@/app/types/instance-nodes"
@@ -26,6 +35,8 @@ import { toast } from "sonner"
 import { uploadAssetFile } from "@/app/assets/actions"
 import { AnimatedConnectionLine } from "./animated-connection-line"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { ImprentaContextTypeSelect } from "@/app/components/agents/imprenta-context-type-select"
+import { Switch } from "@/app/components/ui/switch"
 import { Textarea } from "@/app/components/ui/textarea"
 import { MediaParametersToolbar } from "../simple-messages-view/components/MediaParametersToolbar"
 import { ImageParameters, VideoParameters, AudioParameters } from "../simple-messages-view/types"
@@ -84,6 +95,14 @@ const IMPRENTA_VIEWPORT_CULL_PAD = 96
 /** Canvas scale above which full node cards render; below uses lite shells. */
 const IMPRENTA_LOD_FULL_DETAIL_SCALE = 0.4
 /**
+ * Below this total node count the graph stays in full DOM detail at ANY zoom.
+ * Virtualization alone is enough for small/medium instances: the lite canvas
+ * layer only buys you meaningful wins when the visible-node count at far zoom
+ * would otherwise explode. Keep this generous so typical workflows never see
+ * the "skeleton pop" when zooming out.
+ */
+const IMPRENTA_LOD_LITE_MIN_NODES = 400
+/**
  * Within lite shells only (scale < IMPRENTA_LOD_FULL_DETAIL_SCALE):
  * - micro: minimal chrome + optional tiny preview
  * - simple: compact type layout + one small preview when images exist
@@ -97,6 +116,8 @@ const IMPRENTA_LOD_LITE_MICRO_MAX = 0.32
 const IMPRENTA_LOD_LITE_SIMPLE_MAX = 0.36
 
 type ImprentaLiteSkeletonBand = "micro" | "simple" | "rich"
+
+type LoadingRouteEdge = { parentId: string; childId: string }
 
 function imprentaLiteSkeletonBand(scale: number): ImprentaLiteSkeletonBand {
   if (scale < IMPRENTA_LOD_LITE_MICRO_MAX) return "micro"
@@ -246,280 +267,247 @@ function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): nu
 }
 
 /** Skeleton lines/blocks: higher contrast on dark canvas. */
-const skLine = "rounded-full bg-foreground/25 dark:bg-foreground/32 animate-pulse"
-const skBlock = "rounded-xl bg-muted/75 dark:bg-muted/60 border border-border animate-pulse"
-const skTab = "h-7 rounded-full bg-muted/85 dark:bg-muted/70 border border-border animate-pulse"
+const skLine = "rounded-full bg-foreground/22 dark:bg-foreground/28 animate-pulse"
+const skBlock = "rounded-xl bg-muted/70 dark:bg-muted/55 border border-border animate-pulse"
 const skMedia = "rounded-2xl bg-muted/80 dark:bg-muted/65 border border-border animate-pulse"
 
-/** Match full-card media width: card is IMPRENTA_NODE_W with mx-3 (12px) gutters. */
-const IMPRENTA_LITE_MEDIA_GUTTER = "mx-3"
-const IMPRENTA_LITE_MEDIA_WIDTH = "w-[calc(100%-1.5rem)]"
+/** Match the full-card layout (p-5, NO heavy header bar). */
+const IMPRENTA_LITE_MEDIA_WIDTH = "w-full"
 
+/** Map node type -> active pill index inside the media-type segmented control. */
+function imprentaSegmentedActiveIndex(type: string): number {
+  switch (type) {
+    case "generate-image":
+      return 1
+    case "generate-video":
+      return 2
+    case "generate-audio":
+      return 3
+    case "generate-audience":
+      return 4
+    case "publish":
+      return 5
+    case "prompt":
+    default:
+      return 0
+  }
+}
+
+function imprentaNodeHasResult(node: InstanceNode): boolean {
+  const r = node.result as Record<string, unknown> | undefined
+  return !!r && typeof r === "object" && Object.keys(r).length > 0
+}
+
+/**
+ * DOM twin of `drawLiteNode`: renders the exact structural silhouette of a
+ * final card so when users drag or zoom the shell they see the same three-zone
+ * layout (label → segmented/body → separator + action buttons) instead of a
+ * bare rounded rectangle.
+ */
 function ImprentaLiteSkeletonBody({ node, zoomScale }: { node: InstanceNode; zoomScale: number }) {
   const band = imprentaLiteSkeletonBand(zoomScale)
   const type = node.type ?? "prompt"
+  const rich = band === "rich"
+  const micro = band === "micro"
   const imageUrls = useMemo(() => collectImprentaLiteImagePreviewUrls(node, 4), [node.id, node.result])
   const videoUrls = useMemo(() => collectImprentaLiteVideoPreviewUrls(node, 2), [node.id, node.result])
-
-  const tabsRich = (
-    <div className="flex flex-wrap gap-1.5 shrink-0 px-3 pt-2.5">
-      <div className={`${skTab} w-[4.5rem]`} />
-      <div className={`${skTab} w-[4.5rem] opacity-80`} />
-      <div className={`${skTab} w-20 opacity-65`} />
-      <div className={`${skTab} w-16 opacity-55`} />
-    </div>
-  )
-  const tabsSimple = (
-    <div className="flex flex-wrap gap-1.5 shrink-0 px-3 pt-2">
-      <div className={`${skTab} w-16`} />
-      <div className={`${skTab} w-14 opacity-78`} />
-    </div>
-  )
-  const tabs = band === "rich" ? tabsRich : tabsSimple
+  const cover = imageUrls[0]
+  const coverVideo = !cover ? videoUrls[0] : null
+  const hasResult = imprentaNodeHasResult(node)
+  const activeIdx = imprentaSegmentedActiveIndex(type)
   /** Nearer to full-card zoom: fetch previews earlier so the shell matches readability. */
-  const priorityPreviews = band === "rich"
+  const priorityPreviews = rich
 
-  const extraThumbs =
-    band === "rich" && imageUrls.length > 1 ? (
-      <div className="flex flex-wrap justify-center gap-2 px-3 pb-2 shrink-0">
-        {imageUrls.slice(1, 4).map((url) => (
-          <span key={url} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border/80">
-            <ImprentaLazyPreviewImage
-              url={url}
-              width={128}
-              height={128}
-              priority={priorityPreviews}
-            />
-          </span>
-        ))}
+  /** Bottom separator + Generate (no result) / 4 action buttons (with result). */
+  const footer = (
+    <div className="mt-auto pt-3 border-t border-border/60">
+      {hasResult ? (
+        <div className="flex gap-2 w-full">
+          <div className={`h-8 flex-1 rounded-md ${skBlock}`} />
+          <div className={`h-8 flex-1 rounded-md ${skBlock} opacity-95`} />
+          <div className={`h-8 flex-1 rounded-md ${skBlock} opacity-90`} />
+          <div className={`h-8 flex-1 rounded-md ${skBlock} opacity-85`} />
+        </div>
+      ) : (
+        <div className={`h-9 w-full rounded-md ${skBlock}`} />
+      )}
+    </div>
+  )
+
+  // Micro band: tiny 3-zone silhouette (label strip · body · button strip).
+  if (micro) {
+    return (
+      <div className="flex h-full w-full flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className={`h-1.5 w-14 ${skLine}`} />
+          {hasResult && <div className={`h-1.5 w-9 ${skLine}`} />}
+        </div>
+        <div className={`flex-1 min-h-0 rounded-lg ${skBlock}`} />
+        <div className="h-px bg-border/60" />
+        {hasResult ? (
+          <div className="flex gap-1">
+            <div className={`h-5 flex-1 rounded-md ${skBlock}`} />
+            <div className={`h-5 flex-1 rounded-md ${skBlock}`} />
+            <div className={`h-5 flex-1 rounded-md ${skBlock}`} />
+            <div className={`h-5 flex-1 rounded-md ${skBlock}`} />
+          </div>
+        ) : (
+          <div className={`h-5 w-full rounded-md ${skBlock}`} />
+        )}
       </div>
-    ) : null
+    )
+  }
 
-  if (band === "micro") {
-    const u = imageUrls[0]
-    const v = videoUrls[0]
-    const typedMedia = type === "generate-image" || type === "generate-video"
-    /** Full-width cover (matches full card), not a row thumbnail — any result image/video or empty image/video node. */
-    const useCoverHero = typedMedia || !!u || !!v
+  /** Label row (TYPE / RESULT) + optional status badge. */
+  const header = (
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground leading-none truncate">
+        {hasResult ? "Result" : type.replace(/-/g, " ")}
+      </span>
+      {hasResult && <div className={`h-3.5 w-12 rounded ${skBlock}`} />}
+    </div>
+  )
 
-    if (useCoverHero) {
-      const videoLayout = type === "generate-video" || (!u && !!v)
-      return (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+  // --- Publish: 3 left-side anchors + destinations row + textarea -----------
+  if (type === "publish") {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col gap-3">
+        {header}
+        <div className="flex-1 min-h-0 flex gap-2">
+          <div className="flex flex-col justify-between shrink-0 py-1 w-4">
+            <div className="w-3.5 h-3.5 rounded-full border-2 border-primary/60 bg-background mx-auto" />
+            <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground/50 bg-background mx-auto" />
+            {rich && <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground/50 bg-background mx-auto" />}
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col gap-2">
+            {hasResult ? (
+              <div className={`flex-1 rounded-xl ${skBlock}`} />
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-1.5">
+                  <div className={`h-7 w-[4.5rem] rounded-full ${skBlock}`} />
+                  <div className={`h-7 w-[4.5rem] rounded-full ${skBlock}`} />
+                  <div className={`h-7 w-16 rounded-full ${skBlock}`} />
+                  {rich && <div className={`h-7 w-20 rounded-full ${skBlock}`} />}
+                </div>
+                <div className={`flex-1 min-h-[52px] rounded-xl ${skBlock}`} />
+              </>
+            )}
+          </div>
+        </div>
+        {footer}
+      </div>
+    )
+  }
+
+  // --- Result state ----------------------------------------------------------
+  if (hasResult) {
+    const videoLayout = !cover && !!coverVideo
+    return (
+      <div className="flex-1 min-h-0 flex flex-col gap-3">
+        {header}
+        {cover || coverVideo ? (
           <div
-            className={`${IMPRENTA_LITE_MEDIA_GUTTER} mt-2 mb-1 ${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-xl border border-border/80 ${
+            className={`${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border ${
               videoLayout ? "aspect-video" : "aspect-square"
             }`}
           >
-            {u ? (
+            {cover ? (
               <ImprentaLazyPreviewImage
-                url={u}
+                url={cover}
                 width={videoLayout ? 640 : 512}
                 height={videoLayout ? 360 : 512}
                 priority={priorityPreviews}
               />
-            ) : v ? (
-              <ImprentaLazyPreviewVideo url={v} priority={priorityPreviews} />
             ) : (
-              <div className={`h-full w-full ${skMedia} rounded-none border-0`} />
+              <ImprentaLazyPreviewVideo url={coverVideo!} priority={priorityPreviews} />
             )}
           </div>
-          <div className="flex min-h-0 flex-1 flex-col justify-end gap-1.5 px-3 pb-2">
-            <div className={`h-1.5 w-[92%] ${skLine}`} />
-            <div className={`h-1.5 w-[58%] ${skLine}`} style={{ animationDelay: "80ms" }} />
+        ) : (
+          <div className={`flex-1 min-h-[60px] rounded-xl ${skBlock} p-3 space-y-2`}>
+            <div className={`h-2 w-[92%] ${skLine}`} />
+            <div className={`h-2 w-[80%] ${skLine}`} />
+            {rich && <div className={`h-2 w-[68%] ${skLine}`} />}
           </div>
-        </div>
-      )
-    }
-
-    return (
-      <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5 px-3 py-2">
-        <div className={`h-1.5 w-[92%] ${skLine}`} />
-        <div className={`h-1.5 w-[58%] ${skLine}`} style={{ animationDelay: "80ms" }} />
+        )}
+        {footer}
       </div>
     )
   }
 
-  if (type === "publish") {
-    return (
-      <div className="flex-1 min-h-0 flex gap-2 pl-1 pr-3 py-3">
-        <div
-          className={`flex flex-col justify-between shrink-0 ${band === "rich" ? "py-1 w-5" : "py-0.5 w-4"}`}
-        >
-          <div className="w-3.5 h-3.5 rounded-full border-2 border-primary/60 bg-background mx-auto" />
-          <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground/50 bg-background mx-auto" />
-          {band === "rich" ? (
-            <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground/50 bg-background mx-auto" />
-          ) : null}
-        </div>
-        <div className="flex-1 min-w-0 flex flex-col gap-2.5">
-          {tabs}
-          <div className={`flex-1 ${band === "rich" ? "min-h-[72px]" : "min-h-[52px]"} ${skBlock}`} />
-          {band === "rich" ? (
-            <>
-              <div className={`h-2.5 w-[78%] ${skLine}`} />
-              <div className={`h-2.5 w-[55%] ${skLine}`} style={{ animationDelay: "100ms" }} />
-            </>
-          ) : (
-            <div className={`h-2 w-[72%] ${skLine}`} />
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "generate-image") {
-    return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {tabs}
-        <div
-          className={`${IMPRENTA_LITE_MEDIA_GUTTER} mt-2 mb-2 ${IMPRENTA_LITE_MEDIA_WIDTH} aspect-square max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border`}
-        >
-          {imageUrls[0] ? (
-            <ImprentaLazyPreviewImage
-              url={imageUrls[0]}
-              width={512}
-              height={512}
-              priority={priorityPreviews}
-            />
-          ) : (
-            <div className={`h-full w-full ${skMedia} rounded-none border-0`} />
-          )}
-        </div>
-        {extraThumbs}
-        <div className="px-4 pb-3 space-y-2">
-          <div className={`h-2.5 w-[88%] ${skLine}`} />
-          {band === "rich" ? (
-            <div className={`h-2.5 w-[64%] ${skLine}`} style={{ animationDelay: "120ms" }} />
-          ) : null}
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "generate-video") {
-    const u = imageUrls[0]
-    const v = videoUrls[0]
-    return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {tabs}
-        <div
-          className={`${IMPRENTA_LITE_MEDIA_GUTTER} mt-2 mb-2 ${IMPRENTA_LITE_MEDIA_WIDTH} aspect-video max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border`}
-        >
-          {u ? (
-            <ImprentaLazyPreviewImage
-              url={u}
-              width={640}
-              height={360}
-              priority={priorityPreviews}
-            />
-          ) : v ? (
-            <ImprentaLazyPreviewVideo url={v} priority={priorityPreviews} />
-          ) : (
-            <div className={`h-full w-full ${skMedia} rounded-none border-0`} />
-          )}
-        </div>
-        {extraThumbs}
-        <div className="px-4 pb-3 space-y-2">
-          <div className={`h-2.5 w-[90%] ${skLine}`} />
-          {band === "rich" ? <div className={`h-2.5 w-[50%] ${skLine}`} /> : null}
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "generate-audio") {
-    const barCount = band === "rich" ? 24 : 8
-    return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        {tabs}
-        <div
-          className={`mx-3 mt-3 mb-2 flex items-end gap-0.5 px-2 rounded-xl bg-muted/65 dark:bg-muted/50 border border-border ${
-            band === "rich" ? "h-16" : "h-11"
-          }`}
-        >
-          {Array.from({ length: barCount }).map((_, i) => (
+  // --- Non-result: 6-pill segmented control + textarea/media + toolbar ------
+  const segmented = (
+    <div className="flex items-center bg-muted/50 p-1 rounded-2xl gap-1">
+      {[0, 1, 2, 3, 4, 5].map((i) => {
+        const active = i === activeIdx
+        return (
+          <div
+            key={i}
+            className={`flex-1 h-7 rounded-full flex items-center justify-center ${
+              active ? "bg-background shadow-sm border border-border" : ""
+            }`}
+          >
             <div
-              key={i}
-              className="flex-1 rounded-sm bg-foreground/28 dark:bg-foreground/35 animate-pulse min-w-[3px]"
-              style={{
-                height: `${28 + ((i * 17) % 45)}%`,
-                animationDelay: `${(i % 8) * 80}ms`,
-              }}
+              className={`h-1.5 w-6 rounded-full ${
+                active ? "bg-foreground/40" : "bg-foreground/20"
+              }`}
             />
-          ))}
-        </div>
-        <div className="px-4 pb-3 space-y-2">
-          <div className={`h-2.5 w-[70%] ${skLine}`} />
-        </div>
-      </div>
-    )
-  }
+          </div>
+        )
+      })}
+    </div>
+  )
 
-  if (type === "generate-audience") {
-    return (
-      <div className="flex-1 min-h-0 flex flex-col px-3 py-2 gap-2">
-        {tabs}
-        <div
-          className={`rounded-xl border border-border bg-muted/60 dark:bg-muted/50 space-y-2.5 ${
-            band === "rich" ? "p-3" : "p-2.5"
-          }`}
-        >
-          <div className={`h-2 w-[92%] ${skLine}`} />
-          <div className={`h-2 w-[88%] ${skLine}`} />
-          <div className={`h-2 w-[76%] ${skLine}`} />
-          {band === "rich" ? <div className={`h-2 w-[84%] ${skLine}`} /> : null}
-        </div>
-        <div className={`${band === "rich" ? "h-16" : "h-12"} rounded-lg ${skBlock}`} />
-      </div>
-    )
-  }
-
-  const uPrompt = imageUrls[0]
-  const vPrompt = videoUrls[0]
-  const promptCoverVideo = !uPrompt && !!vPrompt
+  const showMedia =
+    type === "generate-image" ||
+    type === "generate-video" ||
+    !!cover ||
+    !!coverVideo
+  const videoLayout = type === "generate-video" || (!cover && !!coverVideo)
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {tabs}
-      {uPrompt || vPrompt ? (
+    <div className="flex-1 min-h-0 flex flex-col gap-3">
+      {header}
+      {segmented}
+      {showMedia ? (
         <div
-          className={`${IMPRENTA_LITE_MEDIA_GUTTER} mt-2 mb-2 ${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border ${
-            promptCoverVideo ? "aspect-video" : "aspect-square"
+          className={`${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border ${
+            videoLayout ? "aspect-video" : "aspect-square"
           }`}
         >
-          {uPrompt ? (
+          {cover ? (
             <ImprentaLazyPreviewImage
-              url={uPrompt}
-              width={512}
-              height={512}
+              url={cover}
+              width={videoLayout ? 640 : 512}
+              height={videoLayout ? 360 : 512}
               priority={priorityPreviews}
             />
+          ) : coverVideo ? (
+            <ImprentaLazyPreviewVideo url={coverVideo} priority={priorityPreviews} />
           ) : (
-            <ImprentaLazyPreviewVideo url={vPrompt!} priority={priorityPreviews} />
+            <div className={`h-full w-full ${skMedia} rounded-none border-0`} />
           )}
         </div>
-      ) : null}
-      <div
-        className={`mx-3 mt-2 mb-3 flex flex-1 flex-col gap-2.5 rounded-2xl border border-border bg-background/85 dark:bg-background/55 ${
-          band === "rich" ? "min-h-[96px] p-4" : "min-h-[72px] p-3"
-        }`}
-      >
-        <div className={`h-2.5 w-[92%] ${skLine}`} />
-        <div className={`h-2.5 w-[88%] ${skLine}`} />
-        {band === "rich" ? <div className={`h-2.5 w-[72%] ${skLine}`} /> : null}
-        <div className="min-h-[32px] flex-1 rounded-lg border border-dashed border-border bg-muted/70 dark:bg-muted/55" />
-      </div>
-      {band === "rich" ? (
-        <div className="px-3 pb-2 flex gap-2">
-          <div className={`h-6 w-24 rounded-md ${skBlock}`} />
-          <div className={`h-6 w-20 rounded-md ${skBlock} opacity-90`} />
-        </div>
       ) : (
-        <div className="px-3 pb-2">
-          <div className={`h-5 w-28 rounded-md ${skBlock}`} />
+        <div className={`flex-1 min-h-[60px] rounded-xl ${skBlock} p-3 space-y-2`}>
+          <div className={`h-2 w-[88%] ${skLine}`} />
+          <div className={`h-2 w-[72%] ${skLine}`} />
+          {rich && <div className={`h-2 w-[58%] ${skLine}`} />}
         </div>
       )}
+      {type === "generate-audience" ? (
+        <div className="flex items-center gap-2">
+          <div className={`h-8 w-20 rounded-xl ${skBlock}`} />
+          <div className={`h-8 w-16 rounded-xl ${skBlock}`} />
+          <div className={`h-8 w-20 rounded-xl ${skBlock}`} />
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <div className={`h-6 w-20 rounded-md ${skBlock}`} />
+          {rich && <div className={`h-6 w-16 rounded-md ${skBlock} opacity-90`} />}
+        </div>
+      )}
+      {footer}
     </div>
   )
 }
@@ -544,24 +532,20 @@ const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
   onMouseDown: (e: React.MouseEvent) => void
   registerRef: (el: HTMLDivElement | null) => void
 }) {
-  const label = (node.type ?? "node").replace(/-/g, " ")
   const h = Math.max(Math.round(height), IMPRENTA_ROW_H)
+  const micro = imprentaLiteSkeletonBand(zoomScale) === "micro"
   return (
     <div
       ref={registerRef}
       data-node-id={node.id}
       data-imprenta-lite="1"
-      className="absolute z-10 cursor-grab active:cursor-grabbing rounded-3xl border-2 border-border bg-card shadow-lg shadow-black/15 dark:shadow-black/35 ring-1 ring-border/60 overflow-hidden flex flex-col pointer-events-auto box-border"
+      className="absolute z-10 cursor-grab active:cursor-grabbing rounded-3xl border-2 border-foreground/10 bg-card shadow-[0_0_10px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col pointer-events-auto box-border"
       style={{ left: pos.x, top: pos.y, width, height: h }}
       onMouseDown={onMouseDown}
     >
-      <div className="shrink-0 px-4 py-3 border-b border-border bg-muted/85 dark:bg-muted/60">
-        <div className="flex items-center justify-between gap-2 min-h-[1.25rem]">
-          <span className="text-xs font-semibold capitalize text-foreground truncate">{label}</span>
-          <div className="h-2.5 w-16 rounded-full bg-foreground/22 dark:bg-foreground/30 animate-pulse shrink-0" />
-        </div>
+      <div className={`flex-1 min-h-0 flex flex-col ${micro ? "p-3" : "p-5"}`}>
+        <ImprentaLiteSkeletonBody node={node} zoomScale={zoomScale} />
       </div>
-      <ImprentaLiteSkeletonBody node={node} zoomScale={zoomScale} />
     </div>
   )
 })
@@ -591,6 +575,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const nodeDragRafRef = useRef<number | null>(null)
   const lastNodeDragPosRef = useRef<{ x: number; y: number } | null>(null)
   const [viewportInfo, setViewportInfo] = useState<ZoomableViewportInfo | null>(null)
+  /** External pub/sub for pan/zoom so edges/nodes canvases repaint without React reconcile. */
+  const viewportStoreRef = useRef<ViewportStore | null>(null)
+  if (viewportStoreRef.current == null) {
+    viewportStoreRef.current = createViewportStore()
+  }
+  const viewportStore = viewportStoreRef.current
+  const thumbCache = useMemo(() => getImprentaThumbCache(), [])
   const [layoutEpoch, setLayoutEpoch] = useState(0)
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
   const [contexts, setContexts] = useState<any[]>([])
@@ -668,18 +659,32 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const { isDarkMode } = useTheme()
 
-  const resolvedPositions = useMemo(() => {
+  /**
+   * Stable positions map (no drag override). Consumed by the canvas layers so
+   * their spatial-grid cache stays valid across per-frame drag updates: the
+   * reference only changes on real layout / data events, not when the user is
+   * dragging a node.
+   */
+  const stablePositions = useMemo(() => {
     const r: Record<string, { x: number; y: number }> = {}
     for (const n of [...nodes, ...dummyNodes]) {
-      const id = n.id
-      if (nodeDragPreview?.id === id) {
-        r[id] = { x: nodeDragPreview.x, y: nodeDragPreview.y }
-      } else {
-        r[id] = positions[id] || { x: 100, y: 100 }
-      }
+      r[n.id] = positions[n.id] || { x: 100, y: 100 }
     }
     return r
-  }, [nodes, dummyNodes, positions, nodeDragPreview])
+  }, [nodes, dummyNodes, positions])
+
+  /**
+   * DOM-facing positions: same as `stablePositions` plus the live drag preview
+   * for the currently-dragged node. Only DOM consumers (card mounting + SVG
+   * connection lines) need this, so the canvas grid cache stays stable.
+   */
+  const resolvedPositions = useMemo(() => {
+    if (!nodeDragPreview) return stablePositions
+    return {
+      ...stablePositions,
+      [nodeDragPreview.id]: { x: nodeDragPreview.x, y: nodeDragPreview.y },
+    }
+  }, [stablePositions, nodeDragPreview])
 
   const resolveNodePosition = useCallback(
     (nodeId: string): { x: number; y: number } => resolvedPositions[nodeId] || { x: 100, y: 100 },
@@ -709,9 +714,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       viewportInfo.position,
       IMPRENTA_VIEWPORT_CULL_PAD
     )
+    // Use stable positions so the visible-id set does not churn while the user
+    // drags a node. Drag origin is always kept in DOM via `domRenderNodes`.
     const grid = buildNodeCellGrid(
       allIds,
-      resolvedPositions,
+      stablePositions,
       nodeHeightsRef.current,
       IMPRENTA_NODE_W,
       IMPRENTA_ROW_H
@@ -719,7 +726,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     const candidates = collectIdsFromGrid(grid, vw)
     const out = new Set<string>()
     candidates.forEach((id) => {
-      const p = resolvedPositions[id]
+      const p = stablePositions[id]
       if (!p) return
       const h = nodeHeightsRef.current[id] || IMPRENTA_ROW_H
       const bbox: GraphBBox = {
@@ -731,16 +738,195 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       if (bboxIntersects(bbox, vw)) out.add(id)
     })
     return out
-  }, [nodes, dummyNodes, viewportInfo, resolvedPositions, layoutEpoch])
+  }, [nodes, dummyNodes, viewportInfo, stablePositions, layoutEpoch])
 
-  const onViewportTransformChange = useCallback((info: ZoomableViewportInfo) => {
-    setViewportInfo(info)
-  }, [])
+  /**
+   * Commit `viewportInfo` into React state only on "settle" (debounced) or when the
+   * quantized viewport rectangle changes by a grid cell. This prevents a re-render of
+   * ImprentaPanel (and therefore full-card DOM mount/unmount) on every pan frame.
+   * Canvases that need live transform read it directly from `viewportStore`.
+   */
+  useEffect(() => {
+    let debounceId: ReturnType<typeof setTimeout> | null = null
+    let lastKey: string | null = null
+    const commit = (snap: ViewportSnapshot) => {
+      setViewportInfo({
+        scale: snap.scale,
+        position: { ...snap.position },
+        canvasWidth: snap.canvasWidth,
+        canvasHeight: snap.canvasHeight,
+      })
+    }
+    const unsub = viewportStore.subscribe((snap) => {
+      if (snap.canvasWidth < 2 || snap.canvasHeight < 2) return
+      const world = worldViewportFromCanvas(
+        snap.canvasWidth,
+        snap.canvasHeight,
+        snap.scale,
+        snap.position,
+        IMPRENTA_VIEWPORT_CULL_PAD
+      )
+      const key = `${quantizeViewport(world)}|${snap.scale >= IMPRENTA_LOD_FULL_DETAIL_SCALE ? "F" : "L"}`
+      const crossedBoundary = key !== lastKey
+      if (debounceId) clearTimeout(debounceId)
+      if (!snap.interacting) {
+        lastKey = key
+        commit(snap)
+        return
+      }
+      if (crossedBoundary) {
+        lastKey = key
+        debounceId = setTimeout(() => commit(snap), 0)
+      } else {
+        debounceId = setTimeout(() => commit(snap), 120)
+      }
+    })
+    return () => {
+      unsub()
+      if (debounceId) clearTimeout(debounceId)
+    }
+  }, [viewportStore])
 
   const parentEdgeStroke = isDarkMode ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)"
 
+  const canvasNodes = useMemo(() => [...nodes, ...dummyNodes], [nodes, dummyNodes])
+
+  /**
+   * Skip the lite canvas layer entirely for small/medium graphs. Canvas rendering
+   * is only a win when DOM full-cards would otherwise flood the viewport at far
+   * zoom; below `IMPRENTA_LOD_LITE_MIN_NODES` total nodes, React virtualization
+   * handles the load and the skeleton-pop on zoom-out is just UX noise.
+   */
+  const isLargeGraph = canvasNodes.length >= IMPRENTA_LOD_LITE_MIN_NODES
   const showFullNodeDetail =
-    !viewportInfo || viewportInfo.scale >= IMPRENTA_LOD_FULL_DETAIL_SCALE
+    !viewportInfo ||
+    !isLargeGraph ||
+    viewportInfo.scale >= IMPRENTA_LOD_FULL_DETAIL_SCALE
+  /** Nodes we keep in DOM (dummies + drag origin + temp-connection origin). Canvas skips them. */
+  const domOnlyNodeIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const n of dummyNodes) ids.add(n.id)
+    if (draggingNodeId) ids.add(draggingNodeId)
+    if (tempConnection?.fromNode) ids.add(tempConnection.fromNode)
+    return ids
+  }, [dummyNodes, draggingNodeId, tempConnection?.fromNode])
+
+  /**
+   * Compute the list of nodes the React tree should actually render as DOM.
+   *
+   * - Below full-detail zoom: only dummies + drag origin + temp-connection origin.
+   *   The `ImprentaNodesCanvas` draws everything else.
+   * - At full-detail zoom: every visible node (virtualized via `visibleNodeIds`).
+   *
+   * Pre-filtering here prevents React from reconciling thousands of `null`s on pan
+   * and fixes the O(N) renders that made the canvas feel sluggish at scale.
+   */
+  const domRenderNodes = useMemo(() => {
+    const out: InstanceNode[] = []
+    const vis = visibleNodeIds
+    const all = canvasNodes
+    for (let i = 0; i < all.length; i++) {
+      const node = all[i]
+      const isDummy = node.id.startsWith("dummy-")
+      const hasResult = node.result && Object.keys(node.result as Record<string, unknown>).length > 0
+      const isEffectivelyDummy =
+        isDummy || (!hasResult && generatingNodeIds.has(node.id) && (node.status === "running" || node.status === "pending"))
+      const isDragOrigin = draggingNodeId === node.id || tempConnection?.fromNode === node.id
+      if (vis !== null && !vis.has(node.id) && !isDragOrigin) continue
+      if (!showFullNodeDetail && !isEffectivelyDummy && !isDragOrigin) continue
+      out.push(node)
+    }
+    return out
+  }, [
+    canvasNodes,
+    visibleNodeIds,
+    showFullNodeDetail,
+    draggingNodeId,
+    tempConnection?.fromNode,
+    generatingNodeIds,
+  ])
+
+  const canvasGetImages = useCallback(
+    (node: InstanceNode) => collectImprentaLiteImagePreviewUrls(node, 4),
+    []
+  )
+  const canvasGetVideos = useCallback(
+    (node: InstanceNode) => collectImprentaLiteVideoPreviewUrls(node, 2),
+    []
+  )
+
+  /**
+   * Ids of nodes currently rendered as the "generating" placeholder card
+   * (either real `dummy-*` shells or real nodes that are running without a
+   * result yet). Used to drive the loading-route edge animation and the
+   * spinning border on their action (direct parent).
+   */
+  const loadingNodeIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const n of dummyNodes) set.add(n.id)
+    for (const n of nodes) {
+      if (n.id.startsWith("dummy-")) {
+        set.add(n.id)
+        continue
+      }
+      const hasResult =
+        n.result && Object.keys(n.result as Record<string, unknown>).length > 0
+      if (
+        !hasResult &&
+        generatingNodeIds.has(n.id) &&
+        (n.status === "running" || n.status === "pending")
+      ) {
+        set.add(n.id)
+      }
+    }
+    return set
+  }, [nodes, dummyNodes, generatingNodeIds])
+
+  /**
+   * Direct parents of every loading node. Rendered with a rotating conic
+   * border so the user can see which "action" is currently producing results.
+   * A node that is itself a loading result is excluded — no self-spin.
+   */
+  const actionNodeIds = useMemo(() => {
+    if (loadingNodeIds.size === 0) return new Set<string>()
+    const all = [...nodes, ...dummyNodes]
+    const out = new Set<string>()
+    for (const n of all) {
+      if (!loadingNodeIds.has(n.id)) continue
+      const parentId = n.parent_node_id
+      if (!parentId) continue
+      if (loadingNodeIds.has(parentId)) continue
+      out.add(parentId)
+    }
+    return out
+  }, [nodes, dummyNodes, loadingNodeIds])
+
+  /**
+   * Parent→loading-node edge pairs along the full ancestry of every loading
+   * node. Lets the SVG overlay animate the *route* (every segment on the way
+   * from the root down to the result), not only the last hop.
+   */
+  const loadingRouteEdges = useMemo<Array<{ parentId: string; childId: string }>>(() => {
+    if (loadingNodeIds.size === 0) return []
+    const all = [...nodes, ...dummyNodes]
+    const byId = new Map<string, InstanceNode>()
+    for (const n of all) byId.set(n.id, n)
+    const seen = new Set<string>()
+    const edges: Array<{ parentId: string; childId: string }> = []
+    loadingNodeIds.forEach((startId) => {
+      let current = byId.get(startId)
+      while (current) {
+        const parentId = current.parent_node_id
+        if (!parentId) break
+        const key = `${parentId}->${current.id}`
+        if (seen.has(key)) break
+        seen.add(key)
+        edges.push({ parentId, childId: current.id })
+        current = byId.get(parentId)
+      }
+    })
+    return edges
+  }, [nodes, dummyNodes, loadingNodeIds])
 
   // Reset initial prompt when changing instances
   useEffect(() => {
@@ -1242,6 +1428,35 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     }
   }
 
+  // Keyboard shortcuts for the toolbar: Shift+N creates a new action, Shift+U
+  // opens the file picker. Skipped when a field is focused so typing keeps working.
+  useEffect(() => {
+    if (!activeInstanceId || nodes.length === 0) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const t = e.target
+      if (t instanceof HTMLElement) {
+        const tag = t.tagName
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable) {
+          return
+        }
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (!e.shiftKey) return
+      if (isUploadingAsset) return
+
+      if (e.key === "N" || e.key === "n") {
+        e.preventDefault()
+        handleCreateChild(null)
+      } else if (e.key === "U" || e.key === "u") {
+        e.preventDefault()
+        fileInputRef.current?.click()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [activeInstanceId, nodes.length, isUploadingAsset])
+
   const handleCreateActionFromContext = async (contextNodeId: string) => {
     if (!activeInstanceId || !currentSite) return
     const { data: { session } } = await supabase.auth.getSession()
@@ -1279,20 +1494,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     toast.success("Action node created with context")
   }
 
-  const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
-    if (e.button !== 0) return // Only left click
-    const target = e.target as HTMLElement
-    // Prevent dragging if clicking on an input/button
-    if (target.closest('button') || target.closest('textarea') || target.closest('input')) return
-    
-    e.stopPropagation()
-    e.preventDefault() // Prevents native image drag and text selection which breaks mousemove
-    
+  const beginNodeDrag = useCallback((nodeId: string, clientX: number, clientY: number) => {
     draggingNodeRef.current = nodeId
-    dragStartPos.current = { x: e.clientX, y: e.clientY }
-    dragStartNodePos.current = { 
-      x: positionsRef.current[nodeId]?.x || 0, 
-      y: positionsRef.current[nodeId]?.y || 0 
+    dragStartPos.current = { x: clientX, y: clientY }
+    dragStartNodePos.current = {
+      x: positionsRef.current[nodeId]?.x || 0,
+      y: positionsRef.current[nodeId]?.y || 0,
     }
     lastNodeDragPosRef.current = {
       x: dragStartNodePos.current.x,
@@ -1308,7 +1515,27 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     window.addEventListener('mousemove', handleWindowMouseMove)
     window.addEventListener('mouseup', handleWindowMouseUp)
     window.addEventListener('click', handleWindowMouseUp, { capture: true, once: true })
+  }, [])
+
+  const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
+    if (e.button !== 0) return // Only left click
+    const target = e.target as HTMLElement
+    // Prevent dragging if clicking on an input/button
+    if (target.closest('button') || target.closest('textarea') || target.closest('input')) return
+    
+    e.stopPropagation()
+    e.preventDefault() // Prevents native image drag and text selection which breaks mousemove
+
+    beginNodeDrag(nodeId, e.clientX, e.clientY)
   }
+
+  /** Entry point from the lite canvas layer (no React synthetic event is available). */
+  const handleCanvasNodePointerDown = useCallback((nodeId: string, ev: PointerEvent) => {
+    if (ev.button !== 0) return
+    ev.stopPropagation()
+    ev.preventDefault()
+    beginNodeDrag(nodeId, ev.clientX, ev.clientY)
+  }, [beginNodeDrag])
 
   const handleWindowMouseMove = (e: MouseEvent) => {
     const nodeId = draggingNodeRef.current
@@ -1923,7 +2150,46 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           dotColorDark="rgba(255, 255, 255, 0.2)"
           fitOnChildrenChange={false}
           initialOffsetY={0}
-          onViewportTransformChange={onViewportTransformChange}
+          viewportStore={viewportStore}
+          screenSpaceBehind={
+            <ImprentaParentEdgesCanvas
+              nodes={canvasNodes}
+              positions={stablePositions}
+              dragOverride={nodeDragPreview}
+              nodeHeights={nodeHeightsSnapshot}
+              nodeW={NODE_W}
+              rowH={ROW_H}
+              strokeStyle={parentEdgeStroke}
+              viewportStore={viewportStore}
+              // On small graphs we keep full bezier edges at every zoom; the
+              // straight-line LOD only pays off when many edges fit on screen.
+              straightLinesBelowScale={isLargeGraph ? IMPRENTA_LOD_FULL_DETAIL_SCALE : 0}
+            />
+          }
+          screenSpaceFront={
+            <ImprentaNodesCanvas
+              nodes={canvasNodes}
+              positions={stablePositions}
+              heights={nodeHeightsSnapshot}
+              nodeW={NODE_W}
+              rowH={ROW_H}
+              // Effectively disable the lite canvas for small graphs by giving
+              // it an unreachable threshold — it stays mounted (no layer
+              // thrash on count crossings) but bails out of every paint and
+              // hit test, so DOM cards render at every zoom.
+              fullDetailScale={isLargeGraph ? IMPRENTA_LOD_FULL_DETAIL_SCALE : 0.001}
+              liteMicroMax={IMPRENTA_LOD_LITE_MICRO_MAX}
+              liteSimpleMax={IMPRENTA_LOD_LITE_SIMPLE_MAX}
+              viewportStore={viewportStore}
+              thumbs={thumbCache}
+              isDarkMode={isDarkMode}
+              skipIds={domOnlyNodeIds}
+              getImageUrls={canvasGetImages}
+              getVideoUrls={canvasGetVideos}
+              onNodePointerDown={handleCanvasNodePointerDown}
+              pointerEventsEnabled={tempConnection == null && draggingNodeId == null}
+            />
+          }
           onSort={() => {
             toast.info("Organizing layout...");
             const allNodes = [...nodes, ...dummyNodes];
@@ -1955,27 +2221,49 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           }}
           extraControls={
             activeInstanceId && nodes.length > 0 ? (
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 text-xs font-medium px-2.5"
-                  onClick={() => handleCreateChild(null)}
-                  disabled={isUploadingAsset}
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1.5" /> New action
-                </Button>
-                <div className="w-px h-4 bg-border mx-1"></div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 text-xs font-medium px-2.5"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingAsset}
-                >
-                  <UploadCloud className="w-3.5 h-3.5 mr-1.5" /> {isUploadingAsset ? "Uploading..." : "New file"}
-                </Button>
-              </div>
+              <TooltipProvider delayDuration={200}>
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs font-medium px-2.5"
+                        onClick={() => handleCreateChild(null)}
+                        disabled={isUploadingAsset}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1.5" /> New action
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6}>
+                      <span className="flex items-center gap-2">
+                        New action
+                        <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">Shift N</kbd>
+                      </span>
+                    </TooltipContent>
+                  </Tooltip>
+                  <div className="w-px h-4 bg-border mx-1"></div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs font-medium px-2.5"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingAsset}
+                      >
+                        <UploadCloud className="w-3.5 h-3.5 mr-1.5" /> {isUploadingAsset ? "Uploading..." : "New file"}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6}>
+                      <span className="flex items-center gap-2">
+                        Upload file
+                        <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">Shift U</kbd>
+                      </span>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
             ) : null
           }
         >
@@ -1985,16 +2273,38 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               style={{ minWidth: maxBounds.width, minHeight: maxBounds.height }}
               onClick={() => setSelectedContextId(null)}
             >
-                  <ImprentaParentEdgesCanvas
-                    width={maxBounds.width}
-                    height={maxBounds.height}
-                    nodes={[...nodes, ...dummyNodes]}
-                    positions={resolvedPositions}
-                    nodeHeights={nodeHeightsSnapshot}
-                    nodeW={NODE_W}
-                    rowH={ROW_H}
-                    strokeStyle={parentEdgeStroke}
-                  />
+                  {/* Parent edges are drawn by the viewport-sized canvas mounted in screenSpaceBehind. */}
+
+                  {/* Loading-route edges: SVG overlay of parent→child beziers for every segment on the
+                      way from the root down to a currently-generating result node. Drawn in world
+                      coordinates on top of the static canvas edges so the flowing dashes read as a
+                      lit-up route. Rendered only while something is actually loading. */}
+                  {loadingRouteEdges.length > 0 && (
+                    <svg
+                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                      style={{ zIndex: 1, overflow: 'visible' }}
+                    >
+                      {loadingRouteEdges.map(({ parentId, childId }) => {
+                        if (!positions[parentId] || !positions[childId]) return null
+                        const start = resolveNodePosition(parentId)
+                        const end = resolveNodePosition(childId)
+                        const startCy = (nodeHeightsRef.current[parentId] || ROW_H) / 2
+                        const endCy = (nodeHeightsRef.current[childId] || ROW_H) / 2
+                        const x1 = start.x + NODE_W
+                        const y1 = start.y + startCy
+                        const x2 = end.x
+                        const y2 = end.y + endCy
+                        const d = `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`
+                        return (
+                          <path
+                            key={`loading-edge-${parentId}-${childId}`}
+                            d={d}
+                            className="imprenta-loading-edge"
+                          />
+                        )
+                      })}
+                    </svg>
+                  )}
 
                   {/* Context edges: single SVG for all paths; labels/UI stay in per-context overlays. */}
                   {contexts.length > 0 && (
@@ -2066,6 +2376,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     const midX = (startX + endX) / 2
                     const midY = (startY + endY) / 2
                     const isSelected = selectedContextId === ctx.id
+                    // Context links feeding a node that already produced a result are
+                    // locked: the action has run, so unlinking its inputs would rewrite
+                    // history. Only links to actions (no result yet) are deletable.
+                    const targetHasResult = !!targetNodeForCtx && imprentaNodeHasResult(targetNodeForCtx)
 
                     return (
                       <div
@@ -2100,33 +2414,25 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Select value={ctx.type || "reference"} onValueChange={(val) => handleUpdateContextType(ctx.id, val)}>
-                              <SelectTrigger className="h-7 text-xs border-0 shadow-none focus:ring-0 bg-transparent px-2 w-[110px]">
-                                <SelectValue placeholder="Type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="reference">Reference</SelectItem>
-                                <SelectItem value="style">Style</SelectItem>
-                                <SelectItem value="negative">Negative</SelectItem>
-                                <SelectItem value="context">Context</SelectItem>
-                                <SelectItem value="data">Data</SelectItem>
-                                <SelectItem value={PUBLISH_SLOT_CONTENT}>Content</SelectItem>
-                                <SelectItem value={PUBLISH_SLOT_AUDIENCE}>Audience</SelectItem>
-                                <SelectItem value="from">From</SelectItem>
-                                <SelectItem value="to">To</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <ImprentaContextTypeSelect
+                              value={ctx.type || "reference"}
+                              onValueChange={(val) => handleUpdateContextType(ctx.id, val)}
+                            />
 
-                            <div className="w-px h-4 bg-border mx-1" />
+                            {!targetHasResult && (
+                              <>
+                                <div className="w-px h-4 bg-border mx-1" />
 
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleDeleteContext(ctx.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleDeleteContext(ctx.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
                           </Card>
                         )}
                       </div>
@@ -2151,22 +2457,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                   })()}
                   
                   {/* Draw nodes (virtualized + LOD when graph is large). */}
-                  {[...nodes, ...dummyNodes].map(node => {
+                  {domRenderNodes.map(node => {
                     const pos = resolvedPositions[node.id] || { x: 100, y: 100 }
-                    const vis = visibleNodeIds
-                    if (
-                      vis !== null &&
-                      !vis.has(node.id) &&
-                      draggingNodeId !== node.id &&
-                      tempConnection?.fromNode !== node.id
-                    ) {
-                      return null
-                    }
-                    const hasResult = node.result && Object.keys(node.result).length > 0;
                     const isDummy = node.id.startsWith('dummy-');
+                    const hasResult = node.result && Object.keys(node.result).length > 0;
                     const isEffectivelyDummy = isDummy || (!hasResult && generatingNodeIds.has(node.id) && (node.status === 'running' || node.status === 'pending'));
                     
                     if (isEffectivelyDummy) {
+                      /** Below full-detail zoom, strip expensive composites from the dummy card (animate-pulse gradient, etc). */
+                      const liteDummy = !showFullNodeDetail
                       return (
                         <div 
                           key={node.id}
@@ -2178,26 +2477,45 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                             top: pos.y,
                           }}
                         >
-                          <Card className="w-[480px] min-h-[280px] shadow-sm border-2 border-primary/20 bg-card rounded-3xl overflow-hidden relative flex flex-col justify-center items-center">
-                            {/* Avoid backdrop-filter and large blurred layers here — very expensive on Safari. */}
-                            <div className="absolute inset-0 z-0 bg-gradient-to-br from-primary/8 via-primary/3 to-transparent animate-pulse" />
+                          <Card
+                            className={
+                              "w-[480px] min-h-[280px] border-2 border-dashed border-primary/25 bg-card/50 rounded-3xl overflow-hidden relative flex flex-col justify-center items-center " +
+                              (liteDummy ? "" : "shadow-sm")
+                            }
+                          >
+                            {/* Fancy floating orbs (EmptyCard vibe). Skipped in lite mode
+                                to avoid expensive blur layers when hundreds of cards are
+                                on screen. */}
+                            {!liteDummy && (
+                              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                                <div
+                                  className="imprenta-orb bg-violet-500/30"
+                                  style={{ top: "18%", left: "14%", width: 140, height: 140, animation: "imprenta-orb-float-a 6s ease-in-out infinite" }}
+                                />
+                                <div
+                                  className="imprenta-orb bg-indigo-500/25"
+                                  style={{ top: "58%", left: "62%", width: 120, height: 120, animation: "imprenta-orb-float-b 7.5s ease-in-out infinite" }}
+                                />
+                                <div
+                                  className="imprenta-orb bg-pink-500/25"
+                                  style={{ top: "10%", left: "68%", width: 90, height: 90, animation: "imprenta-orb-float-c 6.8s ease-in-out infinite" }}
+                                />
+                                <div
+                                  className="imprenta-orb bg-emerald-500/20"
+                                  style={{ top: "62%", left: "10%", width: 100, height: 100, animation: "imprenta-orb-float-b 8.2s ease-in-out infinite", animationDelay: "0.6s" }}
+                                />
+                                <div
+                                  className="imprenta-orb bg-cyan-500/20"
+                                  style={{ top: "36%", left: "44%", width: 80, height: 80, animation: "imprenta-orb-float-c 7s ease-in-out infinite", animationDelay: "1.2s" }}
+                                />
+                                <div
+                                  className="imprenta-orb bg-purple-500/22"
+                                  style={{ top: "32%", left: "30%", width: 70, height: 70, animation: "imprenta-orb-float-a 9s ease-in-out infinite", animationDelay: "1.8s" }}
+                                />
+                              </div>
+                            )}
 
-                            <CardContent className="p-5 relative z-10 w-full h-full flex flex-col items-center justify-center space-y-6">
-                              <div className="space-y-2 text-center mt-2">
-                                <h3 className="text-base font-medium text-foreground">
-                                  Generating...
-                                </h3>
-                                <p className="text-xs text-muted-foreground">
-                                  Crafting your content...
-                                </p>
-                              </div>
-                              
-                              <div className="w-full space-y-3 pt-6 opacity-40 px-8 pb-2">
-                                <div className="h-2 bg-foreground/20 rounded-full w-full animate-pulse" />
-                                <div className="h-2 bg-foreground/20 rounded-full w-4/5 animate-pulse" style={{ animationDelay: '150ms' }} />
-                                <div className="h-2 bg-foreground/20 rounded-full w-2/3 animate-pulse" style={{ animationDelay: '300ms' }} />
-                              </div>
-                            </CardContent>
+                            <CardContent className="p-5 relative z-10 w-full h-full" />
                           </Card>
                         </div>
                       )
@@ -2252,9 +2570,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                           </Button>
 
                         <Card
+                          // `transition-shadow` forced a repaint of every visible card on every
+                          // hover change in Safari. Keep a flat static shadow and skip the
+                          // transition. We DO NOT use `contain: paint` here: with many cards on
+                          // screen, promoting each to its own Safari composite layer (plus the
+                          // rounded-corner clip mask it implies) cost more than it saved.
                           className={
-                            "w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] group-hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-shadow duration-300 border-2 border-foreground/10 bg-card rounded-3xl" +
-                            (node.type === "publish" && !hasResult ? " group/publish-in" : "")
+                            "w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] border-2 border-foreground/10 bg-card rounded-3xl" +
+                            (node.type === "publish" && !hasResult ? " group/publish-in" : "") +
+                            (actionNodeIds.has(node.id) ? " imprenta-action-running" : "")
                           }
                         >
                           <CardContent className="p-5 relative">
@@ -2464,157 +2788,143 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                 />
                                 
                                 {node.type === 'generate-audience' && (
-                                  <div className="flex items-center gap-2">
-                                    {([
-                                      { key: 'email', label: 'Email', icon: Mail },
-                                      { key: 'web', label: 'Web', icon: Globe },
-                                      { key: 'phone', label: 'Phone', icon: Phone },
-                                    ] as const).map(({ key, label, icon: Icon }) => {
-                                      const isSelected = (node.settings as any)?.audience_channels?.includes(key);
-                                      return (
-                                        <button
-                                          key={key}
-                                          className={`h-8 px-3 rounded-xl text-xs flex items-center gap-2 border transition-colors ${isSelected ? 'bg-secondary border-secondary text-foreground' : 'bg-transparent border-transparent text-muted-foreground hover:bg-secondary/50'}`}
-                                          onClick={async (e) => {
-                                            e.stopPropagation();
-                                            const current = (node.settings as any)?.audience_channels || [];
-                                            const newChannels = isSelected
-                                              ? current.filter((c: string) => c !== key)
-                                              : [...current, key];
-                                            setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), audience_channels: newChannels } } : n));
-                                            await supabase.from('instance_nodes').update({
-                                              settings: { ...((node.settings as any) || {}), audience_channels: newChannels }
-                                            }).eq('id', node.id);
-                                          }}
-                                        >
-                                          <Icon className="h-4 w-4" />
-                                          <span>{label}</span>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
+                                  <TooltipProvider delayDuration={200}>
+                                    <div className="flex items-center gap-4 flex-wrap">
+                                      {([
+                                        { key: 'email', label: 'Email', icon: Mail, hint: 'Only include leads that have an email address.' },
+                                        { key: 'web', label: 'Web', icon: Globe, hint: 'Only include leads that have a website URL.' },
+                                        { key: 'phone', label: 'Phone', icon: Phone, hint: 'Only include leads that have a phone number.' },
+                                        { key: 'deals', label: 'Deals', icon: Tag, hint: 'Only include leads that have at least one deal.' },
+                                      ] as const).map(({ key, label, icon: Icon, hint }) => {
+                                        const isSelected = !!(node.settings as any)?.audience_channels?.includes(key);
+                                        const toggleChannel = async () => {
+                                          const current = (node.settings as any)?.audience_channels || [];
+                                          const newChannels = isSelected
+                                            ? current.filter((c: string) => c !== key)
+                                            : [...current, key];
+                                          setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), audience_channels: newChannels } } : n));
+                                          await supabase.from('instance_nodes').update({
+                                            settings: { ...((node.settings as any) || {}), audience_channels: newChannels }
+                                          }).eq('id', node.id);
+                                        };
+                                        return (
+                                          <Tooltip key={key}>
+                                            <TooltipTrigger asChild>
+                                              <label
+                                                className="flex items-center gap-1.5 text-[11px] cursor-pointer select-none"
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                <Icon className={`h-3.5 w-3.5 ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`} />
+                                                <span className={`font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+                                                <Switch
+                                                  checked={isSelected}
+                                                  onCheckedChange={toggleChannel}
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  className="h-[18px] w-[32px] ml-0.5 [&>span]:h-[14px] [&>span]:w-[14px] [&>span[data-state=checked]]:translate-x-3.5 [&>span[data-state=unchecked]]:translate-x-0"
+                                                />
+                                              </label>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="text-[11px] max-w-[220px]">
+                                              {hint}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        );
+                                      })}
+                                    </div>
+                                  </TooltipProvider>
                                 )}
 
-                                {node.type === 'publish' && (
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    {(currentSite?.settings?.social_media || []).filter(isSocialMediaEntryConnected).map((sm: any, idx: number) => {
-                                      const isSelected = (node.settings as any)?.publish_destinations?.includes(sm.platform);
-                                      return (
-                                        <button
-                                          key={`sm-${idx}`}
-                                          className={`h-8 px-3 rounded-xl text-xs flex items-center gap-2 border transition-colors ${isSelected ? 'bg-secondary border-secondary text-foreground' : 'bg-transparent border-transparent text-muted-foreground hover:bg-secondary/50'}`}
-                                          onClick={async (e) => {
-                                            e.stopPropagation();
-                                            const currentDest = (node.settings as any)?.publish_destinations || [];
-                                            const newDest = isSelected 
-                                              ? currentDest.filter((d: string) => d !== sm.platform)
-                                              : [...currentDest, sm.platform];
-                                            setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
-                                            await supabase.from('instance_nodes').update({
-                                              settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
-                                            }).eq('id', node.id);
-                                          }}
-                                        >
-                                          <SocialIcon platform={sm.platform} size={14} color={isSelected ? "currentColor" : undefined} />
-                                          <span className="capitalize">{sm.platform}</span>
-                                        </button>
-                                      )
-                                    })}
-                                    
-                                    {(() => {
-                                       const siteUrl = currentSite?.url && String(currentSite.url).trim()
-                                       if (!siteUrl) return null
-                                       const isSelected = (node.settings as any)?.publish_destinations?.includes('blog');
-                                       return (
-                                         <button
-                                           className={`h-8 px-3 rounded-xl text-xs flex items-center gap-2 border transition-colors ${isSelected ? 'bg-secondary border-secondary text-foreground' : 'bg-transparent border-transparent text-muted-foreground hover:bg-secondary/50'}`}
-                                           onClick={async (e) => {
-                                             e.stopPropagation();
-                                             const currentDest = (node.settings as any)?.publish_destinations || [];
-                                             const newDest = isSelected 
-                                               ? currentDest.filter((d: string) => d !== 'blog')
-                                               : [...currentDest, 'blog'];
-                                             setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
-                                             await supabase.from('instance_nodes').update({
-                                               settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
-                                             }).eq('id', node.id);
-                                           }}
-                                         >
-                                           <Globe className="h-4 w-4" />
-                                           <span>Blog</span>
-                                         </button>
-                                       )
-                                    })()}
-                                    
-                                    {(() => {
-                                       const isEmailDistributionAvailable = currentSite?.settings?.channels?.email?.status === 'synced';
-                                       if (!isEmailDistributionAvailable) return null;
+                                {node.type === 'publish' && (() => {
+                                  const siteUrl = currentSite?.url && String(currentSite.url).trim();
+                                  const isEmailDistributionAvailable = currentSite?.settings?.channels?.email?.status === 'synced';
+                                  const isWhatsappAvailable = currentSite?.settings?.channels?.whatsapp?.status === 'active' || currentSite?.settings?.channels?.agent_whatsapp?.status === 'active';
+                                  const rawDestinations = (node.settings as any)?.publish_destinations;
+                                  // Treat unset destinations as blog-on-by-default when the site has a URL,
+                                  // so new publish nodes land preconfigured for the most common case.
+                                  const currentDestinations: string[] = Array.isArray(rawDestinations)
+                                    ? rawDestinations
+                                    : (siteUrl ? ['blog'] : []);
+                                  const toggleDestination = async (key: string) => {
+                                    const isOn = currentDestinations.includes(key);
+                                    const newDest = isOn
+                                      ? currentDestinations.filter((d: string) => d !== key)
+                                      : [...currentDestinations, key];
+                                    setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
+                                    await supabase.from('instance_nodes').update({
+                                      settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
+                                    }).eq('id', node.id);
+                                  };
 
-                                       const toggleDest = async (key: 'mail' | 'newsletter', e: React.MouseEvent) => {
-                                         e.stopPropagation();
-                                         const currentDest = (node.settings as any)?.publish_destinations || [];
-                                         const isOn = currentDest.includes(key);
-                                         const newDest = isOn
-                                           ? currentDest.filter((d: string) => d !== key)
-                                           : [...currentDest, key];
-                                         setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
-                                         await supabase.from('instance_nodes').update({
-                                           settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
-                                         }).eq('id', node.id);
-                                       };
+                                  const renderToggle = (key: string, label: string, icon: React.ReactNode, hint: string) => {
+                                    const isSelected = currentDestinations.includes(key);
+                                    return (
+                                      <Tooltip key={key}>
+                                        <TooltipTrigger asChild>
+                                          <label
+                                            className="flex items-center gap-1.5 text-[11px] cursor-pointer select-none"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <span className={isSelected ? 'text-foreground' : 'text-muted-foreground'}>
+                                              {icon}
+                                            </span>
+                                            <span className={`font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+                                            <Switch
+                                              checked={isSelected}
+                                              onCheckedChange={() => toggleDestination(key)}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="h-[18px] w-[32px] ml-0.5 [&>span]:h-[14px] [&>span]:w-[14px] [&>span[data-state=checked]]:translate-x-3.5 [&>span[data-state=unchecked]]:translate-x-0"
+                                            />
+                                          </label>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-[11px] max-w-[220px]">
+                                          {hint}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    );
+                                  };
 
-                                       const mailSelected = (node.settings as any)?.publish_destinations?.includes('mail');
-                                       const newsletterSelected = (node.settings as any)?.publish_destinations?.includes('newsletter');
-
-                                       return (
-                                         <>
-                                           <button
-                                             type="button"
-                                             className={`h-8 px-3 rounded-xl text-xs flex items-center gap-2 border transition-colors ${mailSelected ? 'bg-secondary border-secondary text-foreground' : 'bg-transparent border-transparent text-muted-foreground hover:bg-secondary/50'}`}
-                                             onClick={(e) => toggleDest('mail', e)}
-                                           >
-                                             <Mail className="h-4 w-4" />
-                                             <span>Mail</span>
-                                           </button>
-                                           <button
-                                             type="button"
-                                             className={`h-8 px-3 rounded-xl text-xs flex items-center gap-2 border transition-colors ${newsletterSelected ? 'bg-secondary border-secondary text-foreground' : 'bg-transparent border-transparent text-muted-foreground hover:bg-secondary/50'}`}
-                                             onClick={(e) => toggleDest('newsletter', e)}
-                                           >
-                                             <FileText className="h-4 w-4" />
-                                             <span>Newsletter</span>
-                                           </button>
-                                         </>
-                                       )
-                                    })()}
-                                    
-                                    {(() => {
-                                       const isWhatsappAvailable = currentSite?.settings?.channels?.whatsapp?.status === 'active' || currentSite?.settings?.channels?.agent_whatsapp?.status === 'active';
-                                       if (!isWhatsappAvailable) return null;
-                                       
-                                       const isSelected = (node.settings as any)?.publish_destinations?.includes('whatsapp');
-                                       return (
-                                         <button
-                                           className={`h-8 px-3 rounded-xl text-xs flex items-center gap-2 border transition-colors ${isSelected ? 'bg-secondary border-secondary text-foreground' : 'bg-transparent border-transparent text-muted-foreground hover:bg-secondary/50'}`}
-                                           onClick={async (e) => {
-                                             e.stopPropagation();
-                                             const currentDest = (node.settings as any)?.publish_destinations || [];
-                                             const newDest = isSelected 
-                                               ? currentDest.filter((d: string) => d !== 'whatsapp')
-                                               : [...currentDest, 'whatsapp'];
-                                             setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
-                                             await supabase.from('instance_nodes').update({
-                                               settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
-                                             }).eq('id', node.id);
-                                           }}
-                                         >
-                                           <SocialIcon platform="whatsapp" size={14} color={isSelected ? "currentColor" : undefined} />
-                                           <span>WhatsApp</span>
-                                         </button>
-                                       )
-                                    })()}
-                                  </div>
-                                )}
+                                  return (
+                                    <TooltipProvider delayDuration={200}>
+                                      <div className="flex items-center gap-4 flex-wrap">
+                                        {(currentSite?.settings?.social_media || [])
+                                          .filter(isSocialMediaEntryConnected)
+                                          .map((sm: any) => {
+                                            const platformLabel = String(sm.platform).charAt(0).toUpperCase() + String(sm.platform).slice(1);
+                                            return renderToggle(
+                                              sm.platform,
+                                              platformLabel,
+                                              <SocialIcon platform={sm.platform} size={14} color="currentColor" />,
+                                              `Publish this content to your connected ${platformLabel} account.`
+                                            );
+                                          })}
+                                        {siteUrl && renderToggle(
+                                          'blog',
+                                          'Blog',
+                                          <Globe className="h-3.5 w-3.5" />,
+                                          'Publish this content as a blog post on your site.'
+                                        )}
+                                        {isEmailDistributionAvailable && renderToggle(
+                                          'mail',
+                                          'Mail',
+                                          <Mail className="h-3.5 w-3.5" />,
+                                          'Send this content as an individual email to the selected audience.'
+                                        )}
+                                        {isEmailDistributionAvailable && renderToggle(
+                                          'newsletter',
+                                          'Newsletter',
+                                          <FileText className="h-3.5 w-3.5" />,
+                                          'Include this content in your next newsletter to subscribers.'
+                                        )}
+                                        {isWhatsappAvailable && renderToggle(
+                                          'whatsapp',
+                                          'WhatsApp',
+                                          <SocialIcon platform="whatsapp" size={14} color="currentColor" />,
+                                          'Send this content through your connected WhatsApp channel.'
+                                        )}
+                                      </div>
+                                    </TooltipProvider>
+                                  );
+                                })()}
                                 
                                 {node.type !== 'publish' && node.type !== 'generate-audience' && (
                                   <div className="flex justify-start w-full">

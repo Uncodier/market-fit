@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from '@/app/context/SiteContext'
@@ -14,7 +14,8 @@ import { useAuthContext } from '@/app/components/auth/auth-provider'
 import { useUserProfile } from './hooks/useUserProfile'
 import { MessagesSkeleton } from "@/app/components/skeletons/messages-skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
-import { User } from "@/app/components/ui/icons"
+import { User, ChevronDown } from "@/app/components/ui/icons"
+import { Button } from "@/app/components/ui/button"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { markdownComponents } from './utils/markdownComponents'
@@ -47,6 +48,8 @@ import { EmptyStatePrompts } from './components/EmptyStatePrompts'
 
 // Import utilities
 import { getActivityName, getToolName, groupTimelineToolCalls } from './utils'
+
+const SCROLL_BOTTOM_THRESHOLD_PX = 80
 
 export function SimpleMessagesView({ className = "", activeRobotInstance, isBrowserVisible = false, onMessageSent, onNewInstanceCreated, hasTopHeaderSpace = true }: SimpleMessagesViewProps) {
   const { isDarkMode } = useTheme()
@@ -146,17 +149,57 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  
-  // Immediate scroll to bottom without animation (for initial load)
-  const scrollToBottomImmediate = useCallback(() => {
+  /** When true, new logs follow the bottom (like a terminal). When false, we show "Latest" instead of auto-scrolling. */
+  const stickToBottomRef = useRef(true)
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false)
+  const wasLoadingLogsRef = useRef(false)
+  const wasLoadingPlansRef = useRef(false)
+
+  const updateStickToBottomFromScroll = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    const dist = container.scrollHeight - container.scrollTop - container.clientHeight
+    const nearBottom = dist <= SCROLL_BOTTOM_THRESHOLD_PX
+    stickToBottomRef.current = nearBottom
+    setShowJumpToLatest(!nearBottom)
+  }, [])
+
+  // Reset follow mode when switching instances (user expects to land on the latest for the new instance)
+  useEffect(() => {
+    stickToBottomRef.current = true
+    setShowJumpToLatest(false)
+  }, [activeRobotInstance?.id])
+
+  const scrollContainerToBottomImmediate = useCallback(() => {
     const container = messagesContainerRef.current
     if (container) {
       container.scrollTop = container.scrollHeight
     }
   }, [])
 
-  // Auto scroll to bottom when new logs arrive
+  /** Used after fetching logs: only snap down if the user was already following the tail. */
+  const scrollToBottomImmediateIfStuck = useCallback(() => {
+    if (stickToBottomRef.current) {
+      scrollContainerToBottomImmediate()
+      requestAnimationFrame(() => updateStickToBottomFromScroll())
+    }
+  }, [scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
+
+  const jumpToLatestLogs = useCallback(() => {
+    stickToBottomRef.current = true
+    setShowJumpToLatest(false)
+    setIsStepIndicatorExpanded(false)
+    scrollContainerToBottomImmediate()
+    requestAnimationFrame(() => {
+      scrollContainerToBottomImmediate()
+      updateStickToBottomFromScroll()
+    })
+  }, [scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
+
+  // Auto scroll to bottom when sending or other explicit follow actions
   const scrollToBottom = useCallback(() => {
+    stickToBottomRef.current = true
+    setShowJumpToLatest(false)
     const container = messagesContainerRef.current
     if (container) {
       container.scrollTo({ top: container.scrollHeight, behavior: "smooth" })
@@ -279,7 +322,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     activeRobotInstance,
     waitingForMessageId,
     onScrollToBottom: scrollToBottom,
-    onScrollToBottomImmediate: scrollToBottomImmediate,
+    onScrollToBottomImmediate: scrollToBottomImmediateIfStuck,
     onResponseReceived: clearThinkingState,
     currentSiteId: currentSite?.id
   })
@@ -300,21 +343,22 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     resetMessageSentStateRef.current = resetMessageSentState
   }, [resetMessageSentState])
 
-  // Scroll to bottom when logs change or activeRobotInstance changes
+  // When following the tail, keep pinned as new logs arrive (realtime). If the user scrolled up, do not move their view.
   useEffect(() => {
     const hasConversations = logs.length > 0
     const isInstanceRunning = activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)
 
+    if (!stickToBottomRef.current) return
+
     if (hasConversations || isInstanceRunning) {
-      // Usar un setTimeout para asegurar que el DOM se ha renderizado completamente
-      // y forzar a que el navegador lo dibuje (paint) antes de hacer scroll
       const timeoutId = setTimeout(() => {
-        scrollToBottomImmediate();
-      }, 50);
-      
-      return () => clearTimeout(timeoutId);
+        scrollContainerToBottomImmediate()
+        updateStickToBottomFromScroll()
+      }, 50)
+
+      return () => clearTimeout(timeoutId)
     }
-  }, [logs.length, activeRobotInstance?.id, activeRobotInstance?.status, scrollToBottomImmediate])
+  }, [logs.length, activeRobotInstance?.id, activeRobotInstance?.status, scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
 
   const {
     steps,
@@ -367,13 +411,6 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     instanceId: activeRobotInstance?.id
   })
 
-  // Auto-expand step indicator when assets are uploaded for the first time
-  useEffect(() => {
-    if (assets.length > 0 && !isStepIndicatorExpanded) {
-      setIsStepIndicatorExpanded(true)
-    }
-  }, [assets.length]) // Removed isStepIndicatorExpanded from dependencies to allow manual collapse
-
   // Timeline is now created inline in the render to ensure proper chronological order
 
   // Sync selectedActivity to URL params for explorer view control
@@ -387,6 +424,49 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       router.replace(`/robots?${params.toString()}`, { scroll: false })
     }
   }, [selectedActivity, router])
+
+  // After logs finish loading, snap to the bottom by default (container did not exist during skeleton).
+  useLayoutEffect(() => {
+    const finishedLoading = wasLoadingLogsRef.current && !isLoadingLogs
+    wasLoadingLogsRef.current = isLoadingLogs
+
+    if (!finishedLoading) return
+
+    stickToBottomRef.current = true
+    setShowJumpToLatest(false)
+
+    const snapToTail = () => {
+      scrollContainerToBottomImmediate()
+      updateStickToBottomFromScroll()
+    }
+
+    snapToTail()
+    const raf = requestAnimationFrame(snapToTail)
+    const t0 = window.setTimeout(snapToTail, 0)
+    const t1 = window.setTimeout(snapToTail, 120)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(t0)
+      window.clearTimeout(t1)
+    }
+  }, [isLoadingLogs, scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
+
+  // Plans load after logs; if the user is still following the tail, keep them pinned once the timeline height settles.
+  useLayoutEffect(() => {
+    const finishedPlans = wasLoadingPlansRef.current && !isLoadingPlans
+    wasLoadingPlansRef.current = isLoadingPlans
+
+    if (!finishedPlans || !stickToBottomRef.current) return
+
+    const snapToTail = () => {
+      scrollContainerToBottomImmediate()
+      updateStickToBottomFromScroll()
+    }
+    snapToTail()
+    const raf = requestAnimationFrame(snapToTail)
+    return () => cancelAnimationFrame(raf)
+  }, [isLoadingPlans, scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
 
   // Show loading skeleton when loading logs
   if (isLoadingLogs) {
@@ -404,14 +484,18 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     data: any
   }> = []
 
-  // Add requirement statuses
+  // Add only the most recent requirement status (same behavior as last plan)
   if (requirementStatuses && requirementStatuses.length > 0) {
-    requirementStatuses.forEach(status => {
-      timelineItems.push({
-        type: 'requirement_status',
-        timestamp: status.created_at,
-        data: status
-      })
+    const latestStatus = requirementStatuses.reduce((latest, current) => {
+      const latestTime = new Date(latest.created_at).getTime()
+      const currentTime = new Date(current.created_at).getTime()
+      return currentTime > latestTime ? current : latest
+    }, requirementStatuses[0])
+
+    timelineItems.push({
+      type: 'requirement_status',
+      timestamp: latestStatus.created_at,
+      data: latestStatus
     })
   }
   
@@ -423,38 +507,31 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     })
   })
   
-  // Track which plans we've already added to avoid duplicates
+  // Collect all candidate plans (historical + active) with their display timestamp,
+  // then only keep the most recent one (same behavior as requirement_status).
+  const candidatePlans: Array<{ timestamp: string; data: any }> = []
   const addedPlanIds = new Set<string>()
-  
-  // 1. Add real historical plans (completed, failed, cancelled)
+
+  // 1. Real historical plans (completed, failed, cancelled)
   completedPlans.forEach(plan => {
     if (addedPlanIds.has(plan.id)) return
     addedPlanIds.add(plan.id)
-    
+
     const timestamp = plan.completed_at || plan.updated_at || plan.created_at
-    timelineItems.push({
-      type: 'completed_plan',
-      timestamp: timestamp,
-      data: plan
-    })
+    candidatePlans.push({ timestamp, data: plan })
   })
 
-  // 2. Add active plans (pending, in_progress, etc.)
-  // This ensures they show up in the timeline even before they are completed
+  // 2. Active plans (pending, in_progress, etc.)
   instancePlans.forEach(plan => {
     if (addedPlanIds.has(plan.id)) return
     addedPlanIds.add(plan.id)
-    
+
     const isAllStepsCompleted = areAllStepsCompleted() && steps.some(s => s.planId === plan.id || !s.planId)
-    
-    // If it's visually completed but still in instancePlans, treat it as completed for the timeline
+
     if (isAllStepsCompleted) {
-      // For visually completed, use updated_at or now
       const timestamp = plan.updated_at || plan.created_at || new Date().toISOString()
-      
-      timelineItems.push({
-        type: 'completed_plan',
-        timestamp: timestamp,
+      candidatePlans.push({
+        timestamp,
         data: {
           ...plan,
           status: 'completed',
@@ -462,15 +539,23 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         }
       })
     } else {
-      // Otherwise, show it at its creation time so it appears where it started
-      const timestamp = plan.created_at
-      timelineItems.push({
-        type: 'completed_plan',
-        timestamp: timestamp,
-        data: plan
-      })
+      candidatePlans.push({ timestamp: plan.created_at, data: plan })
     }
   })
+
+  if (candidatePlans.length > 0) {
+    const latestPlan = candidatePlans.reduce((latest, current) => {
+      const latestTime = new Date(latest.timestamp).getTime()
+      const currentTime = new Date(current.timestamp).getTime()
+      return currentTime > latestTime ? current : latest
+    }, candidatePlans[0])
+
+    timelineItems.push({
+      type: 'completed_plan',
+      timestamp: latestPlan.timestamp,
+      data: latestPlan.data
+    })
+  }
   
   const sortedTimeline = timelineItems.sort((a, b) => {
     const timeA = new Date(a.timestamp).getTime()
@@ -505,6 +590,15 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const isEmptyExplorer = !shouldShowNewMakina && sortedTimeline.length === 0
   const isEmpty = isEmptyNewMakina || isEmptyExplorer
 
+  const allStepsCompleted = areAllStepsCompleted()
+  const showFloatingPlanAppendix =
+    assets.length > 0 || (steps.length > 0 && !allStepsCompleted)
+  const messagesBottomPaddingClass = !showFloatingPlanAppendix
+    ? "pb-[220px]"
+    : isStepIndicatorExpanded
+      ? "pb-[420px]"
+      : "pb-[270px]"
+
   return (
     <div className={cn("flex flex-col w-full min-w-0 h-full min-h-0", className, !className?.includes('absolute') && "relative")}>
       {/* Floating background orbs - shown when chat is empty */}
@@ -526,8 +620,12 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       {/* Messages list */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-[220px] w-full min-w-0 transition-colors duration-300 ease-in-out"
+        className={cn(
+          "flex-1 min-h-0 overflow-y-auto overflow-x-hidden w-full min-w-0 transition-[padding-bottom,colors] duration-300 ease-in-out",
+          messagesBottomPaddingClass
+        )}
         style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
+        onScroll={updateStickToBottomFromScroll}
       >
         <div className="w-full max-w-4xl mx-auto px-4 min-w-0">
           {/* Spacer for sticky header and topbar blur effect */}
@@ -708,18 +806,28 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
             isEmpty ? "flex flex-col gap-3 -mt-12" : "flex flex-col w-full"
           )}
         >
+        {showJumpToLatest && !isEmpty && (
+          <div className="flex w-full shrink-0 justify-center pb-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="shadow-md gap-1.5 rounded-full border border-border/80 bg-background/95 backdrop-blur-sm"
+              onClick={jumpToLatestLogs}
+              aria-label="Jump to latest log"
+            >
+              <ChevronDown size={16} className="opacity-80" aria-hidden />
+              Latest
+            </Button>
+          </div>
+        )}
         {/* Floating Step Indicator - Expandable */}
-        {(() => {
-          const isAllCompleted = areAllStepsCompleted()
-          // Show widget when there are assets (always) or when there are steps not yet all completed
-          const shouldShow = assets.length > 0 || (steps.length > 0 && !isAllCompleted)
-          return shouldShow
-        })() && (
+        {showFloatingPlanAppendix && (
           <StepIndicator
             steps={steps}
             instancePlans={instancePlans}
             currentStep={getCurrentStep()}
-            allCompleted={areAllStepsCompleted()}
+            allCompleted={allStepsCompleted}
             expanded={isStepIndicatorExpanded}
             onToggleExpanded={() => setIsStepIndicatorExpanded(!isStepIndicatorExpanded)}
             onTogglePause={(planId: string) => {

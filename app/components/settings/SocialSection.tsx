@@ -6,7 +6,8 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/
 import { Input } from "../ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
-import { PlusCircle, Trash2, Save } from "../ui/icons"
+import { Badge } from "../ui/badge"
+import { PlusCircle, Trash2 } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { useCallback, useMemo, useState, useEffect } from "react"
 import { EmptyCard } from "../ui/empty-card"
@@ -45,6 +46,21 @@ const SOCIAL_PLATFORMS = [
   { value: "discord", label: "Discord" },
   { value: "custom", label: "Custom" }
 ]
+
+/** Platforms that support OAuth "Connect account" in this settings flow (see handleConnectAccount). */
+const OAUTH_CONNECT_PLATFORM_VALUES = new Set([
+  "facebook",
+  "instagram",
+  "threads",
+  "twitter",
+  "x",
+  "youtube",
+  "linkedin",
+])
+
+function isOAuthConnectablePlatform(platform: string | undefined): boolean {
+  return !!platform && OAUTH_CONNECT_PLATFORM_VALUES.has(platform)
+}
 
 // Country codes for phone fields
 const COUNTRY_CODES = [
@@ -190,8 +206,8 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
   const handleConnectAccount = useCallback(async (index: number) => {
     const social = socialMedia[index]
     if (!social?.platform || !siteId) return
-    if (social.platform !== 'facebook' && social.platform !== 'instagram' && social.platform !== 'threads' && social.platform !== 'twitter' && social.platform !== 'x' && social.platform !== 'youtube') return
-    
+    if (!isOAuthConnectablePlatform(social.platform)) return
+
     try {
       setIsSaving(true)
       
@@ -389,9 +405,19 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                             <SelectContent className="z-[50]">
                               {SOCIAL_PLATFORMS.map((platform) => (
                                 <SelectItem key={platform.value} value={platform.value}>
-                                  <div className="flex items-center gap-2">
-                                    {getPlatformIcon(platform.value, 16)}
-                                    <span>{platform.label}</span>
+                                  <div className="flex items-center gap-2 w-full min-w-0 justify-between">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      {getPlatformIcon(platform.value, 16)}
+                                      <span className="truncate">{platform.label}</span>
+                                    </div>
+                                    {isOAuthConnectablePlatform(platform.value) && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-[10px] font-medium shrink-0 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-0"
+                                      >
+                                        Can connect
+                                      </Badge>
+                                    )}
                                   </div>
                                 </SelectItem>
                               ))}
@@ -423,11 +449,6 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                           <p className="text-base font-medium truncate">
                             {social.nickname || `${platformLabel} Account`}
                           </p>
-                          {(social.username || social.handle) && (
-                            <p className="text-sm text-muted-foreground truncate">
-                              {social.username || social.handle}
-                            </p>
-                          )}
                           <div className="flex items-center gap-2 mt-1">
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                               Connected
@@ -435,7 +456,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                           </div>
                         </div>
                       </div>
-                      {(social.platform === 'facebook' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x' || social.platform === 'youtube') && (
+                      {isOAuthConnectablePlatform(social.platform) && (
                         <Button
                           variant="outline"
                           type="button"
@@ -449,7 +470,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                   )}
 
                   {/* Connect/Reconnect Account - show when platform selected but not active */}
-                  {hasPlatform && !isActive && (social.platform === 'facebook' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x' || social.platform === 'youtube') && (
+                  {hasPlatform && !isActive && isOAuthConnectablePlatform(social.platform) && (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-lg border border-orange-100 dark:border-orange-900/30">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="w-10 h-10 rounded-full font-inter font-bold bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0 text-orange-600">
@@ -486,8 +507,8 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                     </div>
                   )}
                   
-                  {/* Manual Fields (URL, Handle) - always show if platform selected so user can edit manual info */}
-                  {hasPlatform && (
+                  {/* Manual fields only when the account is not OAuth-linked (username/URL come from the provider when linked) */}
+                  {hasPlatform && !isActive && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                        {getPlatformFields(social.platform).fields.includes("url") && (
                          <FormField
@@ -578,22 +599,24 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                     </div>
                   )}
               </CardContent>
-              <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-                <Button 
-                  variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="h-4 w-4 mr-2 animate-spin rounded-full font-inter border-2 border-current border-t-transparent" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save"
-                  )}
-                </Button>
-              </CardFooter>
+              {!(isActive && hasPlatform) && (
+                <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+                  <Button 
+                    variant="outline"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="h-4 w-4 mr-2 animate-spin rounded-full font-inter border-2 border-current border-t-transparent" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save"
+                    )}
+                  </Button>
+                </CardFooter>
+              )}
             </Card>
           )
         })}

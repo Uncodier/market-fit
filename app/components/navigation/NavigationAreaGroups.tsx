@@ -69,7 +69,7 @@ function reportItemTitle(item: AreaNavItem, t: (k: string) => string): string {
   if (item.settingsTab === "activities") {
     return t("settings.tabs.activities") || "Activities"
   }
-  if (item.settingsTab === "skills") {
+  if (item.key === "skills") {
     return t("settings.tabs.skills") || "Code agent skills"
   }
   if (item.key === "reportCosts") {

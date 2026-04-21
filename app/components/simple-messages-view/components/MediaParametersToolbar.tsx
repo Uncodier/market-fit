@@ -74,6 +74,8 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
     <div className="flex items-center gap-2 flex-wrap">
       {selectedActivity === 'prompt' && (
         <>
+          {renderExpectedResultsSelector(textParameters?.expectedResults, (val) => onTextParameterChange?.('expectedResults', val))}
+
           {/* Text Length Selector */}
           <div className="relative">
             <Select 
@@ -125,8 +127,6 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
               </SelectContent>
             </Select>
           </div>
-          
-          {renderExpectedResultsSelector(textParameters?.expectedResults, (val) => onTextParameterChange?.('expectedResults', val))}
         </>
       )}
 

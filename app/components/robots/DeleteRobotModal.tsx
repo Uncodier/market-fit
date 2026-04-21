@@ -20,7 +20,9 @@ interface DeleteRobotModalProps {
   onOpenChange: (open: boolean) => void
   instanceId: string
   instanceName: string
+  onDeleteStart?: (instanceId: string) => void
   onDeleteSuccess?: () => void
+  onDeleteError?: (instanceId: string) => void
 }
 
 export function DeleteRobotModal({
@@ -28,7 +30,9 @@ export function DeleteRobotModal({
   onOpenChange,
   instanceId,
   instanceName,
+  onDeleteStart,
   onDeleteSuccess,
+  onDeleteError,
 }: DeleteRobotModalProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
@@ -37,6 +41,7 @@ export function DeleteRobotModal({
   const handleDelete = async () => {
     try {
       setIsDeleting(true)
+      onDeleteStart?.(instanceId)
       console.log(`🗑️ Deleting robot instance: ${instanceId}`)
       
       const { apiClient } = await import('@/app/services/api-client-service')
@@ -63,6 +68,7 @@ export function DeleteRobotModal({
       }
     } catch (error) {
       console.error("Error deleting robot instance:", error)
+      onDeleteError?.(instanceId)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Error al eliminar la instancia del agent",

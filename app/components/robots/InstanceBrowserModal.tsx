@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Play, X, Bot } from "@/app/components/ui/icons"
+import { Play, X, Bot, Loader } from "@/app/components/ui/icons"
 import {
   Table,
   TableBody,
@@ -28,6 +28,7 @@ interface InstanceBrowserModalProps {
   instances: RobotInstance[]
   onSelect: (id: string) => void
   onDelete?: (instance: { id: string, name: string }) => void
+  deletingInstanceIds?: Set<string>
 }
 
 export function InstanceBrowserModal({
@@ -35,7 +36,8 @@ export function InstanceBrowserModal({
   onClose,
   instances,
   onSelect,
-  onDelete
+  onDelete,
+  deletingInstanceIds
 }: InstanceBrowserModalProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [instanceMessages, setInstanceMessages] = useState<Record<string, any>>({})
@@ -204,18 +206,32 @@ export function InstanceBrowserModal({
                         </TableCell>
                         
                         <TableCell>
-                          {onDelete && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onDelete({ id: inst.id, name: displayName })
-                              }}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all flex items-center justify-center"
-                              title="Eliminar instancia"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          )}
+                          {onDelete && (() => {
+                            const isDeleting = deletingInstanceIds?.has(inst.id) ?? false
+                            return (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (isDeleting) return
+                                  onDelete({ id: inst.id, name: displayName })
+                                }}
+                                disabled={isDeleting}
+                                className={cn(
+                                  "p-1.5 rounded-md transition-all flex items-center justify-center",
+                                  isDeleting
+                                    ? "opacity-100 text-destructive cursor-default"
+                                    : "opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                                )}
+                                title={isDeleting ? "Eliminando..." : "Eliminar instancia"}
+                              >
+                                {isDeleting ? (
+                                  <Loader className="h-4 w-4" size={16} />
+                                ) : (
+                                  <X className="h-4 w-4" />
+                                )}
+                              </button>
+                            )
+                          })()}
                         </TableCell>
                       </TableRow>
                     )
