@@ -69,9 +69,9 @@ interface ZoomableCanvasProps {
   screenSpaceFront?: React.ReactNode
 }
 
-/** Square keycap look (same family as tooltip <kbd>), not circular icon buttons. */
-const zoomToolbarIconButtonClass =
-  "h-8 w-8 rounded-md border border-border bg-muted/40 text-foreground shadow-none hover:bg-muted"
+/** Square 1:1 keycap for shortcut hints inside tooltips. */
+const tooltipKbdClass =
+  "pointer-events-none inline-flex h-4 w-4 items-center justify-center rounded border bg-muted font-mono text-[10px] font-medium leading-none text-muted-foreground"
 
 export function ZoomableCanvas({ 
   children, 
@@ -1151,7 +1151,7 @@ export function ZoomableCanvas({
                 variant="ghost"
                 size="icon"
                 onClick={zoomIn}
-                className={zoomToolbarIconButtonClass}
+                className="h-8 w-8"
                 aria-label="Zoom in"
               >
                 <ZoomIn className="h-4 w-4" />
@@ -1160,7 +1160,7 @@ export function ZoomableCanvas({
             <TooltipContent side="top" sideOffset={6}>
               <span className="flex items-center gap-2">
                 Zoom in
-                <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">+</kbd>
+                <kbd className={tooltipKbdClass}>+</kbd>
               </span>
             </TooltipContent>
           </Tooltip>
@@ -1171,7 +1171,7 @@ export function ZoomableCanvas({
                 variant="ghost"
                 size="icon"
                 onClick={zoomOut}
-                className={zoomToolbarIconButtonClass}
+                className="h-8 w-8"
                 aria-label="Zoom out"
               >
                 <ZoomOut className="h-4 w-4" />
@@ -1180,7 +1180,7 @@ export function ZoomableCanvas({
             <TooltipContent side="top" sideOffset={6}>
               <span className="flex items-center gap-2">
                 Zoom out
-                <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">−</kbd>
+                <kbd className={tooltipKbdClass}>−</kbd>
               </span>
             </TooltipContent>
           </Tooltip>
@@ -1191,7 +1191,7 @@ export function ZoomableCanvas({
                 variant="ghost"
                 size="icon"
                 onClick={resetView}
-                className={zoomToolbarIconButtonClass}
+                className="h-8 w-8"
                 aria-label="Fit to screen"
               >
                 <Maximize className="h-4 w-4" />
@@ -1200,7 +1200,7 @@ export function ZoomableCanvas({
             <TooltipContent side="top" sideOffset={6}>
               <span className="flex items-center gap-2">
                 Fit to screen
-                <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">1</kbd>
+                <kbd className={tooltipKbdClass}>1</kbd>
               </span>
             </TooltipContent>
           </Tooltip>
@@ -1212,16 +1212,19 @@ export function ZoomableCanvas({
                   variant="ghost"
                   size="icon"
                   onClick={onSort}
-                  className={zoomToolbarIconButtonClass}
+                  className="h-8 w-8"
                   aria-label="Sort layout"
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={6}>
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5">
                   Sort layout
-                  <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">Shift L</kbd>
+                  <span className="inline-flex items-center gap-1">
+                    <kbd className={tooltipKbdClass}>⇧</kbd>
+                    <kbd className={tooltipKbdClass}>L</kbd>
+                  </span>
                 </span>
               </TooltipContent>
             </Tooltip>
