@@ -381,10 +381,17 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
   if (activeRobotInstance) {
     // Only show stop/authenticate buttons when robot is running or active
     const isRunning = ['running', 'active'].includes(activeRobotInstance.status)
-    
+
+    // Running-instance controls (Authenticate, Save Auth Session, Stop Robot)
+    // are intentionally disabled. We still compute `isRunning` so this behavior
+    // can be re-enabled later by flipping the flag below. Requirement status
+    // and source-code (preview) behavior remain fully active.
+    const SHOW_RUNNING_INSTANCE_CONTROLS = false
+    const showRunningControls = SHOW_RUNNING_INSTANCE_CONTROLS && isRunning
+
     // Resume button hidden - removed per user request
     // Allow rendering if we have a source code url to download
-    if (!isRunning && !latestSourceCodeUrl) {
+    if (!showRunningControls && !latestSourceCodeUrl) {
       return null
     }
     
@@ -473,7 +480,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
             </Button>
           )}
           
-          {isRunning && (
+          {showRunningControls && (
             <>
               <Button 
                 variant="secondary" 
@@ -517,7 +524,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
             </>
           )}
         </div>
-        {isRunning && (
+        {showRunningControls && (
           <AuthenticateSessionsModal
             isOpen={isAuthenticateModalOpen}
             onClose={() => setIsAuthenticateModalOpen(false)}

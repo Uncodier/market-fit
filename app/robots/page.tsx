@@ -977,10 +977,21 @@ function RobotsPageContent() {
     return null;
   }, [requirementStatuses]);
 
+  // Preview pane should only appear when we actually have a preview URL
+  // (preview_url / zip fallback from requirement_status). Running-instance-based
+  // visibility is intentionally disabled; flip the flag below to restore the
+  // previous behavior without removing logic.
+  const SHOW_PREVIEW_FOR_RUNNING_INSTANCE = false
+
   // Compute if browser should be visible
   const isBrowserVisible = Boolean(
-    ((selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning || !!latestPreviewUrl)) || 
-    (isActivityRobot && hasMessageBeenSent)) && 
+    (
+      !!latestPreviewUrl ||
+      (SHOW_PREVIEW_FOR_RUNNING_INSTANCE && (
+        (selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning)) ||
+        (isActivityRobot && hasMessageBeenSent)
+      ))
+    ) &&
     !pendingInstanceId &&
     viewMode !== 'imprenta'
   )

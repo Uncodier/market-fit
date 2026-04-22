@@ -171,37 +171,96 @@ function LayoutClientInner({
   // Fix: Clean up stale UI state when returning from background and refresh RSC
   // after long idle to re-sync with middleware session
   const hiddenSinceRef = useRef<number | null>(null)
-  const hasRefreshedAfterIdleRef = useRef(false)
+  const isRefreshingAfterIdleRef = useRef(false)
   const router = useRouter()
 
   useEffect(() => {
-    const IDLE_THRESHOLD_MS = 5 * 60 * 1000 // 5 minutes
+    // Threshold after which we consider the session potentially stale.
+    // Kept low on purpose: background tabs are aggressively throttled by
+    // Chromium/Safari, so Supabase's internal auto-refresh timer often does
+    // not run and the access_token can expire well before we actually notice.
+    const IDLE_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes
+    // Refresh proactively when the access_token is this close to expiring.
+    const REFRESH_WINDOW_SECONDS = 120 // 2 minutes
+
+    const ensureFreshSession = async () => {
+      // Serialise so multiple wake events don't race each other.
+      if (isRefreshingAfterIdleRef.current) return
+      isRefreshingAfterIdleRef.current = true
+
+      try {
+        const supabase = createClient()
+        const { data } = await supabase.auth.getSession()
+        const session = data?.session
+
+        if (!session) {
+          // No session at all — nothing to refresh; let middleware handle the
+          // redirect the next time the user navigates.
+          return
+        }
+
+        const nowSeconds = Math.floor(Date.now() / 1000)
+        const expiresAt = session.expires_at ?? 0
+        const secondsToExpiry = expiresAt - nowSeconds
+
+        // Force a refresh if the token has already expired or is about to
+        // expire. This writes fresh cookies via the browser client so any
+        // subsequent RSC fetch (from router.refresh() or user navigation)
+        // passes the middleware auth check.
+        if (secondsToExpiry <= REFRESH_WINDOW_SECONDS) {
+          await supabase.auth.refreshSession()
+        }
+      } catch (err) {
+        console.warn('[layout-client] Session refresh on wake failed:', err)
+      } finally {
+        isRefreshingAfterIdleRef.current = false
+      }
+    }
+
+    const handleWake = async (hiddenDuration: number) => {
+      document.body.style.pointerEvents = ''
+
+      if (hiddenDuration <= IDLE_THRESHOLD_MS) return
+
+      // Refresh cookies BEFORE triggering the RSC re-sync. Without this the
+      // RSC request can carry an expired access_token, middleware redirects
+      // it to /auth, and the pending client transition blocks subsequent
+      // sidebar clicks (router.push becomes a no-op until the transition
+      // resolves).
+      await ensureFreshSession()
+      router.refresh()
+    }
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         hiddenSinceRef.current = Date.now()
-        hasRefreshedAfterIdleRef.current = false
       } else if (document.visibilityState === 'visible') {
-        document.body.style.pointerEvents = ''
-
         const hiddenDuration = hiddenSinceRef.current
           ? Date.now() - hiddenSinceRef.current
           : 0
-
-        if (hiddenDuration > IDLE_THRESHOLD_MS && !hasRefreshedAfterIdleRef.current) {
-          hasRefreshedAfterIdleRef.current = true
-          // After long idle the middleware may have redirected stale RSC requests
-          // to /auth (expired JWT). A soft refresh re-fetches the RSC tree with
-          // current cookies so client-side navigation works again.
-          router.refresh()
-        }
-
         hiddenSinceRef.current = null
+        void handleWake(hiddenDuration)
       }
     }
 
+    // Window focus is a useful complement: some browsers (Safari in
+    // particular) don't always fire visibilitychange when returning from
+    // another OS window while the tab technically stayed "visible".
+    const handleWindowFocus = () => {
+      if (document.visibilityState !== 'visible') return
+      const hiddenDuration = hiddenSinceRef.current
+        ? Date.now() - hiddenSinceRef.current
+        : 0
+      hiddenSinceRef.current = null
+      void handleWake(hiddenDuration)
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleWindowFocus)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleWindowFocus)
+    }
   }, [router])
 
   // Pages that need full-height layout (no scroll, fixed height container)
