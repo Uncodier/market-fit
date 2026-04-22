@@ -18,6 +18,10 @@ export interface ImprentaParentEdgesCanvasProps {
   strokeStyle: string
   /** Subscribes directly; bypasses React reconcile on pan/zoom. */
   viewportStore: ViewportStore
+  /** When set, tree edges whose endpoints are both in this set use `hoverChainStroke`. */
+  hoverChainNodeIds?: ReadonlySet<string> | null
+  /** Stroke for edges on the hovered node → root chain (see `hoverChainNodeIds`). */
+  hoverChainStroke?: string
   /** World padding beyond the visible viewport (keeps edges from popping when panning). */
   padWorld?: number
   /**
@@ -58,6 +62,8 @@ export function ImprentaParentEdgesCanvas({
   padWorld = DEFAULT_PAD_WORLD,
   dragOverride = null,
   straightLinesBelowScale = 0.4,
+  hoverChainNodeIds = null,
+  hoverChainStroke,
 }: ImprentaParentEdgesCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -79,6 +85,10 @@ export function ImprentaParentEdgesCanvas({
   dragOverrideRef.current = dragOverride
   const straightBelowRef = useRef(straightLinesBelowScale)
   straightBelowRef.current = straightLinesBelowScale
+  const hoverChainRef = useRef(hoverChainNodeIds)
+  hoverChainRef.current = hoverChainNodeIds
+  const hoverChainStrokeRef = useRef(hoverChainStroke)
+  hoverChainStrokeRef.current = hoverChainStroke
 
   const scheduleRef = useRef<(() => void) | null>(null)
 
@@ -157,8 +167,9 @@ export function ImprentaParentEdgesCanvas({
       const s = snap.scale
       ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * snap.position.x, dpr * snap.position.y)
 
+      const baseLineWidth = Math.max(1, 2 / s)
       ctx.strokeStyle = strokeRef.current
-      ctx.lineWidth = Math.max(1, 2 / s)
+      ctx.lineWidth = baseLineWidth
       ctx.lineCap = "round"
 
       const pos = positionsRef.current
@@ -218,7 +229,19 @@ export function ImprentaParentEdgesCanvas({
           const cy2 = y2
           ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2)
         }
-        ctx.stroke()
+        const hl = hoverChainRef.current
+        const hlStroke = hoverChainStrokeRef.current
+        const onHoveredChain =
+          hl != null && hl.size > 0 && hl.has(parentId) && hl.has(node.id) && typeof hlStroke === "string"
+        if (onHoveredChain) {
+          ctx.strokeStyle = hlStroke
+          ctx.lineWidth = Math.max(1, 3.25 / s)
+          ctx.stroke()
+          ctx.strokeStyle = strokeRef.current
+          ctx.lineWidth = baseLineWidth
+        } else {
+          ctx.stroke()
+        }
       }
     }
 
@@ -247,7 +270,18 @@ export function ImprentaParentEdgesCanvas({
 
   useEffect(() => {
     scheduleRef.current?.()
-  }, [nodes, positions, nodeHeights, nodeW, rowH, strokeStyle, dragOverride, straightLinesBelowScale])
+  }, [
+    nodes,
+    positions,
+    nodeHeights,
+    nodeW,
+    rowH,
+    strokeStyle,
+    dragOverride,
+    straightLinesBelowScale,
+    hoverChainNodeIds,
+    hoverChainStroke,
+  ])
 
   return (
     <canvas

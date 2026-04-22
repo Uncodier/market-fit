@@ -84,6 +84,74 @@ function positionsNearlyEqual(
   return Math.abs(a.x - b.x) < eps && Math.abs(a.y - b.y) < eps
 }
 
+/** Prompt / generate / publish cards (not placeholder dummies). */
+function isImprentaWorkflowActionNode(node: InstanceNode): boolean {
+  if (node.id.startsWith("dummy-")) return false
+  const t = node.type
+  return t === "prompt" || t === "publish" || t.startsWith("generate-")
+}
+
+const IMPRENTA_MODE_OPTIONS: readonly { type: string; label: string }[] = [
+  { type: "prompt", label: "Text" },
+  { type: "generate-image", label: "Image" },
+  { type: "generate-video", label: "Video" },
+  { type: "generate-audio", label: "Audio" },
+  { type: "generate-audience", label: "Audience" },
+  { type: "publish", label: "Publish" },
+]
+
+function imprentaSettingsForClonedType(
+  newType: string,
+  previous: Record<string, unknown>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...previous }
+  if (newType === "prompt") {
+    out.media_type = "text"
+  } else if (newType === "generate-audience") {
+    out.media_type = "audience"
+  } else if (newType === "publish") {
+    delete out.media_type
+  } else if (newType.startsWith("generate-")) {
+    out.media_type = newType.replace("generate-", "")
+  }
+  return out
+}
+
+/**
+ * Insert payload for a cloned context edge: same fields as the source (Content / Context /
+ * Audience `type` slots, metadata, etc.) with a new `target_node_id` and current site/user.
+ */
+function cloneInstanceNodeContextRowForInsert(
+  row: Record<string, unknown>,
+  newTargetId: string,
+  siteId: string,
+  userId: string
+): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...row }
+  delete next.id
+  delete next.created_at
+  delete next.updated_at
+  next.target_node_id = newTargetId
+  next.site_id = siteId
+  next.user_id = userId
+  return next
+}
+
+/** Hovered node plus every `parent_node_id` ancestor (cycle-safe). */
+function collectNodeAndAncestorIds(nodeId: string, allNodes: InstanceNode[]): Set<string> {
+  const byId = new Map(allNodes.map((n) => [n.id, n]))
+  const out = new Set<string>()
+  let cur: string | null = nodeId
+  const guard = new Set<string>()
+  while (cur && !guard.has(cur)) {
+    guard.add(cur)
+    out.add(cur)
+    const n = byId.get(cur)
+    cur = n?.parent_node_id ?? null
+  }
+  return out
+}
+
 /** Match layout constants in ImprentaPanel (NODE_W / ROW_H). */
 const IMPRENTA_NODE_W = 480
 const IMPRENTA_ROW_H = 300
@@ -520,6 +588,7 @@ const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
   zoomScale,
   onMouseDown,
   registerRef,
+  onHoverChange,
 }: {
   node: InstanceNode
   pos: { x: number; y: number }
@@ -531,6 +600,8 @@ const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
   zoomScale: number
   onMouseDown: (e: React.MouseEvent) => void
   registerRef: (el: HTMLDivElement | null) => void
+  /** Highlights context + parent edges tied to this node while the pointer is over the shell. */
+  onHoverChange?: (nodeId: string | null) => void
 }) {
   const h = Math.max(Math.round(height), IMPRENTA_ROW_H)
   const micro = imprentaLiteSkeletonBand(zoomScale) === "micro"
@@ -542,6 +613,8 @@ const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
       className="absolute z-10 cursor-grab active:cursor-grabbing rounded-3xl border-2 border-foreground/10 bg-card shadow-[0_0_10px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col pointer-events-auto box-border"
       style={{ left: pos.x, top: pos.y, width, height: h }}
       onMouseDown={onMouseDown}
+      onMouseEnter={() => onHoverChange?.(node.id)}
+      onMouseLeave={() => onHoverChange?.(null)}
     >
       <div className={`flex-1 min-h-0 flex flex-col ${micro ? "p-3" : "p-5"}`}>
         <ImprentaLiteSkeletonBody node={node} zoomScale={zoomScale} />
@@ -586,7 +659,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
   const [contexts, setContexts] = useState<any[]>([])
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null)
-  
+  /** Drives stronger strokes on context + parent-chain edges while a card is hovered. */
+  const [imprentaHoveredNodeId, setImprentaHoveredNodeId] = useState<string | null>(null)
+
   const [tempConnection, setTempConnection] = useState<{fromNode: string, currentX: number, currentY: number} | null>(null)
   const drawingConnectionRef = useRef<{fromNode: string, mouseStartX: number, mouseStartY: number, nodeStartX: number, nodeStartY: number} | null>(null)
 
@@ -788,6 +863,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   }, [viewportStore])
 
   const parentEdgeStroke = isDarkMode ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)"
+  const parentEdgeHoverStroke = isDarkMode ? "rgba(147,197,253,0.92)" : "rgba(37,99,235,0.88)"
+
+  const imprentaHoverChainIds = useMemo(() => {
+    if (!imprentaHoveredNodeId) return null
+    return collectNodeAndAncestorIds(imprentaHoveredNodeId, [...nodes, ...dummyNodes])
+  }, [imprentaHoveredNodeId, nodes, dummyNodes])
+
+  const handleImprentaNodeHover = useCallback((nodeId: string | null) => {
+    setImprentaHoveredNodeId(nodeId)
+  }, [])
 
   const canvasNodes = useMemo(() => [...nodes, ...dummyNodes], [nodes, dummyNodes])
 
@@ -1330,6 +1415,116 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       // Restore on failure
       setNodes(previousNodes);
     }
+  }
+
+  const cloneImprentaNodeWithType = async (nodeId: string, newType: string) => {
+    if (!currentSite || !activeInstanceId) return
+    const source = nodesRef.current.find((n) => n.id === nodeId)
+    if (!source || !isImprentaWorkflowActionNode(source)) return
+    if (!IMPRENTA_MODE_OPTIONS.some((o) => o.type === newType)) return
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    const curPos = positionsRef.current[nodeId] || { x: 100, y: 100 }
+    const offset = 48
+    const newPos = { x: curPos.x + offset, y: curPos.y + offset }
+
+    let clonedSettings: Record<string, unknown>
+    try {
+      clonedSettings = JSON.parse(JSON.stringify(source.settings || {})) as Record<string, unknown>
+    } catch {
+      clonedSettings = { ...(source.settings || {}) } as Record<string, unknown>
+    }
+    clonedSettings = imprentaSettingsForClonedType(newType, clonedSettings)
+    clonedSettings.ui_position = newPos
+
+    let clonedPrompt: Record<string, unknown>
+    try {
+      clonedPrompt = JSON.parse(JSON.stringify(source.prompt || {})) as Record<string, unknown>
+    } catch {
+      clonedPrompt = { ...(source.prompt || {}) } as Record<string, unknown>
+    }
+
+    const newRow = {
+      instance_id: source.instance_id,
+      site_id: source.site_id,
+      user_id: session.user.id,
+      parent_node_id: source.parent_node_id,
+      original_node_id: null as string | null,
+      parent_instance_log_id: null as string | null,
+      type: newType,
+      status: "pending" as const,
+      prompt: clonedPrompt,
+      settings: clonedSettings,
+      result: {},
+    }
+
+    const modeLabel = IMPRENTA_MODE_OPTIONS.find((o) => o.type === newType)?.label ?? newType
+
+    try {
+      const { data: created, error } = await supabase
+        .from("instance_nodes")
+        .insert(newRow)
+        .select("*")
+        .single()
+
+      if (error || !created) {
+        console.error(error)
+        toast.error("Failed to create node")
+        return
+      }
+
+      const { data: ctxRows, error: ctxLoadError } = await supabase
+        .from("instance_node_contexts")
+        .select("*")
+        .eq("target_node_id", nodeId)
+
+      if (ctxLoadError) {
+        console.error(ctxLoadError)
+        toast.error("Node created but context links could not be loaded to copy them")
+      } else {
+        const rows = (ctxRows || []) as Record<string, unknown>[]
+        let anyCtxFailed = false
+        for (const c of rows) {
+          if (!c.context_node_id) continue
+          const payload = cloneInstanceNodeContextRowForInsert(
+            c,
+            created.id,
+            currentSite.id,
+            session.user.id
+          )
+          const { error: ctxErr } = await supabase.from("instance_node_contexts").insert(payload)
+          if (ctxErr) {
+            console.error(ctxErr)
+            anyCtxFailed = true
+          }
+        }
+        if (anyCtxFailed) {
+          toast.error("Node created but one or more context links failed to copy")
+        }
+      }
+
+      const mergedIds = nodesRef.current.map((n) => n.id)
+      if (!mergedIds.includes(created.id)) mergedIds.push(created.id)
+      const { data: ctxRefetch } = await supabase
+        .from("instance_node_contexts")
+        .select("*")
+        .in("target_node_id", mergedIds)
+      if (ctxRefetch) setContexts(ctxRefetch)
+
+      const sameType = newType === source.type
+      toast.success(sameType ? "Node duplicated" : `New ${modeLabel} node created`)
+    } catch (e) {
+      console.error(e)
+      toast.error("Failed to create node")
+    }
+  }
+
+  const handleDuplicateNode = async (nodeId: string) => {
+    const source = nodesRef.current.find((n) => n.id === nodeId)
+    if (!source) return
+    await cloneImprentaNodeWithType(nodeId, source.type)
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1923,6 +2118,36 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
     const h = (id: string) => (heights[id] || ROW_H) + V_GAP
 
+    // Parentless nodes that receive contexts ("results" fed purely by contexts)
+    // should be anchored to the right of their context sources and vertically
+    // centered between them, rather than floating at column 0 as a root.
+    const incomingContextIds: Record<string, string[]> = {}
+    contexts.forEach((c: any) => {
+      if (!c?.target_node_id || !c?.context_node_id) return
+      if (!incomingContextIds[c.target_node_id]) incomingContextIds[c.target_node_id] = []
+      incomingContextIds[c.target_node_id].push(c.context_node_id)
+    })
+    const hasInboundContexts = (id: string) =>
+      (incomingContextIds[id]?.length ?? 0) > 0
+
+    /** Right of the rightmost positioned context, vertically centered between
+     *  all positioned contexts. Returns null if no context has a position yet. */
+    const computeContextAnchoredPosition = (
+      nodeId: string,
+      currentPos: Record<string, { x: number; y: number }>
+    ): { x: number; y: number } | null => {
+      const ctxIds = incomingContextIds[nodeId] || []
+      const positioned = ctxIds.filter(id => currentPos[id])
+      if (positioned.length === 0) return null
+      const rightmostX = Math.max(...positioned.map(id => currentPos[id].x))
+      const centers = positioned.map(
+        id => currentPos[id].y + (heights[id] || ROW_H) / 2
+      )
+      const avgCenter = centers.reduce((s, c) => s + c, 0) / centers.length
+      const myH = heights[nodeId] || ROW_H
+      return { x: rightmostX + NODE_W + H_GAP, y: avgCenter - myH / 2 }
+    }
+
     if (isInitial && currentNodes.length > 0) {
       const subtreeHeight = (id: string): number => {
         const ch = parentGroups[id] || []
@@ -1951,12 +2176,53 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         assign(r.id, 0, yOffset)
         yOffset += subtreeHeight(r.id) + V_GAP
       })
+
+      // Post-pass: reposition parentless nodes that are fed by contexts so they
+      // sit to the right of their rightmost context, vertically centered between
+      // all of them. The entire subtree shifts with the orphan to keep children
+      // glued to their parent. Iterated to resolve chained context dependencies.
+      const shiftSubtree = (id: string, dx: number, dy: number) => {
+        if (!pos[id]) return
+        pos[id] = { x: pos[id].x + dx, y: pos[id].y + dy }
+        const ch = parentGroups[id] || []
+        ch.forEach(c => shiftSubtree(c.id, dx, dy))
+      }
+      const orphansWithCtx = roots.filter(n => hasInboundContexts(n.id))
+      if (orphansWithCtx.length > 0) {
+        for (let pass = 0; pass < 10; pass++) {
+          let changed = false
+          orphansWithCtx.forEach(node => {
+            if (!pos[node.id]) return
+            const anchored = computeContextAnchoredPosition(node.id, pos)
+            if (!anchored) return
+            const dx = anchored.x - pos[node.id].x
+            const dy = anchored.y - pos[node.id].y
+            if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+              shiftSubtree(node.id, dx, dy)
+              changed = true
+            }
+          })
+          if (!changed) break
+        }
+      }
     } else {
       const unpositioned = currentNodes
         .filter(n => !pos[n.id])
         .sort((a, b) => nodeDepth(a.id) - nodeDepth(b.id))
 
       unpositioned.forEach(node => {
+        const isRoot = !node.parent_node_id;
+
+        // Parentless nodes fed by contexts: anchor to the right of their
+        // rightmost context, centered vertically between them.
+        if (isRoot && hasInboundContexts(node.id)) {
+          const anchored = computeContextAnchoredPosition(node.id, pos)
+          if (anchored) {
+            pos[node.id] = anchored
+            return
+          }
+        }
+
         let x: number;
         if (node.parent_node_id && pos[node.parent_node_id]) {
           x = pos[node.parent_node_id].x + NODE_W + H_GAP;
@@ -1969,7 +2235,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         const positionedSiblings = siblings.filter(n => n.id !== node.id && pos[n.id])
 
         let y: number
-        const isRoot = !node.parent_node_id;
 
         if (isRoot) {
           const allPositioned = Object.keys(pos);
@@ -1994,9 +2259,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         pos[node.id] = { x, y }
       })
 
-      // Re-space already-positioned siblings that may now overlap or have gaps
+      // Re-space already-positioned siblings that may now overlap or have gaps.
+      // Parentless nodes that are anchored to their contexts are excluded from
+      // the root stack so we don't collapse them back into column 0.
       for (const key of Object.keys(parentGroups)) {
-        const sorted = parentGroups[key].filter(n => pos[n.id] && !isNaN(pos[n.id].y))
+        const sorted = parentGroups[key]
+          .filter(n => pos[n.id] && !isNaN(pos[n.id].y))
+          .filter(n => !(key === '__root__' && hasInboundContexts(n.id)))
         
         if (sorted.length > 0 && key !== '__root__') {
           const firstNodeId = sorted[0].id;
@@ -2160,6 +2429,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               nodeW={NODE_W}
               rowH={ROW_H}
               strokeStyle={parentEdgeStroke}
+              hoverChainNodeIds={imprentaHoverChainIds}
+              hoverChainStroke={parentEdgeHoverStroke}
               viewportStore={viewportStore}
               // On small graphs we keep full bezier edges at every zoom; the
               // straight-line LOD only pays off when many edges fit on screen.
@@ -2275,37 +2546,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             >
                   {/* Parent edges are drawn by the viewport-sized canvas mounted in screenSpaceBehind. */}
 
-                  {/* Loading-route edges: SVG overlay of parent→child beziers for every segment on the
-                      way from the root down to a currently-generating result node. Drawn in world
-                      coordinates on top of the static canvas edges so the flowing dashes read as a
-                      lit-up route. Rendered only while something is actually loading. */}
-                  {loadingRouteEdges.length > 0 && (
-                    <svg
-                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                      style={{ zIndex: 1, overflow: 'visible' }}
-                    >
-                      {loadingRouteEdges.map(({ parentId, childId }) => {
-                        if (!positions[parentId] || !positions[childId]) return null
-                        const start = resolveNodePosition(parentId)
-                        const end = resolveNodePosition(childId)
-                        const startCy = (nodeHeightsRef.current[parentId] || ROW_H) / 2
-                        const endCy = (nodeHeightsRef.current[childId] || ROW_H) / 2
-                        const x1 = start.x + NODE_W
-                        const y1 = start.y + startCy
-                        const x2 = end.x
-                        const y2 = end.y + endCy
-                        const d = `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`
-                        return (
-                          <path
-                            key={`loading-edge-${parentId}-${childId}`}
-                            d={d}
-                            className="imprenta-loading-edge"
-                          />
-                        )
-                      })}
-                    </svg>
-                  )}
-
                   {/* Context edges: single SVG for all paths; labels/UI stay in per-context overlays. */}
                   {contexts.length > 0 && (
                     <svg
@@ -2326,7 +2566,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                         const endX = end.x
                         const endY = end.y + endCy
                         const isSelected = selectedContextId === ctx.id
-                        const strokeClass = isSelected ? "text-primary" : "text-primary/50"
+                        const chain = imprentaHoverChainIds
+                        const touchesHoverChain =
+                          chain != null &&
+                          (chain.has(ctx.context_node_id) || chain.has(ctx.target_node_id))
+                        const strokeClass =
+                          isSelected || touchesHoverChain ? "text-primary" : "text-primary/50"
+                        const strokeWidth = isSelected ? 4 : touchesHoverChain ? 3 : 2
                         const d = `M ${startX} ${startY} C ${startX + 50} ${startY}, ${endX - 50} ${endY}, ${endX} ${endY}`
                         return (
                           <g key={`ctx-edge-${ctx.id}`}>
@@ -2334,7 +2580,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                               d={d}
                               fill="none"
                               stroke="currentColor"
-                              strokeWidth={isSelected ? 4 : 2}
+                              strokeWidth={strokeWidth}
                               className={`${strokeClass} stroke-dashed cursor-pointer`}
                               strokeDasharray="4 4"
                               style={{ pointerEvents: "stroke" }}
@@ -2457,6 +2703,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                   })()}
                   
                   {/* Draw nodes (virtualized + LOD when graph is large). */}
+                  <TooltipProvider delayDuration={200}>
                   {domRenderNodes.map(node => {
                     const pos = resolvedPositions[node.id] || { x: 100, y: 100 }
                     const isDummy = node.id.startsWith('dummy-');
@@ -2539,6 +2786,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                           zoomScale={viewportInfo?.scale ?? (IMPRENTA_LOD_LITE_MICRO_MAX + IMPRENTA_LOD_LITE_SIMPLE_MAX) / 2}
                           onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                           registerRef={(el) => registerNodeRef(node.id, el, false)}
+                          onHoverChange={handleImprentaNodeHover}
                         />
                       )
                     }
@@ -2548,7 +2796,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                         key={node.id}
                         ref={(el) => registerNodeRef(node.id, el)}
                         data-node-id={node.id}
-                        className="absolute group cursor-grab active:cursor-grabbing"
+                        className="absolute cursor-grab active:cursor-grabbing"
                         style={{ 
                           left: pos.x, 
                           top: pos.y,
@@ -2556,31 +2804,66 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                         }}
                         onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                       >
-                        <Button
-                            variant="destructive"
-                            size="icon"
-                            className="absolute -top-3 -right-3 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20 shadow-md"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteNode(node.id);
-                            }}
-                            title="Delete Node"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-
                         <Card
                           // `transition-shadow` forced a repaint of every visible card on every
                           // hover change in Safari. Keep a flat static shadow and skip the
                           // transition. We DO NOT use `contain: paint` here: with many cards on
                           // screen, promoting each to its own Safari composite layer (plus the
                           // rounded-corner clip mask it implies) cost more than it saved.
+                          // `group` + toolbar inside the card so hover ends when the pointer
+                          // leaves the card surface (not the wider node wrapper used for drag).
                           className={
-                            "w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] border-2 border-foreground/10 bg-card rounded-3xl" +
+                            "group relative w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] border-2 border-foreground/10 bg-card rounded-3xl" +
                             (node.type === "publish" && !hasResult ? " group/publish-in" : "") +
                             (actionNodeIds.has(node.id) ? " imprenta-action-running" : "")
                           }
+                          onMouseEnter={() => handleImprentaNodeHover(node.id)}
+                          onMouseLeave={() => handleImprentaNodeHover(null)}
                         >
+                          <div
+                            className="absolute z-20 flex flex-row-reverse items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto"
+                            style={{ top: -36, right: -6 }}
+                          >
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="h-8 w-8 rounded-full p-0 shadow-md shrink-0 [&_svg]:size-3"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteNode(node.id)
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={6} className="text-xs max-w-[240px]">
+                                Delete this node and all nested nodes
+                              </TooltipContent>
+                            </Tooltip>
+                            {isImprentaWorkflowActionNode(node) && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-full p-0 shadow-md border border-border/70 bg-background hover:bg-muted shrink-0 [&_svg]:size-3"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      void handleDuplicateNode(node.id)
+                                    }}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={6} className="text-xs max-w-[240px]">
+                                  Duplicate settings and context links; the new node starts as pending
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+
                           <CardContent className="p-5 relative">
                             {!hasResult &&
                               (node.type === "publish" ? (
@@ -2687,85 +2970,48 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   </Badge>
                                 )}
                               </div>
+
+                              {isImprentaWorkflowActionNode(node) && (
+                                <div
+                                  className="flex flex-wrap items-center bg-muted/50 p-1 rounded-2xl gap-1"
+                                  title={
+                                    hasResult
+                                      ? "This result is fixed. Pick another mode to create a new pending node with that type (same prompt, settings, and context links)."
+                                      : "Card mode"
+                                  }
+                                >
+                                  {IMPRENTA_MODE_OPTIONS.map(({ type: modeType, label }) => (
+                                    <Button
+                                      key={modeType}
+                                      type="button"
+                                      variant={node.type === modeType ? "outline" : "ghost"}
+                                      size="sm"
+                                      className={`flex-1 h-7 text-[11px] rounded-full font-medium ${
+                                        node.type === modeType
+                                          ? "bg-background shadow-sm border-white/10"
+                                          : "text-muted-foreground hover:text-foreground"
+                                      }`}
+                                      onClick={async (e) => {
+                                        e.stopPropagation()
+                                        if (hasResult) {
+                                          if (modeType === node.type) return
+                                          await cloneImprentaNodeWithType(node.id, modeType)
+                                          return
+                                        }
+                                        setNodes((prev) =>
+                                          prev.map((n) => (n.id === node.id ? { ...n, type: modeType } : n))
+                                        )
+                                        await supabase.from("instance_nodes").update({ type: modeType }).eq("id", node.id)
+                                      }}
+                                    >
+                                      {label}
+                                    </Button>
+                                  ))}
+                                </div>
+                              )}
                               
                               {!hasResult && (
                                 <>
-                                  {/* Media Type Selector */}
-                                  <div className="flex flex-wrap items-center bg-muted/50 p-1 rounded-2xl gap-1">
-                                  <Button 
-                                    variant={node.type === 'prompt' ? 'outline' : 'ghost'} 
-                                    size="sm" 
-                                    className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'prompt' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'prompt' } : n));
-                                      await supabase.from('instance_nodes').update({ type: 'prompt' }).eq('id', node.id)
-                                    }}
-                                  >
-                                    Text
-                                  </Button>
-                                  <Button 
-                                    variant={node.type === 'generate-image' ? 'outline' : 'ghost'} 
-                                    size="sm" 
-                                    className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'generate-image' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'generate-image' } : n));
-                                      await supabase.from('instance_nodes').update({ type: 'generate-image' }).eq('id', node.id)
-                                    }}
-                                  >
-                                    Image
-                                  </Button>
-                                  <Button 
-                                    variant={node.type === 'generate-video' ? 'outline' : 'ghost'} 
-                                    size="sm" 
-                                    className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'generate-video' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'generate-video' } : n));
-                                      await supabase.from('instance_nodes').update({ type: 'generate-video' }).eq('id', node.id)
-                                    }}
-                                  >
-                                    Video
-                                  </Button>
-                                  <Button 
-                                    variant={node.type === 'generate-audio' ? 'outline' : 'ghost'} 
-                                    size="sm" 
-                                    className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'generate-audio' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'generate-audio' } : n));
-                                      await supabase.from('instance_nodes').update({ type: 'generate-audio' }).eq('id', node.id)
-                                    }}
-                                  >
-                                    Audio
-                                  </Button>
-                                  <Button 
-                                    variant={node.type === 'generate-audience' ? 'outline' : 'ghost'} 
-                                    size="sm" 
-                                    className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'generate-audience' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'generate-audience' } : n));
-                                      await supabase.from('instance_nodes').update({ type: 'generate-audience' }).eq('id', node.id)
-                                    }}
-                                  >
-                                    Audience
-                                  </Button>
-                                  <Button 
-                                    variant={node.type === 'publish' ? 'outline' : 'ghost'} 
-                                    size="sm" 
-                                    className={`flex-1 h-7 text-[11px] rounded-full font-medium ${node.type === 'publish' ? 'bg-background shadow-sm border-white/10' : 'text-muted-foreground hover:text-foreground'}`}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, type: 'publish' } : n));
-                                      await supabase.from('instance_nodes').update({ type: 'publish' }).eq('id', node.id)
-                                    }}
-                                  >
-                                    Publish
-                                  </Button>
-                                </div>
-                                
                                 <Textarea 
                                   defaultValue={node.prompt?.text || ''}
                                   onBlur={async (e) => {
@@ -2789,7 +3035,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                 
                                 {node.type === 'generate-audience' && (
                                   <TooltipProvider delayDuration={200}>
-                                    <div className="flex items-center gap-4 flex-wrap">
+                                    <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
                                       {([
                                         { key: 'email', label: 'Email', icon: Mail, hint: 'Only include leads that have an email address.' },
                                         { key: 'web', label: 'Web', icon: Globe, hint: 'Only include leads that have a website URL.' },
@@ -2811,16 +3057,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                           <Tooltip key={key}>
                                             <TooltipTrigger asChild>
                                               <label
-                                                className="flex items-center gap-1.5 text-[11px] cursor-pointer select-none"
+                                                className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
                                                 onClick={(e) => e.stopPropagation()}
                                               >
-                                                <Icon className={`h-3.5 w-3.5 ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`} />
-                                                <span className={`font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+                                                <span className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
                                                 <Switch
+                                                  thumbIcon={<Icon className="h-3 w-3" />}
                                                   checked={isSelected}
                                                   onCheckedChange={toggleChannel}
                                                   onClick={(e) => e.stopPropagation()}
-                                                  className="h-[18px] w-[32px] ml-0.5 [&>span]:h-[14px] [&>span]:w-[14px] [&>span[data-state=checked]]:translate-x-3.5 [&>span[data-state=unchecked]]:translate-x-0"
+                                                  className="h-[22px] w-[44px] shrink-0 [&>span]:h-[18px] [&>span]:w-[18px] [&>span[data-state=checked]]:translate-x-[22px] [&>span[data-state=unchecked]]:translate-x-0"
                                                 />
                                               </label>
                                             </TooltipTrigger>
@@ -2861,18 +3107,20 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                       <Tooltip key={key}>
                                         <TooltipTrigger asChild>
                                           <label
-                                            className="flex items-center gap-1.5 text-[11px] cursor-pointer select-none"
+                                            className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
                                             onClick={(e) => e.stopPropagation()}
                                           >
-                                            <span className={isSelected ? 'text-foreground' : 'text-muted-foreground'}>
-                                              {icon}
+                                            <span
+                                              className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
+                                            >
+                                              {label}
                                             </span>
-                                            <span className={`font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
                                             <Switch
+                                              thumbIcon={icon}
                                               checked={isSelected}
                                               onCheckedChange={() => toggleDestination(key)}
                                               onClick={(e) => e.stopPropagation()}
-                                              className="h-[18px] w-[32px] ml-0.5 [&>span]:h-[14px] [&>span]:w-[14px] [&>span[data-state=checked]]:translate-x-3.5 [&>span[data-state=unchecked]]:translate-x-0"
+                                              className="h-[22px] w-[44px] shrink-0 [&>span]:h-[18px] [&>span]:w-[18px] [&>span[data-state=checked]]:translate-x-[22px] [&>span[data-state=unchecked]]:translate-x-0"
                                             />
                                           </label>
                                         </TooltipTrigger>
@@ -2885,7 +3133,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
                                   return (
                                     <TooltipProvider delayDuration={200}>
-                                      <div className="flex items-center gap-4 flex-wrap">
+                                      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
                                         {(currentSite?.settings?.social_media || [])
                                           .filter(isSocialMediaEntryConnected)
                                           .map((sm: any) => {
@@ -2893,32 +3141,35 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                             return renderToggle(
                                               sm.platform,
                                               platformLabel,
-                                              <SocialIcon platform={sm.platform} size={14} color="currentColor" />,
+                                              <SocialIcon platform={sm.platform} size={12} color="currentColor" />,
                                               `Publish this content to your connected ${platformLabel} account.`
                                             );
                                           })}
                                         {siteUrl && renderToggle(
                                           'blog',
                                           'Blog',
-                                          <Globe className="h-3.5 w-3.5" />,
+                                          <Globe size={12} />,
                                           'Publish this content as a blog post on your site.'
                                         )}
                                         {isEmailDistributionAvailable && renderToggle(
                                           'mail',
                                           'Mail',
-                                          <Mail className="h-3.5 w-3.5" />,
+                                          <Mail size={12} />,
                                           'Send this content as an individual email to the selected audience.'
                                         )}
                                         {isEmailDistributionAvailable && renderToggle(
                                           'newsletter',
                                           'Newsletter',
-                                          <FileText className="h-3.5 w-3.5" />,
+                                          <FileText
+                                            size={12}
+                                            className="[&>svg]:block [&>svg]:-translate-x-px"
+                                          />,
                                           'Include this content in your next newsletter to subscribers.'
                                         )}
                                         {isWhatsappAvailable && renderToggle(
                                           'whatsapp',
                                           'WhatsApp',
-                                          <SocialIcon platform="whatsapp" size={14} color="currentColor" />,
+                                          <SocialIcon platform="whatsapp" size={12} color="currentColor" />,
                                           'Send this content through your connected WhatsApp channel.'
                                         )}
                                       </div>
@@ -3206,6 +3457,37 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                       </div>
                     )
                   })}
+                  </TooltipProvider>
+
+                  {/* Loading-route edges: same geometry as the graph above, but must render *above*
+                      node cards (z-10). Otherwise only segments in empty gutter (often action→result)
+                      are visible; parent→action was drawn under cards. */}
+                  {loadingRouteEdges.length > 0 && (
+                    <svg
+                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                      style={{ zIndex: 12, overflow: "visible" }}
+                    >
+                      {loadingRouteEdges.map(({ parentId, childId }) => {
+                        if (!positions[parentId] || !positions[childId]) return null
+                        const start = resolveNodePosition(parentId)
+                        const end = resolveNodePosition(childId)
+                        const startCy = (nodeHeightsRef.current[parentId] || ROW_H) / 2
+                        const endCy = (nodeHeightsRef.current[childId] || ROW_H) / 2
+                        const x1 = start.x + NODE_W
+                        const y1 = start.y + startCy
+                        const x2 = end.x
+                        const y2 = end.y + endCy
+                        const d = `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`
+                        return (
+                          <path
+                            key={`loading-edge-${parentId}-${childId}`}
+                            d={d}
+                            className="imprenta-loading-edge"
+                          />
+                        )
+                      })}
+                    </svg>
+                  )}
             </div>
             </ZoomableCanvas>
           </div>

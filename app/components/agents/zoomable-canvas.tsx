@@ -69,6 +69,10 @@ interface ZoomableCanvasProps {
   screenSpaceFront?: React.ReactNode
 }
 
+/** Square keycap look (same family as tooltip <kbd>), not circular icon buttons. */
+const zoomToolbarIconButtonClass =
+  "h-8 w-8 rounded-md border border-border bg-muted/40 text-foreground shadow-none hover:bg-muted"
+
 export function ZoomableCanvas({ 
   children, 
   className,
@@ -1147,7 +1151,7 @@ export function ZoomableCanvas({
                 variant="ghost"
                 size="icon"
                 onClick={zoomIn}
-                className="h-8 w-8"
+                className={zoomToolbarIconButtonClass}
                 aria-label="Zoom in"
               >
                 <ZoomIn className="h-4 w-4" />
@@ -1167,7 +1171,7 @@ export function ZoomableCanvas({
                 variant="ghost"
                 size="icon"
                 onClick={zoomOut}
-                className="h-8 w-8"
+                className={zoomToolbarIconButtonClass}
                 aria-label="Zoom out"
               >
                 <ZoomOut className="h-4 w-4" />
@@ -1187,7 +1191,7 @@ export function ZoomableCanvas({
                 variant="ghost"
                 size="icon"
                 onClick={resetView}
-                className="h-8 w-8"
+                className={zoomToolbarIconButtonClass}
                 aria-label="Fit to screen"
               >
                 <Maximize className="h-4 w-4" />
@@ -1208,7 +1212,7 @@ export function ZoomableCanvas({
                   variant="ghost"
                   size="icon"
                   onClick={onSort}
-                  className="h-8 w-8"
+                  className={zoomToolbarIconButtonClass}
                   aria-label="Sort layout"
                 >
                   <LayoutGrid className="h-4 w-4" />
