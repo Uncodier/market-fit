@@ -977,6 +977,24 @@ function RobotsPageContent() {
     return null;
   }, [requirementStatuses]);
 
+  // So the iframe remounts when the preview row is updated in DB, even if the URL string is unchanged
+  const requirementPreviewFrameKey = useMemo(() => {
+    if (!requirementStatuses || requirementStatuses.length === 0) return "none"
+    for (let i = requirementStatuses.length - 1; i >= 0; i--) {
+      const s = requirementStatuses[i]
+      const hasPreview =
+        s.preview_url ||
+        (s.repo_url &&
+          (s.repo_url.endsWith(".zip") || s.repo_url.includes(".zip?"))) ||
+        (s.source_code &&
+          (s.source_code.endsWith(".zip") || s.source_code.includes(".zip?")))
+      if (hasPreview) {
+        return `${(s as { id?: string }).id ?? "row"}-${(s as { updated_at?: string; created_at?: string }).updated_at ?? (s as { created_at?: string }).created_at ?? i}`
+      }
+    }
+    return "none"
+  }, [requirementStatuses])
+
   // Preview pane should only appear when we actually have a preview URL
   // (preview_url / zip fallback from requirement_status). Running-instance-based
   // visibility is intentionally disabled; flip the flag below to restore the
@@ -1434,12 +1452,16 @@ function RobotsPageContent() {
                         )}
                         {isZipUrl ? (
                           <div className="w-full h-full flex items-center justify-center p-4 iframe-wrapper">
-                            <ZipViewer key={activeUrlToDisplay} url={activeUrlToDisplay} className="h-full border-0 rounded-lg shadow-none" />
+                            <ZipViewer
+                              key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
+                              url={activeUrlToDisplay}
+                              className="h-full border-0 rounded-lg shadow-none"
+                            />
                           </div>
                         ) : (
                           <iframe
                             ref={iframeRef}
-                            key={activeUrlToDisplay}
+                            key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
                             src={iframeSrc}
                             className="absolute inset-0 w-full h-full border-0 bg-background contained-iframe"
                             title={latestPreviewUrl ? "Preview" : streamUrl ? "Robot Browser Session" : "Google"}

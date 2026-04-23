@@ -1,11 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect, useCallback } from "react"
+import { createClient } from "@/lib/supabase/client"
+import { useRobots } from "@/app/context/RobotsContext"
+import { subscribeRequirementStatusRealtime } from "./subscribeRequirementStatusRealtime"
 
-export const useRequirementStatus = (activeRobotInstance?: any) => {
+export const useRequirementStatus = (activeRobotInstance?: { id?: string } | null) => {
+  const { refreshCount } = useRobots()
   const [requirementStatuses, setRequirementStatuses] = useState<any[]>([])
-  
+
+  const instanceId = activeRobotInstance?.id
+
   const loadStatuses = useCallback(async () => {
-    if (!activeRobotInstance?.id) {
+    if (!instanceId) {
       setRequirementStatuses([])
       return
     }
@@ -13,48 +18,30 @@ export const useRequirementStatus = (activeRobotInstance?: any) => {
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from('requirement_status')
-        .select('*, requirements(title)')
-        .eq('instance_id', activeRobotInstance.id)
-        .order('created_at', { ascending: true })
+        .from("requirement_status")
+        .select("*, requirements(title)")
+        .eq("instance_id", instanceId)
+        .order("created_at", { ascending: true })
 
       if (!error && data) {
         setRequirementStatuses(data)
       }
     } catch (error) {
-      console.error('Error loading requirement statuses:', error)
+      console.error("Error loading requirement statuses:", error)
       setRequirementStatuses([])
     }
-  }, [activeRobotInstance?.id])
+  }, [instanceId])
 
   useEffect(() => {
     loadStatuses()
-  }, [loadStatuses])
+  }, [loadStatuses, refreshCount])
 
   useEffect(() => {
-    if (!activeRobotInstance?.id) return
-
-    const supabase = createClient()
-    const subscription = supabase
-      .channel('requirement_status_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'requirement_status',
-          filter: `instance_id=eq.${activeRobotInstance.id}`
-        },
-        () => {
-          loadStatuses()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(subscription)
-    }
-  }, [activeRobotInstance?.id, loadStatuses])
+    if (!instanceId) return
+    return subscribeRequirementStatusRealtime(instanceId, () => {
+      loadStatuses()
+    })
+  }, [instanceId, loadStatuses])
 
   return {
     requirementStatuses,
