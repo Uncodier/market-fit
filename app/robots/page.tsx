@@ -1373,7 +1373,7 @@ function RobotsPageContent() {
                   </div>
                   {/* Browser content - 1fr fills all remaining height */}
                   <div className="relative overflow-hidden">
-                    {isResuming || isInstanceStarting ? (
+                    {(isResuming || isInstanceStarting) && !latestPreviewUrl ? (
                       <div className="absolute inset-0 flex flex-col">
                         <BrowserSkeleton />
                       </div>
