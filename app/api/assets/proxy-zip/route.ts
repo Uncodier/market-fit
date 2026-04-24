@@ -19,14 +19,18 @@ export async function GET(request: NextRequest) {
 
     // Validar que la URL sea del proyecto Supabase esperado
     const repositoriesUrl = process.env.NEXT_PUBLIC_REPOSITORIES_SUPABASE_URL
-    const secretKey = process.env.REPOSITORIES_SUPABASE_SECRET_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const secretKey = process.env.REPOSITORIES_SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (!repositoriesUrl || !secretKey) {
+    if (!secretKey) {
       console.error('Missing required environment variables for Supabase proxy')
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
 
-    if (!targetUrl.startsWith(repositoriesUrl)) {
+    const isAuthorized = (repositoriesUrl && targetUrl.startsWith(repositoriesUrl)) || 
+                         (supabaseUrl && targetUrl.startsWith(supabaseUrl));
+
+    if (!isAuthorized) {
       return NextResponse.json({ error: 'URL is not authorized for proxy' }, { status: 403 })
     }
 

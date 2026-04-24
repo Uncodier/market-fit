@@ -44,7 +44,9 @@ import {
   LogOut,
   Github,
   Bot,
-  Globe
+  Globe,
+  Folder,
+  Eye
 } from "@/app/components/ui/icons"
 
 import { subMonths, format } from "date-fns"
@@ -80,40 +82,73 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     // If URL param exists, try to get that instance first
     if (selectedInstanceParam) {
       const urlInstance = getInstanceById(selectedInstanceParam)
-      if (urlInstance && ['paused', 'uninstantiated'].includes(urlInstance.status)) {
-        return urlInstance
-      }
-      // If URL instance exists but is not paused, still return it for stop button
       if (urlInstance) {
         return urlInstance
       }
     }
     
-    // If no URL param or URL instance not found, find first paused instance
-    const pausedInstance = allInstances.find(instance => 
-      ['paused', 'uninstantiated'].includes(instance.status)
-    )
-    
-    if (pausedInstance) {
-      return pausedInstance
-    }
-    
-    // Fallback: if URL param exists but instance not found, return null
-    if (selectedInstanceParam) {
-      return null
+    // If no URL param or URL instance not found, use the most recently updated instance
+    // This matches the fallback logic in robots/page.tsx
+    if (allInstances.length > 0) {
+      const sortedInstances = [...allInstances].sort((a, b) => {
+        const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
+        const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
+        return bTime - aTime
+      })
+      return sortedInstances[0]
     }
     
     return null
   }, [selectedInstanceParam, allInstances, getInstanceById, isLoadingRobots, refreshCount])
   
   const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
+  
+  const [showSourceCodePreview, setShowSourceCodePreview] = useState(false)
+  useEffect(() => {
+    const handleToggle = () => setShowSourceCodePreview(prev => !prev)
+    window.addEventListener('robot:toggle-source-code', handleToggle)
+    return () => window.removeEventListener('robot:toggle-source-code', handleToggle)
+  }, [])
+
+  const latestPreviewUrl = useMemo(() => {
+    if (!requirementStatuses || requirementStatuses.length === 0) return null;
+    
+    // Find the most recent requirement_status that has a preview
+    for (let i = requirementStatuses.length - 1; i >= 0; i--) {
+      const status = requirementStatuses[i];
+      if (status.preview_url) {
+        return status.preview_url;
+      }
+      // Fallback: If no preview_url but repo_url points to a zip file in Supabase
+      if (!status.preview_url && status.repo_url && (status.repo_url.endsWith('.zip') || status.repo_url.includes('.zip?') || status.repo_url.endsWith('.tar.gz') || status.repo_url.includes('.tar.gz?') || status.repo_url.endsWith('.tar') || status.repo_url.includes('.tar?'))) {
+        return status.repo_url;
+      }
+      // Fallback: Check source_code if it points to a zip
+      if (!status.preview_url && status.source_code && (status.source_code.endsWith('.zip') || status.source_code.includes('.zip?') || status.source_code.endsWith('.tar.gz') || status.source_code.includes('.tar.gz?') || status.source_code.endsWith('.tar') || status.source_code.includes('.tar?'))) {
+        return status.source_code;
+      }
+    }
+    
+    return null;
+  }, [requirementStatuses]);
+
   const latestSourceCodeUrl = useMemo(() => {
     if (!requirementStatuses || requirementStatuses.length === 0) return null;
     
-    // Check ONLY the last requirement_status
-    const lastStatus = requirementStatuses[requirementStatuses.length - 1];
-    if (lastStatus.source_code) {
-      return lastStatus.source_code;
+    // Find the most recent requirement_status that has source_code
+    for (let i = requirementStatuses.length - 1; i >= 0; i--) {
+      const status = requirementStatuses[i];
+      if (status.source_code) {
+        return status.source_code;
+      }
+      // Fallback: If no source_code but repo_url points to a zip file in Supabase
+      if (!status.source_code && status.repo_url && (status.repo_url.endsWith('.zip') || status.repo_url.includes('.zip?') || status.repo_url.endsWith('.tar.gz') || status.repo_url.includes('.tar.gz?') || status.repo_url.endsWith('.tar') || status.repo_url.includes('.tar?'))) {
+        return status.repo_url;
+      }
+      // Fallback: Check preview_url if it points to a zip
+      if (!status.source_code && status.preview_url && (status.preview_url.endsWith('.zip') || status.preview_url.includes('.zip?') || status.preview_url.endsWith('.tar.gz') || status.preview_url.includes('.tar.gz?') || status.preview_url.endsWith('.tar') || status.preview_url.includes('.tar?'))) {
+        return status.preview_url;
+      }
     }
     
     return null;
@@ -455,28 +490,20 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     return (
       <>
         <div className="flex items-center gap-2">
-          {latestSourceCodeUrl && (
-              <Button
+          {latestSourceCodeUrl && latestPreviewUrl && latestSourceCodeUrl !== latestPreviewUrl && (
+            <Button
               variant="secondary"
               size="default"
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               onClick={() => {
-                const isZip = latestSourceCodeUrl.endsWith('.zip') || latestSourceCodeUrl.includes('.zip?');
-                if (isZip) {
-                  let finalUrl = latestSourceCodeUrl;
-                  if (latestSourceCodeUrl.startsWith('/')) {
-                      finalUrl = window.location.origin + latestSourceCodeUrl;
-                  }
-                  const proxyUrl = `/api/assets/proxy-zip?url=${encodeURIComponent(finalUrl)}`;
-                  window.open(proxyUrl, '_blank', 'noopener noreferrer');
-                } else {
-                  window.open(latestSourceCodeUrl, '_blank', 'noopener noreferrer');
-                }
+                window.dispatchEvent(new CustomEvent('robot:toggle-source-code'));
               }}
-              title={t('layout.topbar.downloadSourceCode') || "Source Code"}
+              title={showSourceCodePreview ? (t('requirements.preview') || "Preview") : "Source Code"}
             >
-              <Github className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.downloadSourceCode') || 'Source Code'}</span>
+              {showSourceCodePreview ? <Globe className="h-4 w-4 shrink-0" /> : <Folder className="h-4 w-4 shrink-0" />}
+              <span className="hidden md:inline font-inter font-medium text-sm">
+                {showSourceCodePreview ? (t('requirements.preview') || "Preview") : "Source Code"}
+              </span>
             </Button>
           )}
           

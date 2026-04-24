@@ -138,9 +138,9 @@ export function RequirementStatusList({
                         {t('requirements.preview') || 'Preview'}
                       </a>
                     )}
-                    {status.source_code && (
+                    {(status.source_code || status.repo_url) && (
                       <a 
-                        href={status.source_code} 
+                        href={status.source_code || status.repo_url || undefined} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-xs text-foreground/50 hover:text-foreground/80 hover:underline"

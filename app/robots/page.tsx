@@ -954,6 +954,14 @@ function RobotsPageContent() {
   }, [calculateMaxVisibleTabs, tabInstances.length, isLayoutCollapsed, selectedInstanceId]);
 
   const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
+  
+  const [showSourceCodePreview, setShowSourceCodePreview] = useState(false)
+  useEffect(() => {
+    const handleToggle = () => setShowSourceCodePreview(prev => !prev)
+    window.addEventListener('robot:toggle-source-code', handleToggle)
+    return () => window.removeEventListener('robot:toggle-source-code', handleToggle)
+  }, [])
+
   // Use a stable reference that only computes when requirementStatuses changes
   const latestPreviewUrl = useMemo(() => {
     if (!requirementStatuses || requirementStatuses.length === 0) return null;
@@ -971,6 +979,26 @@ function RobotsPageContent() {
       // Fallback: Check source_code if it points to a zip
       if (!status.preview_url && status.source_code && (status.source_code.endsWith('.zip') || status.source_code.includes('.zip?'))) {
         return status.source_code;
+      }
+    }
+    
+    return null;
+  }, [requirementStatuses]);
+
+  const latestSourceCodeUrl = useMemo(() => {
+    if (!requirementStatuses || requirementStatuses.length === 0) return null;
+    
+    // Find the most recent requirement_status that has source_code
+    for (let i = requirementStatuses.length - 1; i >= 0; i--) {
+      const status = requirementStatuses[i];
+      if (status.source_code) {
+        return status.source_code;
+      }
+      if (!status.source_code && status.repo_url && (status.repo_url.endsWith('.zip') || status.repo_url.includes('.zip?'))) {
+        return status.repo_url;
+      }
+      if (!status.source_code && status.preview_url && (status.preview_url.endsWith('.zip') || status.preview_url.includes('.zip?'))) {
+        return status.preview_url;
       }
     }
     
@@ -1004,7 +1032,7 @@ function RobotsPageContent() {
   // Compute if browser should be visible
   const isBrowserVisible = Boolean(
     (
-      !!latestPreviewUrl ||
+      !!latestPreviewUrl || !!latestSourceCodeUrl ||
       (SHOW_PREVIEW_FOR_RUNNING_INSTANCE && (
         (selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning)) ||
         (isActivityRobot && hasMessageBeenSent)
@@ -1014,8 +1042,13 @@ function RobotsPageContent() {
     viewMode !== 'imprenta'
   )
 
-  const activeUrlToDisplay = latestPreviewUrl || streamUrl || "https://www.google.com"
-  const isZipUrl = typeof activeUrlToDisplay === 'string' && (activeUrlToDisplay.endsWith('.zip') || activeUrlToDisplay.includes('.zip?'))
+  const activeUrlToDisplay = (showSourceCodePreview ? latestSourceCodeUrl : latestPreviewUrl) || streamUrl || "https://www.google.com"
+  const isZipUrl = typeof activeUrlToDisplay === 'string' && (
+    activeUrlToDisplay.endsWith('.zip') || 
+    activeUrlToDisplay.includes('.zip?') ||
+    activeUrlToDisplay.endsWith('.tar.gz') ||
+    activeUrlToDisplay.includes('.tar.gz?')
+  )
 
   const { displayUrl: displayedIframeUrl, iframeSrc, handleIframeLoad } = useIframeUrl(iframeRef, activeUrlToDisplay)
 
@@ -1357,38 +1390,40 @@ function RobotsPageContent() {
           <div className={`flex flex-col lg:flex-row flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
             {isBrowserVisible && (
               <div className="w-full lg:w-2/3 border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative">
-                <div className="grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[135px] overflow-hidden">
+                <div className={`grid ${isZipUrl ? 'grid-rows-[1fr]' : 'grid-rows-[auto_1fr]'} m-0 bg-card absolute inset-x-0 bottom-0 top-[135px] overflow-hidden`}>
                   {/* Browser navigation bar */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/40">
-                    <button
-                      onClick={() => {
-                        const frame = iframeRef.current
-                        if (frame) {
-                          frame.src = frame.src
-                        }
-                      }}
-                      className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                      title="Refresh"
-                    >
-                      <RotateCw className="h-3.5 w-3.5" />
-                    </button>
-                    <div className="flex items-center gap-2 flex-1 min-w-0 bg-background/80 border border-border rounded-md px-2.5 py-1">
-                      <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <input
-                        type="text"
-                        readOnly
-                        value={displayedIframeUrl}
-                        className="flex-1 min-w-0 text-xs text-muted-foreground bg-transparent outline-none cursor-default"
-                      />
+                  {!isZipUrl && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/40">
+                      <button
+                        onClick={() => {
+                          const frame = iframeRef.current
+                          if (frame) {
+                            frame.src = frame.src
+                          }
+                        }}
+                        className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        title="Refresh"
+                      >
+                        <RotateCw className="h-3.5 w-3.5" />
+                      </button>
+                      <div className="flex items-center gap-2 flex-1 min-w-0 bg-background/80 border border-border rounded-md px-2.5 py-1">
+                        <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <input
+                          type="text"
+                          readOnly
+                          value={displayedIframeUrl}
+                          className="flex-1 min-w-0 text-xs text-muted-foreground bg-transparent outline-none cursor-default"
+                        />
+                      </div>
+                      <button
+                        onClick={() => window.open(displayedIframeUrl, '_blank')}
+                        className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        title="Open in new tab"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => window.open(displayedIframeUrl, '_blank')}
-                      className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                      title="Open in new tab"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                  )}
                   {/* Browser content - 1fr fills all remaining height */}
                   <div className="relative overflow-hidden">
                     {(isResuming || isInstanceStarting) && !latestPreviewUrl ? (
@@ -1399,9 +1434,9 @@ function RobotsPageContent() {
                       <div className="absolute inset-0 flex flex-col">
                         <BrowserSkeleton />
                       </div>
-                    ) : (isInstanceRunning || !!latestPreviewUrl) ? (
+                    ) : (isInstanceRunning || !!latestPreviewUrl || !!latestSourceCodeUrl) ? (
                       <div className="absolute inset-0 bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
-                        {connectionStatus !== 'connected' && !latestPreviewUrl && (
+                        {connectionStatus !== 'connected' && !latestPreviewUrl && !latestSourceCodeUrl && (
                           <div className="absolute top-4 left-4 z-10">
                             <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium shadow-lg backdrop-blur-sm ${
                               connectionStatus === 'reconnecting' ? 'bg-yellow-100/90 text-yellow-800 border border-yellow-200' :
@@ -1451,11 +1486,11 @@ function RobotsPageContent() {
                           </div>
                         )}
                         {isZipUrl ? (
-                          <div className="w-full h-full flex items-center justify-center p-4 iframe-wrapper">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background">
                             <ZipViewer
                               key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
                               url={activeUrlToDisplay}
-                              className="h-full border-0 rounded-lg shadow-none"
+                              className="w-full h-full"
                             />
                           </div>
                         ) : (

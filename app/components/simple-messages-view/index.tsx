@@ -492,10 +492,27 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
       return currentTime > latestTime ? current : latest
     }, requirementStatuses[0])
 
+    // Find the most recent source_code, preview_url, and repo_url
+    let latestSourceCode = null;
+    let latestPreviewUrl = null;
+    let latestRepoUrl = null;
+
+    for (let i = requirementStatuses.length - 1; i >= 0; i--) {
+      const status = requirementStatuses[i];
+      if (!latestSourceCode && status.source_code) latestSourceCode = status.source_code;
+      if (!latestPreviewUrl && status.preview_url) latestPreviewUrl = status.preview_url;
+      if (!latestRepoUrl && status.repo_url) latestRepoUrl = status.repo_url;
+    }
+
     timelineItems.push({
       type: 'requirement_status',
       timestamp: latestStatus.created_at,
-      data: latestStatus
+      data: {
+        ...latestStatus,
+        source_code: latestSourceCode,
+        preview_url: latestPreviewUrl,
+        repo_url: latestRepoUrl
+      }
     })
   }
   
