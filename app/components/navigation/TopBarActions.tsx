@@ -208,6 +208,27 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       if (response.success) {
         toast.success("Robot workflow initiated - setting up browser...")
         
+        // Also resume any paused plans for this instance
+        if (activeRobotInstance?.id) {
+          try {
+            const supabase = createClient()
+            const { data: plans } = await supabase
+              .from('instance_plans')
+              .select('id')
+              .eq('instance_id', activeRobotInstance.id)
+              .eq('status', 'paused')
+            
+            if (plans && plans.length > 0) {
+              await supabase
+                .from('instance_plans')
+                .update({ status: 'in_progress', updated_at: new Date().toISOString() })
+                .in('id', plans.map(p => p.id))
+            }
+          } catch (err) {
+            console.error('Error resuming plans on robot start:', err)
+          }
+        }
+        
         // Small delay to allow database to update, then refresh
         setTimeout(async () => {
           await refreshRobots()
@@ -355,6 +376,24 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
       if (response.success) {
         toast.success("Robot stopped successfully")
         
+        // Also pause any active plans for this instance
+        try {
+          const supabase = createClient()
+          const { data: plans } = await supabase
+            .from('instance_plans')
+            .select('id')
+            .eq('instance_id', activeRobotInstance.id)
+            .in('status', ['in_progress', 'pending'])
+          
+          if (plans && plans.length > 0) {
+            await supabase
+              .from('instance_plans')
+              .update({ status: 'paused', updated_at: new Date().toISOString() })
+              .in('id', plans.map(p => p.id))
+          }
+        } catch (err) {
+          console.error('Error pausing plans on robot stop:', err)
+        }
         
         // Emit custom event to notify robots page
         window.dispatchEvent(new CustomEvent('robotStopped', { 

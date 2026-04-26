@@ -5,7 +5,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface RequirementStatusCardProps {
   status: {
-    status?: string
+    stage?: string
     message?: string
     created_at?: string
     preview_url?: string
@@ -16,8 +16,8 @@ interface RequirementStatusCardProps {
 export const RequirementStatusCard: React.FC<RequirementStatusCardProps> = ({ status }) => {
   const { isDarkMode } = useTheme()
   const { t } = useLocalization()
-  const isCompleted = status.status?.toLowerCase() === 'completed' || status.status?.toLowerCase() === 'success'
-  const isFailed = status.status?.toLowerCase() === 'failed' || status.status?.toLowerCase() === 'error'
+  const isCompleted = status.stage?.toLowerCase() === 'completed' || status.stage?.toLowerCase() === 'success'
+  const isFailed = status.stage?.toLowerCase() === 'failed' || status.stage?.toLowerCase() === 'error'
 
   const baseClasses = isCompleted
     ? {
@@ -30,7 +30,7 @@ export const RequirementStatusCard: React.FC<RequirementStatusCardProps> = ({ st
         title: isDarkMode ? 'text-green-300' : 'text-green-800',
         text: isDarkMode ? 'text-green-400' : 'text-green-700',
         meta: isDarkMode ? 'text-green-500' : 'text-green-600',
-        label: `Requirement · ${status.status ?? 'update'}`,
+        label: `Requirement · ${status.stage ?? 'update'}`,
       }
     : isFailed
       ? {
@@ -43,7 +43,7 @@ export const RequirementStatusCard: React.FC<RequirementStatusCardProps> = ({ st
           title: isDarkMode ? 'text-red-300' : 'text-red-800',
           text: isDarkMode ? 'text-red-400' : 'text-red-700',
           meta: isDarkMode ? 'text-red-500' : 'text-red-600',
-          label: `Requirement · ${status.status ?? 'update'}`,
+          label: `Requirement · ${status.stage ?? 'update'}`,
         }
       : {
           container: isDarkMode
@@ -55,7 +55,7 @@ export const RequirementStatusCard: React.FC<RequirementStatusCardProps> = ({ st
           title: isDarkMode ? 'text-blue-300' : 'text-blue-800',
           text: isDarkMode ? 'text-blue-400' : 'text-blue-700',
           meta: isDarkMode ? 'text-blue-500' : 'text-blue-600',
-          label: `Requirement · ${status.status ?? 'update'}`,
+          label: `Requirement · ${status.stage ?? 'update'}`,
         }
 
   return (

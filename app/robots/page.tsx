@@ -1106,11 +1106,75 @@ function RobotsPageContent() {
                             return (
                             <TabsTrigger key={`${inst.id}-${siteChangeKey}`} value={inst.id}>
                               <span className="flex items-center gap-2 max-w-[120px]">
-                                {['running','active'].includes((inst as any).status) ? (
-                                  <Play className="h-3 w-3 text-green-600 flex-shrink-0" />
-                                ) : (['starting','pending','initializing'].includes((inst as any).status) ? (
-                                  <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse flex-shrink-0" />
-                                ) : null)}
+                                {(() => {
+                                  const status = (inst as any).status;
+                                  const isRunning = ['running','active'].includes(status);
+                                  const isPaused = ['paused'].includes(status);
+                                  const isStarting = ['starting','pending','initializing'].includes(status);
+                                  
+                                  const isActiveState = isRunning || isStarting;
+                                  
+                                  return (
+                                    <span 
+                                      className="cursor-pointer hover:opacity-80 flex items-center justify-center w-4 h-4 flex-shrink-0"
+                                      onClick={async (e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        try {
+                                          const supabase = createClient();
+                                          const newInstanceStatus = isActiveState ? 'paused' : 'running';
+                                          
+                                          // 1. Actualizar instancia
+                                          await supabase
+                                            .from('remote_instances')
+                                            .update({ status: newInstanceStatus, updated_at: new Date().toISOString() })
+                                            .eq('id', inst.id);
+                                            
+                                          // 2. Actualizar planes
+                                          if (isActiveState) {
+                                            const { data: plans } = await supabase
+                                              .from('instance_plans')
+                                              .select('id')
+                                              .eq('instance_id', inst.id)
+                                              .in('status', ['in_progress', 'pending']);
+                                            if (plans && plans.length > 0) {
+                                              await supabase
+                                                .from('instance_plans')
+                                                .update({ status: 'paused', updated_at: new Date().toISOString() })
+                                                .in('id', plans.map(p => p.id));
+                                            }
+                                          } else {
+                                            const { data: plans } = await supabase
+                                              .from('instance_plans')
+                                              .select('id')
+                                              .eq('instance_id', inst.id)
+                                              .eq('status', 'paused');
+                                            if (plans && plans.length > 0) {
+                                              await supabase
+                                                .from('instance_plans')
+                                                .update({ status: 'in_progress', updated_at: new Date().toISOString() })
+                                                .in('id', plans.map(p => p.id));
+                                            }
+                                          }
+                                          refreshRobots(currentSite?.id);
+                                        } catch (err) {
+                                          console.error('Error toggling state from tab icon:', err);
+                                        }
+                                      }}
+                                      title={isActiveState ? "Pausar instancia y plan" : "Reanudar instancia y plan"}
+                                    >
+                                      {isRunning ? (
+                                        <Play className="h-3 w-3 text-green-600" />
+                                      ) : isPaused ? (
+                                        <Pause className="h-3 w-3 text-yellow-600" />
+                                      ) : isStarting ? (
+                                        <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                      ) : (
+                                        <span className="w-2 h-2 rounded-full bg-gray-400" />
+                                      )}
+                                    </span>
+                                  );
+                                })()}
                                   <span className="truncate">{inst.name || `ag-${inst.id.slice(-4)}`}</span>
                                 <span
                                   onClick={(e) => {

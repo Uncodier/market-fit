@@ -329,6 +329,19 @@ export const useStepManagement = ({
         throw new Error(error.message || 'Failed to pause plan')
       }
 
+      // Also pause the robot instance
+      const { error: instanceError } = await supabase
+        .from('remote_instances')
+        .update({
+          status: 'paused',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeRobotInstance.id)
+
+      if (instanceError) {
+        console.error('❌ Error pausing instance:', instanceError)
+      }
+
       toast({
         title: "Plan paused",
         description: "The plan has been paused successfully"
@@ -375,6 +388,19 @@ export const useStepManagement = ({
       if (error) {
         console.error('❌ Supabase error:', error)
         throw new Error(error.message || 'Failed to resume plan')
+      }
+
+      // Also resume the robot instance
+      const { error: instanceError } = await supabase
+        .from('remote_instances')
+        .update({
+          status: 'running',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', activeRobotInstance.id)
+
+      if (instanceError) {
+        console.error('❌ Error resuming instance:', instanceError)
       }
 
       toast({

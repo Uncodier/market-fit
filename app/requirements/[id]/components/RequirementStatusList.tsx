@@ -20,7 +20,7 @@ interface RequirementStatus {
   requirement_id: string
   source_code?: string | null
   repo_url?: string | null
-  status: string
+  stage: string
   message: string | null
   preview_url: string | null
   created_at: string
@@ -114,7 +114,7 @@ export function RequirementStatusList({
                     </span>
                   </span>
                   <span className="text-blue-500/90 font-semibold text-sm leading-snug">
-                    {status.status}
+                    {status.stage}
                   </span>
                 </div>
               </AccordionTrigger>

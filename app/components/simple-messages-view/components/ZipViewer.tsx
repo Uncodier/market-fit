@@ -4,6 +4,9 @@ import React, { useState, useEffect, useMemo } from 'react'
 import JSZip from 'jszip'
 import { gunzipSync } from 'fflate'
 import { Folder, FileText, ChevronRight, ChevronDown, Download, Loader, Archive } from '@/app/components/ui/icons'
+import { Skeleton } from '@/app/components/ui/skeleton'
+import Editor, { loader } from '@monaco-editor/react'
+import { useTheme } from '@/app/context/ThemeContext'
 
 interface ZipViewerProps {
   url: string
@@ -18,13 +21,49 @@ interface FileNode {
   children: Record<string, FileNode>
 }
 
-export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode = false, className }) => {
+export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode: propIsDarkMode, className }) => {
+  const { isDarkMode: contextIsDarkMode } = useTheme()
+  const isDarkMode = propIsDarkMode ?? contextIsDarkMode
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [fileTree, setFileTree] = useState<FileNode | null>(null)
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(['/']))
   const [rawZip, setRawZip] = useState<Blob | null>(null)
+  const [editorFailed, setEditorFailed] = useState(false)
+  const [editorReady, setEditorReady] = useState(false)
+
+  useEffect(() => {
+    // Load Monaco locally to avoid CDN initialization errors
+    if (typeof window !== 'undefined') {
+      import('monaco-editor').then(monaco => {
+        // Prevent Monaco from trying to load web workers (which causes CSP/404 [object Event] errors)
+        // by providing a mock worker that silently ignores all messages.
+        // Syntax highlighting will still work as it runs on the main thread.
+        ;(window as any).MonacoEnvironment = {
+          getWorker: function () {
+            return {
+              postMessage: function() {},
+              terminate: function() {},
+              onmessage: null,
+              onerror: null,
+              addEventListener: function() {},
+              removeEventListener: function() {},
+              dispatchEvent: function() { return true; }
+            } as any;
+          }
+        };
+        loader.config({ monaco })
+        return loader.init()
+      }).then(() => {
+        setEditorReady(true)
+      }).catch((err) => {
+        console.warn('Monaco editor initialization failed, falling back to simple text view:', err)
+        setEditorFailed(true)
+      })
+    }
+  }, [])
 
   useEffect(() => {
     const fetchAndParseZip = async () => {
@@ -104,10 +143,16 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
               }
               
               if (header.type !== 'directory' && !path.endsWith('/')) {
-                const ext = path.split('.').pop()?.toLowerCase();
-                const textExtensions = ['txt', 'md', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'env', 'yml', 'yaml', 'xml', 'csv', 'svg'];
+                const fileName = path.split('/').pop()?.toLowerCase() || '';
+                const ext = fileName.includes('.') && fileName !== `.${fileName.split('.')[1]}` ? fileName.split('.').pop() : fileName;
                 
-                if (ext && textExtensions.includes(ext)) {
+                const textExtensions = ['txt', 'md', 'mdx', 'mdc', 'json', 'js', 'ts', 'jsx', 'tsx', 'mjs', 'cjs', 'html', 'css', 'scss', 'sass', 'less', 'env', 'yml', 'yaml', 'xml', 'csv', 'svg', 'sql', 'sh', 'bash', 'py', 'rb', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'php', 'swift', 'kt', 'dart', 'r', 'pl', 'ini', 'cfg', 'conf', 'log', 'bat', 'gitignore', 'dockerignore', 'prettierrc', 'eslintrc', 'babelrc', 'npmrc', 'nvmrc', 'toml', 'lock', 'vue', 'svelte', 'graphql', 'gql', 'prisma', 'proto', 'dockerfile', 'makefile', 'license'];
+                
+                const isText = (ext && textExtensions.includes(ext)) || 
+                               fileName.startsWith('.env') || 
+                               fileName.startsWith('.') && textExtensions.includes(fileName.substring(1));
+                
+                if (isText) {
                   const chunks: Uint8Array[] = [];
                   stream.on('data', (chunk) => chunks.push(chunk));
                   stream.on('end', () => {
@@ -202,10 +247,16 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
 
             if (!zipEntry.dir) {
               // Leer contenido de archivos de texto/código (básico)
-              const ext = path.split('.').pop()?.toLowerCase()
-              const textExtensions = ['txt', 'md', 'json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'env', 'yml', 'yaml', 'xml', 'csv', 'svg']
+              const fileName = path.split('/').pop()?.toLowerCase() || '';
+              const ext = fileName.includes('.') && fileName !== `.${fileName.split('.')[1]}` ? fileName.split('.').pop() : fileName;
               
-              if (ext && textExtensions.includes(ext)) {
+              const textExtensions = ['txt', 'md', 'mdx', 'mdc', 'json', 'js', 'ts', 'jsx', 'tsx', 'mjs', 'cjs', 'html', 'css', 'scss', 'sass', 'less', 'env', 'yml', 'yaml', 'xml', 'csv', 'svg', 'sql', 'sh', 'bash', 'py', 'rb', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'php', 'swift', 'kt', 'dart', 'r', 'pl', 'ini', 'cfg', 'conf', 'log', 'bat', 'gitignore', 'dockerignore', 'prettierrc', 'eslintrc', 'babelrc', 'npmrc', 'nvmrc', 'toml', 'lock', 'vue', 'svelte', 'graphql', 'gql', 'prisma', 'proto', 'dockerfile', 'makefile', 'license']
+              
+              const isText = (ext && textExtensions.includes(ext)) || 
+                             fileName.startsWith('.env') || 
+                             fileName.startsWith('.') && textExtensions.includes(fileName.substring(1));
+              
+              if (isText) {
                 currentNode.content = await zipEntry.async('text')
               } else {
                 currentNode.content = 'Binary file or unsupported format. Please download the archive to view.'
@@ -327,9 +378,48 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 bg-card/50 w-full h-full">
-        <Loader size={24} className="animate-spin text-primary mb-2" />
-        <span className="text-sm text-muted-foreground">Extrayendo archivo...</span>
+      <div className={`flex flex-col w-full h-full bg-background ${className || ''}`}>
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/40 shrink-0">
+          <div className="flex items-center gap-2 flex-1">
+            <Skeleton className="h-4 w-4 rounded-sm" />
+            <Skeleton className="h-3 w-48" />
+          </div>
+          <Skeleton className="h-6 w-6 rounded-md" />
+        </div>
+
+        <div className="flex flex-1 overflow-hidden min-h-0">
+          {/* Sidebar Skeleton */}
+          <div className="w-64 min-w-[200px] border-r border-border bg-muted/10 p-2 shrink-0 flex flex-col gap-2">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex items-center gap-2 px-2 py-1">
+                <Skeleton className="h-3.5 w-3.5 rounded-sm shrink-0" />
+                <Skeleton className={`h-3 ${i % 2 === 0 ? 'w-24' : i % 3 === 0 ? 'w-32' : 'w-16'}`} />
+              </div>
+            ))}
+          </div>
+
+          {/* Main View Skeleton */}
+          <div className="flex-1 bg-card flex flex-col p-4 gap-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+            {[...Array(15)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <span className="text-xs text-muted-foreground/30 w-4 text-right select-none">{i + 1}</span>
+                <Skeleton 
+                  className={`h-4 rounded-sm ${
+                    i % 5 === 0 ? 'w-3/4' : 
+                    i % 4 === 0 ? 'w-1/2' : 
+                    i % 3 === 0 ? 'w-5/6' : 
+                    i % 2 === 0 ? 'w-2/3' : 'w-1/3'
+                  } ${i % 3 === 0 ? 'ml-4' : i % 4 === 0 ? 'ml-8' : ''}`} 
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
@@ -355,9 +445,24 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
     <div className={`flex flex-col w-full h-full bg-background ${className || ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/40 shrink-0">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0 text-xs">
           <Archive size={14} className="text-muted-foreground shrink-0" />
-          <span className="text-xs text-muted-foreground truncate">{url.split('/').pop()?.split('?')[0]}</span>
+          <span className="text-muted-foreground truncate">{url.split('/').pop()?.split('?')[0]}</span>
+          {selectedFile && (
+            <>
+              <span className="text-muted-foreground/30 mx-0.5">/</span>
+              <div className="flex items-center gap-1 text-muted-foreground truncate">
+                {selectedFile.path.split('/').map((part, i, arr) => (
+                  <React.Fragment key={i}>
+                    <span className={i === arr.length - 1 ? 'text-foreground font-medium' : ''}>
+                      {part}
+                    </span>
+                    {i < arr.length - 1 && <span className="text-muted-foreground/30 mx-0.5">/</span>}
+                  </React.Fragment>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <button 
           onClick={handleDownload}
@@ -377,11 +482,72 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
         {/* Main View */}
         <div className="flex-1 overflow-y-auto bg-card relative min-w-0">
           {selectedFile ? (
-            <div className="p-4">
-              <div className="text-xs text-muted-foreground mb-4 pb-2 border-b border-border">{selectedFile.path}</div>
-              <pre className="text-xs font-mono whitespace-pre-wrap break-words">
-                {selectedFile.content}
-              </pre>
+            <div className="flex flex-col h-full">
+              <div className="flex-1 min-h-0 overflow-hidden">
+                {!editorFailed && editorReady ? (
+                  <Editor
+                    height="100%"
+                    path={selectedFile.path}
+                    theme={isDarkMode ? 'vs-dark' : 'light'}
+                    value={selectedFile.content || ''}
+                    options={{
+                      readOnly: true,
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      wordWrap: 'on',
+                      padding: { top: 16, bottom: 16 },
+                      fontSize: 13,
+                    }}
+                    loading={
+                      <div className="flex flex-col h-full bg-background p-4 gap-2">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Skeleton className="h-4 w-4" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
+                        {[...Array(15)].map((_, i) => (
+                          <div key={i} className="flex items-center gap-4">
+                            <span className="text-xs text-muted-foreground/30 w-4 text-right select-none">{i + 1}</span>
+                            <Skeleton 
+                              className={`h-4 rounded-sm ${
+                                i % 5 === 0 ? 'w-3/4' : 
+                                i % 4 === 0 ? 'w-1/2' : 
+                                i % 3 === 0 ? 'w-5/6' : 
+                                i % 2 === 0 ? 'w-2/3' : 'w-1/3'
+                              } ${i % 3 === 0 ? 'ml-4' : i % 4 === 0 ? 'ml-8' : ''}`} 
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    }
+                  />
+                ) : !editorFailed ? (
+                  <div className="flex flex-col h-full bg-background p-4 gap-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Skeleton className="h-4 w-4" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    {[...Array(15)].map((_, i) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <span className="text-xs text-muted-foreground/30 w-4 text-right select-none">{i + 1}</span>
+                        <Skeleton 
+                          className={`h-4 rounded-sm ${
+                            i % 5 === 0 ? 'w-3/4' : 
+                            i % 4 === 0 ? 'w-1/2' : 
+                            i % 3 === 0 ? 'w-5/6' : 
+                            i % 2 === 0 ? 'w-2/3' : 'w-1/3'
+                          } ${i % 3 === 0 ? 'ml-4' : i % 4 === 0 ? 'ml-8' : ''}`} 
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-full overflow-auto p-4 bg-muted/10">
+                    <pre className="text-xs font-mono whitespace-pre-wrap break-words">
+                      {selectedFile.content}
+                    </pre>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
