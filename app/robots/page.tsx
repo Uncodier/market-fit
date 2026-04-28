@@ -210,17 +210,7 @@ function RobotsPageContent() {
   // Activity param for controlling explorer visibility
   const activityParam = searchParams.get('activity')
   const isActivityRobot = activityParam === 'robot'
-  const [streamUrl, setStreamUrl] = useState<string | null>(null)
   const [isResuming, setIsResuming] = useState(false)
-
-  // Reconnection states
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting' | 'error'>('disconnected')
-  const [reconnectAttempts, setReconnectAttempts] = useState(0)
-  const [maxReconnectAttempts] = useState(5)
-  const [reconnectTimeoutId, setReconnectTimeoutId] = useState<NodeJS.Timeout | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const [showConnectedIndicator, setShowConnectedIndicator] = useState(false)
-  const prevConnectionStatusRef = useRef<string>('disconnected')
   
   const activeTabRef = useRef(selectedInstanceId)
   const prevSiteIdRef = useRef<string | null>(null)
@@ -248,175 +238,11 @@ function RobotsPageContent() {
 
   // Note: Polling logic removed - RobotsContext handles robot state management
 
-  // Function to ensure we have a stream URL for the robot instance
-  const ensureStreamUrl = async (instance: any) => {
-    try {
-      // Construct the stream URL using provider_instance_id
-      if (instance.provider_instance_id) {
-        const streamUrl = `https://api.proxy.scrapybara.com/v1/instance/${instance.provider_instance_id}/stream`
-        setStreamUrl(streamUrl)
-        setConnectionStatus('connected')
-        
-        // Only show indicator if status actually changed from non-connected to connected
-        if (prevConnectionStatusRef.current !== 'connected') {
-          setShowConnectedIndicator(true)
-        } else {
-        }
-        prevConnectionStatusRef.current = 'connected'
-        
-        // Update the database with the stream URL
-        try {
-          const supabase = createClient()
-          await supabase
-            .from('remote_instances')
-            .update({ cdp_url: streamUrl })
-            .eq('id', instance.id)
-        } catch (dbError) {
-          console.error('Error updating database:', dbError)
-        }
-      } else if (instance.id) {
-        // Fallback: use instance.id if no provider_instance_id
-        const fallbackUrl = `https://api.proxy.scrapybara.com/v1/instance/${instance.id}/stream`
-        setStreamUrl(fallbackUrl)
-        setConnectionStatus('connected')
-        
-        // Only show indicator if status actually changed from non-connected to connected
-        if (prevConnectionStatusRef.current !== 'connected') {
-          setShowConnectedIndicator(true)
-        } else {
-        }
-        prevConnectionStatusRef.current = 'connected'
-      } else {
-        console.error('No valid instance ID found')
-        setConnectionStatus('error')
-        prevConnectionStatusRef.current = 'error'
-      }
-    } catch (error) {
-      console.error('Error ensuring stream URL:', error)
-      setConnectionStatus('error')
-      prevConnectionStatusRef.current = 'error'
-    }
-  }
-
-  // Calculate exponential backoff delay
-  const calculateBackoffDelay = (attempt: number): number => {
-    const baseDelay = 1000 // 1 second
-    const maxDelay = 30000 // 30 seconds
-    const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay)
-    return delay + Math.random() * 1000 // Add jitter
-  }
-
-  // Reconnection function
-  const attemptReconnection = useCallback(async () => {
-    if (!activeRobotInstance || reconnectAttempts >= maxReconnectAttempts) {
-      setConnectionStatus('error')
-      prevConnectionStatusRef.current = 'error'
-      return
-    }
-
-    setConnectionStatus('reconnecting')
-    prevConnectionStatusRef.current = 'reconnecting'
-    setReconnectAttempts(prev => prev + 1)
-
-    try {
-      await ensureStreamUrl(activeRobotInstance)
-      // If successful, reset reconnect attempts
-      setReconnectAttempts(0)
-    } catch (error) {
-      console.error('Reconnection failed:', error)
-      
-      // Schedule next reconnection attempt
-      const delay = calculateBackoffDelay(reconnectAttempts)
-      
-      const timeoutId = setTimeout(attemptReconnection, delay)
-      reconnectTimeoutRef.current = timeoutId
-      setReconnectTimeoutId(timeoutId)
-    }
-  }, [activeRobotInstance, reconnectAttempts, maxReconnectAttempts])
-
-  // Handle connection loss detection
-  const handleConnectionLoss = useCallback(() => {
-    setConnectionStatus('disconnected')
-    prevConnectionStatusRef.current = 'disconnected'
-    setStreamUrl(null)
-    
-    // Clear any existing reconnect timeout
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-      setReconnectTimeoutId(null)
-    }
-    
-    // Start reconnection attempts
-    if (activeRobotInstance && reconnectAttempts < maxReconnectAttempts) {
-      const delay = calculateBackoffDelay(reconnectAttempts)
-      
-      const timeoutId = setTimeout(attemptReconnection, delay)
-      reconnectTimeoutRef.current = timeoutId
-      setReconnectTimeoutId(timeoutId)
-    }
-  }, [activeRobotInstance, reconnectAttempts, maxReconnectAttempts, attemptReconnection])
-
-  // Manual reconnection function
-  const manualReconnect = useCallback(() => {
-    
-    // Clear any existing reconnect timeout
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-      setReconnectTimeoutId(null)
-    }
-    
-    // Reset attempts and try reconnection immediately
-    setReconnectAttempts(0)
-    setConnectionStatus('reconnecting')
-    prevConnectionStatusRef.current = 'reconnecting'
-    
-    if (activeRobotInstance) {
-      attemptReconnection()
-    }
-  }, [activeRobotInstance, attemptReconnection])
-
-
-
-  // Reset reconnection state when robot instance changes
-  useEffect(() => {
-    setReconnectAttempts(0)
-    setConnectionStatus('disconnected')
-    prevConnectionStatusRef.current = 'disconnected'
-    
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-      setReconnectTimeoutId(null)
-    }
-  }, [activeRobotInstance])
-
   // Note: Robot events are now handled by the RobotsContext automatically
   // No need for manual event listeners here
 
     // Note: Auto-creation of placeholder instances removed
-    // startRobot and assistant already create instances when needed
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  // Auto-hide connected indicator after 3 seconds
-  useEffect(() => {
-    if (showConnectedIndicator) {
-      const timer = setTimeout(() => {
-        setShowConnectedIndicator(false)
-      }, 3000)
-      
-      return () => clearTimeout(timer)
-    }
-  }, [showConnectedIndicator])
+  // startRobot and assistant already create instances when needed
 
   // Update ref when selected instance changes
   useEffect(() => {
@@ -429,19 +255,9 @@ function RobotsPageContent() {
     if (newSiteId && newSiteId !== prevSiteIdRef.current) {
       
       // Reset connection state only
-      setReconnectAttempts(0)
-      setConnectionStatus('disconnected')
-      prevConnectionStatusRef.current = 'disconnected'
       setIsResuming(false)
-      setStreamUrl(null)
       setIsAutoCreatingInstance(false)
       
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-        reconnectTimeoutRef.current = null
-        setReconnectTimeoutId(null)
-      }
-
       prevSiteIdRef.current = newSiteId
     }
   }, [currentSite?.id])
@@ -483,10 +299,8 @@ function RobotsPageContent() {
     // 5. We're not in the middle of auto-converting a tab
     // 6. We're not already auto-creating an instance
     // 7. We have successfully loaded robots at least once (not just initial loading)
-    // 8. We're not in a reconnection state
-    // 9. We haven't attempted auto-creation recently (debouncing)
+    // 8. We haven't attempted auto-creation recently (debouncing)
     const hasSuccessfullyLoaded = refreshCount > 0
-    const isNotReconnecting = connectionStatus !== 'reconnecting' && connectionStatus !== 'error'
     const now = Date.now()
     const timeSinceLastAttempt = now - lastAutoCreationAttempt
     const debounceDelay = 5000 // 5 seconds debounce
@@ -498,7 +312,6 @@ function RobotsPageContent() {
         !pendingInstanceId && 
         !isAutoCreatingInstance &&
         hasSuccessfullyLoaded &&
-        isNotReconnecting &&
         timeSinceLastAttempt > debounceDelay) {
       
       
@@ -546,7 +359,7 @@ function RobotsPageContent() {
         })
       })
     }
-  }, [isLoadingRobots, currentSite?.id, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, refreshRobots, searchParams, router, refreshCount, connectionStatus, isSiteContextReady, checkInstancesExistInDB])
+  }, [isLoadingRobots, currentSite?.id, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, refreshRobots, searchParams, router, refreshCount, isSiteContextReady, checkInstancesExistInDB])
 
   // No campaigns effect
 
@@ -606,61 +419,6 @@ function RobotsPageContent() {
       setIsResuming(false)
     }
   }, [isInstanceStarting, isInstanceRunning])
-
-
-  // Ensure stream URL only when instance is running/active
-  useEffect(() => {
-    if (activeRobotInstance && isInstanceRunning) {
-      ensureStreamUrl(activeRobotInstance)
-    } else {
-      setStreamUrl(null)
-      setConnectionStatus('disconnected')
-      prevConnectionStatusRef.current = 'disconnected'
-    }
-  }, [activeRobotInstance, isInstanceRunning])
-
-  // Poll while instance is starting or resuming until it becomes ready or terminal
-  useEffect(() => {
-    if (!activeRobotInstance || (!isInstanceStarting && !isResuming)) return
-    const instanceId = (activeRobotInstance as any).id
-    let intervalId = setInterval(async () => {
-      // Check if instance still exists before polling
-      const currentInstance = getInstanceById(instanceId)
-      if (!currentInstance) {
-        setIsResuming(false)
-        clearInterval(intervalId)
-        return
-      }
-      
-      await refreshRobots(currentSite?.id)
-      const updated = getInstanceById(instanceId)
-      if (!updated) {
-        // Instance was deleted during polling
-        setIsResuming(false)
-        clearInterval(intervalId)
-        return
-      }
-      
-      if (['running','active','error','stopped','failed'].includes((updated as any).status)) {
-        if (['running','active'].includes((updated as any).status)) {
-          try {
-            // Only call ensureStreamUrl if we don't already have a stream URL or if status changed
-            if (!streamUrl || prevConnectionStatusRef.current !== 'connected') {
-              await ensureStreamUrl(updated)
-            } else {
-            }
-          } catch (e) {
-            console.error('Error ensuring stream after polling:', e)
-          }
-          setIsResuming(false)
-        }
-        clearInterval(intervalId)
-      }
-    }, 1500)
-    return () => {
-      clearInterval(intervalId)
-    }
-  }, [activeRobotInstance && (activeRobotInstance as any).id, isInstanceStarting, isResuming, refreshRobots, getInstanceById, selectedInstanceId])
 
   // Note: Real-time monitoring is now handled by RobotsContext
   // This ensures efficient data sharing across all components
@@ -1031,18 +789,14 @@ function RobotsPageContent() {
 
   // Compute if browser should be visible
   const isBrowserVisible = Boolean(
-    (
-      !!latestPreviewUrl || !!latestSourceCodeUrl ||
-      (SHOW_PREVIEW_FOR_RUNNING_INSTANCE && (
-        (selectedInstanceId !== 'new' && activeRobotInstance && (isResuming || isInstanceStarting || isInstanceRunning)) ||
-        (isActivityRobot && hasMessageBeenSent)
-      ))
-    ) &&
+    (!!latestPreviewUrl || !!latestSourceCodeUrl) &&
     !pendingInstanceId &&
     viewMode !== 'imprenta'
   )
 
-  const activeUrlToDisplay = (showSourceCodePreview ? latestSourceCodeUrl : latestPreviewUrl) || streamUrl || "https://www.google.com"
+  const activeUrlToDisplay = showSourceCodePreview 
+    ? (latestSourceCodeUrl || latestPreviewUrl || "about:blank")
+    : (latestPreviewUrl || latestSourceCodeUrl || "about:blank")
   const isZipUrl = typeof activeUrlToDisplay === 'string' && (
     activeUrlToDisplay.endsWith('.zip') || 
     activeUrlToDisplay.includes('.zip?') ||
@@ -1304,18 +1058,6 @@ function RobotsPageContent() {
             // Reset robot starting/resuming state if the deleted instance was starting
             if (wasStarting || wasActiveInstance) {
               setIsResuming(false)
-              setStreamUrl(null)
-              setConnectionStatus('disconnected')
-              prevConnectionStatusRef.current = 'disconnected'
-              setReconnectAttempts(0)
-              setShowConnectedIndicator(false)
-              
-              // Clear any reconnection timeouts
-              if (reconnectTimeoutRef.current) {
-                clearTimeout(reconnectTimeoutRef.current)
-                reconnectTimeoutRef.current = null
-                setReconnectTimeoutId(null)
-              }
             }
             
             // Clear instance to delete
@@ -1490,65 +1232,16 @@ function RobotsPageContent() {
                   )}
                   {/* Browser content - 1fr fills all remaining height */}
                   <div className="relative overflow-hidden">
-                    {(isResuming || isInstanceStarting) && !latestPreviewUrl ? (
+                    {(isResuming || isInstanceStarting) && !latestPreviewUrl && !latestSourceCodeUrl ? (
                       <div className="absolute inset-0 flex flex-col">
                         <BrowserSkeleton />
                       </div>
-                    ) : (isActivityRobot && hasMessageBeenSent && !isInstanceRunning && !latestPreviewUrl) ? (
+                    ) : (isActivityRobot && hasMessageBeenSent && !isInstanceRunning && !latestPreviewUrl && !latestSourceCodeUrl) ? (
                       <div className="absolute inset-0 flex flex-col">
                         <BrowserSkeleton />
                       </div>
-                    ) : (isInstanceRunning || !!latestPreviewUrl || !!latestSourceCodeUrl) ? (
+                    ) : (!!latestPreviewUrl || !!latestSourceCodeUrl) ? (
                       <div className="absolute inset-0 bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
-                        {connectionStatus !== 'connected' && !latestPreviewUrl && !latestSourceCodeUrl && (
-                          <div className="absolute top-4 left-4 z-10">
-                            <div className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium shadow-lg backdrop-blur-sm ${
-                              connectionStatus === 'reconnecting' ? 'bg-yellow-100/90 text-yellow-800 border border-yellow-200' :
-                              connectionStatus === 'error' ? 'bg-red-100/90 text-red-800 border border-red-200' :
-                              'bg-gray-100/90 text-gray-800 border border-gray-200'
-                            }`}>
-                              {connectionStatus === 'reconnecting' && (
-                                <>
-                                  <LoadingSkeleton size="sm" className="text-yellow-600" />
-                                  <span>Reconectando... ({reconnectAttempts}/{maxReconnectAttempts})</span>
-                                </>
-                              )}
-                              {connectionStatus === 'error' && (
-                                <>
-                                  <div className="w-4 h-4 bg-red-600 rounded-full"></div>
-                                  <span>Fallo de conexión</span>
-                                  <button
-                                    onClick={manualReconnect}
-                                    className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                                    disabled={activeRobotInstance === null}
-                                  >
-                                    Reintentar
-                                  </button>
-                                </>
-                              )}
-                              {connectionStatus === 'disconnected' && (
-                                <>
-                                  <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
-                                  <span>Desconectado</span>
-                                  <button
-                                    onClick={manualReconnect}
-                                    className="ml-2 px-2 py-1 text-xs bg-primary text-white rounded hover:bg-primary/80 transition-colors"
-                                    disabled={activeRobotInstance === null}
-                                  >
-                                    Conectar
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        {showConnectedIndicator && !latestPreviewUrl && (
-                          <div className="absolute top-4 left-4 z-10 animate-in fade-in duration-300">
-                            <div className="flex items-center justify-center w-8 h-8 rounded-lg text-sm font-medium bg-green-100/90 text-green-800 border border-green-200 shadow-lg backdrop-blur-sm">
-                              <div className="w-4 h-4 bg-green-600 rounded-full animate-pulse"></div>
-                            </div>
-                          </div>
-                        )}
                         {isZipUrl ? (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background">
                             <ZipViewer
@@ -1563,7 +1256,7 @@ function RobotsPageContent() {
                             key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
                             src={iframeSrc}
                             className="absolute inset-0 w-full h-full border-0 bg-background contained-iframe"
-                            title={latestPreviewUrl ? "Preview" : streamUrl ? "Robot Browser Session" : "Google"}
+                            title={latestPreviewUrl ? "Preview" : "Source Code"}
                             allowFullScreen
                             allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
                             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
@@ -1572,21 +1265,9 @@ function RobotsPageContent() {
                             }}
                             onLoad={(e) => {
                               handleIframeLoad(e)
-
-                              if (latestPreviewUrl) return;
-
-                              if (streamUrl) {
-                                setConnectionStatus('connected')
-                                if (prevConnectionStatusRef.current !== 'connected') {
-                                  setShowConnectedIndicator(true)
-                                }
-                                prevConnectionStatusRef.current = 'connected'
-                                setReconnectAttempts(0)
-                              }
                             }}
                             onError={(e) => {
                               console.error('Iframe error:', e)
-                              handleConnectionLoss()
                             }}
                           />
                         )}
