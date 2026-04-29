@@ -921,6 +921,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       if (!showFullNodeDetail && !isEffectivelyDummy && !isDragOrigin) continue
       out.push(node)
     }
+    console.log("domRenderNodes count:", out.length, "vis set size:", vis?.size, "all nodes:", all.length)
     return out
   }, [
     canvasNodes,
@@ -1086,7 +1087,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                 settings: {},
                 result: {}
               }
-              const { data: newDbNode } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
+              const { data: newDbNode, error: insertError } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
+              if (insertError) {
+                rootCreationPendingRef.current.delete(activeInstanceId)
+                throw insertError
+              }
               if (cancelled) return
               if (newDbNode) {
                 setNodes(prev => {
@@ -1094,10 +1099,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                   return [...prev, newDbNode as InstanceNode]
                 })
               }
-            } finally {
+            } catch (err) {
               rootCreationPendingRef.current.delete(activeInstanceId)
+              console.error("Failed to create root node:", err)
             }
         } else {
+            console.log("Fetched nodes from DB:", data)
+            console.log("Nodes missing positions:", data.filter(n => !n.settings?.ui_position))
             setNodes(data)
             const nodeIds = data.map((n) => n.id)
             if (nodeIds.length > 0) {
@@ -2011,20 +2019,20 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   }
 
   const renderMediaWithZoom = (url: string, type: 'image' | 'video', key: React.Key) => (
-    <div key={key} className="relative group">
+    <div key={key} className="relative group w-full h-full flex items-center justify-center">
       {type === 'image' ? (
         <ImprentaLazyCardImage
           url={url}
           alt="Generated media"
           onOpen={() => setZoomedMedia({ url, type: "image" })}
-          className="max-h-[300px] rounded-xl bg-black/10 object-cover object-center"
+          className="max-h-[300px] rounded-xl bg-black/10 object-contain object-center"
         />
       ) : (
-        <div className="relative">
+        <div className="relative w-full overflow-hidden rounded-xl bg-black/10 aspect-square flex items-center justify-center">
           <video 
             src={url} 
             controls 
-            className="w-full aspect-video rounded-xl object-cover object-center bg-black/10 max-h-[300px]" 
+            className="w-full h-full object-cover absolute inset-0 m-auto" 
             onClick={(e) => e.stopPropagation()}
           />
           <Button

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 /** Lite / graph shells: skeleton until decode; lazy by default, eager when nearly full-detail zoom. */
 export function ImprentaLazyPreviewImage({
@@ -105,9 +105,14 @@ export function ImprentaLazyCardImage({
   alt?: string
 }) {
   const [loaded, setLoaded] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
-    setLoaded(false)
+    if (imgRef.current?.complete) {
+      setLoaded(true)
+    } else {
+      setLoaded(false)
+    }
   }, [url])
 
   return (
@@ -122,10 +127,9 @@ export function ImprentaLazyCardImage({
         <span className="sr-only">Loading image</span>
       </div>
       <img
+        ref={imgRef}
         src={url}
         alt={alt}
-        loading="lazy"
-        decoding="async"
         onLoad={() => setLoaded(true)}
         onError={() => setLoaded(true)}
         onClick={(e) => {

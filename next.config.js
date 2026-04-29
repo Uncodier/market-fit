@@ -32,12 +32,12 @@ const nextConfig = {
             value: `
               default-src 'self';
               script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://files.uncodie.com https://backend.uncodie.com;
-              style-src 'self' 'unsafe-inline';
+              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
               img-src 'self' data: https:;
-              font-src 'self' data:;
+              font-src 'self' data: https://fonts.gstatic.com;
               connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.0.38:3001 http://192.168.0.61:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.246:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* http://192.168.87.174:* http://192.168.87.174 https://192.168.87.174:* http://192.168.87.180:* http://192.168.87.180 https://192.168.87.180:* https://tu-api-real.com https://backend.aimarket.fit https://backend.uncodie.com https://api.uncodie.com https://backend.makinari.com https://db.makinari.com wss://db.makinari.com;
               frame-src 'self' https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://docs.google.com https://js.stripe.com https://hooks.stripe.com https://*.scrapybara.com https://*.vercel.app;
-              media-src 'self' blob: https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co;
+              media-src 'self' blob: https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://db.makinari.com;
               object-src 'self' https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co;
               base-uri 'self';
               form-action 'self';
