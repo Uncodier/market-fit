@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Settings, Shield, CreditCard, Plug, Sun, Moon } from "@/app/components/ui/icons"
+import { Settings, Shield, CreditCard, Plug, Sun, Moon, Cog } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { useTheme } from "@/app/context/ThemeContext"
 import { MenuItem, EmojiIcon } from "./MenuItem"
@@ -37,8 +37,7 @@ const settingsChildItems: ConfigItem[] = [
   {
     titleKey: "settingsGeneral",
     href: "/settings",
-    icon: Settings,
-    emoji: "⚙️",
+    icon: Cog,
     isSettingsChild: true,
   },
   { titleKey: "integrations", href: "/integrations", icon: Plug, emoji: "🔌", isSettingsChild: true },

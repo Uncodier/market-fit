@@ -56,7 +56,6 @@ const OAUTH_CONNECT_PLATFORM_VALUES = new Set([
   "twitter",
   "x",
   "youtube",
-  "linkedin",
   "tiktok",
 ])
 
@@ -225,7 +224,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
       // 3-leg flow for Facebook and LinkedIn: OAuth redirects to OUR callback (/api/social/callback/:network).
       // We exchange code+state with outstand.so for a session token, then redirect to /settings/social_network.
       // Other networks: outstand.so receives the OAuth callback and redirects to /settings/social_network with session.
-      const is3Leg = social.platform === 'facebook' || (social.platform as string) === 'linkedin' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x' || social.platform === 'youtube' || social.platform === 'tiktok'
+      const is3Leg = social.platform === 'facebook' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x' || social.platform === 'youtube' || social.platform === 'tiktok'
       const redirectUri = is3Leg
         ? `${redirectOrigin}/api/social/callback/${social.platform}?siteId=${encodeURIComponent(siteId)}`
         : `${redirectOrigin}/settings/social_network?siteId=${siteId}&network=${social.platform}${isDevelopment ? `&returnTo=${encodeURIComponent(window.location.origin)}` : ''}`
