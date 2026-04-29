@@ -119,12 +119,12 @@ export function OnboardingProgressWidget({
                     className="text-primary transition-all duration-500"
                   />
                 </svg>
-                <span className="text-[10px] leading-none select-none">✓</span>
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] select-none z-10">☑️</span>
               </div>
             </div>
           </TooltipTrigger>
           <TooltipContent side="right" className="z-[9999]">
-            <p>{t("layout.sidebar.setupProgress") || "Setup progress"}</p>
+            <p>{t("layout.sidebar.setupProgress") || "Onboarding"}</p>
             <p className="text-xs text-muted-foreground">{pct}%</p>
           </TooltipContent>
         </Tooltip>
@@ -143,8 +143,8 @@ export function OnboardingProgressWidget({
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1.5">
-                  <span className="text-xs">✓</span>
-                  {t("layout.sidebar.setupProgress") || "Setup progress"}
+                  <span className="text-xs">☑️</span>
+                  {t("layout.sidebar.setupProgress") || "Onboarding"}
                 </span>
                 <span className="text-xs font-bold text-foreground">{pct}%</span>
               </div>

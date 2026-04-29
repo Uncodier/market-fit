@@ -23,32 +23,26 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
   // Get values from site context
   const creditsAvailable = currentSite?.billing?.credits_available || 0
   const creditsUsed = currentSite?.billing?.credits_used || 0
+  const plan = currentSite?.billing?.plan || 'commission'
   
-  // Calculate total limit (default 30 + any purchased credits)
-  // If user purchased credits, they are added to creditsAvailable
-  // So the total capacity is what they started with (30) + what they bought
-  // But since we don't track "purchased amount" separately in the context easily,
-  // we can infer the limit.
+  // Determine base limit based on plan
+  let baseLimit = 30; // default/commission/free
+  if (plan === 'startup') {
+    baseLimit = 100;
+  } else if (plan === 'enterprise') {
+    baseLimit = 500;
+  }
   
-  // Logic: 
-  // 1. Base limit is 30
-  // 2. If they have more than 30 available, it means they bought some.
-  //    So the limit should be at least (available + used)
-  // 3. If they haven't bought any, the limit is 30.
-  
-  // Let's try a simpler approach based on the requirement:
-  // "default 30, si compro creditos ese sería su nuevo top"
-  // This implies the "limit" grows when you buy credits.
-  
-  // If creditsAvailable > 30, then the limit is creditsAvailable (assuming 0 used)
-  // If creditsAvailable + creditsUsed > 30, then the limit is creditsAvailable + creditsUsed
-  
-  const totalCredits = Math.max(defaultMonthlyCredits, creditsAvailable + creditsUsed)
+  // Calculate total limit 
+  // We want the denominator to always be the base limit of the plan.
+  // This means if they have more credits than the base limit, the percentage will be > 100%
+  const totalCredits = baseLimit
   
   // Calculate percentage for the progress bar
   // Show AVAILABLE credits (fuel gauge style)
   // If creditsAvailable is negative (overage), percentage is 0
-  const percentage = Math.min(100, Math.max(0, (creditsAvailable / totalCredits) * 100))
+  // We allow percentage to go over 100% if they bought extra credits
+  const percentage = Math.max(0, (creditsAvailable / totalCredits) * 100)
   
   // Determine color based on usage
   // If creditsAvailable < 0 (over limit), show red
@@ -118,7 +112,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
                     className={cn("transition-all duration-500 ease-in-out", strokeColor)}
                   />
                 </svg>
-                <span className="text-[10px] leading-none select-none">⚡</span>
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] select-none z-10">⚡</span>
               </div>
             </div>
           </TooltipTrigger>

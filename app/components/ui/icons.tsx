@@ -111,28 +111,6 @@ export const Database = ({ className = "", size = 18, ...props }: IconProps) => 
   </IconWrapper>
 )
 
-// Cog
-export const Cog = ({ className = "", size = 18, ...props }: IconProps) => (
-  <IconWrapper className={cn("safari-icon-fix", className)} size={size} {...props}>
-    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
-      <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
-      <path d="M12 2v2" />
-      <path d="M12 22v-2" />
-      <path d="m17 20.66-1-1.73" />
-      <path d="M11 5.07 10 3.34" />
-      <path d="m20.66 17-1.73-1" />
-      <path d="M3.34 10l1.73 1" />
-      <path d="M14 12h8" />
-      <path d="M2 12h2" />
-      <path d="m20.66 7-1.73 1" />
-      <path d="M3.34 14l1.73-1" />
-      <path d="m17 3.34-1 1.73" />
-      <path d="M11 18.93l-1 1.73" />
-    </svg>
-  </IconWrapper>
-)
-
 // Settings
 export const Settings = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={cn("safari-icon-fix", className)} size={size} {...props}>
