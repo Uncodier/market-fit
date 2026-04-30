@@ -36,6 +36,23 @@ interface Robot {
   successRate: number;
 }
 
+// Helper to sort instances: 'play' status first, then by updated_at descending
+const sortInstances = (instances: any[]) => {
+  return [...instances].sort((a, b) => {
+    const playStatuses = ['running', 'active', 'starting', 'pending', 'initializing'];
+    const aIsPlay = playStatuses.includes(a.status) ? 1 : 0;
+    const bIsPlay = playStatuses.includes(b.status) ? 1 : 0;
+    
+    if (aIsPlay !== bIsPlay) {
+      return bIsPlay - aIsPlay;
+    }
+    
+    const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+    const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+    return bTime - aTime;
+  });
+};
+
 // Wrapper component for Suspense  
 export default function RobotsPage() {
   return (
@@ -167,11 +184,7 @@ function RobotsPageContent() {
     if (!instanceExists) {
       // Selected instance no longer exists (was deleted), use first available (sorted by updated_at)
       if (allInstances.length > 0) {
-        const sortedInstances = [...allInstances].sort((a, b) => {
-          const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
-          const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
-          return bTime - aTime
-        })
+        const sortedInstances = sortInstances(allInstances)
         selectedInstanceId = sortedInstances[0].id
       } else {
         selectedInstanceId = 'new'
@@ -531,11 +544,7 @@ function RobotsPageContent() {
       const now = new Date()
       
       // Get current sorted instances to find the last visible one
-      const sortedInstances = [...tabInstances].sort((a, b) => {
-        const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
-        const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
-        return bTime - aTime
-      })
+      const sortedInstances = sortInstances(tabInstances)
       
       const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots || forceLoading
       const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
@@ -828,11 +837,7 @@ function RobotsPageContent() {
                     {/* Show instances with responsive overflow */}
                     {(() => {
                       // Sort instances by updated_at descending (most recently updated first)
-                      const sortedInstances = [...tabInstances].sort((a, b) => {
-                        const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
-                        const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
-                        return bTime - aTime
-                      })
+                      const sortedInstances = sortInstances(tabInstances)
                       
                       // Calculate how many tabs to show
                       const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots || forceLoading
@@ -1102,11 +1107,7 @@ function RobotsPageContent() {
               if (currentInstances.length > 0) {
                 // Sort instances by updated_at descending (most recently updated first)
                 // This matches the order used in the tabs
-                const sortedInstances = [...currentInstances].sort((a, b) => {
-                  const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
-                  const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
-                  return bTime - aTime
-                })
+                const sortedInstances = sortInstances(currentInstances)
                 
                 // Calculate which instances are visible (same logic as in tab rendering)
                 const showNewMakinaTab = currentInstances.length === 0 || isLoadingRobots || forceLoading

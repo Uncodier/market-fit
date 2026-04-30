@@ -222,12 +222,20 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         }
       })
 
-      // Sort instances within each activity by creation date (oldest first)
+      // Sort instances within each activity: 'play' status first, then by updated_at descending
       Object.keys(organizedRobots).forEach(activityName => {
         organizedRobots[activityName].sort((a, b) => {
-          const dateA = new Date(a.created_at || 0).getTime()
-          const dateB = new Date(b.created_at || 0).getTime()
-          return dateA - dateB // Oldest first
+          const playStatuses = ['running', 'active', 'starting', 'pending', 'initializing'];
+          const aIsPlay = playStatuses.includes(a.status) ? 1 : 0;
+          const bIsPlay = playStatuses.includes(b.status) ? 1 : 0;
+          
+          if (aIsPlay !== bIsPlay) {
+            return bIsPlay - aIsPlay;
+          }
+          
+          const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
+          const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
+          return dateB - dateA // Newest first
         })
       })
 

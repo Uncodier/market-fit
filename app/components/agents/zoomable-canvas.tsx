@@ -694,6 +694,12 @@ export function ZoomableCanvas({
     const target = e.target as HTMLElement;
     if (target.closest('[role="tab"]') || 
         target.closest('[role="tablist"]') || 
+        target.closest('[role="menuitem"]') || 
+        target.closest('[role="menu"]') || 
+        target.closest('[role="dialog"]') || 
+        target.closest('[role="listbox"]') || 
+        target.closest('[role="option"]') || 
+        target.closest('[role="combobox"]') || 
         target.closest('button') || 
         target.closest('input') ||
         target.closest('textarea')) {
@@ -707,7 +713,7 @@ export function ZoomableCanvas({
     startDragPositionRef.current = { x: e.clientX, y: e.clientY };
     
     // Don't prevent default - only stop propagation
-    e.stopPropagation();
+    // e.stopPropagation(); // Removed to allow dropdowns to close when clicking the canvas
   };
   
   // Mouse move handler for dragging
@@ -877,6 +883,12 @@ export function ZoomableCanvas({
     const target = e.target as HTMLElement;
     if (target.closest('[role="tab"]') || 
         target.closest('[role="tablist"]') || 
+        target.closest('[role="menuitem"]') || 
+        target.closest('[role="menu"]') || 
+        target.closest('[role="dialog"]') || 
+        target.closest('[role="listbox"]') || 
+        target.closest('[role="option"]') || 
+        target.closest('[role="combobox"]') || 
         target.closest('button') || 
         target.closest('input') ||
         target.closest('textarea')) {
@@ -909,6 +921,12 @@ export function ZoomableCanvas({
     const target = e.target as HTMLElement;
     if (target.closest('[role="tab"]') || 
         target.closest('[role="tablist"]') || 
+        target.closest('[role="menuitem"]') || 
+        target.closest('[role="menu"]') || 
+        target.closest('[role="dialog"]') || 
+        target.closest('[role="listbox"]') || 
+        target.closest('[role="option"]') || 
+        target.closest('[role="combobox"]') || 
         target.closest('button') || 
         target.closest('input') ||
         target.closest('textarea')) {

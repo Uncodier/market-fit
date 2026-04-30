@@ -92,6 +92,14 @@ export function InstanceBrowserModal({
     }
 
     return [...result].sort((a, b) => {
+      const playStatuses = ['running', 'active', 'starting', 'pending', 'initializing'];
+      const aIsPlay = playStatuses.includes(a.status) ? 1 : 0;
+      const bIsPlay = playStatuses.includes(b.status) ? 1 : 0;
+      
+      if (aIsPlay !== bIsPlay) {
+        return bIsPlay - aIsPlay;
+      }
+      
       const aTime = new Date((a.updated_at || a.created_at || 0)).getTime()
       const bTime = new Date((b.updated_at || b.created_at || 0)).getTime()
       return bTime - aTime

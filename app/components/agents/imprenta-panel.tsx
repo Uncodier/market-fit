@@ -1697,50 +1697,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     toast.success("Action node created with context")
   }
 
-  const beginNodeDrag = useCallback((nodeId: string, clientX: number, clientY: number) => {
-    draggingNodeRef.current = nodeId
-    dragStartPos.current = { x: clientX, y: clientY }
-    dragStartNodePos.current = {
-      x: positionsRef.current[nodeId]?.x || 0,
-      y: positionsRef.current[nodeId]?.y || 0,
-    }
-    lastNodeDragPosRef.current = {
-      x: dragStartNodePos.current.x,
-      y: dragStartNodePos.current.y,
-    }
-    setNodeDragPreview({
-      id: nodeId,
-      x: dragStartNodePos.current.x,
-      y: dragStartNodePos.current.y,
-    })
-    setDraggingNodeId(nodeId)
-
-    window.addEventListener('mousemove', handleWindowMouseMove)
-    window.addEventListener('mouseup', handleWindowMouseUp)
-    window.addEventListener('click', handleWindowMouseUp, { capture: true, once: true })
-  }, [])
-
-  const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
-    if (e.button !== 0) return // Only left click
-    const target = e.target as HTMLElement
-    // Prevent dragging if clicking on an input/button
-    if (target.closest('button') || target.closest('textarea') || target.closest('input')) return
-    
-    e.stopPropagation()
-    e.preventDefault() // Prevents native image drag and text selection which breaks mousemove
-
-    beginNodeDrag(nodeId, e.clientX, e.clientY)
-  }
-
-  /** Entry point from the lite canvas layer (no React synthetic event is available). */
-  const handleCanvasNodePointerDown = useCallback((nodeId: string, ev: PointerEvent) => {
-    if (ev.button !== 0) return
-    ev.stopPropagation()
-    ev.preventDefault()
-    beginNodeDrag(nodeId, ev.clientX, ev.clientY)
-  }, [beginNodeDrag])
-
-  const handleWindowMouseMove = (e: MouseEvent) => {
+  const handleWindowMouseMove = useCallback((e: MouseEvent) => {
     const nodeId = draggingNodeRef.current
     if (!nodeId) return
     
@@ -1775,9 +1732,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         }
       })
     }
-  }
+  }, [])
 
-  const handleWindowMouseUp = async (e?: MouseEvent | Event) => {
+  const handleWindowMouseUp = useCallback(async (e?: MouseEvent | Event) => {
     const nodeId = draggingNodeRef.current
     if (!nodeId) return
 
@@ -1791,7 +1748,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     draggingNodeRef.current = null
     window.removeEventListener('mousemove', handleWindowMouseMove)
     window.removeEventListener('mouseup', handleWindowMouseUp)
-    window.removeEventListener('click', handleWindowMouseUp as any, { capture: true })
+    window.removeEventListener('click', handleWindowMouseUp, { capture: true })
 
     setNodeDragPreview(null)
     setDraggingNodeId(null)
@@ -1803,8 +1760,63 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     if (nodeToUpdate && newPos) {
        const updatedSettings = { ...((nodeToUpdate.settings as any) || {}), ui_position: newPos }
        setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, settings: updatedSettings } : n));
-       await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', nodeId)
+       try {
+         await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', nodeId)
+       } catch (err) {
+         console.error("Failed to update node position", err)
+       }
     }
+  }, [handleWindowMouseMove])
+
+  const beginNodeDrag = useCallback((nodeId: string, clientX: number, clientY: number) => {
+    draggingNodeRef.current = nodeId
+    dragStartPos.current = { x: clientX, y: clientY }
+    dragStartNodePos.current = {
+      x: positionsRef.current[nodeId]?.x || 0,
+      y: positionsRef.current[nodeId]?.y || 0,
+    }
+    lastNodeDragPosRef.current = {
+      x: dragStartNodePos.current.x,
+      y: dragStartNodePos.current.y,
+    }
+    setNodeDragPreview({
+      id: nodeId,
+      x: dragStartNodePos.current.x,
+      y: dragStartNodePos.current.y,
+    })
+    setDraggingNodeId(nodeId)
+
+    // Ensure we don't attach multiple times if somehow called twice
+    window.removeEventListener('mousemove', handleWindowMouseMove)
+    window.removeEventListener('mouseup', handleWindowMouseUp)
+    window.removeEventListener('click', handleWindowMouseUp, { capture: true })
+
+    window.addEventListener('mousemove', handleWindowMouseMove)
+    window.addEventListener('mouseup', handleWindowMouseUp)
+    window.addEventListener('click', handleWindowMouseUp, { capture: true, once: true })
+  }, [handleWindowMouseMove, handleWindowMouseUp])
+
+  /** Entry point from the lite canvas layer (no React synthetic event is available). */
+  const handleCanvasNodePointerDown = useCallback((nodeId: string, ev: PointerEvent) => {
+    if (ev.button !== 0) return
+    const target = ev.target as HTMLElement
+    if (target && (target.closest('button') || target.closest('textarea') || target.closest('input') || target.closest('a') || target.closest('[role="button"]') || target.closest('[role="menuitem"]') || target.closest('[role="menu"]') || target.closest('[role="dialog"]') || target.closest('[role="listbox"]') || target.closest('[role="option"]') || target.closest('[role="combobox"]') || target.closest('[role="tab"]') || target.closest('[role="tabpanel"]') || target.closest('video') || target.closest('audio'))) return
+    
+    ev.stopPropagation()
+    ev.preventDefault()
+    beginNodeDrag(nodeId, ev.clientX, ev.clientY)
+  }, [beginNodeDrag])
+
+  const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
+    if (e.button !== 0) return // Only left click
+    const target = e.target as HTMLElement
+    // Prevent dragging if clicking on an input/button or an SVG icon inside a button
+    if (target.closest('button') || target.closest('textarea') || target.closest('input') || target.closest('a') || target.closest('[role="button"]') || target.closest('[role="menuitem"]') || target.closest('[role="menu"]') || target.closest('[role="dialog"]') || target.closest('[role="listbox"]') || target.closest('[role="option"]') || target.closest('[role="combobox"]') || target.closest('[role="tab"]') || target.closest('[role="tabpanel"]') || target.closest('video') || target.closest('audio')) return
+    
+    e.stopPropagation()
+    e.preventDefault() // Prevents native image drag and text selection which breaks mousemove
+
+    beginNodeDrag(nodeId, e.clientX, e.clientY)
   }
 
   const handleConnectionStart = (e: React.MouseEvent, nodeId: string) => {
@@ -2025,7 +2037,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           url={url}
           alt="Generated media"
           onOpen={() => setZoomedMedia({ url, type: "image" })}
-          className="max-h-[300px] rounded-xl bg-black/10 object-contain object-center"
         />
       ) : (
         <div className="relative w-full overflow-hidden rounded-xl bg-black/10 aspect-square flex items-center justify-center">
@@ -2745,27 +2756,27 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                               <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                                 <div
                                   className="imprenta-orb bg-violet-500/30"
-                                  style={{ top: "18%", left: "14%", width: 140, height: 140, animation: "imprenta-orb-float-a 6s ease-in-out infinite" }}
+                                  style={{ top: "18%", left: "14%", width: 140, height: 140, animation: "imprenta-orb-float-a 6s ease-in-out infinite", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                 />
                                 <div
                                   className="imprenta-orb bg-indigo-500/25"
-                                  style={{ top: "58%", left: "62%", width: 120, height: 120, animation: "imprenta-orb-float-b 7.5s ease-in-out infinite" }}
+                                  style={{ top: "58%", left: "62%", width: 120, height: 120, animation: "imprenta-orb-float-b 7.5s ease-in-out infinite", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                 />
                                 <div
                                   className="imprenta-orb bg-pink-500/25"
-                                  style={{ top: "10%", left: "68%", width: 90, height: 90, animation: "imprenta-orb-float-c 6.8s ease-in-out infinite" }}
+                                  style={{ top: "10%", left: "68%", width: 90, height: 90, animation: "imprenta-orb-float-c 6.8s ease-in-out infinite", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                 />
                                 <div
                                   className="imprenta-orb bg-emerald-500/20"
-                                  style={{ top: "62%", left: "10%", width: 100, height: 100, animation: "imprenta-orb-float-b 8.2s ease-in-out infinite", animationDelay: "0.6s" }}
+                                  style={{ top: "62%", left: "10%", width: 100, height: 100, animation: "imprenta-orb-float-b 8.2s ease-in-out infinite", animationDelay: "0.6s", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                 />
                                 <div
                                   className="imprenta-orb bg-cyan-500/20"
-                                  style={{ top: "36%", left: "44%", width: 80, height: 80, animation: "imprenta-orb-float-c 7s ease-in-out infinite", animationDelay: "1.2s" }}
+                                  style={{ top: "36%", left: "44%", width: 80, height: 80, animation: "imprenta-orb-float-c 7s ease-in-out infinite", animationDelay: "1.2s", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                 />
                                 <div
                                   className="imprenta-orb bg-purple-500/22"
-                                  style={{ top: "32%", left: "30%", width: 70, height: 70, animation: "imprenta-orb-float-a 9s ease-in-out infinite", animationDelay: "1.8s" }}
+                                  style={{ top: "32%", left: "30%", width: 70, height: 70, animation: "imprenta-orb-float-a 9s ease-in-out infinite", animationDelay: "1.8s", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                 />
                               </div>
                             )}
@@ -3335,6 +3346,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     size="sm"
                                     className="flex-1"
                                     disabled={!!(node.settings as any)?.imprenta_mode && !contexts.some(ctx => ctx.target_node_id === node.id)}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
                                     onClick={async (e) => {
                                       e.stopPropagation();
                                       const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
@@ -3352,6 +3365,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant="outline" 
                                     size="sm"
                                     className="flex-1"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleCreateActionFromContext(node.id);
@@ -3364,6 +3379,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant="outline"
                                     size="sm"
                                     className="flex-1"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
                                     onClick={async (e) => {
                                       e.stopPropagation();
                                       const res = node.result as any;
@@ -3417,6 +3434,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                           variant="outline" 
                                           size="sm"
                                           className="flex-1"
+                                          onPointerDown={(e) => e.stopPropagation()}
+                                          onMouseDown={(e) => e.stopPropagation()}
                                           onClick={async (e) => {
                                             e.stopPropagation();
                                             try {
@@ -3449,6 +3468,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     size="sm" 
                                     className="w-full" 
                                     title="Generate"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleExecuteNode(node);

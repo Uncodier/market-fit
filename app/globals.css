@@ -1729,25 +1729,25 @@ html.safari .chat-input-container[style*="fixed"] {
 @keyframes imprenta-bolita-pulse {
   0%, 100% {
     opacity: 0.35;
-    transform: scale(0.78);
+    transform: translate3d(0, 0, 0) scale(0.78);
   }
   50% {
     opacity: 1;
-    transform: scale(1.15);
+    transform: translate3d(0, 0, 0) scale(1.15);
   }
 }
 
 @keyframes imprenta-orb-float-a {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50%      { transform: translate(18px, -14px) scale(1.08); }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(18px, -14px, 0) scale(1.08); }
 }
 @keyframes imprenta-orb-float-b {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50%      { transform: translate(-22px, 16px) scale(0.95); }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-22px, 16px, 0) scale(0.95); }
 }
 @keyframes imprenta-orb-float-c {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50%      { transform: translate(14px, 20px) scale(1.1); }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(14px, 20px, 0) scale(1.1); }
 }
 
 /* Action node: static ring, only the gradient angle sweeps around.
@@ -1756,6 +1756,8 @@ html.safari .chat-input-container[style*="fixed"] {
  * around the card without rotating the pseudo-element itself. */
 .imprenta-action-running {
   position: relative;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 .imprenta-action-running::before {
   content: "";
@@ -1779,6 +1781,8 @@ html.safari .chat-input-container[style*="fixed"] {
           mask-composite: exclude;
   pointer-events: none;
   z-index: 1;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* SVG path that represents the route to a loading result. */
@@ -1790,6 +1794,8 @@ html.safari .chat-input-container[style*="fixed"] {
   stroke-dasharray: 10 14;
   animation: imprenta-edge-dash 1.2s linear infinite;
   filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.45));
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Pulsing dots used inside the loading result card instead of skeleton bars. */
@@ -1800,6 +1806,8 @@ html.safari .chat-input-container[style*="fixed"] {
   background: hsl(var(--primary));
   box-shadow: 0 0 10px 2px hsl(var(--primary) / 0.55);
   animation: imprenta-bolita-pulse 1.1s ease-in-out infinite;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Floating orbs: inspired by EmptyCard (fancy variant). Six blurred colored
@@ -1811,4 +1819,6 @@ html.safari .chat-input-container[style*="fixed"] {
   opacity: 0.9;
   will-change: transform;
   pointer-events: none;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }

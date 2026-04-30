@@ -91,6 +91,14 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     // This matches the fallback logic in robots/page.tsx
     if (allInstances.length > 0) {
       const sortedInstances = [...allInstances].sort((a, b) => {
+        const playStatuses = ['running', 'active', 'starting', 'pending', 'initializing'];
+        const aIsPlay = playStatuses.includes((a as any).status) ? 1 : 0;
+        const bIsPlay = playStatuses.includes((b as any).status) ? 1 : 0;
+        
+        if (aIsPlay !== bIsPlay) {
+          return bIsPlay - aIsPlay;
+        }
+        
         const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
         const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
         return bTime - aTime
