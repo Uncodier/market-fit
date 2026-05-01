@@ -110,21 +110,102 @@ export const markdownComponents = {
     )
   },
   
-  // Links with proper color and hover
-  a: ({ node, ...props }: any) => (
-    <a 
-      className="text-primary hover:underline" 
-      target="_blank"
-      rel="noopener noreferrer"
-      {...props} 
-    />
-  ),
+  // Links with proper color and hover, and media rendering for raw URLs
+  a: ({ node, ...props }: any) => {
+    const href = props.href || '';
+    const lowerHref = href.toLowerCase();
+    
+    // Check if it's an image
+    if (lowerHref.match(/\.(jpeg|jpg|gif|png|webp|svg)(\?.*)?$/)) {
+      const isRawUrl = typeof props.children === 'string' && props.children === href;
+      const isArrayUrl = Array.isArray(props.children) && props.children.length === 1 && typeof props.children[0] === 'string' && props.children[0] === href;
+      const hasCustomText = !isRawUrl && !isArrayUrl && props.children;
+
+      return (
+        <div className="my-4">
+          <img 
+            src={href} 
+            alt="Image" 
+            className="max-w-full h-auto rounded-md border dark:border-white/5 border-black/5 cursor-pointer hover:opacity-80 transition-opacity" 
+            style={{ maxHeight: '400px', objectFit: 'contain' }}
+            onClick={() => window.open(href, '_blank')}
+          />
+          {hasCustomText && (
+            <div className="text-sm text-muted-foreground mt-2 text-center">
+              <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {props.children}
+              </a>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Check if it's a video
+    if (lowerHref.match(/\.(mp4|webm|ogg)(\?.*)?$/)) {
+      const isRawUrl = typeof props.children === 'string' && props.children === href;
+      const isArrayUrl = Array.isArray(props.children) && props.children.length === 1 && typeof props.children[0] === 'string' && props.children[0] === href;
+      const hasCustomText = !isRawUrl && !isArrayUrl && props.children;
+
+      return (
+        <div className="my-4">
+          <video 
+            src={href} 
+            controls 
+            className="max-w-full h-auto rounded-md border dark:border-white/5 border-black/5"
+            style={{ maxHeight: '400px' }}
+          />
+          {hasCustomText && (
+            <div className="text-sm text-muted-foreground mt-2 text-center">
+              <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {props.children}
+              </a>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Check if it's audio
+    if (lowerHref.match(/\.(mp3|wav|ogg|m4a)(\?.*)?$/)) {
+      const isRawUrl = typeof props.children === 'string' && props.children === href;
+      const isArrayUrl = Array.isArray(props.children) && props.children.length === 1 && typeof props.children[0] === 'string' && props.children[0] === href;
+      const hasCustomText = !isRawUrl && !isArrayUrl && props.children;
+
+      return (
+        <div className="my-4">
+          <audio 
+            src={href} 
+            controls 
+            className="w-full"
+          />
+          {hasCustomText && (
+            <div className="text-sm text-muted-foreground mt-2 text-center">
+              <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                {props.children}
+              </a>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <a 
+        className="text-primary hover:underline break-all" 
+        target="_blank"
+        rel="noopener noreferrer"
+        {...props} 
+      />
+    );
+  },
   
   // Images with responsive sizing
   img: ({ node, ...props }: any) => (
     <img 
-      className="max-w-full h-auto my-2 rounded-md" 
+      className="max-w-full h-auto my-2 rounded-md cursor-pointer hover:opacity-80 transition-opacity" 
       style={{ maxWidth: '100%', height: 'auto', borderRadius: '4px' }}
+      onClick={() => window.open(props.src, '_blank')}
       {...props} 
     />
   ),

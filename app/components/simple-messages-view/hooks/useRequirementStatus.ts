@@ -23,8 +23,11 @@ export const useRequirementStatus = (activeRobotInstance?: { id?: string } | nul
         .eq("instance_id", instanceId)
         .order("created_at", { ascending: true })
 
-      if (!error && data) {
-        setRequirementStatuses(data)
+      if (error) {
+        console.error("Error loading requirement statuses:", error)
+        setRequirementStatuses([])
+      } else {
+        setRequirementStatuses(data || [])
       }
     } catch (error) {
       console.error("Error loading requirement statuses:", error)

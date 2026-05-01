@@ -28,6 +28,7 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   onCreateSale?: () => void
   onCreateDeal?: () => void
   onMobileToggle?: () => void
+  viewMode?: string
 }
 
 export function TopBar({ 
@@ -44,6 +45,7 @@ export function TopBar({
   onCreateSale,
   onCreateDeal,
   onMobileToggle,
+  viewMode,
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
@@ -292,6 +294,7 @@ export function TopBar({
             isDealsPage={pathname === "/deals"}
             onCreateSale={onCreateSale}
             onCreateDeal={onCreateDeal}
+            viewMode={viewMode}
           />
         </div>
       </div>

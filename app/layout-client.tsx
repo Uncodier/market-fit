@@ -347,6 +347,7 @@ function LayoutClientInner({
                 isExperimentDetailPage={isExperimentDetailPage}
                 onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
                 onCreateDeal={pathname === "/deals" ? handleCreateDealClick : undefined}
+                viewMode={robotsViewMode}
               />
               {!isRobotsPage && (
                 <div className={!isChatPage && customBreadcrumb ? "h-[64px] md:h-[calc(64px+41px)] flex-none" : "h-[64px] flex-none"}></div>

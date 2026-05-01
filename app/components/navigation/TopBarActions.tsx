@@ -58,7 +58,7 @@ import { useRequirementStatus } from "@/app/components/simple-messages-view/hook
 
 
 // Robot Start Button Component
-function RobotStartButton({ currentSite }: { currentSite: any }) {
+function RobotStartButton({ currentSite, viewMode }: { currentSite: any, viewMode?: string }) {
   const { t } = useLocalization()
   const [isStartingRobot, setIsStartingRobot] = useState(false)
   const [isStoppingRobot, setIsStoppingRobot] = useState(false)
@@ -81,6 +81,9 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
     
     // If URL param exists, try to get that instance first
     if (selectedInstanceParam) {
+      if (selectedInstanceParam === 'new') {
+        return null
+      }
       const urlInstance = getInstanceById(selectedInstanceParam)
       if (urlInstance) {
         return urlInstance
@@ -460,7 +463,7 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
   }
 
   // If there's an active robot instance (from URL param or found paused instance), decide which controls to show
-  if (activeRobotInstance) {
+  if (activeRobotInstance && viewMode !== 'imprenta') {
     // Only show stop/authenticate buttons when robot is running or active
     const isRunning = ['running', 'active'].includes(activeRobotInstance.status)
 
@@ -610,8 +613,8 @@ function RobotStartButton({ currentSite }: { currentSite: any }) {
   }
 
 
-  // Default state: if New Makina is selected, hide start (chat handles start-on-send)
-  if (selectedInstanceId === 'new') return null
+  // Default state: if New Makina is selected or in imprenta mode, hide start
+  if (selectedInstanceId === 'new' || viewMode === 'imprenta') return null
 
   // Otherwise, show start button as fallback (should rarely show)
   return (
@@ -707,6 +710,7 @@ interface TopBarActionsProps {
   isDealsPage?: boolean
   onCreateSale?: () => void
   onCreateDeal?: () => void
+  viewMode?: string
 }
 
 export function TopBarActions({
@@ -736,7 +740,8 @@ export function TopBarActions({
   campaigns,
   isDealsPage,
   onCreateSale,
-  onCreateDeal
+  onCreateDeal,
+  viewMode
 }: TopBarActionsProps) {
   const { t } = useLocalization()
   const { currentSite } = useSite()
@@ -1954,7 +1959,7 @@ The success of this experiment will be measured by:
       )}
       {isRobotsPage && (
         currentSite ? (
-          <RobotStartButton currentSite={currentSite} />
+          <RobotStartButton currentSite={currentSite} viewMode={viewMode} />
         ) : null
       )}
 
