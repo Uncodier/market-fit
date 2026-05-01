@@ -782,8 +782,8 @@ export default function TaskDetailPage() {
       <TaskDetailContext.Provider value={{ loadingSegments, campaignSegments }}>
         <Tabs defaultValue="summary" onValueChange={setActiveTab}>
           <StickyHeader>
-            <div className="px-16 pt-0">
-              <div className="flex items-center justify-between">
+            <div className="px-16 pt-0 w-full">
+              <div className="flex items-center justify-between w-full">
                 <TabsList>
                   <TabsTrigger value="summary">{t('campaigns.detail.tabs.summary') || 'Campaign Summary'}</TabsTrigger>
                   <TabsTrigger value="financials">{t('campaigns.detail.tabs.financials') || 'Finances'}</TabsTrigger>

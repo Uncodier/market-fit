@@ -3,6 +3,7 @@ import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
+import { Checkbox } from "@/app/components/ui/checkbox"
 import { ChevronDown, ChevronRight, ChevronLeft, Search, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, MoreHorizontal, Trash2 } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Pagination } from "@/app/components/ui/pagination"
@@ -77,6 +78,8 @@ interface GroupedLeadsTableProps {
   leadJourneyStages: Record<string, string>
   isLoadingJourneyStages: boolean
   reloadingLeads: Set<string>
+  selectedLeads?: Set<string>
+  onSelectLeads?: (leadIds: Set<string>) => void
 }
 
 export function GroupedLeadsTable({
@@ -97,7 +100,9 @@ export function GroupedLeadsTable({
   segments,
   leadJourneyStages,
   isLoadingJourneyStages,
-  reloadingLeads
+  reloadingLeads,
+  selectedLeads = new Set(),
+  onSelectLeads
 }: GroupedLeadsTableProps) {
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalCompanies / itemsPerPage)
@@ -574,6 +579,31 @@ export function GroupedLeadsTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[40px] px-4">
+              <Checkbox 
+                checked={
+                  paginatedCompanies.length > 0 && 
+                  paginatedCompanies.every(group => 
+                    group.leads.every(lead => selectedLeads.has(lead.id))
+                  )
+                }
+                onCheckedChange={(checked) => {
+                  if (!onSelectLeads) return
+                  
+                  const newSelected = new Set(selectedLeads)
+                  const allLeadsInPage = paginatedCompanies.flatMap(group => group.leads)
+                  
+                  if (checked) {
+                    allLeadsInPage.forEach(lead => newSelected.add(lead.id))
+                  } else {
+                    allLeadsInPage.forEach(lead => newSelected.delete(lead.id))
+                  }
+                  
+                  onSelectLeads(newSelected)
+                }}
+                aria-label="Select all on page"
+              />
+            </TableHead>
             <TableHead className="min-w-[250px] w-[300px] max-w-[300px]">Company</TableHead>
             <TableHead className="min-w-[200px] w-[250px] max-w-[250px]">Leads</TableHead>
             <TableHead className="w-[200px] min-w-[140px] max-w-[200px]">Segment / Position</TableHead>
@@ -600,6 +630,24 @@ export function GroupedLeadsTable({
                     }
                   }}
                 >
+                  <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={group.leads.every(lead => selectedLeads.has(lead.id))}
+                      onCheckedChange={(checked) => {
+                        if (!onSelectLeads) return
+                        
+                        const newSelected = new Set(selectedLeads)
+                        if (checked) {
+                          group.leads.forEach(lead => newSelected.add(lead.id))
+                        } else {
+                          group.leads.forEach(lead => newSelected.delete(lead.id))
+                        }
+                        
+                        onSelectLeads(newSelected)
+                      }}
+                      aria-label={`Select all leads in ${group.companyName}`}
+                    />
+                  </TableCell>
                   <TableCell className="min-w-[250px] w-[300px] max-w-[300px] overflow-hidden">
                     <div className="flex items-center space-x-3 min-w-0">
                       {group.leadCount > 1 && (
@@ -869,7 +917,25 @@ export function GroupedLeadsTable({
                     }`}
                     onClick={() => onLeadClick(lead)}
                   >
-                    <TableCell className="pl-12 min-w-[250px] w-[300px] max-w-[300px] overflow-hidden">
+                    <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={selectedLeads.has(lead.id)}
+                        onCheckedChange={(checked) => {
+                          if (!onSelectLeads) return
+                          
+                          const newSelected = new Set(selectedLeads)
+                          if (checked) {
+                            newSelected.add(lead.id)
+                          } else {
+                            newSelected.delete(lead.id)
+                          }
+                          
+                          onSelectLeads(newSelected)
+                        }}
+                        aria-label={`Select ${lead.name || lead.email}`}
+                      />
+                    </TableCell>
+                    <TableCell className="pl-8 min-w-[250px] w-[300px] max-w-[300px] overflow-hidden">
                       {/* Celda vacía para la columna Company */}
                     </TableCell>
                     <TableCell className="min-w-[200px] w-[250px] max-w-[250px] overflow-hidden">
@@ -1080,7 +1146,7 @@ export function GroupedLeadsTable({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
+              <TableCell colSpan={8} className="h-24 text-center">
                 <EmptyCard
                   icon={<Users className="h-16 w-16 text-muted-foreground" />}
                   title="No companies found"

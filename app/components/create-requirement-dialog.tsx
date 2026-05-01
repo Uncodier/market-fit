@@ -217,35 +217,32 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
               )}
             </div>
             <div className="grid gap-2">
-              <Label>Type</Label>
+              <Label>Tipo de entregable</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                   <Tag className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <Select 
-                  onValueChange={(value) => form.setValue("type", value as "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment")}
+                  onValueChange={(value) => form.setValue("type", value as "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website")}
                   defaultValue={form.getValues("type") || "task"}
                 >
                   <SelectTrigger className="h-12 pl-10">
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue placeholder="Selecciona el tipo de entregable" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="content">Content</SelectItem>
-                    <SelectItem value="design">Design</SelectItem>
-                    <SelectItem value="research">Research</SelectItem>
-                    <SelectItem value="follow_up">Follow Up</SelectItem>
-                    <SelectItem value="task">Task</SelectItem>
-                    <SelectItem value="develop">Develop</SelectItem>
-                    <SelectItem value="analytics">Analytics</SelectItem>
-                    <SelectItem value="testing">Testing</SelectItem>
-                    <SelectItem value="approval">Approval</SelectItem>
-                    <SelectItem value="coordination">Coordination</SelectItem>
-                    <SelectItem value="strategy">Strategy</SelectItem>
-                    <SelectItem value="optimization">Optimization</SelectItem>
-                    <SelectItem value="automation">Automation</SelectItem>
-                    <SelectItem value="integration">Integration</SelectItem>
-                    <SelectItem value="planning">Planning</SelectItem>
-                    <SelectItem value="payment">Payment</SelectItem>
+                    <SelectItem value="app">Apps</SelectItem>
+                    <SelectItem value="automation">Automatización</SelectItem>
+                    <SelectItem value="presentation">Presentación</SelectItem>
+                    <SelectItem value="document">Documento</SelectItem>
+                    <SelectItem value="campaign">Campaña</SelectItem>
+                    <SelectItem value="image">Imagen</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="audio">Audio</SelectItem>
+                    <SelectItem value="report">Reporte</SelectItem>
+                    <SelectItem value="message">Mensaje</SelectItem>
+                    <SelectItem value="segment">Segmento</SelectItem>
+                    <SelectItem value="task">Tarea</SelectItem>
+                    <SelectItem value="website">Sitio web</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

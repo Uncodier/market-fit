@@ -270,7 +270,7 @@ export default function LeadDetailPage() {
     <div className="flex-1 p-0">
       <Tabs defaultValue="journey">
         <StickyHeader>
-          <div className="px-16 pt-0 flex-1">
+          <div className="px-16 pt-0 flex-1 w-full">
             <div className="flex items-center justify-between w-full">
               <TabsList>
                 <TabsTrigger value="journey">Customer Journey</TabsTrigger>

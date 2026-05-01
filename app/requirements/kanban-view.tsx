@@ -74,7 +74,7 @@ interface Requirement {
   id: string
   title: string
   description: string
-  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
+  type: "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website"
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completionStatus: CompletionStatusType
@@ -313,24 +313,38 @@ export function KanbanView({
                                       <div className="flex-1 min-w-0">
                                         <h3 className="font-medium text-sm leading-tight truncate">{requirement.title}</h3>
                                         <span className={`text-xs mt-1 inline-block ${
-                                          requirement.type === 'content' ? 'text-blue-600 dark:text-blue-400' :
-                                          requirement.type === 'design' ? 'text-purple-600 dark:text-purple-400' :
-                                          requirement.type === 'research' ? 'text-indigo-600 dark:text-indigo-400' :
-                                          requirement.type === 'follow_up' ? 'text-yellow-600 dark:text-yellow-400' :
-                                          requirement.type === 'task' ? 'text-green-600 dark:text-green-400' :
-                                          requirement.type === 'develop' ? 'text-red-600 dark:text-red-400' :
-                                          requirement.type === 'analytics' ? 'text-teal-600 dark:text-teal-400' :
-                                          requirement.type === 'testing' ? 'text-orange-600 dark:text-orange-400' :
-                                          requirement.type === 'approval' ? 'text-emerald-600 dark:text-emerald-400' :
-                                          requirement.type === 'coordination' ? 'text-cyan-600 dark:text-cyan-400' :
-                                          requirement.type === 'strategy' ? 'text-violet-600 dark:text-violet-400' :
-                                          requirement.type === 'optimization' ? 'text-lime-600 dark:text-lime-400' :
-                                          requirement.type === 'automation' ? 'text-sky-600 dark:text-sky-400' :
-                                          requirement.type === 'integration' ? 'text-rose-600 dark:text-rose-400' :
-                                          requirement.type === 'planning' ? 'text-amber-600 dark:text-amber-400' :
+                                          requirement.type === 'app' ? 'text-blue-600 dark:text-blue-400' :
+                                          requirement.type === 'automation' ? 'text-purple-600 dark:text-purple-400' :
+                                          requirement.type === 'presentation' ? 'text-indigo-600 dark:text-indigo-400' :
+                                          requirement.type === 'document' ? 'text-yellow-600 dark:text-yellow-400' :
+                                          requirement.type === 'campaign' ? 'text-green-600 dark:text-green-400' :
+                                          requirement.type === 'image' ? 'text-red-600 dark:text-red-400' :
+                                          requirement.type === 'video' ? 'text-teal-600 dark:text-teal-400' :
+                                          requirement.type === 'audio' ? 'text-orange-600 dark:text-orange-400' :
+                                          requirement.type === 'report' ? 'text-emerald-600 dark:text-emerald-400' :
+                                          requirement.type === 'message' ? 'text-cyan-600 dark:text-cyan-400' :
+                                          requirement.type === 'segment' ? 'text-violet-600 dark:text-violet-400' :
+                                          requirement.type === 'task' ? 'text-lime-600 dark:text-lime-400' :
+                                          requirement.type === 'website' ? 'text-sky-600 dark:text-sky-400' :
                                           'text-pink-600 dark:text-pink-400'
                                         }`}>
-                                          {requirement.type === 'follow_up' ? (t('requirements.types.followUp') === 'requirements.types.followUp' ? 'Follow Up' : t('requirements.types.followUp')) : (t(`requirements.types.${requirement.type}`) === `requirements.types.${requirement.type}` ? requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1) : t(`requirements.types.${requirement.type}`))}
+                                          {
+                                            {
+                                              app: 'Apps',
+                                              automation: 'Automatización',
+                                              presentation: 'Presentación',
+                                              document: 'Documento',
+                                              campaign: 'Campaña',
+                                              image: 'Imagen',
+                                              video: 'Video',
+                                              audio: 'Audio',
+                                              report: 'Reporte',
+                                              message: 'Mensaje',
+                                              segment: 'Segmento',
+                                              task: 'Tarea',
+                                              website: 'Sitio web'
+                                            }[requirement.type] || requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)
+                                          }
                                         </span>
                                       </div>
                                       <Badge className={`text-xs whitespace-nowrap ml-2 ${PRIORITY_COLORS[requirement.priority]}`}>
@@ -450,24 +464,38 @@ function KanbanRequirementCard({
         <div className="flex-1 min-w-0">
           <h4 className="font-medium truncate">{requirement.title}</h4>
           <span className={`text-xs mt-1 inline-block ${
-            requirement.type === 'content' ? 'text-blue-600 dark:text-blue-400' :
-            requirement.type === 'design' ? 'text-purple-600 dark:text-purple-400' :
-            requirement.type === 'research' ? 'text-indigo-600 dark:text-indigo-400' :
-            requirement.type === 'follow_up' ? 'text-yellow-600 dark:text-yellow-400' :
-            requirement.type === 'task' ? 'text-green-600 dark:text-green-400' :
-            requirement.type === 'develop' ? 'text-red-600 dark:text-red-400' :
-            requirement.type === 'analytics' ? 'text-teal-600 dark:text-teal-400' :
-            requirement.type === 'testing' ? 'text-orange-600 dark:text-orange-400' :
-            requirement.type === 'approval' ? 'text-emerald-600 dark:text-emerald-400' :
-            requirement.type === 'coordination' ? 'text-cyan-600 dark:text-cyan-400' :
-            requirement.type === 'strategy' ? 'text-violet-600 dark:text-violet-400' :
-            requirement.type === 'optimization' ? 'text-lime-600 dark:text-lime-400' :
-            requirement.type === 'automation' ? 'text-sky-600 dark:text-sky-400' :
-            requirement.type === 'integration' ? 'text-rose-600 dark:text-rose-400' :
-            requirement.type === 'planning' ? 'text-amber-600 dark:text-amber-400' :
+            requirement.type === 'app' ? 'text-blue-600 dark:text-blue-400' :
+            requirement.type === 'automation' ? 'text-purple-600 dark:text-purple-400' :
+            requirement.type === 'presentation' ? 'text-indigo-600 dark:text-indigo-400' :
+            requirement.type === 'document' ? 'text-yellow-600 dark:text-yellow-400' :
+            requirement.type === 'campaign' ? 'text-green-600 dark:text-green-400' :
+            requirement.type === 'image' ? 'text-red-600 dark:text-red-400' :
+            requirement.type === 'video' ? 'text-teal-600 dark:text-teal-400' :
+            requirement.type === 'audio' ? 'text-orange-600 dark:text-orange-400' :
+            requirement.type === 'report' ? 'text-emerald-600 dark:text-emerald-400' :
+            requirement.type === 'message' ? 'text-cyan-600 dark:text-cyan-400' :
+            requirement.type === 'segment' ? 'text-violet-600 dark:text-violet-400' :
+            requirement.type === 'task' ? 'text-lime-600 dark:text-lime-400' :
+            requirement.type === 'website' ? 'text-sky-600 dark:text-sky-400' :
             'text-pink-600 dark:text-pink-400'
-                                        }`}>
-                                          {requirement.type === 'follow_up' ? (t('requirements.types.followUp') === 'requirements.types.followUp' ? 'Follow Up' : t('requirements.types.followUp')) : (t(`requirements.types.${requirement.type}`) === `requirements.types.${requirement.type}` ? requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1) : t(`requirements.types.${requirement.type}`))}
+          }`}>
+                                          {
+                                            {
+                                              app: 'Apps',
+                                              automation: 'Automatización',
+                                              presentation: 'Presentación',
+                                              document: 'Documento',
+                                              campaign: 'Campaña',
+                                              image: 'Imagen',
+                                              video: 'Video',
+                                              audio: 'Audio',
+                                              report: 'Reporte',
+                                              message: 'Mensaje',
+                                              segment: 'Segmento',
+                                              task: 'Tarea',
+                                              website: 'Sitio web'
+                                            }[requirement.type] || requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)
+                                          }
                                         </span>
         </div>
         <Badge className={`capitalize ${PRIORITY_COLORS[requirement.priority]}`}>{t(`requirements.priority.${requirement.priority}`) === `requirements.priority.${requirement.priority}` ? requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1) : t(`requirements.priority.${requirement.priority}`)}</Badge>

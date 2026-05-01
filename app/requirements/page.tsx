@@ -58,7 +58,7 @@ interface Requirement {
   id: string
   title: string
   description: string
-  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
+  type: "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website"
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completionStatus: CompletionStatusType
@@ -92,7 +92,7 @@ interface RequirementData {
   id: string
   title: string
   description: string
-  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
+  type: "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website"
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completion_status: CompletionStatusType
@@ -297,24 +297,38 @@ function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.type') === 'requirements.list.type' ? 'Type' : t('requirements.list.type')}</p>
               <div className="flex justify-center">
                 <Badge variant="outline" className={`text-xs ${
-                  requirement.type === 'content' ? 'bg-blue-100/20 text-blue-600 dark:text-blue-400 border-blue-300/30' :
-                  requirement.type === 'design' ? 'bg-purple-100/20 text-purple-600 dark:text-purple-400 border-purple-300/30' :
-                  requirement.type === 'research' ? 'bg-indigo-100/20 text-indigo-600 dark:text-indigo-400 border-indigo-300/30' :
-                  requirement.type === 'follow_up' ? 'bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 border-yellow-300/30' :
-                  requirement.type === 'task' ? 'bg-green-100/20 text-green-600 dark:text-green-400 border-green-300/30' :
-                  requirement.type === 'develop' ? 'bg-red-100/20 text-red-600 dark:text-red-400 border-red-300/30' :
-                  requirement.type === 'analytics' ? 'bg-teal-100/20 text-teal-600 dark:text-teal-400 border-teal-300/30' :
-                  requirement.type === 'testing' ? 'bg-orange-100/20 text-orange-600 dark:text-orange-400 border-orange-300/30' :
-                  requirement.type === 'approval' ? 'bg-emerald-100/20 text-emerald-600 dark:text-emerald-400 border-emerald-300/30' :
-                  requirement.type === 'coordination' ? 'bg-cyan-100/20 text-cyan-600 dark:text-cyan-400 border-cyan-300/30' :
-                  requirement.type === 'strategy' ? 'bg-violet-100/20 text-violet-600 dark:text-violet-400 border-violet-300/30' :
-                  requirement.type === 'optimization' ? 'bg-lime-100/20 text-lime-600 dark:text-lime-400 border-lime-300/30' :
-                  requirement.type === 'automation' ? 'bg-sky-100/20 text-sky-600 dark:text-sky-400 border-sky-300/30' :
-                  requirement.type === 'integration' ? 'bg-rose-100/20 text-rose-600 dark:text-rose-400 border-rose-300/30' :
-                  requirement.type === 'planning' ? 'bg-amber-100/20 text-amber-600 dark:text-amber-400 border-amber-300/30' :
+                  requirement.type === 'app' ? 'bg-blue-100/20 text-blue-600 dark:text-blue-400 border-blue-300/30' :
+                  requirement.type === 'automation' ? 'bg-purple-100/20 text-purple-600 dark:text-purple-400 border-purple-300/30' :
+                  requirement.type === 'presentation' ? 'bg-indigo-100/20 text-indigo-600 dark:text-indigo-400 border-indigo-300/30' :
+                  requirement.type === 'document' ? 'bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 border-yellow-300/30' :
+                  requirement.type === 'campaign' ? 'bg-green-100/20 text-green-600 dark:text-green-400 border-green-300/30' :
+                  requirement.type === 'image' ? 'bg-red-100/20 text-red-600 dark:text-red-400 border-red-300/30' :
+                  requirement.type === 'video' ? 'bg-teal-100/20 text-teal-600 dark:text-teal-400 border-teal-300/30' :
+                  requirement.type === 'audio' ? 'bg-orange-100/20 text-orange-600 dark:text-orange-400 border-orange-300/30' :
+                  requirement.type === 'report' ? 'bg-emerald-100/20 text-emerald-600 dark:text-emerald-400 border-emerald-300/30' :
+                  requirement.type === 'message' ? 'bg-cyan-100/20 text-cyan-600 dark:text-cyan-400 border-cyan-300/30' :
+                  requirement.type === 'segment' ? 'bg-violet-100/20 text-violet-600 dark:text-violet-400 border-violet-300/30' :
+                  requirement.type === 'task' ? 'bg-lime-100/20 text-lime-600 dark:text-lime-400 border-lime-300/30' :
+                  requirement.type === 'website' ? 'bg-sky-100/20 text-sky-600 dark:text-sky-400 border-sky-300/30' :
                   'bg-pink-100/20 text-pink-600 dark:text-pink-400 border-pink-300/30'
                 }`}>
-                  {requirement.type === 'follow_up' ? (t('requirements.types.followUp') === 'requirements.types.followUp' ? 'Follow Up' : t('requirements.types.followUp')) : (t(`requirements.types.${requirement.type}`) === `requirements.types.${requirement.type}` ? requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1) : t(`requirements.types.${requirement.type}`))}
+                  {
+                    {
+                      app: 'Apps',
+                      automation: 'Automatización',
+                      presentation: 'Presentación',
+                      document: 'Documento',
+                      campaign: 'Campaña',
+                      image: 'Imagen',
+                      video: 'Video',
+                      audio: 'Audio',
+                      report: 'Reporte',
+                      message: 'Mensaje',
+                      segment: 'Segmento',
+                      task: 'Tarea',
+                      website: 'Sitio web'
+                    }[requirement.type] || requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)
+                  }
                 </Badge>
               </div>
             </div>

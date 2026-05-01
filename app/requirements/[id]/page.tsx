@@ -196,7 +196,7 @@ interface Requirement {
   title: string
   description: string
   instructions: string
-  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment"
+  type: "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website"
   priority: "high" | "medium" | "low"
   status: RequirementStatusType
   completionStatus: CompletionStatusType
@@ -472,7 +472,7 @@ function RequirementDetailContent() {
     title: '',
     description: '',
     instructions: '',
-    type: 'task' as "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment",
+    type: 'task' as "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website",
     priority: 'medium' as 'high' | 'medium' | 'low',
     status: 'backlog' as RequirementStatusType,
     completionStatus: 'pending' as CompletionStatusType,
@@ -1542,39 +1542,52 @@ function RequirementDetailContent() {
                 <div className="space-y-2.5">
                   <Label className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-muted-foreground" />
-                    Type
+                    Tipo de entregable
                   </Label>
                   <Select
                     value={editForm.type}
-                    onValueChange={(value: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment") => {
+                    onValueChange={(value: "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website") => {
                       setEditForm({...editForm, type: value})
                     }}
                   >
                     <SelectTrigger className="h-11 w-full">
-                      <SelectValue placeholder="Select type">
+                      <SelectValue placeholder="Selecciona el tipo de entregable">
                         <div className="flex items-center gap-2">
                           <Tag className="h-4 w-4" />
-                          {editForm.type === 'follow_up' ? 'Follow Up' : editForm.type.charAt(0).toUpperCase() + editForm.type.slice(1)}
+                          {
+                            {
+                              app: 'Apps',
+                              automation: 'Automatización',
+                              presentation: 'Presentación',
+                              document: 'Documento',
+                              campaign: 'Campaña',
+                              image: 'Imagen',
+                              video: 'Video',
+                              audio: 'Audio',
+                              report: 'Reporte',
+                              message: 'Mensaje',
+                              segment: 'Segmento',
+                              task: 'Tarea',
+                              website: 'Sitio web'
+                            }[editForm.type] || editForm.type.charAt(0).toUpperCase() + editForm.type.slice(1)
+                          }
                         </div>
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="content">Content</SelectItem>
-                      <SelectItem value="design">Design</SelectItem>
-                      <SelectItem value="research">Research</SelectItem>
-                      <SelectItem value="follow_up">Follow Up</SelectItem>
-                      <SelectItem value="task">Task</SelectItem>
-                      <SelectItem value="develop">Develop</SelectItem>
-                      <SelectItem value="analytics">Analytics</SelectItem>
-                      <SelectItem value="testing">Testing</SelectItem>
-                      <SelectItem value="approval">Approval</SelectItem>
-                      <SelectItem value="coordination">Coordination</SelectItem>
-                      <SelectItem value="strategy">Strategy</SelectItem>
-                      <SelectItem value="optimization">Optimization</SelectItem>
-                      <SelectItem value="automation">Automation</SelectItem>
-                      <SelectItem value="integration">Integration</SelectItem>
-                      <SelectItem value="planning">Planning</SelectItem>
-                      <SelectItem value="payment">Payment</SelectItem>
+                      <SelectItem value="app">Apps</SelectItem>
+                      <SelectItem value="automation">Automatización</SelectItem>
+                      <SelectItem value="presentation">Presentación</SelectItem>
+                      <SelectItem value="document">Documento</SelectItem>
+                      <SelectItem value="campaign">Campaña</SelectItem>
+                      <SelectItem value="image">Imagen</SelectItem>
+                      <SelectItem value="video">Video</SelectItem>
+                      <SelectItem value="audio">Audio</SelectItem>
+                      <SelectItem value="report">Reporte</SelectItem>
+                      <SelectItem value="message">Mensaje</SelectItem>
+                      <SelectItem value="segment">Segmento</SelectItem>
+                      <SelectItem value="task">Tarea</SelectItem>
+                      <SelectItem value="website">Sitio web</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -960,7 +960,7 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
       <div className="flex-1">
         <Tabs defaultValue="results">
           <StickyHeader>
-            <div className="px-16 pt-0 flex items-center justify-between h-full">
+            <div className="px-16 pt-0 flex items-center justify-between h-full w-full">
               <TabsList className="mt-0">
                 <TabsTrigger value="results">Results</TabsTrigger>
                 <TabsTrigger value="tools">Tools</TabsTrigger>

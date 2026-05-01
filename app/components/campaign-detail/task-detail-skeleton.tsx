@@ -10,8 +10,8 @@ export function TaskDetailSkeleton() {
     <div className="flex-1 p-0 bg-background text-foreground">
       <Tabs defaultValue="summary">
         <StickyHeader>
-          <div className="px-16 pt-0">
-            <div className="flex items-center justify-between">
+          <div className="px-16 pt-0 w-full">
+            <div className="flex items-center justify-between w-full">
               <TabsList>
                 <TabsTrigger value="summary">Campaign Summary</TabsTrigger>
                 <TabsTrigger value="financials">Finances</TabsTrigger>

@@ -58,7 +58,7 @@ interface Requirement {
   id: string;
   title: string;
   description: string;
-  type: "content" | "design" | "research" | "follow_up" | "task" | "develop" | "analytics" | "testing" | "approval" | "coordination" | "strategy" | "optimization" | "automation" | "integration" | "planning" | "payment";
+  type: "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website";
   priority: 'high' | 'medium' | 'low';
   status: string;
   completion_status: string;

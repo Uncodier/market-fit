@@ -381,6 +381,8 @@ export default function LeadsPage() {
   const [searchTotalCount, setSearchTotalCount] = useState<number | null>(null)
   const [allLeadsTotalCount, setAllLeadsTotalCount] = useState<number | null>(null)
   const [sortBy, setSortBy] = useState<LeadSortOption>("newest")
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
 
   // Kanban pagination state for leads
   const [kanbanPagination, setKanbanPagination] = useState<Record<string, { page: number; hasMore: boolean; isLoading: boolean }>>({
@@ -1309,6 +1311,93 @@ export default function LeadsPage() {
   const handleOpenFilterModal = () => {
     setIsFilterModalOpen(true)
   }
+
+  // Bulk actions
+  const handleBulkDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedLeads.size} leads?`)) return
+    
+    setIsBulkActionLoading(true)
+    try {
+      const promises = Array.from(selectedLeads).map(id => deleteLead(id))
+      await Promise.all(promises)
+      
+      setDbLeads(prev => prev.filter(lead => !selectedLeads.has(lead.id)))
+      setSelectedLeads(new Set())
+      toast.success(`${selectedLeads.size} leads deleted successfully`)
+    } catch (error) {
+      console.error("Error in bulk delete:", error)
+      toast.error("Failed to delete some leads")
+    } finally {
+      setIsBulkActionLoading(false)
+    }
+  }
+
+  const handleBulkAssign = async () => {
+    if (!user?.id || !currentSite?.id) {
+      toast.error("User not authenticated or site not selected")
+      return
+    }
+
+    setIsBulkActionLoading(true)
+    try {
+      const promises = Array.from(selectedLeads).map(id => assignLeadToUser(id, user.id, currentSite.id))
+      await Promise.all(promises)
+      
+      setDbLeads(prev => prev.map(lead => 
+        selectedLeads.has(lead.id) ? { ...lead, assignee_id: user.id } : lead
+      ))
+      setSelectedLeads(new Set())
+      toast.success(`${selectedLeads.size} leads assigned successfully`)
+    } catch (error) {
+      console.error("Error in bulk assign:", error)
+      toast.error("Failed to assign some leads")
+    } finally {
+      setIsBulkActionLoading(false)
+    }
+  }
+
+  const handleBulkStatusChange = async (newStatus: string) => {
+    if (!currentSite?.id) return
+
+    setIsBulkActionLoading(true)
+    try {
+      const leadsToUpdate = dbLeads.filter(lead => selectedLeads.has(lead.id))
+      
+      const promises = leadsToUpdate.map(lead => {
+        const normalizedCompany = normalizeCompanyField(lead)
+        const updateData: any = {
+          id: lead.id,
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          position: lead.position,
+          segment_id: lead.segment_id,
+          status: newStatus as any,
+          origin: lead.origin,
+          site_id: currentSite.id
+        }
+
+        if (normalizedCompany !== undefined) {
+          updateData.company = normalizedCompany
+        }
+
+        return updateLead(updateData)
+      })
+      
+      await Promise.all(promises)
+      
+      setDbLeads(prev => prev.map(lead => 
+        selectedLeads.has(lead.id) ? { ...lead, status: newStatus as any } : lead
+      ))
+      setSelectedLeads(new Set())
+      toast.success(`Status updated for ${selectedLeads.size} leads`)
+    } catch (error) {
+      console.error("Error in bulk status change:", error)
+      toast.error("Failed to update status for some leads")
+    } finally {
+      setIsBulkActionLoading(false)
+    }
+  }
   
   return (
     <LeadsContext.Provider value={{ segments }}>
@@ -1337,9 +1426,53 @@ export default function LeadsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full space-y-6">
         <StickyHeader>
           <div className="w-full pt-0">
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-8">
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+            {selectedLeads.size > 0 ? (
+              <div className="flex items-center justify-between w-full bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
+                <div className="flex items-center gap-4">
+                  <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
+                    {selectedLeads.size} selected
+                  </Badge>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Choose bulk action
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedLeads(new Set())} disabled={isBulkActionLoading}>
+                    Cancel
+                  </Button>
+                  <div className="h-4 w-px bg-border mx-2" />
+                  <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkAssign} disabled={isBulkActionLoading}>
+                    {isBulkActionLoading ? <Loader className="h-4 w-4 animate-spin" /> : <UserIcon className="h-4 w-4" />}
+                    Assign to me
+                  </Button>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2" disabled={isBulkActionLoading}>
+                        <Tag className="h-4 w-4" />
+                        Change Status
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"].map(status => (
+                        <DropdownMenuItem key={status} onClick={() => handleBulkStatusChange(status)} className="capitalize">
+                          {status.replace('_', ' ')}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleBulkDelete} disabled={isBulkActionLoading}>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-8">
+                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.all') || 'All Companies'}>
                     <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.all') || 'All Companies'}</span>
@@ -1447,6 +1580,7 @@ export default function LeadsPage() {
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
             </div>
+            )}
           </div>
         </StickyHeader>
         
@@ -1478,6 +1612,8 @@ export default function LeadsPage() {
                         leadJourneyStages={leadJourneyStages}
                         isLoadingJourneyStages={isLoadingJourneyStages}
                         reloadingLeads={reloadingLeads}
+                        selectedLeads={selectedLeads}
+                        onSelectLeads={setSelectedLeads}
                     />
                   ) : (
                     <KanbanView 

@@ -52,6 +52,9 @@ const campaignRequirementFormSchema = z.object({
     .max(120, { message: "Title cannot exceed 120 characters" }),
   description: z.string()
     .min(10, { message: "Description must have at least 10 characters" }),
+  type: z.enum(["app", "automation", "presentation", "document", "campaign", "image", "video", "audio", "report", "message", "segment", "task", "website"], {
+    required_error: "Please select a deliverable type",
+  }),
   priority: z.enum(["high", "medium", "low"], {
     required_error: "Please select a priority",
   }),
@@ -97,6 +100,7 @@ export function CampaignRequirementDialog({
     defaultValues: {
       title: "",
       description: "",
+      type: "task",
       priority: "medium",
       status: "backlog",
       completionStatus: "pending",
@@ -171,6 +175,7 @@ export function CampaignRequirementDialog({
             form.reset({
               title: "",
               description: "",
+              type: "task",
               priority: "medium",
               status: "backlog",
               completionStatus: "pending",
@@ -228,6 +233,43 @@ export function CampaignRequirementDialog({
                   <p className="text-sm text-red-500 flex items-center gap-1">
                     <XCircle className="h-4 w-4" />
                     {form.formState.errors.title.message}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-3">
+                <Label>Tipo de entregable</Label>
+                <div className="relative p-[3px]">
+                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none z-10">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <Select 
+                    onValueChange={(value) => form.setValue("type", value as "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website")}
+                    defaultValue={form.getValues("type") || "task"}
+                  >
+                    <SelectTrigger className="h-12 pl-10">
+                      <SelectValue placeholder="Selecciona el tipo de entregable" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="app">Apps</SelectItem>
+                      <SelectItem value="automation">Automatización</SelectItem>
+                      <SelectItem value="presentation">Presentación</SelectItem>
+                      <SelectItem value="document">Documento</SelectItem>
+                      <SelectItem value="campaign">Campaña</SelectItem>
+                      <SelectItem value="image">Imagen</SelectItem>
+                      <SelectItem value="video">Video</SelectItem>
+                      <SelectItem value="audio">Audio</SelectItem>
+                      <SelectItem value="report">Reporte</SelectItem>
+                      <SelectItem value="message">Mensaje</SelectItem>
+                      <SelectItem value="segment">Segmento</SelectItem>
+                      <SelectItem value="task">Tarea</SelectItem>
+                      <SelectItem value="website">Sitio web</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.formState.errors.type && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <XCircle className="h-4 w-4" />
+                    {form.formState.errors.type.message}
                   </p>
                 )}
               </div>
