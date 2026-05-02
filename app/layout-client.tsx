@@ -142,7 +142,7 @@ function LayoutClientInner({
   isExperimentDetailPage: boolean
 }) {
   const { t } = useLocalization()
-  const { isLayoutCollapsed, setIsLayoutCollapsed } = useLayout()
+  const { isLayoutCollapsed, setIsLayoutCollapsed, robotsViewMode } = useLayout()
   const isMobile = useIsMobile()
   const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
