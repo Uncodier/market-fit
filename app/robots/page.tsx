@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef, useMemo } from "react"
+import React, { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef, useMemo } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader } from "@/app/components/ui/icons"
+import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -120,7 +120,12 @@ function RobotsPageContent() {
   const [forceLoading, setForceLoading] = useState(true)
   
   const [isBrowserModalOpen, setIsBrowserModalOpen] = useState(false)
+  const [isChatHidden, setIsChatHidden] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [viewportSize, setViewportSize] = useState<'imac' | 'macbook' | 'ipad' | 'iphone'>('imac')
+  const [scale, setScale] = useState(1)
+  const prevSiteIdRef = useRef<string | null>(null)
   
   // Simplified site change handling - only reset when site actually changes
   useEffect(() => {
@@ -197,7 +202,14 @@ function RobotsPageContent() {
 
   // Update page title based on selected instance
   useEffect(() => {
-    const title = activeRobotInstance ? (activeRobotInstance.name || `ag-${activeRobotInstance.id.slice(-4)}`) : 'Agents';
+    let title = 'Agents';
+    if (activeRobotInstance) {
+      if ((activeRobotInstance as any).requirement_title) {
+        title = (activeRobotInstance as any).requirement_title;
+      } else {
+        title = activeRobotInstance.name || `ag-${activeRobotInstance.id.slice(-4)}`;
+      }
+    }
     
     // Use timeout to ensure this runs after navigation history updates its label
     const timer = setTimeout(() => {
@@ -226,7 +238,6 @@ function RobotsPageContent() {
   const [isResuming, setIsResuming] = useState(false)
   
   const activeTabRef = useRef(selectedInstanceId)
-  const prevSiteIdRef = useRef<string | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [instanceToDelete, setInstanceToDelete] = useState<{ id: string; name: string } | null>(null)
   const [deletingInstanceIds, setDeletingInstanceIds] = useState<Set<string>>(new Set())
@@ -353,7 +364,8 @@ function RobotsPageContent() {
               // Update URL to reflect the new instance
               const params = new URLSearchParams(searchParams.toString())
               params.set('instance', newInstance.id)
-              params.set('name', newInstance.name || `ag-${newInstance.id.slice(-4)}`)
+              const displayName = (newInstance as any).requirement_title ? (newInstance as any).requirement_title : (newInstance.name || `ag-${newInstance.id.slice(-4)}`)
+              params.set('name', displayName)
               router.replace(`/robots?${params.toString()}`)
               
               // Reset the auto-creating flag after a delay to allow for proper state updates
@@ -500,7 +512,8 @@ function RobotsPageContent() {
       // Update URL to reflect the new instance selection
       const currentParams = new URLSearchParams(searchParams.toString())
       currentParams.set('instance', newInstance.id)
-      currentParams.set('name', newInstance.name || `ag-${newInstance.id.slice(-4)}`)
+      const displayName = (newInstance as any).requirement_title ? (newInstance as any).requirement_title : (newInstance.name || `ag-${newInstance.id.slice(-4)}`)
+      currentParams.set('name', displayName)
       router.replace(`/robots?${currentParams.toString()}`)
     }
   }
@@ -522,7 +535,8 @@ function RobotsPageContent() {
       
       const instance = getInstanceById(newInstance)
       if (instance) {
-        currentParams.set('name', instance.name || `ag-${instance.id.slice(-4)}`)
+        const displayName = (instance as any).requirement_title ? (instance as any).requirement_title : (instance.name || `ag-${instance.id.slice(-4)}`)
+        currentParams.set('name', displayName)
       } else {
         currentParams.delete('name')
       }
@@ -723,6 +737,7 @@ function RobotsPageContent() {
   const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
   
   const [showSourceCodePreview, setShowSourceCodePreview] = useState(false)
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
   useEffect(() => {
     const handleToggle = () => setShowSourceCodePreview(prev => !prev)
     window.addEventListener('robot:toggle-source-code', handleToggle)
@@ -803,17 +818,73 @@ function RobotsPageContent() {
     viewMode !== 'imprenta'
   )
 
-  const activeUrlToDisplay = showSourceCodePreview 
+  const rawActiveUrlToDisplay = showSourceCodePreview 
     ? (latestSourceCodeUrl || latestPreviewUrl || "about:blank")
     : (latestPreviewUrl || latestSourceCodeUrl || "about:blank")
-  const isZipUrl = typeof activeUrlToDisplay === 'string' && (
-    activeUrlToDisplay.endsWith('.zip') || 
-    activeUrlToDisplay.includes('.zip?') ||
-    activeUrlToDisplay.endsWith('.tar.gz') ||
-    activeUrlToDisplay.includes('.tar.gz?')
+  const isZipUrl = typeof rawActiveUrlToDisplay === 'string' && (
+    rawActiveUrlToDisplay.endsWith('.zip') || 
+    rawActiveUrlToDisplay.includes('.zip?') ||
+    rawActiveUrlToDisplay.endsWith('.tar.gz') ||
+    rawActiveUrlToDisplay.includes('.tar.gz?')
   )
 
+  const activeUrlToDisplay = useMemo(() => {
+    return rawActiveUrlToDisplay;
+  }, [rawActiveUrlToDisplay]);
+
   const { displayUrl: displayedIframeUrl, iframeSrc, handleIframeLoad } = useIframeUrl(iframeRef, activeUrlToDisplay)
+
+  // Calculate scale based on container width and selected viewport
+  const calculateScale = useCallback(() => {
+    if (!containerRef.current) return;
+    
+    const containerWidth = containerRef.current.clientWidth;
+    if (containerWidth === 0) return; // Not fully rendered yet
+    
+    let targetWidth = 100;
+    const effectiveViewport = isZipUrl ? 'macbook' : viewportSize;
+    
+    switch(effectiveViewport) {
+      case 'imac': targetWidth = 1920; break;
+      case 'macbook': targetWidth = 1440; break;
+      case 'ipad': targetWidth = 810; break;
+      case 'iphone': targetWidth = 390; break;
+    }
+    
+    const availableWidth = containerWidth;
+    
+    if (targetWidth > availableWidth) {
+      setScale(availableWidth / targetWidth);
+    } else {
+      setScale(1);
+    }
+  }, [viewportSize, isZipUrl]);
+
+  // Initial calculation and ResizeObserver
+  useEffect(() => {
+    // Run an initial calculation immediately
+    calculateScale();
+    
+    if (!containerRef.current) return;
+    
+    const observer = new ResizeObserver(() => {
+      calculateScale();
+    });
+    
+    observer.observe(containerRef.current);
+    
+    // Also try to recalculate after a slight delay to catch late renders
+    const timeoutId = setTimeout(calculateScale, 100);
+    const timeoutId2 = setTimeout(calculateScale, 500); // add another one just in case
+    const timeoutId3 = setTimeout(calculateScale, 1500); // and another
+    
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeoutId);
+      clearTimeout(timeoutId2);
+      clearTimeout(timeoutId3);
+    };
+  }, [calculateScale, isBrowserVisible]);
 
   return (
     <div className={`flex flex-col h-full w-full ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'} relative`}>
@@ -934,12 +1005,12 @@ function RobotsPageContent() {
                                     </span>
                                   );
                                 })()}
-                                  <span className="truncate">{inst.name || `ag-${inst.id.slice(-4)}`}</span>
+                                  <span className="truncate">{(inst as any).requirement_title ? (inst as any).requirement_title : (inst.name || `ag-${inst.id.slice(-4)}`)}</span>
                                 <span
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     if (isDeletingInstance) return
-                                    setInstanceToDelete({ id: inst.id, name: inst.name || `ag-${inst.id.slice(-4)}` })
+                                    setInstanceToDelete({ id: inst.id, name: (inst as any).requirement_title ? (inst as any).requirement_title : (inst.name || `ag-${inst.id.slice(-4)}`) })
                                     setIsDeleteModalOpen(true)
                                   }}
                                   className={`ml-1.5 flex items-center justify-center h-4 w-4 rounded-full transition-colors ${
@@ -956,7 +1027,7 @@ function RobotsPageContent() {
                                     if (e.key === 'Enter' || e.key === ' ') {
                                       e.preventDefault()
                                       e.stopPropagation()
-                                      setInstanceToDelete({ id: inst.id, name: inst.name || `ag-${inst.id.slice(-4)}` })
+                                      setInstanceToDelete({ id: inst.id, name: (inst as any).requirement_title ? (inst as any).requirement_title : (inst.name || `ag-${inst.id.slice(-4)}`) })
                                       setIsDeleteModalOpen(true)
                                     }
                                   }}
@@ -1017,7 +1088,8 @@ function RobotsPageContent() {
         instances={tabInstances as any[]}
         onSelect={(id) => handleTabChangeFromOverflow(id)}
         onDelete={(instance) => {
-          setInstanceToDelete({ id: instance.id, name: instance.name })
+          const displayName = (instance as any).requirement_title ? (instance as any).requirement_title : (instance.name || `ag-${instance.id.slice(-4)}`)
+          setInstanceToDelete({ id: instance.id, name: displayName })
           setIsDeleteModalOpen(true)
         }}
         deletingInstanceIds={deletingInstanceIds}
@@ -1137,7 +1209,8 @@ function RobotsPageContent() {
                 if (targetInstanceId !== 'new') {
                   const targetInstance = currentInstances.find(inst => inst.id === targetInstanceId)
                   if (targetInstance) {
-                    newParams.set('name', targetInstance.name || `ag-${targetInstance.id.slice(-4)}`)
+                    const displayName = (targetInstance as any).requirement_title ? (targetInstance as any).requirement_title : (targetInstance.name || `ag-${targetInstance.id.slice(-4)}`)
+                    newParams.set('name', displayName)
                   }
                 } else {
                   newParams.delete('name')
@@ -1196,109 +1269,223 @@ function RobotsPageContent() {
         <div className={`flex-1 flex flex-col min-h-0 ${viewMode === 'imprenta' ? 'bg-transparent' : 'bg-muted/30'} transition-colors duration-300 ease-in-out ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
           <div className={`flex flex-col lg:flex-row flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
             {isBrowserVisible && (
-              <div className="w-full lg:w-2/3 border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative">
-                <div className={`grid ${isZipUrl ? 'grid-rows-[1fr]' : 'grid-rows-[auto_1fr]'} m-0 bg-card absolute inset-x-0 bottom-0 top-[135px] overflow-hidden`}>
+              <div className={`w-full ${isChatHidden ? 'lg:w-full' : 'lg:w-2/3'} border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative transition-all duration-300`}>
+                <div className={`grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[135px] overflow-hidden`}>
                   {/* Browser navigation bar */}
-                  {!isZipUrl && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/40">
-                      <button
-                        onClick={() => {
-                          const frame = iframeRef.current
-                          if (frame) {
-                            frame.src = frame.src
-                          }
-                        }}
-                        className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                        title="Refresh"
-                      >
-                        <RotateCw className="h-3.5 w-3.5" />
-                      </button>
-                      <div className="flex items-center gap-2 flex-1 min-w-0 bg-background/80 border border-border rounded-md px-2.5 py-1">
-                        <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <input
-                          type="text"
-                          readOnly
-                          value={displayedIframeUrl}
-                          className="flex-1 min-w-0 text-xs text-muted-foreground bg-transparent outline-none cursor-default"
-                        />
+                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/40">
+                    <div className="flex items-center gap-2 flex-1 min-w-0 bg-background/80 border border-border rounded-full px-2.5 py-1">
+                      {isZipUrl ? (
+                        <>
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-muted-foreground">
+                            <Archive className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{activeUrlToDisplay.split('/').pop()?.split('?')[0] || 'source-code.zip'}</span>
+                            {selectedFilePath && (
+                              <>
+                                <span className="text-muted-foreground/30 mx-0.5">/</span>
+                                <div className="flex items-center gap-1 truncate">
+                                  {selectedFilePath.split('/').map((part, i, arr) => (
+                                    <React.Fragment key={i}>
+                                      <span className={i === arr.length - 1 ? 'text-foreground font-medium' : ''}>
+                                        {part}
+                                      </span>
+                                      {i < arr.length - 1 && <span className="text-muted-foreground/30 mx-0.5">/</span>}
+                                    </React.Fragment>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => window.open(activeUrlToDisplay, '_blank')}
+                            className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            title="Download Zip"
+                          >
+                            <Download className="h-3 w-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              const frame = iframeRef.current
+                              if (frame) {
+                                frame.src = frame.src
+                              }
+                            }}
+                            className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            title="Refresh"
+                          >
+                            <RotateCw className="h-3.5 w-3.5" />
+                          </button>
+                          <Globe className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                          <input
+                            type="text"
+                            readOnly
+                            value={displayedIframeUrl}
+                            className="flex-1 min-w-0 text-xs text-muted-foreground bg-transparent outline-none cursor-default"
+                          />
+                          <button
+                            onClick={() => window.open(displayedIframeUrl, '_blank')}
+                            className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            title="Open in new tab"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    
+                    {!isZipUrl && (
+                      <div className="hidden sm:flex items-center gap-1 bg-background/80 border border-border rounded-full p-0.5 mx-1">
+                        <button
+                          onClick={() => setViewportSize('imac')}
+                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'imac' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                          title="Desktop"
+                        >
+                          <Monitor className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setViewportSize('macbook')}
+                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'macbook' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                          title="Laptop"
+                        >
+                          <Laptop className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setViewportSize('ipad')}
+                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'ipad' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                          title="Tablet"
+                        >
+                          <Tablet className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setViewportSize('iphone')}
+                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'iphone' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                          title="Mobile"
+                        >
+                          <Smartphone className="h-3.5 w-3.5" />
+                        </button>
                       </div>
+                    )}
+
+                    <div className="hidden sm:flex items-center gap-1 bg-background/80 border border-border rounded-full p-0.5 mx-1">
                       <button
-                        onClick={() => window.open(displayedIframeUrl, '_blank')}
-                        className="shrink-0 h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                        title="Open in new tab"
+                        onClick={() => setShowSourceCodePreview(false)}
+                        className={`h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${!showSourceCodePreview ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                        title="Live Preview"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <Globe className="h-3.5 w-3.5 mr-1.5" />
+                        Preview
+                      </button>
+                      <button
+                        onClick={() => setShowSourceCodePreview(true)}
+                        className={`h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${showSourceCodePreview ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                        title="Source Code"
+                      >
+                        <Folder className="h-3.5 w-3.5 mr-1.5" />
+                        Source
                       </button>
                     </div>
-                  )}
+
+                    <button
+                      onClick={() => setIsChatHidden(!isChatHidden)}
+                      className="shrink-0 h-7 w-7 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title={isChatHidden ? "Show Chat" : "Hide Chat"}
+                    >
+                      {isChatHidden ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
+                    </button>
+                  </div>
                   {/* Browser content - 1fr fills all remaining height */}
-                  <div className="relative overflow-hidden">
-                    {(isResuming || isInstanceStarting) && !latestPreviewUrl && !latestSourceCodeUrl ? (
-                      <div className="absolute inset-0 flex flex-col">
-                        <BrowserSkeleton />
-                      </div>
-                    ) : (isActivityRobot && hasMessageBeenSent && !isInstanceRunning && !latestPreviewUrl && !latestSourceCodeUrl) ? (
-                      <div className="absolute inset-0 flex flex-col">
-                        <BrowserSkeleton />
-                      </div>
-                    ) : (!!latestPreviewUrl || !!latestSourceCodeUrl) ? (
-                      <div className="absolute inset-0 bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
-                        {isZipUrl ? (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background">
-                            <ZipViewer
+                  <div ref={containerRef} className={`relative overflow-hidden bg-muted/10 w-full h-full flex items-start justify-center`}>
+                    <div 
+                      className="relative transition-all duration-300 shrink-0 flex flex-col"
+                      style={isZipUrl ? {
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'var(--background)'
+                      } : {
+                        width: viewportSize === 'imac' ? '1920px' : 
+                               viewportSize === 'macbook' ? '1440px' : 
+                               viewportSize === 'ipad' ? '810px' : '390px',
+                        transform: `scale(${scale})`,
+                        transformOrigin: 'top center',
+                        height: scale < 1 ? `calc(100% / ${scale})` : '100%',
+                        boxShadow: '0 0 20px rgba(0,0,0,0.05)',
+                        borderLeft: '1px solid var(--border)',
+                        borderRight: '1px solid var(--border)',
+                        backgroundColor: 'var(--background)'
+                      }}
+                    >
+                      {(isResuming || isInstanceStarting) && !latestPreviewUrl && !latestSourceCodeUrl ? (
+                        <div className="absolute inset-0 flex flex-col">
+                          <BrowserSkeleton />
+                        </div>
+                      ) : (isActivityRobot && hasMessageBeenSent && !isInstanceRunning && !latestPreviewUrl && !latestSourceCodeUrl) ? (
+                        <div className="absolute inset-0 flex flex-col">
+                          <BrowserSkeleton />
+                        </div>
+                      ) : (!!latestPreviewUrl || !!latestSourceCodeUrl) ? (
+                        <div className="absolute inset-0 bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
+                          {isZipUrl ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background">
+                              <ZipViewer
+                                key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
+                                url={activeUrlToDisplay}
+                                className="w-full h-full"
+                                onFileSelect={setSelectedFilePath}
+                              />
+                            </div>
+                          ) : (
+                            <iframe
+                              ref={iframeRef}
                               key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
-                              url={activeUrlToDisplay}
-                              className="w-full h-full"
+                              src={iframeSrc}
+                              className="absolute inset-0 w-full h-full border-0 bg-background contained-iframe"
+                              title={latestPreviewUrl ? "Preview" : "Source Code"}
+                              allowFullScreen
+                              allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
+                              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
+                              style={{
+                                isolation: 'isolate'
+                              }}
+                              onLoad={(e) => {
+                                handleIframeLoad(e)
+                              }}
+                              onError={(e) => {
+                                console.error('Iframe error:', e)
+                              }}
                             />
-                          </div>
-                        ) : (
-                          <iframe
-                            ref={iframeRef}
-                            key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
-                            src={iframeSrc}
-                            className="absolute inset-0 w-full h-full border-0 bg-background contained-iframe"
-                            title={latestPreviewUrl ? "Preview" : "Source Code"}
-                            allowFullScreen
-                            allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
-                            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
-                            style={{
-                              isolation: 'isolate'
-                            }}
-                            onLoad={(e) => {
-                              handleIframeLoad(e)
-                            }}
-                            onError={(e) => {
-                              console.error('Iframe error:', e)
-                            }}
-                          />
-                        )}
-                      </div>
-                    ) : null}
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Messages View or Imprenta - Chat/Instance Logs */}
-            <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
-              <div className={`flex flex-col m-0 ${viewMode === 'imprenta' ? 'bg-transparent overflow-visible' : 'bg-card overflow-hidden'} min-w-0 flex-1 min-h-0 relative`}>
-                {viewMode === 'imprenta' ? (
-                  <div className="h-full min-h-0 absolute inset-0 flex flex-col">
-                    <ImprentaPanel activeInstanceId={activeRobotInstance?.id} />
-                  </div>
-                ) : (
-                  <SimpleMessagesView 
-                    key={`${currentSite?.id}-${siteChangeKey}`}
-                    className="h-full absolute inset-0"
-                    activeRobotInstance={activeRobotInstance}
-                    isBrowserVisible={isBrowserVisible}
-                    hasTopHeaderSpace={!isBrowserVisible}
-                    onMessageSent={setHasMessageBeenSent}
-                    onNewInstanceCreated={handleNewInstanceCreated}
-                  />
-                )}
+            {!isChatHidden && (
+              <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
+                <div className={`flex flex-col m-0 ${viewMode === 'imprenta' ? 'bg-transparent overflow-visible' : 'bg-card overflow-hidden'} min-w-0 flex-1 min-h-0 relative`}>
+                  {viewMode === 'imprenta' ? (
+                    <div className="h-full min-h-0 absolute inset-0 flex flex-col">
+                      <ImprentaPanel activeInstanceId={activeRobotInstance?.id} />
+                    </div>
+                  ) : (
+                    <SimpleMessagesView 
+                      key={`${currentSite?.id}-${siteChangeKey}`}
+                      className="h-full absolute inset-0"
+                      activeRobotInstance={activeRobotInstance}
+                      isBrowserVisible={isBrowserVisible}
+                      hasTopHeaderSpace={!isBrowserVisible}
+                      onMessageSent={setHasMessageBeenSent}
+                      onNewInstanceCreated={handleNewInstanceCreated}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

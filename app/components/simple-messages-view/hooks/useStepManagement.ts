@@ -216,8 +216,7 @@ export const useStepManagement = ({
       const currentStep = steps.find(step => step.id === stepId)
       if (!currentStep) return
 
-      const newStatus = currentStep.status === 'completed' ? 'pending' : 
-                       currentStep.status === 'pending' ? 'in_progress' : 'completed'
+      const newStatus = currentStep.status === 'completed' ? 'pending' : 'completed'
       
       // Find which plan contains this step
       const planWithStep = instancePlans.find(plan => {

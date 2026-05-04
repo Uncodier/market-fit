@@ -11,6 +11,7 @@ import { useTheme } from '@/app/context/ThemeContext'
 interface ZipViewerProps {
   url: string
   isDarkMode?: boolean
+  onFileSelect?: (path: string) => void
 }
 
 interface FileNode {
@@ -21,7 +22,7 @@ interface FileNode {
   children: Record<string, FileNode>
 }
 
-export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode: propIsDarkMode, className }) => {
+export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode: propIsDarkMode, className, onFileSelect }) => {
   const { isDarkMode: contextIsDarkMode } = useTheme()
   const isDarkMode = propIsDarkMode ?? contextIsDarkMode
 
@@ -33,6 +34,48 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
   const [rawZip, setRawZip] = useState<Blob | null>(null)
   const [editorFailed, setEditorFailed] = useState(false)
   const [editorReady, setEditorReady] = useState(false)
+  const [editedContents, setEditedContents] = useState<Record<string, string>>({})
+
+  // Function to handle "Send changes to Agent"
+  const handleSendChanges = () => {
+    const changedFilesCount = Object.keys(editedContents).length;
+    if (changedFilesCount === 0) return;
+
+    // Crear un arreglo donde cada archivo modificado es un cambio distinto
+    const changesArray = Object.entries(editedContents).map(([path, content]) => ({
+      file: path,
+      content: content
+    }));
+
+    const message = `Por favor aplica los siguientes ${changedFilesCount} cambios al contexto:\n\n\`\`\`json\n${JSON.stringify(changesArray, null, 2)}\n\`\`\``;
+
+    window.dispatchEvent(new CustomEvent('robot:send-message', {
+      detail: { text: message }
+    }));
+
+    // Clear edited state after sending
+    setEditedContents({});
+  }
+
+  // Handle editor mount to add custom actions
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    editor.addAction({
+      id: 'send-context-to-agent',
+      label: 'Añadir como contexto al agente',
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 1.5,
+      run: function (ed: any) {
+        const selection = ed.getSelection();
+        const text = ed.getModel().getValueInRange(selection);
+        if (text && selectedFile) {
+          const message = `Por favor analiza este fragmento de código de \`${selectedFile.path}\`:\n\n\`\`\`\n${text}\n\`\`\``;
+          window.dispatchEvent(new CustomEvent('robot:send-message', {
+            detail: { text: message }
+          }));
+        }
+      }
+    });
+  }
 
   useEffect(() => {
     // Load Monaco locally to avoid CDN initialization errors
@@ -310,6 +353,12 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
     }
   }, [fileTree, selectedFile])
 
+  useEffect(() => {
+    if (selectedFile && onFileSelect) {
+      onFileSelect(selectedFile.path);
+    }
+  }, [selectedFile, onFileSelect])
+
   const toggleDir = (path: string) => {
     const newExpanded = new Set(expandedDirs)
     if (newExpanded.has(path)) {
@@ -443,36 +492,6 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
 
   return (
     <div className={`flex flex-col w-full h-full bg-background ${className || ''}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-muted/40 shrink-0">
-        <div className="flex items-center gap-1.5 flex-1 min-w-0 text-xs">
-          <Archive size={14} className="text-muted-foreground shrink-0" />
-          <span className="text-muted-foreground truncate">{url.split('/').pop()?.split('?')[0]}</span>
-          {selectedFile && (
-            <>
-              <span className="text-muted-foreground/30 mx-0.5">/</span>
-              <div className="flex items-center gap-1 text-muted-foreground truncate">
-                {selectedFile.path.split('/').map((part, i, arr) => (
-                  <React.Fragment key={i}>
-                    <span className={i === arr.length - 1 ? 'text-foreground font-medium' : ''}>
-                      {part}
-                    </span>
-                    {i < arr.length - 1 && <span className="text-muted-foreground/30 mx-0.5">/</span>}
-                  </React.Fragment>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-        <button 
-          onClick={handleDownload}
-          className="flex items-center justify-center transition-colors duration-200 p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
-          title="Descargar Archivo"
-        >
-          <Download size={14} className="shrink-0" />
-        </button>
-      </div>
-
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Sidebar */}
         <div className="w-64 min-w-[200px] border-r border-border overflow-y-auto bg-muted/10 p-2 shrink-0">
@@ -483,43 +502,57 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
         <div className="flex-1 overflow-y-auto bg-card relative min-w-0">
           {selectedFile ? (
             <div className="flex flex-col h-full">
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-hidden relative">
                 {!editorFailed && editorReady ? (
-                  <Editor
-                    height="100%"
-                    path={selectedFile.path}
-                    theme={isDarkMode ? 'vs-dark' : 'light'}
-                    value={selectedFile.content || ''}
-                    options={{
-                      readOnly: true,
-                      minimap: { enabled: false },
-                      scrollBeyondLastLine: false,
-                      wordWrap: 'on',
-                      padding: { top: 16, bottom: 16 },
-                      fontSize: 13,
-                    }}
-                    loading={
-                      <div className="flex flex-col h-full bg-background p-4 gap-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Skeleton className="h-4 w-4" />
-                          <Skeleton className="h-4 w-32" />
-                        </div>
-                        {[...Array(15)].map((_, i) => (
-                          <div key={i} className="flex items-center gap-4">
-                            <span className="text-xs text-muted-foreground/30 w-4 text-right select-none">{i + 1}</span>
-                            <Skeleton 
-                              className={`h-4 rounded-sm ${
-                                i % 5 === 0 ? 'w-3/4' : 
-                                i % 4 === 0 ? 'w-1/2' : 
-                                i % 3 === 0 ? 'w-5/6' : 
-                                i % 2 === 0 ? 'w-2/3' : 'w-1/3'
-                              } ${i % 3 === 0 ? 'ml-4' : i % 4 === 0 ? 'ml-8' : ''}`} 
-                            />
+                  <div className="relative h-full">
+                    <Editor
+                      height="100%"
+                      path={selectedFile.path}
+                      theme={isDarkMode ? 'vs-dark' : 'light'}
+                      value={editedContents[selectedFile.path] ?? (selectedFile.content || '')}
+                      onChange={(value) => {
+                        if (value !== selectedFile.content) {
+                          setEditedContents(prev => ({ ...prev, [selectedFile.path]: value || '' }));
+                        } else {
+                          setEditedContents(prev => {
+                            const next = { ...prev };
+                            delete next[selectedFile.path];
+                            return next;
+                          });
+                        }
+                      }}
+                      onMount={handleEditorDidMount}
+                      options={{
+                        readOnly: false,
+                        minimap: { enabled: false },
+                        scrollBeyondLastLine: false,
+                        wordWrap: 'on',
+                        padding: { top: 16, bottom: 16 },
+                        fontSize: 13,
+                      }}
+                      loading={
+                        <div className="flex flex-col h-full bg-background p-4 gap-2">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Skeleton className="h-4 w-4" />
+                            <Skeleton className="h-4 w-32" />
                           </div>
-                        ))}
-                      </div>
-                    }
-                  />
+                          {[...Array(15)].map((_, i) => (
+                            <div key={i} className="flex items-center gap-4">
+                              <span className="text-xs text-muted-foreground/30 w-4 text-right select-none">{i + 1}</span>
+                              <Skeleton 
+                                className={`h-4 rounded-sm ${
+                                  i % 5 === 0 ? 'w-3/4' : 
+                                  i % 4 === 0 ? 'w-1/2' : 
+                                  i % 3 === 0 ? 'w-5/6' : 
+                                  i % 2 === 0 ? 'w-2/3' : 'w-1/3'
+                                } ${i % 3 === 0 ? 'ml-4' : i % 4 === 0 ? 'ml-8' : ''}`} 
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      }
+                    />
+                  </div>
                 ) : !editorFailed ? (
                   <div className="flex flex-col h-full bg-background p-4 gap-2">
                     <div className="flex items-center gap-2 mb-2">
@@ -553,6 +586,18 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
               <FileText size={32} className="mb-2 opacity-50" />
               <span className="text-sm">Selecciona un archivo para ver su contenido</span>
+            </div>
+          )}
+
+          {/* Global Save Button */}
+          {Object.keys(editedContents).length > 0 && (
+            <div className="absolute bottom-6 right-8 z-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <button
+                onClick={handleSendChanges}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+              >
+                Enviar {Object.keys(editedContents).length} {Object.keys(editedContents).length === 1 ? 'cambio' : 'cambios'} al agente
+              </button>
             </div>
           )}
         </div>

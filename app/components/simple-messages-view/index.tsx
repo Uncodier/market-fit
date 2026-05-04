@@ -425,6 +425,22 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     }
   }, [selectedActivity, router])
 
+  // Custom event listener for external components to send messages
+  useEffect(() => {
+    const handleRobotSendMessage = (event: Event) => {
+      const customEvent = event as CustomEvent<{ text: string }>;
+      if (customEvent.detail && customEvent.detail.text) {
+        setMessage(customEvent.detail.text);
+        setTimeout(() => {
+          handleSendMessage();
+        }, 100);
+      }
+    };
+    
+    window.addEventListener('robot:send-message', handleRobotSendMessage);
+    return () => window.removeEventListener('robot:send-message', handleRobotSendMessage);
+  }, [setMessage, handleSendMessage]);
+
   // After logs finish loading, snap to the bottom by default (container did not exist during skeleton).
   useLayoutEffect(() => {
     const finishedLoading = wasLoadingLogsRef.current && !isLoadingLogs

@@ -86,7 +86,8 @@ export function InstanceBrowserModal({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       result = instances.filter(inst => {
-        const name = (inst.name || `mk-${inst.id.slice(-4)}`).toLowerCase()
+        const displayName = inst.requirement_title ? inst.requirement_title : (inst.name || `mk-${inst.id.slice(-4)}`)
+        const name = displayName.toLowerCase()
         return name.includes(query) || inst.id.toLowerCase().includes(query)
       })
     }
@@ -139,7 +140,7 @@ export function InstanceBrowserModal({
                   {filteredInstances.map((inst) => {
                     const isRunning = ['running', 'active'].includes(inst.status || '')
                     const isStarting = ['starting', 'pending', 'initializing'].includes(inst.status || '')
-                    const displayName = inst.name || `mk-${inst.id.slice(-4)}`
+                    const displayName = inst.requirement_title ? inst.requirement_title : (inst.name || `mk-${inst.id.slice(-4)}`)
                     
                     // Extraer último mensaje
                     const lastMsg = instanceMessages[inst.id]

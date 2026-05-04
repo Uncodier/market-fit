@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
-import { Dialog, DialogContent } from '@/app/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/app/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Download, Copy, Check, ChevronLeft, ChevronRight, X } from '@/app/components/ui/icons'
 import { Button } from '@/app/components/ui/button'
 import { useToast } from '@/app/components/ui/use-toast'
@@ -179,7 +180,7 @@ export const ImageFullscreenViewer: React.FC<ImageFullscreenViewerProps> = ({
           <div className="p-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Detalles de la Imagen</h3>
+              <DialogTitle className="text-lg font-semibold">Detalles de la Imagen</DialogTitle>
             </div>
 
             {/* Action buttons */}

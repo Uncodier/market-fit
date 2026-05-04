@@ -540,23 +540,6 @@ function RobotStartButton({ currentSite, viewMode }: { currentSite: any, viewMod
     return (
       <>
         <div className="flex items-center gap-2">
-          {latestSourceCodeUrl && latestPreviewUrl && latestSourceCodeUrl !== latestPreviewUrl && (
-            <Button
-              variant="secondary"
-              size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('robot:toggle-source-code'));
-              }}
-              title={showSourceCodePreview ? (t('requirements.preview') || "Preview") : "Source Code"}
-            >
-              {showSourceCodePreview ? <Globe className="h-4 w-4 shrink-0" /> : <Folder className="h-4 w-4 shrink-0" />}
-              <span className="hidden md:inline font-inter font-medium text-sm">
-                {showSourceCodePreview ? (t('requirements.preview') || "Preview") : "Source Code"}
-              </span>
-            </Button>
-          )}
-          
           {showRunningControls && (
             <>
               <Button 

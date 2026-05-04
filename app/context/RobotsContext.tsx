@@ -14,6 +14,7 @@ interface Robot {
   cdp_url?: string;
   site_id: string;
   created_at?: string;
+  requirement_title?: string;
 }
 
 interface RobotsByActivity {
@@ -189,7 +190,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         console.warn('🔄 [RobotsContext] This might mean the site has no instances or there was a query error')
       }
       
-      // 🆕 CRITICAL: Check if we got robots for the correct site
+      // CRITICAL: Check if we got robots for the correct site
       if (robots && robots.length > 0) {
         const wrongSiteRobots = robots.filter((r: any) => r.site_id !== targetSiteId)
         if (wrongSiteRobots.length > 0) {
@@ -197,6 +198,33 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
             requestedSiteId: targetSiteId,
             wrongSiteRobots: wrongSiteRobots.map((r: any) => ({ id: r.id, site_id: r.site_id }))
           })
+        }
+
+        // Fetch requirement titles for instances named req-runner-* or req-maint-*
+        const requirementIds = robots.map((r: any) => {
+          if (r.name?.startsWith('req-runner-')) return r.name.replace('req-runner-', '');
+          if (r.name?.startsWith('req-maint-')) return r.name.replace('req-maint-', '');
+          return null;
+        }).filter(Boolean);
+
+        if (requirementIds.length > 0) {
+          const { data: requirements } = await supabase
+            .from('requirements')
+            .select('id, title')
+            .in('id', requirementIds);
+
+          if (requirements && requirements.length > 0) {
+            const reqMap = Object.fromEntries(requirements.map((req: any) => [req.id, req.title]));
+            robots.forEach((r: any) => {
+              if (r.name?.startsWith('req-runner-')) {
+                const reqId = r.name.replace('req-runner-', '');
+                if (reqMap[reqId]) r.requirement_title = reqMap[reqId];
+              } else if (r.name?.startsWith('req-maint-')) {
+                const reqId = r.name.replace('req-maint-', '');
+                if (reqMap[reqId]) r.requirement_title = `QA | ${reqMap[reqId]}`;
+              }
+            });
+          }
         }
       }
 
