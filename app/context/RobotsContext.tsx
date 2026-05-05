@@ -210,18 +210,24 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         if (requirementIds.length > 0) {
           const { data: requirements } = await supabase
             .from('requirements')
-            .select('id, title')
+            .select('id, title, backlog')
             .in('id', requirementIds);
 
           if (requirements && requirements.length > 0) {
-            const reqMap = Object.fromEntries(requirements.map((req: any) => [req.id, req.title]));
+            const reqMap = Object.fromEntries(requirements.map((req: any) => [req.id, { title: req.title, backlog: req.backlog }]));
             robots.forEach((r: any) => {
               if (r.name?.startsWith('req-runner-')) {
                 const reqId = r.name.replace('req-runner-', '');
-                if (reqMap[reqId]) r.requirement_title = reqMap[reqId];
+                if (reqMap[reqId]) {
+                  r.requirement_title = reqMap[reqId].title;
+                  r.requirement_backlog = reqMap[reqId].backlog;
+                }
               } else if (r.name?.startsWith('req-maint-')) {
                 const reqId = r.name.replace('req-maint-', '');
-                if (reqMap[reqId]) r.requirement_title = `QA | ${reqMap[reqId]}`;
+                if (reqMap[reqId]) {
+                  r.requirement_title = `QA | ${reqMap[reqId].title}`;
+                  r.requirement_backlog = reqMap[reqId].backlog;
+                }
               }
             });
           }

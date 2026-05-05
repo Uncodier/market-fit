@@ -115,11 +115,6 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               {/* Current step header - only when plan not completed (when completed, show only assets) */}
               {steps.length > 0 && !allCompleted && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className={`w-2 h-2 rounded-full font-inter flex-shrink-0 ${
-                    allCompleted ? 'bg-green-500' :
-                    currentStep?.status === 'in_progress' ? 'bg-primary animate-pulse' : 
-                    currentStep?.status === 'completed' ? 'bg-green-500' : 'bg-muted-foreground/60'
-                  }`}></div>
                   {allCompleted ? (
                     <>
                       <CheckCircle className="h-4 w-4 text-green-500" />
@@ -267,11 +262,6 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
             </div>
           ) : steps.length > 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className={`w-2 h-2 rounded-full font-inter flex-shrink-0 ${
-                allCompleted ? 'bg-green-500' :
-                currentStep?.status === 'in_progress' ? 'bg-primary animate-pulse' : 
-                currentStep?.status === 'completed' ? 'bg-green-500' : 'bg-muted-foreground/60'
-              }`}></div>
               {allCompleted ? (
                 <>
                   <CheckCircle className="h-4 w-4 text-green-500" />
@@ -334,7 +324,6 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 rounded transition-colors"
               onClick={() => onToggleExpanded()}
             >
-              <div className="w-2 h-2 rounded-full font-inter flex-shrink-0 bg-muted-foreground/60"></div>
               {assets.length > 0 ? (
                 <>
                   <span className="font-medium">Files ({assets.length})</span>

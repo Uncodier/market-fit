@@ -38,8 +38,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
  
-    --primary: 0 0% 25.5%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
  
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -70,8 +70,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
  
-    --primary: 232 60% 65%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 222.2 84% 4.9%;
  
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -786,7 +786,7 @@
 /* Mejora del textarea con estilo más estándar - borde más sutil */
 .chat-input-container textarea {
   background-color: rgba(255, 255, 255, 0.75) !important;
-  border-color: #e2e8f0 !important;
+  border-color: #e2e8f0;
   border-width: 1px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
   transition: border-color 0.2s, box-shadow 0.2s !important;
@@ -795,8 +795,8 @@
 
 /* Estilo cuando el textarea tiene focus en modo claro */
 .chat-input-container textarea:focus {
-  border-color: #3e63dd !important;
-  box-shadow: 0 0 0 2px rgba(62, 99, 221, 0.2) !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Mantener blur constante cuando el textarea está disabled */
@@ -809,7 +809,7 @@
 
 /* Burbujas de chat para el usuario en tema claro - más visibles */
 .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-primary {
-  background-color: #3e63dd !important;
+  background-color: black !important;
   color: white !important;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
   border-radius: 12px 12px 0 12px !important;
@@ -839,7 +839,7 @@
 /* Mejora del textarea en modo oscuro con estilo más estándar */
 .dark .chat-input-container textarea {
   background-color: rgba(30, 30, 45, 0.75) !important;
-  border-color: #2d2d3d !important;
+  border-color: #2d2d3d;
   color: var(--foreground) !important;
   border-width: 1px !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
@@ -849,8 +849,8 @@
 
 /* Estilo cuando el textarea tiene focus en modo oscuro - borde más visible */
 .dark .chat-input-container textarea:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+  border-color: #2d2d3d !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
   outline: none !important;
 }
 
@@ -862,22 +862,11 @@
   background-color: rgba(30, 30, 45, 0.75) !important;
 }
 
-.dark .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 * {
-  color: var(--foreground) !important;
-}
-
-.dark .chat-input-container button {
-  color: var(--foreground) !important;
-}
-
-.dark .chat-input-container button:hover {
-  background-color: var(--accent) !important;
-}
 
 /* Burbujas de chat para el usuario en tema oscuro - más visibles */
 .dark .flex.h-full > .flex-1.overflow-auto.py-6.px-4.md\:px-8.bg-muted\/30 .bg-primary {
-  background-color: #4f6df5 !important;
-  color: white !important;
+  background-color: white !important;
+  color: #1e1e2d !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
   border-radius: 12px 12px 0 12px !important;
   margin-left: auto !important;
@@ -901,8 +890,8 @@
 }
 
 .flex.flex-col.h-full.border-r input[type="search"]:focus {
-  border-color: #3e63dd !important;
-  box-shadow: 0 0 0 2px rgba(62, 99, 221, 0.2) !important;
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
 }
 
 /* Estilos para el input de búsqueda en tema oscuro */
@@ -912,8 +901,8 @@
 }
 
 .dark .flex.flex-col.h-full.border-r input[type="search"]:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3) !important;
 }
 
 /* Mejoras para los botones - avoid transition-all to prevent hover jumps */

@@ -42,6 +42,7 @@ import { ToolCallGroupItem } from './components/ToolCallGroupItem'
 import { CompletedPlanCard } from './components/CompletedPlanCard'
 import { RequirementStatusCard } from './components/RequirementStatusCard'
 import { StepIndicator } from './components/StepIndicator'
+import { BacklogIndicator } from './components/BacklogIndicator'
 import { EditStepModal } from './components/EditStepModal'
 import { StepCompletedItem } from './components/StepCompletedItem'
 import { EmptyStatePrompts } from './components/EmptyStatePrompts'
@@ -105,6 +106,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   })
   const [selectedActivity, setSelectedActivity] = useState<string>('ask')
   const [isStepIndicatorExpanded, setIsStepIndicatorExpanded] = useState(false)
+  const [isBacklogIndicatorExpanded, setIsBacklogIndicatorExpanded] = useState(false)
   const [recentUserMessageIds, setRecentUserMessageIds] = useState<Set<string>>(new Set())
   const [lastUserMessage, setLastUserMessage] = useState<string>('')
   
@@ -378,6 +380,13 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     loadStatuses: loadRequirementStatuses
   } = useRequirementStatus(activeRobotInstance)
 
+  const latestRequirementStatus = requirementStatuses.length > 0 ? requirementStatuses[requirementStatuses.length - 1] : null
+  const rawRequirements = latestRequirementStatus?.requirements
+  
+  // Try to get backlog from the active instance first, then fallback to requirement status
+  const requirementBacklog = (activeRobotInstance as any)?.requirement_backlog || 
+    (Array.isArray(rawRequirements) ? rawRequirements[0]?.backlog : rawRequirements?.backlog)
+
   const {
     isEditModalOpen,
     editingStep,
@@ -626,9 +635,17 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const allStepsCompleted = areAllStepsCompleted()
   const showFloatingPlanAppendix =
     assets.length > 0 || (steps.length > 0 && !allStepsCompleted)
-  const messagesBottomPaddingClass = !showFloatingPlanAppendix
+    
+  let backlogHasItems = false;
+  if (requirementBacklog) {
+    if (typeof requirementBacklog === 'string') backlogHasItems = requirementBacklog.length > 10;
+    else backlogHasItems = !!requirementBacklog.items && requirementBacklog.items.length > 0;
+  }
+  const showFloatingBacklog = backlogHasItems;
+
+  const messagesBottomPaddingClass = !(showFloatingPlanAppendix || showFloatingBacklog)
     ? "pb-[220px]"
-    : isStepIndicatorExpanded
+    : (isStepIndicatorExpanded || isBacklogIndicatorExpanded)
       ? "pb-[420px]"
       : "pb-[270px]"
 
@@ -650,6 +667,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           <div className="absolute bottom-1/2 left-1/4 w-38 h-38 bg-teal-500/12 rounded-full font-inter blur-xl animate-float-reverse" style={{ animationDelay: '5s' }}></div>
         </div>
       )}
+
       {/* Messages list */}
       <div
         ref={messagesContainerRef}
@@ -829,8 +847,9 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         {/* Background that only appears when not empty, at the bottom */}
         <div 
           className={cn(
-            "absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background via-background/90 to-transparent transition-opacity duration-500 pointer-events-none",
-            isEmpty ? "opacity-0" : "opacity-100"
+            "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/90 to-transparent transition-all duration-500 pointer-events-none",
+            isEmpty ? "opacity-0 h-32" : "opacity-100",
+            (isStepIndicatorExpanded || isBacklogIndicatorExpanded) ? "h-64" : "h-32"
           )}
         />
         <div 
@@ -852,6 +871,16 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
               <ChevronDown size={16} className="opacity-80" aria-hidden />
               Latest
             </Button>
+          </div>
+        )}
+        {/* Floating Backlog Indicator - Expandable */}
+        {showFloatingBacklog && (
+          <div className="w-full relative pointer-events-auto">
+            <BacklogIndicator
+              backlog={requirementBacklog}
+              expanded={isBacklogIndicatorExpanded}
+              onToggleExpanded={() => setIsBacklogIndicatorExpanded(!isBacklogIndicatorExpanded)}
+            />
           </div>
         )}
         {/* Floating Step Indicator - Expandable */}

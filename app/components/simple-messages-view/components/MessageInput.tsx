@@ -173,7 +173,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 }
               }}
               placeholder={dynamicPlaceholder}
-              className="resize-none min-h-[135px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset text-base box-border transition-all duration-300 ease-in-out"
+              className="resize-none min-h-[135px] w-full py-4 pl-[27px] pr-[27px] rounded-2xl border border-input focus-visible:outline-none bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 text-base box-border transition-all duration-300 ease-in-out peer"
               disabled={disabled}
               style={{
                 lineHeight: '1.5',
@@ -357,10 +357,10 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 size="icon"
                 variant="ghost"
                 disabled={disabled || !message.trim()}
-                className={`rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200 ${
+                className={`rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200 border border-transparent ${
                   !disabled && message.trim()
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset opacity-100'
-                    : 'text-muted-foreground opacity-50 hover:bg-transparent'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset opacity-100'
+                    : activeRobotInstance?.id ? 'peer-focus:border-primary text-primary opacity-50 hover:bg-transparent' : 'text-muted-foreground opacity-50 hover:bg-transparent'
                 }`}
               >
                 <ChevronRight className="h-4.5 w-4.5" />
