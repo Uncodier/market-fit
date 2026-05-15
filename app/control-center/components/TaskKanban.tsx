@@ -275,8 +275,8 @@ export function TaskKanban({ tasks, sortBy, onUpdateTaskStatus, onTaskClick, kan
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="overflow-x-auto pb-4 -mx-8">
-        <div className="flex gap-4 min-w-fit px-16 min-h-[calc(100vh-220px)] items-stretch">
+      <div className="overflow-x-auto pb-4 -mx-4 md:-mx-8">
+        <div className="flex gap-4 min-w-fit px-4 md:px-16 min-h-[calc(100vh-220px)] items-stretch">
           {TASK_STATUSES.map(status => (
             <div key={status.id} className="flex-shrink-0 w-80 flex flex-col">
               <div className="bg-background rounded-t-md p-3 border-b border-x border-t">

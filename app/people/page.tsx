@@ -30,6 +30,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
 import { createClient } from "@/lib/supabase/client"
 import { useBillingCheck } from "@/app/hooks/use-billing-check"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import pricingConfig from "@/app/config/pricing.json"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
@@ -421,6 +422,7 @@ async function lookupFetcher(type: string, q: string, siteId?: string): Promise<
 export default function PeopleSearchPage() {
   const { t } = useLocalization()
   const { isLayoutCollapsed } = useLayout()
+  const isMobile = useIsMobile()
   const { currentSite } = useSite()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [sidebarLeft, setSidebarLeft] = useState("256px")
@@ -564,8 +566,8 @@ export default function PeopleSearchPage() {
   const [savedSectionOpenDefaults, setSavedSectionOpenDefaults] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    setSidebarLeft(isLayoutCollapsed ? "64px" : "256px")
-  }, [isLayoutCollapsed])
+    setSidebarLeft(isMobile ? "0px" : isLayoutCollapsed ? "64px" : "256px")
+  }, [isLayoutCollapsed, isMobile])
 
   // Debug: Monitor domain state changes
   useEffect(() => {
@@ -1604,8 +1606,9 @@ export default function PeopleSearchPage() {
 
   const sidebar = (
     <div className={cn(
-      "fixed transition-all duration-200 ease-in-out z-10",
-      isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
+      "fixed transition-all duration-200 ease-in-out z-10 bg-background md:bg-transparent",
+      isSidebarCollapsed ? "w-0 opacity-0" : "w-full md:w-[319px] opacity-100",
+      showResultsOnMobile ? "hidden md:block" : "block"
     )} style={{ left: sidebarLeft, top: "64px", height: "calc(100vh - 64px)" }}>
       <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r relative flex flex-col">
         {/* Tab selector - min height matches main toolbar (71px) */}

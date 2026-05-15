@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { createClient } from "@/utils/supabase/client"
 import { Category, Task } from "@/app/types"
 import { TaskSidebar } from "./components/TaskSidebar"
@@ -48,6 +49,7 @@ export default function ControlCenterPage() {
   const router = useRouter()
   const { currentSite } = useSite()
   const { isLayoutCollapsed } = useLayout()
+  const isMobile = useIsMobile()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [selectedItem, setSelectedItem] = useState<string>("all")
   const [categories, setCategories] = useState<Category[]>([])
@@ -98,8 +100,8 @@ export default function ControlCenterPage() {
 
   // Update sidebar position when layout state changes
   useEffect(() => {
-    setSidebarLeft(isLayoutCollapsed ? '64px' : '256px')
-  }, [isLayoutCollapsed])
+    setSidebarLeft(isMobile ? '0px' : (isLayoutCollapsed ? '64px' : '256px'))
+  }, [isLayoutCollapsed, isMobile])
 
   // Update breadcrumb when component mounts
   useEffect(() => {
@@ -847,7 +849,7 @@ export default function ControlCenterPage() {
           <div 
             className="h-full transition-all duration-300 ease-in-out"
             style={{ 
-              paddingLeft: `calc(${sidebarLeft} + ${!isSidebarCollapsed ? "319px" : "0px"})`
+              paddingLeft: isMobile ? '0px' : `calc(${sidebarLeft} + ${!isSidebarCollapsed ? "319px" : "0px"})`
             }}
           >
             {filteredTasks.length === 0 ? (
@@ -860,7 +862,7 @@ export default function ControlCenterPage() {
                 />
               </div>
             ) : (
-              <div className="p-8 h-full">
+              <div className="p-4 md:p-8 h-full">
                 {viewType === "kanban" ? (
                 <TaskKanban
                   tasks={filteredTasks}

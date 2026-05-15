@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils"
 import { SidebarToggle } from "./SidebarToggle"
 import { useLocalization } from "@/app/context/LocalizationContext"
-
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
 
 interface ControlCenterHeaderProps {
   isSidebarCollapsed: boolean
@@ -21,6 +21,7 @@ export function ControlCenterHeader({
   sidebarLeft = "256px"
 }: ControlCenterHeaderProps) {
   const { t } = useLocalization()
+  const isMobile = useIsMobile()
 
   return (
     <div 
@@ -42,7 +43,7 @@ export function ControlCenterHeader({
         "w-full flex items-center justify-between transition-all duration-300 ease-in-out px-4 lg:px-8"
       )}
       style={{
-        paddingLeft: `calc(${sidebarLeft} + ${!isSidebarCollapsed ? "319px" : "0px"} + 1rem)`
+        paddingLeft: isMobile ? '1rem' : `calc(${sidebarLeft} + ${!isSidebarCollapsed ? "319px" : "0px"} + 1rem)`
       }}>
         <div className="flex items-center gap-2">
           {leftContent}
