@@ -1444,7 +1444,8 @@ function RobotsPageContent() {
                               title={latestPreviewUrl ? "Preview" : "Source Code"}
                               allowFullScreen
                               allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
-                              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"
+                              // Se eliminó el atributo sandbox temporalmente para verificar si es un bloqueo de permisos del iframe
+                              // sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads allow-top-navigation-by-user-activation allow-popups-to-escape-sandbox allow-presentation"
                               style={{
                                 isolation: 'isolate'
                               }}

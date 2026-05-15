@@ -365,6 +365,27 @@ export function useNavigationHistory() {
       }
       
       // If direct navigation WITH history, keep the history (reload case handled above)
+      // BUT if we are on a DIFFERENT root route now, we MUST update the history!
+      if (isDirect && history.items.length > 0) {
+        const lastHistoryPath = history.items[history.items.length - 1].path.split('?')[0];
+        if (lastHistoryPath !== pathname) {
+          const label = generateLabel(pathname, searchParams)
+          const newItem: HistoryItem = {
+            path: fullPath,
+            label,
+            timestamp: Date.now()
+          }
+          const newHistory: NavigationHistory = { items: [newItem] }
+          setHistory(newHistory)
+          saveHistory(newHistory)
+          previousPathRef.current = fullPath
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('uiNavTimestamp')
+          }
+          return
+        }
+      }
+      
       previousPathRef.current = fullPath
       // Clean up timestamp
       if (typeof window !== 'undefined') {
@@ -655,7 +676,14 @@ export function useNavigationHistory() {
     // Check if we are jumping into a detail route directly from outside
     const segments = currentPathname.split('/').filter(Boolean)
     const basePath = segments.length > 0 ? `/${segments[0]}` : currentPathname
-    const hasId = segments.length > 1
+    
+    // Determine if this route has an ID
+    // It has an ID if it has multiple path segments OR if it has ID-like query parameters
+    const hasPathId = segments.length > 1
+    const currentParams = new URLSearchParams(fullPath.split('?')[1] || '')
+    const idParams = ['id', 'agentId', 'conversationId', 'leadId', 'segmentId', 'campaignId', 'experimentId', 'requirementId', 'contentId', 'saleId', 'robotId', 'instance']
+    const hasQueryId = idParams.some(param => currentParams.has(param))
+    const hasId = hasPathId || hasQueryId
     
     if (hasId) {
       const baseExists = history.items.some(item => item.path === basePath)
@@ -672,6 +700,22 @@ export function useNavigationHistory() {
         // we should start a fresh breadcrumb rather than appending to the previous section.
         const newHistory: NavigationHistory = {
           items: [baseItem, newItem]
+        }
+        setHistory(newHistory)
+        saveHistory(newHistory)
+        previousPathRef.current = fullPath
+        return
+      }
+    } else if (lastItem) {
+      // If there is no ID, and the base path changed, we are navigating to the root of a different section.
+      // We should start a fresh breadcrumb rather than accumulating!
+      const lastPathname = lastItem.path.split('?')[0]
+      const lastSegments = lastPathname.split('/').filter(Boolean)
+      const lastBasePath = lastSegments.length > 0 ? `/${lastSegments[0]}` : lastPathname
+      
+      if (basePath !== lastBasePath) {
+        const newHistory: NavigationHistory = {
+          items: [newItem]
         }
         setHistory(newHistory)
         saveHistory(newHistory)

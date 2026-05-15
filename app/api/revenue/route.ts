@@ -190,113 +190,12 @@ export async function GET(request: NextRequest) {
     // If no sales data found, either return demo data or minimal response
     if (!hasSalesData) {
       if (useDemoData) {
-        console.log('Using demo values for sales as explicitly requested');
-        
-        // Total sales data
-        const totalSales = 125000;
-        const prevTotalSales = 105000;
-        const percentChange = prevTotalSales > 0 ? ((totalSales - prevTotalSales) / prevTotalSales) * 100 : (totalSales > 0 ? 100 : 0);
-        
-        // Channel sales data
-        const onlineSales = { 
-          amount: 85000, 
-          prevAmount: 70000, 
-          percentChange: 70000 > 0 ? ((85000 - 70000) / 70000) * 100 : (85000 > 0 ? 100 : 0)
-        };
-        const retailSales = { 
-          amount: 40000, 
-          prevAmount: 35000, 
-          percentChange: 35000 > 0 ? ((40000 - 35000) / 35000) * 100 : (40000 > 0 ? 100 : 0)
-        };
-        
-        // Average order value
-        const aov = { 
-          actual: 125, 
-          previous: 115, 
-          percentChange: 115 > 0 ? ((125 - 115) / 115) * 100 : (125 > 0 ? 100 : 0)
-        };
-        
-        // Product categories
-        const salesCategories = [
-          { 
-            name: "Electronics", 
-            amount: 55000, 
-            prevAmount: 42000, 
-            percentChange: 42000 > 0 ? ((55000 - 42000) / 42000) * 100 : (55000 > 0 ? 100 : 0)
-          },
-          { 
-            name: "Clothing", 
-            amount: 35000, 
-            prevAmount: 33000, 
-            percentChange: 33000 > 0 ? ((35000 - 33000) / 33000) * 100 : (35000 > 0 ? 100 : 0)
-          },
-          { 
-            name: "Home", 
-            amount: 25000, 
-            prevAmount: 22000, 
-            percentChange: 22000 > 0 ? ((25000 - 22000) / 22000) * 100 : (25000 > 0 ? 100 : 0)
-          },
-          { 
-            name: "Beauty", 
-            amount: 10000, 
-            prevAmount: 8000, 
-            percentChange: 8000 > 0 ? ((10000 - 8000) / 8000) * 100 : (10000 > 0 ? 100 : 0)
-          }
-        ];
-        
-        // Sales distribution
-        const salesDistribution = [
-          { category: "Electronics", percentage: 44, amount: 55000 },
-          { category: "Clothing", percentage: 28, amount: 35000 },
-          { category: "Home", percentage: 20, amount: 25000 },
-          { category: "Beauty", percentage: 8, amount: 10000 }
-        ];
-        
-        // Monthly sales data - last 6 months
-        const monthlyData = [];
-        const today = new Date();
-        
-        for (let i = 5; i >= 0; i--) {
-          const monthDate = subMonths(today, i);
-          const month = monthDate.toLocaleString('en-US', { month: 'short' });
-          
-          monthlyData.push({
-            month,
-            onlineSales: 15000 + Math.round(Math.random() * 10000),
-            retailSales: 8000 + Math.round(Math.random() * 4000)
-          });
-        }
-        
-        return NextResponse.json({
-          totalSales: {
-            actual: totalSales,
-            previous: prevTotalSales,
-            percentChange,
-            formattedActual: totalSales.toLocaleString(),
-            formattedPrevious: prevTotalSales.toLocaleString()
-          },
-          channelSales: {
-            online: onlineSales,
-            retail: retailSales
-          },
-          averageOrderValue: aov,
-          salesCategories,
-          monthlyData,
-          salesDistribution,
-          periodType,
-          isDemoData: true,
-          metadata: {
-            startDate: startDate.toISOString(),
-            endDate: endDate.toISOString(),
-            prevStartDate: previousPeriodStart.toISOString(),
-            prevEndDate: previousPeriodEnd.toISOString(),
-            segmentId: segmentId || 'all'
-          }
-        });
-      } else {
-        console.log('No sales data found for the specified period. Returning empty dataset.');
-        // Return minimal data structure with zeros
-        return NextResponse.json({
+        console.log('Using demo values for sales as explicitly requested, but delegating to empty structure since we have real demo mock data now.');
+      }
+      
+      console.log('No sales data found for the specified period. Returning empty dataset.');
+      // Return minimal data structure with zeros
+      return NextResponse.json({
           totalSales: {
             actual: 0,
             previous: 0,
@@ -322,7 +221,6 @@ export async function GET(request: NextRequest) {
             segmentId: segmentId || 'all'
           }
         });
-      }
     }
     
     // Process real sales data

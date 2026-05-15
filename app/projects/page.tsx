@@ -72,9 +72,12 @@ export default function ProjectsPage() {
       )
     }
 
+    const isDemoMode = currentSite?.id.startsWith('demo-') || false;
+    const filteredSites = isDemoMode ? sites : sites.filter(site => !site.id.startsWith('demo-'));
+
     return (
       <div className="w-full max-w-2xl mx-auto space-y-3">
-        {sites.map(site => (
+        {filteredSites.map(site => (
           <Card key={site.id} className="border border-border hover:border-foreground/20 transition-colors cursor-pointer" onClick={() => handleSelectSite(site.id)}>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
@@ -115,6 +118,51 @@ export default function ProjectsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {isDemoMode && (
+          <Card className="border border-amber-200 bg-amber-50 hover:border-amber-300 transition-colors cursor-pointer" onClick={() => {
+            document.cookie = `market_fit_demo_site_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+            localStorage.removeItem('currentSiteId');
+            localStorage.removeItem('market_fit_manual_demo');
+            window.location.href = "/projects";
+          }}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-md bg-amber-100 flex items-center justify-center text-amber-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-amber-900 truncate">Exit Demo Mode</h3>
+                  <p className="text-sm text-amber-700/80 truncate">Return to your real projects and data</p>
+                </div>
+                <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100" onClick={(e) => { 
+                  e.stopPropagation(); 
+                  document.cookie = `market_fit_demo_site_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                  localStorage.removeItem('currentSiteId');
+                  localStorage.removeItem('market_fit_manual_demo');
+                  window.location.href = "/projects";
+                }}>Exit Demo</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {!isDemoMode && (
+          <Card className="border border-border hover:border-foreground/20 transition-colors cursor-pointer" onClick={() => router.push("/demo") }>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold truncate">View demo accounts</h3>
+                  <p className="text-sm text-muted-foreground truncate">Explore platform features with sample data</p>
+                </div>
+                <Button variant="outline" onClick={(e) => { e.stopPropagation(); router.push("/demo") }}>View Demos</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     )
   }, [isLoading, hasSites, sites, currentSite?.id, router])

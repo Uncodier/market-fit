@@ -37,21 +37,26 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   const router = useRouter()
   const { t } = useLocalization()
   const [isMounted, setIsMounted] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'owned' | 'shared'>('all')
+  const [filter, setFilter] = useState<'all' | 'owned' | 'shared' | 'demo'>('all')
   
   // Get current user ID from auth session
   const currentUserId = user?.id
   
   // Separate sites into owned and shared using the current user ID from auth
-  const ownedSites = sites.filter(site => site.user_id === currentUserId)
-  const sharedSites = sites.filter(site => site.user_id !== currentUserId)
+  const ownedSites = sites.filter(site => site.user_id === currentUserId && !site.id.startsWith('demo-'))
+  const sharedSites = sites.filter(site => site.user_id !== currentUserId && !site.id.startsWith('demo-'))
+  const demoSites = sites.filter(site => site.id.startsWith('demo-'))
+  
+  const isDemoMode = currentSite?.id.startsWith('demo-') || false
   
   // Filtered sites based on selection
   const filteredSites = filter === 'all' 
-    ? sites 
+    ? (isDemoMode ? sites : sites.filter(site => !site.id.startsWith('demo-'))) 
     : filter === 'owned' 
       ? ownedSites 
-      : sharedSites
+      : filter === 'shared'
+        ? sharedSites
+        : demoSites
   
   useEffect(() => {
     setIsMounted(true)
@@ -215,28 +220,30 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
             <DropdownMenuContent 
               align={isCollapsed ? "start" : "center"}
               sideOffset={5}
-              className={cn(
-                "p-1 min-w-[240px]",
-                isCollapsed ? "w-[240px]" : "w-[232px]"
-              )}
+              className="p-1 w-[280px]"
             >
               {/* Project filters */}
               <div className="px-2 py-1.5 mb-1">
                 <Tabs 
                   defaultValue="all" 
                   value={filter}
-                  onValueChange={(value) => setFilter(value as 'all' | 'owned' | 'shared')}
+                  onValueChange={(value) => setFilter(value as 'all' | 'owned' | 'shared' | 'demo')}
                 >
-                  <TabsList className="w-full">
-                    <TabsTrigger value="all" className="flex-1 text-xs">
-                      {t('layout.sidebar.all') || 'All'}
+                  <TabsList className="w-full flex">
+                    <TabsTrigger value="all" className="flex-1 text-xs px-1 min-w-0">
+                      <span className="truncate w-full text-center">{t('layout.sidebar.all') || 'All'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="owned" className="flex-1 text-xs">
-                      {t('layout.sidebar.myProjects') || 'My Projects'}
+                    <TabsTrigger value="owned" className="flex-1 text-xs px-1 min-w-0">
+                      <span className="truncate w-full text-center">{t('layout.sidebar.myProjects') || 'My'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="shared" className="flex-1 text-xs">
-                      {t('layout.sidebar.shared') || 'Shared'}
+                    <TabsTrigger value="shared" className="flex-1 text-xs px-1 min-w-0">
+                      <span className="truncate w-full text-center">{t('layout.sidebar.shared') || 'Shared'}</span>
                     </TabsTrigger>
+                    {isDemoMode && (
+                      <TabsTrigger value="demo" className="flex-1 text-xs px-1 min-w-0">
+                        <span className="truncate w-full text-center">Demo</span>
+                      </TabsTrigger>
+                    )}
                   </TabsList>
                 </Tabs>
               </div>
@@ -265,11 +272,31 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                         key={site.id}
                         className={cn(
                           "flex items-center gap-2 p-2 w-full relative rounded-sm",
-                          isSelected && "bg-gradient-primary text-white"
+                          isSelected && "bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground"
                         )}
                         onClick={() => {
-                          setCurrentSite(site)
-                          router.push("/robots")
+                          if (site.id.startsWith('demo-')) {
+                            // Set cookie that lasts for 24 hours
+                            document.cookie = `market_fit_demo_site_id=${site.id}; path=/; max-age=86400`;
+                            localStorage.setItem('currentSiteId', site.id);
+                            localStorage.setItem('market_fit_manual_demo', 'true');
+                            sessionStorage.setItem('preventAutoRefresh', 'true');
+                            // Force reload to apply changes everywhere (Supabase client will re-initialize)
+                            window.location.href = "/robots";
+                          } else {
+                            // Remove demo cookie if switching to a real project
+                            document.cookie = `market_fit_demo_site_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                            localStorage.removeItem('market_fit_manual_demo');
+                            
+                            if (currentSite?.id.startsWith('demo-')) {
+                              // We must reload the page if we are leaving demo mode, to re-initialize the real Supabase client
+                              localStorage.setItem('currentSiteId', site.id);
+                              window.location.href = "/robots";
+                            } else {
+                              setCurrentSite(site)
+                              router.push("/robots")
+                            }
+                          }
                         }}
                       >
                         <MenuAvatar className="h-6 w-6 flex-shrink-0">
@@ -288,7 +315,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                               <span className={cn(
                                 "px-1.5 py-0.5 text-xs rounded-md flex-shrink-0",
                                 isSelected 
-                                  ? "bg-white/20 text-gray-900" 
+                                  ? "bg-primary-foreground/20 text-primary-foreground" 
                                   : "bg-blue-100 text-blue-700"
                               )}>
                                 {t('layout.sidebar.shared') || 'Shared'}
@@ -297,13 +324,13 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                           </div>
                           <span className={cn(
                             "text-xs truncate",
-                            isSelected ? "text-white/70" : "text-muted-foreground"
+                            isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
                           )}>
                             {site.url || (t('layout.sidebar.noUrl') || "No URL")}
                           </span>
                         </div>
                         {isSelected && (
-                          <Check className="h-4 w-4 text-white flex-shrink-0" />
+                          <Check className="h-4 w-4 text-primary-foreground flex-shrink-0" />
                         )}
                       </DropdownMenuItem>
                     )
@@ -313,7 +340,31 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
               
               <div className="h-px bg-border my-1" />
               
-              <div className="p-2 flex justify-center">
+              <div className="p-2 flex flex-col gap-2">
+                {!isDemoMode ? (
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="w-full text-xs"
+                    onClick={() => router.push("/demo")}
+                  >
+                    View Demo Accounts
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="w-full text-xs text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                    onClick={() => {
+                      document.cookie = `market_fit_demo_site_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                      localStorage.removeItem('currentSiteId');
+                      localStorage.removeItem('market_fit_manual_demo');
+                      window.location.href = "/projects";
+                    }}
+                  >
+                    Exit Demo Mode
+                  </Button>
+                )}
                 <Button
                   variant="secondary"
                   size="default"

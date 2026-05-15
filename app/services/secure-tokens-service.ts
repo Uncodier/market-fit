@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { isDemoModeActive } from "@/app/services/api-client-service";
 
 // API key predeterminada para el cliente (en desarrollo)
 const CLIENT_API_KEY = 'market-fit-dev-api-key';
@@ -52,6 +53,11 @@ class SecureTokensService {
     identifier: string
   ): Promise<string | null> {
     try {
+      if (await isDemoModeActive()) {
+        console.log(`🤖 DEMO MODE: Simulated secureToken store: ${tokenType} ${identifier}`);
+        return `demo-token-${Date.now()}`;
+      }
+
       console.log(`storeToken called: siteId=${siteId}, tokenType=${tokenType}, identifier=${identifier}`);
       
       // Enviar la solicitud con la API key
@@ -107,6 +113,11 @@ class SecureTokensService {
     identifier: string
   ): Promise<boolean> {
     try {
+      if (await isDemoModeActive()) {
+        console.log(`🤖 DEMO MODE: Simulated secureToken verify: ${tokenType} ${identifier}`);
+        return true; // Always return valid for demo
+      }
+
       const response = await fetch('/api/secure-tokens', {
         method: 'POST',
         headers: {
@@ -170,6 +181,11 @@ class SecureTokensService {
     identifier: string
   ): Promise<boolean> {
     try {
+      if (await isDemoModeActive()) {
+        console.log(`🤖 DEMO MODE: Simulated secureToken delete: ${tokenType} ${identifier}`);
+        return true;
+      }
+
       const response = await fetch('/api/secure-tokens', {
         method: 'POST',
         headers: {
@@ -209,6 +225,11 @@ class SecureTokensService {
     tokenType?: TokenType
   ): Promise<SecureToken[]> {
     try {
+      if (await isDemoModeActive()) {
+        console.log(`🤖 DEMO MODE: Simulated secureToken getTokens: ${siteId}`);
+        return []; // Return empty or mock tokens array
+      }
+
       await this.initSupabase();
       
       let query = this.supabase
@@ -257,6 +278,11 @@ class SecureTokensService {
     identifier: string
   ): Promise<boolean> {
     try {
+      if (await isDemoModeActive()) {
+        console.log(`🤖 DEMO MODE: Simulated secureToken hasToken: ${tokenType} ${identifier}`);
+        return true;
+      }
+
       // Send request with API key
       const response = await fetch('/api/secure-tokens', {
         method: 'POST',

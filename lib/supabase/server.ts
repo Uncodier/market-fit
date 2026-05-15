@@ -1,9 +1,17 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { Database } from "../database.types"
+import { createDemoMockClient } from "@/lib/demo-data/mock-client"
 
 export async function createClient() {
   const cookieStore = await cookies()
+  
+  // Interceptar modo demo
+  const demoSiteId = cookieStore.get('market_fit_demo_site_id')?.value;
+  if (demoSiteId) {
+    console.log('🤖 DEMO MODE ACTIVE (SERVER) - Usando datos simulados para:', demoSiteId);
+    return createDemoMockClient(demoSiteId) as any;
+  }
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,6 +34,14 @@ export async function createClient() {
 
 // Cliente con permisos elevados (solo para operaciones del servidor)
 export async function createServiceClient() {
+  const cookieStore = await cookies();
+  const demoSiteId = cookieStore.get('market_fit_demo_site_id')?.value;
+  
+  if (demoSiteId) {
+    console.log('🤖 DEMO MODE ACTIVE (SERVICE) - Usando datos simulados para:', demoSiteId);
+    return createDemoMockClient(demoSiteId) as any;
+  }
+
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

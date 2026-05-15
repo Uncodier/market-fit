@@ -151,8 +151,7 @@ export function MenuItem({
     <>
       <div className={cn(
         "flex items-center justify-center safari-icon-fix flex-shrink-0",
-        isCollapsed ? "w-[32px] h-[32px] mx-auto" : "w-[24px] h-[24px]",
-        href === "/notifications" ? "notifications-icon-container" : ""
+        isCollapsed ? "w-[32px] h-[32px] mx-auto" : "w-[24px] h-[24px]"
       )}>
         {customIcon ? customIcon : avatarUrl ? (
           <MenuAvatar className="h-7 w-7">
@@ -245,7 +244,7 @@ export function MenuItem({
             </Tooltip>
           </TooltipProvider>
           {children && (
-            <div className="absolute -top-1 -right-[0.65rem] z-10">{children}</div>
+            <div className="absolute -top-1.5 -right-2 z-10">{children}</div>
           )}
         </>
       ) : (

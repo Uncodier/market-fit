@@ -122,7 +122,7 @@ export const markdownComponents = {
       const hasCustomText = !isRawUrl && !isArrayUrl && props.children;
 
       return (
-        <div className="my-4">
+        <span className="block my-4">
           <img 
             src={href} 
             alt="Image" 
@@ -131,13 +131,13 @@ export const markdownComponents = {
             onClick={() => window.open(href, '_blank')}
           />
           {hasCustomText && (
-            <div className="text-sm text-muted-foreground mt-2 text-center">
+            <span className="block text-sm text-muted-foreground mt-2 text-center">
               <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">
                 {props.children}
               </a>
-            </div>
+            </span>
           )}
-        </div>
+        </span>
       );
     }
     
@@ -148,7 +148,7 @@ export const markdownComponents = {
       const hasCustomText = !isRawUrl && !isArrayUrl && props.children;
 
       return (
-        <div className="my-4">
+        <span className="block my-4">
           <video 
             src={href} 
             controls 
@@ -156,13 +156,13 @@ export const markdownComponents = {
             style={{ maxHeight: '400px' }}
           />
           {hasCustomText && (
-            <div className="text-sm text-muted-foreground mt-2 text-center">
+            <span className="block text-sm text-muted-foreground mt-2 text-center">
               <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">
                 {props.children}
               </a>
-            </div>
+            </span>
           )}
-        </div>
+        </span>
       );
     }
     
@@ -173,20 +173,20 @@ export const markdownComponents = {
       const hasCustomText = !isRawUrl && !isArrayUrl && props.children;
 
       return (
-        <div className="my-4">
+        <span className="block my-4">
           <audio 
             src={href} 
             controls 
             className="w-full"
           />
           {hasCustomText && (
-            <div className="text-sm text-muted-foreground mt-2 text-center">
+            <span className="block text-sm text-muted-foreground mt-2 text-center">
               <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">
                 {props.children}
               </a>
-            </div>
+            </span>
           )}
-        </div>
+        </span>
       );
     }
 

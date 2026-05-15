@@ -175,7 +175,7 @@ export function NavigationAreaGroups({
       <div
         className={cn(
           "flex flex-col space-y-1",
-          renderCollapsed && "w-full items-center px-[14px]"
+          renderCollapsed && "w-full items-center px-0"
         )}
       >
         {areaOrder.map((area) => {
@@ -187,7 +187,8 @@ export function NavigationAreaGroups({
             <button
               type="button"
               className={cn(
-                "group flex items-center rounded-md font-inter text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-accent-foreground",
+                "group flex items-center rounded-md font-inter transition-colors duration-200 hover:bg-accent hover:text-accent-foreground",
+                expanded ? "text-foreground" : "text-muted-foreground",
                 renderCollapsed
                   ? "mx-auto h-[32px] w-[32px] shrink-0 justify-center"
                   : "h-[32px] w-full justify-start text-left text-sm"
@@ -230,7 +231,7 @@ export function NavigationAreaGroups({
                     className={cn(
                       "sidebar-section-chevron flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform",
                       expanded
-                        ? "rotate-90 text-primary group-hover:text-primary"
+                        ? "rotate-90 text-foreground group-hover:text-foreground"
                         : "text-muted-foreground/70 group-hover:text-accent-foreground"
                     )}
                   >
@@ -259,7 +260,13 @@ export function NavigationAreaGroups({
           return (
             <div
               key={area}
-              className={cn("relative", renderCollapsed && "flex w-full flex-col items-center")}
+              className={cn(
+                "relative p-1",
+                expanded 
+                  ? "rounded-[14px] border dark:border-white/10 border-black/5 bg-black/[0.02] dark:bg-white/[0.02]" 
+                  : "border border-transparent",
+                renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full"
+              )}
             >
               {renderCollapsed ? (
                 <Tooltip>
@@ -274,14 +281,14 @@ export function NavigationAreaGroups({
 
             <div
               className={cn(
-                "overflow-hidden transition-all duration-300 ease-in-out",
-                expanded ? "max-h-[880px] opacity-100" : "max-h-0 opacity-0"
+                "transition-all duration-300 ease-in-out w-full",
+                expanded ? "max-h-[880px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"
               )}
             >
               <div
                 className={cn(
-                  "flex flex-col space-y-1 pb-1",
-                  renderCollapsed ? "items-center px-0" : "px-3"
+                  "flex flex-col space-y-1 pb-1 pt-1",
+                  renderCollapsed ? "items-center px-0 w-full" : "px-1"
                 )}
               >
                 {config.items.map((item) => renderItem(item))}

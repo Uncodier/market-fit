@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { loadStripe } from '@stripe/stripe-js'
+import { isDemoModeActive } from '@/app/services/api-client-service'
 
 // Stripe instance management
 let stripePromise: Promise<any> | null = null;
@@ -103,6 +104,11 @@ class BillingService {
    */
   async saveBillingInfo(siteId: string, billingData: BillingData): Promise<{ success: boolean; error?: string }> {
     try {
+      if (await isDemoModeActive()) {
+        console.log('🤖 DEMO MODE: Simulated saving billing info');
+        return { success: true };
+      }
+
       const supabase = createClient()
       
       // Only process card if we're on the client and have complete card information
@@ -253,6 +259,11 @@ class BillingService {
     userEmail: string
   ): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
+      if (await isDemoModeActive()) {
+        console.log('🤖 DEMO MODE: Simulated checkout credits session');
+        return { success: true, url: `${window.location.origin}/billing/success?credits=${credits}` };
+      }
+
       const response = await fetch('/api/stripe/checkout/credits', {
         method: 'POST',
         headers: {
@@ -293,6 +304,11 @@ class BillingService {
     userEmail: string
   ): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
+      if (await isDemoModeActive()) {
+        console.log('🤖 DEMO MODE: Simulated checkout subscription session');
+        return { success: true, url: `${window.location.origin}/billing/success?plan=${plan}` };
+      }
+
       const response = await fetch('/api/stripe/checkout/subscription', {
         method: 'POST',
         headers: {
@@ -331,6 +347,11 @@ class BillingService {
     returnUrl: string
   ): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
+      if (await isDemoModeActive()) {
+        console.log('🤖 DEMO MODE: Simulated customer portal session');
+        return { success: true, url: returnUrl };
+      }
+
       const response = await fetch('/api/stripe/portal', {
         method: 'POST',
         headers: {

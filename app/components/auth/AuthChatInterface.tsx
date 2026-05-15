@@ -54,14 +54,7 @@ export const AuthChatInterface: React.FC<AuthChatInterfaceProps> = ({ onInteract
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative w-full h-full overflow-hidden">
-        {/* Background Orbs */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-500/8 rounded-full font-inter blur-2xl animate-float-slow"></div>
-          <div className="absolute top-1/3 left-1/3 w-56 h-56 bg-indigo-500/10 rounded-full font-inter blur-2xl animate-float-medium" style={{ animationDelay: '7s' }}></div>
-          <div className="absolute bottom-1/3 right-1/3 w-60 h-60 bg-purple-500/9 rounded-full font-inter blur-2xl animate-float-reverse" style={{ animationDelay: '9s' }}></div>
-          <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 w-48 h-48 bg-violet-500/15 rounded-full font-inter blur-xl animate-float-slow"></div>
-          <div className="absolute bottom-1/3 right-1/2 transform translate-x-1/2 w-44 h-44 bg-indigo-500/12 rounded-full font-inter blur-xl animate-float-medium" style={{ animationDelay: '3s' }}></div>
-        </div>
+        {/* Background Orbs - removed per user request */}
 
         {/* Chat Area */}
         <div className="flex-1 overflow-y-auto px-4 w-full max-w-4xl mx-auto flex flex-col justify-end pb-32 z-10">

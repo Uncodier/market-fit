@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { getDemoData } from "@/lib/demo-data";
 
 // Helper functions for URL validation
 const isValidUrl = (url: string): boolean => {
@@ -52,6 +53,39 @@ const getFullApiUrl = (baseUrl: string) => {
 // Full URL with protocol
 const FULL_API_SERVER_URL = getFullApiUrl(API_SERVER_URL);
 
+/**
+ * Verifica si el código está ejecutándose en el servidor
+ */
+function isServerSide(): boolean {
+  return (
+    typeof window === 'undefined' || 
+    typeof document === 'undefined' ||
+    typeof process !== 'undefined' && process.env?.NEXT_RUNTIME === 'nodejs'
+  )
+}
+
+/**
+ * Helper para leer la cookie del modo demo (funciona en cliente y servidor)
+ */
+async function getDemoSiteIdAsync(): Promise<string | null> {
+  if (typeof window !== 'undefined') {
+    try {
+      const match = document.cookie.match(/market_fit_demo_site_id=([^;]+)/);
+      return match ? match[1] : null;
+    } catch (e) {
+      return null;
+    }
+  } else {
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      return cookieStore.get('market_fit_demo_site_id')?.value || null;
+    } catch (e) {
+      return null;
+    }
+  }
+}
+
 // Silence API server URL log
 
 interface ApiClientOptions {
@@ -70,6 +104,11 @@ interface ApiResponse<T = any> {
     details?: any;
   };
   status?: number;
+}
+
+export async function isDemoModeActive(): Promise<boolean> {
+  const id = await getDemoSiteIdAsync();
+  return !!id;
 }
 
 export class ApiClientService {
@@ -223,6 +262,12 @@ export class ApiClientService {
   }
 
   async get<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
+    const demoSiteId = await getDemoSiteIdAsync();
+    if (demoSiteId) {
+      console.log(`🤖 DEMO API INTERCEPT: GET ${endpoint}`);
+      return { success: true, data: {} } as unknown as ApiResponse<T>;
+    }
+
     const url = this.buildUrl(endpoint);
     
     // Silence GET request log
@@ -261,6 +306,70 @@ export class ApiClientService {
   }
 
   async post<T = any>(endpoint: string, body: any, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
+    const demoSiteId = await getDemoSiteIdAsync();
+    if (demoSiteId) {
+      console.log(`🤖 DEMO API INTERCEPT: POST ${endpoint}`);
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Mock different endpoints
+      if (endpoint.includes('workflow/buildSegments') || endpoint.includes('workflow/buildSegmentsICP')) {
+        return {
+          success: true,
+          data: {
+            segments: [
+              { name: 'Demo Segment 1', description: 'Auto-generated demo segment' },
+              { name: 'Demo Segment 2', description: 'Another auto-generated segment' }
+            ]
+          }
+        } as unknown as ApiResponse<T>;
+      }
+      if (endpoint.includes('site/experiments')) {
+        return {
+          success: true,
+          data: {
+            experiments: [
+              { name: 'Demo Experiment', hypothesis: 'Testing demo conversion' }
+            ]
+          }
+        } as unknown as ApiResponse<T>;
+      }
+      if (endpoint.includes('workflow/buildCampaigns')) {
+        return {
+          success: true,
+          data: {
+            campaigns: [
+              { name: 'Demo Campaign', description: 'Simulated campaign' }
+            ]
+          }
+        } as unknown as ApiResponse<T>;
+      }
+      if (endpoint.includes('workflow/buildContent')) {
+        return {
+          success: true,
+          data: {
+            content: [
+              { title: 'Demo Content', type: 'blog_post', description: 'Simulated content' }
+            ]
+          }
+        } as unknown as ApiResponse<T>;
+      }
+      if (endpoint.includes('generate')) {
+         return {
+           success: true,
+           data: {
+             result: "This is a simulated AI generated text for the demo mode. The real API wasn't called."
+           }
+         } as unknown as ApiResponse<T>;
+      }
+      
+      // Default mock response for other POSTs
+      return {
+        success: true,
+        data: { id: `demo-res-${Date.now()}`, ...body }
+      } as unknown as ApiResponse<T>;
+    }
+
     const url = this.buildUrl(endpoint);
     
     // Silence POST request logs
@@ -323,6 +432,12 @@ export class ApiClientService {
   }
 
   async put<T = any>(endpoint: string, body: any, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
+    const demoSiteId = await getDemoSiteIdAsync();
+    if (demoSiteId) {
+      console.log(`🤖 DEMO API INTERCEPT: PUT ${endpoint}`);
+      return { success: true, data: { ...body } } as unknown as ApiResponse<T>;
+    }
+
     const url = this.buildUrl(endpoint);
     
     // Silence PUT request logs
@@ -363,6 +478,12 @@ export class ApiClientService {
   }
 
   async delete<T = any>(endpoint: string, options: ApiClientOptions = {}): Promise<ApiResponse<T>> {
+    const demoSiteId = await getDemoSiteIdAsync();
+    if (demoSiteId) {
+      console.log(`🤖 DEMO API INTERCEPT: DELETE ${endpoint}`);
+      return { success: true, data: { deleted: true } } as unknown as ApiResponse<T>;
+    }
+
     const url = this.buildUrl(endpoint);
     
     // Silence DELETE request logs

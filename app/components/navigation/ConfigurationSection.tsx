@@ -176,7 +176,8 @@ export function ConfigurationSection({
     <button
       type="button"
       className={cn(
-        "group flex items-center rounded-md font-inter text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-accent-foreground",
+        "group flex items-center rounded-md font-inter transition-colors duration-200 hover:bg-accent hover:text-accent-foreground",
+        shouldShowSettingsChildren ? "text-foreground" : "text-muted-foreground",
         isCollapsed
           ? "mx-auto h-[32px] w-[32px] shrink-0 justify-center"
           : "h-[32px] w-full justify-start text-left text-sm"
@@ -219,7 +220,7 @@ export function ConfigurationSection({
             className={cn(
               "sidebar-section-chevron flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-transform",
               shouldShowSettingsChildren
-                ? "rotate-90 text-primary group-hover:text-primary"
+                ? "rotate-90 text-foreground group-hover:text-foreground"
                 : "text-muted-foreground/70 group-hover:text-accent-foreground"
             )}
           >
@@ -249,7 +250,13 @@ export function ConfigurationSection({
     <TooltipProvider delayDuration={100}>
       <div className={cn("space-y-1", className)} onMouseDown={(e) => e.preventDefault()}>
         <div
-          className={cn("relative", isCollapsed && "flex w-full flex-col items-center")}
+          className={cn(
+            "relative p-1",
+            shouldShowSettingsChildren 
+              ? "rounded-[14px] border dark:border-white/10 border-black/5 bg-black/[0.02] dark:bg-white/[0.02]"
+              : "border border-transparent",
+            isCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full"
+          )}
         >
           {isCollapsed ? (
             <Tooltip>
@@ -279,7 +286,7 @@ export function ConfigurationSection({
           <div
             className={cn(
               "flex flex-col space-y-1 pb-1 pt-1",
-              isCollapsed ? "items-center px-0" : "px-3"
+              isCollapsed ? "items-center px-0" : "px-1"
             )}
           >
             {settingsChildItems.map((item) => {

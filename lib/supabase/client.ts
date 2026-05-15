@@ -1,11 +1,31 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { getDemoData } from '@/lib/demo-data'
+import { createDemoMockClient } from '@/lib/demo-data/mock-client'
 
 // Singleton client for the entire application
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
+let demoClientInstance: any = null
+let currentDemoSiteId: string | null = null
+
 let clientCreationTimestamp: number | null = null
 let clientCreationError: Error | null = null
 let clientCreationErrorTimestamp: number | null = null
 const ERROR_RECOVERY_MS = 30_000
+
+/**
+ * Helper para leer la cookie del modo demo
+ */
+function getDemoSiteIdFromCookie(): string | null {
+  if (isServerSide()) return null;
+  try {
+    return document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('market_fit_demo_site_id='))
+      ?.split('=')[1] || null;
+  } catch (e) {
+    return null;
+  }
+}
 
 /**
  * Limpia un UUID de comillas extras o caracteres no válidos
@@ -68,6 +88,18 @@ export function createClient() {
     return createMockClient('server-side')
   }
   
+  // Interceptar modo demo
+  const demoSiteId = getDemoSiteIdFromCookie()
+  if (demoSiteId) {
+    // Si cambió el demo site, recreamos el cliente
+    if (!demoClientInstance || currentDemoSiteId !== demoSiteId) {
+      console.log('🤖 DEMO MODE ACTIVE - Usando datos simulados para:', demoSiteId)
+      demoClientInstance = createDemoMockClient(demoSiteId)
+      currentDemoSiteId = demoSiteId
+    }
+    return demoClientInstance
+  }
+
   // If a previous creation attempt failed, allow retry after ERROR_RECOVERY_MS
   if (clientCreationError) {
     const elapsed = clientCreationErrorTimestamp ? Date.now() - clientCreationErrorTimestamp : Infinity
@@ -158,13 +190,28 @@ export function createClient() {
   }
 }
 
+
 /**
  * Crea un cliente mock para situaciones donde no se puede crear el cliente real
  */
 function createMockClient(reason: string) {
   
+  // Check if we are in demo mode from client cookies
+  let isDemo = false;
+  if (typeof document !== 'undefined') {
+    isDemo = document.cookie.includes('market_fit_demo_site_id=');
+  }
+
+  // Create an object with mock realtime channels
+  const mockChannel = {
+    on: () => mockChannel,
+    subscribe: () => mockChannel,
+    unsubscribe: () => {}
+  };
+
   return {
     _isMock: true,
+    _isDemo: isDemo,
     auth: {
       getSession: async () => {
         return { 
@@ -251,14 +298,8 @@ function createMockClient(reason: string) {
         }
       }
     }),
-    channel: (channel: string) => ({
-      on: (event: string, callback: any) => {
-        return { 
-          subscribe: () => ({ 
-            unsubscribe: () => console.log('Mock: channel.unsubscribe() llamado') 
-          }) 
-        }
-      }
-    })
+    channel: (channel: string) => mockChannel,
+    removeChannel: () => {},
+    removeAllChannels: () => {}
   }
 } 

@@ -64,72 +64,7 @@ export function EmptyCard({
   
   return (
     <div className="relative">
-      {/* Floating background orbs - outside card for visibility */}
-      {!isSimple && (
-        <div className="absolute inset-0 pointer-events-none z-0">
-          {/* Randomized bubbles */}
-          <div 
-            className="absolute bg-violet-500/25 rounded-full font-inter blur-2xl animate-pulse"
-            style={{ 
-              top: `${bubblePositions[0].top}%`, 
-              left: `${bubblePositions[0].left}%`,
-              width: `${bubblePositions[0].size * 4}px`,
-              height: `${bubblePositions[0].size * 4}px`,
-              animationDelay: `${bubblePositions[0].delay}s`
-            }}
-          ></div>
-          <div 
-            className="absolute bg-indigo-500/20 rounded-full font-inter blur-2xl animate-pulse"
-            style={{ 
-              top: `${bubblePositions[1].top}%`, 
-              left: `${bubblePositions[1].left}%`,
-              width: `${bubblePositions[1].size * 4}px`,
-              height: `${bubblePositions[1].size * 4}px`,
-              animationDelay: `${bubblePositions[1].delay}s`
-            }}
-          ></div>
-          <div 
-            className="absolute bg-purple-500/22 rounded-full font-inter blur-2xl animate-pulse"
-            style={{ 
-              top: `${bubblePositions[2].top}%`, 
-              left: `${bubblePositions[2].left}%`,
-              width: `${bubblePositions[2].size * 4}px`,
-              height: `${bubblePositions[2].size * 4}px`,
-              animationDelay: `${bubblePositions[2].delay}s`
-            }}
-          ></div>
-          <div 
-            className="absolute bg-pink-500/24 rounded-full font-inter blur-xl animate-pulse"
-            style={{ 
-              top: `${bubblePositions[3].top}%`, 
-              left: `${bubblePositions[3].left}%`,
-              width: `${bubblePositions[3].size * 4}px`,
-              height: `${bubblePositions[3].size * 4}px`,
-              animationDelay: `${bubblePositions[3].delay}s`
-            }}
-          ></div>
-          <div 
-            className="absolute bg-emerald-500/18 rounded-full font-inter blur-xl animate-pulse"
-            style={{ 
-              top: `${bubblePositions[4].top}%`, 
-              left: `${bubblePositions[4].left}%`,
-              width: `${bubblePositions[4].size * 4}px`,
-              height: `${bubblePositions[4].size * 4}px`,
-              animationDelay: `${bubblePositions[4].delay}s`
-            }}
-          ></div>
-          <div 
-            className="absolute bg-cyan-500/19 rounded-full font-inter blur-xl animate-pulse"
-            style={{ 
-              top: `${bubblePositions[5].top}%`, 
-              left: `${bubblePositions[5].left}%`,
-              width: `${bubblePositions[5].size * 4}px`,
-              height: `${bubblePositions[5].size * 4}px`,
-              animationDelay: `${bubblePositions[5].delay}s`
-            }}
-          ></div>
-        </div>
-      )}
+      {/* Floating background orbs - removed per user request */}
       
       <Card className={cn(
         showShadow ? "border-dashed bg-card/50" : "border-0 bg-transparent shadow-none", 

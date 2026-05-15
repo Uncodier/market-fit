@@ -659,7 +659,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
             allSitesData.push({
               id: demo.id,
               name: demo.name,
-              url: null,
+              url: demo.url || null,
               logo_url: null,
               description: demo.description,
               user_id: session.user.id, // Set current user as owner to pass basic checks

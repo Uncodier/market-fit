@@ -353,6 +353,9 @@ export const useInstanceLogs = ({
         }
       }
 
+      let retryCount = 0
+      let retryTimeout: NodeJS.Timeout | null = null
+
       const subscribe = () => {
         if (currentChannel) {
           try { supabase.removeChannel(currentChannel) } catch (_) { /* ignore */ }
@@ -371,14 +374,35 @@ export const useInstanceLogs = ({
             onRealtimePayload
           )
           .subscribe((status: string, err?: any) => {
-            if (status === 'CHANNEL_ERROR') {
-              console.warn('[useInstanceLogs] Channel error, will re-subscribe on visibility change', err || '')
+            if (status === 'SUBSCRIBED') {
+              retryCount = 0
+            } else if (status === 'CHANNEL_ERROR') {
+              console.warn('[useInstanceLogs] Channel error', err || '')
+              handleRetry()
             } else if (status === 'TIMED_OUT') {
-              console.warn('[useInstanceLogs] Channel timed out, will re-subscribe on visibility change')
+              console.warn('[useInstanceLogs] Channel timed out')
+              handleRetry()
+            } else if (status === 'CLOSED') {
+              console.warn('[useInstanceLogs] Channel closed')
+              handleRetry()
             }
           })
 
         currentChannel = channel
+      }
+
+      const handleRetry = () => {
+        if (retryTimeout) clearTimeout(retryTimeout)
+        
+        // Max delay of 30 seconds
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 30000)
+        retryCount++
+        
+        console.log(`[useInstanceLogs] Retrying subscription in ${delay}ms... (Attempt ${retryCount})`)
+        
+        retryTimeout = setTimeout(() => {
+          subscribe()
+        }, delay)
       }
 
       subscribe()
@@ -387,6 +411,7 @@ export const useInstanceLogs = ({
         if (document.visibilityState === 'visible') {
           setTimeout(() => {
             loadInstanceLogs()
+            retryCount = 0
             subscribe()
           }, 1000)
         }
@@ -395,6 +420,7 @@ export const useInstanceLogs = ({
       document.addEventListener('visibilitychange', handleVisibility)
 
       return () => {
+        if (retryTimeout) clearTimeout(retryTimeout)
         document.removeEventListener('visibilitychange', handleVisibility)
         if (currentChannel) {
           try { supabase.removeChannel(currentChannel) } catch (_) { /* ignore */ }

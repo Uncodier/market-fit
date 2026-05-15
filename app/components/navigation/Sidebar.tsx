@@ -160,13 +160,15 @@ export function Sidebar({
             <div
               className={cn(
                 "flex flex-col space-y-1",
-                renderCollapsed ? "px-[14px] items-center" : "px-3"
+                renderCollapsed ? "px-0 items-center w-full" : "px-3"
               )}
             >
-              <Suspense fallback={<div className="min-h-[64px]" aria-hidden />}>
-                <RobotsNavItems isCollapsed={renderCollapsed} />
-              </Suspense>
-              <div style={{ marginTop: "14px" }}>
+              <div className={cn("flex flex-col space-y-1 w-full", renderCollapsed ? "w-[42px] mx-auto items-center" : "px-1")}>
+                <Suspense fallback={<div className="min-h-[64px]" aria-hidden />}>
+                  <RobotsNavItems isCollapsed={renderCollapsed} />
+                </Suspense>
+              </div>
+              <div style={{ marginTop: "14px" }} className="w-full">
                 <Suspense fallback={<div className="min-h-[48px]" aria-hidden />}>
                   <NavigationAreaGroups renderCollapsed={renderCollapsed} />
                 </Suspense>
@@ -184,10 +186,10 @@ export function Sidebar({
           <div
             className={cn(
               "flex flex-col space-y-1 py-4",
-              renderCollapsed ? "px-[14px] items-center" : "px-3"
+              renderCollapsed ? "px-0 items-center w-full" : "px-3"
             )}
           >
-            <div>
+            <div className="w-full">
               <Suspense fallback={<div className="min-h-[40px]" aria-hidden />}>
                 <NavigationAreaGroups
                   renderCollapsed={renderCollapsed}
@@ -197,8 +199,8 @@ export function Sidebar({
             </div>
             <ConfigurationSection
               className={cn(
-                "!p-0",
-                renderCollapsed ? "px-[14px] flex flex-col items-center" : "px-0"
+                "!p-0 w-full",
+                renderCollapsed ? "px-0 flex flex-col items-center w-full" : "px-0"
               )}
               isCollapsed={renderCollapsed}
               forceShowChildren={forceShowSettingsChildren}
@@ -206,7 +208,7 @@ export function Sidebar({
               onSettingsNavigation={handleSettingsNavigation}
             />
 
-            <div className={cn("relative", renderCollapsed ? "w-8 mx-auto" : "w-full")}>
+            <div className={cn("relative", renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full px-1")}>
               <MenuItem
                 href="/notifications"
                 icon={Bell}
@@ -224,10 +226,10 @@ export function Sidebar({
             <div
               className={cn(
                 "flex flex-col space-y-1 py-4",
-                renderCollapsed ? "px-[14px] items-center" : "px-3"
+                renderCollapsed ? "px-0 items-center w-full" : "px-3"
               )}
             >
-              <div className="relative">
+              <div className={cn("relative", renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full px-1")}>
                 <MenuItem
                   href={profileMainItem.href}
                   icon={profileMainItem.icon}

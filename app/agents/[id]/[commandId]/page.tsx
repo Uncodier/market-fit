@@ -3,7 +3,7 @@
 import { getCommandById } from "@/app/agents/actions"
 import { Command } from "@/app/agents/types"
 import CommandDetail from "./command-detail"
-import { createClient } from "@/utils/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { CommandDetailSkeleton } from "./command-detail-skeleton"
 
 // Función específica para obtener el nombre del agente por ID

@@ -385,8 +385,8 @@ export default function ControlCenterPage() {
       }
 
       // Count by category
-      if (task.lead_id) {
-        newTaskCounts.byCategory[task.lead_id] = (newTaskCounts.byCategory[task.lead_id] || 0) + 1
+      if (task.category_id) {
+        newTaskCounts.byCategory[task.category_id] = (newTaskCounts.byCategory[task.category_id] || 0) + 1
       }
     })
 
@@ -631,9 +631,9 @@ export default function ControlCenterPage() {
         const type = selectedItem.replace('type-', '')
         if (task.type !== type) return false
       } else if (selectedItem.startsWith('category-')) {
-        // Remove 'category-' prefix and check lead_id
+        // Remove 'category-' prefix and check category_id
         const categoryId = selectedItem.replace('category-', '')
-        if (task.lead_id !== categoryId) return false
+        if (task.category_id !== categoryId) return false
       }
     }
 

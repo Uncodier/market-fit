@@ -37,7 +37,7 @@ let isRequestInProgress = false;
  */
 export async function buildSegmentsWithAI(params: BuildSegmentsParams): Promise<AISegmentResponse> {
   // Si ya hay una petición en curso, devolver un error
-  if (isRequestInProgress) {
+  if (isRequestInProgress && !(await isDemoModeActive())) {
     console.warn("A request is already in progress. Please wait for it to complete.");
     return {
       success: false,
@@ -167,7 +167,7 @@ export async function buildSegmentsWithAI(params: BuildSegmentsParams): Promise<
  */
 export async function buildSegmentsICPWithAI(params: BuildSegmentsParams): Promise<AISegmentResponse> {
   // Si ya hay una petición en curso, devolver un error
-  if (isRequestInProgress) {
+  if (isRequestInProgress && !(await isDemoModeActive())) {
     console.warn("A request is already in progress. Please wait for it to complete.");
     return {
       success: false,
@@ -493,7 +493,7 @@ export interface BuildExperimentsParams {
  */
 export async function buildExperimentsWithAI(params: BuildExperimentsParams): Promise<AISegmentResponse> {
   // If a request is already in progress, return an error
-  if (isRequestInProgress) {
+  if (isRequestInProgress && !(await isDemoModeActive())) {
     console.warn("A request is already in progress. Please wait for it to complete.");
     return {
       success: false,
@@ -636,7 +636,7 @@ export interface BuildCampaignsParams {
  */
 export async function buildCampaignsWithAI(params: BuildCampaignsParams): Promise<AISegmentResponse> {
   // If a request is already in progress, return an error
-  if (isRequestInProgress) {
+  if (isRequestInProgress && !(await isDemoModeActive())) {
     console.warn("A request is already in progress. Please wait for it to complete.");
     return {
       success: false,
@@ -779,7 +779,7 @@ export interface BuildContentParams {
  */
 export async function buildContentWithAI(params: BuildContentParams): Promise<AISegmentResponse> {
   // If a request is already in progress, return an error
-  if (isRequestInProgress) {
+  if (isRequestInProgress && !(await isDemoModeActive())) {
     console.warn("A request is already in progress. Please wait for it to complete.");
     return {
       success: false,

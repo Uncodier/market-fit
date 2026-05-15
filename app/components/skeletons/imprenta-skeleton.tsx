@@ -57,15 +57,7 @@ export function ImprentaSkeleton() {
 function ImprentaCardSkeleton({ result = false }: { result?: boolean }) {
   return (
     <div className="w-full relative overflow-hidden bg-card/95 backdrop-blur-sm border-2 border-black/5 dark:border-white/10 rounded-3xl p-5 shadow-sm space-y-4" style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}>
-      {/* Floating background orbs from fancy empty card */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute bg-violet-500/25 rounded-full blur-2xl animate-pulse" style={{ top: '25.4%', left: '12.3%', width: '114px', height: '114px', animationDelay: '1.2s', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}></div>
-        <div className="absolute bg-indigo-500/20 rounded-full blur-2xl animate-pulse" style={{ top: '68.1%', left: '45.7%', width: '88.4px', height: '88.4px', animationDelay: '0.5s', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}></div>
-        <div className="absolute bg-purple-500/22 rounded-full blur-2xl animate-pulse" style={{ top: '15.8%', left: '63.2%', width: '73.6px', height: '73.6px', animationDelay: '2.1s', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}></div>
-        <div className="absolute bg-pink-500/24 rounded-full blur-xl animate-pulse" style={{ top: '42.6%', left: '28.9%', width: '66.8px', height: '66.8px', animationDelay: '1.8s', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}></div>
-        <div className="absolute bg-emerald-500/18 rounded-full blur-xl animate-pulse" style={{ top: '58.3%', left: '74.5%', width: '49.2px', height: '49.2px', animationDelay: '0.9s', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}></div>
-        <div className="absolute bg-cyan-500/19 rounded-full blur-xl animate-pulse" style={{ top: '31.2%', left: '56.4%', width: '79.2px', height: '79.2px', animationDelay: '2.5s', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}></div>
-      </div>
+      {/* Floating background orbs from fancy empty card - removed per user request */}
 
       <div className="relative z-10 flex items-center justify-between">
          <Skeleton className="h-3 w-20 rounded uppercase" />

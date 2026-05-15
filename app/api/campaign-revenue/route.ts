@@ -109,22 +109,10 @@ export async function GET(request: Request) {
       
       // Si se solicita explícitamente datos de demo, proporcionamos datos ficticios
       if (useDemoData) {
-        console.log(`[Campaign Revenue API] Usando datos de demo por petición del cliente`);
-        
-        // Datos de demo para visualización
-        return NextResponse.json({
-          campaigns: [
-            { name: "Email Campaign", value: 45000, color: campaignColors.email },
-            { name: "Social Media", value: 32000, color: campaignColors.social },
-            { name: "Content Marketing", value: 28000, color: campaignColors.content },
-            { name: "Paid Advertising", value: 20000, color: campaignColors.paid },
-            { name: "Referral Program", value: 15000, color: campaignColors.referral }
-          ],
-          isDemoData: true
-        });
+        console.log(`[Campaign Revenue API] Usando datos de demo por petición del cliente, delegando a estructura vacia pues ahora tenemos datos de mock real.`);
       }
       
-      // Retornamos array vacío cuando no hay datos en el período y no se pidieron datos de demo
+      // Retornamos array vacío cuando no hay datos en el período
       return NextResponse.json({ campaigns: [], noData: true });
     }
     

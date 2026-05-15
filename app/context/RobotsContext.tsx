@@ -23,7 +23,7 @@ interface RobotsByActivity {
 
 interface RobotsContextValue {
   robotsByActivity: RobotsByActivity;
-  totalActiveRobots: number;
+  totalRunningRobots: number;
   isLoading: boolean;
   error: string | null;
   lastRefreshAt: number | null;
@@ -55,7 +55,7 @@ interface RobotsProviderProps {
 export function RobotsProvider({ children }: RobotsProviderProps) {
   const { currentSite } = useSite()
   const [robotsByActivity, setRobotsByActivity] = useState<RobotsByActivity>({})
-  const [totalActiveRobots, setTotalActiveRobots] = useState(0)
+  const [totalRunningRobots, setTotalRunningRobots] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -161,7 +161,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     // 🆕 Homologated validation: same pattern as message temporal
     if (!siteId) {
       setRobotsByActivity({})
-      setTotalActiveRobots(0)
+      setTotalRunningRobots(0)
       setIsLoading(false)
       hasInitiallyLoadedRef.current = true
       return
@@ -242,7 +242,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
 
       // Organize robots by activity name
       const organizedRobots: RobotsByActivity = {}
-      let activeCount = 0
+      let runningCount = 0
 
       robots?.forEach((robot: Robot) => {
         if (!organizedRobots[robot.name]) {
@@ -250,9 +250,9 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         }
         organizedRobots[robot.name].push(robot)
 
-        // Count active robots (exclude paused and uninstantiated)
-        if (['running', 'active', 'starting', 'pending', 'initializing'].includes(robot.status)) {
-          activeCount++
+        // Count running robots for the badge
+        if (robot.status === 'running') {
+          runningCount++
         }
       })
 
@@ -275,7 +275,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
 
       // Always update state when site changes to ensure fresh data
       setRobotsByActivity(organizedRobots)
-      setTotalActiveRobots(activeCount)
+      setTotalRunningRobots(runningCount)
 
 
     } catch (error) {
@@ -383,7 +383,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       refreshRobots(currentSite.id)
     } else {
       setRobotsByActivity({})
-      setTotalActiveRobots(0)
+      setTotalRunningRobots(0)
     }
   }, [currentSite?.id, refreshRobots])
 
@@ -442,7 +442,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
 
   const value: RobotsContextValue = {
     robotsByActivity,
-    totalActiveRobots,
+    totalRunningRobots,
     isLoading,
     error,
     lastRefreshAt,

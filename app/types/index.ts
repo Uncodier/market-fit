@@ -344,6 +344,7 @@ export interface Task {
   site_id: string
   created_at: string
   updated_at: string
+  category_id?: string
   leads?: {
     id: string
     name: string
