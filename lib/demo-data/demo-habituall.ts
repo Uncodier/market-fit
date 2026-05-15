@@ -804,6 +804,7 @@ export const habituall_data = {
     {
       id: 'reqstat-habituall-1',
       site_id: 'demo-habituall',
+      instance_id: 'remote-habituall-1',
       requirement_id: 'req-habituall-1',
       status: 'completed',
       completion_percentage: 100,
@@ -812,6 +813,7 @@ export const habituall_data = {
     {
       id: 'reqstat-habituall-2',
       site_id: 'demo-habituall',
+      instance_id: 'remote-habituall-1',
       requirement_id: 'req-habituall-2',
       status: 'in_progress',
       completion_percentage: 45
@@ -819,6 +821,7 @@ export const habituall_data = {
     {
       id: 'reqstat-habituall-3',
       site_id: 'demo-habituall',
+      instance_id: 'remote-habituall-1',
       requirement_id: 'req-habituall-3',
       status: 'pending',
       completion_percentage: 0
