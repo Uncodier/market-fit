@@ -14,6 +14,7 @@ export const ecom_es_456_data = {
       id: 'demo-user-456',
       email: 'admin@moda-rapida.demo',
       full_name: 'Demo Admin (Ecommerce)',
+      name: 'Demo Admin (Ecommerce)',
       avatar_url: 'https://i.pravatar.cc/150?u=demo-ecom-es-456'
     }
   ],
@@ -421,6 +422,96 @@ export const ecom_es_456_data = {
       type: 'newsletter',
       status: 'draft',
       created_at: new Date().toISOString()
+    },
+    {
+      id: 'content-ecom-4',
+      site_id: 'demo-ecom-es-456',
+      title: 'Colección Otoño-Invierno 2026',
+      description: 'Adelanto exclusivo de nuestra próxima temporada',
+      type: 'blog_post',
+      status: 'draft',
+      created_at: new Date(Date.now() - 86400000 * 1).toISOString()
+    },
+    {
+      id: 'content-ecom-5',
+      site_id: 'demo-ecom-es-456',
+      title: 'Guía de Tallas Interactiva',
+      description: 'Aprende a tomar tus medidas correctas',
+      type: 'video',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 30).toISOString()
+    },
+    {
+      id: 'content-ecom-6',
+      site_id: 'demo-ecom-es-456',
+      title: 'Campaña Día de la Madre',
+      description: 'Promociones especiales y sugerencias de regalo',
+      type: 'newsletter',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 5).toISOString()
+    },
+    {
+      id: 'content-ecom-7',
+      site_id: 'demo-ecom-es-456',
+      title: 'Detrás de escena: Sesión de fotos',
+      description: 'Cómo creamos la campaña de verano',
+      type: 'social_post',
+      status: 'approved',
+      created_at: new Date(Date.now() - 86400000 * 10).toISOString()
+    },
+    {
+      id: 'content-ecom-8',
+      site_id: 'demo-ecom-es-456',
+      title: 'Entrevista con nuestra diseñadora',
+      description: 'Inspiración detrás de los nuevos estampados',
+      type: 'podcast',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 45).toISOString()
+    },
+    {
+      id: 'content-ecom-9',
+      site_id: 'demo-ecom-es-456',
+      title: 'Lookbook Verano',
+      description: 'Combinaciones recomendadas por estilistas',
+      type: 'infographic',
+      status: 'review',
+      created_at: new Date(Date.now() - 86400000 * 3).toISOString()
+    },
+    {
+      id: 'content-ecom-10',
+      site_id: 'demo-ecom-es-456',
+      title: 'Colaboración con Influencers',
+      description: 'Lanzamiento de la cápsula exclusiva',
+      type: 'social_post',
+      status: 'draft',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'content-ecom-11',
+      site_id: 'demo-ecom-es-456',
+      title: 'Tips para cuidar tus prendas',
+      description: 'Guía de lavado para telas delicadas',
+      type: 'blog_post',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 90).toISOString()
+    },
+    {
+      id: 'content-ecom-12',
+      site_id: 'demo-ecom-es-456',
+      title: 'Lanzamiento Nueva Línea Eco-friendly',
+      description: 'Conoce nuestros materiales sustentables',
+      type: 'video',
+      status: 'archived',
+      created_at: new Date(Date.now() - 86400000 * 150).toISOString()
+    },
+    {
+      id: 'content-ecom-13',
+      site_id: 'demo-ecom-es-456',
+      title: 'Descuentos Flash de Fin de Semana',
+      description: 'Aviso urgente de rebajas temporales',
+      type: 'newsletter',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 12).toISOString()
     }
   ],
   experiments: [
@@ -503,6 +594,63 @@ export const ecom_es_456_data = {
     }
   ],
   deals: [
+    {
+      id: 'deal-ecom-6',
+      name: 'Exploración Venta Corporativa',
+      amount: 5000,
+      currency: 'EUR',
+      stage: 'prospecting',
+      status: 'open',
+      company_id: 'company-ecom-3',
+      lead_id: 'lead-ecom-6',
+      segment_id: 'seg-ecom-3',
+      site_id: 'demo-ecom-es-456',
+      expected_close_date: new Date(Date.now() + 86400000 * 45).toISOString(),
+      notes: 'Contacto inicial para venta de uniformes corporativos',
+      qualification_score: 40,
+      qualification_criteria: { 'budget': false, 'authority': false, 'need': true, 'timeline': false },
+      sales_order_id: null,
+      created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    {
+      id: 'deal-ecom-7',
+      name: 'Distribución Regional',
+      amount: 12000,
+      currency: 'EUR',
+      stage: 'qualification',
+      status: 'open',
+      company_id: 'company-ecom-4',
+      lead_id: 'lead-ecom-7',
+      segment_id: 'seg-ecom-1',
+      site_id: 'demo-ecom-es-456',
+      expected_close_date: new Date(Date.now() + 86400000 * 30).toISOString(),
+      notes: 'Evaluando capacidad de distribución en la zona sur',
+      qualification_score: 65,
+      qualification_criteria: { 'budget': true, 'authority': false, 'need': true, 'timeline': false },
+      sales_order_id: null,
+      created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    {
+      id: 'deal-ecom-8',
+      name: 'Catálogo de Invierno',
+      amount: 25000,
+      currency: 'EUR',
+      stage: 'proposal',
+      status: 'open',
+      company_id: 'company-ecom-2',
+      lead_id: 'lead-ecom-2',
+      segment_id: 'seg-ecom-2',
+      site_id: 'demo-ecom-es-456',
+      expected_close_date: new Date(Date.now() + 86400000 * 15).toISOString(),
+      notes: 'Propuesta enviada para la temporada de invierno',
+      qualification_score: 80,
+      qualification_criteria: { 'budget': true, 'authority': true, 'need': true, 'timeline': true },
+      sales_order_id: null,
+      created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
+      updated_at: new Date().toISOString()
+    },
     {
       id: 'deal-ecom-1',
       name: 'Venta Mayorista Colección Verano',
@@ -728,6 +876,14 @@ export const ecom_es_456_data = {
       id: 'task-ecom-1',
       site_id: 'demo-ecom-es-456',
       title: 'Enviar muestras de tela a María (Moda y Estilo)',
+      description: 'Preparar el paquete con las nuevas muestras de algodón orgánico y lino para la colección de verano y enviarlo por paquetería.',
+      type: 'quote',
+      assignee: 'demo-user-456',
+      lead_id: 'lead-ecom-1',
+      assignee_details: {
+        id: 'demo-user-456',
+        name: 'Demo Admin (Ecommerce)'
+      },
       status: 'pending',
       priority: 'high',
       category_id: 'cat-ecom-1',
@@ -738,6 +894,13 @@ export const ecom_es_456_data = {
       id: 'task-ecom-2',
       site_id: 'demo-ecom-es-456',
       title: 'Actualizar catálogo de invierno en Shopify',
+      description: 'Subir las nuevas fotografías de la colección de invierno, asegurando que las descripciones tengan SEO optimizado.',
+      type: 'documentation',
+      assignee: 'demo-user-456',
+      assignee_details: {
+        id: 'demo-user-456',
+        name: 'Demo Admin (Ecommerce)'
+      },
       status: 'in_progress',
       priority: 'normal',
       category_id: 'cat-ecom-2',
@@ -748,6 +911,13 @@ export const ecom_es_456_data = {
       id: 'task-ecom-3',
       site_id: 'demo-ecom-es-456',
       title: 'Revisar métricas de carrito abandonado',
+      description: 'Analizar el embudo de conversión en el checkout y proponer un flujo de correos automáticos para recuperar ventas.',
+      type: 'survey',
+      assignee: 'demo-user-456',
+      assignee_details: {
+        id: 'demo-user-456',
+        name: 'Demo Admin (Ecommerce)'
+      },
       status: 'completed',
       priority: 'normal',
       category_id: 'cat-ecom-2',

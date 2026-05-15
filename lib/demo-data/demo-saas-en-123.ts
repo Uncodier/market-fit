@@ -14,6 +14,7 @@ export const saas_en_123_data = {
       id: 'demo-user-123',
       email: 'admin@acme-saas.demo',
       full_name: 'Demo Admin (SaaS)',
+      name: 'Demo Admin (SaaS)',
       avatar_url: 'https://i.pravatar.cc/150?u=demo-saas-en-123'
     }
   ],
@@ -443,6 +444,96 @@ export const saas_en_123_data = {
       type: 'case_study',
       status: 'draft',
       created_at: new Date(Date.now() - 86400000 * 2).toISOString()
+    },
+    {
+      id: 'content-saas-4',
+      site_id: 'demo-saas-en-123',
+      title: 'Maximizing ROI with Automation',
+      description: 'Learn how to leverage automation to increase revenue',
+      type: 'whitepaper',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 15).toISOString()
+    },
+    {
+      id: 'content-saas-5',
+      site_id: 'demo-saas-en-123',
+      title: 'Q3 Product Update',
+      description: 'Join us for a walkthrough of new features in Q3',
+      type: 'webinar',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 5).toISOString()
+    },
+    {
+      id: 'content-saas-6',
+      site_id: 'demo-saas-en-123',
+      title: 'Security Best Practices in 2026',
+      description: 'How to keep your enterprise data secure',
+      type: 'blog_post',
+      status: 'review',
+      created_at: new Date(Date.now() - 86400000 * 1).toISOString()
+    },
+    {
+      id: 'content-saas-7',
+      site_id: 'demo-saas-en-123',
+      title: 'Integration with Slack',
+      description: 'Step-by-step guide to connect Acme with Slack',
+      type: 'video',
+      status: 'approved',
+      created_at: new Date(Date.now() - 86400000 * 12).toISOString()
+    },
+    {
+      id: 'content-saas-8',
+      site_id: 'demo-saas-en-123',
+      title: 'Customer Spotlight: TechCorp',
+      description: 'TechCorp scaled their operations seamlessly with Acme',
+      type: 'case_study',
+      status: 'draft',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'content-saas-9',
+      site_id: 'demo-saas-en-123',
+      title: 'New Feature Announcement: AI Analytics',
+      description: 'Announcing our new AI-powered analytics dashboard',
+      type: 'newsletter',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 30).toISOString()
+    },
+    {
+      id: 'content-saas-10',
+      site_id: 'demo-saas-en-123',
+      title: 'Industry Trends Report 2026',
+      description: 'Comprehensive analysis of the B2B landscape',
+      type: 'whitepaper',
+      status: 'archived',
+      created_at: new Date(Date.now() - 86400000 * 120).toISOString()
+    },
+    {
+      id: 'content-saas-11',
+      site_id: 'demo-saas-en-123',
+      title: 'Getting Started Guide',
+      description: 'Onboarding tutorial for new admins',
+      type: 'video',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 200).toISOString()
+    },
+    {
+      id: 'content-saas-12',
+      site_id: 'demo-saas-en-123',
+      title: 'Data Privacy Compliance API',
+      description: 'Technical guide on implementing our compliance API',
+      type: 'blog_post',
+      status: 'draft',
+      created_at: new Date(Date.now() - 86400000 * 3).toISOString()
+    },
+    {
+      id: 'content-saas-13',
+      site_id: 'demo-saas-en-123',
+      title: 'CEO Interview on Future of AI',
+      description: 'Our CEO discusses the roadmap for AI integration',
+      type: 'podcast',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 60).toISOString()
     }
   ],
   experiments: [
@@ -533,6 +624,44 @@ export const saas_en_123_data = {
     }
   ],
   deals: [
+    {
+      id: 'deal-saas-6',
+      name: 'Startup Package AI Gen',
+      amount: 4500,
+      currency: 'USD',
+      stage: 'qualification',
+      status: 'open',
+      company_id: 'company-saas-3',
+      lead_id: 'lead-saas-4',
+      segment_id: 'seg-saas-3',
+      site_id: 'demo-saas-en-123',
+      expected_close_date: new Date(Date.now() + 86400000 * 30).toISOString(),
+      notes: 'Initial discovery call went well, checking if they have the budget.',
+      qualification_score: 60,
+      qualification_criteria: { 'budget': false, 'authority': true, 'need': true, 'timeline': false },
+      sales_order_id: null,
+      created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    {
+      id: 'deal-saas-7',
+      name: 'Global Expansion Tools',
+      amount: 45000,
+      currency: 'USD',
+      stage: 'closed_won',
+      status: 'won',
+      company_id: 'company-saas-1',
+      lead_id: 'lead-saas-2',
+      segment_id: 'seg-saas-2',
+      site_id: 'demo-saas-en-123',
+      expected_close_date: new Date(Date.now() - 86400000 * 5).toISOString(),
+      notes: 'Contract signed and initial payment received.',
+      qualification_score: 98,
+      qualification_criteria: { 'budget': true, 'authority': true, 'need': true, 'timeline': true },
+      sales_order_id: null,
+      created_at: new Date(Date.now() - 86400000 * 45).toISOString(),
+      updated_at: new Date(Date.now() - 86400000 * 5).toISOString()
+    },
     {
       id: 'deal-saas-1',
       name: 'Enterprise License Tech Corp',
@@ -744,6 +873,14 @@ export const saas_en_123_data = {
       id: 'task-saas-1',
       site_id: 'demo-saas-en-123',
       title: 'Prepare Security Compliance Doc for DataTech',
+      description: 'Review and send the latest SOC 2 and ISO 27001 compliance documents to the DataTech procurement team.',
+      type: 'documentation',
+      assignee: 'demo-user-123',
+      lead_id: 'lead-saas-4',
+      assignee_details: {
+        id: 'demo-user-123',
+        name: 'Demo Admin (SaaS)'
+      },
       status: 'in_progress',
       priority: 'high',
       category_id: 'cat-saas-1',
@@ -754,6 +891,14 @@ export const saas_en_123_data = {
       id: 'task-saas-2',
       site_id: 'demo-saas-en-123',
       title: 'Follow up demo for DataTech',
+      description: 'Second meeting to showcase advanced analytics features and answer technical questions from the engineering team.',
+      type: 'demo',
+      assignee: 'demo-user-123',
+      lead_id: 'lead-saas-4',
+      assignee_details: {
+        id: 'demo-user-123',
+        name: 'Demo Admin (SaaS)'
+      },
       status: 'completed',
       priority: 'high',
       category_id: 'cat-saas-2',
@@ -764,6 +909,14 @@ export const saas_en_123_data = {
       id: 'task-saas-3',
       site_id: 'demo-saas-en-123',
       title: 'Send ROI Calculator to Tech Corp',
+      description: 'Prepare and email the custom ROI estimation spreadsheet based on their current server costs.',
+      type: 'email',
+      assignee: 'demo-user-123',
+      lead_id: 'lead-saas-1',
+      assignee_details: {
+        id: 'demo-user-123',
+        name: 'Demo Admin (SaaS)'
+      },
       status: 'pending',
       priority: 'normal',
       category_id: 'cat-saas-1',

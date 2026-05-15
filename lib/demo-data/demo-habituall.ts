@@ -14,6 +14,7 @@ export const habituall_data = {
       id: 'demo-user-123',
       email: 'admin@acme-habituall.demo',
       full_name: 'Demo Admin (SaaS)',
+      name: 'Demo Admin (SaaS)',
       avatar_url: 'https://i.pravatar.cc/150?u=demo-habituall'
     }
   ],
@@ -443,6 +444,96 @@ export const habituall_data = {
       type: 'case_study',
       status: 'draft',
       created_at: new Date(Date.now() - 86400000 * 2).toISOString()
+    },
+    {
+      id: 'content-habituall-4',
+      site_id: 'demo-habituall',
+      title: 'Microservices vs Monoliths',
+      description: 'Architectural comparison for modern startups',
+      type: 'whitepaper',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 25).toISOString()
+    },
+    {
+      id: 'content-habituall-5',
+      site_id: 'demo-habituall',
+      title: 'Monthly Developer Townhall',
+      description: 'Q&A session with our core engineering team',
+      type: 'webinar',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 10).toISOString()
+    },
+    {
+      id: 'content-habituall-6',
+      site_id: 'demo-habituall',
+      title: 'Optimizing Database Queries',
+      description: 'Performance tips for scalable applications',
+      type: 'blog_post',
+      status: 'review',
+      created_at: new Date(Date.now() - 86400000 * 4).toISOString()
+    },
+    {
+      id: 'content-habituall-7',
+      site_id: 'demo-habituall',
+      title: 'Setting up CI/CD Pipelines',
+      description: 'Tutorial on using GitHub Actions with our platform',
+      type: 'video',
+      status: 'approved',
+      created_at: new Date(Date.now() - 86400000 * 18).toISOString()
+    },
+    {
+      id: 'content-habituall-8',
+      site_id: 'demo-habituall',
+      title: 'Customer Spotlight: Innovate LLC',
+      description: 'How Innovate LLC decreased deployment times',
+      type: 'case_study',
+      status: 'draft',
+      created_at: new Date().toISOString()
+    },
+    {
+      id: 'content-habituall-9',
+      site_id: 'demo-habituall',
+      title: 'Platform Update v2.5',
+      description: 'Release notes and new feature highlights',
+      type: 'newsletter',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 2).toISOString()
+    },
+    {
+      id: 'content-habituall-10',
+      site_id: 'demo-habituall',
+      title: 'State of Serverless 2026',
+      description: 'Adoption rates and enterprise readiness report',
+      type: 'whitepaper',
+      status: 'archived',
+      created_at: new Date(Date.now() - 86400000 * 150).toISOString()
+    },
+    {
+      id: 'content-habituall-11',
+      site_id: 'demo-habituall',
+      title: 'API Authentication Flow',
+      description: 'Implementing OAuth2 securely',
+      type: 'video',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 45).toISOString()
+    },
+    {
+      id: 'content-habituall-12',
+      site_id: 'demo-habituall',
+      title: 'Handling Rate Limits',
+      description: 'Best practices for robust API integrations',
+      type: 'blog_post',
+      status: 'draft',
+      created_at: new Date(Date.now() - 86400000 * 1).toISOString()
+    },
+    {
+      id: 'content-habituall-13',
+      site_id: 'demo-habituall',
+      title: 'Tech Talk: Scaling to 1M requests',
+      description: 'Engineering deep dive podcast',
+      type: 'podcast',
+      status: 'published',
+      created_at: new Date(Date.now() - 86400000 * 30).toISOString()
     }
   ],
   experiments: [
@@ -533,6 +624,44 @@ export const habituall_data = {
     }
   ],
   deals: [
+    {
+      id: 'deal-habituall-6',
+      name: 'Startup Package AI Gen',
+      amount: 4500,
+      currency: 'USD',
+      stage: 'qualification',
+      status: 'open',
+      company_id: 'company-habituall-3',
+      lead_id: 'lead-habituall-4',
+      segment_id: 'seg-habituall-3',
+      site_id: 'demo-habituall',
+      expected_close_date: new Date(Date.now() + 86400000 * 30).toISOString(),
+      notes: 'Initial discovery call went well, checking if they have the budget.',
+      qualification_score: 60,
+      qualification_criteria: { 'budget': false, 'authority': true, 'need': true, 'timeline': false },
+      sales_order_id: null,
+      created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    {
+      id: 'deal-habituall-7',
+      name: 'Global Expansion Tools',
+      amount: 45000,
+      currency: 'USD',
+      stage: 'closed_won',
+      status: 'won',
+      company_id: 'company-habituall-1',
+      lead_id: 'lead-habituall-2',
+      segment_id: 'seg-habituall-2',
+      site_id: 'demo-habituall',
+      expected_close_date: new Date(Date.now() - 86400000 * 5).toISOString(),
+      notes: 'Contract signed and initial payment received.',
+      qualification_score: 98,
+      qualification_criteria: { 'budget': true, 'authority': true, 'need': true, 'timeline': true },
+      sales_order_id: null,
+      created_at: new Date(Date.now() - 86400000 * 45).toISOString(),
+      updated_at: new Date(Date.now() - 86400000 * 5).toISOString()
+    },
     {
       id: 'deal-habituall-1',
       name: 'Enterprise License Tech Corp',
@@ -744,6 +873,14 @@ export const habituall_data = {
       id: 'task-habituall-1',
       site_id: 'demo-habituall',
       title: 'Prepare Security Compliance Doc for DataTech',
+      description: 'Review and send the latest SOC 2 and ISO 27001 compliance documents to the DataTech procurement team to proceed with the contract phase.',
+      type: 'documentation',
+      assignee: 'demo-user-123',
+      lead_id: 'lead-habituall-4',
+      assignee_details: {
+        id: 'demo-user-123',
+        name: 'Demo Admin (SaaS)'
+      },
       status: 'in_progress',
       priority: 'high',
       category_id: 'cat-habituall-1',
@@ -754,6 +891,14 @@ export const habituall_data = {
       id: 'task-habituall-2',
       site_id: 'demo-habituall',
       title: 'Follow up demo for DataTech',
+      description: 'Second meeting to showcase advanced analytics features and answer technical questions from the engineering team.',
+      type: 'demo',
+      assignee: 'demo-user-123',
+      lead_id: 'lead-habituall-4',
+      assignee_details: {
+        id: 'demo-user-123',
+        name: 'Demo Admin (SaaS)'
+      },
       status: 'completed',
       priority: 'high',
       category_id: 'cat-habituall-2',
@@ -764,6 +909,14 @@ export const habituall_data = {
       id: 'task-habituall-3',
       site_id: 'demo-habituall',
       title: 'Send ROI Calculator to Tech Corp',
+      description: 'Prepare and email the custom ROI estimation spreadsheet based on their current server costs.',
+      type: 'email',
+      assignee: 'demo-user-123',
+      lead_id: 'lead-habituall-1',
+      assignee_details: {
+        id: 'demo-user-123',
+        name: 'Demo Admin (SaaS)'
+      },
       status: 'pending',
       priority: 'normal',
       category_id: 'cat-habituall-1',
