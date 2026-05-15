@@ -41,6 +41,7 @@ function DemoSelectorContent() {
       document.cookie = `NEXT_LOCALE=${urlLang}; path=/; max-age=31536000`;
       document.cookie = `market_fit_lang=${urlLang}; path=/; max-age=31536000`;
       localStorage.setItem('lang', urlLang);
+      localStorage.setItem('makinari-locale', urlLang);
       shouldRedirect = true;
     }
 
@@ -57,6 +58,14 @@ function DemoSelectorContent() {
       localStorage.removeItem('market_fit_manual_demo');
       setCurrentDemo(urlClient);
       sessionStorage.setItem('preventAutoRefresh', 'true');
+
+      if (!urlLang) {
+        document.cookie = `NEXT_LOCALE=es; path=/; max-age=31536000`;
+        document.cookie = `market_fit_lang=es; path=/; max-age=31536000`;
+        localStorage.setItem('lang', 'es');
+        localStorage.setItem('makinari-locale', 'es');
+      }
+
       shouldRedirect = true;
     }
 
@@ -76,6 +85,12 @@ function DemoSelectorContent() {
     localStorage.setItem('currentSiteId', id);
     localStorage.setItem('market_fit_manual_demo', 'true');
     setCurrentDemo(id);
+    
+    // Default language to Spanish
+    document.cookie = `NEXT_LOCALE=es; path=/; max-age=31536000`;
+    document.cookie = `market_fit_lang=es; path=/; max-age=31536000`;
+    localStorage.setItem('lang', 'es');
+    localStorage.setItem('makinari-locale', 'es');
     
     // Almacenamos un flag en sessionStorage para que el middleware/contextos no redireccionen en la recarga
     sessionStorage.setItem('preventAutoRefresh', 'true');
