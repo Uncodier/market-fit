@@ -650,15 +650,38 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Combine owned and shared sites
       const allSitesData = [...(ownedSitesData || []), ...sharedSitesData]
       
-      // Fetch billing information for all sites
-      const siteIds = allSitesData.map(site => site.id)
+      // Inject demo sites
+      if (typeof window !== 'undefined') {
+        const { availableDemos } = await import('@/lib/demo-data/index');
+        for (const demo of availableDemos) {
+          // Check if it already exists to prevent duplicates
+          if (!allSitesData.some(site => site.id === demo.id)) {
+            allSitesData.push({
+              id: demo.id,
+              name: demo.name,
+              url: null,
+              logo_url: null,
+              description: demo.description,
+              user_id: session.user.id, // Set current user as owner to pass basic checks
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          }
+        }
+      }
+      
+      // Fetch billing information for real sites only (filter out demo sites)
+      const realSiteIds = allSitesData
+        .map(site => site.id)
+        .filter(id => !id.startsWith('demo-'))
+        
       let billingData: any[] = []
       
-      if (siteIds.length > 0) {
+      if (realSiteIds.length > 0) {
         const { data: billingInfo, error: billingError } = await supabaseRef.current
           .from('billing')
           .select('*')
-          .in('site_id', siteIds)
+          .in('site_id', realSiteIds)
         
         if (billingError) {
           console.error("Error fetching billing data:", billingError)
@@ -674,13 +697,25 @@ export function SiteProvider({ children }: SiteProviderProps) {
         // Find billing data for this site
         const siteBilling = billingData.find(billing => billing.site_id === site.id)
         
+        // Full credits for demo sites
+        const isDemoSite = site.id.startsWith('demo-')
+        const demoBilling = isDemoSite ? {
+          plan: 'enterprise' as const,
+          masked_card_number: '1234',
+          card_name: 'Demo User',
+          card_expiry: '12/29',
+          auto_renew: true,
+          credits_available: 99999,
+          credits_used: 0
+        } : undefined
+        
         return {
           ...site,
           focus_mode: getLocalStorage(`site_${site.id}_focus_mode`, site.focus_mode || 50),
           // No incluimos settings aquí, se cargarán específicamente para el sitio actual
           settings: undefined,
           // Add billing data if available
-          billing: siteBilling ? {
+          billing: isDemoSite ? demoBilling : (siteBilling ? {
             plan: siteBilling.plan || 'commission',
             masked_card_number: siteBilling.masked_card_number,
             card_name: siteBilling.card_name,
@@ -699,11 +734,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
             auto_renew: siteBilling.auto_renew ?? true,
             credits_available: siteBilling.credits_available || 0,
             credits_used: siteBilling.credits_used || 0
-          } : undefined
+          } : undefined)
         }
       })
       
-      setSites(sitesWithData as Site[])
+      // Ensure unique sites based on ID to prevent React key duplication errors
+      const uniqueSites = Array.from(
+        new Map(sitesWithData.map((site: any) => [site.id, site])).values()
+      );
+      
+      setSites(uniqueSites as Site[])
       setSitesLoaded(true)
       
       // Si hay sitios, intentamos restaurar el sitio guardado (no auto-seleccionar el primero)
@@ -893,12 +933,13 @@ export function SiteProvider({ children }: SiteProviderProps) {
         !pathname.startsWith('/projects') &&
         !pathname.startsWith('/auth/') &&
         !pathname.startsWith('/create-site') &&
+        !pathname.startsWith('/demo') &&
         supabaseRef.current
       ) {
         router.push('/projects')
       } else if (
         // 🚫 NEVER redirect away from create-site if user is there intentionally
-        pathname.startsWith('/create-site')
+        pathname.startsWith('/create-site') || pathname.startsWith('/demo')
       ) {
         // Check if this is intentional access
         const isIntentionalAccess = typeof window !== 'undefined' && 
@@ -928,11 +969,25 @@ export function SiteProvider({ children }: SiteProviderProps) {
         // Cargar los settings específicamente para este sitio
         if (!site.settings && supabaseRef.current) {
 
-          const { data: settingsData, error: settingsError } = await supabaseRef.current
+        let settingsData = null;
+        let settingsError = null;
+        
+        if (site.id.startsWith('demo-')) {
+          const { getDemoData } = await import('@/lib/demo-data/index');
+          const demoData = getDemoData(site.id);
+          if (demoData && demoData.settings) {
+            settingsData = demoData.settings;
+          }
+        } else {
+          const { data, error } = await supabaseRef.current
             .from('settings')
             .select('*')
             .eq('site_id', site.id)
             .single();
+            
+          settingsData = data;
+          settingsError = error;
+        }
           
           if (settingsError && settingsError.code !== 'PGRST116') {
             // PGRST116 significa que no se encontraron registros (es normal para un sitio nuevo)
@@ -1088,6 +1143,15 @@ export function SiteProvider({ children }: SiteProviderProps) {
 
   // Actualizar un sitio en Supabase
   const handleUpdateSite = async (site: Site) => {
+    // Prevent updating demo sites
+    if (site.id.startsWith('demo-')) {
+      console.log('Skipping site update for demo site');
+      // Update local state to simulate save success
+      setSites(prevSites => prevSites.map(s => s.id === site.id ? site : s));
+      if (currentSite?.id === site.id) setCurrentSite(site);
+      return;
+    }
+
     try {
       // Don't set isLoading to avoid UI interruptions during save
       // setIsLoading(true);
@@ -1221,7 +1285,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // because loadSitesWithPrevention() aborts if we are on '/create-site' 
       // leaving the sites array empty and causing a redirect loop back to create-site!
       // Also, we optimistically update the sites array so the UI has immediate access to the new site.
-      setSites(prev => [...prev, createdSite]);
+      setSites(prev => {
+        if (prev.some(s => s.id === createdSite.id)) return prev;
+        return [...prev, createdSite];
+      });
       
       await loadSites(); // Recargar los sitios
       
@@ -1250,6 +1317,19 @@ export function SiteProvider({ children }: SiteProviderProps) {
   
   // Eliminar un sitio
   const handleDeleteSite = async (id: string) => {
+    // Prevent deleting demo sites
+    if (id.startsWith('demo-')) {
+      console.log('Skipping delete for demo site');
+      setSites(prevSites => prevSites.filter(s => s.id !== id));
+      if (currentSite?.id === id && sites.length > 0) {
+        const newCurrentSite = sites.find(site => site.id !== id && !site.id.startsWith('demo-')) || sites[0];
+        if (newCurrentSite) handleSetCurrentSite(newCurrentSite).catch(err => {
+          console.error("Error setting new current site after delete demo:", err);
+        });
+      }
+      return;
+    }
+
     if (!supabaseRef.current) return Promise.reject(new Error("Supabase client not initialized"))
     
     try {
@@ -1283,6 +1363,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
     if (!supabaseRef.current || !siteId) return Promise.reject(new Error("Supabase client not initialized or no site ID"));
     
     try {
+      if (siteId.startsWith('demo-')) {
+        const { getDemoData } = await import('@/lib/demo-data/index');
+        const demoData = getDemoData(siteId);
+        return demoData?.settings || null;
+      }
+      
       const { data, error } = await supabaseRef.current
         .from('settings')
         .select('*')
@@ -1548,6 +1634,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Since allowed_domains is no longer part of SiteSettings interface, we just use formattedSettings directly
       const settingsForDB = formattedSettings;
       
+      // Prevent updating demo sites
+      if (siteId.startsWith('demo-')) {
+        console.log('Skipping settings update for demo site');
+        return;
+      }
+
       // Use upsert operation with site_id as the conflict resolution field
       // First get existing settings to preserve other fields
       try {
@@ -1747,10 +1839,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
   }
 
   // Función auxiliar para verificar si estamos en una página protegida
-  const isOnProtectedPage = () => {
+      const isOnProtectedPage = () => {
     if (typeof window === 'undefined') return false
     const pathname = window.location.pathname
-    return pathname === '/settings' || pathname === '/create-site'
+    return pathname === '/settings' || pathname === '/create-site' || pathname === '/demo'
   }
 
   // Wrapper para loadSites que respeta la prevención de refresh

@@ -47,12 +47,23 @@ export function useOnboardingValidation() {
   const [isValidationRunning, setIsValidationRunning] = useState(false)
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  const isDemoMode = currentSite?.id?.startsWith('demo-') || false
+
   const loadTasks = useCallback(async () => {
     if (!currentSite?.id) {
       setTasks({} as OnboardingTasksState)
       setIsLoading(false)
       return
     }
+    
+    // In demo mode, all tasks are completed
+    if (currentSite.id.startsWith('demo-')) {
+      const demoCompleted = ALL_TASK_IDS.reduce((acc, id) => ({ ...acc, [id]: true }), {} as OnboardingTasksState)
+      setTasks(demoCompleted)
+      setIsLoading(false)
+      return
+    }
+
     try {
       setIsLoading(true)
       const supabase = createClient()
@@ -93,7 +104,7 @@ export function useOnboardingValidation() {
 
   // Auto-validation
   useEffect(() => {
-    if (!currentSite?.id || isValidationRunning || skipNextValidation) {
+    if (!currentSite?.id || isValidationRunning || skipNextValidation || isDemoMode) {
       if (skipNextValidation) setSkipNextValidation(false)
       return
     }

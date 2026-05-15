@@ -40,6 +40,13 @@ export function OnboardingProgressWidget({
       setComplete(true)
       return
     }
+
+    if (currentSite.id.startsWith('demo-')) {
+      setLoading(false)
+      setComplete(true)
+      return
+    }
+
     let cancelled = false
     ;(async () => {
       try {

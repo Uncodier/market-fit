@@ -49,6 +49,10 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
   // If percentage < 20% (low credits), show yellow/orange
   // Otherwise show primary color
   const isOverLimit = creditsAvailable < 0
+  
+  if (currentSite?.id.startsWith('demo-')) {
+    return null
+  }
 
   // Only surface the widget when remaining credits are under half the cap (or over limit)
   const showWidget = isOverLimit || percentage < 50
