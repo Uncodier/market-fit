@@ -2,7 +2,7 @@
 
 import React from "react"
 import { Button } from "@/app/components/ui/button"
-import { ChevronLeft, ChevronRight, PlusCircle, User, Users, MessageSquare } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, PlusCircle } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
@@ -22,6 +22,8 @@ interface ChatToggleProps {
   onNewAgentConversation?: () => void
   onPrivateDiscussion?: () => void
   showNewConversationButton?: boolean
+  /** Use in conversation toolbar (flex row); default overlay used absolute + full width when expanded */
+  variant?: "toolbar" | "overlay"
   className?: string
   isLead?: boolean
   agentName?: string
@@ -38,6 +40,7 @@ export function ChatToggle({
   onNewAgentConversation,
   onPrivateDiscussion,
   showNewConversationButton = true,
+  variant = "overlay",
   className,
   isLead = false,
   agentName = "Agent",
@@ -106,25 +109,41 @@ export function ChatToggle({
     }
   };
 
+  const isToolbar = variant === "toolbar"
+
   return (
-    <div className={cn(
-      "absolute top-0 z-[1000] flex items-center gap-2 h-[71px] max-h-[71px] min-h-[71px] px-4 transition-all duration-300 ease-in-out overflow-hidden",
-      isCollapsed ? "left-0" : "left-0",
-      className
-    )}>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={handleToggleClick}
-        className="h-8 w-8 rounded-full font-inter font-bold bg-background transition-all duration-300 ease-in-out hover:bg-muted"
-        aria-label={isCollapsed ? "Show conversations" : "Hide conversations"}
-      >
-        {isCollapsed ? (
-          <ChevronRight className="h-4 w-4 transition-transform duration-200" />
-        ) : (
-          <ChevronLeft className="h-4 w-4 transition-transform duration-200" />
+    <div
+      className={cn(
+        "z-[1000] flex items-center gap-2 h-[71px] max-h-[71px] min-h-[71px] px-2 sm:px-3 transition-all duration-300 ease-in-out shrink-0",
+        isToolbar
+          ? "relative w-auto"
+          : cn(
+              "absolute top-0 overflow-hidden",
+              isCollapsed ? "w-[100px]" : "w-full"
+            ),
+        className
+      )}
+      style={isToolbar ? undefined : { transform: "translateZ(0)" }}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-2 transition-transform duration-300 shrink-0",
+          isToolbar ? "" : "w-full justify-between pr-4"
         )}
-      </Button>
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleToggleClick}
+          className="h-8 w-8 rounded-full font-inter font-bold bg-background transition-all duration-300 ease-in-out hover:bg-muted shrink-0"
+          aria-label={isCollapsed ? "Show conversations" : "Hide conversations"}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4 transition-transform duration-200" />
+          ) : (
+            <ChevronLeft className="h-4 w-4 transition-transform duration-200" />
+          )}
+        </Button>
       
       {showNewConversationButton && (
         <DropdownMenu>
@@ -133,7 +152,7 @@ export function ChatToggle({
               variant="ghost"
               size="icon"
               className={cn(
-                "h-8 w-8 rounded-full font-inter font-bold bg-background transition-all duration-300 ease-in-out",
+                "h-8 w-8 rounded-full font-inter font-bold bg-background transition-all duration-300 ease-in-out shrink-0",
                 hasAvailableActions ? "hover:bg-muted cursor-pointer" : "opacity-50 cursor-not-allowed"
               )}
               aria-label="New conversation options"
@@ -144,57 +163,70 @@ export function ChatToggle({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-72 z-[1001]" sideOffset={8} forceMount>
-            <DropdownMenuLabel className="text-xs text-muted-foreground py-2">Create new conversation</DropdownMenuLabel>
-            
-            {onNewLeadConversation && (
-              <DropdownMenuItem 
-                onClick={handleNewLeadClick} 
-                className={cn(
-                  "flex flex-col items-start py-3 hover:bg-muted/60 focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md",
-                  canCreateLeadConversation ? "cursor-pointer" : "cursor-not-allowed opacity-50"
-                )}
-                disabled={!canCreateLeadConversation}
-              >
-                <div className="flex items-center w-full gap-2 mb-1">
-                  <div className="w-5 flex justify-center">
-                    <Avatar className="h-5 w-5 bg-primary/10">
+              <DropdownMenuLabel className="text-xs text-muted-foreground py-2">Create new conversation</DropdownMenuLabel>
+              
+              {onNewLeadConversation && (
+                <DropdownMenuItem 
+                  onClick={handleNewLeadClick} 
+                  className={cn(
+                    "flex flex-col items-start py-3 hover:bg-muted/60 focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md",
+                    canCreateLeadConversation ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                  )}
+                  disabled={!canCreateLeadConversation}
+                >
+                  <div className="flex items-center w-full gap-2 mb-1">
+                    <div className="w-5 flex justify-center">
+                      <Avatar className="h-5 w-5 bg-primary/10">
+                        <AvatarImage src={isLead && leadId ? undefined : undefined} alt={leadName} />
+                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                          {leadName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    <span className="font-medium">New conversation with {isLead ? "lead" : "visitor"}</span>
+                    {!canCreateLeadConversation && <span className="text-xs text-muted-foreground ml-2">(No lead selected)</span>}
+                  </div>
+                  <div className="pl-7 flex items-center gap-2 mt-1">
+                    <Avatar className="h-5 w-5 mr-1 bg-primary/10">
                       <AvatarImage src={isLead && leadId ? undefined : undefined} alt={leadName} />
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                         {leadName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                       </AvatarFallback>
                     </Avatar>
+                    <span className="text-xs text-muted-foreground">
+                      Continue with <span className="text-foreground">{leadName}</span>
+                    </span>
                   </div>
-                  <span className="font-medium">New conversation with {isLead ? "lead" : "visitor"}</span>
-                  {!canCreateLeadConversation && <span className="text-xs text-muted-foreground ml-2">(No lead selected)</span>}
-                </div>
-                <div className="pl-7 flex items-center gap-2 mt-1">
-                  <Avatar className="h-5 w-5 mr-1 bg-primary/10">
-                    <AvatarImage src={isLead && leadId ? undefined : undefined} alt={leadName} />
-                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {leadName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-muted-foreground">
-                    Continue with <span className="text-foreground">{leadName}</span>
-                  </span>
-                </div>
-              </DropdownMenuItem>
-            )}
-            
-            <DropdownMenuSeparator className="my-1" />
-            
-            {onNewAgentConversation && (
-              <DropdownMenuItem 
-                onClick={handleNewAgentClick} 
-                className={cn(
-                  "flex flex-col items-start py-3 hover:bg-muted/60 focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md",
-                  canCreateAgentConversation ? "cursor-pointer" : "cursor-not-allowed opacity-50"
-                )}
-                disabled={!canCreateAgentConversation}
-              >
-                <div className="flex items-center w-full gap-2 mb-1">
-                  <div className="w-5 flex justify-center">
-                    <Avatar className="h-5 w-5 bg-primary/10">
+                </DropdownMenuItem>
+              )}
+              
+              <DropdownMenuSeparator className="my-1" />
+              
+              {onNewAgentConversation && (
+                <DropdownMenuItem 
+                  onClick={handleNewAgentClick} 
+                  className={cn(
+                    "flex flex-col items-start py-3 hover:bg-muted/60 focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md",
+                    canCreateAgentConversation ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                  )}
+                  disabled={!canCreateAgentConversation}
+                >
+                  <div className="flex items-center w-full gap-2 mb-1">
+                    <div className="w-5 flex justify-center">
+                      <Avatar className="h-5 w-5 bg-primary/10">
+                        <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
+                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                          {agentName.length >= 2 
+                            ? agentName.substring(0, 2).toUpperCase()
+                            : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    <span className="font-medium">New conversation with this agent</span>
+                    {!canCreateAgentConversation && <span className="text-xs text-muted-foreground ml-2">(No agent selected)</span>}
+                  </div>
+                  <div className="pl-7 flex items-center gap-2 mt-1">
+                    <Avatar className="h-5 w-5 mr-1 bg-primary/10">
                       <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                         {agentName.length >= 2 
@@ -202,40 +234,40 @@ export function ChatToggle({
                           : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                       </AvatarFallback>
                     </Avatar>
+                    <span className="text-xs text-muted-foreground">
+                      Start fresh with <span className="text-foreground">{agentName}</span>
+                    </span>
                   </div>
-                  <span className="font-medium">New conversation with this agent</span>
-                  {!canCreateAgentConversation && <span className="text-xs text-muted-foreground ml-2">(No agent selected)</span>}
-                </div>
-                <div className="pl-7 flex items-center gap-2 mt-1">
-                  <Avatar className="h-5 w-5 mr-1 bg-primary/10">
-                    <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
-                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {agentName.length >= 2 
-                        ? agentName.substring(0, 2).toUpperCase()
-                        : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-muted-foreground">
-                    Start fresh with <span className="text-foreground">{agentName}</span>
-                  </span>
-                </div>
-              </DropdownMenuItem>
-            )}
-            
-            <DropdownMenuSeparator className="my-1" />
-            
-            {onPrivateDiscussion && (
-              <DropdownMenuItem 
-                onClick={handlePrivateDiscussionClick} 
-                className={cn(
-                  "flex flex-col items-start py-3 hover:bg-muted/60 focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md",
-                  canCreateAgentConversation ? "cursor-pointer" : "cursor-not-allowed opacity-50"
-                )}
-                disabled={!canCreateAgentConversation}
-              >
-                <div className="flex items-center w-full gap-2 mb-1">
-                  <div className="w-5 flex justify-center">
-                    <Avatar className="h-5 w-5 bg-primary/10">
+                </DropdownMenuItem>
+              )}
+              
+              <DropdownMenuSeparator className="my-1" />
+              
+              {onPrivateDiscussion && (
+                <DropdownMenuItem 
+                  onClick={handlePrivateDiscussionClick} 
+                  className={cn(
+                    "flex flex-col items-start py-3 hover:bg-muted/60 focus:bg-muted/60 data-[highlighted]:bg-muted/60 rounded-md",
+                    canCreateAgentConversation ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+                  )}
+                  disabled={!canCreateAgentConversation}
+                >
+                  <div className="flex items-center w-full gap-2 mb-1">
+                    <div className="w-5 flex justify-center">
+                      <Avatar className="h-5 w-5 bg-primary/10">
+                        <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
+                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                          {agentName.length >= 2 
+                            ? agentName.substring(0, 2).toUpperCase()
+                            : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    <span className="font-medium">Privately discuss with agent</span>
+                    {!canCreateAgentConversation && <span className="text-xs text-muted-foreground ml-2">(No agent selected)</span>}
+                  </div>
+                  <div className="pl-7 flex items-center gap-2 mt-1">
+                    <Avatar className="h-5 w-5 mr-1 bg-primary/10">
                       <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                         {agentName.length >= 2 
@@ -243,26 +275,13 @@ export function ChatToggle({
                           : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
                       </AvatarFallback>
                     </Avatar>
+                    <span className="text-xs text-muted-foreground">
+                      Private chat with <span className="text-foreground">{agentName}</span>
+                    </span>
                   </div>
-                  <span className="font-medium">Privately discuss with agent</span>
-                  {!canCreateAgentConversation && <span className="text-xs text-muted-foreground ml-2">(No agent selected)</span>}
-                </div>
-                <div className="pl-7 flex items-center gap-2 mt-1">
-                  <Avatar className="h-5 w-5 mr-1 bg-primary/10">
-                    <AvatarImage src={agentId ? undefined : undefined} alt={agentName} />
-                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {agentName.length >= 2 
-                        ? agentName.substring(0, 2).toUpperCase()
-                        : agentName.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-muted-foreground">
-                    Private chat with <span className="text-foreground">{agentName}</span>
-                  </span>
-                </div>
-              </DropdownMenuItem>
-            )}
-            
+                </DropdownMenuItem>
+              )}
+              
             {onNewConversation && !onNewLeadConversation && !onNewAgentConversation && !onPrivateDiscussion && (
               <DropdownMenuItem 
                 onClick={handleNewConversationClick} 
@@ -282,6 +301,7 @@ export function ChatToggle({
           </DropdownMenuContent>
         </DropdownMenu>
       )}
+      </div>
     </div>
   )
 } 

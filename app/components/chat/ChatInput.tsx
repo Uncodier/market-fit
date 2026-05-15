@@ -45,7 +45,15 @@ export const ChatInput = memo(function ChatInput({
 }: ChatInputProps) {
   const { isLayoutCollapsed } = useLayout()
   const internalRef = useRef<HTMLTextAreaElement>(null)
-  // Dynamic width calculation removed; rely on static container matching messages
+  
+  // Track window width for responsive left offset
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   
   // Track whether the textarea has any user input to control send button fill/enable
   const [hasInput, setHasInput] = useState(false)
@@ -120,8 +128,7 @@ export const ChatInput = memo(function ChatInput({
     if (window.innerWidth < 768) return '0px'; // Mobile full width
     
     // We know layout sidebar is either 64px or 256px
-    const isSidebarCollapsed = document.querySelector('.sidebar')?.classList.contains('collapsed');
-    const sidebarWidth = isSidebarCollapsed ? 64 : 256;
+    const sidebarWidth = isLayoutCollapsed ? 64 : 256;
     
     // Chat list width
     const chatListWidth = isChatListCollapsed ? 0 : 319;
@@ -141,7 +148,7 @@ export const ChatInput = memo(function ChatInput({
       }}
     >
       <div className="w-full">
-        <div className="max-w-[calc(100%-240px)] mx-auto relative pb-[20px] px-4 md:px-0">
+        <div className="max-w-3xl mx-auto relative pb-[20px] px-4 md:px-6">
           <form onSubmit={handleSubmit} className="relative w-full">
             <div className="relative w-full">
         <OptimizedTextarea

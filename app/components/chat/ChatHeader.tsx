@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Badge } from "@/app/components/ui/badge"
@@ -13,6 +13,7 @@ import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
 import { updateLead } from "@/app/leads/actions"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
+import { useLayout } from "@/app/context/LayoutContext"
 import { ChevronLeft } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 
@@ -54,7 +55,17 @@ export function ChatHeader({
   onBack
 }: ChatHeaderProps) {
   const { currentSite } = useSite()
+  const { isLayoutCollapsed } = useLayout()
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1024
+  )
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
   
   // Determine if we should show assignee instead of agent (used for ChatToggle dropdown)
   const hasAssignee = !!(isLead && leadData?.assignee)
@@ -123,28 +134,18 @@ export function ChatHeader({
   const leadEmail = leadData?.email
   const leadPhone = leadData?.phone
 
-  // Calculate dynamic offsets for fixed positioning
-  const getPositionStyles = () => {
-    if (typeof window === 'undefined') {
-      return { left: '0px', paddingLeft: '1rem', width: '100%' };
+  const positionStyles = useMemo(() => {
+    if (typeof window === "undefined" || windowWidth < 768) {
+      return { left: "0px", paddingLeft: "1rem", width: "100%" }
     }
-    if (window.innerWidth < 768) {
-      return { left: '0px', paddingLeft: '1rem', width: '100%' };
-    }
-    
-    // We know layout sidebar is either 64px or 256px
-    const isSidebarCollapsed = document.querySelector('.sidebar')?.classList.contains('collapsed');
-    const sidebarWidth = isSidebarCollapsed ? 64 : 256;
-    
-    // Chat list width
-    const chatListWidth = isChatListCollapsed ? 0 : 319;
-    
+    const sidebarWidth = isLayoutCollapsed ? 64 : 256
+    const chatListWidth = isChatListCollapsed ? 0 : 319
     return {
-      left: `${sidebarWidth}px`,
-      paddingLeft: `calc(${chatListWidth}px + 1rem)`,
-      width: `calc(100% - ${sidebarWidth}px)`
-    };
-  };
+      left: `${sidebarWidth + chatListWidth}px`,
+      paddingLeft: "1rem",
+      width: `calc(100% - ${sidebarWidth + chatListWidth}px)`,
+    }
+  }, [isLayoutCollapsed, isChatListCollapsed, windowWidth])
 
   return (
     <div
@@ -152,7 +153,8 @@ export function ChatHeader({
       className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] flex items-center z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2 fixed top-[64px] right-0 transition-all duration-300 ease-in-out pr-4" 
       style={{ 
         backdropFilter: 'blur(10px)',
-        ...getPositionStyles()
+        transform: 'translateZ(0)',
+        ...positionStyles
       }}>
       
       {/* Back Button for Mobile */}
@@ -164,10 +166,11 @@ export function ChatHeader({
         </div>
       )}
 
-      {/* ChatToggle positioned absolutely - hidden on mobile */}
-      <div className="hidden md:block">
-        <ChatToggle 
-          isCollapsed={isChatListCollapsed} 
+      {/* Hide / New — in flex flow so the lead toolbar row cannot stack over the buttons */}
+      <div className="hidden md:flex shrink-0 items-stretch relative z-[60]">
+        <ChatToggle
+          variant="toolbar"
+          isCollapsed={isChatListCollapsed}
           onToggle={toggleChatList}
           onNewConversation={startNewConversation}
           onNewLeadConversation={handleNewLeadConversation}
@@ -179,16 +182,14 @@ export function ChatHeader({
           agentId={agentId}
           leadName={isLead ? truncateLeadName(leadData?.name || "Lead") : "Visitor"}
           leadId={isLead ? leadData?.id || "" : ""}
-          className="absolute top-0 transition-all duration-300 ease-in-out"
-          style={{
-            left: !isChatListCollapsed ? "319px" : "0"
-          }}
         />
       </div>
-      
-      <div className={cn(
-        "w-full md:max-w-[calc(100%-240px)] md:mx-auto flex items-center justify-end transition-all duration-300 ease-in-out gap-4 pr-4 md:pr-0"
-      )}>
+
+      <div
+        className={cn(
+          "flex-1 min-w-0 flex items-center justify-end transition-all duration-300 ease-in-out gap-4 pr-4 md:pr-0 pl-2"
+        )}
+      >
         {/* Visitor/Lead info - only shown when not loading, not agent-only conversation, and a conversation is selected */}
         {!isLoadingLead && !isAgentOnlyConversation && hasSelectedConversation && (
           <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out min-w-0 flex-1 justify-end">

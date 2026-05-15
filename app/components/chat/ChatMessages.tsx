@@ -1075,13 +1075,13 @@ export function ChatMessages({
 
   return (
     <div ref={containerRef} className="flex-1 py-6 transition-colors duration-300 ease-in-out pb-[180px] min-w-0 w-full transition-all">
-      <div className="max-w-[calc(100%-240px)] mx-auto min-w-0 px-4 md:px-0">
+      <div className="max-w-3xl mx-auto min-w-0 px-4 md:px-6">
         {(isLoadingMessages || isTransitioningConversation) ? (
           <div className="space-y-6 w-full">
             {[1, 2, 3].map((i) => (
               <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
                 {i % 2 === 0 ? (
-                  <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
+                  <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
                     <div className="flex items-center mb-1 gap-2">
                       <div className="relative">
                         <div className="h-7 w-7 rounded-full bg-primary/10 animate-pulse"></div>
@@ -1099,7 +1099,7 @@ export function ChatMessages({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0 w-full md:w-[60%]">
+                  <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 items-end px-4 md:px-0 w-full md:w-[60%]">
                     <div className="flex flex-col min-w-0 items-end group w-full">
                       <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                         <div className="h-7 w-7 rounded-full bg-amber-500/10 animate-pulse"></div>
@@ -1155,7 +1155,7 @@ export function ChatMessages({
                     >
                       {/* Team Member Messages - Left aligned when there is a lead */}
                       {msg.role === "team_member" && hasLead ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0">
+                        <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0">
                           <div className="flex flex-col min-w-0 group">
                           <div className="flex items-center mb-1 gap-2">
                             <Avatar className="h-7 w-7 border border-primary/10">
@@ -1271,7 +1271,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : msg.role === "team_member" && !hasLead && !msg.isCurrentUserMessage ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0">
+                        <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 items-end px-4 md:px-0">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/10">
@@ -1389,7 +1389,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : /* Lead/Visitor Messages - Amber avatar, right aligned */ msg.role === "user" ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0">
+                        <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 items-end px-4 md:px-0">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
@@ -1513,7 +1513,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "agent" || msg.role === "assistant") ? (
-                        <div className="max-w-[calc(100%-240px)] min-w-0 group px-4 md:px-0">
+                        <div className="max-w-[85%] md:max-w-[75%] min-w-0 group px-4 md:px-0">
                           <div className="flex items-center mb-1 gap-2">
                             <div className="relative">
                               <Avatar className={`h-7 w-7 border ${(hasAssignee && msg.sender_id === leadData?.assignee?.id) ? 'border-blue-500/20' : 'border-primary/10'}`}>
@@ -1642,7 +1642,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (msg.role === "team_member" && !hasLead && msg.isCurrentUserMessage) ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0">
+                        <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 items-end px-4 md:px-0">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-primary/20">
@@ -1754,7 +1754,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : /* Visitor Messages - Amber avatar, right aligned */ (msg.role === "visitor") ? (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0">
+                        <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 items-end px-4 md:px-0">
                           <div className="flex flex-col min-w-0 items-end group">
                           <div className="flex items-center mb-1 gap-2 flex-row-reverse">
                             <Avatar className="h-7 w-7 border border-amber-500/20">
@@ -1866,7 +1866,7 @@ export function ChatMessages({
                           </div>
                         </div>
                       ) : (
-                        <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0">
+                        <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0">
                         <div 
                             className={`rounded-lg px-4 pt-4 pb-2 transition-all duration-300 ease-in-out text-foreground group overflow-hidden ${
                             msg.metadata?.status === "pending" ? "opacity-60" : ""

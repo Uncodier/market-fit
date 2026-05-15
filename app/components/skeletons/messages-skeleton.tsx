@@ -24,7 +24,7 @@ export function MessagesSkeleton({ showComposerSkeleton = true }: MessagesSkelet
         <div className="space-y-6">
         {/* System/Agent message */}
         <div className="flex justify-start">
-          <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
+          <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
             <div className="flex items-center mb-1 gap-2">
               <div className="relative">
                 <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
@@ -45,7 +45,7 @@ export function MessagesSkeleton({ showComposerSkeleton = true }: MessagesSkelet
 
         {/* User message */}
         <div className="flex justify-end">
-          <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 items-end px-4 md:px-0 w-full md:w-[60%]">
+          <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 items-end px-4 md:px-0 w-full md:w-[60%]">
             <div className="flex items-center mb-1 gap-2 flex-row-reverse">
               <Skeleton className="h-7 w-7 rounded-full bg-amber-500/10" />
               <Skeleton className="h-4 w-20 bg-amber-500/10" />
@@ -63,7 +63,7 @@ export function MessagesSkeleton({ showComposerSkeleton = true }: MessagesSkelet
 
         {/* Agent message with details */}
         <div className="flex justify-start">
-          <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
+          <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
             <div className="flex items-center mb-1 gap-2">
               <div className="relative">
                 <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
@@ -89,7 +89,7 @@ export function MessagesSkeleton({ showComposerSkeleton = true }: MessagesSkelet
 
         {/* Tool result message */}
         <div className="flex justify-start">
-          <div className="flex flex-col max-w-[calc(100%-240px)] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
+          <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
             <div className="flex items-center mb-1 gap-2">
               <div className="relative">
                 <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />

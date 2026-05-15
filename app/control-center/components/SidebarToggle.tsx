@@ -17,8 +17,7 @@ export function SidebarToggle({
 }: SidebarToggleProps) {
   return (
     <div className={cn(
-      "absolute top-0 z-[1000] flex items-center gap-2 h-[71px] px-4 transition-all duration-300 ease-in-out",
-      isCollapsed ? "left-0" : "left-0",
+      "flex flex-shrink-0 items-center justify-center transition-all duration-300 ease-in-out",
       className
     )}>
       <Button

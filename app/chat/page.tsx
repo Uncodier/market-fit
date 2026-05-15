@@ -13,7 +13,6 @@ import { useSite } from "@/app/context/SiteContext"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { ChatList } from "@/app/components/chat/chat-list"
-import { ChatToggle } from "@/app/components/chat/chat-toggle"
 import { useCommandK } from "@/app/hooks/use-command-k"
 // Chat service functions are imported dynamically where used to avoid client bundling issues
 import * as Icons from "@/app/components/ui/icons"
@@ -587,18 +586,23 @@ function ChatPageContent() {
       />
       
             <div className="flex h-full relative overflow-visible w-full bg-background flex-row">
-      {/* Chat list */}
+        {/* Chat list */}
       <div className={cn(
-        "h-full transition-all duration-300 ease-in-out z-20 bg-background/80 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 flex-shrink-0",
+        "h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative",
         hasSelectedConversation ? "hidden md:block" : "w-full",
         !hasSelectedConversation && "md:w-[319px]",
-        isChatListCollapsed ? "md:w-0 md:opacity-0" : "md:w-[319px]"
+        isChatListCollapsed
+          ? "w-0 md:w-0 md:opacity-0 -translate-x-full md:translate-x-0 border-none"
+          : "w-full md:w-[319px] translate-x-0",
+        !isChatListCollapsed && !hasSelectedConversation && "w-full md:w-[319px]"
       )} style={{ overflow: 'hidden' }}>
         <ChatList 
           siteId={currentSite?.id || ""}
           selectedConversationId={conversationId}
           onSelectConversation={handleSelectConversation}
-          className="border-r"
+          className="w-full h-full relative"
+          isCollapsed={isChatListCollapsed}
+          hasSelectedConversation={hasSelectedConversation}
         />
       </div>
       
@@ -608,8 +612,7 @@ function ChatPageContent() {
         !hasSelectedConversation ? "hidden md:flex" : "flex"
       )}
       style={{
-        marginLeft: (!isChatListCollapsed && hasSelectedConversation) ? "-319px" : "0",
-        width: (!isChatListCollapsed && hasSelectedConversation) ? "calc(100% + 319px)" : "100%",
+        width: "100%",
         flex: "1"
       }}
       >
@@ -638,7 +641,7 @@ function ChatPageContent() {
 
         {/* Chat messages area */}
         <div className="flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px]">
-          <div className="transition-all duration-300 ease-in-out h-full" style={{ paddingLeft: (!isChatListCollapsed && hasSelectedConversation) ? "319px" : "0" }}>
+          <div className="transition-all duration-300 ease-in-out h-full">
             <ChatMessages 
               chatMessages={chatMessages}
               isLoadingMessages={isLoadingMessages}
@@ -660,7 +663,7 @@ function ChatPageContent() {
         
         {/* Message input area */}
         {hasSelectedConversation && (
-          <div className="transition-all duration-300 ease-in-out" style={{ paddingLeft: (!isChatListCollapsed && hasSelectedConversation) ? "319px" : "0" }}>
+          <div className="transition-all duration-300 ease-in-out">
             <ChatInput 
               setMessage={setMessage}
               handleMessageChange={handleMessageChange}

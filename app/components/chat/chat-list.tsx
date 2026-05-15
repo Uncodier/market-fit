@@ -53,6 +53,8 @@ interface ChatListProps {
   className?: string
   onLoadConversations?: (loadFunction: () => Promise<void>) => void
   onDeleteConversation?: (conversationId: string) => Promise<void>
+  isCollapsed?: boolean
+  hasSelectedConversation?: boolean
 }
 
 // Función auxiliar para formatear la fecha
@@ -84,7 +86,9 @@ export function ChatList({
   onSelectConversation,
   className,
   onLoadConversations,
-  onDeleteConversation
+  onDeleteConversation,
+  isCollapsed,
+  hasSelectedConversation
 }: ChatListProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
@@ -999,21 +1003,21 @@ export function ChatList({
   }
 
   return (
-    <div className={cn("flex flex-col h-full fixed w-full md:w-[319px] bg-transparent", className)} style={{ maxWidth: '100%', overflow: 'hidden' }}>
+    <div className={cn("flex flex-col h-full w-full bg-transparent", className)} style={{ overflow: 'hidden' }}>
       {/* Top bar with search input - adaptable to dark mode */}
       <div className={cn(
         "flex items-center justify-center h-[71px] max-h-[71px] min-h-[71px] border-b transition-colors duration-300 flex-shrink-0 overflow-hidden",
-        "bg-transparent backdrop-blur supports-[backdrop-filter]:bg-transparent",
-        "fixed w-full md:w-[319px] z-[999]"
+        "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+        "w-full z-[40]"
       )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
-        <div className="relative w-[90%] flex justify-center">
+        <div className="relative w-full px-4 flex items-center justify-center min-w-0 transition-all duration-300">
           <SearchInput
             placeholder="Search conversations..."
             value={searchQuery}
             onSearch={setSearchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={cn(
-              "w-full h-11 text-sm rounded-md",
+              "w-full h-10 text-sm rounded-lg",
               isDarkMode ? "bg-background border-input" : "bg-white"
             )}
             containerClassName="w-full"
@@ -1023,8 +1027,8 @@ export function ChatList({
         </div>
       </div>
       
-      <div className="h-[calc(100dvh-71px)] overflow-hidden flex-grow">
-        <div className="h-full overflow-auto pt-[71px] flex flex-col">
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full overflow-auto flex flex-col pt-0">
           <div className="w-full flex flex-col flex-1">
             {/* Combined Filter - always visible */}
             <ChannelFilter

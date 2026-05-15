@@ -47,7 +47,7 @@ export default function ChatLoading() {
         
         {/* Chat messages area skeleton (scrollable) */}
         <div className="flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px] pb-[180px]">
-          <div className="max-w-[calc(100%-240px)] mx-auto space-y-8 px-4 md:px-0 py-6">
+          <div className="max-w-3xl mx-auto space-y-8 px-4 md:px-6 py-6">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
                 {i % 2 === 0 ? (
@@ -82,7 +82,7 @@ export default function ChatLoading() {
         {/* Input area skeleton (fixed bottom) */}
         <div className="fixed bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10 w-[calc(100%-319px)] max-md:w-full right-0">
           <div className="w-full">
-            <div className="max-w-[calc(100%-240px)] mx-auto relative pb-[20px] px-4 md:px-0 pt-4">
+            <div className="max-w-3xl mx-auto relative pb-[20px] px-4 md:px-6 pt-4">
               <Skeleton className="h-[121.5px] w-full rounded-2xl" />
               <div className="absolute bottom-[35px] right-[15px] flex gap-2">
                 <Skeleton className="h-[35.1px] w-[35.1px] rounded-[9999px]" />

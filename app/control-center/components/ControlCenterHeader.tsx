@@ -31,21 +31,19 @@ export function ControlCenterHeader({
         width: '100%',
       }}
     >
-      <div className="hidden md:block absolute top-0" style={{ left: sidebarLeft, transition: 'left 300ms ease-in-out' }}>
-        <SidebarToggle
-          isCollapsed={isSidebarCollapsed}
-          onToggle={toggleSidebar}
-          className="absolute top-0 left-0"
-        />
-      </div>
-      
       <div className={cn(
-        "w-full flex items-center justify-between transition-all duration-300 ease-in-out px-4 lg:px-8"
+        "w-full flex items-center justify-between transition-all duration-300 ease-in-out px-4 lg:px-6"
       )}
       style={{
         paddingLeft: isMobile ? '1rem' : `calc(${sidebarLeft} + ${!isSidebarCollapsed ? "319px" : "0px"} + 1rem)`
       }}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-3">
+          <div className="hidden md:flex items-center">
+            <SidebarToggle
+              isCollapsed={isSidebarCollapsed}
+              onToggle={toggleSidebar}
+            />
+          </div>
           {leftContent}
         </div>
         <div className="flex items-center gap-4">
