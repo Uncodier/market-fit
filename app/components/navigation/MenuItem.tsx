@@ -39,34 +39,34 @@ export function EmojiIcon({
 
   const collapsedInactive = isDarkMode
     ? section
-      ? "border-gray-600/45 bg-gray-800/45"
+      ? "border-gray-700/50 bg-gray-800/30"
       : "border-gray-700/50 bg-gray-800/30"
     : section
-      ? "border-gray-400/40 bg-gray-200/50"
+      ? "border-gray-300/55 bg-white/35"
       : "border-gray-300/50 bg-gray-100/50"
 
   const collapsedActive = isDarkMode
     ? section
-      ? "border-white/25 bg-white/[0.11]"
+      ? "border-gray-500/50 bg-gray-700/50"
       : "border-white/20 bg-white/10"
     : section
-      ? "border-gray-300/55 bg-white/35"
+      ? "border-gray-400/40 bg-gray-200/50"
       : "border-white/30 bg-white/20"
 
   const expandedInactive = isDarkMode
     ? section
-      ? "border-gray-600/45 bg-gray-800/45"
+      ? "border-gray-700/50 bg-gray-800/30"
       : "border-gray-700/50 bg-gray-800/30"
     : section
-      ? "border-gray-400/40 bg-gray-200/50"
+      ? "border-gray-300/55 bg-white/35"
       : "border-gray-300/50 bg-gray-100/50"
 
   const expandedActive = isDarkMode
     ? section
-      ? "border-white/25 bg-white/[0.11]"
+      ? "border-gray-500/50 bg-gray-700/50"
       : "border-white/20 bg-white/10"
     : section
-      ? "border-gray-300/55 bg-white/35"
+      ? "border-gray-400/40 bg-gray-200/50"
       : "border-white/30 bg-white/20"
   
   // Collapsed sidebar: framed emoji (narrow rail)

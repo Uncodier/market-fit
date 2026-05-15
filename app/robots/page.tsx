@@ -765,7 +765,7 @@ function RobotsPageContent() {
     }
     
     return null;
-  }, [requirementStatuses]);
+  }, [requirementStatuses, currentSite?.id]);
 
   const latestSourceCodeUrl = useMemo(() => {
     if (!requirementStatuses || requirementStatuses.length === 0) return null;
@@ -803,7 +803,7 @@ function RobotsPageContent() {
       }
     }
     return "none"
-  }, [requirementStatuses])
+  }, [requirementStatuses, currentSite?.id])
 
   // Preview pane should only appear when we actually have a preview URL
   // (preview_url / zip fallback from requirement_status). Running-instance-based
