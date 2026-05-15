@@ -1,19 +1,3 @@
-import { saas_en_123_data } from './demo-saas-en-123';
-import { ecom_es_456_data } from './demo-ecom-es-456';
-import { habituall_data } from './demo-habituall';
-
-export const demoProfiles: Record<string, any> = {
-  'demo-saas-en-123': saas_en_123_data,
-  'demo-ecom-es-456': ecom_es_456_data,
-  'demo-habituall': habituall_data,
-};
-
-export const getDemoData = (siteId: string | null) => {
-  if (!siteId) return null;
-  return demoProfiles[siteId] || null;
-};
-
-// Also export metadata about available demos for the UI picker
 export const availableDemos = [
   {
     id: 'demo-habituall',
@@ -34,3 +18,26 @@ export const availableDemos = [
     url: 'https://moda-rapida.demo'
   }
 ];
+
+export const getDemoData = async (siteId: string | null) => {
+  if (!siteId) return null;
+  
+  try {
+    if (siteId === 'demo-saas-en-123') {
+      const module = await import('./demo-saas-en-123');
+      return module.saas_en_123_data;
+    }
+    if (siteId === 'demo-ecom-es-456') {
+      const module = await import('./demo-ecom-es-456');
+      return module.ecom_es_456_data;
+    }
+    if (siteId === 'demo-habituall') {
+      const module = await import('./demo-habituall');
+      return module.habituall_data;
+    }
+  } catch (error) {
+    console.error(`Error loading demo data for ${siteId}:`, error);
+  }
+  
+  return null;
+};
