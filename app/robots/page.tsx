@@ -1475,7 +1475,7 @@ function RobotsPageContent() {
                     </div>
                   ) : (
                     <SimpleMessagesView 
-                      key={`${currentSite?.id}-${siteChangeKey}`}
+                      key={`${currentSite?.id}-${siteChangeKey}-${activeRobotInstance?.id || 'new'}`}
                       className="h-full absolute inset-0"
                       activeRobotInstance={activeRobotInstance}
                       isBrowserVisible={isBrowserVisible}

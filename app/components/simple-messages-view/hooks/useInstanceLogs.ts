@@ -272,8 +272,10 @@ export const useInstanceLogs = ({
       const supabase = createClient()
       const instanceId = activeRobotInstance.id
       let currentChannel: ReturnType<typeof supabase.channel> | null = null
+      let visibilityTimeout: NodeJS.Timeout | null = null
 
       const onRealtimePayload = (payload: any) => {
+        console.log(`[useInstanceLogs] Realtime payload received for instance ${instanceId}:`, payload.eventType)
         if (payload.eventType === 'INSERT') {
           const newLog = payload.new as InstanceLog
 
@@ -357,8 +359,14 @@ export const useInstanceLogs = ({
       let retryTimeout: NodeJS.Timeout | null = null
 
       const subscribe = () => {
+        console.log(`[useInstanceLogs] Subscribing to instance_logs for instance ${instanceId}...`)
         if (currentChannel) {
-          try { supabase.removeChannel(currentChannel) } catch (_) { /* ignore */ }
+          try { 
+            console.log(`[useInstanceLogs] Removing old channel for instance ${instanceId}`)
+            supabase.removeChannel(currentChannel) 
+          } catch (err) { 
+            console.warn(`[useInstanceLogs] Error removing channel:`, err)
+          }
         }
 
         const channel = supabase
@@ -374,6 +382,7 @@ export const useInstanceLogs = ({
             onRealtimePayload
           )
           .subscribe((status: string, err?: any) => {
+            console.log(`[useInstanceLogs] Subscription status for ${instanceId}:`, status, err || '')
             if (status === 'SUBSCRIBED') {
               retryCount = 0
             } else if (status === 'CHANNEL_ERROR') {
@@ -398,7 +407,7 @@ export const useInstanceLogs = ({
         const delay = Math.min(1000 * Math.pow(2, retryCount), 30000)
         retryCount++
         
-        console.log(`[useInstanceLogs] Retrying subscription in ${delay}ms... (Attempt ${retryCount})`)
+        console.log(`[useInstanceLogs] Retrying subscription for ${instanceId} in ${delay}ms... (Attempt ${retryCount})`)
         
         retryTimeout = setTimeout(() => {
           subscribe()
@@ -409,7 +418,9 @@ export const useInstanceLogs = ({
 
       const handleVisibility = () => {
         if (document.visibilityState === 'visible') {
-          setTimeout(() => {
+          console.log(`[useInstanceLogs] Visibility changed to visible, refreshing subscription for ${instanceId}`)
+          if (visibilityTimeout) clearTimeout(visibilityTimeout)
+          visibilityTimeout = setTimeout(() => {
             loadInstanceLogs()
             retryCount = 0
             subscribe()
@@ -420,10 +431,17 @@ export const useInstanceLogs = ({
       document.addEventListener('visibilitychange', handleVisibility)
 
       return () => {
+        console.log(`[useInstanceLogs] Cleaning up effect for instance ${instanceId}`)
         if (retryTimeout) clearTimeout(retryTimeout)
+        if (visibilityTimeout) clearTimeout(visibilityTimeout)
         document.removeEventListener('visibilitychange', handleVisibility)
         if (currentChannel) {
-          try { supabase.removeChannel(currentChannel) } catch (_) { /* ignore */ }
+          try { 
+            console.log(`[useInstanceLogs] Removing channel during cleanup for ${instanceId}`)
+            supabase.removeChannel(currentChannel) 
+          } catch (err) { 
+            console.warn(`[useInstanceLogs] Error removing channel during cleanup:`, err)
+          }
         }
       }
     } else {

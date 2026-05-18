@@ -215,28 +215,42 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
 
     
     const supabase = createClient()
+    const instanceId = activeRobotInstance.id
     
     const subscription = supabase
-      .channel('instance_plans_changes')
+      .channel(`instance_plans_changes_${instanceId}_${Date.now()}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'instance_plans',
-          filter: `instance_id=eq.${activeRobotInstance.id}`
+          filter: `instance_id=eq.${instanceId}`
         },
         (payload) => {
-          // Reload plans when there are changes
+          console.log(`[useInstancePlans] Realtime update for instance ${instanceId}`)
           loadInstancePlans()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log(`[useInstancePlans] Subscription status for ${instanceId}:`, status)
+      })
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        console.log(`[useInstancePlans] Visibility changed to visible, refreshing for ${instanceId}`)
+        loadInstancePlans()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
+      console.log(`[useInstancePlans] Cleaning up subscription for ${instanceId}`)
+      document.removeEventListener('visibilitychange', handleVisibility)
       supabase.removeChannel(subscription)
     }
-  }, [activeRobotInstance?.id])
+  }, [activeRobotInstance?.id, loadInstancePlans])
 
   return {
     steps,

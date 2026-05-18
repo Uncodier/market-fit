@@ -118,7 +118,7 @@ export const useInstanceAssets = ({ instanceId }: UseInstanceAssetsProps) => {
 
     // Set up real-time subscription
     const channel = supabase
-      .channel(`instance-assets-${instanceId}`)
+      .channel(`instance-assets-${instanceId}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -128,14 +128,26 @@ export const useInstanceAssets = ({ instanceId }: UseInstanceAssetsProps) => {
           filter: `instance_id=eq.${instanceId}`
         },
         (payload) => {
-          // Refetch assets to ensure consistency
+          console.log(`[useInstanceAssets] Realtime update for instance ${instanceId}`)
           fetchAssets()
         }
       )
       .subscribe((status) => {
+        console.log(`[useInstanceAssets] Subscription status for ${instanceId}:`, status)
       })
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        console.log(`[useInstanceAssets] Visibility changed to visible, refreshing assets for ${instanceId}`)
+        fetchAssets()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
+      console.log(`[useInstanceAssets] Cleaning up subscription for ${instanceId}`)
+      document.removeEventListener('visibilitychange', handleVisibility)
       supabase.removeChannel(channel)
     }
   }, [instanceId])
