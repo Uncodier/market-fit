@@ -61,7 +61,11 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const searchParams = useSearchParams()
   const router = useRouter()
   const { refreshRobots } = useRobots()
-  const { message, setMessage, messageRef, handleMessageChange, clearMessage, textareaRef } = useOptimizedMessageState()
+  
+  // Use active instance ID for cache key, or 'new' if no instance
+  const chatCacheKey = activeRobotInstance?.id ? `chat-${activeRobotInstance.id}` : 'chat-new'
+  const { message, setMessage, messageRef, handleMessageChange, clearMessage, textareaRef } = useOptimizedMessageState("", chatCacheKey)
+  
   const { user } = useAuthContext()
   const { userProfile } = useUserProfile(user?.id)
   

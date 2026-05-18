@@ -54,7 +54,8 @@ function ChatPageContent() {
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null)
   
   // Optimized message state management - debounced re-renders
-  const { message, setMessage, messageRef, clearMessage, handleMessageChange, textareaRef } = useOptimizedMessageState()
+  const chatCacheKey = conversationId && !conversationId.startsWith("new-") ? `chat-${conversationId}` : 'chat-new'
+  const { message, setMessage, messageRef, clearMessage, handleMessageChange, textareaRef } = useOptimizedMessageState("", chatCacheKey)
   const { user } = useAuthContext()
   const { currentSite } = useSite()
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
@@ -478,7 +479,7 @@ function ChatPageContent() {
 
   // Memoize conversation validation to avoid unnecessary calculations
   const hasSelectedConversation = useMemo(() => {
-    return conversationId && conversationId !== "" && !conversationId.startsWith("new-")
+    return Boolean(conversationId && conversationId !== "" && !conversationId.startsWith("new-"))
   }, [conversationId])
 
   // Sobrescribe el estado de isAgentResponding desde el tracker de API
