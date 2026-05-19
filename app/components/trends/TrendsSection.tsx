@@ -65,7 +65,7 @@ export function TrendsSection({ className = "", segments, currentSiteId, display
   const [isLoading, setIsLoading] = useState(true)
   const [selectedTrend, setSelectedTrend] = useState<TrendItem | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [activePlatforms, setActivePlatforms] = useState<TrendPlatform[]>(['google', 'reddit'])
+  const [activePlatforms, setActivePlatforms] = useState<TrendPlatform[]>(['google', 'reddit', 'twitter'])
   const [lastUpdated, setLastUpdated] = useState<string>('')
   const [sortBy, setSortBy] = useState<'relevance' | 'hotness' | 'viral' | 'impact' | 'cross-platform' | 'recent'>('relevance')
   

@@ -143,7 +143,7 @@ export function TrendsColumn({ className = "", segments, currentSiteId }: Trends
   const [isLoading, setIsLoading] = useState(true)
   const [selectedTrend, setSelectedTrend] = useState<TrendItem | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [activePlatforms] = useState<TrendPlatform[]>(['google', 'reddit'])
+  const [activePlatforms] = useState<TrendPlatform[]>(['google', 'reddit', 'twitter'])
   const [sortBy] = useState<'relevance' | 'hotness' | 'viral' | 'impact' | 'cross-platform' | 'recent'>('hotness') // Default to hotness for column view
 
   useEffect(() => {
