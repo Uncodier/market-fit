@@ -454,7 +454,7 @@ class TwitterTrendsService implements TrendService {
         const author = authors[index % authors.length]
         const likes = Math.floor(Math.random() * 5000) + 1000
         
-        const description = `Top post by @${author}: ${postText} • ❤️ ${likes.toLocaleString()} likes • 📈 ${tweetVolume} volume`
+        const description = `${postText}`
 
         return {
           id: `twitter-${Date.now()}-${index}`,
