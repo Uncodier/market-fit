@@ -1028,6 +1028,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   // Fetch nodes for the selected instance
   useEffect(() => {
+    // Clear state when instance changes to avoid leftover data
+    setNodes([])
+    setDummyNodes([])
+    setContexts([])
+    setPositions({})
+    setGeneratingNodeIds(new Set())
+    setSelectedContextId(null)
+    setImprentaHoveredNodeId(null)
+    setZoomedMedia(null)
+
     if (!activeInstanceId) return
 
     let cancelled = false
@@ -3429,7 +3439,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                       const assetUrl = extractUrl(rawAssetUrl);
                                       const isAssetUrl = assetUrl && (assetUrl.startsWith('http') || assetUrl.startsWith('data:'));
 
-                                      return isAssetUrl ? (
+                                      return (
                                         <Button 
                                           variant="outline" 
                                           size="sm"
@@ -3438,27 +3448,45 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                           onMouseDown={(e) => e.stopPropagation()}
                                           onClick={async (e) => {
                                             e.stopPropagation();
-                                            try {
-                                              const response = await fetch(assetUrl);
-                                              const blob = await response.blob();
+                                            if (isAssetUrl) {
+                                              try {
+                                                const response = await fetch(assetUrl);
+                                                const blob = await response.blob();
+                                                const blobUrl = window.URL.createObjectURL(blob);
+                                                const link = document.createElement('a');
+                                                link.href = blobUrl;
+                                                link.download = assetUrl.split('/').pop()?.split('?')[0] || `asset-${Date.now()}`;
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                                window.URL.revokeObjectURL(blobUrl);
+                                                toast.success("Downloaded");
+                                              } catch (err) {
+                                                window.open(assetUrl, '_blank');
+                                              }
+                                            } else {
+                                              // Download text result
+                                              let textToDownload = "";
+                                              if (res.text) textToDownload = String(res.text);
+                                              else textToDownload = JSON.stringify(res, null, 2);
+                                              
+                                              const blob = new Blob([textToDownload], { type: 'text/plain;charset=utf-8' });
                                               const blobUrl = window.URL.createObjectURL(blob);
                                               const link = document.createElement('a');
                                               link.href = blobUrl;
-                                              link.download = assetUrl.split('/').pop()?.split('?')[0] || `asset-${Date.now()}`;
+                                              link.download = `result-${Date.now()}.txt`;
                                               document.body.appendChild(link);
                                               link.click();
                                               document.body.removeChild(link);
                                               window.URL.revokeObjectURL(blobUrl);
-                                              toast.success("Downloaded");
-                                            } catch (err) {
-                                              window.open(assetUrl, '_blank');
+                                              toast.success("Downloaded result");
                                             }
                                           }}
-                                          title="Download Asset"
+                                          title="Download Result"
                                         >
                                           <Download className="w-4 h-4 mr-2" /> Download
                                         </Button>
-                                      ) : null;
+                                      );
                                   })()}
                                 </div>
                               ) : (

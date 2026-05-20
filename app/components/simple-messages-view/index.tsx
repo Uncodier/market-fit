@@ -70,32 +70,34 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const { userProfile } = useUserProfile(user?.id)
   
 
-  // Reset state when site changes
+  // Reset state when site changes, but carefully preserve cache behavior
+  // Note: We deliberately do NOT call clearMessage() here anymore to avoid 
+  // wiping the localStorage cache during initial mount or harmless re-renders.
   useEffect(() => {
-    
-    // Reset selected context when site changes
-    setSelectedContext({
-      leads: [],
-      contents: [],
-      requirements: [],
-      tasks: [],
-      campaigns: []
-    })
-    
-    // Reset activity selection
-    setSelectedActivity('ask')
-    
-    // Reset step indicator
-    setIsStepIndicatorExpanded(false)
-    
-    // Clear recent user message IDs
-    setRecentUserMessageIds(new Set())
-    setLastUserMessage('')
-    
-    // Clear message input
-    clearMessage()
-    
-  }, [currentSite?.id, clearMessage])
+    // Only reset context/UI states when site ID actually changes
+    if (currentSite?.id) {
+      // Reset selected context when site changes
+      setSelectedContext({
+        leads: [],
+        contents: [],
+        requirements: [],
+        tasks: [],
+        campaigns: []
+      })
+      
+      // Reset activity selection
+      setSelectedActivity('ask')
+      
+      // Reset step indicator
+      setIsStepIndicatorExpanded(false)
+      
+      // Clear recent user message IDs
+      setRecentUserMessageIds(new Set())
+      setLastUserMessage('')
+      
+      // We don't call clearMessage() here anymore to preserve cache
+    }
+  }, [currentSite?.id])
   
   // Create a RefObject for MessageInput compatibility
   const messageInputTextareaRef = useRef<HTMLTextAreaElement>(null) as React.RefObject<HTMLTextAreaElement>
