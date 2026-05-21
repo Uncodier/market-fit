@@ -2837,6 +2837,25 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     if (isEffectivelyDummy) {
                       /** Below full-detail zoom, strip expensive composites from the dummy card (animate-pulse gradient, etc). */
                       const liteDummy = !showFullNodeDetail
+                      
+                      const mediaTypeForDummy = (node.settings as any)?.media_type || node.type.replace('generate-', '')
+                      const isMediaDummy = mediaTypeForDummy === 'image' || mediaTypeForDummy === 'video' || mediaTypeForDummy === 'audio'
+                      const isVideoDummy = mediaTypeForDummy === 'video'
+                      
+                      // Calculate the appropriate aspect ratio from node parameters
+                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio
+                      let aspectStyle = "1/1"
+                      if (isVideoDummy) aspectStyle = "16/9"
+                      
+                      if (aspectRatioParam) {
+                        if (aspectRatioParam === "16:9") aspectStyle = "16/9"
+                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16"
+                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3"
+                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4"
+                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1"
+                        else aspectStyle = String(aspectRatioParam).replace(':', '/')
+                      }
+
                       return (
                         <div 
                           key={node.id}
@@ -2850,43 +2869,54 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                         >
                           <Card
                             className={
-                              "w-[480px] min-h-[280px] border-2 border-dashed border-primary/25 bg-card/50 rounded-3xl overflow-hidden relative flex flex-col justify-center items-center " +
-                              (liteDummy ? "" : "shadow-sm")
+                              "w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] border-2 border-foreground/10 bg-card rounded-3xl " +
+                              (liteDummy ? "" : "animate-pulse")
                             }
                           >
-                            {/* Fancy floating orbs (EmptyCard vibe). Skipped in lite mode
-                                to avoid expensive blur layers when hundreds of cards are
-                                on screen. */}
-                            {!liteDummy && (
-                              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                                <div
-                                  className="imprenta-orb bg-violet-500/30"
-                                  style={{ top: "18%", left: "14%", width: 140, height: 140, animation: "imprenta-orb-float-a 6s ease-in-out infinite", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
-                                />
-                                <div
-                                  className="imprenta-orb bg-indigo-500/25"
-                                  style={{ top: "58%", left: "62%", width: 120, height: 120, animation: "imprenta-orb-float-b 7.5s ease-in-out infinite", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
-                                />
-                                <div
-                                  className="imprenta-orb bg-pink-500/25"
-                                  style={{ top: "10%", left: "68%", width: 90, height: 90, animation: "imprenta-orb-float-c 6.8s ease-in-out infinite", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
-                                />
-                                <div
-                                  className="imprenta-orb bg-emerald-500/20"
-                                  style={{ top: "62%", left: "10%", width: 100, height: 100, animation: "imprenta-orb-float-b 8.2s ease-in-out infinite", animationDelay: "0.6s", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
-                                />
-                                <div
-                                  className="imprenta-orb bg-cyan-500/20"
-                                  style={{ top: "36%", left: "44%", width: 80, height: 80, animation: "imprenta-orb-float-c 7s ease-in-out infinite", animationDelay: "1.2s", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
-                                />
-                                <div
-                                  className="imprenta-orb bg-purple-500/22"
-                                  style={{ top: "32%", left: "30%", width: 70, height: 70, animation: "imprenta-orb-float-a 9s ease-in-out infinite", animationDelay: "1.8s", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
-                                />
+                            <CardContent className="p-5 flex flex-col gap-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground leading-none truncate">
+                                  Result
+                                </span>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-secondary/50">
+                                  {node.status === 'pending' ? 'pending' : 'running'}
+                                </Badge>
                               </div>
-                            )}
-
-                            <CardContent className="p-5 relative z-10 w-full h-full" />
+                              
+                              {isMediaDummy ? (
+                                <div 
+                                  className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center`}
+                                  style={{ aspectRatio: aspectStyle }}
+                                >
+                                  {!liteDummy && (
+                                    <div className="relative w-full h-full">
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <Bot className="w-8 h-8 text-muted-foreground/30 animate-pulse" />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className={`flex-1 min-h-[140px] rounded-xl bg-muted/30 border border-border/50 p-4 flex flex-col gap-3 justify-center`}>
+                                  {!liteDummy && (
+                                    <>
+                                      <div className="h-2.5 w-[85%] rounded-full bg-muted-foreground/20 animate-pulse" />
+                                      <div className="h-2.5 w-[65%] rounded-full bg-muted-foreground/20 animate-pulse" />
+                                      <div className="h-2.5 w-[40%] rounded-full bg-muted-foreground/20 animate-pulse" />
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center justify-between pt-3 border-t border-white/5 opacity-50 pointer-events-none">
+                                <div className="flex gap-2 w-full">
+                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
+                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
+                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
+                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
+                                </div>
+                              </div>
+                            </CardContent>
                           </Card>
                         </div>
                       )
