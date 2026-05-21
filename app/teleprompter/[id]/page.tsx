@@ -93,8 +93,8 @@ const presets = {
   interview: { fontSize: 30, scrollSpeed: 35, lineHeight: 1.6, padding: 45 }
 }
 
-export default function TeleprompterPage() {
-  const params = useParams()
+export default function TeleprompterPage(props: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(props.params);
   const router = useRouter()
   const { currentSite } = useSite()
   const [content, setContent] = useState<any>(null)
@@ -133,7 +133,7 @@ export default function TeleprompterPage() {
 
   useEffect(() => {
     loadContent()
-  }, [params.id])
+  }, [unwrappedParams.id])
 
   useEffect(() => {
     // Check media support on component mount
@@ -212,7 +212,7 @@ export default function TeleprompterPage() {
         e.preventDefault()
         toggleScrolling()
       } else if (e.code === 'Escape') {
-        router.push(`/content/${params.id}`)
+        router.push(`/content/${unwrappedParams.id}`)
       } else if (e.code === 'ArrowUp' && (e.ctrlKey || e.metaKey)) {
         // Ctrl/Cmd + Up: Increase font size
         e.preventDefault()
@@ -249,28 +249,28 @@ export default function TeleprompterPage() {
         clearTimeout(controlsTimeoutRef.current)
       }
     }
-  }, [router, params.id])
+  }, [router, unwrappedParams.id])
 
   const loadContent = async () => {
     setIsLoading(true)
     try {
-      const { content: contentData, error } = await getContentById(params.id as string)
+      const { content: contentData, error } = await getContentById(unwrappedParams.id as string)
       
       if (error) {
         toast.error(error)
-        router.push(`/content/${params.id}`)
+        router.push(`/content/${unwrappedParams.id}`)
         return
       }
 
       if (!contentData) {
         toast.error("Content not found")
-        router.push(`/content/${params.id}`)
+        router.push(`/content/${unwrappedParams.id}`)
         return
       }
 
       if (contentData.type !== 'video') {
         toast.error("Teleprompter is only available for video content")
-        router.push(`/content/${params.id}`)
+        router.push(`/content/${unwrappedParams.id}`)
         return
       }
 
@@ -278,7 +278,7 @@ export default function TeleprompterPage() {
     } catch (error) {
       console.error("Error loading content:", error)
       toast.error("Failed to load content")
-      router.push(`/content/${params.id}`)
+      router.push(`/content/${unwrappedParams.id}`)
     } finally {
       setIsLoading(false)
     }
@@ -1226,7 +1226,7 @@ export default function TeleprompterPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => router.push(`/content/${params.id}`)}
+              onClick={() => router.push(`/content/${unwrappedParams.id}`)}
               className="bg-black/50 text-white border-white/20 hover:bg-black/70"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />

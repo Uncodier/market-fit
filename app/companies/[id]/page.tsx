@@ -18,8 +18,8 @@ import { MapPin } from "@/app/leads/components/custom-icons"
 import { Badge } from "@/app/components/ui/badge"
 import { cn } from "@/lib/utils"
 
-export default function CompanyDetailPage() {
-  const params = useParams()
+export default function CompanyDetailPage(props: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(props.params);
   const router = useRouter()
   const [company, setCompany] = useState<Company | null>(null)
   const [subsidiaries, setSubsidiaries] = useState<Company[]>([])
@@ -28,7 +28,7 @@ export default function CompanyDetailPage() {
   const [editForm, setEditForm] = useState<Company | null>(null)
 
   useEffect(() => {
-    if (params?.id) {
+    if (unwrappedParams?.id) {
       loadCompany()
       loadSubsidiaries()
     }
@@ -49,7 +49,7 @@ export default function CompanyDetailPage() {
     
     setLoading(true)
     try {
-      const { company: companyData, error } = await getCompanyById(params.id as string)
+      const { company: companyData, error } = await getCompanyById(unwrappedParams.id as string)
       
       if (error || !companyData) {
         toast.error(error || "Company not found")
@@ -72,7 +72,7 @@ export default function CompanyDetailPage() {
     if (!params?.id) return
     
     try {
-      const { subsidiaries: subsidiariesData, error } = await getSubsidiaries(params.id as string)
+      const { subsidiaries: subsidiariesData, error } = await getSubsidiaries(unwrappedParams.id as string)
       
       if (error) {
         console.error(error)

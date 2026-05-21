@@ -403,8 +403,8 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
   );
 }
 
-export default function InvoicePdfPage() {
-  const params = useParams();
+export default function InvoicePdfPage(props: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(props.params);
   const { currentSite } = useSite();
   const [sale, setSale] = useState<Sale | null>(null);
   const [saleOrder, setSaleOrder] = useState<SaleOrder | null>(null);
@@ -415,11 +415,11 @@ export default function InvoicePdfPage() {
   // Load sale data
   useEffect(() => {
     async function loadSale() {
-      if (!currentSite?.id || !params.id) return;
+      if (!currentSite?.id || !unwrappedParams.id) return;
       
       setLoading(true);
       try {
-        const saleId = String(params.id);
+        const saleId = String(unwrappedParams.id);
         
         // Load sale data
         const saleResult = await getSaleById(currentSite.id, saleId);
@@ -452,7 +452,7 @@ export default function InvoicePdfPage() {
     }
     
     loadSale();
-  }, [currentSite, params.id]);
+  }, [currentSite, unwrappedParams.id]);
   
   // Update page title for printing
   useEffect(() => {
