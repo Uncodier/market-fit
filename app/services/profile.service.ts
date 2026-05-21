@@ -18,6 +18,9 @@ export interface CalendarSettings {
     [key: string]: { enabled: boolean; start: string; end: string } // key: monday, tuesday, etc.
   }
   event_types?: EventType[]
+  respect_holidays?: boolean
+  timezone?: string
+  schedule_name?: string
 }
 
 export interface ProfileData {

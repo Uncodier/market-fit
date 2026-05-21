@@ -67,8 +67,8 @@ function ToolDetailSkeleton() {
   );
 }
 
-export default async function ToolDetailPage({ params }: { params: { logId: string } }) {
-  const { logId } = await params
+export default async function ToolDetailPage(props: { params: Promise<{ logId: string }> }) {
+  const { logId } = await props.params
   let logData = null
   
   try {

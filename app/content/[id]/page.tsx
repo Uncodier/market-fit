@@ -958,8 +958,8 @@ const getNetworkIcon = (network: string) => {
   }
 }
 
-export default function ContentDetailPage() {
-  const params = useParams()
+export default function ContentDetailPage(props: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(props.params);
   const router = useRouter()
   const [content, setContent] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -1162,7 +1162,7 @@ export default function ContentDetailPage() {
 
   useEffect(() => {
     loadContent()
-  }, [params.id])
+  }, [unwrappedParams.id])
 
   // Add effect to update the title in the topbar when content is loaded
   useEffect(() => {
@@ -1199,10 +1199,10 @@ export default function ContentDetailPage() {
   const loadContent = async () => {
     setIsLoading(true)
     try {
-      console.log("Loading content with ID:", params.id)
+      console.log("Loading content with ID:", unwrappedParams.id)
       
       // Import and use server action directly
-      const { content: contentData, error } = await getContentById(params.id as string)
+      const { content: contentData, error } = await getContentById(unwrappedParams.id as string)
       
       if (error) {
         console.error("Error from getContentById:", error)
@@ -1211,7 +1211,7 @@ export default function ContentDetailPage() {
       }
 
       if (!contentData) {
-        console.error("Content not found for ID:", params.id)
+        console.error("Content not found for ID:", unwrappedParams.id)
         toast.error("Content not found")
         return
       }

@@ -214,7 +214,7 @@ const getActivitiesSections = (t: (key: string) => string): QuickNavSection[] =>
 ]
 
 const getCalendarSections = (t: (key: string) => string): QuickNavSection[] => [
-  { id: "round-robin-calendars", title: "Round Robin Calendars" },
+  { id: "calendars", title: "Calendars" },
 ]
 
 export default function SettingsPage() {

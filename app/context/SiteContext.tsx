@@ -191,7 +191,7 @@ export interface SiteSettings {
       tracking_code?: string
     }
   } | null
-  round_robin_calendars?: RoundRobinCalendar[] | null
+  calendars?: RoundRobinCalendar[] | null
   branding?: {
     brand_essence?: string
     brand_personality?: string

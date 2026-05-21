@@ -102,15 +102,15 @@ function DealStatusBar({ currentStatus, onStatusChange }: DealStatusBarProps) {
   );
 }
 
-export default function DealPage() {
+export default function DealPage(props: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(props.params);
   const { t } = useLocalization()
-  const params = useParams()
   const router = useRouter()
   const [deal, setDeal] = useState<Deal | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("summary")
 
-  const id = params.id as string
+  const id = unwrappedParams.id as string
   const [tasks, setTasks] = useState<any[]>([])
 
   useEffect(() => {

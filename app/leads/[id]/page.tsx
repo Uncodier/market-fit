@@ -27,8 +27,8 @@ import { Badge } from "@/app/components/ui/badge"
 import { StatusSegmentBar } from "@/app/leads/components/StatusSegmentBar"
 import { AttributionModal } from "@/app/leads/components/AttributionModal"
 
-export default function LeadDetailPage() {
-  const params = useParams()
+export default function LeadDetailPage(props: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(props.params);
   const router = useRouter()
   const { currentSite } = useSite()
   const [lead, setLead] = useState<Lead | null>(null)
@@ -39,7 +39,7 @@ export default function LeadDetailPage() {
   const [pendingStatus, setPendingStatus] = useState<"new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified" | null>(null)
   
   // Extract id safely from params
-  const leadId = Array.isArray(params.id) ? params.id[0] : params.id
+  const leadId = Array.isArray(unwrappedParams.id) ? unwrappedParams.id[0] : unwrappedParams.id
   
   useEffect(() => {
     if (currentSite?.id && leadId) {

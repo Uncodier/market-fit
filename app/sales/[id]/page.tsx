@@ -484,8 +484,8 @@ function SaleInvoice({ sale, saleOrder, segments, campaigns, siteName, siteUrl, 
   );
 }
 
-export default function SaleDetailPage() {
-  const params = useParams();
+export default function SaleDetailPage(props: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(props.params);
   const router = useRouter();
   const { currentSite } = useSite();
   const [sale, setSale] = useState<Sale | null>(null);
@@ -500,14 +500,14 @@ export default function SaleDetailPage() {
   // Load sale data
   useEffect(() => {
     async function loadSale() {
-      if (!currentSite?.id || !params.id) return;
+      if (!currentSite?.id || !unwrappedParams.id) return;
       
       // Reset title to default when component mounts and while loading
       document.title = 'Sales | Market Fit';
       const resetEvent = new CustomEvent('breadcrumb:update', {
         detail: {
           title: 'Sale Details',
-          path: `/sales/${params.id}`,
+          path: `/sales/${unwrappedParams.id}`,
           section: 'sales'
         }
       });
@@ -515,7 +515,7 @@ export default function SaleDetailPage() {
       
       setLoading(true);
       try {
-        const saleId = String(params.id);
+        const saleId = String(unwrappedParams.id);
         
         // Load sale data
         const saleResult = await getSaleById(currentSite.id, saleId);
@@ -560,7 +560,7 @@ export default function SaleDetailPage() {
     }
     
     loadSale();
-  }, [currentSite, params.id]);
+  }, [currentSite, unwrappedParams.id]);
   
   // Add effect to update the title in the topbar when sale is loaded
   useEffect(() => {
@@ -665,11 +665,11 @@ export default function SaleDetailPage() {
   };
   
   const handleEditSuccess = async () => {
-    if (!currentSite?.id || !params.id) return;
+    if (!currentSite?.id || !unwrappedParams.id) return;
     
     setLoading(true);
     try {
-      const saleId = String(params.id);
+      const saleId = String(unwrappedParams.id);
       const saleResult = await getSaleById(currentSite.id, saleId);
       
       if (saleResult.error) {
@@ -691,11 +691,11 @@ export default function SaleDetailPage() {
   
   // Handle order creation success
   const handleOrderCreationSuccess = async () => {
-    if (!currentSite?.id || !params.id) return;
+    if (!currentSite?.id || !unwrappedParams.id) return;
     
     try {
       // Refresh the sale order data
-      const saleId = String(params.id);
+      const saleId = String(unwrappedParams.id);
       const saleOrderResult = await getSaleOrderBySaleId(currentSite.id, saleId);
       
       if (saleOrderResult.error) {
@@ -715,11 +715,11 @@ export default function SaleDetailPage() {
   
   // Handle payment success
   const handlePaymentSuccess = async () => {
-    if (!currentSite?.id || !params.id) return;
+    if (!currentSite?.id || !unwrappedParams.id) return;
     
     try {
       // Refresh the sale data
-      const saleId = String(params.id);
+      const saleId = String(unwrappedParams.id);
       const saleResult = await getSaleById(currentSite.id, saleId);
       
       if (saleResult.error) {

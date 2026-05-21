@@ -49,8 +49,17 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
       ...acc,
       [day.id]: { enabled: day.id !== "saturday" && day.id !== "sunday", start: "09:00", end: "17:00" }
     }), {}),
-    event_types: []
+    event_types: [],
+    respect_holidays: false,
+    timezone: "America/Mexico_City",
+    schedule_name: "Sinergia México"
   })
+
+  const timeOptions = Array.from({ length: 48 }).map((_, i) => {
+    const hours = Math.floor(i / 2).toString().padStart(2, '0');
+    const minutes = i % 2 === 0 ? '00' : '30';
+    return `${hours}:${minutes}`;
+  });
 
   const [editingEventType, setEditingEventType] = useState<Partial<EventType> | null>(null)
 
@@ -151,55 +160,109 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
 
   return (
     <div className="space-y-12">
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            General Availability
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8 px-8 pb-8">
-          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-accent/5">
-            <div className="space-y-0.5">
-              <Label className="text-base font-medium">Global Calendar Enabled</Label>
-              <p className="text-sm text-muted-foreground">Master switch for all your booking links</p>
-            </div>
-            <Switch 
-              checked={formData.enabled} 
-              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))} 
-            />
-          </div>
+      {/* Global Enable Switch */}
+      <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-accent/5">
+        <div className="space-y-0.5">
+          <Label className="text-base font-medium">Global Calendar Enabled</Label>
+          <p className="text-sm text-muted-foreground">Master switch for all your booking links</p>
+        </div>
+        <Switch 
+          checked={formData.enabled} 
+          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))} 
+        />
+      </div>
 
-          <div className="space-y-4">
-            <Label className="text-base font-semibold">Weekly Hours</Label>
+      {/* Business Hours Section */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">Business Hours</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Define your business hours for different regions and locations
+            </p>
+          </div>
+          <Button variant="outline" className="gap-2 rounded-full">
+            <Plus className="h-4 w-4" />
+            Add Schedule
+          </Button>
+        </div>
+
+        <Card className="border border-border shadow-sm overflow-hidden">
+          <CardHeader className="p-4 border-b border-border bg-background flex flex-row items-center gap-4 space-y-0">
+            <Input 
+              className="flex-1 max-w-[300px]" 
+              value={formData.schedule_name || ""}
+              onChange={(e) => setFormData(prev => ({ ...prev, schedule_name: e.target.value }))}
+              placeholder="Schedule Name"
+            />
+            <Select 
+              value={formData.timezone || "America/Mexico_City"}
+              onValueChange={(v) => setFormData(prev => ({ ...prev, timezone: v }))}
+            >
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Select timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="America/Mexico_City">Mexico City (GMT-6)</SelectItem>
+                <SelectItem value="America/New_York">New York (GMT-5)</SelectItem>
+                <SelectItem value="Europe/Madrid">Madrid (GMT+1)</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex-1" />
+            <Button variant="ghost" size="icon">
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-8 p-8">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base font-semibold">Respect Holidays</Label>
+                <p className="text-sm text-muted-foreground">Agents will not work on regional holidays when enabled</p>
+              </div>
+              <Switch 
+                checked={formData.respect_holidays || false} 
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, respect_holidays: checked }))} 
+              />
+            </div>
+
             <div className="space-y-3">
               {DAYS.map((day) => (
-                <div key={day.id} className="flex items-center gap-4 py-2 border-b border-border last:border-0">
-                  <div className="w-32 flex items-center gap-3">
+                <div key={day.id} className="flex items-center p-3 rounded-lg border border-border gap-8">
+                  <div className="flex items-center gap-4 w-32">
                     <Switch 
                       checked={formData.availability[day.id]?.enabled} 
                       onCheckedChange={() => handleToggleDay(day.id)} 
                     />
-                    <span className={formData.availability[day.id]?.enabled ? "font-medium" : "text-muted-foreground"}>
+                    <span className={cn("min-w-[80px]", formData.availability[day.id]?.enabled ? "font-medium text-foreground" : "text-foreground font-medium")}>
                       {day.label}
                     </span>
                   </div>
                   
                   {formData.availability[day.id]?.enabled ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        className="w-32 h-9"
+                    <div className="flex items-center gap-4">
+                      <Select
                         value={formData.availability[day.id].start}
-                        onChange={(e) => handleTimeChange(day.id, "start", e.target.value)}
-                      />
-                      <span className="text-muted-foreground">-</span>
-                      <Input
-                        type="time"
-                        className="w-32 h-9"
+                        onValueChange={(value) => handleTimeChange(day.id, "start", value)}
+                      >
+                        <SelectTrigger className="w-[140px] h-10 bg-background shadow-none">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <span className="text-muted-foreground text-sm font-medium">to</span>
+                      <Select
                         value={formData.availability[day.id].end}
-                        onChange={(e) => handleTimeChange(day.id, "end", e.target.value)}
-                      />
+                        onValueChange={(value) => handleTimeChange(day.id, "end", value)}
+                      >
+                        <SelectTrigger className="w-[140px] h-10 bg-background shadow-none">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                   ) : (
                     <span className="text-sm text-muted-foreground italic">Unavailable</span>
@@ -207,19 +270,30 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                 </div>
               ))}
             </div>
-          </div>
-        </CardContent>
-        <ActionFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleSave}
-            disabled={isUpdating}
-          >
-            {isUpdating ? "Saving..." : "Save Availability"}
-          </Button>
-        </ActionFooter>
-      </Card>
+          </CardContent>
+          <ActionFooter>
+            <div className="flex items-center justify-end gap-4 w-full">
+              <Button
+                type="button"
+                variant="outline"
+                className="text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full px-6"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove Schedule
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSave}
+                disabled={isUpdating}
+                className="rounded-full px-6 border-foreground/20 font-medium"
+              >
+                {isUpdating ? "Saving..." : "Save Schedule"}
+              </Button>
+            </div>
+          </ActionFooter>
+        </Card>
+      </div>
 
       <div id="event-types" className="space-y-6 pt-4">
         <div className="flex items-center justify-between">

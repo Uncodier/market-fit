@@ -186,8 +186,8 @@ const ExperimentSkeleton = () => {
   )
 }
 
-export default function ExperimentDetailPage() {
-  const params = useParams()
+export default function ExperimentDetailPage(props: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(props.params);
   const router = useRouter()
   const { currentSite } = useSite()
   const [experiment, setExperiment] = useState<Experiment | null>(null)
@@ -240,10 +240,10 @@ export default function ExperimentDetailPage() {
   })
 
   useEffect(() => {
-    if (currentSite?.id && params.id) {
+    if (currentSite?.id && unwrappedParams.id) {
       loadExperiment()
     }
-  }, [currentSite?.id, params.id])
+  }, [currentSite?.id, unwrappedParams.id])
 
   // Update editor content when experiment is loaded
   useEffect(() => {
@@ -300,7 +300,7 @@ export default function ExperimentDetailPage() {
   // Add event listener for experiment:refresh
   useEffect(() => {
     const handleExperimentRefresh = () => {
-      if (currentSite && params.id) {
+      if (currentSite && unwrappedParams.id) {
         loadExperiment();
       }
     };
@@ -310,7 +310,7 @@ export default function ExperimentDetailPage() {
     return () => {
       window.removeEventListener('experiment:refresh', handleExperimentRefresh);
     };
-  }, [currentSite, params.id]);
+  }, [currentSite, unwrappedParams.id]);
 
   // Add event listener for AI-generated content
   useEffect(() => {
@@ -384,7 +384,7 @@ export default function ExperimentDetailPage() {
   }, []);
 
   const loadExperiment = async () => {
-    if (!currentSite || !params.id) return
+    if (!currentSite || !unwrappedParams.id) return
     
     setIsLoading(true)
     try {
@@ -414,7 +414,7 @@ export default function ExperimentDetailPage() {
           ),
           validations
         `)
-        .eq('id', params.id as string)
+        .eq('id', unwrappedParams.id as string)
         .single()
 
       if (error) {

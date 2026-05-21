@@ -12,13 +12,45 @@ import { useSite, RoundRobinCalendar } from "@/app/context/SiteContext"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { siteMembersService } from "@/app/services/site-members-service"
+import { useAuth } from "@/app/hooks/use-auth"
 
 export function CalendarSection() {
   const { currentSite, updateSettings } = useSite()
+  const { user } = useAuth()
   const [isUpdating, setIsUpdating] = useState(false)
   
-  const calendars = currentSite?.settings?.round_robin_calendars || []
-  const teamMembers = currentSite?.settings?.team_members || []
+  const calendars = currentSite?.settings?.calendars || []
+  const [teamMembers, setTeamMembers] = useState<{name: string, email: string}[]>([])
+
+  React.useEffect(() => {
+    let mounted = true;
+    if (currentSite?.id) {
+      siteMembersService.getMembers(currentSite.id).then(members => {
+        if (!mounted) return;
+        const formattedMembers = members.map(m => ({ email: m.email, name: m.name || m.email }));
+        
+        // Ensure current user is in the list just in case
+        if (user?.email && !formattedMembers.some(m => m.email === user.email)) {
+          formattedMembers.unshift({ email: user.email, name: user.user_metadata?.name || user.email });
+        }
+        
+        setTeamMembers(formattedMembers);
+      }).catch(err => {
+        console.error("Error fetching site members:", err);
+        // Fallback
+        if (mounted) {
+          const fallback = currentSite.settings?.team_members || [];
+          if (user?.email && !fallback.some(m => m.email === user.email)) {
+            setTeamMembers([{ email: user.email, name: user.user_metadata?.name || user.email }, ...fallback]);
+          } else {
+            setTeamMembers(fallback);
+          }
+        }
+      });
+    }
+    return () => { mounted = false; };
+  }, [currentSite?.id, currentSite?.settings?.team_members, user?.email, user?.user_metadata?.name]);
 
   const [editingCalendar, setEditingCalendar] = useState<Partial<RoundRobinCalendar> | null>(null)
 
@@ -51,10 +83,12 @@ export function CalendarSection() {
         ? calendars.map(c => c.id === editingCalendar.id ? editingCalendar as RoundRobinCalendar : c)
         : [...calendars, editingCalendar as RoundRobinCalendar]
 
-      await updateSettings({
-        ...currentSite?.settings,
-        round_robin_calendars: updatedCalendars
-      })
+      if (currentSite?.id) {
+        await updateSettings(currentSite.id, {
+          ...currentSite?.settings,
+          calendars: updatedCalendars
+        })
+      }
       
       setEditingCalendar(null)
       toast.success("Calendar saved successfully")
@@ -72,10 +106,12 @@ export function CalendarSection() {
     setIsUpdating(true)
     try {
       const updatedCalendars = calendars.filter(c => c.id !== id)
-      await updateSettings({
-        ...currentSite?.settings,
-        round_robin_calendars: updatedCalendars
-      })
+      if (currentSite?.id) {
+        await updateSettings(currentSite.id, {
+          ...currentSite?.settings,
+          calendars: updatedCalendars
+        })
+      }
       toast.success("Calendar deleted successfully")
     } catch (error) {
       console.error(error)
@@ -109,12 +145,12 @@ export function CalendarSection() {
   }
 
   return (
-    <div id="round-robin-calendars" className="space-y-6">
+    <div id="calendars" className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold flex items-center gap-2">
             <CalendarIcon className="h-6 w-6 text-foreground" />
-            Round Robin Calendars
+            Calendars
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Create shared booking pages that assign meetings to team members.
@@ -129,11 +165,11 @@ export function CalendarSection() {
       </div>
 
       <div className="grid gap-4">
-        {/* New Round Robin Calendar Form */}
+        {/* New Calendar Form */}
         {editingCalendar && !calendars.some(c => c.id === editingCalendar.id) && (
           <Card className="border dark:border-white/5 border-black/5 shadow-none overflow-hidden">
             <CardHeader className="px-8 py-6">
-              <CardTitle className="text-lg font-semibold">New Round Robin Calendar</CardTitle>
+              <CardTitle className="text-lg font-semibold">New Calendar</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t border-border">
               <div className="grid gap-5 md:grid-cols-2">
@@ -227,7 +263,7 @@ export function CalendarSection() {
             <EmptyCard 
               icon={<CalendarIcon />}
               title="No calendars yet"
-              description="Create your first round robin booking page to start scheduling."
+              description="Create your first booking page to start scheduling."
             />
           </div>
         ) : (

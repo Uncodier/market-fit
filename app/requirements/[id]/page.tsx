@@ -326,7 +326,8 @@ const RequirementSkeleton = () => {
 }
 
 // First, wrap the component with Suspense
-export default function RequirementDetailPage() {
+export default function RequirementDetailPage(props: { params: Promise<{ id: string }> }) {
+  React.use(props.params); // Unwrap to prevent Next.js 15 warning
   return (
     <Suspense fallback={<RequirementSkeleton />}>
       <RequirementDetailContent />

@@ -71,6 +71,7 @@ export interface Database {
           team_members: Json | null
           team_roles: Json | null
           org_structure: Json | null
+          calendars: Json | null
           created_at: string
           updated_at: string
         }
@@ -94,6 +95,7 @@ export interface Database {
           team_members?: Json | null
           team_roles?: Json | null
           org_structure?: Json | null
+          calendars?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -117,6 +119,7 @@ export interface Database {
           team_members?: Json | null
           team_roles?: Json | null
           org_structure?: Json | null
+          calendars?: Json | null
           created_at?: string
           updated_at?: string
         }

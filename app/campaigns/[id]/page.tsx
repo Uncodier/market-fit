@@ -155,9 +155,9 @@ function CampaignStatusBar({ currentStatus, onStatusChange }: CampaignStatusBarP
   );
 }
 
-export default function TaskDetailPage() {
+export default function TaskDetailPage(props: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(props.params);
   const { t } = useLocalization()
-  const params = useParams();
   const router = useRouter();
   const { currentSite } = useSite();
   const [campaign, setCampaign] = useState<any | null>(null);
@@ -377,7 +377,7 @@ export default function TaskDetailPage() {
 
   // Function to load leads for the campaign
   const loadCampaignLeads = async (campaignId: string) => {
-    if (!params.id || !currentSite?.id) return;
+    if (!unwrappedParams.id || !currentSite?.id) return;
     
     try {
       setLoadingLeads(true);
@@ -399,13 +399,13 @@ export default function TaskDetailPage() {
   
   // Load campaign data
   useEffect(() => {
-    if (params.id) {
+    if (unwrappedParams.id) {
       // Reset title to default when component mounts and while loading
       document.title = 'Campaign Details | Market Fit';
       const resetEvent = new CustomEvent('breadcrumb:update', {
         detail: {
           title: 'Campaign Details',
-          path: `/campaigns/${params.id}`,
+          path: `/campaigns/${unwrappedParams.id}`,
           section: 'campaigns'
         }
       });
@@ -417,7 +417,7 @@ export default function TaskDetailPage() {
       // Load the campaign with the server action instead of the local function
       const fetchCampaign = async () => {
         try {
-          const response = await getCampaignById(params.id as string);
+          const response = await getCampaignById(unwrappedParams.id as string);
           
           if (response && response.data) {
             console.log("Campaign data:", JSON.stringify(response.data));
@@ -465,7 +465,7 @@ export default function TaskDetailPage() {
             const event = new CustomEvent('breadcrumb:update', {
               detail: {
                 title: response.data.title,
-                path: `/campaigns/${params.id}`,
+                path: `/campaigns/${unwrappedParams.id}`,
                 section: 'campaigns'
               }
             });
@@ -488,7 +488,7 @@ export default function TaskDetailPage() {
       
       fetchCampaign();
     }
-  }, [params.id, router, currentSite]);
+  }, [unwrappedParams.id, router, currentSite]);
   
   // Add effect for component unmount to ensure clean state
   useEffect(() => {
@@ -518,10 +518,10 @@ export default function TaskDetailPage() {
   
   // Función para refrescar todos los datos de la campaña
   const refreshCampaignData = async () => {
-    if (!params.id) return;
+    if (!unwrappedParams.id) return;
     
     try {
-      const response = await getCampaignById(params.id as string);
+      const response = await getCampaignById(unwrappedParams.id as string);
       
       if (response && response.data) {
         setCampaign(response.data);
@@ -538,7 +538,7 @@ export default function TaskDetailPage() {
   };
   
   const handleUpdateCampaign = async (data: any) => {
-    if (!campaign?.id || !params.id) {
+    if (!campaign?.id || !unwrappedParams.id) {
       toast.error("Campaign ID is missing");
       return;
     }
@@ -587,7 +587,7 @@ export default function TaskDetailPage() {
       console.log("Calling updateCampaign with:", JSON.stringify(updateData));
       
       // Call server action
-      const result = await updateCampaign(params.id as string, updateData);
+      const result = await updateCampaign(unwrappedParams.id as string, updateData);
       
       if (result.error) {
         console.error("Error updating campaign:", result.error);
@@ -676,14 +676,14 @@ export default function TaskDetailPage() {
   
   const handleEditCampaign = () => {
     // Redirect to edit page
-    router.push(`/campaigns/edit/${params.id}`);
+    router.push(`/campaigns/edit/${unwrappedParams.id}`);
   };
   
   const handleDeleteCampaign = async () => {
-    if (!params.id || !currentSite?.id) return;
+    if (!unwrappedParams.id || !currentSite?.id) return;
     
     try {
-      const result = await deleteCampaign(params.id as string);
+      const result = await deleteCampaign(unwrappedParams.id as string);
       
       if (result.error) {
         toast.error(result.error);
