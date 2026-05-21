@@ -116,7 +116,7 @@ export function ImprentaLazyCardImage({
   }, [url])
 
   return (
-    <div className="relative w-full aspect-square overflow-hidden rounded-xl bg-black/10">
+    <div className="relative w-full overflow-hidden rounded-xl bg-black/10">
       <div
         className={`absolute inset-0 z-0 flex animate-pulse items-center justify-center bg-muted/70 dark:bg-muted/55 transition-opacity duration-300 ${
           loaded ? "pointer-events-none opacity-0" : "opacity-100"
@@ -136,7 +136,7 @@ export function ImprentaLazyCardImage({
           e.stopPropagation()
           onOpen()
         }}
-        className={`relative z-[1] w-full h-full object-cover cursor-pointer transition-opacity duration-300 ${
+        className={`relative z-[1] w-full h-auto max-h-[800px] object-contain cursor-pointer transition-opacity duration-300 ${
           loaded ? "opacity-100" : "opacity-0"
         } ${className ?? ""}`}
       />

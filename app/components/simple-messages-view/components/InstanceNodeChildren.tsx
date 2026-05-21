@@ -100,7 +100,7 @@ export function InstanceNodeChildren({
 
   const navigateToImprenta = () => {
     setRobotsViewMode("imprenta")
-    router.push(`/robots?instance=${instanceId}`)
+    router.push(`/robots?instance=${instanceId}&mode=imprenta`)
   }
 
   return (

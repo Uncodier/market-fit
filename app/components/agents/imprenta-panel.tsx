@@ -91,6 +91,11 @@ function isImprentaWorkflowActionNode(node: InstanceNode): boolean {
   return t === "prompt" || t === "publish" || t.startsWith("generate-")
 }
 
+function isImprentaUploadedNode(node: InstanceNode): boolean {
+  const source = (node.settings as any)?.imprenta_source
+  return source === "upload"
+}
+
 const IMPRENTA_MODE_OPTIONS: readonly { type: string; label: string }[] = [
   { type: "prompt", label: "Text" },
   { type: "generate-image", label: "Image" },
@@ -325,6 +330,9 @@ function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): nu
   } else if (typeof text === "string" && text.length > 0) {
     const tl = Math.min(48, Math.ceil(text.length / 62))
     extra += tl * 22 + 48
+    if (/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg)/i.test(text) || /!\[.*?\]\(https?:\/\/[^\s"'<>()]+\)/i.test(text)) {
+      extra += 300 // Add height for inline markdown images
+    }
   } else if (res.audience_leads != null) {
     extra += 220
   } else {
@@ -364,6 +372,69 @@ function imprentaSegmentedActiveIndex(type: string): number {
 function imprentaNodeHasResult(node: InstanceNode): boolean {
   const r = node.result as Record<string, unknown> | undefined
   return !!r && typeof r === "object" && Object.keys(r).length > 0
+}
+
+type ImprentaResultMediaType = "text" | "image" | "video" | "audio" | "audience"
+
+function inferImprentaResultMediaType(node: InstanceNode): ImprentaResultMediaType | null {
+  if (!imprentaNodeHasResult(node)) return null
+  const res = (node.result || {}) as any
+
+  if (Array.isArray(res.audience_leads) && res.audience_leads.length > 0) return "audience"
+
+  const outputs = Array.isArray(res.outputs) ? res.outputs : null
+  if (outputs) {
+    for (const o of outputs) {
+      const t = o?.type
+      if (t === "image" || t === "video" || t === "audio") return t
+    }
+  }
+
+  const media = Array.isArray(res.media) ? res.media : null
+  if (media) {
+    for (const m of media) {
+      const t = m?.type
+      if (t === "image" || t === "video" || t === "audio") return t
+    }
+  }
+
+  if (Array.isArray(res.images) && res.images.some((x: any) => !!x?.url)) return "image"
+  if (res.image?.url) return "image"
+  if (res.video?.url) return "video"
+  if (res.audio?.url) return "audio"
+  if (typeof res.text === "string" && res.text.trim().length > 0) return "text"
+
+  return "text"
+}
+
+function imprentaNodeTypeForResultMediaType(mediaType: ImprentaResultMediaType): string {
+  if (mediaType === "text") return "prompt"
+  if (mediaType === "audience") return "generate-audience"
+  return `generate-${mediaType}`
+}
+
+function normalizeImprentaNodeForResultMediaType(node: InstanceNode): InstanceNode {
+  if (node.id?.startsWith("dummy-")) return node
+  if (node.type === "publish") return node
+
+  const mediaType = inferImprentaResultMediaType(node)
+  if (!mediaType) return node
+
+  const nextType = imprentaNodeTypeForResultMediaType(mediaType)
+  const prevMediaType = (node.settings as any)?.media_type
+  const shouldSetMediaType = mediaType !== "text" && prevMediaType !== mediaType
+
+  if (node.type === nextType && !shouldSetMediaType) return node
+
+  const nextSettings = shouldSetMediaType
+    ? { ...((node.settings as any) || {}), media_type: mediaType }
+    : node.settings
+
+  return {
+    ...node,
+    type: nextType,
+    settings: nextSettings,
+  }
 }
 
 /**
@@ -1150,13 +1221,24 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         filter: `instance_id=eq.${activeInstanceId}`
       }, (payload: any) => {
         if (payload.eventType === 'INSERT') {
+          const incoming = payload.new as InstanceNode
+          const normalized = normalizeImprentaNodeForResultMediaType(incoming)
+          const typeChanged = normalized.type !== incoming.type
+          const mediaChanged =
+            (normalized.settings as any)?.media_type !== (incoming.settings as any)?.media_type
+          if (typeChanged || mediaChanged) {
+            void supabase
+              .from("instance_nodes")
+              .update({ type: normalized.type, settings: normalized.settings })
+              .eq("id", incoming.id)
+          }
           setNodes(prev => {
-            if (prev.some(n => n.id === payload.new.id)) return prev;
-            return [...prev, payload.new as InstanceNode];
+            if (prev.some(n => n.id === incoming.id)) return prev;
+            return [...prev, normalized];
           })
           setDummyNodes(prev => {
             // Find dummies for the same parent
-            const dummiesForParent = prev.filter(d => d.parent_node_id === payload.new.parent_node_id);
+            const dummiesForParent = prev.filter(d => d.parent_node_id === incoming.parent_node_id);
             
             if (dummiesForParent.length > 0) {
               // Get the first dummy that hasn't been replaced yet
@@ -1169,11 +1251,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                   if (currPositions[dummyToReplace.id]) {
                     const newPositions = {
                       ...currPositions,
-                      [payload.new.id]: currPositions[dummyToReplace.id]
+                      [incoming.id]: currPositions[dummyToReplace.id]
                     };
                     
                     if (nodeHeightsRef.current[dummyToReplace.id]) {
-                      nodeHeightsRef.current[payload.new.id] = nodeHeightsRef.current[dummyToReplace.id];
+                      nodeHeightsRef.current[incoming.id] = nodeHeightsRef.current[dummyToReplace.id];
                     }
                     
                     // Immediately clean up the dummy node's position so it doesn't bump the new node
@@ -1186,7 +1268,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                 
                 setGeneratingNodeIds(prev => {
                   const next = new Set(prev);
-                  next.add(payload.new.id);
+                  next.add(incoming.id);
                   return next;
                 });
                 
@@ -1198,13 +1280,25 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             return prev;
           })
         } else if (payload.eventType === 'UPDATE') {
-          setNodes(prev => prev.map(n => n.id === payload.new.id ? payload.new as InstanceNode : n))
+          const incoming = payload.new as InstanceNode
+          const normalized = normalizeImprentaNodeForResultMediaType(incoming)
+          const typeChanged = normalized.type !== incoming.type
+          const mediaChanged =
+            (normalized.settings as any)?.media_type !== (incoming.settings as any)?.media_type
+          if (typeChanged || mediaChanged) {
+            void supabase
+              .from("instance_nodes")
+              .update({ type: normalized.type, settings: normalized.settings })
+              .eq("id", incoming.id)
+          }
+
+          setNodes(prev => prev.map(n => n.id === incoming.id ? normalized : n))
           
-          if (payload.new.status === 'completed' || payload.new.status === 'failed') {
+          if (incoming.status === 'completed' || incoming.status === 'failed') {
             setGeneratingNodeIds(prev => {
-              if (prev.has(payload.new.id)) {
+              if (prev.has(incoming.id)) {
                 const next = new Set(prev);
-                next.delete(payload.new.id);
+                next.delete(incoming.id);
                 return next;
               }
               return prev;
@@ -1212,9 +1306,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           }
           
           // If the executed node fails or completes without a child, we might want to clear dummy children
-          if (payload.new.status === 'failed' || payload.new.status === 'completed') {
+          if (incoming.status === 'failed' || incoming.status === 'completed') {
             setDummyNodes(prev => {
-              const toRemove = prev.filter(d => d.parent_node_id === payload.new.id);
+              const toRemove = prev.filter(d => d.parent_node_id === incoming.id);
               if (toRemove.length > 0) {
                 // Also clean up their positions to prevent memory leaks
                 setPositions(curr => {
@@ -1222,7 +1316,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                   toRemove.forEach(d => delete copy[d.id]);
                   return copy;
                 });
-                return prev.filter(d => d.parent_node_id !== payload.new.id);
+                return prev.filter(d => d.parent_node_id !== incoming.id);
               }
               return prev;
             });
@@ -1577,6 +1671,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         prompt: { text: file.name },
         settings: { 
           imprenta_mode: true, 
+          imprenta_source: "upload",
           media_type: mediaType 
         },
         result: {
@@ -2049,11 +2144,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           onOpen={() => setZoomedMedia({ url, type: "image" })}
         />
       ) : (
-        <div className="relative w-full overflow-hidden rounded-xl bg-black/10 aspect-square flex items-center justify-center">
+        <div className="relative w-full overflow-hidden rounded-xl bg-black/10 flex items-center justify-center">
           <video 
             src={url} 
             controls 
-            className="w-full h-full object-cover absolute inset-0 m-auto" 
+            className="w-full h-auto max-h-[800px] object-contain relative z-[1] m-auto" 
             onClick={(e) => e.stopPropagation()}
           />
           <Button
@@ -3000,44 +3095,57 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                 )}
                               </div>
 
-                              {isImprentaWorkflowActionNode(node) && (
-                                <div
-                                  className="flex flex-wrap items-center bg-muted/50 p-1 rounded-2xl gap-1"
-                                  title={
-                                    hasResult
-                                      ? "This result is fixed. Pick another mode to create a new pending node with that type (same prompt, settings, and context links)."
-                                      : "Card mode"
-                                  }
-                                >
-                                  {IMPRENTA_MODE_OPTIONS.map(({ type: modeType, label }) => (
-                                    <Button
-                                      key={modeType}
-                                      type="button"
-                                      variant={node.type === modeType ? "outline" : "ghost"}
-                                      size="sm"
-                                      className={`flex-1 h-7 text-[11px] rounded-full font-medium ${
-                                        node.type === modeType
-                                          ? "bg-background shadow-sm border-white/10"
-                                          : "text-muted-foreground hover:text-foreground"
-                                      }`}
-                                      onClick={async (e) => {
-                                        e.stopPropagation()
-                                        if (hasResult) {
-                                          if (modeType === node.type) return
-                                          await cloneImprentaNodeWithType(node.id, modeType)
-                                          return
-                                        }
-                                        setNodes((prev) =>
-                                          prev.map((n) => (n.id === node.id ? { ...n, type: modeType } : n))
-                                        )
-                                        await supabase.from("instance_nodes").update({ type: modeType }).eq("id", node.id)
-                                      }}
+                              {isImprentaWorkflowActionNode(node) &&
+                                !hasResult &&
+                                !isImprentaUploadedNode(node) &&
+                                (() => {
+                                  const hasRealChildren = nodes.some(
+                                    (ch) => ch.parent_node_id === node.id && !String(ch.id).startsWith("dummy-")
+                                  )
+                                  const outputTypeLocked =
+                                    hasRealChildren || node.status !== "pending" || generatingNodeIds.has(node.id)
+                                  const lockedTitle = outputTypeLocked
+                                    ? "Output type is locked. Duplicate this node to change it."
+                                    : "Card mode"
+
+                                  return (
+                                    <div
+                                      className="flex flex-wrap items-center bg-muted/50 p-1 rounded-2xl gap-1"
+                                      title={lockedTitle}
                                     >
-                                      {label}
-                                    </Button>
-                                  ))}
-                                </div>
-                              )}
+                                      {IMPRENTA_MODE_OPTIONS.map(({ type: modeType, label }) => (
+                                        <Button
+                                          key={modeType}
+                                          type="button"
+                                          disabled={outputTypeLocked}
+                                          variant={node.type === modeType ? "outline" : "ghost"}
+                                          size="sm"
+                                          className={`flex-1 h-7 text-[11px] rounded-full font-medium ${
+                                            node.type === modeType
+                                              ? "bg-background shadow-sm border-white/10"
+                                              : "text-muted-foreground hover:text-foreground"
+                                          }`}
+                                          onClick={async (e) => {
+                                            e.stopPropagation()
+                                            if (outputTypeLocked) {
+                                              toast.error("Output type is locked. Duplicate this node to change it.")
+                                              return
+                                            }
+                                            setNodes((prev) =>
+                                              prev.map((n) => (n.id === node.id ? { ...n, type: modeType } : n))
+                                            )
+                                            await supabase
+                                              .from("instance_nodes")
+                                              .update({ type: modeType })
+                                              .eq("id", node.id)
+                                          }}
+                                        >
+                                          {label}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  )
+                                })()}
                               
                               {!hasResult && (
                                 <>
@@ -3327,16 +3435,48 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   <AudioPlayer key={extractUrl((node.result as any).audio.url)} src={extractUrl((node.result as any).audio.url)} className="w-full" />
                                 )}
                                 {((node.result as any).text || (!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && !(node.result as any).image && !(node.result as any).video && !(node.result as any).audio && !(node.result as any).text)) && (() => {
-                                  const hasStructuredMedia = !!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio;
                                   let textContent = (node.result as any).text 
                                     ? String((node.result as any).text) 
                                     : "```json\n" + JSON.stringify(node.result, null, 2) + "\n```";
+                                  
+                                  const hasStructuredMedia = !!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio;
+
+                                  // Detect intention: did this node intend to produce media?
+                                  const isMediaIntent = node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || 
+                                                        (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio';
+
+                                  if (isMediaIntent) {
+                                    // If we ALREADY successfully parsed structured media, we don't need to show ANY text. 
+                                    if (hasStructuredMedia) return null;
+
+                                    // If we ONLY got text back from the agent for a media node, forcefully extract the media link and discard the conversational text.
+                                    const expectedMediaType = (node.settings as any)?.media_type || node.type.replace('generate-', '');
+                                    
+                                    if (expectedMediaType === 'image') {
+                                      const imgMatchMarkdown = textContent.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/);
+                                      const imgMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
+                                      if (imgMatchMarkdown) return renderMediaWithZoom(imgMatchMarkdown[1], 'image', 'extracted-img');
+                                      if (imgMatchUrl) return renderMediaWithZoom(imgMatchUrl[0], 'image', 'extracted-img');
+                                      return null; // Don't show text if we couldn't find an image, just return empty
+                                    } else if (expectedMediaType === 'video') {
+                                      const vidMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp4|webm|mov|mkv)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
+                                      if (vidMatchUrl) return renderMediaWithZoom(vidMatchUrl[0], 'video', 'extracted-vid');
+                                      return null;
+                                    } else if (expectedMediaType === 'audio') {
+                                      const audioMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp3|wav|ogg|m4a|aac|flac)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
+                                      if (audioMatchUrl) return <AudioPlayer key="extracted-audio" src={audioMatchUrl[0]} className="w-full" />;
+                                      return null;
+                                    }
+                                  }
+
+                                  // Only for Text (prompt) and Publish types, show the markdown
                                   if (hasStructuredMedia && textContent) {
                                     textContent = textContent.replace(/https?:\/\/[^\s"'<>()]+\.(wav|mp3|ogg|m4a|aac|flac|webm)/gi, '').trim();
                                   }
                                   if (!textContent) return null;
+                                  
                                   return (
-                                    <div className="text-xs bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground max-h-[200px] overflow-y-auto custom-scrollbar prose prose-sm dark:prose-invert max-w-none">
+                                    <div className="text-xs bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground prose prose-sm dark:prose-invert max-w-none">
                                       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                                         {textContent}
                                       </ReactMarkdown>

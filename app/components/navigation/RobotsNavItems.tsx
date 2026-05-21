@@ -21,12 +21,18 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
 
   const isRobotsRoute = pathname === "/robots" || pathname.startsWith("/robots/")
 
-  /** Same destination for both entries; mode is set only via sidebar (context). */
-  const robotsHref = useMemo(() => {
+  const agentHref = useMemo(() => {
     const p = new URLSearchParams(searchQueryString)
     p.delete("mode")
     const q = p.toString()
     return q ? `/robots?${q}` : "/robots"
+  }, [searchQueryString])
+
+  const imprentaHref = useMemo(() => {
+    const p = new URLSearchParams(searchQueryString)
+    p.set("mode", "imprenta")
+    const q = p.toString()
+    return `/robots?${q}`
   }, [searchQueryString])
 
   const agentActive = isRobotsRoute && robotsViewMode === "agent"
@@ -35,7 +41,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
   return (
     <>
       <MenuItem
-        href={robotsHref}
+        href={agentHref}
         emoji="🤖"
         title={t("layout.sidebar.agents") || "Agents"}
         isActive={agentActive}
@@ -48,7 +54,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
         <RobotsBadge isActive={agentActive} />
       </MenuItem>
       <MenuItem
-        href={robotsHref}
+        href={imprentaHref}
         emoji="🖨️"
         title={t("layout.sidebar.imprenta") || "Content Creator"}
         isActive={imprentaActive}

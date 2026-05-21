@@ -90,18 +90,16 @@ function RobotsPageContent() {
     }
   }, [refreshSites])
 
-  // Legacy bookmarks used ?mode= — sync to context, then strip (no mode in URL anymore)
+  // Legacy bookmarks used ?mode= — sync to context, no longer stripping the parameter.
   useEffect(() => {
     if (pathname !== "/robots") return
     const raw = searchParams.get("mode")
-    if (!raw) return
-    if (raw === "imprenta") setRobotsViewMode("imprenta")
-    if (raw === "agent") setRobotsViewMode("agent")
-    const p = new URLSearchParams(searchParams.toString())
-    p.delete("mode")
-    const q = p.toString()
-    router.replace(q ? `/robots?${q}` : "/robots", { scroll: false })
-  }, [pathname, searchParams, router, setRobotsViewMode])
+    if (raw === "imprenta") {
+      setRobotsViewMode("imprenta")
+    } else {
+      setRobotsViewMode("agent")
+    }
+  }, [pathname, searchParams, setRobotsViewMode])
   
   // No campaigns view here
 
