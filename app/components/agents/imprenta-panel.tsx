@@ -3475,6 +3475,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   const isMediaIntent = node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || 
                                                         (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio';
 
+                                  let extractedUrl: string | null = null;
                                   if (isMediaIntent) {
                                     // If we ALREADY successfully parsed structured media, we don't need to show ANY text. 
                                     if (hasStructuredMedia) return null;
@@ -3485,17 +3486,97 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     if (expectedMediaType === 'image') {
                                       const imgMatchMarkdown = textContent.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/);
                                       const imgMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
-                                      if (imgMatchMarkdown) return renderMediaWithZoom(imgMatchMarkdown[1], 'image', 'extracted-img');
-                                      if (imgMatchUrl) return renderMediaWithZoom(imgMatchUrl[0], 'image', 'extracted-img');
-                                      return null; // Don't show text if we couldn't find an image, just return empty
+                                      if (imgMatchMarkdown) extractedUrl = imgMatchMarkdown[1];
+                                      else if (imgMatchUrl) extractedUrl = imgMatchUrl[0];
+                                      
+                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'image', 'extracted-img');
                                     } else if (expectedMediaType === 'video') {
                                       const vidMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp4|webm|mov|mkv)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
-                                      if (vidMatchUrl) return renderMediaWithZoom(vidMatchUrl[0], 'video', 'extracted-vid');
-                                      return null;
+                                      if (vidMatchUrl) extractedUrl = vidMatchUrl[0];
+                                      
+                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'video', 'extracted-vid');
                                     } else if (expectedMediaType === 'audio') {
                                       const audioMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp3|wav|ogg|m4a|aac|flac)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
-                                      if (audioMatchUrl) return <AudioPlayer key="extracted-audio" src={audioMatchUrl[0]} className="w-full" />;
-                                      return null;
+                                      if (audioMatchUrl) extractedUrl = audioMatchUrl[0];
+                                      
+                                      if (extractedUrl) return <AudioPlayer key="extracted-audio" src={extractedUrl} className="w-full" />;
+                                    }
+
+                                    // If no URL could be extracted yet and it's still running, show a placeholder
+                                    if (!extractedUrl && (node.status === 'running' || node.status === 'pending')) {
+                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio;
+                                      let aspectStyle = "1/1";
+                                      if (expectedMediaType === 'video') aspectStyle = "16/9";
+                                      
+                                      if (aspectRatioParam) {
+                                        if (aspectRatioParam === "16:9") aspectStyle = "16/9";
+                                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16";
+                                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3";
+                                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4";
+                                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1";
+                                        else aspectStyle = String(aspectRatioParam).replace(':', '/');
+                                      }
+
+                                      return (
+                                        <div 
+                                          className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center`}
+                                          style={{ aspectRatio: aspectStyle }}
+                                        >
+                                          <div className="relative w-full h-full">
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                              <Bot className="w-8 h-8 text-muted-foreground/30 animate-pulse" />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+
+                                    // If completed and no media could be extracted (e.g. error message from agent),
+                                    // we replace the text with an error placeholder and a retry button.
+                                    if (!extractedUrl && (node.status === 'completed' || node.status === 'failed')) {
+                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio;
+                                      let aspectStyle = "1/1";
+                                      if (expectedMediaType === 'video') aspectStyle = "16/9";
+                                      if (aspectRatioParam) {
+                                        if (aspectRatioParam === "16:9") aspectStyle = "16/9";
+                                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16";
+                                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3";
+                                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4";
+                                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1";
+                                        else aspectStyle = String(aspectRatioParam).replace(':', '/');
+                                      }
+
+                                      return (
+                                        <div 
+                                          className={`w-full overflow-hidden rounded-xl bg-muted/10 border border-destructive/20 flex flex-col items-center justify-center gap-3 p-6 text-center`}
+                                          style={{ aspectRatio: aspectStyle }}
+                                        >
+                                          <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mb-2">
+                                            <AlertCircle className="w-6 h-6" />
+                                          </div>
+                                          <div className="text-sm font-medium text-destructive">Failed to extract media</div>
+                                          <p className="text-xs text-muted-foreground mb-2">The AI responded with text instead of the expected format.</p>
+                                          
+                                          <div className="flex gap-2 pointer-events-auto">
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm"
+                                              className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
+                                                // Delete this faulty node and re-execute parent
+                                                handleDeleteNode(node.id).then(() => {
+                                                  if (parentNode) handleExecuteNode(parentNode);
+                                                });
+                                              }}
+                                            >
+                                              <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                                              Retry Generation
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      );
                                     }
                                   }
 
@@ -3525,7 +3606,17 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant="outline" 
                                     size="sm"
                                     className="flex-1"
-                                    disabled={!!(node.settings as any)?.imprenta_mode && !contexts.some(ctx => ctx.target_node_id === node.id)}
+                                    disabled={
+                                      node.status === 'running' || 
+                                      node.status === 'pending' || 
+                                      node.status === 'failed' || 
+                                      (!!(node.settings as any)?.imprenta_mode && !contexts.some(ctx => ctx.target_node_id === node.id)) ||
+                                      // Disable if media was intended but failed to extract
+                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio') && 
+                                       !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
+                                       !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
+                                       !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
+                                    }
                                     onPointerDown={(e) => e.stopPropagation()}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={async (e) => {
@@ -3545,6 +3636,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant="outline" 
                                     size="sm"
                                     className="flex-1"
+                                    disabled={
+                                      node.status === 'running' || 
+                                      node.status === 'pending' || 
+                                      node.status === 'failed' ||
+                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio') && 
+                                       !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
+                                       !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
+                                       !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
+                                    }
                                     onPointerDown={(e) => e.stopPropagation()}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={(e) => {
@@ -3559,6 +3659,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     variant="outline"
                                     size="sm"
                                     className="flex-1"
+                                    disabled={
+                                      node.status === 'running' || 
+                                      node.status === 'pending' || 
+                                      node.status === 'failed' ||
+                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio') && 
+                                       !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
+                                       !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
+                                       !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
+                                    }
                                     onPointerDown={(e) => e.stopPropagation()}
                                     onMouseDown={(e) => e.stopPropagation()}
                                     onClick={async (e) => {
@@ -3614,6 +3723,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                           variant="outline" 
                                           size="sm"
                                           className="flex-1"
+                                          disabled={
+                                            node.status === 'running' || 
+                                            node.status === 'pending' || 
+                                            node.status === 'failed' ||
+                                            ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio') && 
+                                             !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
+                                             !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
+                                             !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
+                                          }
                                           onPointerDown={(e) => e.stopPropagation()}
                                           onMouseDown={(e) => e.stopPropagation()}
                                           onClick={async (e) => {
