@@ -34,6 +34,9 @@ import { createClient } from "@/lib/supabase/client"
 import { useTheme } from "@/app/context/ThemeContext"
 import { ProfileSkeleton } from "./components/ProfileSkeleton"
 import { EmailSecurityCard } from "./components/EmailSecurityCard"
+import { CalendarPreferences } from "./components/CalendarPreferences"
+import { CalendarSettings } from "@/app/services/profile.service"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 
 type UserRole = "Product Manager" | "Designer" | "Developer" | "Marketing" | "Sales" | "CEO" | "Other"
 
@@ -53,7 +56,8 @@ export default function ProfilePage() {
     language,
     timezone,
     avatarUrl,
-    notifications
+    notifications,
+    updateSettings
   } = useProfile()
   
   const { isDarkMode } = useTheme()
@@ -94,14 +98,6 @@ export default function ProfilePage() {
   // Manejador de cambios en el formulario
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
-
-  // Manejador de cambios en notificaciones
-  const handleNotificationChange = (field: string, value: boolean) => {
-    setNotificationSettings(prev => ({
       ...prev,
       [field]: value
     }))
@@ -195,7 +191,6 @@ export default function ProfilePage() {
     }
 
     try {
-      console.log("Starting handleSavePersonalInfo...");
       const profileData = {
         name: formData.name,
         phone: formData.phone,
@@ -204,14 +199,10 @@ export default function ProfilePage() {
         avatar_url: imageUrl || undefined
       }
       
-      console.log("Calling updateProfile with", profileData);
-      // Usar fire-and-forget o un timeout si es que el await se está atorando
       const success = await updateProfile(profileData, true)
-      console.log("updateProfile returned", success);
       
       if (success) {
         toast.success("Personal information updated successfully")
-        // Forzar actualización manual del form
         setFormData(prev => ({ ...prev, phone: profileData.phone }))
       } else {
         toast.error("Failed to update personal information")
@@ -241,17 +232,20 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSaveNotifications = async () => {
+  const handleSaveCalendarSettings = async (calendarSettings: CalendarSettings) => {
     try {
-      const success = await updateNotifications(notificationSettings, true)
+      const success = await updateSettings({
+        ...profile?.settings,
+        calendar: calendarSettings
+      }, true)
       if (success) {
-        toast.success("Notification settings updated successfully")
+        toast.success("Calendar settings updated successfully")
       } else {
-        toast.error("Failed to update notification settings")
+        toast.error("Failed to update calendar settings")
       }
     } catch (error) {
       console.error(error)
-      toast.error("Error updating notification settings")
+      toast.error("Error updating calendar settings")
     }
   }
 
@@ -267,255 +261,221 @@ export default function ProfilePage() {
 
   return (
     <div className="flex-1">
-      <StickyHeader>
-        <div className="flex items-center justify-between px-16 w-full">
-        </div>
-      </StickyHeader>
-      
-      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
-        <div className="space-y-12">
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-xl font-semibold">Personal Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8 px-8 pb-8">
-              <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
-                <div className="min-w-[240px] flex-shrink-0">
-                  <label className="block text-sm font-medium mb-2">Profile Picture</label>
-                  <div className="w-[240px] h-[240px] relative">
-                    {imageUrl ? (
-                      <div className="w-full h-full relative group">
-                        <Image
-                          src={imageUrl}
-                          alt="Profile picture"
-                          fill
-                          className="object-cover rounded-full"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleRemoveImage}
-                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full"
+      <Tabs defaultValue="profile" className="w-full">
+        <StickyHeader>
+          <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+            <TabsTrigger value="profile" className="text-xs rounded-full px-4">Profile</TabsTrigger>
+            <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>
+          </TabsList>
+        </StickyHeader>
+        
+        <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
+          <TabsContent value="profile" className="space-y-12 mt-0 border-0 p-0 focus-visible:ring-0">
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Personal Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
+                  <div className="min-w-[240px] flex-shrink-0">
+                    <label className="block text-sm font-medium mb-2">Profile Picture</label>
+                    <div className="w-[240px] h-[240px] relative">
+                      {imageUrl ? (
+                        <div className="w-full h-full relative group">
+                          <Image
+                            src={imageUrl}
+                            alt="Profile picture"
+                            fill
+                            className="object-cover rounded-full"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full"
+                          >
+                            <Trash2 className="h-4 w-4 text-white" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          {...getRootProps()}
+                          className={cn(
+                            "w-full h-full rounded-full border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-border/60 transition-colors",
+                            isDarkMode ? "bg-muted/40" : "bg-muted/50"
+                          )}
                         >
-                          <Trash2 className="h-4 w-4 text-white" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        {...getRootProps()}
-                        className={cn(
-                          "w-full h-full rounded-full border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-border/60 transition-colors",
-                          isDarkMode ? "bg-muted/40" : "bg-muted/50"
-                        )}
-                      >
-                        <input {...getInputProps()} />
-                        <div className="flex flex-col items-center justify-center">
-                          <UploadCloud className="h-8 w-8 text-muted-foreground flex-shrink-0 mb-2" />
-                          <div className="text-sm text-center flex flex-col items-center">
-                            <p className="font-medium">Click to upload</p>
-                            <p className="text-muted-foreground">or drag and drop</p>
-                            <p className="text-xs text-muted-foreground/80 mt-1">Max. 3MB</p>
+                          <input {...getInputProps()} />
+                          <div className="flex flex-col items-center justify-center">
+                            <UploadCloud className="h-8 w-8 text-muted-foreground flex-shrink-0 mb-2" />
+                            <div className="text-sm text-center flex flex-col items-center">
+                              <p className="font-medium">Click to upload</p>
+                              <p className="text-muted-foreground">or drag and drop</p>
+                              <p className="text-xs text-muted-foreground/80 mt-1">Max. 3MB</p>
+                            </div>
                           </div>
                         </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Name</label>
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          className="pl-12 h-12 text-base transition-colors duration-200" 
+                          placeholder="Your name" 
+                          value={formData.name}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                        />
                       </div>
-                    )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Phone</label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          className="pl-12 h-12 text-base transition-colors duration-200" 
+                          placeholder="Your phone number" 
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Role</label>
+                      <div className="relative">
+                        <Settings className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                        <Select
+                          value={formData.role}
+                          onValueChange={(value) => handleInputChange('role', value)}
+                        >
+                          <SelectTrigger className="w-full pl-11 h-11 text-base transition-colors duration-200">
+                            <SelectValue placeholder="Select your role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Product Manager">Product Manager</SelectItem>
+                            <SelectItem value="Designer">Designer</SelectItem>
+                            <SelectItem value="Developer">Developer</SelectItem>
+                            <SelectItem value="Marketing">Marketing</SelectItem>
+                            <SelectItem value="Sales">Sales</SelectItem>
+                            <SelectItem value="CEO">CEO</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Name</label>
-                    <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        className="pl-12 h-12 text-base transition-colors duration-200" 
-                        placeholder="Your name" 
-                        value={formData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Phone</label>
-                    <div className="relative">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        className="pl-12 h-12 text-base transition-colors duration-200" 
-                        placeholder="Your phone number" 
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Role</label>
-                    <div className="relative">
-                      <Settings className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                      <Select
-                        value={formData.role}
-                        onValueChange={(value) => handleInputChange('role', value)}
-                      >
-                        <SelectTrigger className="w-full pl-11 h-11 text-base transition-colors duration-200">
-                          <SelectValue placeholder="Select your role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Product Manager">Product Manager</SelectItem>
-                          <SelectItem value="Designer">Designer</SelectItem>
-                          <SelectItem value="Developer">Developer</SelectItem>
-                          <SelectItem value="Marketing">Marketing</SelectItem>
-                          <SelectItem value="Sales">Sales</SelectItem>
-                          <SelectItem value="CEO">CEO</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Bio</label>
+                  <div className="relative">
+                    <FileText className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
+                    <Textarea 
+                      className="pl-12 resize-none min-h-[120px] text-base transition-colors duration-200"
+                      placeholder="Tell us about yourself..."
+                      value={formData.bio}
+                      onChange={(e) => handleInputChange('bio', e.target.value)}
+                    />
                   </div>
                 </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Bio</label>
-                <div className="relative">
-                  <FileText className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
-                  <Textarea 
-                    className="pl-12 resize-none min-h-[120px] text-base transition-colors duration-200"
-                    placeholder="Tell us about yourself..."
-                    value={formData.bio}
-                    onChange={(e) => handleInputChange('bio', e.target.value)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-            <ActionFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSavePersonalInfo}
-                disabled={isUpdating}
-              >
-                {isUpdating ? "Saving..." : "Save Personal Information"}
-              </Button>
-            </ActionFooter>
-          </Card>
+              </CardContent>
+              <ActionFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSavePersonalInfo}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? "Saving..." : "Save Personal Information"}
+                </Button>
+              </ActionFooter>
+            </Card>
 
-          <EmailSecurityCard
-            email={email}
-            emailChangeStatus={emailChangeStatus}
-            onRequestEmailChange={requestEmailChange}
-            isUpdating={isUpdating}
-          />
+            <EmailSecurityCard
+              email={email}
+              emailChangeStatus={emailChangeStatus}
+              onRequestEmailChange={requestEmailChange}
+              isUpdating={isUpdating}
+            />
 
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-xl font-semibold">Preferences</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8 px-8 pb-8">
-              <div>
-                <label className="block text-sm font-medium mb-2">Language</label>
-                <div className="relative">
-                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Select
-                    value={formData.language}
-                    onValueChange={(value) => handleInputChange('language', value)}
-                  >
-                    <SelectTrigger className="w-full pl-12 h-12 text-base transition-colors duration-200">
-                      <SelectValue placeholder="Select your language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="es">Spanish</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="fr">French</SelectItem>
-                      <SelectItem value="de">German</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="px-8 py-6">
+                <CardTitle className="text-xl font-semibold">Preferences</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-8 pb-8">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Language</label>
+                  <div className="relative">
+                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Select
+                      value={formData.language}
+                      onValueChange={(value) => handleInputChange('language', value)}
+                    >
+                      <SelectTrigger className="w-full pl-12 h-12 text-base transition-colors duration-200">
+                        <SelectValue placeholder="Select your language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="es">Spanish</SelectItem>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="fr">French</SelectItem>
+                        <SelectItem value="de">German</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Timezone</label>
-                <div className="relative">
-                  <Home className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Select
-                    value={formData.timezone}
-                    onValueChange={(value) => handleInputChange('timezone', value)}
-                  >
-                    <SelectTrigger className="w-full pl-12 h-12 text-base transition-colors duration-200">
-                      <SelectValue placeholder="Select your timezone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="America/Mexico_City">Mexico City (GMT-6)</SelectItem>
-                      <SelectItem value="America/Los_Angeles">Los Angeles (GMT-8)</SelectItem>
-                      <SelectItem value="America/New_York">New York (GMT-5)</SelectItem>
-                      <SelectItem value="Europe/Madrid">Madrid (GMT+1)</SelectItem>
-                      <SelectItem value="Europe/London">London (GMT+0)</SelectItem>
-                      <SelectItem value="Asia/Tokyo">Tokyo (GMT+9)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Timezone</label>
+                  <div className="relative">
+                    <Home className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Select
+                      value={formData.timezone}
+                      onValueChange={(value) => handleInputChange('timezone', value)}
+                    >
+                      <SelectTrigger className="w-full pl-12 h-12 text-base transition-colors duration-200">
+                        <SelectValue placeholder="Select your timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="America/Mexico_City">Mexico City (GMT-6)</SelectItem>
+                        <SelectItem value="America/Los_Angeles">Los Angeles (GMT-8)</SelectItem>
+                        <SelectItem value="America/New_York">New York (GMT-5)</SelectItem>
+                        <SelectItem value="Europe/Madrid">Madrid (GMT+1)</SelectItem>
+                        <SelectItem value="Europe/London">London (GMT+0)</SelectItem>
+                        <SelectItem value="Asia/Tokyo">Tokyo (GMT+9)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-            <ActionFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSavePreferences}
-                disabled={isUpdating}
-              >
-                {isUpdating ? "Saving..." : "Save Preferences"}
-              </Button>
-            </ActionFooter>
-          </Card>
+              </CardContent>
+              <ActionFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSavePreferences}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? "Saving..." : "Save Preferences"}
+                </Button>
+              </ActionFooter>
+            </Card>
+          </TabsContent>
 
-          <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-xl font-semibold">Notifications</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8 px-8 pb-8">
-              <div className="flex flex-row items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors duration-200">
-                <div className="space-y-0.5">
-                  <label className="text-base font-medium">
-                    Email Notifications
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive updates in your email
-                  </p>
-                </div>
-                <Switch
-                  checked={notificationSettings.email}
-                  onCheckedChange={(value) => handleNotificationChange('email', value)}
-                />
-              </div>
-
-              <div className="flex flex-row items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors duration-200">
-                <div className="space-y-0.5">
-                  <label className="text-base font-medium">
-                    Push Notifications
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive real-time notifications
-                  </p>
-                </div>
-                <Switch
-                  checked={notificationSettings.push}
-                  onCheckedChange={(value) => handleNotificationChange('push', value)}
-                />
-              </div>
-            </CardContent>
-            <ActionFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSaveNotifications}
-                disabled={isUpdating}
-              >
-                {isUpdating ? "Saving..." : "Save Notifications"}
-              </Button>
-            </ActionFooter>
-          </Card>
+          <TabsContent value="calendar" className="mt-0 border-0 p-0 focus-visible:ring-0">
+            <CalendarPreferences
+              settings={profile?.settings?.calendar}
+              onSave={handleSaveCalendarSettings}
+              isUpdating={isUpdating}
+              userEmail={profile?.email}
+            />
+          </TabsContent>
         </div>
-      </div>
+      </Tabs>
     </div>
   )
-} 
+}

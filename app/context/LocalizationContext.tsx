@@ -14,6 +14,19 @@ interface LocalizationContextType {
 
 const defaultLocale: SupportedLocale = 'en';
 
+const countryToLocale: Record<string, SupportedLocale> = {
+  // Spanish speaking countries
+  'ES': 'es', 'MX': 'es', 'AR': 'es', 'CO': 'es', 'CL': 'es', 'PE': 'es', 'VE': 'es', 
+  'EC': 'es', 'GT': 'es', 'CU': 'es', 'DO': 'es', 'HN': 'es', 'PY': 'es', 'SV': 'es', 
+  'NI': 'es', 'CR': 'es', 'PA': 'es', 'UY': 'es', 'BO': 'es', 'GQ': 'es', 'PR': 'es',
+  // French speaking countries
+  'FR': 'fr', 'BE': 'fr', 'CH': 'fr', 'CA': 'fr', 'MC': 'fr', 'LU': 'fr',
+  // German speaking countries
+  'DE': 'de', 'AT': 'de', 'LI': 'de',
+  // Japanese speaking countries
+  'JP': 'ja',
+};
+
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
 // In a real app, this would be loaded dynamically or pre-compiled
@@ -2533,6 +2546,31 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
     'common.soon': "Soon",
     'common.joinWaitlist': "Join Waitlist",
     'common.getStarted': "Start with Makinari",
+    'booking.notFound.title': 'Booking Page Not Found',
+    'booking.notFound.desc': 'This booking link is invalid or has been disabled.',
+    'booking.success.title': 'Meeting Booked!',
+    'booking.success.desc': "A confirmation email has been sent to you. We've added this to our calendar.",
+    'booking.success.descRR': 'Your meeting has been scheduled and assigned to a team member.',
+    'booking.details.date': 'Date',
+    'booking.details.time': 'Time',
+    'booking.details.with': 'With',
+    'booking.details.event': 'Event',
+    'booking.details.type': 'Type',
+    'booking.timezone.select': 'Select timezone',
+    'booking.language': 'Language',
+    'booking.theme': 'Theme',
+    'booking.theme.light': 'Light',
+    'booking.theme.dark': 'Dark',
+    'booking.theme.system': 'System',
+    'booking.noAvailability': 'No availability',
+    'booking.next': 'Next',
+    'booking.back': 'Back to Calendar',
+    'booking.form.name': 'Your Name *',
+    'booking.form.email': 'Your Email *',
+    'booking.form.notes': 'Additional Notes',
+    'booking.form.notesPlaceholder': "Anything you'd like to share before the meeting...",
+    'booking.confirm': 'Confirm Booking',
+    'booking.booking': 'Booking...',
   },
   es: {
     'dashboard.tabs.onboarding': 'Inicio',
@@ -5108,6 +5146,31 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
     "common.soon": "Próximamente",
     "common.joinWaitlist": "Unirse a la lista de espera",
     "common.getStarted": "Empezar con Makinari",
+    'booking.notFound.title': 'Página de reserva no encontrada',
+    'booking.notFound.desc': 'Este enlace de reserva no es válido o ha sido desactivado.',
+    'booking.success.title': '¡Reunión reservada!',
+    'booking.success.desc': 'Se ha enviado un correo de confirmación. Lo hemos añadido a nuestro calendario.',
+    'booking.success.descRR': 'Tu reunión ha sido programada y asignada a un miembro del equipo.',
+    'booking.details.date': 'Fecha',
+    'booking.details.time': 'Hora',
+    'booking.details.with': 'Con',
+    'booking.details.event': 'Evento',
+    'booking.details.type': 'Tipo',
+    'booking.timezone.select': 'Seleccionar zona horaria',
+    'booking.language': 'Idioma',
+    'booking.theme': 'Tema',
+    'booking.theme.light': 'Claro',
+    'booking.theme.dark': 'Oscuro',
+    'booking.theme.system': 'Sistema',
+    'booking.noAvailability': 'Sin disponibilidad',
+    'booking.next': 'Siguiente',
+    'booking.back': 'Volver al calendario',
+    'booking.form.name': 'Tu nombre *',
+    'booking.form.email': 'Tu correo *',
+    'booking.form.notes': 'Notas adicionales',
+    'booking.form.notesPlaceholder': 'Cualquier cosa que quieras compartir antes de la reunión...',
+    'booking.confirm': 'Confirmar reserva',
+    'booking.booking': 'Reservando...',
   },
   fr: {
     'auth.invalidPhone': 'Veuillez entrer un numéro de téléphone valide',
@@ -5538,7 +5601,7 @@ const localizedAssets: Record<SupportedLocale, Record<string, string>> = {
   },
 };
 
-export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
+export const LocalizationProvider = ({ children, initialCountry }: { children: ReactNode, initialCountry?: string }) => {
   const [locale, setLocaleState] = useState<SupportedLocale>(defaultLocale);
   const [mounted, setMounted] = useState(false);
 
@@ -5548,14 +5611,19 @@ export const LocalizationProvider = ({ children }: { children: ReactNode }) => {
     if (savedLocale && Object.keys(translations).includes(savedLocale)) {
       setLocaleState(savedLocale);
     } else {
-      // Try to guess from browser
-      const browserLang = navigator.language.split('-')[0] as SupportedLocale;
-      if (Object.keys(translations).includes(browserLang)) {
-        setLocaleState(browserLang);
+      // 1. Try to guess from initialCountry (passed from server headers)
+      if (initialCountry && countryToLocale[initialCountry]) {
+        setLocaleState(countryToLocale[initialCountry]);
+      } else {
+        // 2. Try to guess from browser
+        const browserLang = navigator.language.split('-')[0] as SupportedLocale;
+        if (Object.keys(translations).includes(browserLang)) {
+          setLocaleState(browserLang);
+        }
       }
     }
     setMounted(true);
-  }, []);
+  }, [initialCountry]);
 
   const setLocale = (newLocale: SupportedLocale) => {
     setLocaleState(newLocale);

@@ -5,8 +5,10 @@ import { Toaster } from "sonner"
 import ClientWrapper from './client-wrapper'
 import Script from 'next/script'
 import Providers from "./providers/Providers"
+import { headers } from 'next/headers'
 import { shouldUseLayout } from './config/routes'
 import LoggerInit from './components/LoggerInit'
+import ChunkErrorGuard from './components/ChunkErrorGuard'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://makinari.com'),
@@ -39,11 +41,14 @@ export const viewport: Viewport = {
   maximumScale: 1.2,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const headersList = await headers()
+  const country = headersList.get('x-vercel-ip-country') || undefined
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -226,8 +231,9 @@ export default function RootLayout({
 
       </head>
       <body className="font-sans">
-        <Providers>
+        <Providers country={country}>
           <LoggerInit />
+          <ChunkErrorGuard />
           <main className="min-h-[100dvh] bg-background overflow-visible">
             <ClientWrapper>
               {children}

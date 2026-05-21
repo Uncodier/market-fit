@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './components/ui/card'
+import { isChunkLoadError, reloadForNewBuild } from './components/ChunkErrorGuard'
 
 export default function Error({
   error,
@@ -11,10 +12,17 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  // Log the error to the console
+  // If the error is caused by stale chunks from a previous build, force a hard
+  // reload so the browser fetches the latest HTML and chunk hashes. This is the
+  // recovery path for users who had the tab open before a deploy.
   useEffect(() => {
+    if (isChunkLoadError(error)) {
+      reloadForNewBuild()
+      return
+    }
+
     console.error('Error en la aplicación:', error)
-    
+
     // Log detallado para problemas de autenticación
     if (error.message.includes('token') || error.message.includes('auth')) {
       console.error('Posible problema de autenticación. Intenta cerrar sesión y volver a iniciar sesión.')

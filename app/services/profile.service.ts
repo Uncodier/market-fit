@@ -1,6 +1,25 @@
 import { createClient } from '@/lib/supabase/client'
 
 // Tipos para el perfil
+export interface EventType {
+  id: string
+  title: string
+  slug: string
+  duration: number
+  buffer: number
+  enabled: boolean
+  description?: string
+  site_id?: string // for personal events, which site they belong to
+}
+
+export interface CalendarSettings {
+  enabled: boolean
+  availability: {
+    [key: string]: { enabled: boolean; start: string; end: string } // key: monday, tuesday, etc.
+  }
+  event_types?: EventType[]
+}
+
 export interface ProfileData {
   id: string
   email: string
@@ -15,7 +34,10 @@ export interface ProfileData {
     email: boolean
     push: boolean
   }
-  settings?: Record<string, any>
+  settings?: {
+    calendar?: CalendarSettings
+    [key: string]: any
+  }
   created_at: string
   updated_at: string
 }
@@ -276,6 +298,30 @@ class ProfileService {
     } catch (error) {
       console.error('Error in profileExists:', error)
       return false
+    }
+  }
+
+  /**
+   * Obtiene un perfil por su slug de calendario público
+   */
+  async getProfileByCalendarSlug(slug: string): Promise<ProfileData | null> {
+    try {
+      const { data, error } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .eq('settings->calendar->>slug', slug)
+        .eq('settings->calendar->>enabled', 'true')
+        .single()
+
+      if (error) {
+        console.error('Error fetching profile by slug:', error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error in getProfileByCalendarSlug:', error)
+      return null
     }
   }
 }

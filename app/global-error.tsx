@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { isChunkLoadError, reloadForNewBuild } from './components/ChunkErrorGuard'
 
 interface GlobalErrorProps {
   error: Error & { digest?: string }
@@ -9,6 +10,12 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
+    // Stale chunks from a previous deploy: hard reload to pull the new build.
+    if (isChunkLoadError(error)) {
+      reloadForNewBuild()
+      return
+    }
+
     // Opcionalmente enviar el error a un servicio de registro
     console.error('Error global crítico:', error)
   }, [error])

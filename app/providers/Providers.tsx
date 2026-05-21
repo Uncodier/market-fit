@@ -12,13 +12,14 @@ import { LocalizationProvider } from '../context/LocalizationContext';
 
 interface ProvidersProps {
   children: React.ReactNode;
+  country?: string;
 }
 
-export default function Providers({ children }: ProvidersProps) {
+export default function Providers({ children, country }: ProvidersProps) {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <LocalizationProvider>
+        <LocalizationProvider initialCountry={country}>
           <LayoutProvider>
             <SiteProvider>
               <RobotsProvider>

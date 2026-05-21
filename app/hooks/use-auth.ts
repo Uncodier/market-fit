@@ -210,7 +210,12 @@ export function useAuth() {
             currentPath !== '/' &&
             !isOAuthCallbackPage
           ) {
-            router.push('/auth')
+            // Use a hard navigation rather than router.push: SIGNED_OUT here
+            // is almost always caused by an expired/invalid refresh token
+            // after long idle. Falling back to window.location avoids the
+            // Next 16 / React 19 App Router transition deadlock that can
+            // otherwise leave the sidebar frozen (see layout-client.tsx).
+            window.location.assign('/auth')
           }
         } else if (event === 'TOKEN_REFRESHED') {
           // Actualizar la sesión sin redirección

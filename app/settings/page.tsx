@@ -213,6 +213,10 @@ const getActivitiesSections = (t: (key: string) => string): QuickNavSection[] =>
   },
 ]
 
+const getCalendarSections = (t: (key: string) => string): QuickNavSection[] => [
+  { id: "round-robin-calendars", title: "Round Robin Calendars" },
+]
+
 export default function SettingsPage() {
   const { t } = useLocalization()
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
@@ -290,7 +294,7 @@ export default function SettingsPage() {
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('segment')
-    if (tab && ["general", "channels", "team", "activities", "social"].includes(tab)) {
+    if (tab && ["general", "channels", "team", "activities", "social", "calendar"].includes(tab)) {
       setActiveSegment(tab)
     }
   }, [searchParams])
@@ -431,6 +435,8 @@ export default function SettingsPage() {
         return getActivitiesSections(t)
       case "social":
         return socialSections
+      case "calendar":
+        return getCalendarSections(t)
       default:
         return []
     }
@@ -443,10 +449,11 @@ export default function SettingsPage() {
         <StickyHeader>
           <div className="flex items-center justify-between px-16 w-full">
             <Tabs value="general" className="w-auto">
-              <TabsList>
-                <TabsTrigger value="general">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
-                <TabsTrigger value="team">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
-                <TabsTrigger value="social">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
+              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
+                <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
+                <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>
+                <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -480,10 +487,11 @@ export default function SettingsPage() {
         <StickyHeader>
           <div className="flex items-center justify-between px-16 w-full">
             <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
-              <TabsList className="flex">
-                <TabsTrigger value="general" className="whitespace-nowrap">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
-                <TabsTrigger value="team" className="whitespace-nowrap">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
-                <TabsTrigger value="social" className="whitespace-nowrap">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
+              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
+                <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
+                <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>
+                <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>

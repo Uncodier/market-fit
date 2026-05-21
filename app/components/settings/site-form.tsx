@@ -18,6 +18,7 @@ import { ChannelsSection } from "./ChannelsSection"
 import { TeamSection } from "./TeamSection"
 import { BillingSection } from "./BillingSection"
 import { ActivitiesSection } from "./ActivitiesSection"
+import { CalendarSection } from "./CalendarSection"
 import { useDropzone } from "react-dropzone"
 import { cn } from "../../lib/utils"
 import {
@@ -497,6 +498,10 @@ export function SiteForm({
 
           {renderCard("team",
             <TeamSection active={true} siteId={siteId} />
+          )}
+
+          {renderCard("calendar",
+            <CalendarSection />
           )}
 
           {renderCard("billing",

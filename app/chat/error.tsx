@@ -5,6 +5,7 @@ import { Button } from '@/app/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/app/components/ui/card'
 import * as Icons from '@/app/components/ui/icons'
 import { NavigationLink } from '@/app/components/navigation/NavigationLink'
+import { isChunkLoadError, reloadForNewBuild } from '@/app/components/ChunkErrorGuard'
 
 export default function ChatError({
   error,
@@ -13,8 +14,11 @@ export default function ChatError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  // Log the error to the console
   useEffect(() => {
+    if (isChunkLoadError(error)) {
+      reloadForNewBuild()
+      return
+    }
     console.error('Chat Error:', error)
   }, [error])
 

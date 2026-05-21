@@ -64,6 +64,17 @@ export interface Site {
   settings?: SiteSettings
 }
 
+export interface RoundRobinCalendar {
+  id: string
+  name: string
+  slug: string
+  member_ids: string[] // user IDs
+  description?: string
+  duration: number
+  buffer: number
+  created_at: string
+}
+
 export interface SiteSettings {
   id?: string
   site_id?: string
@@ -180,6 +191,7 @@ export interface SiteSettings {
       tracking_code?: string
     }
   } | null
+  round_robin_calendars?: RoundRobinCalendar[] | null
   branding?: {
     brand_essence?: string
     brand_personality?: string

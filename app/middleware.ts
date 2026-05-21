@@ -7,7 +7,8 @@ const ALLOWED_PUBLIC_PATHS = [
   '/auth',
   '/auth/callback',
   '/auth/logout',
-  '/demo'
+  '/demo',
+  '/book'
 ]
 
 // Define suspicious patterns that should be blocked immediately
@@ -125,18 +126,28 @@ const ALIAS_MAP: Record<string, string> = {
 }
 
 // CORS headers configuration
-const getCorsHeaders = (response: NextResponse) => {
+const getCorsHeaders = (response: NextResponse, isPublicBooking = false) => {
   response.headers.set('Access-Control-Allow-Origin', '*');
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
   response.headers.set('Access-Control-Max-Age', '86400'); // 24 horas
   response.headers.set('Access-Control-Allow-Credentials', 'true');
-  response.headers.set('Content-Security-Policy', "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.0.38:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.246:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* http://192.168.87.174:* http://192.168.87.174 https://192.168.87.174:* http://192.168.87.180:* http://192.168.87.180 https://192.168.87.180:* https://tu-api-real.com https://api.market-fit.ai https://backend.aimarket.fit https://backend.uncodie.com https://api.uncodie.com https://backend.makinari.com https://db.makinari.com wss://db.makinari.com; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://files.uncodie.com https://backend.uncodie.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob: https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://db.makinari.com; frame-src 'self' https://*.vercel.app https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://docs.google.com https://js.stripe.com https://hooks.stripe.com https://*.scrapybara.com https://*.makinari.com https://*.preview.makinari.com;");
+  
+  let csp = "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.0.38:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.246:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* http://192.168.87.174:* http://192.168.87.174 https://192.168.87.174:* http://192.168.87.180:* http://192.168.87.180 https://192.168.87.180:* https://tu-api-real.com https://api.market-fit.ai https://backend.aimarket.fit https://backend.uncodie.com https://api.uncodie.com https://backend.makinari.com https://db.makinari.com wss://db.makinari.com; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://files.uncodie.com https://backend.uncodie.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; media-src 'self' blob: https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://db.makinari.com; frame-src 'self' https://*.vercel.app https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://docs.google.com https://js.stripe.com https://hooks.stripe.com https://*.scrapybara.com https://*.makinari.com https://*.preview.makinari.com;";
+  
+  if (isPublicBooking) {
+    csp += " frame-ancestors *;";
+    // Remove X-Frame-Options if it was set to DENY/SAMEORIGIN
+    response.headers.delete('X-Frame-Options');
+  }
+  
+  response.headers.set('Content-Security-Policy', csp);
   return response;
 };
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const isPublicBooking = pathname.startsWith('/book')
   
   // Block suspicious requests immediately
   if (isSuspiciousRequest(pathname)) {
@@ -199,7 +210,7 @@ export async function middleware(request: NextRequest) {
   
   // Handle OPTIONS request for preflight checks (CORS)
   if (request.method === 'OPTIONS') {
-    return getCorsHeaders(new NextResponse(null, { status: 204 }));
+    return getCorsHeaders(new NextResponse(null, { status: 204 }), isPublicBooking);
   }
   
   // NUNCA procesar recursos estáticos - siempre permitir acceso
@@ -218,7 +229,7 @@ export async function middleware(request: NextRequest) {
   // pool gets exhausted and connections go stale.
   if (pathname.startsWith('/api/')) {
     const res = NextResponse.next()
-    return getCorsHeaders(res)
+    return getCorsHeaders(res, isPublicBooking)
   }
   
   // Redirigir /auth/login a /auth para mantener una única ruta de autenticación
@@ -231,7 +242,7 @@ export async function middleware(request: NextRequest) {
   
   // Si es una ruta pública conocida, permitir
   if (ALLOWED_PUBLIC_PATHS.some(path => pathname.startsWith(path))) {
-    return getCorsHeaders(NextResponse.next());
+    return getCorsHeaders(NextResponse.next(), isPublicBooking);
   }
   
   try {
@@ -239,7 +250,7 @@ export async function middleware(request: NextRequest) {
     const res = NextResponse.next()
     
     // Add CORS headers
-    getCorsHeaders(res);
+    getCorsHeaders(res, isPublicBooking);
     
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
