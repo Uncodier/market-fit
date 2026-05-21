@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSite } from "../context/SiteContext"
 import { Card, CardContent } from "../components/ui/card"
@@ -9,11 +9,56 @@ import { Skeleton } from "../components/ui/skeleton"
 import { Badge } from "../components/ui/badge"
 import Image from "next/image"
 
+function getCookieValue(name: string): string | null {
+  if (typeof document === "undefined") return null
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]+)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+function clearCookieEverywhere(name: string) {
+  if (typeof document === "undefined") return
+
+  const expires = "Thu, 01 Jan 1970 00:00:00 GMT"
+  const base = `${name}=; path=/; expires=${expires}; max-age=0`
+
+  // Default (no domain)
+  document.cookie = base
+
+  // Try host and parent domain variants (best effort).
+  try {
+    const host = window.location.hostname
+    if (host && host.includes(".")) {
+      document.cookie = `${base}; domain=${host}`
+      const parts = host.split(".")
+      if (parts.length >= 2) {
+        const parent = `.${parts.slice(-2).join(".")}`
+        document.cookie = `${base}; domain=${parent}`
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export default function ProjectsPage() {
   const { sites, currentSite, isLoading, setCurrentSite } = useSite()
   const router = useRouter()
 
   const hasSites = (sites?.length || 0) > 0
+
+  const [demoSiteIdFromCookie, setDemoSiteIdFromCookie] = useState<string | null>(null)
+  const [manualDemoEnabled, setManualDemoEnabled] = useState(false)
+
+  useEffect(() => {
+    // Keep demo state in sync with cookie/localStorage (tab can stay open for days).
+    const id = getCookieValue("market_fit_demo_site_id")
+    const manual = typeof window !== "undefined" && localStorage.getItem("market_fit_manual_demo") === "true"
+    setDemoSiteIdFromCookie(id)
+    setManualDemoEnabled(!!manual)
+  }, [])
+
+  const isDemoMode =
+    !!demoSiteIdFromCookie || manualDemoEnabled || (currentSite?.id?.startsWith("demo-") ?? false)
 
   // If a current site is selected, go to AI Agents (robots)
   useEffect(() => {
@@ -21,6 +66,24 @@ export default function ProjectsPage() {
       router.push("/robots")
     }
   }, [isLoading, currentSite?.id, router])
+
+  // If demo mode is active but no current site is selected, auto-select the demo site.
+  useEffect(() => {
+    if (isLoading) return
+    if (currentSite?.id) return
+    if (!isDemoMode) return
+
+    const targetDemo =
+      (demoSiteIdFromCookie ? sites.find((s) => s.id === demoSiteIdFromCookie) : null) ??
+      sites.find((s) => s.id.startsWith("demo-")) ??
+      null
+
+    if (!targetDemo) return
+
+    Promise.resolve(setCurrentSite(targetDemo)).finally(() => {
+      router.push("/robots")
+    })
+  }, [isLoading, currentSite?.id, isDemoMode, demoSiteIdFromCookie, sites, setCurrentSite, router])
 
   const handleSelectSite = async (siteId: string) => {
     const site = sites.find(s => s.id === siteId)
@@ -72,7 +135,6 @@ export default function ProjectsPage() {
       )
     }
 
-    const isDemoMode = currentSite?.id.startsWith('demo-') || false;
     const filteredSites = isDemoMode ? sites : sites.filter(site => !site.id.startsWith('demo-'));
 
     return (
@@ -121,7 +183,7 @@ export default function ProjectsPage() {
 
         {isDemoMode && (
           <Card className="border border-amber-200 bg-amber-50 hover:border-amber-300 transition-colors cursor-pointer" onClick={() => {
-            document.cookie = `market_fit_demo_site_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+            clearCookieEverywhere("market_fit_demo_site_id")
             localStorage.removeItem('currentSiteId');
             localStorage.removeItem('market_fit_manual_demo');
             window.location.href = "/projects";
@@ -137,7 +199,7 @@ export default function ProjectsPage() {
                 </div>
                 <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100" onClick={(e) => { 
                   e.stopPropagation(); 
-                  document.cookie = `market_fit_demo_site_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+                  clearCookieEverywhere("market_fit_demo_site_id")
                   localStorage.removeItem('currentSiteId');
                   localStorage.removeItem('market_fit_manual_demo');
                   window.location.href = "/projects";
@@ -165,7 +227,7 @@ export default function ProjectsPage() {
         )}
       </div>
     )
-  }, [isLoading, hasSites, sites, currentSite?.id, router])
+  }, [isLoading, hasSites, sites, currentSite?.id, isDemoMode, router])
 
   return (
     <div className="min-h-[calc(100vh-64px)] w-full flex items-center justify-center p-6">
