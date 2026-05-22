@@ -385,16 +385,26 @@ function inferImprentaResultMediaType(node: InstanceNode): ImprentaResultMediaTy
   const outputs = Array.isArray(res.outputs) ? res.outputs : null
   if (outputs) {
     for (const o of outputs) {
-      const t = o?.type
+      const t = o?.type?.toLowerCase()
       if (t === "image" || t === "video" || t === "audio") return t
+      if (typeof o?.url === 'string') {
+        if (o.url.match(/\.(mp4|webm|mov|mkv)(\?.*)?$/i)) return "video"
+        if (o.url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) return "image"
+        if (o.url.match(/\.(mp3|wav|ogg|m4a|aac|flac)(\?.*)?$/i)) return "audio"
+      }
     }
   }
 
   const media = Array.isArray(res.media) ? res.media : null
   if (media) {
     for (const m of media) {
-      const t = m?.type
+      const t = m?.type?.toLowerCase()
       if (t === "image" || t === "video" || t === "audio") return t
+      if (typeof m?.url === 'string') {
+        if (m.url.match(/\.(mp4|webm|mov|mkv)(\?.*)?$/i)) return "video"
+        if (m.url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) return "image"
+        if (m.url.match(/\.(mp3|wav|ogg|m4a|aac|flac)(\?.*)?$/i)) return "audio"
+      }
     }
   }
 
@@ -402,7 +412,12 @@ function inferImprentaResultMediaType(node: InstanceNode): ImprentaResultMediaTy
   if (res.image?.url) return "image"
   if (res.video?.url) return "video"
   if (res.audio?.url) return "audio"
-  if (typeof res.text === "string" && res.text.trim().length > 0) return "text"
+  if (typeof res.text === "string" && res.text.trim().length > 0) {
+    if (res.text.match(/https?:\/\/[^\s"'<>()]+\.(mp4|webm|mov|mkv)/i)) return "video"
+    if (res.text.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg)/i)) return "image"
+    if (res.text.match(/https?:\/\/[^\s"'<>()]+\.(mp3|wav|ogg|m4a|aac|flac)/i)) return "audio"
+    return "text"
+  }
 
   return "text"
 }
@@ -1363,6 +1378,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     try {
       // Create a dummy placeholder child node visually
       const expectedAmount = Number((node.settings as any)?.parameters?.expectedResults) || 1;
+      const currentMediaType = (node.settings as any)?.media_type || (node.type === 'prompt' ? 'text' : node.type.replace('generate-', ''));
       const newDummies = Array.from({ length: expectedAmount }).map((_, i) => ({
         id: `dummy-${Date.now()}-${i}`,
         instance_id: node.instance_id,
@@ -1372,7 +1388,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         type: 'Generating...',
         status: 'running',
         prompt: { text: '' },
-        settings: {},
+        settings: {
+          media_type: currentMediaType,
+          parameters: (node.settings as any)?.parameters
+        },
         result: {},
         site_id: node.site_id,
         user_id: node.user_id,
@@ -1393,7 +1412,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       const { getSystemPromptForActivity } = await import('@/app/components/simple-messages-view/utils')
       
       // Prepare context string with media parameters
-      const currentMediaType = (node.settings as any)?.media_type || (node.type === 'prompt' ? 'text' : node.type.replace('generate-', ''));
       const contextObj: any = {
         mediaType: currentMediaType,
         output_type: currentMediaType,
@@ -1742,6 +1760,14 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     if (!activeInstanceId || nodes.length === 0) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Let Escape cancel the connection at any time
+      if (e.key === "Escape") {
+        if (drawingConnectionRef.current) {
+          e.preventDefault();
+          handleConnectionCancel();
+        }
+      }
+
       const t = e.target
       if (t instanceof HTMLElement) {
         const tag = t.tagName
@@ -1789,17 +1815,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       return
     }
 
-    // 2. Link context
-    const contextLink = {
-      target_node_id: actionNode.id,
-      context_node_id: contextNodeId,
-      site_id: currentSite.id,
-      user_id: session.user.id
-      // 'type' could be specified here if we had a prompt for it, leaving null for now
-    }
-    await supabase.from('instance_node_contexts').insert(contextLink)
-    
-    toast.success("Action node created with context")
+    toast.success("Action node created")
   }
 
   const handleWindowMouseMove = useCallback((e: MouseEvent) => {
@@ -1924,9 +1940,43 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     beginNodeDrag(nodeId, e.clientX, e.clientY)
   }
 
+  const handleConnectionMove = useCallback((e: MouseEvent) => {
+    if (!drawingConnectionRef.current) return;
+    
+    let scale = 1;
+    const contentDiv = document.getElementById('imprenta-canvas-content');
+    if (contentDiv && contentDiv.parentElement) {
+       const transform = contentDiv.parentElement.style.transform;
+       const match = transform.match(/scale\(([^)]+)\)/);
+       if (match) scale = parseFloat(match[1]) || 1;
+       
+       const rect = contentDiv.getBoundingClientRect();
+       const currentX = (e.clientX - rect.left) / scale;
+       const currentY = (e.clientY - rect.top) / scale;
+       
+       setTempConnection({
+         fromNode: drawingConnectionRef.current.fromNode,
+         currentX,
+         currentY
+       });
+    }
+  }, []);
+
+  const handleConnectionCancel = useCallback(() => {
+    drawingConnectionRef.current = null;
+    setTempConnection(null);
+    window.removeEventListener('mousemove', handleConnectionMove);
+  }, [handleConnectionMove]);
+
   const handleConnectionStart = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
     e.preventDefault();
+    
+    // Toggle off if clicking the same source knob again
+    if (drawingConnectionRef.current && drawingConnectionRef.current.fromNode === nodeId) {
+      handleConnectionCancel();
+      return;
+    }
     
     let scale = 1;
     const contentDiv = document.getElementById('imprenta-canvas-content');
@@ -1955,37 +2005,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     });
     
     window.addEventListener('mousemove', handleConnectionMove);
-    window.addEventListener('mouseup', handleConnectionEnd);
-    window.addEventListener('click', handleConnectionEnd, { capture: true, once: true });
-  }
-
-  const handleConnectionMove = (e: MouseEvent) => {
-    if (!drawingConnectionRef.current) return;
-    
-    let scale = 1;
-    const contentDiv = document.getElementById('imprenta-canvas-content');
-    if (contentDiv && contentDiv.parentElement) {
-       const transform = contentDiv.parentElement.style.transform;
-       const match = transform.match(/scale\(([^)]+)\)/);
-       if (match) scale = parseFloat(match[1]) || 1;
-    }
-    
-    const dx = (e.clientX - drawingConnectionRef.current.mouseStartX) / scale;
-    const dy = (e.clientY - drawingConnectionRef.current.mouseStartY) / scale;
-    
-    setTempConnection({
-      fromNode: drawingConnectionRef.current.fromNode,
-      currentX: drawingConnectionRef.current.nodeStartX + dx,
-      currentY: drawingConnectionRef.current.nodeStartY + dy
-    });
-  }
-
-  const handleConnectionEnd = (e?: MouseEvent | Event) => {
-    drawingConnectionRef.current = null;
-    setTempConnection(null);
-    window.removeEventListener('mousemove', handleConnectionMove);
-    window.removeEventListener('mouseup', handleConnectionEnd);
-    window.removeEventListener('click', handleConnectionEnd as any, { capture: true });
+    // Removed mouseup and click listeners so connection stays active
   }
 
   const handleConnectionDrop = async (
@@ -1995,7 +2015,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   ) => {
     e.stopPropagation();
     if (!drawingConnectionRef.current) return;
-      const sourceNodeId = drawingConnectionRef.current.fromNode;
+    
+    const sourceNodeId = drawingConnectionRef.current.fromNode;
+    handleConnectionCancel(); // Clean up the connection line first
+    
     if (sourceNodeId === targetNodeId) return;
 
     const targetNode = nodesRef.current.find((n) => n.id === targetNodeId);
@@ -2412,7 +2435,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           const currNode = currentNodes.find(n => n.id === currNodeId);
           const hasUserPos = currNode && !currNode.id.startsWith('dummy-') && (currNode.settings as any)?.ui_position;
           
-          if (pos[currNodeId].y < prevBottom) {
+          // Check if they also overlap horizontally (in X).
+          // If they don't overlap horizontally, they aren't colliding.
+          const prevNodeX = pos[prevNodeId].x;
+          const currNodeX = pos[currNodeId].x;
+          const xOverlap = Math.abs(currNodeX - prevNodeX) < NODE_W + H_GAP / 2;
+          
+          if (pos[currNodeId].y < prevBottom && !hasUserPos && xOverlap) {
             // Only bump if they are actually colliding, but ignore exact same Y overlaps 
             // since that indicates a replacement in progress where they share the exact slot
             if (Math.abs(pos[currNodeId].y - pos[prevNodeId].y) > 1 && !prevNodeId.startsWith('dummy-')) {
@@ -2420,7 +2449,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             } else if (Math.abs(pos[currNodeId].y - pos[prevNodeId].y) > 1 && prevNodeId.startsWith('dummy-')) {
               pos[currNodeId] = { ...pos[currNodeId], y: prevBottom }
             }
-          } else if (pos[currNodeId].y > prevBottom && !hasUserPos) {
+          } else if (pos[currNodeId].y > prevBottom && !hasUserPos && xOverlap) {
             // Pull up to close gap if it was placed automatically
             pos[currNodeId] = { ...pos[currNodeId], y: prevBottom }
           }
@@ -2657,6 +2686,29 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                       </span>
                     </TooltipContent>
                   </Tooltip>
+                  {tempConnection && (
+                    <>
+                      <div className="w-px h-4 bg-border mx-1"></div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-8 text-xs font-medium px-2.5"
+                            onClick={handleConnectionCancel}
+                          >
+                            <X className="w-3.5 h-3.5 mr-1.5" /> Cancel connection
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6}>
+                          <span className="flex items-center gap-2">
+                            Stop connecting node
+                            <kbd className="pointer-events-none rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">ESC</kbd>
+                          </span>
+                        </TooltipContent>
+                      </Tooltip>
+                    </>
+                  )}
                 </div>
               </TooltipProvider>
             ) : null
@@ -3047,7 +3099,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                         </span>
                                         <div
                                           className={anchorClass(contentWarn)}
-                                          onMouseUp={(e) => handleConnectionDrop(e, node.id, "content")}
+                                          onClick={(e) => handleConnectionDrop(e, node.id, "content")}
                                         >
                                           <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
                                         </div>
@@ -3062,7 +3114,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                         </span>
                                         <div
                                           className={anchorClass(false)}
-                                          onMouseUp={(e) => handleConnectionDrop(e, node.id, "context")}
+                                          onClick={(e) => handleConnectionDrop(e, node.id, "context")}
                                         >
                                           <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
                                         </div>
@@ -3081,7 +3133,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                         </span>
                                         <div
                                           className={anchorClass(audienceWarn)}
-                                          onMouseUp={(e) => handleConnectionDrop(e, node.id, "audience")}
+                                          onClick={(e) => handleConnectionDrop(e, node.id, "audience")}
                                         >
                                           <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
                                         </div>
@@ -3093,7 +3145,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                               <div 
                                 className="absolute top-1/2 -translate-y-1/2 -left-3 w-4 h-4 bg-background border-2 border-muted-foreground rounded-full flex items-center justify-center z-20 hover:scale-125 transition-transform" 
                                   title="Drop context here"
-                                onMouseUp={(e) => handleConnectionDrop(e, node.id)}
+                                onClick={(e) => handleConnectionDrop(e, node.id)}
                               >
                                 <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
                               </div>
@@ -3103,7 +3155,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                               <div 
                                 className="absolute top-1/2 -translate-y-1/2 -right-3 w-4 h-4 bg-background border-2 border-primary rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-20 hover:scale-125 transition-transform" 
                                 title="Drag to a context input"
-                                onMouseDown={(e) => handleConnectionStart(e, node.id)}
+                                onClick={(e) => handleConnectionStart(e, node.id)}
                               >
                                 <div className="w-1.5 h-1.5 bg-primary rounded-full pointer-events-none" />
                               </div>
