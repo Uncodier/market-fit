@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Deal, DEAL_STATUSES } from "@/app/deals/types"
 import { getDealById, updateDeal } from "@/app/deals/actions"

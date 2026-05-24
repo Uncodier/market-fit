@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Suspense, useRef } from "react"
+import React, { useEffect, useState, Suspense, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ScrollArea } from "@/app/components/ui/scroll-area"

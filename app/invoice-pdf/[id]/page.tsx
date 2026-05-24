@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { getSaleById, getSaleOrderBySaleId } from "@/app/sales/actions"

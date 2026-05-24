@@ -7,8 +7,9 @@ import { Button } from "@/app/components/ui/button"
 import { Card } from "@/app/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { ChevronLeft, ChevronRight, MessageSquare, Clock, PlayCircle, CheckCircle2, XCircle, Ban } from "@/app/components/ui/icons"
-import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Task } from "@/app/types"
+import { TaskSelectionAvatar } from "./TaskSelectionAvatar"
+import { cn } from "@/lib/utils"
 
 import { useLocalization } from "@/app/context/LocalizationContext"
 
@@ -27,6 +28,8 @@ interface TasksTableProps {
   onItemsPerPageChange: (value: string) => void
   onTaskClick: (task: ExtendedTask) => void
   categories: Array<{ id: string; name: string }>
+  selectedTasks: Set<string>
+  onToggleTaskSelection: (taskId: string) => void
 }
 
 // Status styles
@@ -124,7 +127,9 @@ export function TasksTable({
   onPageChange,
   onItemsPerPageChange,
   onTaskClick,
-  categories
+  categories,
+  selectedTasks,
+  onToggleTaskSelection,
 }: TasksTableProps) {
   const { t } = useLocalization()
   const TASK_STATUSES = getTaskStatuses(t)
@@ -212,6 +217,7 @@ export function TasksTable({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[48px] min-w-[48px] max-w-[48px]" />
                     <TableHead className="w-[80px] min-w-[80px] max-w-[80px]">ID</TableHead>
                     <TableHead className="min-w-[200px]">{t('controlCenter.table.title') || 'Title'}</TableHead>
                     <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">{t('controlCenter.table.stage') || 'Stage'}</TableHead>
@@ -226,9 +232,23 @@ export function TasksTable({
                     paginatedItems.map((task) => (
                       <TableRow 
                         key={task.id}
-                        className="group hover:bg-muted/50 transition-colors cursor-pointer"
+                        className={cn(
+                          "group hover:bg-muted/50 transition-colors cursor-pointer",
+                          selectedTasks.has(task.id) && "bg-primary/5"
+                        )}
                         onClick={() => onTaskClick(task)}
                       >
+                        <TableCell>
+                          <TaskSelectionAvatar
+                            assigneeName={task.assigneeName}
+                            isSelected={selectedTasks.has(task.id)}
+                            size="sm"
+                            onToggle={(e) => {
+                              e.stopPropagation()
+                              onToggleTaskSelection(task.id)
+                            }}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="font-mono text-xs text-muted-foreground">
                             {getSerialNumber(task.serial_id)}
@@ -258,14 +278,7 @@ export function TasksTable({
                         </TableCell>
                         <TableCell>
                           {task.assigneeName ? (
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarFallback>
-                                  {task.assigneeName.substring(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm">{task.assigneeName}</span>
-                            </div>
+                            <span className="text-sm">{task.assigneeName}</span>
                           ) : (
                             <span className="text-sm text-muted-foreground">-</span>
                           )}
@@ -287,7 +300,7 @@ export function TasksTable({
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         {t('controlCenter.table.noTasks') || 'No tasks found for this status.'}
                       </TableCell>
                     </TableRow>

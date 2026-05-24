@@ -22,7 +22,7 @@ import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { ControlCenterSkeleton } from "./components/ControlCenterSkeleton"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { ClipboardList, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
+import { ClipboardList, ListOrdered, Check, ChevronDown, Loader } from "@/app/components/ui/icons"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { toast } from "react-hot-toast"
 import { getUserData } from "@/app/services/user-service"
@@ -70,6 +70,8 @@ export default function ControlCenterPage() {
   })
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'completed'>('all')
   const [sortBy, setSortBy] = useState<"priority" | "newest" | "oldest" | "dueDateNearest" | "dueDateOldest">("priority")
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
 
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
@@ -512,6 +514,141 @@ export default function ControlCenterPage() {
     })
   }
 
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTasks((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
+      }
+      return next
+    })
+  }
+
+  const refreshTasksAfterBulkAction = async () => {
+    if (!currentSite) return
+
+    const supabase = createClient()
+    const statuses = ['pending', 'in_progress', 'completed', 'failed', 'canceled']
+    const counts: Record<string, number> = {}
+
+    for (const status of statuses) {
+      const { count, error: countError } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('site_id', currentSite.id)
+        .eq('status', status)
+
+      if (countError) throw countError
+      counts[status] = count || 0
+    }
+
+    setTotalCounts(counts)
+
+    const { data: tasksData, error: tasksError } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        leads:lead_id (
+          id,
+          name
+        ),
+        comments_count:task_comments(count)
+      `)
+      .eq('site_id', currentSite.id)
+      .order('priority', { ascending: false })
+      .order('scheduled_date', { ascending: true })
+
+    if (tasksError) throw tasksError
+
+    const enrichedTasks = await Promise.all(
+      (tasksData || []).map(async (task) => {
+        let assigneeName = undefined
+        if (task.assignee) {
+          const userData = await getUserData(task.assignee)
+          assigneeName = userData?.name
+        }
+
+        return {
+          ...task,
+          leadName: task.leads?.name,
+          assigneeName,
+          comments_count: task.comments_count?.[0]?.count || 0
+        }
+      })
+    )
+
+    setTasks(enrichedTasks)
+    setTaskTypes(Array.from(new Set(
+      enrichedTasks
+        .map((task) => task.type)
+        .filter((type): type is string => Boolean(type && type.trim() !== ''))
+    )).sort())
+  }
+
+  const handleBulkDelete = async () => {
+    if (!currentSite || selectedTasks.size === 0) return
+    if (!confirm(`Are you sure you want to delete ${selectedTasks.size} tasks?`)) return
+
+    const count = selectedTasks.size
+    const ids = Array.from(selectedTasks)
+    setIsBulkActionLoading(true)
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .in('id', ids)
+        .eq('site_id', currentSite.id)
+
+      if (error) throw error
+
+      setSelectedTasks(new Set())
+      await refreshTasksAfterBulkAction()
+      toast.success(`${count} tasks deleted successfully`)
+    } catch (error) {
+      console.error('Error in bulk delete:', error)
+      toast.error('Failed to delete some tasks')
+    } finally {
+      setIsBulkActionLoading(false)
+    }
+  }
+
+  const handleBulkStatusChange = async (newStatus: string) => {
+    if (!currentSite || selectedTasks.size === 0) return
+
+    const count = selectedTasks.size
+    const ids = Array.from(selectedTasks)
+    setIsBulkActionLoading(true)
+
+    try {
+      const supabase = createClient()
+      const updatePayload: { status: string; completed_date?: string } = { status: newStatus }
+      if (newStatus === 'completed') {
+        updatePayload.completed_date = new Date().toISOString()
+      }
+
+      const { error } = await supabase
+        .from('tasks')
+        .update(updatePayload)
+        .in('id', ids)
+        .eq('site_id', currentSite.id)
+
+      if (error) throw error
+
+      setSelectedTasks(new Set())
+      await refreshTasksAfterBulkAction()
+      toast.success(`Status updated for ${count} tasks`)
+    } catch (error) {
+      console.error('Error in bulk status change:', error)
+      toast.error('Failed to update status for some tasks')
+    } finally {
+      setIsBulkActionLoading(false)
+    }
+  }
+
   // Handle load more for kanban columns
   const handleLoadMoreKanban = async (status: string) => {
     const currentPagination = kanbanPagination[status]
@@ -741,6 +878,60 @@ export default function ControlCenterPage() {
             toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             sidebarLeft={sidebarLeft}
             leftContent={
+              selectedTasks.size > 0 ? (
+                <div className="flex items-center gap-4 lg:gap-8 overflow-hidden">
+                  <Badge variant="outline" className="rounded-full px-2 py-0">
+                    {selectedTasks.size} selected
+                  </Badge>
+                  <span className="text-sm text-muted-foreground hidden sm:inline">
+                    Choose bulk action
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedTasks(new Set())}
+                      disabled={isBulkActionLoading}
+                    >
+                      Cancel
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 gap-2 rounded-full px-4"
+                          disabled={isBulkActionLoading}
+                        >
+                          {isBulkActionLoading ? (
+                            <Loader className="h-4 w-4 animate-spin" />
+                          ) : null}
+                          Bulk actions
+                          <ChevronDown className="h-3 w-3 opacity-50" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-40">
+                        <DropdownMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleBulkStatusChange('completed')}
+                        >
+                          Complete
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="cursor-pointer"
+                          onClick={() => handleBulkStatusChange('canceled')}
+                        >
+                          Cancel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="cursor-pointer text-destructive focus:text-destructive"
+                          onClick={handleBulkDelete}
+                        >
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ) : (
               <div className="flex items-center gap-4 lg:gap-8 overflow-hidden">
                 <TaskStatusFilter
                   selectedFilter={statusFilter}
@@ -823,6 +1014,7 @@ export default function ControlCenterPage() {
                   </DropdownMenu>
                 </div>
               </div>
+              )
             }
             rightContent={
               <div className="flex items-center gap-4">
@@ -872,6 +1064,8 @@ export default function ControlCenterPage() {
                   kanbanPagination={kanbanPagination}
                   onLoadMore={handleLoadMoreKanban}
                   totalCounts={totalCounts}
+                  selectedTasks={selectedTasks}
+                  onToggleTaskSelection={toggleTaskSelection}
                 />
               ) : viewType === "calendar" ? (
                 <TaskCalendar
@@ -888,6 +1082,8 @@ export default function ControlCenterPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onTaskClick={handleTaskClick}
                   categories={categories}
+                  selectedTasks={selectedTasks}
+                  onToggleTaskSelection={toggleTaskSelection}
                 />
               )}
             </div>

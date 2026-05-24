@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
-import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
+import { TaskSelectionAvatar } from "./TaskSelectionAvatar"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
 import { Clock, PlayCircle, CheckCircle2, XCircle, Ban, MessageSquare } from "@/app/components/ui/icons"
@@ -38,6 +38,8 @@ interface TaskKanbanProps {
   kanbanPagination: Record<string, KanbanPaginationState>
   onLoadMore: (status: string) => void
   totalCounts: Record<string, number>
+  selectedTasks: Set<string>
+  onToggleTaskSelection: (taskId: string) => void
 }
 
 // Define task statuses
@@ -74,19 +76,9 @@ const getStageDisplayName = (stage?: string) => {
   return stage.charAt(0).toUpperCase() + stage.slice(1)
 }
 
-// Get lead initials
-const getLeadInitials = (name: string | undefined) => {
-  if (!name) return "L"
-  return name.split(' ')
-    .map(word => word.charAt(0).toUpperCase())
-    .slice(0, 2)
-    .join('')
-}
-
 // Extract numeric part from serial_id
 const getSerialNumber = (serialId: string) => {
   if (!serialId) return ""
-  // Extract prefix and number parts
   const match = serialId.match(/^([A-Z]+)-(\d+)$/)
   if (match) {
     const prefix = match[1]
@@ -96,7 +88,7 @@ const getSerialNumber = (serialId: string) => {
   return serialId
 }
 
-export function TaskKanban({ tasks, sortBy, onUpdateTaskStatus, onTaskClick, kanbanPagination, onLoadMore, totalCounts }: TaskKanbanProps) {
+export function TaskKanban({ tasks, sortBy, onUpdateTaskStatus, onTaskClick, kanbanPagination, onLoadMore, totalCounts, selectedTasks, onToggleTaskSelection }: TaskKanbanProps) {
   const { t } = useLocalization()
   const router = useRouter()
   const { currentSite } = useSite()
@@ -312,32 +304,22 @@ export function TaskKanban({ tasks, sortBy, onUpdateTaskStatus, onTaskClick, kan
                               <Card
                                 className={cn(
                                   "mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md relative",
-                                  snapshot.isDragging && "shadow-lg"
+                                  snapshot.isDragging && "shadow-lg",
+                                  selectedTasks.has(task.id) && "ring-2 ring-primary/40 bg-primary/5"
                                 )}
                                 onClick={() => onTaskClick(task)}
                               >
                                 <CardContent className="p-3">
                                   <div className="flex items-start justify-between min-w-0">
                                     <div className="flex gap-3 items-start min-w-0 flex-1">
-                                      {task.leadName && task.lead_id && (
-                                        <Avatar 
-                                          className="h-[39px] w-[39px] border border-primary/10 relative z-[1] flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            if (task.lead_id && task.leadName) {
-                                              navigateToLead({
-                                                leadId: task.lead_id,
-                                                leadName: task.leadName,
-                                                router
-                                              })
-                                            }
-                                          }}
-                                        >
-                                          <AvatarFallback className="bg-primary/10">
-                                            {getLeadInitials(task.leadName)}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                      )}
+                                      <TaskSelectionAvatar
+                                        assigneeName={task.assigneeName}
+                                        isSelected={selectedTasks.has(task.id)}
+                                        onToggle={(e) => {
+                                          e.stopPropagation()
+                                          onToggleTaskSelection(task.id)
+                                        }}
+                                      />
                                       <div className="flex flex-col min-w-0 flex-1">
                                         <h3 className="text-sm font-medium line-clamp-1 mb-1">{task.title}</h3>
                                         <div className="flex items-center gap-2 min-w-0">
