@@ -25,6 +25,8 @@ export interface AreaNavItem {
   dashboardTab?: string
   /** When set with `/settings`, link and active state use `?tab=` on the settings page */
   settingsTab?: string
+  /** When set with `/robots`, link and active state use `?mode=` (Content Creator canvas) */
+  robotsMode?: string
 }
 
 export const NAVIGATION_AREAS: Record<
@@ -37,6 +39,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "campaigns", href: "/campaigns" },
       { key: "segments", href: "/segments" },
       { key: "content", href: "/content" },
+      { key: "contentCreator", href: "/robots", robotsMode: "imprenta" },
       { key: "assets", href: "/assets" },
     ],
   },
@@ -75,12 +78,25 @@ export const NAVIGATION_AREAS: Record<
   },
 }
 
-export function buildNavItemHref(item: AreaNavItem): string {
+export function buildNavItemHref(
+  item: AreaNavItem,
+  currentSearch?: URLSearchParams | string
+): string {
   if (item.dashboardTab) {
     return `/dashboard?tab=${item.dashboardTab}`
   }
   if (item.settingsTab) {
     return `/settings?tab=${item.settingsTab}`
+  }
+  if (item.robotsMode) {
+    const p = new URLSearchParams(
+      typeof currentSearch === "string"
+        ? currentSearch
+        : currentSearch?.toString() ?? ""
+    )
+    p.set("mode", item.robotsMode)
+    const q = p.toString()
+    return q ? `/robots?${q}` : `/robots?mode=${item.robotsMode}`
   }
   return item.href
 }
@@ -102,6 +118,10 @@ export function isNavItemActive(
   if (item.settingsTab) {
     if (!pathname.startsWith("/settings")) return false
     return searchParams.get("tab") === item.settingsTab
+  }
+  if (item.robotsMode) {
+    if (!pathname.startsWith("/robots")) return false
+    return searchParams.get("mode") === item.robotsMode
   }
   if (!item.href) return false
   return pathname.startsWith(item.href)

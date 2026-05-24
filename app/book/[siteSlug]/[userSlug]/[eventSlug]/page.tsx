@@ -95,14 +95,14 @@ export default function UserBookingPage(props: {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({});
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [activeStep, setActiveStep] = useState<"calendar" | "time" | "details">("calendar");
-  const [step, setStep] = useState<"booking" | "success">("booking");
+  const [activeStep, setActiveStep] = useState<"calendar" | "time" | "details" | "success">("calendar");
   const [userTimezone, setUserTimezone] = useState<string>("America/Mexico_City");
 
   const containerRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const timeRef = useRef<HTMLDivElement>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
+  const successRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth < 768) {
@@ -112,6 +112,8 @@ export default function UserBookingPage(props: {
         timeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       } else if (activeStep === "details") {
         detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (activeStep === "success") {
+        successRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }
   }, [activeStep]);
@@ -318,7 +320,7 @@ export default function UserBookingPage(props: {
         notes,
         title: `${eventType.title} with ${profile.name || userSlug}`,
       });
-      setStep("success");
+      setActiveStep("success");
     } catch (error) {
       console.error(error);
       toast.error("Failed to book meeting. Please try again.");
@@ -327,93 +329,44 @@ export default function UserBookingPage(props: {
     }
   };
 
-  if (step === "success") {
-    const handleDownloadCalendar = () => {
-      if (!selectedDate || !selectedSlot || !eventType) return;
+  const handleDownloadCalendar = () => {
+    if (!selectedDate || !selectedSlot || !eventType) return;
 
-      const [hours, minutes] = selectedSlot.split(":").map(Number);
-      const startDate = new Date(selectedDate);
-      startDate.setHours(hours, minutes, 0, 0);
+    const [hours, minutes] = selectedSlot.split(":").map(Number);
+    const startDate = new Date(selectedDate);
+    startDate.setHours(hours, minutes, 0, 0);
 
-      const endDate = new Date(startDate.getTime() + eventType.duration * 60000);
+    const endDate = new Date(startDate.getTime() + eventType.duration * 60000);
 
-      const formatDate = (date: Date) => {
-        return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-      };
-
-      const icsContent = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Uncodie//Market Fit//EN",
-        "BEGIN:VEVENT",
-        `UID:${new Date().getTime()}@uncodie.com`,
-        `DTSTAMP:${formatDate(new Date())}`,
-        `DTSTART:${formatDate(startDate)}`,
-        `DTEND:${formatDate(endDate)}`,
-        `SUMMARY:${eventType.title} with ${profile.name || userSlug}`,
-        `DESCRIPTION:${notes || ""}`,
-        "END:VEVENT",
-        "END:VCALENDAR",
-      ].join("\n");
-
-      const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `meeting-${format(startDate, "yyyyMMdd-HHmm")}.ics`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
     };
 
-    return (
-      <div
-        className={cn(
-          "flex items-center justify-center",
-          !isEmbed && "min-h-screen p-4",
-        )}
-      >
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-10 pb-10 text-center space-y-4">
-            <div className="flex justify-center">
-              <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle2 className="h-10 w-10 text-green-600" />
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold">{t("booking.success.title")}</h1>
-            <p className="text-muted-foreground">{t("booking.success.desc")}</p>
-            <div className="pt-4 border-t border-border mt-6 text-left space-y-2">
-              <p className="text-sm">
-                <strong>{t("booking.details.date")}:</strong>{" "}
-                {format(selectedDate!, "MMMM do, yyyy", { locale: dateLocale })}
-              </p>
-              <p className="text-sm">
-                <strong>{t("booking.details.time")}:</strong> {selectedSlot}
-              </p>
-              <p className="text-sm">
-                <strong>{t("booking.details.with")}:</strong>{" "}
-                {profile.name || userSlug}
-              </p>
-              <p className="text-sm">
-                <strong>{t("booking.details.event")}:</strong> {eventType.title}
-              </p>
-            </div>
-            <div className="pt-6 mt-2">
-              <Button 
-                onClick={handleDownloadCalendar} 
-                className="w-full font-semibold shadow-sm flex items-center justify-center gap-2"
-                variant="outline"
-              >
-                <CalendarIcon className="h-4 w-4" />
-                {t("booking.addToCalendar")}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Uncodie//Market Fit//EN",
+      "BEGIN:VEVENT",
+      `UID:${new Date().getTime()}@uncodie.com`,
+      `DTSTAMP:${formatDate(new Date())}`,
+      `DTSTART:${formatDate(startDate)}`,
+      `DTEND:${formatDate(endDate)}`,
+      `SUMMARY:${eventType.title} with ${profile.name || userSlug}`,
+      `DESCRIPTION:${notes || ""}`,
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\n");
+
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `meeting-${format(startDate, "yyyyMMdd-HHmm")}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div
@@ -524,24 +477,41 @@ export default function UserBookingPage(props: {
               @media (min-width: 768px) {
                 .card-calendar {
                   transform: var(--cal-transform);
-                  opacity: var(--cal-opacity);
+                  opacity: var(--cal-opacity) !important;
                   z-index: var(--cal-z);
                   position: absolute;
                   left: 0;
                   top: 0;
                 }
+                .card-calendar:hover {
+                  opacity: var(--cal-opacity-hover, var(--cal-opacity)) !important;
+                }
                 .card-time {
                   transform: var(--time-transform);
-                  opacity: var(--time-opacity);
+                  opacity: var(--time-opacity) !important;
                   z-index: var(--time-z);
                   position: absolute;
                   left: 0;
                   top: 0;
                 }
+                .card-time:hover {
+                  opacity: var(--time-opacity-hover, var(--time-opacity)) !important;
+                }
                 .card-details {
                   transform: var(--det-transform);
-                  opacity: var(--det-opacity);
+                  opacity: var(--det-opacity) !important;
                   z-index: var(--det-z);
+                  position: absolute;
+                  left: 0;
+                  top: 0;
+                }
+                .card-details:hover {
+                  opacity: var(--det-opacity-hover, var(--det-opacity)) !important;
+                }
+                .card-success {
+                  transform: var(--succ-transform);
+                  opacity: var(--succ-opacity) !important;
+                  z-index: var(--succ-z);
                   position: absolute;
                   left: 0;
                   top: 0;
@@ -552,17 +522,24 @@ export default function UserBookingPage(props: {
               ref={containerRef}
               className="flex flex-col md:block gap-6 md:gap-0 pb-4 md:pb-0 relative w-full md:h-[590px]"
               style={{
-                "--cal-transform": activeStep === "calendar" ? "translateX(0) scale(1)" : activeStep === "time" ? "translateX(calc(-100% - 360px)) scale(0.95)" : "translateX(calc(-100% - 640px)) scale(0.9)",
-                "--cal-opacity": activeStep === "calendar" ? "1" : activeStep === "time" ? "0.7" : "0",
-                "--cal-z": activeStep === "calendar" ? "30" : activeStep === "time" ? "20" : "10",
+                "--cal-transform": activeStep === "calendar" ? "translateX(0) scale(1)" : activeStep === "time" ? "translateX(calc(-100% - 360px)) scale(0.95)" : activeStep === "details" ? "translateX(calc(-100% - 640px)) scale(0.9)" : "translateX(calc(-100% - 920px)) scale(0.85)",
+                "--cal-opacity": activeStep === "calendar" ? "1" : activeStep === "time" ? "0.3" : "0",
+                "--cal-opacity-hover": "1",
+                "--cal-z": activeStep === "calendar" ? "40" : activeStep === "time" ? "30" : activeStep === "details" ? "20" : "10",
                 
-                "--time-transform": activeStep === "calendar" ? "translateX(calc(100% + 2rem)) scale(0.95)" : activeStep === "time" ? "translateX(0) scale(1)" : "translateX(calc(-100% - 360px)) scale(0.95)",
-                "--time-opacity": activeStep === "calendar" ? "0.5" : activeStep === "time" ? "1" : "0.7",
-                "--time-z": activeStep === "calendar" ? "20" : activeStep === "time" ? "30" : "20",
+                "--time-transform": activeStep === "calendar" ? "translateX(calc(100% + 2rem)) scale(0.95)" : activeStep === "time" ? "translateX(0) scale(1)" : activeStep === "details" ? "translateX(calc(-100% - 360px)) scale(0.95)" : "translateX(calc(-100% - 640px)) scale(0.9)",
+                "--time-opacity": activeStep === "calendar" ? "0.2" : activeStep === "time" ? "1" : activeStep === "details" ? "0.3" : "0",
+                "--time-opacity-hover": "1",
+                "--time-z": activeStep === "calendar" ? "30" : activeStep === "time" ? "40" : activeStep === "details" ? "30" : "20",
                 
-                "--det-transform": activeStep === "calendar" ? "translateX(calc(200% + 4rem)) scale(0.9)" : activeStep === "time" ? "translateX(calc(100% + 2rem)) scale(0.95)" : "translateX(0) scale(1)",
-                "--det-opacity": activeStep === "calendar" ? "0" : activeStep === "time" ? "0.5" : "1",
-                "--det-z": activeStep === "calendar" ? "10" : activeStep === "time" ? "20" : "30",
+                "--det-transform": activeStep === "calendar" ? "translateX(calc(200% + 4rem)) scale(0.9)" : activeStep === "time" ? "translateX(calc(100% + 2rem)) scale(0.95)" : activeStep === "details" ? "translateX(0) scale(1)" : "translateX(calc(-100% - 360px)) scale(0.95)",
+                "--det-opacity": activeStep === "calendar" ? "0" : activeStep === "time" ? "0.2" : activeStep === "details" ? "1" : "0.3",
+                "--det-opacity-hover": "1",
+                "--det-z": activeStep === "calendar" ? "20" : activeStep === "time" ? "30" : activeStep === "details" ? "40" : "30",
+
+                "--succ-transform": activeStep === "calendar" ? "translateX(calc(300% + 6rem)) scale(0.85)" : activeStep === "time" ? "translateX(calc(200% + 4rem)) scale(0.9)" : activeStep === "details" ? "translateX(calc(100% + 2rem)) scale(0.95)" : "translateX(0) scale(1)",
+                "--succ-opacity": activeStep === "calendar" ? "0" : activeStep === "time" ? "0" : activeStep === "details" ? "0.2" : "1",
+                "--succ-z": activeStep === "calendar" ? "10" : activeStep === "time" ? "20" : activeStep === "details" ? "30" : "40",
               } as React.CSSProperties}
             >
             {/* CALENDAR CARD */}
@@ -573,9 +550,9 @@ export default function UserBookingPage(props: {
                 activeStep !== "calendar" && "md:opacity-60 hover:md:opacity-100",
               )}
             >
-              {activeStep !== "calendar" && (
+              {activeStep !== "calendar" && activeStep !== "success" && (
                 <div
-                  className="absolute inset-0 z-10 cursor-pointer"
+                  className="absolute inset-0 z-50 cursor-pointer"
                   onClick={() => setActiveStep("calendar")}
                 />
               )}
@@ -669,9 +646,9 @@ export default function UserBookingPage(props: {
                 !selectedDate && "pointer-events-none opacity-50"
               )}
             >
-              {activeStep !== "time" && selectedDate && (
+              {activeStep !== "time" && selectedDate && activeStep !== "success" && (
                 <div
-                  className="absolute inset-0 z-10 cursor-pointer"
+                  className="absolute inset-0 z-50 cursor-pointer"
                   onClick={() => setActiveStep("time")}
                 />
               )}
@@ -793,9 +770,9 @@ export default function UserBookingPage(props: {
                 !selectedSlot && "opacity-0 pointer-events-none hidden md:flex"
               )}
             >
-              {activeStep !== "details" && selectedSlot && (
+              {activeStep !== "details" && selectedSlot && activeStep !== "success" && (
                 <div
-                  className="absolute inset-0 z-10 cursor-pointer"
+                  className="absolute inset-0 z-50 cursor-pointer"
                   onClick={() => setActiveStep("details")}
                 />
               )}
@@ -868,6 +845,49 @@ export default function UserBookingPage(props: {
                   {isSubmitting ? t("booking.booking") : t("booking.confirm")}
                 </Button>
               </ActionFooter>
+            </Card>
+            <Card
+              ref={successRef}
+              className={cn(
+                "card-success bg-black/[0.005] dark:bg-white/[0.005] border dark:border-white/5 border-black/5 shadow-sm h-[590px] flex flex-col transition-all duration-500 ease-in-out w-full md:w-[590px] md:max-w-full",
+                activeStep !== "success" && "md:opacity-60 hover:md:opacity-100 pointer-events-none"
+              )}
+            >
+              <CardContent className="p-6 space-y-6 flex-1 pt-10 overflow-y-auto relative z-20 flex flex-col items-center justify-center text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="h-10 w-10 text-green-600" />
+                  </div>
+                </div>
+                <h1 className="text-2xl font-bold">{t("booking.success.title")}</h1>
+                <p className="text-muted-foreground max-w-[280px]">{t("booking.success.desc")}</p>
+                <div className="pt-4 border-t border-border mt-6 text-left space-y-2 w-full max-w-[280px]">
+                  <p className="text-sm">
+                    <strong>{t("booking.details.date")}:</strong>{" "}
+                    {selectedDate && format(selectedDate, "MMMM do, yyyy", { locale: dateLocale })}
+                  </p>
+                  <p className="text-sm">
+                    <strong>{t("booking.details.time")}:</strong> {selectedSlot}
+                  </p>
+                  <p className="text-sm">
+                    <strong>{t("booking.details.with")}:</strong>{" "}
+                    {profile.name || userSlug}
+                  </p>
+                  <p className="text-sm">
+                    <strong>{t("booking.details.event")}:</strong> {eventType.title}
+                  </p>
+                </div>
+                <div className="pt-6 mt-2 w-full max-w-[280px]">
+                  <Button 
+                    onClick={handleDownloadCalendar} 
+                    className="w-full font-semibold shadow-sm flex items-center justify-center gap-2"
+                    variant="outline"
+                  >
+                    <CalendarIcon className="h-4 w-4" />
+                    {t("booking.addToCalendar")}
+                  </Button>
+                </div>
+              </CardContent>
             </Card>
             </div>
           </div>

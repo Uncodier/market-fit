@@ -25,6 +25,8 @@ import { ContentBadge } from "./ContentBadge"
 import { RequirementsBadge, CampaignsBadge } from "./RequirementsBadge"
 import { ChatsBadge } from "./ChatsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useLayout } from "@/app/context/LayoutContext"
+import { requestNavigationHistoryReset } from "@/app/hooks/use-navigation-history"
 
 const AREA_EMOJI: Record<WorkspaceArea, string> = {
   marketing: "📣",
@@ -38,6 +40,7 @@ const NAV_ITEM_EMOJI: Record<string, string> = {
   campaigns: "🎯",
   segments: "🏷️",
   content: "📄",
+  contentCreator: "🖨️",
   assets: "📁",
   context: "🏢",
   agentsConfiguration: "✨",
@@ -75,6 +78,9 @@ function reportItemTitle(item: AreaNavItem, t: (k: string) => string): string {
   if (item.key === "reportCosts") {
     return t("layout.sidebar.costs") || "Cost reports"
   }
+  if (item.key === "contentCreator") {
+    return t("layout.sidebar.imprenta") || "Content Creator"
+  }
   return t(`layout.sidebar.${item.key}`) || item.key
 }
 
@@ -89,6 +95,7 @@ export function NavigationAreaGroups({
   areaOrder = SIDEBAR_SCROLL_AREA_ORDER,
 }: NavigationAreaGroupsProps) {
   const { t } = useLocalization()
+  const { robotsViewMode, setRobotsViewMode } = useLayout()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const searchQueryString = searchParams.toString()
@@ -98,8 +105,17 @@ export function NavigationAreaGroups({
   )
 
   const isPathInArea = useCallback(
-    (area: WorkspaceArea) => isAreaActive(area, pathname, navSearchParams),
-    [pathname, navSearchParams]
+    (area: WorkspaceArea) => {
+      if (
+        area === "marketing" &&
+        pathname.startsWith("/robots") &&
+        robotsViewMode === "imprenta"
+      ) {
+        return true
+      }
+      return isAreaActive(area, pathname, navSearchParams)
+    },
+    [pathname, navSearchParams, robotsViewMode]
   )
 
   const [open, setOpen] = useState<Record<WorkspaceArea, boolean>>({
@@ -150,8 +166,10 @@ export function NavigationAreaGroups({
   const renderItem = (item: AreaNavItem) => {
     const emoji = NAV_ITEM_EMOJI[item.key]
     if (!emoji) return null
-    const linkHref = buildNavItemHref(item)
-    const isActive = isNavItemActive(item, pathname, navSearchParams)
+    const linkHref = buildNavItemHref(item, navSearchParams)
+    const isActive = item.robotsMode
+      ? pathname.startsWith("/robots") && robotsViewMode === item.robotsMode
+      : isNavItemActive(item, pathname, navSearchParams)
     const title = reportItemTitle(item, t)
     return (
       <MenuItem
@@ -161,6 +179,14 @@ export function NavigationAreaGroups({
         title={title}
         isActive={isActive}
         isCollapsed={renderCollapsed}
+        onClick={
+          item.robotsMode === "imprenta"
+            ? () => {
+                setRobotsViewMode("imprenta")
+                requestNavigationHistoryReset()
+              }
+            : undefined
+        }
       >
         {renderBadge(item.href)}
       </MenuItem>
