@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react"
+import { createPortal } from "react-dom"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useTheme } from "@/app/context/ThemeContext"
@@ -157,7 +158,9 @@ function collectNodeAndAncestorIds(nodeId: string, allNodes: InstanceNode[]): Se
   return out
 }
 
-/** Match layout constants in ImprentaPanel (NODE_W / ROW_H). */
+const FALLBACK_POS = Object.freeze({ x: 100, y: 100 })
+
+/** Matches layout constants in ImprentaPanel (NODE_W / ROW_H). */
 const IMPRENTA_NODE_W = 480
 const IMPRENTA_ROW_H = 300
 /**
@@ -174,7 +177,7 @@ const IMPRENTA_LOD_FULL_DETAIL_SCALE = 0.4
  * would otherwise explode. Keep this generous so typical workflows never see
  * the "skeleton pop" when zooming out.
  */
-const IMPRENTA_LOD_LITE_MIN_NODES = 400
+const IMPRENTA_LOD_LITE_MIN_NODES = 100
 /**
  * Within lite shells only (scale < IMPRENTA_LOD_FULL_DETAIL_SCALE):
  * - micro: minimal chrome + optional tiny preview
@@ -709,6 +712,16 @@ const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
   )
 })
 
+const REMARK_PLUGINS = [remarkGfm] as const
+
+const MemoMarkdown = memo(function MemoMarkdown({ text }: { text: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={markdownComponents}>
+      {text}
+    </ReactMarkdown>
+  )
+})
+
 export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string }) {
   const { currentSite } = useSite()
   const { isLayoutCollapsed } = useLayout()
@@ -820,6 +833,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const { isDarkMode } = useTheme()
 
+  const canvasNodes = useMemo(() => [...nodes, ...dummyNodes], [nodes, dummyNodes])
+
   /**
    * Stable positions map (no drag override). Consumed by the canvas layers so
    * their spatial-grid cache stays valid across per-frame drag updates: the
@@ -828,11 +843,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
    */
   const stablePositions = useMemo(() => {
     const r: Record<string, { x: number; y: number }> = {}
-    for (const n of [...nodes, ...dummyNodes]) {
-      r[n.id] = positions[n.id] || { x: 100, y: 100 }
+    for (const n of canvasNodes) {
+      r[n.id] = positions[n.id] || FALLBACK_POS
     }
     return r
-  }, [nodes, dummyNodes, positions])
+  }, [canvasNodes, positions])
 
   /**
    * DOM-facing positions: same as `stablePositions` plus the live drag preview
@@ -848,7 +863,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   }, [stablePositions, nodeDragPreview])
 
   const resolveNodePosition = useCallback(
-    (nodeId: string): { x: number; y: number } => resolvedPositions[nodeId] || { x: 100, y: 100 },
+    (nodeId: string): { x: number; y: number } => resolvedPositions[nodeId] || FALLBACK_POS,
     [resolvedPositions]
   )
 
@@ -858,8 +873,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   )
 
   const visibleNodeIds = useMemo(() => {
-    const all = [...nodes, ...dummyNodes]
-    const allIds = all.map((n) => n.id)
+    const allIds = canvasNodes.map((n) => n.id)
     if (
       !viewportInfo ||
       allIds.length === 0 ||
@@ -899,7 +913,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       if (bboxIntersects(bbox, vw)) out.add(id)
     })
     return out
-  }, [nodes, dummyNodes, viewportInfo, stablePositions, layoutEpoch])
+  }, [canvasNodes, viewportInfo, stablePositions, layoutEpoch])
 
   /**
    * Commit `viewportInfo` into React state only on "settle" (debounced) or when the
@@ -953,14 +967,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const imprentaHoverChainIds = useMemo(() => {
     if (!imprentaHoveredNodeId) return null
-    return collectNodeAndAncestorIds(imprentaHoveredNodeId, [...nodes, ...dummyNodes])
-  }, [imprentaHoveredNodeId, nodes, dummyNodes])
+    return collectNodeAndAncestorIds(imprentaHoveredNodeId, canvasNodes)
+  }, [imprentaHoveredNodeId, canvasNodes])
 
   const handleImprentaNodeHover = useCallback((nodeId: string | null) => {
     setImprentaHoveredNodeId(nodeId)
   }, [])
-
-  const canvasNodes = useMemo(() => [...nodes, ...dummyNodes], [nodes, dummyNodes])
 
   /**
    * Skip the lite canvas layer entirely for small/medium graphs. Canvas rendering
@@ -1007,7 +1019,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       if (!showFullNodeDetail && !isEffectivelyDummy && !isDragOrigin) continue
       out.push(node)
     }
-    console.log("domRenderNodes count:", out.length, "vis set size:", vis?.size, "all nodes:", all.length)
     return out
   }, [
     canvasNodes,
@@ -1061,9 +1072,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
    */
   const actionNodeIds = useMemo(() => {
     if (loadingNodeIds.size === 0) return new Set<string>()
-    const all = [...nodes, ...dummyNodes]
     const out = new Set<string>()
-    for (const n of all) {
+    for (const n of canvasNodes) {
       if (!loadingNodeIds.has(n.id)) continue
       const parentId = n.parent_node_id
       if (!parentId) continue
@@ -1071,22 +1081,25 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       out.add(parentId)
     }
     return out
-  }, [nodes, dummyNodes, loadingNodeIds])
+  }, [canvasNodes, loadingNodeIds])
 
   /**
    * Parent→loading-node edge pairs along the full ancestry of every loading
    * node. Lets the SVG overlay animate the *route* (every segment on the way
    * from the root down to the result), not only the last hop.
    */
+  const nodesById = useMemo(() => {
+    const map = new Map<string, InstanceNode>()
+    for (const n of canvasNodes) map.set(n.id, n)
+    return map
+  }, [canvasNodes])
+
   const loadingRouteEdges = useMemo<Array<{ parentId: string; childId: string }>>(() => {
     if (loadingNodeIds.size === 0) return []
-    const all = [...nodes, ...dummyNodes]
-    const byId = new Map<string, InstanceNode>()
-    for (const n of all) byId.set(n.id, n)
     const seen = new Set<string>()
     const edges: Array<{ parentId: string; childId: string }> = []
     loadingNodeIds.forEach((startId) => {
-      let current = byId.get(startId)
+      let current = nodesById.get(startId)
       while (current) {
         const parentId = current.parent_node_id
         if (!parentId) break
@@ -1094,11 +1107,11 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         if (seen.has(key)) break
         seen.add(key)
         edges.push({ parentId, childId: current.id })
-        current = byId.get(parentId)
+        current = nodesById.get(parentId)
       }
     })
     return edges
-  }, [nodes, dummyNodes, loadingNodeIds])
+  }, [nodesById, loadingNodeIds])
 
   // Reset initial prompt when changing instances
   useEffect(() => {
@@ -1368,7 +1381,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const handleExecuteNode = async (node: InstanceNode) => {
     if (node.type === "publish") {
-      const err = validatePublishNodeInputs(node, contexts, [...nodes, ...dummyNodes])
+      const err = validatePublishNodeInputs(node, contexts, canvasNodes)
       if (err) {
         toast.error(err)
         return
@@ -1556,7 +1569,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    const curPos = positionsRef.current[nodeId] || { x: 100, y: 100 }
+    const curPos = positionsRef.current[nodeId] || FALLBACK_POS
     const offset = 48
     const newPos = { x: curPos.x + offset, y: curPos.y + offset }
 
@@ -1944,13 +1957,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     if (!drawingConnectionRef.current) return;
     
     let scale = 1;
-    const contentDiv = document.getElementById('imprenta-canvas-content');
-    if (contentDiv && contentDiv.parentElement) {
-       const transform = contentDiv.parentElement.style.transform;
-       const match = transform.match(/scale\(([^)]+)\)/);
-       if (match) scale = parseFloat(match[1]) || 1;
-       
-       const rect = contentDiv.getBoundingClientRect();
+    const snap = viewportStore.get();
+    if (snap) {
+       scale = snap.scale;
+    }
+    
+    // Instead of forcing layout on contentDiv on every frame, 
+    // we can use the position from the viewport snapshot to convert coordinates.
+    const canvasEl = document.getElementById('imprenta-canvas-content');
+    if (canvasEl && canvasEl.parentElement) {
+       const rect = canvasEl.getBoundingClientRect();
        const currentX = (e.clientX - rect.left) / scale;
        const currentY = (e.clientY - rect.top) / scale;
        
@@ -1960,7 +1976,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
          currentY
        });
     }
-  }, []);
+  }, [viewportStore]);
 
   const handleConnectionCancel = useCallback(() => {
     drawingConnectionRef.current = null;
@@ -2167,13 +2183,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           onOpen={() => setZoomedMedia({ url, type: "image" })}
         />
       ) : (
-        <div className="relative w-full overflow-hidden rounded-xl bg-black/10 flex items-center justify-center">
-          <video 
-            src={url} 
-            controls 
-            className="w-full h-auto max-h-[800px] object-contain relative z-[1] m-auto" 
-            onClick={(e) => e.stopPropagation()}
-          />
+        <div 
+          className="relative w-full overflow-hidden rounded-xl bg-black/10 flex items-center justify-center cursor-pointer group/video"
+          onClick={(e) => { e.stopPropagation(); setZoomedMedia({ url, type }); }}
+        >
+          <ImprentaLazyPreviewVideo url={url} priority={true} className="w-full h-auto max-h-[800px] object-contain relative z-[1] m-auto" />
+          <div className="absolute inset-0 bg-black/10 group-hover/video:bg-black/30 transition-colors z-[2] flex items-center justify-center pointer-events-none">
+            <div className="bg-background/80 backdrop-blur text-foreground p-3 rounded-full shadow-lg transform group-hover/video:scale-110 transition-transform">
+              <Play className="h-6 w-6 ml-1" />
+            </div>
+          </div>
           <Button
             variant="secondary"
             size="icon"
@@ -2783,12 +2802,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     </svg>
                   )}
 
-                  {contexts.map((ctx) => {
+                  {contexts.filter(ctx => !visibleNodeIds || visibleNodeIds.has(ctx.context_node_id) || visibleNodeIds.has(ctx.target_node_id)).map((ctx) => {
                     if (!positions[ctx.context_node_id] || !positions[ctx.target_node_id]) return null
                     const start = resolveNodePosition(ctx.context_node_id)
                     const end = resolveNodePosition(ctx.target_node_id)
                     const startCy = (nodeHeightsRef.current[ctx.context_node_id] || ROW_H) / 2
-                    const targetNodeForCtx = nodesRef.current.find((n) => n.id === ctx.target_node_id)
+                    const targetNodeForCtx = nodesById.get(ctx.target_node_id)
                     const endH = nodeHeightsRef.current[ctx.target_node_id] || ROW_H
                     const endCy = getPublishContextAnchorY(targetNodeForCtx?.type, ctx.type, endH)
                     const startX = start.x + NODE_W
@@ -2881,7 +2900,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                   {/* Draw nodes (virtualized + LOD when graph is large). */}
                   <TooltipProvider delayDuration={200}>
                   {domRenderNodes.map(node => {
-                    const pos = resolvedPositions[node.id] || { x: 100, y: 100 }
+                    const pos = resolvedPositions[node.id] || FALLBACK_POS
                     const isDummy = node.id.startsWith('dummy-');
                     const hasResult = node.result && Object.keys(node.result).length > 0;
                     const isEffectivelyDummy = isDummy || (!hasResult && generatingNodeIds.has(node.id) && (node.status === 'running' || node.status === 'pending'));
@@ -3640,9 +3659,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   
                                   return (
                                     <div className="text-xs bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground prose prose-sm dark:prose-invert max-w-none">
-                                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                                        {textContent}
-                                      </ReactMarkdown>
+                                      <MemoMarkdown text={textContent} />
                                     </div>
                                   );
                                 })()}
@@ -3890,9 +3907,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           </div>
         )}
       </div>
-      {zoomedMedia && (
+      {zoomedMedia && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={() => setZoomedMedia(null)}
         >
           <div className="relative max-w-[90vw] max-h-[90vh] flex justify-center items-center">
@@ -3907,7 +3924,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             {zoomedMedia.type === 'image' && <img src={zoomedMedia.url} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />}
             {zoomedMedia.type === 'video' && <video src={zoomedMedia.url} controls autoPlay className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

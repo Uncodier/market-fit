@@ -80,7 +80,7 @@ export function ImprentaLazyPreviewVideo({
         src={url}
         muted
         playsInline
-        preload={priority ? "auto" : "metadata"}
+        preload={priority ? "metadata" : "none"}
         className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
           ready ? "opacity-95" : "opacity-0"
         } ${className ?? ""}`}
