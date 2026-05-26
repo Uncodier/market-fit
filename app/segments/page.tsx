@@ -37,6 +37,7 @@ import { EmptyState } from "@/app/components/ui/empty-state"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
 import { Segment } from "@/app/types/segments"
+import { SearchInput } from "@/app/components/ui/search-input"
 import { useRouter } from "next/navigation"
 import { navigateToSegment } from "@/app/hooks/use-navigation-history"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -760,20 +761,13 @@ export default function SegmentsPage() {
                     <span className="tab-label">{t('segments.tabs.draft') || 'Draft'}</span>
                   </TabsTrigger>
                 </TabsList>
-                  <div className="relative w-64">
-                    <Input
-                      ref={searchInputRef}
-                      type="text"
-                      placeholder={t('segments.searchPlaceholder') || 'Search segments...'}
-                      className="w-full"
-                      value={searchTerm}
-                      onChange={handleSearchChange}
-                      icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                    />
-                    <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                      <span className="text-xs">⌘</span>K
-                    </kbd>
-                  </div>
+                  <SearchInput
+                    data-command-k-input
+                    placeholder={t('segments.searchPlaceholder') || 'Search segments...'}
+                    className="w-full"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                  />
                 </div>
                 <div className="ml-auto">
                   {/* Any other buttons would go here */}
@@ -782,7 +776,7 @@ export default function SegmentsPage() {
             </div>
           </StickyHeader>
           <div className="p-8 space-y-4">
-            <div className="px-8">
+            <div className="px-0">
               <TabsContent value="all" className="space-y-4">
                 {Array.from({ length: 3 }).map((_, index) => (
                   <SegmentRowSkeleton key={index} />
@@ -840,20 +834,13 @@ export default function SegmentsPage() {
                     <span className="tab-label">{t('segments.tabs.draft') || 'Draft'}</span>
                   </TabsTrigger>
                 </TabsList>
-                <div className="relative w-64">
-                  <Input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder={t('segments.searchPlaceholder') || 'Search segments...'}
-                    className="w-full pr-16"
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                  />
-                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
-                    <span className="text-xs">⌘</span>K
-                  </kbd>
-                </div>
+                <SearchInput
+                  data-command-k-input
+                  placeholder={t('segments.searchPlaceholder') || 'Search segments...'}
+                  className="w-full pr-16"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                />
               </div>
               <div className="ml-auto">
               </div>
@@ -861,7 +848,7 @@ export default function SegmentsPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4">
+        <div className="p-8 space-y-4 bg-muted/30">
           <div className="px-8">
             <TabsContent value="all" className="space-y-4">
               {filteredSegments.length === 0 && searchTerm ? (

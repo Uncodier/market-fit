@@ -26,6 +26,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Separator } from "@/app/components/ui/separator"
 import { useSite } from "@/app/context/SiteContext"
 import { Campaign } from "@/app/types"
+import { SearchInput } from "@/app/components/ui/search-input"
 import { useRouter } from "next/navigation"
 
 interface Segment {
@@ -694,20 +695,13 @@ export default function ExperimentsPage() {
                     <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
                     <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
                   </TabsList>
-                  <div className="relative w-64">
-                    <Input 
-                      placeholder="Search experiments..." 
-                      className="w-full"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      ref={searchInputRef}
-                      type="text"
-                      icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                    />
-                    <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                      <span className="text-xs">⌘</span>K
-                    </kbd>
-                  </div>
+                  <SearchInput 
+                    placeholder="Search experiments..." 
+                    className="w-full"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    type="text"
+                  />
                 </div>
                 <div className="ml-auto">
                   {/* Any other buttons would go here */}
@@ -746,16 +740,13 @@ export default function ExperimentsPage() {
                     <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
                   </TabsList>
                 </div>
-                <div className="relative w-64">
-                  <Input 
-                    placeholder="Search experiments..." 
-                    className="w-full"
-                    disabled
-                    type="text"
-                    value=""
-                    icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                  />
-                </div>
+                <SearchInput 
+                  placeholder="Search experiments..." 
+                  className="w-full"
+                  disabled
+                  type="text"
+                  value=""
+                />
                 <div className="flex-1"></div>
               </div>
             </div>
@@ -791,20 +782,13 @@ export default function ExperimentsPage() {
                   <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
                 </TabsList>
               </div>
-              <div className="relative w-64">
-                <Input 
-                  placeholder="Search experiments..." 
-                  className="w-full"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  ref={searchInputRef}
-                  type="text"
-                  icon={<Search className="h-4 w-4 text-muted-foreground" />}
-                />
-                <kbd className="pointer-events-none absolute right-2 top-4 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
-              </div>
+              <SearchInput 
+                placeholder="Search experiments..." 
+                className="w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                type="text"
+              />
               <div className="flex-1"></div>
             </div>
           </div>

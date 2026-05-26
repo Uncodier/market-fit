@@ -1584,9 +1584,10 @@ export default function LeadsPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4">
-          <div className="px-8">
-            {loading ? (
+        <div className="p-8 space-y-4 bg-muted/30 flex-1">
+          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : "px-8"}>
+            <div className={viewType === 'kanban' ? "min-w-fit px-16" : ""}>
+              {loading ? (
               <LeadsTableSkeleton />
             ) : (
               <>
@@ -1634,6 +1635,7 @@ export default function LeadsPage() {
                 ))}
               </>
             )}
+            </div>
           </div>
         </div>
       </Tabs>

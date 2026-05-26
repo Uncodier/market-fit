@@ -1200,7 +1200,7 @@ export default function RequirementsPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4 bg-muted/30">
+        <div className="p-8 space-y-4 bg-muted/30 flex-1">
           <div className={viewMode === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : "px-8"}>
             <div className={viewMode === 'kanban' ? "min-w-fit px-16" : ""}>
               {/* Rendering for all tabs */}

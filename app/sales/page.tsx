@@ -688,15 +688,13 @@ export default function SalesPage() {
                     </TabsTrigger>
                   </TabsList>
                   <div className="flex items-center gap-2">
-                    <div className="relative w-64">
-                      <SearchInput
-                        data-command-k-input
-                        placeholder={t('sales.search.placeholder') || "Search sales..."}
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                        alwaysExpanded={false}
-                      />
-                    </div>
+                    <SearchInput
+                      data-command-k-input
+                      placeholder={t('sales.search.placeholder') || "Search sales..."}
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      alwaysExpanded={false}
+                    />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">

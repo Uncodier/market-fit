@@ -943,14 +943,12 @@ function AssetsLoadingPage() {
                       <span className="tab-label">{t('assets.tabs.documents')}</span>
                     </TabsTrigger>
                   </TabsList>
-                <div className="relative w-64">
                   <SearchInput 
                     placeholder={t('assets.searchPlaceholder')}
                     className="w-full"
                     disabled
                     alwaysExpanded={false}
                   />
-                </div>
               </div>
               <div className="ml-auto">
                 {/* Any other buttons would go here */}
@@ -1167,16 +1165,14 @@ function AssetsContent() {
                       <span className="tab-label">{t('assets.tabs.documents')}</span>
                     </TabsTrigger>
                   </TabsList>
-                  <div className="relative w-64">
-                    <SearchInput 
-                      data-command-k-input
-                      placeholder={t('assets.searchPlaceholder')} 
-                      className="w-full" 
-                      value={searchTerm}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      alwaysExpanded={false}
-                    />
-                  </div>
+                  <SearchInput 
+                    data-command-k-input
+                    placeholder={t('assets.searchPlaceholder')} 
+                    className="w-full" 
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    alwaysExpanded={false}
+                  />
                 </div>
                 <div className="ml-auto flex items-center gap-4">
                   {agentId && (
@@ -1273,16 +1269,14 @@ function AssetsContent() {
                   </TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-2">
-                  <div className="relative w-64">
-                    <SearchInput 
-                      data-command-k-input
-                      placeholder={t('assets.searchPlaceholder')} 
-                      className="w-full" 
-                      value={searchTerm}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      alwaysExpanded={false}
-                    />
-                  </div>
+                  <SearchInput 
+                    data-command-k-input
+                    placeholder={t('assets.searchPlaceholder')} 
+                    className="w-full" 
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    alwaysExpanded={false}
+                  />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">
@@ -1347,7 +1341,7 @@ function AssetsContent() {
         </StickyHeader>
         
         <div className="p-8 space-y-4">
-          <div className="px-8">
+          <div className="px-0">
             <>
               <TabsContent value="all" className="space-y-4">
                 {filteredAssets.length === 0 ? (

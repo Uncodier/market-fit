@@ -13,6 +13,8 @@ import { NotificationCard } from "./components/NotificationCard"
 import { NotificationSkeleton } from "./components/NotificationSkeleton"
 import { HelpButton } from "@/app/components/ui/help-button"
 
+import { SearchInput } from "@/app/components/ui/search-input"
+
 export default function NotificationsPage() {
   const { t } = useLocalization()
   const {
@@ -61,19 +63,13 @@ export default function NotificationsPage() {
                 </TabsList>
               </Tabs>
               
-              <div className="relative w-64">
-                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder={t('notifications.searchPlaceholder')}
-                  className="w-full pl-9"
-                  value={searchQuery}
-                  onChange={(e) => updateSearchQuery(e.target.value)}
-                />
-                <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
-              </div>
+              <SearchInput
+                type="search"
+                placeholder={t('notifications.searchPlaceholder')}
+                className="w-full"
+                value={searchQuery}
+                onChange={(e) => updateSearchQuery(e.target.value)}
+              />
             </div>
             
             <div className="ml-auto">

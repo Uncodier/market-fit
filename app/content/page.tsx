@@ -2590,7 +2590,7 @@ export default function ContentPage() {
           
           {/* Main Content Layout */}
           <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8 flex-1 flex flex-col justify-start" : "px-8"}>
-            <div className={viewType === 'kanban' ? "flex items-start gap-4 min-w-fit px-8 pt-0 mt-0 flex-1 flex-row" : ""}>
+            <div className={viewType === 'kanban' ? "flex items-start gap-4 min-w-fit px-8 pt-0 mt-0 flex-1 flex-row" : "px-8"}>
               {/* Left Sidebar - Trends Column (Only for Kanban View) */}
               {viewType === 'kanban' && (
                 <div className="flex-shrink-0 pt-0 mt-0 flex flex-col justify-start self-stretch min-h-0">
