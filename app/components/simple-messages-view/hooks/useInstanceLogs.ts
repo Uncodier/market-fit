@@ -64,103 +64,122 @@ export const useInstanceLogs = ({
     }
 
     setIsLoadingLogs(true)
-    try {
-      const supabase = createClient()
-      
-      
-      // Load latest messages first (descending order) and limit to 100 for performance
-      const { data, error, count } = await supabase
-        .from('instance_logs')
-        .select('*', { count: 'exact' })
-        .eq('instance_id', instanceId)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (error) {
-        console.error('Error loading instance logs:', error)
-        setLogs([])
-      } else {
-        // Reverse the array to maintain chronological order (oldest first, newest last)
-        // since we loaded them in descending order (newest first)
-        const logs = (data || []).reverse()
-        setLogs(logs)
+    
+    const maxRetries = 3
+    let attempt = 0
+    let success = false
+    
+    while (attempt < maxRetries && !success) {
+      try {
+        const supabase = createClient()
         
-        // Scroll to bottom after React renders the new logs
-        // setTimeout gives React time to commit the state update and the browser to lay out
-        setTimeout(() => {
-          if (onScrollToBottomImmediate) {
-            onScrollToBottomImmediate()
+        // Load latest messages first (descending order) and limit to 100 for performance
+        const { data, error, count } = await supabase
+          .from('instance_logs')
+          .select('*', { count: 'exact' })
+          .eq('instance_id', instanceId)
+          .order('created_at', { ascending: false })
+          .limit(100)
+
+        if (error) {
+          console.error(`Error loading instance logs (attempt ${attempt + 1}/${maxRetries}):`, error)
+          attempt++
+          if (attempt >= maxRetries) {
+            setLogs([])
           } else {
-            onScrollToBottom?.()
-          }
-        }, 100)
-        
-        // Auto-collapse long system messages (>200 characters)
-        const longSystemMessages = logs
-          .filter((log: InstanceLog) => log.log_type === 'system' && log.message.length > 200)
-          .map((log: InstanceLog) => log.id)
-        
-        if (longSystemMessages.length > 0) {
-          setCollapsedSystemMessages(new Set(longSystemMessages))
-        }
-
-        // Auto-collapse ALL tool calls by default (any log with tool_name or toolName)
-        const logsWithToolDetails = logs
-          .filter((log: InstanceLog) => {
-            const hasToolName = log.tool_name || log.toolName
-            const isToolCall = log.log_type === 'tool_call' || log.log_type === 'tool_result'
-            const hasToolResult = log.tool_result && Object.keys(log.tool_result).length > 0
-            const hasDetails = log.details && Object.keys(log.details).length > 0
-            const hasScreenshot = log.screenshot_base64
-            
-            return (hasToolName || isToolCall) && (hasToolResult || hasDetails || hasScreenshot)
-          })
-          .map((log: InstanceLog) => log.id)
-        
-        if (logsWithToolDetails.length > 0) {
-          setCollapsedToolDetails(new Set(logsWithToolDetails))
-        }
-        
-        // If no logs found, let's check if there are any logs in the table at all
-        if (!data || data.length === 0) {
-          try {
-            const { data: allLogs, error: allLogsError, count: totalCount } = await supabase
-              .from('instance_logs')
-              .select('instance_id, log_type, level, created_at', { count: 'exact' })
-              .limit(5)
-            
-            
-            setDebugInfo({
-              instanceId: activeRobotInstance.id,
-              logsFound: data?.length || 0,
-              totalLogsInTable: totalCount || 0,
-              sampleInstanceIds: allLogs?.map((l: any) => l.instance_id) || [],
-              sampleLogs: allLogs || [],
-              lastChecked: new Date().toISOString(),
-              queryError: allLogsError?.message || null
-            })
-          } catch (debugError) {
-            console.error('Error in debug query:', debugError)
-            setDebugInfo({
-              instanceId: activeRobotInstance.id,
-              logsFound: data?.length || 0,
-              totalLogsInTable: 0,
-              sampleInstanceIds: [],
-              sampleLogs: [],
-              lastChecked: new Date().toISOString(),
-              queryError: debugError instanceof Error ? debugError.message : 'Unknown error'
-            })
+            // Esperar antes de reintentar (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)))
           }
         } else {
-          setDebugInfo(null)
+          success = true
+          // Reverse the array to maintain chronological order (oldest first, newest last)
+          // since we loaded them in descending order (newest first)
+          const logs = (data || []).reverse()
+          setLogs(logs)
+          
+          // Scroll to bottom after React renders the new logs
+          // setTimeout gives React time to commit the state update and the browser to lay out
+          setTimeout(() => {
+            if (onScrollToBottomImmediate) {
+              onScrollToBottomImmediate()
+            } else {
+              onScrollToBottom?.()
+            }
+          }, 100)
+          
+          // Auto-collapse long system messages (>200 characters)
+          const longSystemMessages = logs
+            .filter((log: InstanceLog) => log.log_type === 'system' && log.message.length > 200)
+            .map((log: InstanceLog) => log.id)
+          
+          if (longSystemMessages.length > 0) {
+            setCollapsedSystemMessages(new Set(longSystemMessages))
+          }
+
+          // Auto-collapse ALL tool calls by default (any log with tool_name or toolName)
+          const logsWithToolDetails = logs
+            .filter((log: InstanceLog) => {
+              const hasToolName = log.tool_name || log.toolName
+              const isToolCall = log.log_type === 'tool_call' || log.log_type === 'tool_result'
+              const hasToolResult = log.tool_result && Object.keys(log.tool_result).length > 0
+              const hasDetails = log.details && Object.keys(log.details).length > 0
+              const hasScreenshot = log.screenshot_base64
+              
+              return (hasToolName || isToolCall) && (hasToolResult || hasDetails || hasScreenshot)
+            })
+            .map((log: InstanceLog) => log.id)
+          
+          if (logsWithToolDetails.length > 0) {
+            setCollapsedToolDetails(new Set(logsWithToolDetails))
+          }
+          
+          // If no logs found, let's check if there are any logs in the table at all
+          if (!data || data.length === 0) {
+            try {
+              const { data: allLogs, error: allLogsError, count: totalCount } = await supabase
+                .from('instance_logs')
+                .select('instance_id, log_type, level, created_at', { count: 'exact' })
+                .limit(5)
+              
+              
+              setDebugInfo({
+                instanceId: activeRobotInstance.id,
+                logsFound: data?.length || 0,
+                totalLogsInTable: totalCount || 0,
+                sampleInstanceIds: allLogs?.map((l: any) => l.instance_id) || [],
+                sampleLogs: allLogs || [],
+                lastChecked: new Date().toISOString(),
+                queryError: allLogsError?.message || null
+              })
+            } catch (debugError) {
+              console.error('Error in debug query:', debugError)
+              setDebugInfo({
+                instanceId: activeRobotInstance.id,
+                logsFound: data?.length || 0,
+                totalLogsInTable: 0,
+                sampleInstanceIds: [],
+                sampleLogs: [],
+                lastChecked: new Date().toISOString(),
+                queryError: debugError instanceof Error ? debugError.message : 'Unknown error'
+              })
+            }
+          } else {
+            setDebugInfo(null)
+          }
+        }
+      } catch (error) {
+        console.error(`Error loading instance logs (attempt ${attempt + 1}/${maxRetries}):`, error)
+        attempt++
+        if (attempt >= maxRetries) {
+          setLogs([])
+        } else {
+          // Esperar antes de reintentar
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)))
         }
       }
-    } catch (error) {
-      console.error('Error loading instance logs:', error)
-      setLogs([])
-    } finally {
-      setIsLoadingLogs(false)
     }
+    
+    setIsLoadingLogs(false)
   }
 
   // Add optimistic user message to logs

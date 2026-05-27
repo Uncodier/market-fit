@@ -2,7 +2,7 @@
 
 import { Sidebar } from "./components/navigation/Sidebar"
 import { TopBar } from "./components/navigation/TopBar"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { Toaster } from "./components/ui/sonner"
@@ -141,6 +141,9 @@ function LayoutClientInner({
   fetchError: string | null
   isExperimentDetailPage: boolean
 }) {
+  const searchParams = useSearchParams()
+  const isArtifact = searchParams.get("artifact") === "true"
+  
   const { t } = useLocalization()
   const { isLayoutCollapsed, setIsLayoutCollapsed, robotsViewMode } = useLayout()
   const isMobile = useIsMobile()
@@ -340,6 +343,51 @@ function LayoutClientInner({
   // Handle create deal button click
   const handleCreateDealClick = () => {
     window.dispatchEvent(new CustomEvent('deals:create'))
+  }
+
+  if (isArtifact) {
+    return (
+      <div className="flex min-h-[100dvh] w-full bg-background">
+        <div className="flex-1 flex flex-col min-w-0 transition-[padding] duration-300 ease-in-out">
+          <TopBar 
+            title={currentPage.title || ""}
+            helpText={currentPage.helpText || undefined}
+            helpWelcomeMessage={currentPage.helpWelcomeMessage || undefined}
+            helpTask={currentPage.helpTask || undefined}
+            isCollapsed={true}
+            onCollapse={() => {}}
+            hideSidebarToggle={true}
+            hideBreadcrumb={true}
+            onMobileToggle={() => {}}
+            segments={segments}
+            className="fixed top-0 right-0 left-0"
+            style={{ paddingLeft: 0 }}
+            breadcrumb={null}
+            isExperimentDetailPage={isExperimentDetailPage}
+            onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
+            onCreateDeal={pathname === "/deals" ? handleCreateDealClick : undefined}
+            viewMode={robotsViewMode}
+          />
+          {!isRobotsPage && (
+            <div className={"h-[64px] flex-none"}></div>
+          )}
+          <main 
+            className={cn(
+              "flex-1 min-w-0 relative",
+              (isChatPage) ? "flex flex-col overflow-hidden" : (isRobotsPage ? "flex flex-col overflow-visible" : "overflow-visible")
+            )} 
+            style={
+              isAppPage ? 
+              { height: isRobotsPage ? 'calc(100dvh - 64px)' : 'calc(100dvh - 64px)' } as React.CSSProperties 
+              : {}
+            }
+          >
+            {children}
+          </main>
+        </div>
+        <Toaster />
+      </div>
+    )
   }
 
   return (

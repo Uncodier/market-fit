@@ -47,21 +47,23 @@ export default function CostsPage() {
   }, []);
 
   return (
-    <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
-      <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">{t('costs.title') || 'Costs'}</h2>
-          <p className="text-muted-foreground">
-            {t('costs.description') || 'View and analyze your business costs in this report.'}
-          </p>
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+      <div className="p-8 space-y-4 bg-muted/30 flex-1">
+        <div className="flex items-center justify-between space-y-2">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">{t('costs.title') || 'Costs'}</h2>
+            <p className="text-muted-foreground">
+              {t('costs.description') || 'View and analyze your business costs in this report.'}
+            </p>
+          </div>
         </div>
+        <Separator />
+        <CostReports 
+          startDate={startDate}
+          endDate={endDate}
+          segmentId={segmentId}
+        />
       </div>
-      <Separator />
-      <CostReports 
-        startDate={startDate}
-        endDate={endDate}
-        segmentId={segmentId}
-      />
     </div>
   );
 } 

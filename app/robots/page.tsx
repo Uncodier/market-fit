@@ -8,6 +8,7 @@ import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal, External
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
+import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
 import { useRobots } from "@/app/context/RobotsContext"
 import { SimpleMessagesView } from "@/app/components/simple-messages-view"
@@ -21,7 +22,9 @@ import { ZipViewer } from '@/app/components/simple-messages-view/components/ZipV
 import { ImprentaPanel } from '@/app/components/agents/imprenta-panel'
 import "@/app/styles/iframe-containment.css"
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
+import { useInstanceArtifacts } from "@/app/components/simple-messages-view/hooks/useInstanceArtifacts"
 import { useIframeUrl } from "@/app/hooks/use-iframe-url"
+import { NAVIGATION_AREAS, isNavItemActive } from "@/app/config/navigation-areas"
 
 // Robot interface
 interface Robot {
@@ -71,6 +74,7 @@ function RobotsPageContent() {
   const router = useRouter()
   const pathname = usePathname()
   const viewMode = robotsViewMode
+  const { theme, isDarkMode } = useTheme()
   
   // Verify subscription on re-entry
   useEffect(() => {
@@ -734,15 +738,42 @@ function RobotsPageContent() {
 
   const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
   
-  const [showSourceCodePreview, setShowSourceCodePreview] = useState(false)
-  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
-  useEffect(() => {
-    const handleToggle = () => setShowSourceCodePreview(prev => !prev)
-    window.addEventListener('robot:toggle-source-code', handleToggle)
-    return () => window.removeEventListener('robot:toggle-source-code', handleToggle)
-  }, [])
+  type BrowserTab = { kind: 'preview' } | { kind: 'source' } | { kind: 'artifact'; screen: string }
+  const [activeBrowserTab, setActiveBrowserTab] = useState<BrowserTab>({ kind: 'preview' })
+  const [artifactReloadCounter, setArtifactReloadCounter] = useState(0)
+  
+  // Track previous instance to reset browser tab
+  const prevInstanceIdRef = useRef<string | null>(null)
+  
+  // Track if we've already done the initial preselection for the current instance
+  const initialPreselectDoneRef = useRef(false)
 
-  // Use a stable reference that only computes when requirementStatuses changes
+  useEffect(() => {
+    const currentInstanceId = activeRobotInstance?.id || null
+    if (currentInstanceId !== prevInstanceIdRef.current) {
+      prevInstanceIdRef.current = currentInstanceId
+      initialPreselectDoneRef.current = false
+      // Preselect preview when changing instances (the artifacts effect will auto-select if needed)
+      // Actually we just set it to preview, if it's an instance without requirement preview, it will be overridden by artifact if it exists.
+      setActiveBrowserTab({ kind: 'preview' })
+    }
+  }, [activeRobotInstance?.id])
+
+  const { artifacts } = useInstanceArtifacts({ instanceId: activeRobotInstance?.id })
+  
+  const artifactScreens = useMemo(() => {
+    const screensMap = new Map<string, typeof artifacts[0]>()
+    // Since artifacts are newest-first, we only keep the first one we see per screen
+    artifacts.forEach(a => {
+      if (!screensMap.has(a.screen)) {
+        screensMap.set(a.screen, a)
+      }
+    })
+    return Array.from(screensMap.values())
+  }, [artifacts])
+
+
+
   const latestPreviewUrl = useMemo(() => {
     if (!requirementStatuses || requirementStatuses.length === 0) return null;
     
@@ -785,6 +816,125 @@ function RobotsPageContent() {
     return null;
   }, [requirementStatuses]);
 
+  const hasRequirementPreview = !!latestPreviewUrl || !!latestSourceCodeUrl;
+
+  const prevArtifactsRef = useRef(artifacts)
+
+  useEffect(() => {
+    const prev = prevArtifactsRef.current
+    if (artifacts.length > 0) {
+      const newestArtifact = artifacts[0]
+      const wasBrandNew = prev.length === 0 || new Date(newestArtifact.created_at).getTime() > new Date(prev[0].created_at).getTime()
+      
+      // Auto-select artifact if:
+      // 1. It's a newly created artifact (wasBrandNew)
+      // 2. OR we have no requirement preview AND no artifacts were previously loaded (e.g. initial load of instance without requirement)
+      // We don't auto-select on initial load if there IS a requirement preview, to let the user see the preview.
+      if (wasBrandNew || (prev.length === 0 && !hasRequirementPreview)) {
+        setActiveBrowserTab({ kind: 'artifact', screen: newestArtifact.screen })
+        if (newestArtifact.should_reload) {
+          setArtifactReloadCounter(c => c + 1)
+        }
+      } else if (activeBrowserTab.kind === 'artifact' && newestArtifact.screen === activeBrowserTab.screen && newestArtifact.should_reload) {
+        const prevNewestForScreen = prev.find(p => p.screen === activeBrowserTab.screen)
+        if (!prevNewestForScreen || new Date(newestArtifact.created_at).getTime() > new Date(prevNewestForScreen.created_at).getTime()) {
+           setArtifactReloadCounter(c => c + 1)
+        }
+      }
+    }
+    prevArtifactsRef.current = artifacts
+  }, [artifacts, activeBrowserTab, hasRequirementPreview])
+
+
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
+  useEffect(() => {
+    const handleToggle = () => setActiveBrowserTab(prev => prev.kind === 'source' ? { kind: 'preview' } : { kind: 'source' })
+    window.addEventListener('robot:toggle-source-code', handleToggle)
+    return () => window.removeEventListener('robot:toggle-source-code', handleToggle)
+  }, [])
+
+  const handleAddShortcut = useCallback(() => {
+    try {
+      let rawUrl = "about:blank"
+      if (activeBrowserTab.kind === 'artifact') {
+        const artifact = artifacts.find(a => a.screen === activeBrowserTab.screen)
+        if (artifact) rawUrl = artifact.url
+      }
+      if (rawUrl === "about:blank") return
+
+      // Handle both relative and absolute URLs
+      const url = new URL(rawUrl, window.location.origin)
+      
+      // We only care about the path from the actual path
+      let pathname = url.pathname
+      const artifactSearchParams = new URLSearchParams(url.search)
+      
+      let matchingKey: string | null = null
+      Object.values(NAVIGATION_AREAS).forEach((area) => {
+        area.items.forEach((item) => {
+          if (item.key !== "contentCreator" && isNavItemActive(item, pathname, artifactSearchParams)) {
+            matchingKey = item.key
+          }
+        })
+      })
+
+      if (matchingKey) {
+        const saved = localStorage.getItem("dynamicShortcuts")
+        let shortcuts: any[] = []
+        if (saved) {
+          shortcuts = JSON.parse(saved)
+        }
+        
+        const exists = shortcuts.some(s => (typeof s === 'string' ? s : s.id) === matchingKey)
+        if (!exists) {
+          shortcuts.push(matchingKey)
+          localStorage.setItem("dynamicShortcuts", JSON.stringify(shortcuts))
+          window.dispatchEvent(new Event("shortcuts-updated"))
+        }
+        
+        artifactSearchParams.delete('artifact')
+        artifactSearchParams.delete('theme')
+        const searchString = artifactSearchParams.toString()
+        const cleanUrl = pathname + (searchString ? `?${searchString}` : '')
+        router.push(cleanUrl)
+      } else {
+        // Fallback: create a custom shortcut if it doesn't match an exact navigation area
+        const saved = localStorage.getItem("dynamicShortcuts")
+        let shortcuts: any[] = []
+        if (saved) {
+          shortcuts = JSON.parse(saved)
+        }
+        
+        // Use a stable ID based on pathname and search params
+        const customId = `custom-${pathname.replace(/\//g, '-')}`
+        const exists = shortcuts.some(s => (typeof s === 'string' ? s : s.id) === customId)
+        
+        artifactSearchParams.delete('artifact')
+        artifactSearchParams.delete('theme')
+        const searchString = artifactSearchParams.toString()
+        const cleanUrl = pathname + (searchString ? `?${searchString}` : '')
+        
+        if (!exists) {
+          shortcuts.push({
+            id: customId,
+            title: activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen 
+              ? (artifacts.find(a => a.screen === activeBrowserTab.screen)?.title || activeBrowserTab.screen) 
+              : 'App Screen',
+            href: cleanUrl,
+            isCustom: true
+          })
+          localStorage.setItem("dynamicShortcuts", JSON.stringify(shortcuts))
+          window.dispatchEvent(new Event("shortcuts-updated"))
+        }
+        
+        router.push(cleanUrl)
+      }
+    } catch (e) {
+      console.error("Error adding shortcut:", e)
+    }
+  }, [artifacts, activeBrowserTab, router])
+
+
   // So the iframe remounts when the preview row is updated in DB, even if the URL string is unchanged
   const requirementPreviewFrameKey = useMemo(() => {
     if (!requirementStatuses || requirementStatuses.length === 0) return "none"
@@ -811,14 +961,34 @@ function RobotsPageContent() {
 
   // Compute if browser should be visible
   const isBrowserVisible = Boolean(
-    (!!latestPreviewUrl || !!latestSourceCodeUrl) &&
+    (hasRequirementPreview || artifacts.length > 0) &&
     !pendingInstanceId &&
     viewMode !== 'imprenta'
   )
 
-  const rawActiveUrlToDisplay = showSourceCodePreview 
-    ? (latestSourceCodeUrl || latestPreviewUrl || "about:blank")
-    : (latestPreviewUrl || latestSourceCodeUrl || "about:blank")
+  const rawActiveUrlToDisplay = (() => {
+    if (activeBrowserTab.kind === 'artifact') {
+      const artifact = artifacts.find(a => a.screen === activeBrowserTab.screen)
+      if (artifact?.url) {
+        try {
+          const url = new URL(artifact.url, window.location.origin)
+          url.searchParams.set('theme', theme === 'dark' ? 'dark' : 'light')
+          // If the original URL was relative, we should keep it relative but with the search params
+          if (!artifact.url.startsWith('http')) {
+            return url.pathname + url.search
+          }
+          return url.toString()
+        } catch (e) {
+          return artifact.url
+        }
+      }
+      return "about:blank"
+    }
+    return activeBrowserTab.kind === 'source'
+      ? (latestSourceCodeUrl || latestPreviewUrl || "about:blank")
+      : (latestPreviewUrl || latestSourceCodeUrl || "about:blank")
+  })()
+  
   const isZipUrl = typeof rawActiveUrlToDisplay === 'string' && (
     rawActiveUrlToDisplay.endsWith('.zip') || 
     rawActiveUrlToDisplay.includes('.zip?') ||
@@ -1270,95 +1440,101 @@ function RobotsPageContent() {
               <div className={`w-full ${isChatHidden ? 'lg:w-full' : 'lg:w-2/3'} border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative transition-all duration-300`}>
                 <div className={`grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[135px] overflow-hidden`}>
                   {/* Browser navigation bar */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/40">
-                    <div className="flex items-center gap-2 flex-1 min-w-0 bg-background/80 border border-border rounded-full px-2.5 py-1">
-                      {isZipUrl ? (
-                        <>
-                          <div className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-muted-foreground">
-                            <Archive className="w-3.5 h-3.5 shrink-0" />
-                            <span className="truncate">{activeUrlToDisplay.split('/').pop()?.split('?')[0] || 'source-code.zip'}</span>
-                            {selectedFilePath && (
-                              <>
-                                <span className="text-muted-foreground/30 mx-0.5">/</span>
-                                <div className="flex items-center gap-1 truncate">
-                                  {selectedFilePath.split('/').map((part, i, arr) => (
-                                    <React.Fragment key={i}>
-                                      <span className={i === arr.length - 1 ? 'text-foreground font-medium' : ''}>
-                                        {part}
-                                      </span>
-                                      {i < arr.length - 1 && <span className="text-muted-foreground/30 mx-0.5">/</span>}
-                                    </React.Fragment>
-                                  ))}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => window.open(activeUrlToDisplay, '_blank')}
-                            className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                            title="Download Zip"
-                          >
-                            <Download className="h-3 w-3" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => {
-                              const frame = iframeRef.current
-                              if (frame) {
-                                frame.src = frame.src
-                              }
-                            }}
-                            className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                            title="Refresh"
-                          >
-                            <RotateCw className="h-3.5 w-3.5" />
-                          </button>
-                          <Globe className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
-                          <input
-                            type="text"
-                            readOnly
-                            value={displayedIframeUrl}
-                            className="flex-1 min-w-0 text-xs text-muted-foreground bg-transparent outline-none cursor-default"
-                          />
-                          <button
-                            onClick={() => window.open(displayedIframeUrl, '_blank')}
-                            className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                            title="Open in new tab"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-white dark:bg-black">
+                    {hasRequirementPreview ? (
+                      <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-1">
+                        {isZipUrl ? (
+                          <>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-muted-foreground">
+                              <Archive className="w-3.5 h-3.5 shrink-0" />
+                              <span className="truncate">{activeUrlToDisplay.split('/').pop()?.split('?')[0] || 'source-code.zip'}</span>
+                              {selectedFilePath && (
+                                <>
+                                  <span className="text-muted-foreground/30 mx-0.5">/</span>
+                                  <div className="flex items-center gap-1 truncate">
+                                    {selectedFilePath.split('/').map((part, i, arr) => (
+                                      <React.Fragment key={i}>
+                                        <span className={i === arr.length - 1 ? 'text-foreground font-medium' : ''}>
+                                          {part}
+                                        </span>
+                                        {i < arr.length - 1 && <span className="text-muted-foreground/30 mx-0.5">/</span>}
+                                      </React.Fragment>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => window.open(activeUrlToDisplay, '_blank')}
+                              className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                              title="Download Zip"
+                            >
+                              <Download className="h-3 w-3" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                const frame = iframeRef.current
+                                if (frame) {
+                                  frame.src = frame.src
+                                }
+                              }}
+                              className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                              title="Refresh"
+                            >
+                              <RotateCw className="h-3.5 w-3.5" />
+                            </button>
+                            <Globe className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
+                            <input
+                              type="text"
+                              readOnly
+                              value={displayedIframeUrl}
+                              className="flex-1 min-w-0 text-xs text-muted-foreground bg-transparent outline-none cursor-default"
+                            />
+                            <button
+                              onClick={() => window.open(displayedIframeUrl, '_blank')}
+                              className="shrink-0 h-6 w-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                              title="Open in new tab"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ) : activeBrowserTab.kind === 'artifact' ? (
+                      <div className="flex-1 min-w-0" />
+                    ) : (
+                      <div className="flex-1 min-w-0" />
+                    )}
                     
-                    {!isZipUrl && (
-                      <div className="hidden sm:flex items-center gap-1 bg-background/80 border border-border rounded-full p-0.5 mx-1">
+                    {activeBrowserTab.kind !== 'artifact' && !isZipUrl && hasRequirementPreview && (
+                      <div className="hidden sm:flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1">
                         <button
                           onClick={() => setViewportSize('imac')}
-                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'imac' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'imac' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
                           title="Desktop"
                         >
                           <Monitor className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => setViewportSize('macbook')}
-                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'macbook' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'macbook' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
                           title="Laptop"
                         >
                           <Laptop className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => setViewportSize('ipad')}
-                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'ipad' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'ipad' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
                           title="Tablet"
                         >
                           <Tablet className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => setViewportSize('iphone')}
-                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'iphone' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
+                          className={`h-6 w-8 flex items-center justify-center rounded-full transition-colors ${viewportSize === 'iphone' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
                           title="Mobile"
                         >
                           <Smartphone className="h-3.5 w-3.5" />
@@ -1366,23 +1542,61 @@ function RobotsPageContent() {
                       </div>
                     )}
 
-                    <div className="hidden sm:flex items-center gap-1 bg-background/80 border border-border rounded-full p-0.5 mx-1">
-                      <button
-                        onClick={() => setShowSourceCodePreview(false)}
-                        className={`h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${!showSourceCodePreview ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
-                        title="Live Preview"
-                      >
-                        <Globe className="h-3.5 w-3.5 mr-1.5" />
-                        Preview
-                      </button>
-                      <button
-                        onClick={() => setShowSourceCodePreview(true)}
-                        className={`h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${showSourceCodePreview ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}
-                        title="Source Code"
-                      >
-                        <Folder className="h-3.5 w-3.5 mr-1.5" />
-                        Source
-                      </button>
+                    {activeBrowserTab.kind === 'artifact' && (
+                      <div className="hidden sm:flex items-center gap-1 px-1">
+                        <button
+                          onClick={handleAddShortcut}
+                          className="group relative shrink-0 h-6 w-6 flex items-center justify-center rounded-full transition-colors overflow-hidden"
+                          title="Add as shortcut to menu"
+                        >
+                          <div className="absolute inset-0 bg-muted/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
+                          <Plus className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground relative z-10" />
+                        </button>
+                        <button
+                          onClick={() => setArtifactReloadCounter(c => c + 1)}
+                          className="group relative shrink-0 h-6 w-6 flex items-center justify-center rounded-full transition-colors overflow-hidden"
+                          title="Refresh"
+                        >
+                          <div className="absolute inset-0 bg-muted/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
+                          <RotateCw className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground relative z-10" />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="hidden sm:flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1 overflow-x-auto">
+                      {hasRequirementPreview && (
+                        <>
+                          <button
+                            onClick={() => setActiveBrowserTab({ kind: 'preview' })}
+                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${activeBrowserTab.kind === 'preview' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
+                            title="Live Preview"
+                          >
+                            <Globe className="h-3.5 w-3.5 mr-1.5" />
+                            Preview
+                          </button>
+                          <button
+                            onClick={() => setActiveBrowserTab({ kind: 'source' })}
+                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${activeBrowserTab.kind === 'source' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
+                            title="Source Code"
+                          >
+                            <Folder className="h-3.5 w-3.5 mr-1.5" />
+                            Source
+                          </button>
+                        </>
+                      )}
+                      {artifactScreens.map(a => {
+                        const isActive = activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === a.screen;
+                        return (
+                          <button
+                            key={a.screen}
+                            onClick={() => setActiveBrowserTab({ kind: 'artifact', screen: a.screen })}
+                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${isActive ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
+                            title={a.title ?? a.screen}
+                          >
+                            {a.title ?? a.screen}
+                          </button>
+                        )
+                      })}
                     </div>
 
                     <button
@@ -1397,7 +1611,7 @@ function RobotsPageContent() {
                   <div ref={containerRef} className={`relative overflow-hidden bg-muted/10 w-full h-full flex items-start justify-center`}>
                     <div 
                       className="relative transition-all duration-300 shrink-0 flex flex-col"
-                      style={isZipUrl ? {
+                      style={activeBrowserTab.kind === 'artifact' || isZipUrl ? {
                         width: '100%',
                         height: '100%',
                         backgroundColor: 'var(--background)'
@@ -1414,17 +1628,27 @@ function RobotsPageContent() {
                         backgroundColor: 'var(--background)'
                       }}
                     >
-                      {(isResuming || isInstanceStarting) && !latestPreviewUrl && !latestSourceCodeUrl ? (
+                      {(isResuming || isInstanceStarting) && !latestPreviewUrl && !latestSourceCodeUrl && artifacts.length === 0 ? (
                         <div className="absolute inset-0 flex flex-col">
                           <BrowserSkeleton />
                         </div>
-                      ) : (isActivityRobot && hasMessageBeenSent && !isInstanceRunning && !latestPreviewUrl && !latestSourceCodeUrl) ? (
+                      ) : (isActivityRobot && hasMessageBeenSent && !isInstanceRunning && !latestPreviewUrl && !latestSourceCodeUrl && artifacts.length === 0) ? (
                         <div className="absolute inset-0 flex flex-col">
                           <BrowserSkeleton />
                         </div>
-                      ) : (!!latestPreviewUrl || !!latestSourceCodeUrl) ? (
+                      ) : (!!latestPreviewUrl || !!latestSourceCodeUrl || artifacts.length > 0) ? (
                         <div className="absolute inset-0 bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
-                          {isZipUrl ? (
+                          {activeBrowserTab.kind === 'artifact' ? (
+                            <iframe
+                              key={`artifact-${activeBrowserTab.screen}-${artifactReloadCounter}-${theme}`}
+                              src={rawActiveUrlToDisplay}
+                              className="absolute inset-0 w-full h-full border-0 bg-background contained-iframe"
+                              title={artifactScreens.find(a => a.screen === activeBrowserTab.screen)?.title ?? activeBrowserTab.screen}
+                              allowFullScreen
+                              allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
+                              style={{ isolation: 'isolate' }}
+                            />
+                          ) : isZipUrl ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background">
                               <ZipViewer
                                 key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}

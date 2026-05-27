@@ -741,8 +741,8 @@ export default function SegmentsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-0">
-      <Tabs defaultValue="all">
+      <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+      <Tabs defaultValue="all" className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex items-center gap-8">
@@ -775,14 +775,12 @@ export default function SegmentsPage() {
               </div>
             </div>
           </StickyHeader>
-          <div className="p-8 space-y-4">
-            <div className="px-0">
-              <TabsContent value="all" className="space-y-4">
+          <div className="p-8 space-y-4 bg-muted/30 flex-1">
+              <TabsContent value="all" className="mt-0 space-y-4">
                 {Array.from({ length: 3 }).map((_, index) => (
                   <SegmentRowSkeleton key={index} />
                 ))}
               </TabsContent>
-            </div>
           </div>
         </Tabs>
       </div>
@@ -814,8 +812,8 @@ export default function SegmentsPage() {
   }
 
   return (
-    <div className="flex-1 p-0">
-      <Tabs defaultValue="all">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+      <Tabs defaultValue="all" className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex items-center gap-8">
@@ -848,9 +846,8 @@ export default function SegmentsPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4 bg-muted/30">
-          <div className="px-8">
-            <TabsContent value="all" className="space-y-4">
+        <div className="p-8 space-y-4 bg-muted/30 flex-1">
+            <TabsContent value="all" className="mt-0 space-y-4">
               {filteredSegments.length === 0 && searchTerm ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <p className="text-muted-foreground">No se encontraron segmentos que coincidan con "{searchTerm}"</p>
@@ -881,7 +878,7 @@ export default function SegmentsPage() {
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="active" className="space-y-4">
+            <TabsContent value="active" className="mt-0 space-y-4">
               {segments.filter(segment => activeSegments[segment.id]).length === 0 ? (
                 segmentsEmptyState
               ) : (
@@ -910,7 +907,7 @@ export default function SegmentsPage() {
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="draft" className="space-y-4">
+            <TabsContent value="draft" className="mt-0 space-y-4">
               {segments.filter(segment => !activeSegments[segment.id]).length === 0 ? (
                 segmentsEmptyState
               ) : (
@@ -939,7 +936,6 @@ export default function SegmentsPage() {
                 </div>
               )}
             </TabsContent>
-          </div>
         </div>
       </Tabs>
       <Dialog open={isUrlModalOpen} onOpenChange={setIsUrlModalOpen}>

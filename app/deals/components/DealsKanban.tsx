@@ -71,7 +71,7 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="overflow-x-auto pb-4 -mx-8">
-        <div className="flex gap-4 min-w-fit px-16 min-h-[calc(100vh-220px)] items-stretch">
+        <div className="flex gap-4 min-w-fit px-8 min-h-[calc(100vh-220px)] items-stretch">
           {DEAL_STAGES.map((stage) => {
             const stageDeals = deals.filter(deal => deal.stage === stage.id)
             const totalAmount = stageDeals.reduce((sum, deal) => sum + (deal.amount || 0), 0)

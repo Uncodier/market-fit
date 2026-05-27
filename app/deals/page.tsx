@@ -61,7 +61,7 @@ function DealsTableSkeleton() {
 function DealsKanbanSkeleton() {
   return (
     <div className="overflow-x-auto pb-4 -mx-8">
-      <div className="flex gap-4 min-w-fit px-16 min-h-[calc(100vh-220px)] items-stretch">
+      <div className="flex gap-4 min-w-fit px-8 min-h-[calc(100vh-220px)] items-stretch">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex-shrink-0 w-80 flex flex-col">
             <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
@@ -314,8 +314,6 @@ export default function DealsPage() {
         </StickyHeader>
         
         <div className="p-8 space-y-4 bg-muted/30 flex-1">
-          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : "px-8"}>
-            <div className={viewType === 'kanban' ? "min-w-fit px-16" : ""}>
               {loading ? (
               viewType === "table" ? <DealsTableSkeleton /> : <DealsKanbanSkeleton />
             ) : filteredDeals.length === 0 && !searchQuery ? (
@@ -350,8 +348,6 @@ export default function DealsPage() {
                 ))}
               </>
             )}
-            </div>
-          </div>
         </div>
       </Tabs>
     </div>

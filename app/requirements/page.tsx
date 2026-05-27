@@ -1121,7 +1121,7 @@ export default function RequirementsPage() {
         statusOptions={[REQUIREMENT_STATUS.IN_PROGRESS, REQUIREMENT_STATUS.ON_REVIEW, REQUIREMENT_STATUS.DONE, REQUIREMENT_STATUS.BACKLOG, REQUIREMENT_STATUS.CANCELED]}
       />
       
-      <Tabs defaultValue="all" onValueChange={setActiveTab}>
+      <Tabs defaultValue="all" onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex items-center justify-between w-full">
@@ -1201,11 +1201,11 @@ export default function RequirementsPage() {
         </StickyHeader>
         
         <div className="p-8 space-y-4 bg-muted/30 flex-1">
-          <div className={viewMode === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : "px-8"}>
-            <div className={viewMode === 'kanban' ? "min-w-fit px-16" : ""}>
+          <div className={viewMode === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : ""}>
+            <div className={viewMode === 'kanban' ? "min-w-fit px-8" : ""}>
               {/* Rendering for all tabs */}
               {["all", "pending", "completed", "rejected"].map((tab) => (
-                <TabsContent key={tab} value={tab} className={viewMode === 'kanban' ? "m-0 min-h-[calc(100dvh-220px)]" : "space-y-4 min-h-[calc(100dvh-220px)]"}>
+                <TabsContent key={tab} value={tab} className={viewMode === 'kanban' ? "mt-0 m-0 min-h-[calc(100dvh-220px)]" : "mt-0 space-y-4 min-h-[calc(100dvh-220px)]"}>
                 {/* Case 1: Loading or initial state - prioritize loading over no site selected */}
                 {isLoading || (!currentSite && !visibleError) ? (
                   <LoadingState />

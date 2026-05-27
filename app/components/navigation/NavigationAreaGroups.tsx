@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   SIDEBAR_SCROLL_AREA_ORDER,
@@ -32,11 +32,13 @@ const AREA_EMOJI: Record<WorkspaceArea, string> = {
   marketing: "📣",
   sales: "🤝",
   automation: "⚡",
+  applications: "📱",
   reports: "📑",
 }
 
 /** Legacy sidebar: emoji inside bordered tile via MenuItem → EmojiIcon */
 const NAV_ITEM_EMOJI: Record<string, string> = {
+  salesHome: "🏠",
   campaigns: "🎯",
   segments: "🏷️",
   content: "📄",
@@ -44,6 +46,8 @@ const NAV_ITEM_EMOJI: Record<string, string> = {
   assets: "📁",
   context: "🏢",
   agentsConfiguration: "✨",
+  applicationsDatabase: "💾",
+  applicationsRepositories: "📦",
   sales: "💰",
   leads: "👥",
   deals: "🤝",
@@ -98,6 +102,7 @@ export function NavigationAreaGroups({
   const { robotsViewMode, setRobotsViewMode } = useLayout()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const searchQueryString = searchParams.toString()
   const navSearchParams = useMemo(
     () => new URLSearchParams(searchQueryString),
@@ -122,6 +127,7 @@ export function NavigationAreaGroups({
     marketing: false,
     sales: false,
     automation: false,
+    applications: false,
     reports: false,
   })
 
@@ -140,7 +146,13 @@ export function NavigationAreaGroups({
   }, [isPathInArea, areaOrder])
 
   const toggleArea = (area: WorkspaceArea) => {
-    setOpen((prev) => ({ ...prev, [area]: !prev[area] }))
+    setOpen((prev) => {
+      const willOpen = !prev[area]
+      if (willOpen && area === "sales") {
+        router.push("/sales-home")
+      }
+      return { ...prev, [area]: willOpen }
+    })
   }
 
   const renderBadge = (href: string) => {
@@ -317,7 +329,7 @@ export function NavigationAreaGroups({
                   renderCollapsed ? "items-center px-0 w-full" : "px-1"
                 )}
               >
-                {config.items.map((item) => renderItem(item))}
+                {config.items.filter(item => !item.hidden).map((item) => renderItem(item))}
               </div>
             </div>
           </div>

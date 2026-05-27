@@ -361,6 +361,7 @@ export default function LeadsPage() {
     journeyStages: []
   })
   const { currentSite } = useSite()
+  const { user } = useAuth()
   const [showAttributionModal, setShowAttributionModal] = useState(false)
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     leadId: string
@@ -1401,7 +1402,7 @@ export default function LeadsPage() {
   
   return (
     <LeadsContext.Provider value={{ segments }}>
-    <div className="flex-1 min-w-0 w-full p-0">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
       {/* Attribution Modal */}
       {pendingStatusChange && (pendingStatusChange.newStatus === "converted" || pendingStatusChange.newStatus === "lost") && (
         <AttributionModal
@@ -1423,7 +1424,7 @@ export default function LeadsPage() {
         segments={segments}
       />
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">
             {selectedLeads.size > 0 ? (
@@ -1585,14 +1586,14 @@ export default function LeadsPage() {
         </StickyHeader>
         
         <div className="p-8 space-y-4 bg-muted/30 flex-1">
-          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : "px-8"}>
-            <div className={viewType === 'kanban' ? "min-w-fit px-16" : ""}>
+          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : ""}>
+            <div className={viewType === 'kanban' ? "min-w-fit px-8" : ""}>
               {loading ? (
               <LeadsTableSkeleton />
             ) : (
               <>
                 {["all", "new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"].map(tabValue => (
-                  <TabsContent key={tabValue} value={tabValue} className="space-y-4">
+                  <TabsContent key={tabValue} value={tabValue} className="mt-0 space-y-4">
                   {viewType === "table" ? (
                       <GroupedLeadsTable
                         companyGroups={companyGroups}

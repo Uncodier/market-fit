@@ -392,7 +392,7 @@ function DashboardPageContent() {
   }, [shouldPreventRefresh])
 
   return (
-    <div className="flex-1 p-0">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
       {/* Navigation blocking indicator */}
       {navigationBlocked && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
@@ -406,9 +406,8 @@ function DashboardPageContent() {
         </div>
       )}
       
-      <div className="space-y-4">
         <StickyHeader>
-          <div className="px-4 md:px-16 pt-0">
+          <div className="w-full pt-0">
             <div className="flex w-full items-center justify-end gap-8">
               {(
                 <div className="flex items-center gap-4">
@@ -460,8 +459,7 @@ function DashboardPageContent() {
           </div>
         </StickyHeader>
 
-        {(
-          <div className="px-4 md:px-16 pt-3 pb-4">
+        <div className="p-8 space-y-4 bg-muted/30 flex-1">
             <div className="flex items-center justify-between space-x-4">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight">
@@ -476,10 +474,7 @@ function DashboardPageContent() {
                 </p>
               </div>
             </div>
-          </div>
-        )}
 
-        <div className="px-4 md:px-16">
           <div className="space-y-4">
             {activeTab === "performance" && (
               <>
@@ -821,7 +816,6 @@ function DashboardPageContent() {
             )}
           </div>
         </div>
-      </div>
     </div>
   )
 }

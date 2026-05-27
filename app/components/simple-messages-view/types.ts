@@ -56,6 +56,20 @@ export interface InstanceAsset {
   created_at: string
 }
 
+export interface InstanceArtifact {
+  id: string
+  instance_id: string
+  site_id: string
+  user_id: string | null
+  screen: string
+  url: string
+  title: string | null
+  description: string | null
+  should_reload: boolean
+  context: Record<string, unknown>
+  created_at: string
+}
+
 // Define SelectedContextIds interface locally to avoid import issues
 export interface SelectedContextIds {
   leads: string[]

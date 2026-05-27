@@ -489,9 +489,9 @@ const mockTasks: {
 function ControlCenterSkeleton() {
   return (
     <div className="flex-1 p-0">
-      <div className="px-8 pb-8">
+      <div className="p-8 space-y-4 bg-muted/30 flex-1">
         <div className="w-full overflow-x-auto overflow-y-visible pb-4 -mx-8">
-          <div className="flex gap-6 p-6 px-16 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
+          <div className="flex gap-6 min-w-fit px-8 pb-8 bg-transparent rounded-lg shadow-sm h-full">
             {/* Kanban columns - create columns to represent different campaign types */}
             {[1, 2, 3, 4, 5].map((columnIndex) => (
               <div key={columnIndex} className="flex flex-col h-full w-[280px]">
@@ -865,12 +865,12 @@ export default function CampaignsPage() {
       {isLoading ? (
         <ControlCenterSkeleton />
       ) : (
-        <div className="px-8 pb-8">
+        <div className="p-8 space-y-4 bg-muted/30 flex-1">
           <Tabs value={activeTab} className="h-auto" onValueChange={setActiveTab}>
             <TabsContent value={activeTab} className="w-full h-auto overflow-visible">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible pb-4 -mx-8">
-                  <div className="flex gap-6 p-6 px-16 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 min-w-fit px-8 pb-8 bg-transparent rounded-lg shadow-sm h-full">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -955,7 +955,7 @@ export default function CampaignsPage() {
             <TabsContent value="active" className="w-full h-auto overflow-visible">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible pb-4 -mx-8">
-                  <div className="flex gap-6 p-6 px-16 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 min-w-fit px-8 pb-8 bg-transparent rounded-lg shadow-sm h-full">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -1040,7 +1040,7 @@ export default function CampaignsPage() {
             <TabsContent value="pending">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible pb-4 -mx-8">
-                  <div className="flex gap-6 p-6 px-16 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 min-w-fit px-8 pb-8 bg-transparent rounded-lg shadow-sm h-full">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}
@@ -1112,7 +1112,7 @@ export default function CampaignsPage() {
             <TabsContent value="completed">
               {Object.keys(campaignsByType).length > 0 ? (
                 <div className="w-full overflow-x-auto overflow-y-visible pb-4 -mx-8">
-                  <div className="flex gap-6 p-6 px-16 pb-8 bg-transparent rounded-lg shadow-sm h-full min-w-max">
+                  <div className="flex gap-6 min-w-fit px-8 pb-8 bg-transparent rounded-lg shadow-sm h-full">
                     {Object.entries(campaignsByType).map(([type, typeCampaigns]) => (
                       <KanbanColumn
                         key={type}

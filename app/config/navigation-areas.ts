@@ -4,7 +4,7 @@
  * Reports: each entry is its own destination — dashboard tabs via `?tab=` or standalone `/costs`.
  */
 
-export type WorkspaceArea = "marketing" | "sales" | "automation" | "reports"
+export type WorkspaceArea = "marketing" | "sales" | "automation" | "applications" | "reports"
 
 /** Middle sidebar (scroll): Marketing, Sales, Reports */
 export const SIDEBAR_SCROLL_AREA_ORDER: WorkspaceArea[] = [
@@ -14,7 +14,10 @@ export const SIDEBAR_SCROLL_AREA_ORDER: WorkspaceArea[] = [
 ]
 
 /** Bottom sidebar above Configuration */
-export const SIDEBAR_AUTOMATION_AREA_ORDER: WorkspaceArea[] = ["automation"]
+export const SIDEBAR_AUTOMATION_AREA_ORDER: WorkspaceArea[] = [
+  "applications",
+  "automation",
+]
 
 export interface AreaNavItem {
   /** Stable id for i18n / emoji map */
@@ -27,6 +30,8 @@ export interface AreaNavItem {
   settingsTab?: string
   /** When set with `/robots`, link and active state use `?mode=` (Content Creator canvas) */
   robotsMode?: string
+  /** When true, item won't be rendered in the sidebar menu */
+  hidden?: boolean
 }
 
 export const NAVIGATION_AREAS: Record<
@@ -46,6 +51,7 @@ export const NAVIGATION_AREAS: Record<
   sales: {
     categoryKey: "layout.category.sales",
     items: [
+      { key: "salesHome", href: "/sales-home", hidden: true },
       { key: "controlCenter", href: "/control-center" },
       { key: "sales", href: "/sales" },
       { key: "leads", href: "/leads" },
@@ -63,6 +69,13 @@ export const NAVIGATION_AREAS: Record<
       { key: "channels", href: "/settings", settingsTab: "channels" },
       { key: "activities", href: "/settings", settingsTab: "activities" },
       { key: "skills", href: "/skills" },
+    ],
+  },
+  applications: {
+    categoryKey: "layout.category.applications",
+    items: [
+      { key: "applicationsDatabase", href: "/applications/database" },
+      { key: "applicationsRepositories", href: "/applications/repositories" },
     ],
   },
   reports: {
@@ -124,7 +137,10 @@ export function isNavItemActive(
     return searchParams.get("mode") === item.robotsMode
   }
   if (!item.href) return false
-  return pathname.startsWith(item.href)
+  if (pathname === item.href) return true
+  if (pathname.startsWith(item.href + '/')) return true
+  if (pathname.startsWith(item.href + '?')) return true
+  return false
 }
 
 export function isAreaActive(

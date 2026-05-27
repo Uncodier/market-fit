@@ -18,12 +18,14 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   helpTask?: string
   isCollapsed: boolean
   onCollapse: () => void
+  hideSidebarToggle?: boolean
   segments?: Array<{
     id: string
     name: string
     description: string
   }>
   breadcrumb?: React.ReactNode
+  hideBreadcrumb?: boolean
   isExperimentDetailPage?: boolean
   onCreateSale?: () => void
   onCreateDeal?: () => void
@@ -38,9 +40,11 @@ export function TopBar({
   helpTask,
   isCollapsed,
   onCollapse,
+  hideSidebarToggle,
   className,
   segments: propSegments,
   breadcrumb,
+  hideBreadcrumb,
   isExperimentDetailPage = false,
   onCreateSale,
   onCreateDeal,
@@ -249,21 +253,26 @@ export function TopBar({
       )}
       {...props}
     >
-      <div className="flex h-[64px] items-center justify-between pr-4 lg:px-8 w-full max-w-full">
+      <div className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">
         <div className="flex items-center min-w-0 flex-1">
-          <Button variant="ghost" size="icon" className="md:!hidden ml-2 mr-2 font-inter shrink-0" onClick={onMobileToggle}>
-            <Menu className="h-5 w-5" />
-          </Button>
-          <TopBarTitle 
-            title={title}
-            helpText={helpText}
-            helpWelcomeMessage={helpWelcomeMessage}
-            helpTask={helpTask}
-            isCollapsed={isCollapsed}
-            onCollapse={onCollapse}
-            breadcrumb={breadcrumb}
-            className="flex-1 min-w-0 pr-4"
-          />
+          {!hideSidebarToggle && (
+            <Button variant="ghost" size="icon" className="md:!hidden mr-2 font-inter shrink-0" onClick={onMobileToggle}>
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          {!hideBreadcrumb && (
+            <TopBarTitle 
+              title={title}
+              helpText={helpText}
+              helpWelcomeMessage={helpWelcomeMessage}
+              helpTask={helpTask}
+              isCollapsed={isCollapsed}
+              onCollapse={onCollapse}
+              hideSidebarToggle={hideSidebarToggle}
+              breadcrumb={breadcrumb}
+              className="flex-1 min-w-0 pr-4"
+            />
+          )}
         </div>
         
         <div className="flex items-center justify-end flex-1 min-w-0">

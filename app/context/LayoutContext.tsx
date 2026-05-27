@@ -41,7 +41,7 @@ function readInitialRobotsViewMode(): RobotsViewMode {
   return "agent"
 }
 
-export function LayoutProvider({ children, isLayoutCollapsed: initialIsCollapsed = false }: LayoutProviderProps) {
+export function LayoutProvider({ children, isLayoutCollapsed: initialIsCollapsed = true }: LayoutProviderProps) {
   const [isLayoutCollapsed, setIsLayoutCollapsed] = useState(initialIsCollapsed)
   const [robotsViewMode, setRobotsViewMode] = useState<RobotsViewMode>(readInitialRobotsViewMode)
   const hasAutoCollapsedRef = useRef(false)

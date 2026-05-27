@@ -43,11 +43,15 @@ export default function DatabasePage() {
       </StickyHeader>
       
       <div className="p-8 space-y-4 bg-muted/30 flex-1">
-        <div className={viewMode === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : "px-0"}>
-          <div className={viewMode === 'kanban' ? "min-w-fit px-16" : ""}>
-            <AppsListSection searchQuery={searchQuery} viewMode={viewMode} />
+        {viewMode === 'kanban' ? (
+          <div className="overflow-x-auto pb-4 -mx-8">
+            <div className="min-w-fit px-8">
+              <AppsListSection searchQuery={searchQuery} viewMode={viewMode} />
+            </div>
           </div>
-        </div>
+        ) : (
+          <AppsListSection searchQuery={searchQuery} viewMode={viewMode} />
+        )}
       </div>
     </div>
   )

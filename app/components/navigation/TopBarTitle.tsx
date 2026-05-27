@@ -21,6 +21,7 @@ interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   helpTask?: string
   isCollapsed: boolean
   onCollapse: () => void
+  hideSidebarToggle?: boolean
   breadcrumb?: React.ReactNode
 }
 
@@ -31,6 +32,7 @@ export function TopBarTitle({
   helpTask,
   isCollapsed,
   onCollapse,
+  hideSidebarToggle,
   className,
   breadcrumb,
   ...props 
@@ -75,7 +77,8 @@ export function TopBarTitle({
       'campaigns': t('layout.sidebar.campaigns') || 'Campaigns',
       'control-center': t('layout.sidebar.controlCenter') || 'Tasks',
       'billing': t('layout.sidebar.billing') || 'Billing',
-      'robots': t('layout.sidebar.robots') || 'Agents'
+      'robots': t('layout.sidebar.robots') || 'Agents',
+      'applications': t('layout.sidebar.applications') || 'Applications'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
@@ -146,20 +149,22 @@ export function TopBarTitle({
  
   return (
     <div className={cn("flex items-center gap-4 min-w-0", className)}>
-      <Button
-        variant="ghost"
-        className="hidden md:flex h-8 w-8 p-0 ml-3.5 items-center justify-center font-inter"
-        onClick={onCollapse}
-      >
-        {isCollapsed ? (
-          <PanelLeftOpen className="h-4 w-4" />
-        ) : (
-          <PanelLeftClose className="h-4 w-4" />
-        )}
-        <span className="sr-only">
-          {isCollapsed ? "Expandir menú" : "Colapsar menú"}
-        </span>
-      </Button>
+      {!hideSidebarToggle && (
+        <Button
+          variant="ghost"
+          className="hidden md:flex h-8 w-8 p-0 items-center justify-center font-inter"
+          onClick={onCollapse}
+        >
+          {isCollapsed ? (
+            <PanelLeftOpen className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
+          <span className="sr-only">
+            {isCollapsed ? "Expandir menú" : "Colapsar menú"}
+          </span>
+        </Button>
+      )}
       
       {breadcrumbItems ? (
         <nav className="flex items-center min-w-0" aria-label="Breadcrumb">

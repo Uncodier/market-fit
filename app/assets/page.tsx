@@ -957,10 +957,9 @@ function AssetsLoadingPage() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4">
-          <div className="px-8">
+        <div className="p-8 space-y-4 bg-muted/30 flex-1">
             <>
-              <TabsContent value="all" className="space-y-4">
+              <TabsContent value="all" className="mt-0 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {Array.from({ length: 8 }).map((_, index) => (
                     <AssetCardSkeleton key={index} />
@@ -968,7 +967,6 @@ function AssetsLoadingPage() {
                 </div>
               </TabsContent>
             </>
-          </div>
         </div>
       </Tabs>
     </div>
@@ -1141,8 +1139,8 @@ function AssetsContent() {
   // Si el sitio está cargando, mostramos el skeleton
   if (isSiteLoading || (isLoading && !error)) {
     return (
-      <div className="flex-1 p-0 bg-muted/30 min-h-[calc(100vh-64px)]">
-        <Tabs defaultValue="all">
+      <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+        <Tabs defaultValue="all" className="flex-1 flex flex-col w-full h-full min-h-0">
           <StickyHeader>
             <div className="w-full pt-0">
               <div className="flex items-center gap-8">
@@ -1188,31 +1186,30 @@ function AssetsContent() {
             </div>
           </StickyHeader>
           
-          <div className="p-8 space-y-4">
-            <div className="px-8">
+          <div className="p-8 space-y-4 bg-muted/30 flex-1">
               <>
-                <TabsContent value="all" className="space-y-4">
+                <TabsContent value="all" className="mt-0 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {Array.from({ length: 8 }).map((_, index) => (
                       <AssetCardSkeleton key={index} />
                     ))}
                   </div>
                 </TabsContent>
-                <TabsContent value="images" className="space-y-4">
+                <TabsContent value="images" className="mt-0 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {Array.from({ length: 4 }).map((_, index) => (
                       <AssetCardSkeleton key={index} />
                     ))}
                   </div>
                 </TabsContent>
-                <TabsContent value="videos" className="space-y-4">
+                <TabsContent value="videos" className="mt-0 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {Array.from({ length: 4 }).map((_, index) => (
                       <AssetCardSkeleton key={index} />
                     ))}
                   </div>
                 </TabsContent>
-                <TabsContent value="documents" className="space-y-4">
+                <TabsContent value="documents" className="mt-0 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {Array.from({ length: 4 }).map((_, index) => (
                       <AssetCardSkeleton key={index} />
@@ -1220,7 +1217,6 @@ function AssetsContent() {
                   </div>
                 </TabsContent>
               </>
-            </div>
           </div>
         </Tabs>
       </div>
@@ -1244,8 +1240,8 @@ function AssetsContent() {
   }
 
   return (
-    <div className="flex-1 p-0 bg-muted/30 min-h-[calc(100vh-64px)]">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "images" | "videos" | "documents")}>
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "images" | "videos" | "documents")} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex items-center gap-8">
@@ -1340,10 +1336,9 @@ function AssetsContent() {
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4">
-          <div className="px-0">
+        <div className="p-8 space-y-4 bg-muted/30 flex-1">
             <>
-              <TabsContent value="all" className="space-y-4">
+              <TabsContent value="all" className="mt-0 space-y-4">
                 {filteredAssets.length === 0 ? (
                   <AssetEmptyState type="all" />
                 ) : viewType === 'grid' ? (
@@ -1376,7 +1371,7 @@ function AssetsContent() {
                   </div>
                 )}
               </TabsContent>
-              <TabsContent value="images" className="space-y-4">
+              <TabsContent value="images" className="mt-0 space-y-4">
                 {filteredAssets.filter(a => a.file_type.startsWith('image/')).length === 0 ? (
                   <AssetEmptyState type="images" />
                 ) : viewType === 'grid' ? (
@@ -1413,7 +1408,7 @@ function AssetsContent() {
                   </div>
                 )}
               </TabsContent>
-              <TabsContent value="videos" className="space-y-4">
+              <TabsContent value="videos" className="mt-0 space-y-4">
                 {filteredAssets.filter(a => a.file_type.startsWith('video/')).length === 0 ? (
                   <AssetEmptyState type="videos" />
                 ) : viewType === 'grid' ? (
@@ -1450,7 +1445,7 @@ function AssetsContent() {
                   </div>
                 )}
               </TabsContent>
-              <TabsContent value="documents" className="space-y-4">
+              <TabsContent value="documents" className="mt-0 space-y-4">
                 {filteredAssets.filter(a => !a.file_type.startsWith('image/') && !a.file_type.startsWith('video/')).length === 0 ? (
                   <AssetEmptyState type="documents" />
                 ) : viewType === 'grid' ? (
@@ -1488,7 +1483,6 @@ function AssetsContent() {
                 )}
               </TabsContent>
             </>
-          </div>
         </div>
       </Tabs>
     </div>

@@ -252,52 +252,40 @@ function createMockClient(reason: string) {
         }
       }
     },
-    from: (table: string) => ({
-      select: (columns?: string) => {
-        return { 
-          eq: (column: string, value: any) => ({ 
-            data: null, 
-            error: { message: `Cliente mock (${reason}): No se pueden obtener datos` } 
-          }),
-          single: () => ({
-            data: null,
-            error: { message: `Cliente mock (${reason}): No se pueden obtener datos` }
-          }),
-          order: (column: string, options?: any) => ({ 
-            data: null, 
-            error: { message: `Cliente mock (${reason}): No se pueden obtener datos` } 
-          }) 
-        }
-      },
-      insert: (data: any) => {
-        return { 
-          data: null, 
-          error: { message: `Cliente mock (${reason}): No se pueden insertar datos` } 
-        }
-      },
-      update: (data: any) => {
-        return { 
-          eq: (column: string, value: any) => ({ 
-            select: () => ({
-              single: () => ({
-                data: null, 
-                error: { message: `Cliente mock (${reason}): No se pueden actualizar datos` }
-              })
-            }),
-            data: null, 
-            error: { message: `Cliente mock (${reason}): No se pueden actualizar datos` } 
-          }) 
-        }
-      },
-      delete: () => {
-        return { 
-          eq: (column: string, value: any) => ({ 
-            data: null, 
-            error: { message: `Cliente mock (${reason}): No se pueden eliminar datos` } 
-          }) 
-        }
-      }
-    }),
+    from: (table: string) => {
+      const mockBuilder = (operation: string) => {
+        const builder: any = {
+          select: () => builder,
+          insert: () => builder,
+          update: () => builder,
+          delete: () => builder,
+          eq: () => builder,
+          neq: () => builder,
+          gt: () => builder,
+          gte: () => builder,
+          lt: () => builder,
+          lte: () => builder,
+          like: () => builder,
+          ilike: () => builder,
+          is: () => builder,
+          in: () => builder,
+          contains: () => builder,
+          containedBy: () => builder,
+          range: () => builder,
+          limit: () => builder,
+          order: () => builder,
+          single: () => Promise.resolve({ data: null, error: { message: `Cliente mock (${reason}): No se pueden realizar operaciones` } }),
+          maybeSingle: () => Promise.resolve({ data: null, error: { message: `Cliente mock (${reason}): No se pueden realizar operaciones` } }),
+          csv: () => builder,
+          then: (resolve: any) => resolve({ data: null, error: { message: `Cliente mock (${reason}): No se pueden obtener datos de ${table}` }, count: null })
+        };
+        // Ensure builder behaves like a promise
+        builder.catch = (reject: any) => Promise.resolve({ data: null, error: { message: `Cliente mock (${reason}): No se pueden realizar operaciones` } }).catch(reject);
+        return builder;
+      };
+
+      return mockBuilder('from');
+    },
     channel: (channel: string) => mockChannel,
     removeChannel: () => {},
     removeAllChannels: () => {}

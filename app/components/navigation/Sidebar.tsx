@@ -9,6 +9,7 @@ import { MenuItem } from "./MenuItem"
 import { SiteSelector } from "./SiteSelector"
 import { NotificationBadge } from "./NotificationBadge"
 import { RobotsNavItems } from "./RobotsNavItems"
+import { DynamicShortcuts } from "./DynamicShortcuts"
 import { useAuth } from "@/app/hooks/use-auth"
 import { markUINavigation } from "@/app/hooks/use-navigation-history"
 import { NavigationLink } from "./NavigationLink"
@@ -166,12 +167,15 @@ export function Sidebar({
               <div className={cn("flex flex-col space-y-1 w-full", renderCollapsed ? "w-[42px] mx-auto items-center" : "px-1")}>
                 <Suspense fallback={<div className="min-h-[64px]" aria-hidden />}>
                   <RobotsNavItems isCollapsed={renderCollapsed} />
+                  <DynamicShortcuts isCollapsed={renderCollapsed} />
                 </Suspense>
               </div>
               <div style={{ marginTop: "14px" }} className="w-full">
+                {/* 
                 <Suspense fallback={<div className="min-h-[48px]" aria-hidden />}>
                   <NavigationAreaGroups renderCollapsed={renderCollapsed} />
                 </Suspense>
+                */}
               </div>
             </div>
           </div>
@@ -182,7 +186,7 @@ export function Sidebar({
           <CreditsWidget isCollapsed={renderCollapsed} />
         </div>
 
-        <div className="flex-none border-t dark:border-white/5 border-black/5">
+          <div className="flex-none border-t dark:border-white/5 border-black/5">
           <div
             className={cn(
               "flex flex-col space-y-1 py-4",
@@ -190,12 +194,14 @@ export function Sidebar({
             )}
           >
             <div className="w-full">
+              {/*
               <Suspense fallback={<div className="min-h-[40px]" aria-hidden />}>
                 <NavigationAreaGroups
                   renderCollapsed={renderCollapsed}
                   areaOrder={SIDEBAR_AUTOMATION_AREA_ORDER}
                 />
               </Suspense>
+              */}
             </div>
             <ConfigurationSection
               className={cn(

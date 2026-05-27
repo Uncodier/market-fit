@@ -659,8 +659,8 @@ export default function SalesPage() {
 
   return (
     <SalesContext.Provider value={{ segments, campaigns }}>
-      <div className="flex-1 min-w-0 w-full p-0">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full space-y-6">
+      <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full min-h-0">
           <StickyHeader>
             <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">
@@ -774,13 +774,14 @@ export default function SalesPage() {
             </div>
           </StickyHeader>
           
-          <div className="p-8 space-y-4">
-            <div className="px-8">
+          <div className="p-8 space-y-4 bg-muted/30 flex-1">
+            <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : ""}>
+              <div className={viewType === 'kanban' ? "min-w-fit px-8" : ""}>
               {loading ? (
                 <SalesTableSkeleton />
               ) : (
                 <>
-                  <TabsContent value="all" className="space-y-4">
+                  <TabsContent value="all" className="mt-0 space-y-4">
                     {viewType === "table" ? (
                       <SalesTable
                         sales={currentSales}
@@ -805,7 +806,7 @@ export default function SalesPage() {
                     )}
                   </TabsContent>
                   
-                  <TabsContent value="pending" className="space-y-4">
+                  <TabsContent value="pending" className="mt-0 space-y-4">
                     {viewType === "table" ? (
                       <SalesTable
                         sales={currentSales}
@@ -830,7 +831,7 @@ export default function SalesPage() {
                     )}
                   </TabsContent>
                   
-                  <TabsContent value="completed" className="space-y-4">
+                  <TabsContent value="completed" className="mt-0 space-y-4">
                     {viewType === "table" ? (
                       <SalesTable
                         sales={currentSales}
@@ -855,7 +856,7 @@ export default function SalesPage() {
                     )}
                   </TabsContent>
                   
-                  <TabsContent value="cancelled" className="space-y-4">
+                  <TabsContent value="cancelled" className="mt-0 space-y-4">
                     {viewType === "table" ? (
                       <SalesTable
                         sales={currentSales}
@@ -880,7 +881,7 @@ export default function SalesPage() {
                     )}
                   </TabsContent>
                   
-                  <TabsContent value="refunded" className="space-y-4">
+                  <TabsContent value="refunded" className="mt-0 space-y-4">
                     {viewType === "table" ? (
                       <SalesTable
                         sales={currentSales}
@@ -906,6 +907,7 @@ export default function SalesPage() {
                   </TabsContent>
                 </>
               )}
+              </div>
             </div>
           </div>
         </Tabs>
