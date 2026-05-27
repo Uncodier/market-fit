@@ -829,8 +829,8 @@ function RobotsPageContent() {
       // Auto-select artifact if:
       // 1. It's a newly created artifact (wasBrandNew)
       // 2. OR we have no requirement preview AND no artifacts were previously loaded (e.g. initial load of instance without requirement)
-      // We don't auto-select on initial load if there IS a requirement preview, to let the user see the preview.
-      if (wasBrandNew || (prev.length === 0 && !hasRequirementPreview)) {
+      // We auto-select on initial load even if there is a requirement preview, to let the user see the latest artifact.
+      if (wasBrandNew || prev.length === 0) {
         setActiveBrowserTab({ kind: 'artifact', screen: newestArtifact.screen })
         if (newestArtifact.should_reload) {
           setArtifactReloadCounter(c => c + 1)

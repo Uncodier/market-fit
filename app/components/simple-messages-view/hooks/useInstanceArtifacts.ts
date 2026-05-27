@@ -53,7 +53,13 @@ export const useInstanceArtifacts = ({ instanceId }: UseInstanceArtifactsProps) 
 
   // Set up real-time subscription
   useEffect(() => {
-    if (!instanceId) return
+    if (!instanceId) {
+      setArtifacts([])
+      return
+    }
+    
+    // Clear artifacts when instance changes to avoid showing old artifacts
+    setArtifacts([])
 
     const supabase = createClient()
     
