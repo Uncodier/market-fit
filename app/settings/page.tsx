@@ -451,6 +451,7 @@ export default function SettingsPage() {
             <Tabs value="general" className="w-auto">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                 <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
+                <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
                 <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>
                 <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
@@ -478,7 +479,6 @@ export default function SettingsPage() {
   }
 
   const showSettingsTabBar =
-    activeSegment !== "channels" &&
     activeSegment !== "activities"
 
   return (
@@ -489,6 +489,7 @@ export default function SettingsPage() {
             <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                 <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
+                <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
                 <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>
                 <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
