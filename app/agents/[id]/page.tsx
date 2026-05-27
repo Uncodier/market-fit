@@ -473,7 +473,7 @@ function ActivitiesSkeleton() {
 function AgentPageSkeleton() {
   return (
     <div className="flex-1 p-0">
-      <div className="sticky top-[64px] min-h-[71px] flex items-center p-0 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/40 z-10">
+      <div className="sticky top-[var(--topbar-height,64px)] min-h-[71px] flex items-center p-0 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/40 z-10">
         <div className="w-full transition-[padding] duration-300 ease-in-out">
           <div className="px-16 pt-0">
             <div className="flex items-center gap-8">

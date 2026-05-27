@@ -31,6 +31,7 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   onCreateDeal?: () => void
   onMobileToggle?: () => void
   viewMode?: string
+  isArtifact?: boolean
 }
 
 export function TopBar({ 
@@ -50,6 +51,7 @@ export function TopBar({
   onCreateDeal,
   onMobileToggle,
   viewMode,
+  isArtifact,
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
@@ -60,7 +62,11 @@ export function TopBar({
   const [requirements, setRequirements] = useState<Array<{ id: string; title: string; description: string }>>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description: string }>>([])
   
-  // States for segment detail page
+  // Determine if there are any visible actions on the right side
+  // (We use a calculated hasActions below instead of state)
+  
+  // We'll let TopBarActions tell us if it rendered anything, or we can compute it here.
+  // Actually, calculating it here is tricky. Let's pass a ref or callback.
   const [segmentData, setSegmentData] = useState<{
     id: string;
     activeTab: string;
@@ -241,6 +247,28 @@ export function TopBar({
 
     loadData()
   }, [currentSite, pathname]);
+
+  const isProfilePage = pathname === '/profile' || pathname.startsWith('/profile/');
+  const hasArtifactTopBar = isArtifact && (
+    (pathname.startsWith("/robots") && viewMode !== 'imprenta') ||
+    (pathname.startsWith("/content/") && !pathname.startsWith("/content/deepResearch")) ||
+    pathname === "/control-center" ||
+    pathname === "/security" ||
+    pathname === "/dashboard" ||
+    pathname.startsWith("/experiments") ||
+    pathname.startsWith("/segments") ||
+    pathname.startsWith("/requirements") ||
+    pathname.startsWith("/leads") ||
+    pathname.startsWith("/assets") ||
+    pathname.startsWith("/campaigns") ||
+    pathname.startsWith("/sales") ||
+    pathname.startsWith("/deals") ||
+    isProfilePage
+  );
+
+  if (isArtifact && !hasArtifactTopBar) {
+    return null;
+  }
 
   return (
     <div

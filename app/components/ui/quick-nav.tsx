@@ -232,7 +232,7 @@ export function QuickNav({ sections, className }: QuickNavProps) {
 
   return (
     <div className={cn("hidden xl:block w-[240px] flex-shrink-0", className)}>
-      <div className="sticky top-[167px] w-[240px] max-h-[calc(100vh-200px)] overflow-y-auto">
+      <div className="sticky top-[calc(var(--topbar-height,64px)+103px)] w-[240px] max-h-[calc(100vh-200px)] overflow-y-auto">
         <div className="space-y-1">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 text-left">
             On this page

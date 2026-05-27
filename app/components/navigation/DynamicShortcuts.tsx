@@ -5,6 +5,8 @@ import { usePathname, useSearchParams } from "next/navigation"
 import { NAVIGATION_AREAS, isNavItemActive, buildNavItemHref, AreaNavItem } from "@/app/config/navigation-areas"
 import { MenuItem } from "./MenuItem"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useAuth } from "@/app/hooks/use-auth"
+import { createClient } from "@/lib/supabase/client"
 import { 
   ContextMenu,
   ContextMenuContent,
@@ -135,14 +137,19 @@ function SortableShortcutItem({
             id={`nav-item-${id}`}
             className="relative select-none group"
             style={{ WebkitTouchCallout: "none" }}
-            onTouchStart={() => {
+            onContextMenu={(e) => {
+              // Permitir el comportamiento predeterminado del ContextMenu
+            }}
+            onTouchStart={(e) => {
               const timer = setTimeout(() => {
                 const event = new MouseEvent('contextmenu', {
                   bubbles: true,
                   cancelable: true,
                   view: window,
                   button: 2,
-                  buttons: 2
+                  buttons: 2,
+                  clientX: e.touches[0].clientX,
+                  clientY: e.touches[0].clientY
                 })
                 document.getElementById(`nav-item-${id}`)?.dispatchEvent(event)
               }, 500)
@@ -167,7 +174,7 @@ function SortableShortcutItem({
               }
             }}
           >
-            <div className={cn("relative z-10 pointer-events-none", isDragging && "opacity-50")}>
+            <div className={cn("relative z-10", isDragging && "opacity-50 pointer-events-none")}>
               <MenuItem
                 href={linkHref}
                 emoji={emoji}
@@ -197,6 +204,18 @@ function SortableShortcutItem({
   )
 }
 
+// Get all possible items except contentCreator (which is statically shown)
+const ALL_ITEMS: AreaNavItem[] = []
+Object.values(NAVIGATION_AREAS).forEach((area: any) => {
+  if (area && area.items) {
+    area.items.forEach((item: AreaNavItem) => {
+      if (item.key !== "contentCreator") {
+        ALL_ITEMS.push(item)
+      }
+    })
+  }
+})
+
 export interface CustomShortcutItem {
   id: string;
   title: string;
@@ -212,48 +231,98 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const searchParams = useSearchParams()
   const navSearchParams = useMemo(() => new URLSearchParams(searchParams.toString()), [searchParams])
 
+  const { user, isLoading: isAuthLoading } = useAuth()
   const [shortcuts, setShortcuts] = useState<ShortcutEntry[]>([])
+  const [isLoaded, setIsLoaded] = useState(false)
 
-  // Load from local storage
+  // Load from DB or local storage
   useEffect(() => {
-    const loadShortcuts = () => {
+    // Wait until auth is resolved (user is either present or null, not loading)
+    if (isAuthLoading) return;
+
+    let isMounted = true;
+
+    const loadShortcuts = async () => {
       try {
-        const saved = localStorage.getItem("dynamicShortcuts")
-        if (saved) {
-          setShortcuts(JSON.parse(saved))
+        let loadedShortcuts: ShortcutEntry[] = []
+        let hasLoadedFromDB = false
+
+        if (user?.id) {
+          const supabase = createClient()
+          const { data, error } = await supabase
+            .from('user_shortcuts')
+            .select('shortcuts')
+            .eq('user_id', user.id)
+            .single()
+            
+          if (data && data.shortcuts && Array.isArray(data.shortcuts)) {
+            loadedShortcuts = data.shortcuts
+            hasLoadedFromDB = true
+          }
+        }
+
+        if (!hasLoadedFromDB) {
+          const saved = localStorage.getItem("navigationShortcuts_v3")
+          if (saved) {
+            loadedShortcuts = JSON.parse(saved)
+          }
+        }
+
+        if (isMounted) {
+          setShortcuts(loadedShortcuts)
+          setIsLoaded(true)
         }
       } catch (e) {
         console.error("Failed to load shortcuts", e)
+        if (isMounted) setIsLoaded(true)
       }
     }
     loadShortcuts()
-    window.addEventListener("shortcuts-updated", loadShortcuts)
-    return () => window.removeEventListener("shortcuts-updated", loadShortcuts)
-  }, [])
-
-  // Save to local storage
-  useEffect(() => {
-    localStorage.setItem("dynamicShortcuts", JSON.stringify(shortcuts))
-  }, [shortcuts])
-
-  // Get all possible items except contentCreator (which is statically shown)
-  const allItems = useMemo(() => {
-    const items: AreaNavItem[] = []
-    Object.values(NAVIGATION_AREAS).forEach((area: any) => {
-      if (area && area.items) {
-        area.items.forEach((item: AreaNavItem) => {
-          if (item.key !== "contentCreator") {
-            items.push(item)
-          }
-        })
+    
+    // Fallback sync for manual event triggers across components
+    const handleLocalSync = () => {
+      const saved = localStorage.getItem("navigationShortcuts_v3")
+      if (saved) {
+        setShortcuts(JSON.parse(saved))
       }
-    })
-    return items
-  }, [])
+    }
+    
+    window.addEventListener("shortcuts-updated", handleLocalSync)
+    return () => {
+      isMounted = false;
+      window.removeEventListener("shortcuts-updated", handleLocalSync)
+    }
+  }, [user?.id, isAuthLoading])
+
+  // Save to DB and local storage
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
+    
+    if (user?.id) {
+      const saveToDb = async () => {
+        const supabase = createClient()
+        // Upsert to the new collection
+        await supabase
+          .from('user_shortcuts')
+          .upsert({ 
+            user_id: user.id, 
+            shortcuts: shortcuts,
+            updated_at: new Date().toISOString()
+          }, { 
+            onConflict: 'user_id' 
+          })
+      }
+      saveToDb()
+    }
+  }, [shortcuts, isLoaded, user?.id])
 
   // Check if current route matches any item and add it if not exists
   useEffect(() => {
-    const activeItem = allItems.find(item => isNavItemActive(item, pathname, navSearchParams))
+    if (!isLoaded) return;
+    
+    const activeItem = ALL_ITEMS.find(item => isNavItemActive(item, pathname, navSearchParams))
     if (activeItem) {
       setShortcuts(prev => {
         // Find if this key already exists
@@ -266,8 +335,52 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         }
         return prev
       })
+    } else {
+      // Exclude paths that are handled explicitly in Sidebar or are root
+      if (
+        pathname && 
+        pathname !== "/" && 
+        pathname !== "/robots" && 
+        !pathname.startsWith("/robots/") &&
+        pathname !== "/notifications" &&
+        !pathname.startsWith("/notifications/") &&
+        !pathname.startsWith("/profile") &&
+        !pathname.startsWith("/settings") &&
+        !pathname.startsWith("/security") &&
+        !pathname.startsWith("/billing") &&
+        !pathname.startsWith("/integrations")
+      ) {
+        const fullHref = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "");
+        const customId = `custom-${pathname.replace(/\//g, '-')}`;
+        
+        setShortcuts(prev => {
+          const exists = prev.some(s => {
+            if (typeof s === 'string') return false;
+            return s.id === customId || s.href === pathname || s.href === fullHref;
+          });
+          
+          if (!exists) {
+            const segments = pathname.split('/').filter(Boolean);
+            let title = segments[segments.length - 1] || pathname;
+            if (title.length > 0) {
+              try {
+                title = decodeURIComponent(title);
+              } catch (e) {}
+              title = title.charAt(0).toUpperCase() + title.slice(1).replace(/-/g, ' ');
+            }
+            
+            return [...prev, {
+              id: customId,
+              title,
+              href: fullHref,
+              isCustom: true
+            }];
+          }
+          return prev;
+        });
+      }
     }
-  }, [pathname, navSearchParams, allItems])
+  }, [pathname, navSearchParams, searchParams, isLoaded])
 
   const handleRemove = (idToRemove: string) => {
     setShortcuts(prev => prev.filter(k => {
@@ -341,7 +454,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
               isActive = pathname === entry.href || pathname.startsWith(entry.href + '?') || pathname.startsWith(entry.href + '/')
               title = entry.title
             } else {
-              item = allItems.find(i => i.key === id)
+              item = ALL_ITEMS.find(i => i.key === id)
               if (!item) return null
               emoji = NAV_ITEM_EMOJI[item.key] || "📌"
               linkHref = buildNavItemHref(item, navSearchParams)

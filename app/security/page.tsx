@@ -108,20 +108,20 @@ export default function SecurityPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <StickyHeader>
           <div className="flex items-center justify-between px-16 w-full">
-            <TabsList className="w-auto">
-              <TabsTrigger value="authentication" className="flex items-center gap-2">
+            <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full w-auto">
+              <TabsTrigger value="authentication" className="flex items-center gap-2 text-xs rounded-full px-4 whitespace-nowrap">
                 <Shield className="h-4 w-4" />
                 Authentication
               </TabsTrigger>
-              <TabsTrigger value="api_keys" className="flex items-center gap-2">
+              <TabsTrigger value="api_keys" className="flex items-center gap-2 text-xs rounded-full px-4 whitespace-nowrap">
                 <Key className="h-4 w-4" />
                 API Keys
               </TabsTrigger>
-              <TabsTrigger value="robot_sessions" className="flex items-center gap-2">
+              <TabsTrigger value="robot_sessions" className="flex items-center gap-2 text-xs rounded-full px-4 whitespace-nowrap">
                 <Bot className="h-4 w-4" />
                 Robot Sessions
               </TabsTrigger>
-              <TabsTrigger value="allowed_domains" className="flex items-center gap-2">
+              <TabsTrigger value="allowed_domains" className="flex items-center gap-2 text-xs rounded-full px-4 whitespace-nowrap">
                 <Globe className="h-4 w-4" />
                 Allowed Domains
               </TabsTrigger>

@@ -345,6 +345,25 @@ function LayoutClientInner({
     window.dispatchEvent(new CustomEvent('deals:create'))
   }
 
+  // Check if TopBar is likely rendered in artifact mode (based on TopBar logic)
+  const isProfilePage = pathname === '/profile' || pathname?.startsWith('/profile/');
+  const hasArtifactTopBar = isArtifact && (
+    (pathname?.startsWith("/robots") && robotsViewMode !== 'imprenta') ||
+    (pathname?.startsWith("/content/") && !pathname?.startsWith("/content/deepResearch")) ||
+    pathname === "/control-center" ||
+    pathname === "/security" ||
+    pathname === "/dashboard" ||
+    pathname?.startsWith("/experiments") ||
+    pathname?.startsWith("/segments") ||
+    pathname?.startsWith("/requirements") ||
+    pathname?.startsWith("/leads") ||
+    pathname?.startsWith("/assets") ||
+    pathname?.startsWith("/campaigns") ||
+    pathname?.startsWith("/sales") ||
+    pathname?.startsWith("/deals") ||
+    isProfilePage
+  );
+
   if (isArtifact) {
     return (
       <div className="flex min-h-[100dvh] w-full bg-background">
@@ -367,8 +386,9 @@ function LayoutClientInner({
             onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
             onCreateDeal={pathname === "/deals" ? handleCreateDealClick : undefined}
             viewMode={robotsViewMode}
+            isArtifact={isArtifact}
           />
-          {!isRobotsPage && (
+          {hasArtifactTopBar && !isRobotsPage && (
             <div className={"h-[64px] flex-none"}></div>
           )}
           <main 
@@ -376,11 +396,10 @@ function LayoutClientInner({
               "flex-1 min-w-0 relative",
               (isChatPage) ? "flex flex-col overflow-hidden" : (isRobotsPage ? "flex flex-col overflow-visible" : "overflow-visible")
             )} 
-            style={
-              isAppPage ? 
-              { height: isRobotsPage ? 'calc(100dvh - 64px)' : 'calc(100dvh - 64px)' } as React.CSSProperties 
-              : {}
-            }
+            style={{
+              ...(isAppPage ? { height: isRobotsPage ? '100dvh' : (hasArtifactTopBar ? 'calc(100dvh - 64px)' : '100dvh') } : {}),
+              '--topbar-height': isArtifact && !hasArtifactTopBar ? '0px' : '64px'
+            } as React.CSSProperties}
           >
             {children}
           </main>

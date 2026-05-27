@@ -150,7 +150,7 @@ export function ChatHeader({
   return (
     <div
       data-toolbar-font
-      className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] flex items-center z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2 fixed top-[64px] right-0 transition-all duration-300 ease-in-out pr-4" 
+      className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] flex items-center z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2 fixed top-[var(--topbar-height,64px)] right-0 transition-all duration-300 ease-in-out pr-4" 
       style={{ 
         backdropFilter: 'blur(10px)',
         transform: 'translateZ(0)',

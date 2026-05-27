@@ -27,7 +27,7 @@ export default function ChatLoading() {
         
         {/* Header skeleton (fixed) */}
         <div className="w-full z-[50]">
-          <div className="border-b flex-none h-[71px] flex items-center z-[50] bg-background/80 py-2 fixed top-[64px] right-0 w-[calc(100%-319px)] max-md:w-full">
+          <div className="border-b flex-none h-[71px] flex items-center z-[50] bg-background/80 py-2 fixed top-[var(--topbar-height,64px)] right-0 w-[calc(100%-319px)] max-md:w-full">
             <div className="px-6 py-3 flex items-center justify-between w-full">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-10 w-10 rounded-full" />

@@ -100,10 +100,10 @@ export default function BillingPage() {
       <StickyHeader>
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-auto">
-            <TabsList>
-              <TabsTrigger value="billing_info">{t('billing.tabs.info') || 'Billing Info'}</TabsTrigger>
-              <TabsTrigger value="payment_history">{t('billing.tabs.history') || 'Payment History'}</TabsTrigger>
-              <TabsTrigger value="credit_history">{t('billing.tabs.credits') || 'Credit Usage History'}</TabsTrigger>
+            <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+              <TabsTrigger value="billing_info" className="text-xs rounded-full px-4 whitespace-nowrap">{t('billing.tabs.info') || 'Billing Info'}</TabsTrigger>
+              <TabsTrigger value="payment_history" className="text-xs rounded-full px-4 whitespace-nowrap">{t('billing.tabs.history') || 'Payment History'}</TabsTrigger>
+              <TabsTrigger value="credit_history" className="text-xs rounded-full px-4 whitespace-nowrap">{t('billing.tabs.credits') || 'Credit Usage History'}</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

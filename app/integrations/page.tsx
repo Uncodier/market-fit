@@ -336,8 +336,8 @@ export default function IntegrationsPage() {
         <StickyHeader>
           <div className="flex items-center justify-between px-16 w-full">
             <Tabs value="webhooks" className="w-auto">
-              <TabsList>
-                <TabsTrigger value="webhooks" className="whitespace-nowrap">Webhooks</TabsTrigger>
+              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                <TabsTrigger value="webhooks" className="text-xs rounded-full px-4 whitespace-nowrap">Webhooks</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -366,9 +366,9 @@ export default function IntegrationsPage() {
       <StickyHeader>
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
-            <TabsList className="flex">
-              <TabsTrigger value="webhooks" className="whitespace-nowrap">Webhooks</TabsTrigger>
-              <TabsTrigger value="channels" className="whitespace-nowrap">Channels</TabsTrigger>
+            <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+              <TabsTrigger value="webhooks" className="text-xs rounded-full px-4 whitespace-nowrap">Webhooks</TabsTrigger>
+              <TabsTrigger value="channels" className="text-xs rounded-full px-4 whitespace-nowrap">Channels</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

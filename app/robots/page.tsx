@@ -879,7 +879,7 @@ function RobotsPageContent() {
       })
 
       if (matchingKey) {
-        const saved = localStorage.getItem("dynamicShortcuts")
+        const saved = localStorage.getItem("navigationShortcuts_v3")
         let shortcuts: any[] = []
         if (saved) {
           shortcuts = JSON.parse(saved)
@@ -888,7 +888,7 @@ function RobotsPageContent() {
         const exists = shortcuts.some(s => (typeof s === 'string' ? s : s.id) === matchingKey)
         if (!exists) {
           shortcuts.push(matchingKey)
-          localStorage.setItem("dynamicShortcuts", JSON.stringify(shortcuts))
+          localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
           window.dispatchEvent(new Event("shortcuts-updated"))
         }
         
@@ -899,7 +899,7 @@ function RobotsPageContent() {
         router.push(cleanUrl)
       } else {
         // Fallback: create a custom shortcut if it doesn't match an exact navigation area
-        const saved = localStorage.getItem("dynamicShortcuts")
+        const saved = localStorage.getItem("navigationShortcuts_v3")
         let shortcuts: any[] = []
         if (saved) {
           shortcuts = JSON.parse(saved)
@@ -923,7 +923,7 @@ function RobotsPageContent() {
             href: cleanUrl,
             isCustom: true
           })
-          localStorage.setItem("dynamicShortcuts", JSON.stringify(shortcuts))
+          localStorage.setItem("navigationShortcuts_v3", JSON.stringify(shortcuts))
           window.dispatchEvent(new Event("shortcuts-updated"))
         }
         
@@ -1438,7 +1438,7 @@ function RobotsPageContent() {
           <div className={`flex flex-col lg:flex-row flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
             {isBrowserVisible && (
               <div className={`w-full ${isChatHidden ? 'lg:w-full' : 'lg:w-2/3'} border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative transition-all duration-300`}>
-                <div className={`grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[135px] overflow-hidden`}>
+                <div className={`grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden`}>
                   {/* Browser navigation bar */}
                   <div className="flex items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-white dark:bg-black">
                     {hasRequirementPreview ? (

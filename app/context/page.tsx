@@ -467,13 +467,13 @@ export default function ContextPage() {
         <StickyHeader>
           <div className="flex items-center justify-between px-16 w-full">
             <Tabs value="company" className="w-auto">
-              <TabsList>
-                <TabsTrigger value="company">{t('context.tabs.company') || 'Company'}</TabsTrigger>
-                <TabsTrigger value="branding">{t('context.tabs.branding') || 'Branding'}</TabsTrigger>
-                <TabsTrigger value="marketing">{t('context.tabs.marketing') || 'Marketing'}</TabsTrigger>
-                <TabsTrigger value="copywriting">{t('settings.nav.copySequences') || 'Copy Sequences'}</TabsTrigger>
-                <TabsTrigger value="customer-journey">{t('context.nav.customerJourney') || 'Customer Journey'}</TabsTrigger>
-                {/* <TabsTrigger value="social">Social Networks</TabsTrigger> */}
+              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                <TabsTrigger value="company" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.company') || 'Company'}</TabsTrigger>
+                <TabsTrigger value="branding" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.branding') || 'Branding'}</TabsTrigger>
+                <TabsTrigger value="marketing" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.marketing') || 'Marketing'}</TabsTrigger>
+                <TabsTrigger value="copywriting" className="text-xs rounded-full px-4 whitespace-nowrap">{t('settings.nav.copySequences') || 'Copy Sequences'}</TabsTrigger>
+                <TabsTrigger value="customer-journey" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.nav.customerJourney') || 'Customer Journey'}</TabsTrigger>
+                {/* <TabsTrigger value="social" className="text-xs rounded-full px-4 whitespace-nowrap">Social Networks</TabsTrigger> */}
               </TabsList>
             </Tabs>
           </div>
@@ -502,13 +502,13 @@ export default function ContextPage() {
       <StickyHeader>
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
-            <TabsList className="flex">
-              <TabsTrigger value="company" className="whitespace-nowrap">{t('context.tabs.company') || 'Company'}</TabsTrigger>
-              <TabsTrigger value="branding" className="whitespace-nowrap">{t('context.tabs.branding') || 'Branding'}</TabsTrigger>
-              <TabsTrigger value="marketing" className="whitespace-nowrap">{t('context.tabs.marketing') || 'Marketing'}</TabsTrigger>
-              <TabsTrigger value="copywriting" className="whitespace-nowrap">{t('settings.nav.copySequences') || 'Copy Sequences'}</TabsTrigger>
-              <TabsTrigger value="customer-journey" className="whitespace-nowrap">{t('context.nav.customerJourney') || 'Customer Journey'}</TabsTrigger>
-              {/* <TabsTrigger value="social" className="whitespace-nowrap">Social Networks</TabsTrigger> */}
+            <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+              <TabsTrigger value="company" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.company') || 'Company'}</TabsTrigger>
+              <TabsTrigger value="branding" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.branding') || 'Branding'}</TabsTrigger>
+              <TabsTrigger value="marketing" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.marketing') || 'Marketing'}</TabsTrigger>
+              <TabsTrigger value="copywriting" className="text-xs rounded-full px-4 whitespace-nowrap">{t('settings.nav.copySequences') || 'Copy Sequences'}</TabsTrigger>
+              <TabsTrigger value="customer-journey" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.nav.customerJourney') || 'Customer Journey'}</TabsTrigger>
+              {/* <TabsTrigger value="social" className="text-xs rounded-full px-4 whitespace-nowrap">Social Networks</TabsTrigger> */}
             </TabsList>
           </Tabs>
         </div>

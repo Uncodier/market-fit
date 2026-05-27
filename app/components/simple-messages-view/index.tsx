@@ -828,7 +828,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
         className={cn(
           "absolute right-0 left-0 bottom-0 z-20 pointer-events-none flex flex-col items-center transition-all duration-500 ease-in-out chat-input-container !bg-transparent",
           // Inset top by TopBar (64px) + StickyHeader (min 71px) so empty-state input + prompts center in the visible pane, not under fixed headers
-          isEmpty ? "top-[135px] justify-center pb-[10vh]" : "top-auto justify-end pb-[15px]"
+          isEmpty ? "top-[calc(var(--topbar-height,64px)+71px)] justify-center pb-[10vh]" : "top-auto justify-end pb-[15px]"
         )}
         style={{
           width: '100%',

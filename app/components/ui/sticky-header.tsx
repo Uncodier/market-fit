@@ -51,7 +51,7 @@ export function StickyHeader({
         "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         "border-b dark:border-white/5 border-black/5 z-[150]",
         useFixedPosition ? "fixed transition-all duration-300 ease-in-out" : "sticky",
-        "top-[64px] min-h-[71px]",
+        "top-[var(--topbar-height,64px)] min-h-[71px]",
         className
       )}
       style={useFixedPosition ? { left: 0, right: 0, paddingLeft: sidebarLeft } : undefined}
