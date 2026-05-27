@@ -156,18 +156,18 @@ interface CustomerJourneySectionProps {
 
 export function CustomerJourneySection({ active, onSave }: CustomerJourneySectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
 
-  const handleSave = async () => {
+  const handleSave = async (cardId: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(cardId)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving customer journey:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
 
@@ -215,10 +215,10 @@ export function CustomerJourneySection({ active, onSave }: CustomerJourneySectio
           <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
             <Button 
               variant="outline"
-              onClick={handleSave}
-              disabled={isSaving}
+              onClick={() => handleSave(stage.id)}
+              disabled={savingCard === stage.id}
             >
-              {isSaving ? "Saving..." : "Save"}
+              {savingCard === stage.id ? "Saving..." : "Save"}
             </Button>
           </CardFooter>
         </Card>

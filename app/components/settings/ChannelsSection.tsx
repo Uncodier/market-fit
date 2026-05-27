@@ -135,23 +135,23 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
   const { currentSite, updateSettings, updateSite } = useSite()
   const [internalCodeCopied, setInternalCodeCopied] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showTrackingCode, setShowTrackingCode] = useState(false)
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("Gmail")
   const [isTestingConnection, setIsTestingConnection] = useState(false)
 
-  const handleSave = async () => {
+  const handleSave = async (cardId: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(cardId)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving channels:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
 
@@ -952,10 +952,10 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
           <Button
             type="button"
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('website-channel')}
+            disabled={savingCard === 'website-channel'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'website-channel' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -1349,10 +1349,10 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleSave}
-                disabled={isSaving}
+                onClick={() => handleSave('email-channel')}
+                disabled={savingCard === 'email-channel'}
               >
-                {isSaving ? "Saving..." : "Save"}
+                {savingCard === 'email-channel' ? "Saving..." : "Save"}
               </Button>
             )}
           </ActionFooter>

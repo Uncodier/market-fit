@@ -20,21 +20,21 @@ interface MarketingSectionProps {
 
 export function MarketingSection({ active, onSave }: MarketingSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
   const [channelsList, setChannelsList] = useState<MarketingChannel[]>(
     form.getValues("marketing_channels") || []
   )
 
-  const handleSave = async () => {
+  const handleSave = async (cardId: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(cardId)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving marketing:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
   const [productsList, setProductsList] = useState<any[]>(
@@ -265,10 +265,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('ai-focus-mode')}
+            disabled={savingCard === 'ai-focus-mode'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'ai-focus-mode' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -349,10 +349,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('business-model')}
+            disabled={savingCard === 'business-model'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'business-model' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -412,10 +412,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('marketing-budget')}
+            disabled={savingCard === 'marketing-budget'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'marketing-budget' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -603,10 +603,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('products')}
+            disabled={savingCard === 'products'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'products' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -794,10 +794,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('services')}
+            disabled={savingCard === 'services'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'services' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -899,10 +899,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('competitors')}
+            disabled={savingCard === 'competitors'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'competitors' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -981,10 +981,10 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('marketing-channels')}
+            disabled={savingCard === 'marketing-channels'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'marketing-channels' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>

@@ -15,18 +15,18 @@ interface SWOTSectionProps {
 
 export function SWOTSection({ active, onSave }: SWOTSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
 
-  const handleSave = async () => {
+  const handleSave = async (cardId: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(cardId)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving SWOT:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
 
@@ -62,8 +62,8 @@ export function SWOTSection({ active, onSave }: SWOTSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('strengths')} disabled={savingCard === 'strengths'}>
+            {savingCard === 'strengths' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -96,8 +96,8 @@ export function SWOTSection({ active, onSave }: SWOTSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('weaknesses')} disabled={savingCard === 'weaknesses'}>
+            {savingCard === 'weaknesses' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -130,8 +130,8 @@ export function SWOTSection({ active, onSave }: SWOTSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('opportunities')} disabled={savingCard === 'opportunities'}>
+            {savingCard === 'opportunities' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -164,8 +164,8 @@ export function SWOTSection({ active, onSave }: SWOTSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('threats')} disabled={savingCard === 'threats'}>
+            {savingCard === 'threats' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>

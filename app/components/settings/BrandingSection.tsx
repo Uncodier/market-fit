@@ -54,7 +54,7 @@ const BRAND_ARCHETYPES = [
 
 export function BrandingSection({ active, onSave }: BrandingSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
   const [newPersonalityTrait, setNewPersonalityTrait] = useState("")
   const [newForbiddenWord, setNewForbiddenWord] = useState("")
   const [newPreferredPhrase, setNewPreferredPhrase] = useState("")
@@ -68,16 +68,16 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
   const [showPreferredPhraseInput, setShowPreferredPhraseInput] = useState(false)
   const [showForbiddenWordInput, setShowForbiddenWordInput] = useState(false)
 
-  const handleSave = async () => {
+  const handleSave = async (cardId: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(cardId)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving branding:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
 
@@ -136,8 +136,8 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('brand-essence')} disabled={savingCard === 'brand-essence'}>
+            {savingCard === 'brand-essence' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -180,8 +180,8 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('brand-personality')} disabled={savingCard === 'brand-personality'}>
+            {savingCard === 'brand-personality' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -224,8 +224,8 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('brand-benefits')} disabled={savingCard === 'brand-benefits'}>
+            {savingCard === 'brand-benefits' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -268,8 +268,8 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('brand-attributes')} disabled={savingCard === 'brand-attributes'}>
+            {savingCard === 'brand-attributes' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -312,8 +312,8 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('brand-values')} disabled={savingCard === 'brand-values'}>
+            {savingCard === 'brand-values' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -390,8 +390,8 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('brand-promise')} disabled={savingCard === 'brand-promise'}>
+            {savingCard === 'brand-promise' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -557,10 +557,10 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('color-palette')}
+            disabled={savingCard === 'color-palette'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'color-palette' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -653,10 +653,10 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('typography')}
+            disabled={savingCard === 'typography'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'typography' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -854,10 +854,10 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('voice-tone')}
+            disabled={savingCard === 'voice-tone'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'voice-tone' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -1180,10 +1180,10 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
           <Button 
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('brand-guidelines')}
+            disabled={savingCard === 'brand-guidelines'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'brand-guidelines' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>

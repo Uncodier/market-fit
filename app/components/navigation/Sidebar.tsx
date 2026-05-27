@@ -130,7 +130,7 @@ export function Sidebar({
         )}
       >
         <NavigationLink
-          href="/agents"
+          href="/robots"
           className={cn(
             "flex items-center h-16 border-b dark:border-white/5 border-black/5 flex-none",
             renderCollapsed ? "justify-center px-3" : "justify-center px-6"

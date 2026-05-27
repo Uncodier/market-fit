@@ -15,19 +15,19 @@ interface GoalsSectionProps {
 
 export function GoalsSection({ active, onSave }: GoalsSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
   console.log("GoalsSection: Current goals values:", form.getValues("goals"));
 
-  const handleSave = async () => {
+  const handleSave = async (cardId: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(cardId)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving goals:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
 
@@ -63,8 +63,8 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('quarterly')} disabled={savingCard === 'quarterly'}>
+            {savingCard === 'quarterly' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -97,8 +97,8 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('yearly')} disabled={savingCard === 'yearly'}>
+            {savingCard === 'yearly' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -131,8 +131,8 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('fiveYear')} disabled={savingCard === 'fiveYear'}>
+            {savingCard === 'fiveYear' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>
@@ -165,8 +165,8 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
           />
         </CardContent>
         <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save"}
+          <Button variant="outline" onClick={() => handleSave('tenYear')} disabled={savingCard === 'tenYear'}>
+            {savingCard === 'tenYear' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       </Card>

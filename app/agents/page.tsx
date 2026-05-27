@@ -29,6 +29,7 @@ import { useActivityExecution } from "@/app/hooks/use-activity-execution"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { CommandsPanel } from "@/app/components/agents/commands-panel"
 import { AgentToolsPanel } from "@/app/components/agents/agent-tools-panel"
+import { SearchInput } from "@/app/components/ui/search-input"
 
 
 

@@ -94,6 +94,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
   const [isLoading, setIsLoading] = useState(false)
   const [hasLoaded, setHasLoaded] = useState(false)
   const [lastLoadedSiteId, setLastLoadedSiteId] = useState<string | null>(null)
+  const [savingCard, setSavingCard] = useState<number | null>(null)
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
 
   // Reset hasLoaded when site changes
@@ -227,6 +228,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
   // Save individual copywriting item
   const handleSaveCopywritingItem = async (index: number) => {
     try {
+      setSavingCard(index)
       // Trigger form validation for this specific copywriting field
       const isValid = await form.trigger(`copywriting.${index}`)
       
@@ -254,6 +256,8 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
     } catch (error) {
       toast.error("Error saving copywriting item")
       console.error("Save error:", error)
+    } finally {
+      setSavingCard(null)
     }
   }
 
@@ -562,9 +566,9 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                               type="button"
                               variant="outline"
                               onClick={() => handleSaveCopywritingItem(index)}
-                              disabled={isSaving}
+                              disabled={isSaving || savingCard === index}
                             >
-                              {isSaving ? (t('copywriting.form.saving') || 'Saving...') : (t('copywriting.form.saveCopy') || 'Save Copy')}
+                              {savingCard === index ? (t('copywriting.form.saving') || 'Saving...') : (t('copywriting.form.saveCopy') || 'Save Copy')}
                             </Button>
                           </div>
                         </div>

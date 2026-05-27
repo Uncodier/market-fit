@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 // Define the routes where automatic refresh should be prevented
 const CREATE_EDIT_ROUTES = [
   '/settings',
+  '/context',
   '/site/create',
   '/create-site',
   // Detail/edit pages (using regex patterns)
@@ -40,7 +41,6 @@ const READ_ONLY_ROUTES = [
   '/outsource',
   '/robots',
   '/projects',
-  '/context',
   '/people',
   '/deals',
   '/companies',
