@@ -282,6 +282,7 @@ export function ImprentaNodesCanvas({
         const coverImage = imgs[0] ?? null
         const coverVideo = vids[0] ?? null
         if (coverImage) requestedUrls.push(coverImage)
+        else if (coverVideo) requestedUrls.push(coverVideo)
         if (band === "rich") {
           for (let j = 1; j < imgs.length && j <= 3; j++) requestedUrls.push(imgs[j])
         }

@@ -432,18 +432,18 @@ function AssetCard({
             />
           ) : shouldShowVideoPreview ? (
             <video
-              src={`${asset.file_path}`}
+              src={asset.file_path.includes('#') ? asset.file_path : `${asset.file_path}#t=0.001`}
               className="object-cover w-full h-full transition-all duration-300 hover:scale-[1.02]"
               controls={false}
               muted
               playsInline
-              preload="auto"
+              preload="metadata"
               poster={asset.thumbnailUrl}
               onError={() => setImageError(true)}
-              onLoadedMetadata={(e) => {
+              onLoadedData={(e) => {
                 const video = e.target as HTMLVideoElement;
                 if (!asset.thumbnailUrl) {
-                   video.currentTime = 0.001;
+                  video.currentTime = 0.001;
                 }
               }}
             />
@@ -708,15 +708,15 @@ function AssetListItem({
                   />
                 ) : shouldShowVideoPreview ? (
                   <video
-                    src={`${asset.file_path}`}
+                    src={asset.file_path.includes('#') ? asset.file_path : `${asset.file_path}#t=0.001`}
                     className="object-cover w-full h-full"
                     controls={false}
                     muted
                     playsInline
-                    preload="auto"
+                    preload="metadata"
                     poster={asset.thumbnailUrl}
                     onError={() => setImageError(true)}
-                    onLoadedMetadata={(e) => {
+                    onLoadedData={(e) => {
                       const video = e.target as HTMLVideoElement;
                       if (!asset.thumbnailUrl) {
                         video.currentTime = 0.001;

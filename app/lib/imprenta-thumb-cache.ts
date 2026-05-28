@@ -18,13 +18,13 @@ export type ThumbCacheStatus = "idle" | "loading" | "ready" | "error"
 type CacheEntry = {
   url: string
   status: ThumbCacheStatus
-  image: HTMLImageElement | null
+  image: HTMLImageElement | HTMLCanvasElement | null
   /** Monotonic touch counter for LRU. */
   lastUsed: number
 }
 
 export type ImprentaThumbCache = {
-  get: (url: string) => HTMLImageElement | null
+  get: (url: string) => HTMLImageElement | HTMLCanvasElement | null
   status: (url: string) => ThumbCacheStatus
   /** Kick off a decode if not already loading/ready. No-op server-side. */
   request: (url: string) => void
@@ -70,34 +70,93 @@ export function createImprentaThumbCache(
       if (!entry || entry.status !== "loading") continue
 
       inFlight++
-      const img = new Image()
-      img.crossOrigin = "anonymous"
-      img.decoding = "async"
-      ;(img as unknown as { fetchPriority?: string }).fetchPriority = "low"
-      const done = (ok: boolean) => {
+      
+      const done = (ok: boolean, resultImage: HTMLImageElement | HTMLCanvasElement | null) => {
         inFlight--
         const current = entries.get(url)
         if (current) {
           current.status = ok ? "ready" : "error"
-          current.image = ok ? img : null
+          current.image = ok ? resultImage : null
           current.lastUsed = ++tick
         }
         if (ok) emitDecoded(url)
         pump()
       }
-      img.onload = () => {
-        // Prefer img.decode when available to move bitmap build off the main thread.
-        if (typeof img.decode === "function") {
-          img.decode().then(() => done(true)).catch(() => done(true))
-        } else {
-          done(true)
+
+      const isVideo = url.match(/\.(mp4|webm|mov|m4v)(\?|#|$)/i)
+      if (isVideo) {
+        const video = document.createElement("video")
+        video.crossOrigin = "anonymous"
+        video.muted = true
+        video.playsInline = true
+        video.preload = "metadata"
+        
+        let handled = false
+        const handleVideoError = () => {
+          if (handled) return
+          handled = true
+          done(false, null)
         }
-      }
-      img.onerror = () => done(false)
-      try {
-        img.src = url
-      } catch {
-        done(false)
+
+        const extractFrame = () => {
+          if (handled) return
+          handled = true
+          try {
+            const canvas = document.createElement("canvas")
+            canvas.width = video.videoWidth || 640
+            canvas.height = video.videoHeight || 360
+            const ctx = canvas.getContext("2d")
+            if (ctx) {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+              done(true, canvas)
+            } else {
+              done(false, null)
+            }
+          } catch (e) {
+            done(false, null)
+          }
+          video.src = ""
+          video.load()
+        }
+
+        video.addEventListener("error", handleVideoError)
+        video.addEventListener("loadeddata", () => {
+          if (handled) return
+          if (video.currentTime !== 0.001) {
+            video.currentTime = 0.001
+          } else {
+            // Already at 0.001, extract immediately
+            extractFrame()
+          }
+        })
+        video.addEventListener("seeked", extractFrame)
+        // Timeout to prevent hanging
+        setTimeout(() => {
+          if (!handled) handleVideoError()
+        }, 8000)
+
+        video.src = url
+        video.load()
+      } else {
+        const img = new Image()
+        img.crossOrigin = "anonymous"
+        img.decoding = "async"
+        ;(img as unknown as { fetchPriority?: string }).fetchPriority = "low"
+        
+        img.onload = () => {
+          // Prefer img.decode when available to move bitmap build off the main thread.
+          if (typeof img.decode === "function") {
+            img.decode().then(() => done(true, img)).catch(() => done(true, img))
+          } else {
+            done(true, img)
+          }
+        }
+        img.onerror = () => done(false, null)
+        try {
+          img.src = url
+        } catch {
+          done(false, null)
+        }
       }
     }
   }
@@ -116,10 +175,15 @@ export function createImprentaThumbCache(
     for (let i = 0; i < toDrop && i < candidates.length; i++) {
       const c = candidates[i]
       if (c.image) {
-        try {
-          c.image.src = ""
-        } catch {
-          /* ignore */
+        if (c.image instanceof HTMLImageElement) {
+          try {
+            c.image.src = ""
+          } catch {
+            /* ignore */
+          }
+        } else if (c.image instanceof HTMLCanvasElement) {
+          c.image.width = 0
+          c.image.height = 0
         }
       }
       entries.delete(c.url)
@@ -183,10 +247,15 @@ export function createImprentaThumbCache(
     clear() {
       entries.forEach((e) => {
         if (e.image) {
-          try {
-            e.image.src = ""
-          } catch {
-            /* ignore */
+          if (e.image instanceof HTMLImageElement) {
+            try {
+              e.image.src = ""
+            } catch {
+              /* ignore */
+            }
+          } else if (e.image instanceof HTMLCanvasElement) {
+            e.image.width = 0
+            e.image.height = 0
           }
         }
       })

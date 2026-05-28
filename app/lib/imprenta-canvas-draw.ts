@@ -464,7 +464,7 @@ export function drawLiteNode(ctx: CanvasRenderingContext2D, p: DrawLiteNodeInput
     const bodyBottom = y + h - 44
     const bodyH = Math.max(20, bodyBottom - bodyTop)
     if (coverImageUrl || coverVideoUrl) {
-      drawThumbOrSkeleton(ctx, ix, bodyTop, iw, bodyH, 12, theme, coverImageUrl, thumbs)
+      drawThumbOrSkeleton(ctx, ix, bodyTop, iw, bodyH, 12, theme, coverImageUrl || coverVideoUrl, thumbs)
       if (coverVideoUrl) {
         drawVideoGlyph(ctx, ix + iw / 2, bodyTop + bodyH / 2, theme)
       }
@@ -629,7 +629,7 @@ export function drawLiteNode(ctx: CanvasRenderingContext2D, p: DrawLiteNodeInput
     const maxMediaH = Math.max(48, bodyBottom - cursorY - (type === "generate-audience" ? 38 : 0))
     const naturalH = innerW
     const mediaH = Math.min(maxMediaH, naturalH)
-    drawThumbOrSkeleton(ctx, innerX, cursorY, innerW, mediaH, 18, theme, coverImageUrl, thumbs)
+    drawThumbOrSkeleton(ctx, innerX, cursorY, innerW, mediaH, 18, theme, coverImageUrl || coverVideoUrl, thumbs)
     if (coverVideoUrl) {
       drawVideoGlyph(ctx, innerX + innerW / 2, cursorY + mediaH / 2, theme)
     }
@@ -673,7 +673,7 @@ function drawResultBlock(
 ) {
   if (coverImageUrl || coverVideoUrl) {
     const mediaH = Math.min(h, Math.max(48, w))
-    drawThumbOrSkeleton(ctx, x, y, w, mediaH, 14, theme, coverImageUrl, thumbs)
+    drawThumbOrSkeleton(ctx, x, y, w, mediaH, 14, theme, coverImageUrl || coverVideoUrl, thumbs)
     if (coverVideoUrl) {
       drawVideoGlyph(ctx, x + w / 2, y + mediaH / 2, theme)
     }
