@@ -48,7 +48,6 @@ import {
 interface CopywritingSectionProps {
   active: boolean
   onSave?: () => void
-  isSaving?: boolean
 }
 
 // Copy types with simple structure
@@ -86,7 +85,7 @@ const copyTypes = [
   { value: "other", label: "Other", icon: FileText }
 ]
 
-export function CopywritingSection({ active, onSave, isSaving }: CopywritingSectionProps) {
+export function CopywritingSection({ active, onSave }: CopywritingSectionProps) {
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const { currentSite } = useSite()
@@ -566,7 +565,7 @@ export function CopywritingSection({ active, onSave, isSaving }: CopywritingSect
                               type="button"
                               variant="outline"
                               onClick={() => handleSaveCopywritingItem(index)}
-                              disabled={isSaving || savingCard === index}
+                              disabled={savingCard === index}
                             >
                               {savingCard === index ? (t('copywriting.form.saving') || 'Saving...') : (t('copywriting.form.saveCopy') || 'Save Copy')}
                             </Button>

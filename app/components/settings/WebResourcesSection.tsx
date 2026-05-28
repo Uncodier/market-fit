@@ -16,7 +16,7 @@ interface WebResourcesSectionProps {
 
 export function WebResourcesSection({ active, onSave }: WebResourcesSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
   const [resourceList, setResourceList] = useState<{key: string, url: string}[]>(
     form.getValues("resource_urls") || []
   )
@@ -31,16 +31,16 @@ export function WebResourcesSection({ active, onSave }: WebResourcesSectionProps
     return () => subscription.unsubscribe();
   }, [form]);
 
-  const handleSave = async () => {
+  const handleSave = async (id: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(id)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving web resources:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
 
@@ -142,10 +142,10 @@ export function WebResourcesSection({ active, onSave }: WebResourcesSectionProps
       <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
         <Button 
           variant="outline"
-          onClick={handleSave}
-          disabled={isSaving}
+          onClick={() => handleSave('web-resources')}
+          disabled={savingCard === 'web-resources'}
         >
-          {isSaving ? "Saving..." : "Save"}
+          {savingCard === 'web-resources' ? "Saving..." : "Save"}
         </Button>
       </CardFooter>
     </Card>

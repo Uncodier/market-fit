@@ -4,7 +4,7 @@ import React, { useState, useEffect, useLayoutEffect, Suspense, useCallback, use
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen } from "@/app/components/ui/icons"
+import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, Database } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -847,6 +847,44 @@ function RobotsPageContent() {
 
 
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
+  const [databaseArtifactUrl, setDatabaseArtifactUrl] = useState<string>("/applications/database?artifact=true")
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchDatabaseUrl = async () => {
+      // First try to find a requirement with a tenant
+      if (requirementStatuses && requirementStatuses.length > 0) {
+        // We'll iterate backwards to find the most recent one
+        for (let i = requirementStatuses.length - 1; i >= 0; i--) {
+          const reqId = requirementStatuses[i]?.requirement_id;
+          if (!reqId) continue;
+          
+          try {
+            const res = await fetch(`/api/applications/tenants?requirementId=${reqId}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (!cancelled && data.tenant_id && data.schema) {
+                setDatabaseArtifactUrl(`/applications/database/${data.tenant_id}?schema=${data.schema}&artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`);
+                return;
+              }
+            }
+          } catch (e) {
+            console.error("Error fetching tenant info for database artifact:", e);
+          }
+        }
+      }
+      
+      // If we couldn't find a tenant from requirements, but we have an active instance, 
+      // let's try to pass the instance ID to the generic view so it can maybe figure it out 
+      // from the instance's requirements (although this should be caught by the above loop)
+      if (!cancelled) {
+        setDatabaseArtifactUrl(`/applications/database?artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`);
+      }
+    };
+    fetchDatabaseUrl();
+    return () => { cancelled = true; };
+  }, [requirementStatuses, activeRobotInstance?.id]);
+
   useEffect(() => {
     const handleToggle = () => setActiveBrowserTab(prev => prev.kind === 'source' ? { kind: 'preview' } : { kind: 'source' })
     window.addEventListener('robot:toggle-source-code', handleToggle)
@@ -856,7 +894,9 @@ function RobotsPageContent() {
   const handleAddShortcut = useCallback(() => {
     try {
       let rawUrl = "about:blank"
-      if (activeBrowserTab.kind === 'artifact') {
+      if (activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'database') {
+        return; // Don't allow adding shortcuts for the database artifact
+      } else if (activeBrowserTab.kind === 'artifact') {
         const artifact = artifacts.find(a => a.screen === activeBrowserTab.screen)
         if (artifact) rawUrl = artifact.url
       }
@@ -968,6 +1008,10 @@ function RobotsPageContent() {
 
   const rawActiveUrlToDisplay = (() => {
     if (activeBrowserTab.kind === 'artifact') {
+      if (activeBrowserTab.screen === 'database') {
+        return databaseArtifactUrl
+      }
+      
       const artifact = artifacts.find(a => a.screen === activeBrowserTab.screen)
       if (artifact?.url) {
         try {
@@ -1503,8 +1547,6 @@ function RobotsPageContent() {
                           </>
                         )}
                       </div>
-                    ) : activeBrowserTab.kind === 'artifact' ? (
-                      <div className="flex-1 min-w-0" />
                     ) : (
                       <div className="flex-1 min-w-0" />
                     )}
@@ -1542,7 +1584,11 @@ function RobotsPageContent() {
                       </div>
                     )}
 
-                    {activeBrowserTab.kind === 'artifact' && (
+                    {activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'database' && (
+                      <div className="flex-1 min-w-0" />
+                    )}
+
+                    {activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen !== 'database' && (
                       <div className="hidden sm:flex items-center gap-1 px-1">
                         <button
                           onClick={handleAddShortcut}
@@ -1582,9 +1628,18 @@ function RobotsPageContent() {
                             <Folder className="h-3.5 w-3.5 mr-1.5" />
                             Source
                           </button>
+                          <button
+                            onClick={() => setActiveBrowserTab({ kind: 'artifact', screen: 'database' })}
+                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'database' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
+                            title="Database"
+                          >
+                            <Database className="h-3.5 w-3.5 mr-1.5" />
+                            Database
+                          </button>
                         </>
                       )}
                       {artifactScreens.map(a => {
+                        if (hasRequirementPreview && a.screen === 'database') return null;
                         const isActive = activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === a.screen;
                         return (
                           <button
@@ -1640,6 +1695,7 @@ function RobotsPageContent() {
                         <div className="absolute inset-0 bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
                           {activeBrowserTab.kind === 'artifact' ? (
                             <iframe
+                              ref={iframeRef}
                               key={`artifact-${activeBrowserTab.screen}-${artifactReloadCounter}-${theme}`}
                               src={rawActiveUrlToDisplay}
                               className="absolute inset-0 w-full h-full border-0 bg-background contained-iframe"
@@ -1647,6 +1703,9 @@ function RobotsPageContent() {
                               allowFullScreen
                               allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
                               style={{ isolation: 'isolate' }}
+                              onLoad={(e) => {
+                                handleIframeLoad(e)
+                              }}
                             />
                           ) : isZipUrl ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background">

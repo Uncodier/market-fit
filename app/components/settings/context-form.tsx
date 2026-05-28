@@ -65,7 +65,6 @@ interface ContextFormProps {
   onSaveSocial?: (data: SiteFormValues) => void
   onSaveCopywriting?: (data: SiteFormValues) => void
   onDeleteSite?: () => void
-  isSaving?: boolean
   activeSegment: string
   siteId?: string
 }
@@ -81,7 +80,6 @@ export function ContextForm({
   onSaveSocial,
   onSaveCopywriting,
   onDeleteSite,
-  isSaving, 
   activeSegment,
   siteId 
 }: ContextFormProps) {
@@ -271,7 +269,6 @@ export function ContextForm({
                   await onSaveCopywriting(formData)
                 }
               }}
-              isSaving={isSaving}
             />
           )}
 

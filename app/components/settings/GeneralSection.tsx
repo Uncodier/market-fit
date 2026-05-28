@@ -21,18 +21,18 @@ interface GeneralSectionProps {
 
 export function GeneralSection({ active, onSave }: GeneralSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
 
-  const handleSave = async () => {
+  const handleSave = async (id: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(id)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving general settings:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
 
@@ -179,10 +179,10 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
       <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
         <Button 
           variant="outline"
-          onClick={handleSave}
-          disabled={isSaving}
+          onClick={() => handleSave('site-information')}
+          disabled={savingCard === 'site-information'}
         >
-          {isSaving ? "Saving..." : "Save"}
+          {savingCard === 'site-information' ? "Saving..." : "Save"}
         </Button>
       </CardFooter>
     </Card>

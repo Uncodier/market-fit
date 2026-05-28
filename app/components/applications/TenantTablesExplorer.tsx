@@ -282,7 +282,17 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
                 params.delete("table")
                 router.push(`${pathname}?${params.toString()}`)
               } else {
-                router.push('/applications/database')
+                const isArtifact = searchParams.get("artifact") === "true"
+                const robotInstanceId = searchParams.get("robotInstanceId")
+                
+                let backUrl = '/applications/database'
+                if (isArtifact) {
+                  backUrl += '?artifact=true'
+                  if (robotInstanceId) {
+                    backUrl += `&robotInstanceId=${robotInstanceId}`
+                  }
+                }
+                router.push(backUrl)
               }
             }} className="h-8 w-8">
               <ChevronLeft className="h-5 w-5" />

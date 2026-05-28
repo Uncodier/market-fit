@@ -280,7 +280,7 @@ export function ImprentaNodesCanvas({
 
         const { imgs, vids } = getUrls(node)
         const coverImage = imgs[0] ?? null
-        const coverVideo = !coverImage ? vids[0] ?? null : null
+        const coverVideo = vids[0] ?? null
         if (coverImage) requestedUrls.push(coverImage)
         if (band === "rich") {
           for (let j = 1; j < imgs.length && j <= 3; j++) requestedUrls.push(imgs[j])

@@ -7,9 +7,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const siteId = searchParams.get("siteId")
     const tenantId = searchParams.get("tenantId")
+    const requirementId = searchParams.get("requirementId")
+    const robotInstanceId = searchParams.get("robotInstanceId")
 
-    if (!siteId && !tenantId) {
-      return NextResponse.json({ error: "Missing siteId or tenantId parameter" }, { status: 400 })
+    if (!siteId && !tenantId && !requirementId && !robotInstanceId) {
+      return NextResponse.json({ error: "Missing siteId, tenantId, requirementId or robotInstanceId parameter" }, { status: 400 })
     }
 
     // Verify auth
@@ -44,11 +46,44 @@ export async function GET(request: Request) {
       return NextResponse.json(data)
     }
 
+    if (requirementId) {
+      // Just fetch the tenant by requirement ID
+      const { data, error } = await reposSupabase
+        .from("apps_tenants")
+        .select("tenant_id, schema, bucket")
+        .eq("requirement_id", requirementId)
+        .single()
+        
+      if (error) {
+        return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+      }
+      return NextResponse.json(data)
+    }
+
     // First get the requirements for this site from the main database
-    const { data: requirements, error: reqError } = await mainSupabase
+    let requirementsQuery = mainSupabase
       .from("requirements")
       .select("id, title, status")
-      .eq("site_id", siteId)
+      
+    if (robotInstanceId) {
+      // If we have an instance ID, we only want requirements tied to this instance
+      const { data: instanceStatuses } = await mainSupabase
+        .from('requirement_status')
+        .select('requirement_id')
+        .eq('instance_id', robotInstanceId)
+        
+      const instanceReqIds = (instanceStatuses || []).map(s => s.requirement_id)
+      
+      if (instanceReqIds.length > 0) {
+        requirementsQuery = requirementsQuery.in('id', instanceReqIds)
+      } else {
+        return NextResponse.json({ tenants: [] })
+      }
+    } else {
+      requirementsQuery = requirementsQuery.eq("site_id", siteId)
+    }
+      
+    const { data: requirements, error: reqError } = await requirementsQuery
 
     if (reqError) {
       console.error("Error fetching requirements:", reqError)

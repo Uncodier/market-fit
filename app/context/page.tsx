@@ -528,7 +528,6 @@ export default function ContextPage() {
             onSaveSocial={onSaveSocial}
             onSaveCopywriting={onSaveCopywriting}
             onDeleteSite={() => setShowDeleteDialog(true)}
-            isSaving={isSaving}
             activeSegment={activeSegment}
             siteId={currentSite.id}
           />

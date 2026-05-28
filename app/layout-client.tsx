@@ -186,6 +186,104 @@ function LayoutClientInner({
   const wakeHandledRef = useRef(false)
   const router = useRouter()
 
+  // Fix: Intercept router methods and update DOM links to maintain artifact=true
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const currentParams = new URLSearchParams(window.location.search)
+    const isArtifactInUrl = currentParams.get('artifact') === 'true'
+
+    // 1. Patch router methods if artifact is true
+    if (isArtifactInUrl && !(router as any)._patchedForArtifact) {
+      const originalPush = router.push
+      const originalReplace = router.replace
+      const originalPrefetch = router.prefetch
+
+      const appendArtifactIfNeeded = (href: string) => {
+        if (typeof href !== 'string') return href
+        const currentUrlParams = new URLSearchParams(window.location.search)
+        if (currentUrlParams.get('artifact') === 'true') {
+          if (href.startsWith('/') || href.startsWith('?') || href.startsWith('#')) {
+            const [pathAndSearch, hash] = href.split('#')
+            const [path, search] = pathAndSearch.split('?')
+            const params = new URLSearchParams(search || '')
+            if (!params.has('artifact')) {
+              params.set('artifact', 'true')
+              return `${path}?${params.toString()}${hash !== undefined ? `#${hash}` : ''}`
+            }
+          }
+        }
+        return href
+      }
+
+      router.push = (href: string, options?: any) => {
+        return originalPush.call(router, appendArtifactIfNeeded(href), options)
+      }
+
+      router.replace = (href: string, options?: any) => {
+        return originalReplace.call(router, appendArtifactIfNeeded(href), options)
+      }
+
+      if (originalPrefetch) {
+        router.prefetch = (href: string, options?: any) => {
+          return originalPrefetch.call(router, appendArtifactIfNeeded(href), options)
+        }
+      }
+
+      (router as any)._patchedForArtifact = true
+    }
+
+    // 2. Keep DOM links updated for "Open in new tab" and hovering
+    if (isArtifactInUrl) {
+      const updateLinks = () => {
+        document.querySelectorAll('a[href]').forEach(a => {
+          const href = a.getAttribute('href')
+          if (!href || href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')) return
+          if (href.startsWith('/') || href.startsWith('?') || href.startsWith('#')) {
+            const [pathAndSearch, hash] = href.split('#')
+            const [path, search] = pathAndSearch.split('?')
+            const params = new URLSearchParams(search || '')
+            if (!params.has('artifact')) {
+              params.set('artifact', 'true')
+              a.setAttribute('href', `${path}?${params.toString()}${hash !== undefined ? `#${hash}` : ''}`)
+            }
+          }
+        })
+      }
+
+      updateLinks()
+
+      const observer = new MutationObserver((mutations) => {
+        let shouldUpdate = false
+        for (const mutation of mutations) {
+          if (mutation.addedNodes.length > 0) {
+            shouldUpdate = true
+            break
+          }
+          if (mutation.type === 'attributes' && mutation.attributeName === 'href') {
+            const target = mutation.target as HTMLAnchorElement
+            if (target.tagName === 'A' && target.getAttribute('href') && !target.getAttribute('href')?.includes('artifact=true')) {
+               shouldUpdate = true
+               break
+            }
+          }
+        }
+        if (shouldUpdate) {
+          updateLinks()
+        }
+      })
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['href']
+      })
+
+      return () => observer.disconnect()
+    }
+  }, [router, pathname, searchParams])
+
   useEffect(() => {
     // Threshold after which we consider the session potentially stale.
     // Kept low on purpose: background tabs are aggressively throttled by

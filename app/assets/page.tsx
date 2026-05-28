@@ -358,6 +358,7 @@ function AssetCard({
   // Para videos, mostramos un thumbnail o un icono
   // Para documentos, intentamos mostrar un preview en iframe
   const shouldShowImage = asset.file_type.startsWith('image/') && !imageError
+  const shouldShowVideoPreview = asset.file_type.startsWith('video/') && !imageError
   const shouldShowDocumentPreview = !asset.file_type.startsWith('image/') && !asset.file_type.startsWith('video/') && !imageError
 
   const handleDelete = async () => {
@@ -427,6 +428,17 @@ function AssetCard({
               src={asset.file_path}
               alt={asset.name}
               className="object-cover w-full h-full transition-all duration-300 hover:scale-[1.02]"
+              onError={() => setImageError(true)}
+            />
+          ) : shouldShowVideoPreview ? (
+            <video
+              src={`${asset.file_path}#t=0.1`}
+              className="object-cover w-full h-full transition-all duration-300 hover:scale-[1.02]"
+              controls={false}
+              muted
+              playsInline
+              preload="metadata"
+              poster={asset.thumbnailUrl}
               onError={() => setImageError(true)}
             />
           ) : shouldShowDocumentPreview ? (
@@ -619,6 +631,7 @@ function AssetListItem({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const shouldShowImage = asset.file_type.startsWith('image/') && !imageError
+  const shouldShowVideoPreview = asset.file_type.startsWith('video/') && !imageError
 
   const formatFileSize = (bytes: number | null): string => {
     if (!bytes || bytes === 0) return '0 Bytes'
@@ -685,6 +698,17 @@ function AssetListItem({
                     src={asset.file_path}
                     alt={asset.name}
                     className="object-cover w-full h-full"
+                    onError={() => setImageError(true)}
+                  />
+                ) : shouldShowVideoPreview ? (
+                  <video
+                    src={`${asset.file_path}#t=0.1`}
+                    className="object-cover w-full h-full"
+                    controls={false}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    poster={asset.thumbnailUrl}
                     onError={() => setImageError(true)}
                   />
                 ) : (
@@ -1014,10 +1038,11 @@ function AssetsContent() {
         
         // Transformar los assets para incluir las etiquetas desde metadata
         const assetsWithTags = fetchedAssets?.map(asset => {
-          const metadata = asset.metadata as { tags?: string[] } || {}
+          const metadata = asset.metadata as { tags?: string[], thumbnail_url?: string, cover_url?: string } || {}
           return {
             ...asset,
             tags: metadata.tags || [],
+            thumbnailUrl: metadata.thumbnail_url || metadata.cover_url,
             isAttachedToAgent: false // Will be updated when agent assets are loaded
           }
         }) || []

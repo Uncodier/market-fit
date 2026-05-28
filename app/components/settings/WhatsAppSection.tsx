@@ -563,21 +563,22 @@ interface WhatsAppLocalState {
 export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectionProps) {
   const [isRequesting, setIsRequesting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
   const [phoneValidation, setPhoneValidation] = useState<{ isValid: boolean; error?: string }>({ isValid: true })
   const [showAccountSid, setShowAccountSid] = useState(false)
   const [showMessagingServiceSid, setShowMessagingServiceSid] = useState(false)
   const { currentSite, updateSettings } = useSite()
 
-  const handleSave = async () => {
+  const handleSave = async (cardId: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(cardId)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving WhatsApp settings:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
   
@@ -1451,10 +1452,10 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleSave}
-                  disabled={isSaving}
+                  onClick={() => handleSave('whatsapp-channel')}
+                  disabled={savingCard === 'whatsapp-channel'}
                 >
-                  {isSaving ? "Saving..." : "Save"}
+                  {savingCard === 'whatsapp-channel' ? "Saving..." : "Save"}
                 </Button>
               )}
             </div>
@@ -1466,10 +1467,10 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
           <Button
             type="button"
             variant="outline"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => handleSave('whatsapp-channel')}
+            disabled={savingCard === 'whatsapp-channel'}
           >
-            {isSaving ? "Saving..." : "Save"}
+            {savingCard === 'whatsapp-channel' ? "Saving..." : "Save"}
           </Button>
         </CardFooter>
       )}

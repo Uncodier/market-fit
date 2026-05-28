@@ -318,9 +318,9 @@ function drawVideoGlyph(
   ctx.stroke()
   ctx.fillStyle = theme.mutedFill
   ctx.beginPath()
-  ctx.moveTo(cx - 5, cy - 8)
-  ctx.lineTo(cx + 9, cy)
-  ctx.lineTo(cx - 5, cy + 8)
+  ctx.moveTo(cx - 3, cy - 8)
+  ctx.lineTo(cx + 11, cy)
+  ctx.lineTo(cx - 3, cy + 8)
   ctx.closePath()
   ctx.fill()
   ctx.restore()
@@ -465,7 +465,7 @@ export function drawLiteNode(ctx: CanvasRenderingContext2D, p: DrawLiteNodeInput
     const bodyH = Math.max(20, bodyBottom - bodyTop)
     if (coverImageUrl || coverVideoUrl) {
       drawThumbOrSkeleton(ctx, ix, bodyTop, iw, bodyH, 12, theme, coverImageUrl, thumbs)
-      if (!coverImageUrl && coverVideoUrl) {
+      if (coverVideoUrl) {
         drawVideoGlyph(ctx, ix + iw / 2, bodyTop + bodyH / 2, theme)
       }
     } else {
@@ -630,7 +630,7 @@ export function drawLiteNode(ctx: CanvasRenderingContext2D, p: DrawLiteNodeInput
     const naturalH = innerW
     const mediaH = Math.min(maxMediaH, naturalH)
     drawThumbOrSkeleton(ctx, innerX, cursorY, innerW, mediaH, 18, theme, coverImageUrl, thumbs)
-    if (!coverImageUrl && coverVideoUrl) {
+    if (coverVideoUrl) {
       drawVideoGlyph(ctx, innerX + innerW / 2, cursorY + mediaH / 2, theme)
     }
     cursorY += mediaH + 8
@@ -674,7 +674,7 @@ function drawResultBlock(
   if (coverImageUrl || coverVideoUrl) {
     const mediaH = Math.min(h, Math.max(48, w))
     drawThumbOrSkeleton(ctx, x, y, w, mediaH, 14, theme, coverImageUrl, thumbs)
-    if (!coverImageUrl && coverVideoUrl) {
+    if (coverVideoUrl) {
       drawVideoGlyph(ctx, x + w / 2, y + mediaH / 2, theme)
     }
     return

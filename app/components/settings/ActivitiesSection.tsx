@@ -70,19 +70,19 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
 export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<string | null>(null)
   const sectionTitle = t("settings.nav.activities") || "AI Activities"
 
-  const handleSave = async () => {
+  const handleSave = async (id: string) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(id)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving activities:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
 
@@ -246,10 +246,10 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
             <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
               <Button 
                 variant="outline"
-                onClick={handleSave}
-                disabled={isSaving}
+                onClick={() => handleSave(key)}
+                disabled={savingCard === key}
               >
-                {isSaving ? "Saving..." : "Save"}
+                {savingCard === key ? "Saving..." : "Save"}
               </Button>
             </CardFooter>
           </Card>

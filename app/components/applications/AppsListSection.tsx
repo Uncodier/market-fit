@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
@@ -38,12 +38,26 @@ interface TenantApp extends RequirementRecord {
 interface AppsListSectionProps {
   searchQuery?: string
   viewMode?: ViewType
+  robotInstanceId?: string
 }
 
-export function AppsListSection({ searchQuery = "", viewMode = "kanban" }: AppsListSectionProps) {
+export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotInstanceId }: AppsListSectionProps) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isArtifact = searchParams.get("artifact") === "true"
+  
+  const handleTenantClick = (tenantId: string, schema: string) => {
+    let url = `/applications/database/${tenantId}?schema=${schema}`
+    if (isArtifact) {
+      url += "&artifact=true"
+      if (robotInstanceId) {
+        url += `&robotInstanceId=${robotInstanceId}`
+      }
+    }
+    router.push(url)
+  }
   
   const [apps, setApps] = useState<TenantApp[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,7 +71,11 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban" }: AppsL
       setLoading(true)
 
       try {
-        const response = await fetch(`/api/applications/tenants?siteId=${currentSite.id}`)
+        let url = `/api/applications/tenants?siteId=${currentSite.id}`
+        if (robotInstanceId) {
+          url += `&robotInstanceId=${robotInstanceId}`
+        }
+        const response = await fetch(url)
         const data = await response.json()
 
         if (!response.ok) {
@@ -171,7 +189,7 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban" }: AppsL
             <Card 
               key={app.id} 
               className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all duration-200 overflow-hidden"
-              onClick={() => router.push(`/applications/database/${tenant.tenant_id}?schema=${tenant.schema}`)}
+              onClick={() => handleTenantClick(tenant.tenant_id, tenant.schema)}
             >
               <div className="flex items-stretch hover:bg-muted/50 transition-colors w-full h-full">
                 <CardContent className="flex-1 p-4 w-full overflow-x-auto h-full flex flex-col justify-center">
@@ -295,7 +313,7 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban" }: AppsL
             <Card 
               key={app.id} 
               className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all duration-200 overflow-hidden flex flex-col"
-              onClick={() => router.push(`/applications/database/${tenant.tenant_id}?schema=${tenant.schema}`)}
+              onClick={() => handleTenantClick(tenant.tenant_id, tenant.schema)}
             >
               <CardHeader className="pb-3 border-b bg-muted/20">
                 <div className="flex justify-between items-start gap-4">

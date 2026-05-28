@@ -43,7 +43,6 @@ interface FlatIncludedAddress {
 export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailableRestrictionsSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const [expandedAddresses, setExpandedAddresses] = useState<Set<string>>(new Set())
-  const [isSaving, setIsSaving] = useState(false)
   const [isSavingAddress, setIsSavingAddress] = useState<string | null>(null)
 
   // Get all included addresses from all locations as a flat list
@@ -207,14 +206,12 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
     if (!onSave) return
     const key = `${locationIndex}-${addressIndex}`
     setIsSavingAddress(key)
-    setIsSaving(true)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving address:", error)
     } finally {
-      setIsSaving(false)
       setIsSavingAddress(null)
     }
   }
@@ -443,9 +440,9 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
                     type="button"
                     variant="outline"
                     onClick={() => handleSaveAddress(item.locationIndex, item.addressIndex)}
-                    disabled={isSaving && isSavingAddress === key}
+                    disabled={isSavingAddress === key}
                   >
-                    {isSaving && isSavingAddress === key ? "Saving..." : "Save Address"}
+                    {isSavingAddress === key ? "Saving..." : "Save Address"}
                   </Button>
                 </div>
               </ActionFooter>

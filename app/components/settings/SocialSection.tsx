@@ -164,7 +164,7 @@ interface SocialSectionProps {
 
 export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [isSaving, setIsSaving] = useState(false)
+  const [savingCard, setSavingCard] = useState<number | null>(null)
   const socialMedia = form.watch("social_media") || []
 
   // Emit social networks update event whenever socialMedia changes
@@ -181,16 +181,16 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     }
   }, [active, socialMedia]);
 
-  const handleSave = async () => {
+  const handleSave = async (index: number) => {
     if (!onSave) return
-    setIsSaving(true)
+    setSavingCard(index)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving social media:", error)
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }
 
@@ -210,7 +210,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     if (!isOAuthConnectablePlatform(social.platform)) return
 
     try {
-      setIsSaving(true)
+      setSavingCard(index)
       
       // When SSH_TUNNEL_URL (or NEXT_PUBLIC_SSH_TUNNEL_URL) is set, use it so OAuth redirects back to the tunnel.
       // In .env.local set NEXT_PUBLIC_SSH_TUNNEL_URL=https://xxx.trycloudflare.com (client needs NEXT_PUBLIC_)
@@ -266,7 +266,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
       // You might want to show a toast error here
       alert(error instanceof Error ? error.message : 'Failed to connect account')
     } finally {
-      setIsSaving(false)
+      setSavingCard(null)
     }
   }, [socialMedia, siteId])
 
@@ -604,10 +604,10 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                 <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
                   <Button 
                     variant="outline"
-                    onClick={handleSave}
-                    disabled={isSaving}
+                    onClick={() => handleSave(index)}
+                    disabled={savingCard === index}
                   >
-                    {isSaving ? (
+                    {savingCard === index ? (
                       <>
                         <div className="h-4 w-4 mr-2 animate-spin rounded-full font-inter border-2 border-current border-t-transparent" />
                         Saving...

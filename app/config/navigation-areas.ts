@@ -95,23 +95,36 @@ export function buildNavItemHref(
   item: AreaNavItem,
   currentSearch?: URLSearchParams | string
 ): string {
+  const p = new URLSearchParams(
+    typeof currentSearch === "string"
+      ? currentSearch
+      : currentSearch?.toString() ?? ""
+  )
+  const isArtifact = p.get("artifact") === "true"
+
+  let baseHref = item.href
+  const queryParams = new URLSearchParams()
+  
+  if (isArtifact) {
+    queryParams.set("artifact", "true")
+  }
+
   if (item.dashboardTab) {
-    return `/dashboard?tab=${item.dashboardTab}`
-  }
-  if (item.settingsTab) {
-    return `/settings?tab=${item.settingsTab}`
-  }
-  if (item.robotsMode) {
-    const p = new URLSearchParams(
-      typeof currentSearch === "string"
-        ? currentSearch
-        : currentSearch?.toString() ?? ""
-    )
+    baseHref = "/dashboard"
+    queryParams.set("tab", item.dashboardTab)
+  } else if (item.settingsTab) {
+    baseHref = "/settings"
+    queryParams.set("tab", item.settingsTab)
+  } else if (item.robotsMode) {
+    baseHref = "/robots"
     p.set("mode", item.robotsMode)
+    if (isArtifact) p.set("artifact", "true")
     const q = p.toString()
     return q ? `/robots?${q}` : `/robots?mode=${item.robotsMode}`
   }
-  return item.href
+
+  const qs = queryParams.toString()
+  return qs ? `${baseHref}?${qs}` : baseHref
 }
 
 /** Active state for sidebar items (pathname from `usePathname`, searchParams from `useSearchParams`). */

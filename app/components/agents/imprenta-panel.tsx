@@ -228,6 +228,17 @@ function collectImprentaLiteImagePreviewUrls(node: InstanceNode, max = 4): strin
         const data = item.data as Record<string, unknown> | undefined
         if (data?.url) push(data.url)
       }
+      if (item.type === "video") {
+        if (item.thumbnail_url) push(item.thumbnail_url)
+        if (item.cover_url) push(item.cover_url)
+        if (item.poster_url) push(item.poster_url)
+        if (item.poster) push(item.poster)
+        const data = item.data as Record<string, unknown> | undefined
+        if (data?.thumbnail_url) push(data.thumbnail_url)
+        if (data?.cover_url) push(data.cover_url)
+        if (data?.poster_url) push(data.poster_url)
+        if (data?.poster) push(data.poster)
+      }
     }
   }
   if (urls.length < max) {
@@ -237,6 +248,12 @@ function collectImprentaLiteImagePreviewUrls(node: InstanceNode, max = 4): strin
         if (!m || typeof m !== "object") continue
         const item = m as Record<string, unknown>
         if (item.type === "image" && item.url) push(item.url)
+        if (item.type === "video") {
+          if (item.thumbnail_url) push(item.thumbnail_url)
+          if (item.cover_url) push(item.cover_url)
+          if (item.poster_url) push(item.poster_url)
+          if (item.poster) push(item.poster)
+        }
       }
     }
   }
@@ -251,6 +268,13 @@ function collectImprentaLiteImagePreviewUrls(node: InstanceNode, max = 4): strin
   if (urls.length < max) {
     const image = res.image as { url?: unknown } | undefined
     if (image?.url) push(image.url)
+  }
+  if (urls.length < max) {
+    const video = res.video as { url?: unknown, thumbnail_url?: unknown, cover_url?: unknown, poster_url?: unknown, poster?: unknown } | undefined
+    if (video?.thumbnail_url) push(video.thumbnail_url)
+    if (video?.cover_url) push(video.cover_url)
+    if (video?.poster_url) push(video.poster_url)
+    if (video?.poster) push(video.poster)
   }
   return urls.slice(0, max)
 }
@@ -2189,8 +2213,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         >
           <ImprentaLazyPreviewVideo url={url} priority={true} className="w-full h-auto max-h-[800px] object-contain relative z-[1] m-auto" />
           <div className="absolute inset-0 bg-black/10 group-hover/video:bg-black/30 transition-colors z-[2] flex items-center justify-center pointer-events-none">
-            <div className="bg-background/80 backdrop-blur text-foreground p-3 rounded-full shadow-lg transform group-hover/video:scale-110 transition-transform">
-              <Play className="h-6 w-6 ml-1" />
+            <div className="bg-background/80 backdrop-blur text-foreground w-12 h-12 flex items-center justify-center rounded-full shadow-lg transform group-hover/video:scale-110 transition-transform">
+              <Play className="h-6 w-6 translate-x-[2px]" />
             </div>
           </div>
           <Button
@@ -3542,9 +3566,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   
                                   const hasStructuredMedia = !!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio;
 
+                                  const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
+                                  
                                   // Detect intention: did this node intend to produce media?
                                   const isMediaIntent = node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || 
-                                                        (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio';
+                                                        (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' ||
+                                                                        (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'));
 
                                   let extractedUrl: string | null = null;
                                   if (isMediaIntent) {
@@ -3552,7 +3580,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     if (hasStructuredMedia) return null;
 
                                     // If we ONLY got text back from the agent for a media node, forcefully extract the media link and discard the conversational text.
-                                    const expectedMediaType = (node.settings as any)?.media_type || node.type.replace('generate-', '');
+                                    let expectedMediaType = (node.settings as any)?.media_type || node.type.replace('generate-', '');
+                                    if (!['image', 'video', 'audio'].includes(expectedMediaType) && parentNode) {
+                                      expectedMediaType = (parentNode.settings as any)?.media_type || parentNode.type.replace('generate-', '');
+                                    }
                                     
                                     if (expectedMediaType === 'image') {
                                       const imgMatchMarkdown = textContent.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/);
@@ -3575,7 +3606,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
                                     // If no URL could be extracted yet and it's still running, show a placeholder
                                     if (!extractedUrl && (node.status === 'running' || node.status === 'pending')) {
-                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio;
+                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio || (parentNode?.settings as any)?.parameters?.aspectRatio;
                                       let aspectStyle = "1/1";
                                       if (expectedMediaType === 'video') aspectStyle = "16/9";
                                       
@@ -3605,7 +3636,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     // If completed and no media could be extracted (e.g. error message from agent),
                                     // we replace the text with an error placeholder and a retry button.
                                     if (!extractedUrl && (node.status === 'completed' || node.status === 'failed')) {
-                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio;
+                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio || (parentNode?.settings as any)?.parameters?.aspectRatio;
                                       let aspectStyle = "1/1";
                                       if (expectedMediaType === 'video') aspectStyle = "16/9";
                                       if (aspectRatioParam) {
@@ -3669,7 +3700,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                             )}
                             
                               <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                              {hasResult ? (
+                              {(() => {
+                                const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
+                                return hasResult ? (
                                 <div className="flex gap-2 w-full">
                                   <Button 
                                     variant="outline" 
@@ -3681,7 +3714,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                       node.status === 'failed' || 
                                       (!!(node.settings as any)?.imprenta_mode && !contexts.some(ctx => ctx.target_node_id === node.id)) ||
                                       // Disable if media was intended but failed to extract
-                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio') && 
+                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
                                        !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
                                        !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
                                        !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
@@ -3709,7 +3743,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                       node.status === 'running' || 
                                       node.status === 'pending' || 
                                       node.status === 'failed' ||
-                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio') && 
+                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
                                        !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
                                        !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
                                        !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
@@ -3732,7 +3767,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                       node.status === 'running' || 
                                       node.status === 'pending' || 
                                       node.status === 'failed' ||
-                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio') && 
+                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
                                        !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
                                        !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
                                        !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
@@ -3796,7 +3832,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                             node.status === 'running' || 
                                             node.status === 'pending' || 
                                             node.status === 'failed' ||
-                                            ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio') && 
+                                            ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                              (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
                                              !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
                                              !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
                                              !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
@@ -3863,7 +3900,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                     <Play className="w-4 h-4 mr-2" /> Generate
                                   </Button>
                                 </div>
-                              )}
+                              );
+                              })()}
                             </div>
                             </div>
                           </CardContent>

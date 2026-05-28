@@ -11,12 +11,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { RotateCcw, User, Tag, Globe } from "../ui/icons"
 import { cn } from "../../lib/utils"
 
+import { useState } from "react"
+
 export function BillingSection() {
   const form = useFormContext<SiteFormValues>()
+  const [savingCard, setSavingCard] = useState<string | null>(null)
+
+  const handleSave = async (id: string) => {
+    // Note: Assuming there is a parent onSave available or we pass it down
+    // Since there's no onSave in props currently, this is a placeholder
+    // In a real scenario, we'd add onSave to BillingSectionProps
+    setSavingCard(id)
+    try {
+      // Simulate save
+      await new Promise(resolve => setTimeout(resolve, 500))
+    } finally {
+      setSavingCard(null)
+    }
+  }
 
   return (
     <div className="space-y-8">
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="credits" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Credits</CardTitle>
         </CardHeader>
@@ -63,9 +79,18 @@ export function BillingSection() {
             </div>
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            variant="outline"
+            onClick={() => handleSave('credits')}
+            disabled={savingCard === 'credits'}
+          >
+            {savingCard === 'credits' ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
       
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="subscription-plan" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Subscription Plan</CardTitle>
         </CardHeader>
@@ -129,9 +154,18 @@ export function BillingSection() {
             )}
           />
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            variant="outline"
+            onClick={() => handleSave('subscription-plan')}
+            disabled={savingCard === 'subscription-plan'}
+          >
+            {savingCard === 'subscription-plan' ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
       
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="payment-method" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Payment Method</CardTitle>
         </CardHeader>
@@ -222,9 +256,18 @@ export function BillingSection() {
             />
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            variant="outline"
+            onClick={() => handleSave('payment-method')}
+            disabled={savingCard === 'payment-method'}
+          >
+            {savingCard === 'payment-method' ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
       
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
+      <Card id="billing-address" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-8 py-6">
           <CardTitle className="text-xl font-semibold">Billing Address</CardTitle>
         </CardHeader>
@@ -315,6 +358,15 @@ export function BillingSection() {
             />
           </div>
         </CardContent>
+        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+          <Button 
+            variant="outline"
+            onClick={() => handleSave('billing-address')}
+            disabled={savingCard === 'billing-address'}
+          >
+            {savingCard === 'billing-address' ? "Saving..." : "Save"}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   )

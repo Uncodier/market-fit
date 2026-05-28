@@ -294,7 +294,7 @@ export function ConfigurationSection({
 
               if (isTheme) {
                 return (
-                  <div key="settings-child-theme" className="relative">
+                  <div key="settings-child-theme" className={cn("relative", !isCollapsed && "pl-3")}>
                     <MenuItem
                       href="#"
                       icon={isDarkMode ? Moon : Sun}
@@ -306,7 +306,6 @@ export function ConfigurationSection({
                       }
                       isActive={false}
                       isCollapsed={isCollapsed}
-                      className={!isCollapsed ? "ml-3" : ""}
                       onClick={(e) => {
                         e.preventDefault()
                         toggleTheme()
@@ -338,7 +337,7 @@ export function ConfigurationSection({
                 : pathname.startsWith(item.href)
 
               return (
-                <div key={`settings-child-${item.href}`} className="relative">
+                <div key={`settings-child-${item.href}`} className={cn("relative", !isCollapsed && "pl-3")}>
                   <MenuItem
                     href={item.href}
                     icon={item.icon}
@@ -346,7 +345,6 @@ export function ConfigurationSection({
                     title={t(`layout.sidebar.${item.titleKey}`) || item.titleKey}
                     isActive={isActive}
                     isCollapsed={isCollapsed}
-                    className={!isCollapsed ? "ml-3" : ""}
                     onClick={
                       isGeneralSettings
                         ? (e) => handleSettingsNavigation(e, item.href)

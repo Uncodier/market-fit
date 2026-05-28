@@ -48,7 +48,6 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
     return locations.map(normalizeLocation)
   })
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
-  const [isSaving, setIsSaving] = useState(false)
   const [isSavingLocation, setIsSavingLocation] = useState<number | null>(null)
 
   // Emit locations update event whenever list changes
@@ -119,14 +118,12 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
   const handleSaveLocation = async (index: number) => {
     if (!onSave) return
     setIsSavingLocation(index)
-    setIsSaving(true)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving location:", error)
     } finally {
-      setIsSaving(false)
       setIsSavingLocation(null)
     }
   }
@@ -356,9 +353,9 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                     type="button"
                     variant="outline"
                     onClick={() => handleSaveLocation(index)}
-                    disabled={isSaving && isSavingLocation === index}
+                    disabled={isSavingLocation === index}
                   >
-                    {isSaving && isSavingLocation === index ? "Saving..." : "Save Location"}
+                    {isSavingLocation === index ? "Saving..." : "Save Location"}
                   </Button>
                 </div>
               </ActionFooter>

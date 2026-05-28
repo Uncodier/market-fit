@@ -129,7 +129,6 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const businessHours = form.watch("business_hours") || []
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
-  const [isSaving, setIsSaving] = useState(false)
   const [savingSchedule, setSavingSchedule] = useState<number | null>(null)
 
   const toggleExpanded = useCallback((index: number) => {
@@ -204,14 +203,12 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
   const handleSaveBusinessHours = async (index: number) => {
     if (!onSave) return
     setSavingSchedule(index)
-    setIsSaving(true)
     try {
       const formData = form.getValues()
       await onSave(formData)
     } catch (error) {
       console.error("Error saving business hours:", error)
     } finally {
-      setIsSaving(false)
       setSavingSchedule(null)
     }
   }
@@ -404,9 +401,9 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                     type="button"
                     variant="outline"
                     onClick={() => handleSaveBusinessHours(index)}
-                    disabled={isSaving && savingSchedule === index}
+                    disabled={savingSchedule === index}
                   >
-                    {isSaving && savingSchedule === index ? "Saving..." : "Save Schedule"}
+                    {savingSchedule === index ? "Saving..." : "Save Schedule"}
                   </Button>
                 </div>
               </ActionFooter>

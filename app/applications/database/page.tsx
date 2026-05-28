@@ -1,25 +1,29 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, Suspense } from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { AppsListSection } from "@/app/components/applications/AppsListSection"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
+import { useSearchParams } from "next/navigation"
 
-export default function DatabasePage() {
+function DatabasePageContent() {
   const { t } = useLocalization()
   const [searchQuery, setSearchQuery] = useState("")
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useMobileView("kanban")
+  const searchParams = useSearchParams()
+  const isArtifact = searchParams.get("artifact") === "true"
+  const robotInstanceId = searchParams.get("robotInstanceId")
 
   const handleSearch = (value: string) => {
     setSearchQuery(value)
   }
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+    <div className={`flex-1 min-w-0 w-full p-0 flex flex-col ${isArtifact ? 'h-full min-h-full' : 'min-h-[calc(100dvh-64px)]'}`}>
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between w-full">
@@ -46,13 +50,21 @@ export default function DatabasePage() {
         {viewMode === 'kanban' ? (
           <div className="overflow-x-auto pb-4 -mx-8">
             <div className="min-w-fit px-8">
-              <AppsListSection searchQuery={searchQuery} viewMode={viewMode} />
+              <AppsListSection searchQuery={searchQuery} viewMode={viewMode} robotInstanceId={robotInstanceId || undefined} />
             </div>
           </div>
         ) : (
-          <AppsListSection searchQuery={searchQuery} viewMode={viewMode} />
+          <AppsListSection searchQuery={searchQuery} viewMode={viewMode} robotInstanceId={robotInstanceId || undefined} />
         )}
       </div>
     </div>
+  )
+}
+
+export default function DatabasePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-full">Loading...</div>}>
+      <DatabasePageContent />
+    </Suspense>
   )
 }
