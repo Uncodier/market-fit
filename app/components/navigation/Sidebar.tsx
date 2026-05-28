@@ -203,6 +203,17 @@ export function Sidebar({
               </Suspense>
               */}
             </div>
+            
+            <div className={cn("relative", renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full px-1")}>
+              <MenuItem
+                href="/navigation"
+                emoji="📱"
+                title={t("layout.sidebar.apps") === "layout.sidebar.apps" ? "Apps" : t("layout.sidebar.apps")}
+                isActive={pathname.startsWith("/navigation")}
+                isCollapsed={renderCollapsed}
+              />
+            </div>
+
             <ConfigurationSection
               className={cn(
                 "!p-0 w-full",

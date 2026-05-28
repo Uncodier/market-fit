@@ -2394,17 +2394,63 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       if (orphansWithCtx.length > 0) {
         for (let pass = 0; pass < 10; pass++) {
           let changed = false
+          
+          // Group orphans by their computed anchor position to avoid overlaps
+          const anchoredPositions = new Map<string, typeof orphansWithCtx>();
+          const nodeAnchors = new Map<string, {x: number, y: number, avgCenter: number}>();
+          
           orphansWithCtx.forEach(node => {
             if (!pos[node.id]) return
             const anchored = computeContextAnchoredPosition(node.id, pos)
             if (!anchored) return
-            const dx = anchored.x - pos[node.id].x
-            const dy = anchored.y - pos[node.id].y
-            if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-              shiftSubtree(node.id, dx, dy)
-              changed = true
+            
+            // Re-calculate avgCenter because computeContextAnchoredPosition subtracts myH / 2
+            const myH = h(node.id)
+            const avgCenter = anchored.y + myH / 2
+            nodeAnchors.set(node.id, { x: anchored.x, y: anchored.y, avgCenter })
+            
+            // Group by approximate position (to handle exact same contexts)
+            const key = `${Math.round(anchored.x)},${Math.round(avgCenter)}`;
+            if (!anchoredPositions.has(key)) anchoredPositions.set(key, []);
+            anchoredPositions.get(key)!.push(node);
+          });
+          
+          anchoredPositions.forEach((group) => {
+            if (group.length === 1) {
+              const node = group[0];
+              const anchored = nodeAnchors.get(node.id)!;
+              const dx = anchored.x - pos[node.id].x;
+              const dy = anchored.y - pos[node.id].y;
+              if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                shiftSubtree(node.id, dx, dy);
+                changed = true;
+              }
+            } else {
+              // Multiple nodes want to be at the same anchor. Stack them vertically
+              // and center the entire stack around the avgCenter.
+              const anchorInfo = nodeAnchors.get(group[0].id)!;
+              const avgCenter = anchorInfo.avgCenter;
+              
+              // Calculate total height of the group
+              let totalH = 0;
+              group.forEach(n => { totalH += subtreeHeight(n.id); });
+              totalH += (group.length - 1) * V_GAP;
+              
+              let currentY = avgCenter - totalH / 2;
+              
+              group.forEach(node => {
+                const targetX = anchorInfo.x;
+                const dx = targetX - pos[node.id].x;
+                const dy = currentY - pos[node.id].y;
+                if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                  shiftSubtree(node.id, dx, dy);
+                  changed = true;
+                }
+                currentY += subtreeHeight(node.id) + V_GAP;
+              });
             }
-          })
+          });
+          
           if (!changed) break
         }
       }
@@ -2463,51 +2509,76 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       })
 
       // Re-space already-positioned siblings that may now overlap or have gaps.
-      // Parentless nodes that are anchored to their contexts are excluded from
-      // the root stack so we don't collapse them back into column 0.
       for (const key of Object.keys(parentGroups)) {
-        const sorted = parentGroups[key]
-          .filter(n => pos[n.id] && !isNaN(pos[n.id].y))
-          .filter(n => !(key === '__root__' && hasInboundContexts(n.id)))
+        let nodeGroups: InstanceNode[][] = [];
         
-        if (sorted.length > 0 && key !== '__root__') {
-          const firstNodeId = sorted[0].id;
-          const firstNode = currentNodes.find(n => n.id === firstNodeId);
-          const hasUserPos0 = firstNode && !firstNode.id.startsWith('dummy-') && (firstNode.settings as any)?.ui_position;
-          
-          if (!hasUserPos0) {
-            const parentPos = pos[key];
-            if (parentPos && pos[firstNodeId].y !== parentPos.y) {
-              pos[firstNodeId] = { ...pos[firstNodeId], y: parentPos.y };
+        if (key === '__root__') {
+          // For roots, separate them by X column to avoid comparing col 0 roots with col 1 orphans
+          const cols: Record<number, InstanceNode[]> = {};
+          parentGroups[key]
+            .filter(n => pos[n.id] && !isNaN(pos[n.id].y))
+            .forEach(n => {
+              const colX = Math.round(pos[n.id].x / 100) * 100;
+              if (!cols[colX]) cols[colX] = [];
+              cols[colX].push(n);
+            });
+          nodeGroups = Object.values(cols);
+        } else {
+          nodeGroups = [
+            parentGroups[key].filter(n => pos[n.id] && !isNaN(pos[n.id].y))
+          ];
+        }
+
+        for (const sorted of nodeGroups) {
+          if (sorted.length > 0 && key !== '__root__') {
+            const firstNodeId = sorted[0].id;
+            const firstNode = currentNodes.find(n => n.id === firstNodeId);
+            const hasUserPos0 = firstNode && !firstNode.id.startsWith('dummy-') && (firstNode.settings as any)?.ui_position;
+            
+            if (!hasUserPos0) {
+              const parentPos = pos[key];
+              if (parentPos && pos[firstNodeId].y !== parentPos.y) {
+                pos[firstNodeId] = { ...pos[firstNodeId], y: parentPos.y };
+              }
             }
           }
-        }
-        
-        for (let i = 1; i < sorted.length; i++) {
-          const prevNodeId = sorted[i - 1].id;
-          const currNodeId = sorted[i].id;
           
-          const prevBottom = pos[prevNodeId].y + h(prevNodeId)
-          const currNode = currentNodes.find(n => n.id === currNodeId);
-          const hasUserPos = currNode && !currNode.id.startsWith('dummy-') && (currNode.settings as any)?.ui_position;
+          // Ensure sorted array is actually sorted by Y so adjacent overlaps are caught
+          sorted.sort((a, b) => {
+            const dy = pos[a.id].y - pos[b.id].y;
+            if (Math.abs(dy) > 1) return dy;
+            const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return timeA - timeB;
+          });
           
-          // Check if they also overlap horizontally (in X).
-          // If they don't overlap horizontally, they aren't colliding.
-          const prevNodeX = pos[prevNodeId].x;
-          const currNodeX = pos[currNodeId].x;
-          const xOverlap = Math.abs(currNodeX - prevNodeX) < NODE_W + H_GAP / 2;
-          
-          if (pos[currNodeId].y < prevBottom && !hasUserPos && xOverlap) {
-            // Only bump if they are actually colliding, but ignore exact same Y overlaps 
-            // since that indicates a replacement in progress where they share the exact slot
-            if (Math.abs(pos[currNodeId].y - pos[prevNodeId].y) > 1 && !prevNodeId.startsWith('dummy-')) {
-              pos[currNodeId] = { ...pos[currNodeId], y: prevBottom }
-            } else if (Math.abs(pos[currNodeId].y - pos[prevNodeId].y) > 1 && prevNodeId.startsWith('dummy-')) {
+          for (let i = 1; i < sorted.length; i++) {
+            const prevNodeId = sorted[i - 1].id;
+            const currNodeId = sorted[i].id;
+            
+            const prevBottom = pos[prevNodeId].y + h(prevNodeId)
+            const currNode = currentNodes.find(n => n.id === currNodeId);
+            const hasUserPos = currNode && !currNode.id.startsWith('dummy-') && (currNode.settings as any)?.ui_position;
+            
+            const prevNodeX = pos[prevNodeId].x;
+            const currNodeX = pos[currNodeId].x;
+            const xOverlap = Math.abs(currNodeX - prevNodeX) < NODE_W + H_GAP / 2;
+            
+            if (pos[currNodeId].y < prevBottom && !hasUserPos && xOverlap) {
+              // Only bump if they are actually colliding, but ignore exact same Y overlaps 
+              // if it's a dummy vs real node, since that indicates a replacement in progress
+              const isPrevDummy = prevNodeId.startsWith('dummy-');
+              const isCurrDummy = currNodeId.startsWith('dummy-');
+              const isReplacement = (isPrevDummy && !isCurrDummy) || (!isPrevDummy && isCurrDummy);
+              const exactY = Math.abs(pos[currNodeId].y - pos[prevNodeId].y) <= 1;
+
+              if (!(exactY && isReplacement)) {
+                pos[currNodeId] = { ...pos[currNodeId], y: prevBottom }
+              }
+            } else if (pos[currNodeId].y > prevBottom && !hasUserPos && xOverlap) {
+              // Pull up to close gap if it was placed automatically
               pos[currNodeId] = { ...pos[currNodeId], y: prevBottom }
             }
-          } else if (pos[currNodeId].y > prevBottom && !hasUserPos && xOverlap) {
-            // Pull up to close gap if it was placed automatically
-            pos[currNodeId] = { ...pos[currNodeId], y: prevBottom }
           }
         }
       }
