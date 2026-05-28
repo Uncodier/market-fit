@@ -34,13 +34,6 @@ interface ConfigItem {
 }
 
 const settingsChildItems: ConfigItem[] = [
-  {
-    titleKey: "settingsGeneral",
-    href: "/settings",
-    icon: Settings,
-    emoji: "🎛️",
-    isSettingsChild: true,
-  },
   { titleKey: "integrations", href: "/integrations", icon: Plug, emoji: "🔌", isSettingsChild: true },
   { titleKey: "billing", href: "/billing", icon: CreditCard, emoji: "💳", isSettingsChild: true },
   { titleKey: "security", href: "/security", icon: Shield, emoji: "🔒", isSettingsChild: true },
@@ -172,12 +165,16 @@ export function ConfigurationSection({
   const tooltipContentClass =
     "flex flex-col gap-1 bg-popover text-popover-foreground dark:border-white/5 border-black/5 shadow-lg z-[9999]"
 
+  const isGeneralSettingsActive = isOnSettingsPath && (!settingsUrlTab || settingsUrlTab === "general")
+
   const settingsSectionToggleButton = (
     <button
       type="button"
       className={cn(
-        "group flex items-center rounded-md font-inter transition-colors duration-200 hover:bg-accent hover:text-accent-foreground",
-        shouldShowSettingsChildren ? "text-foreground" : "text-muted-foreground",
+        "group flex items-center rounded-md font-inter transition-colors duration-200",
+        isGeneralSettingsActive
+          ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
+          : "hover:bg-accent hover:text-accent-foreground text-muted-foreground",
         isCollapsed
           ? "mx-auto h-[32px] w-[32px] shrink-0 justify-center"
           : "h-[32px] w-full justify-start text-left text-sm"
@@ -194,7 +191,10 @@ export function ConfigurationSection({
             }
           : undefined
       }
-      onClick={() => setMenuOpen((v) => !v)}
+      onClick={(e) => {
+        handleSettingsNavigation(e, '/settings')
+        setMenuOpen((v) => !v)
+      }}
       aria-expanded={shouldShowSettingsChildren}
       aria-label={settingsTitle}
     >
@@ -206,7 +206,7 @@ export function ConfigurationSection({
       >
         <EmojiIcon
           emoji={SETTINGS_SECTION_EMOJI}
-          isActive={shouldShowSettingsChildren}
+          isActive={isGeneralSettingsActive}
           isCollapsed={isCollapsed}
           tone="section"
         />

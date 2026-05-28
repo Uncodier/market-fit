@@ -424,6 +424,36 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
 
   const shortcutIds = shortcuts.map(s => typeof s === 'string' ? s : s.id)
 
+  let bestMatchId: string | null = null;
+  let maxMatchLength = -1;
+
+  shortcuts.forEach((entry) => {
+    const isCustom = typeof entry !== 'string'
+    const id = isCustom ? entry.id : entry
+
+    let isMatch = false
+    let matchLen = 0
+
+    if (isCustom) {
+      isMatch = pathname === entry.href || pathname.startsWith(entry.href + '?') || pathname.startsWith(entry.href + '/')
+      matchLen = entry.href.length
+    } else {
+      const item = ALL_ITEMS.find(i => i.key === id)
+      if (item) {
+        isMatch = isNavItemActive(item, pathname, navSearchParams)
+        matchLen = (item.href || "").length
+        if (item.dashboardTab) matchLen += item.dashboardTab.length
+        if (item.settingsTab) matchLen += item.settingsTab.length
+        if (item.robotsMode) matchLen += item.robotsMode.length
+      }
+    }
+
+    if (isMatch && matchLen > maxMatchLength) {
+      maxMatchLength = matchLen
+      bestMatchId = id
+    }
+  })
+
   return (
     <>
       <div className="w-full h-[1px] bg-black/5 dark:bg-white/5 my-2" />
@@ -450,15 +480,14 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
               item = { key: entry.id, href: entry.href }
               emoji = "✨"
               linkHref = entry.href
-              // Basic check for active state
-              isActive = pathname === entry.href || pathname.startsWith(entry.href + '?') || pathname.startsWith(entry.href + '/')
+              isActive = id === bestMatchId
               title = entry.title
             } else {
               item = ALL_ITEMS.find(i => i.key === id)
               if (!item) return null
               emoji = NAV_ITEM_EMOJI[item.key] || "📌"
               linkHref = buildNavItemHref(item, navSearchParams)
-              isActive = isNavItemActive(item, pathname, navSearchParams)
+              isActive = id === bestMatchId
               title = reportItemTitle(item, t)
             }
 

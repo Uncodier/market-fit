@@ -61,9 +61,11 @@ export function ImprentaLazyPreviewVideo({
   priority?: boolean
 }) {
   const [ready, setReady] = useState(false)
+  const pausedRef = useRef(false)
 
   useEffect(() => {
     setReady(false)
+    pausedRef.current = false
   }, [url])
 
   return (
@@ -77,15 +79,24 @@ export function ImprentaLazyPreviewVideo({
         <span className="sr-only">Loading video preview</span>
       </span>
       <video
-        src={url}
+        src={url.includes('#') ? url : `${url}#t=0.001`}
         muted
         playsInline
-        preload={priority ? "metadata" : "none"}
+        autoPlay
+        preload={priority ? "auto" : "metadata"}
         className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
           ready ? "opacity-95" : "opacity-0"
         } ${className ?? ""}`}
         aria-hidden
         onLoadedData={() => setReady(true)}
+        onTimeUpdate={(e) => {
+          const video = e.target as HTMLVideoElement;
+          if (!pausedRef.current && video.currentTime > 0.1) {
+            pausedRef.current = true;
+            video.pause();
+            video.currentTime = 0.001;
+          }
+        }}
         onError={() => setReady(true)}
       />
     </span>

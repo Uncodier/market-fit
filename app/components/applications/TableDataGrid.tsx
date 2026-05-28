@@ -181,58 +181,52 @@ export function TableDataGrid({ schema, table, refreshKey = 0, isAddModalOpen = 
   }, [schema, table, selectedRows, onSelectedRowsChange, t])
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col flex-1 min-h-0 w-full">
       {error && (
         <div className="p-4 bg-destructive/10 text-destructive text-sm">
           {error}
         </div>
       )}
 
-      <div className="flex-1 overflow-auto relative w-full">
-        {loading && data.length === 0 ? (
-          <div className="p-4 space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : (
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted sticky top-0 z-20 shadow-[0_1px_0_0_hsl(var(--border))]">
-                <tr>
-                  {table.primaryKey && (
-                    <th className="px-4 py-3 font-medium whitespace-nowrap w-[40px]">
-                      <Checkbox 
-                        checked={data.length > 0 && selectedRows.length === data.length}
-                        onCheckedChange={(checked) => handleSelectAll(checked === true)}
-                        aria-label="Select all"
-                      />
-                    </th>
-                  )}
-                  {table.columns.map(col => (
-                    <th key={col.name} className="px-4 py-3 font-medium whitespace-nowrap">
-                      {col.name}
-                      {col.is_primary && <span className="ml-1 text-[10px] text-primary">PK</span>}
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {data.length === 0 ? (
+      <div className="flex-1 relative min-h-0 w-full flex flex-col">
+        <div className="flex-1 overflow-auto w-full">
+          {loading && data.length === 0 ? (
+            <div className="p-4 space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-muted-foreground uppercase bg-muted sticky top-0 z-20 shadow-[0_1px_0_0_hsl(var(--border))]">
                   <tr>
-                    <td colSpan={table.columns.length + (table.primaryKey ? 2 : 1)} className="px-4 py-8">
-                      <div className="flex justify-center p-8">
-                        <IsEmpty 
-                          variant="fancy" 
-                          icon={<Database />}
-                          title={(t("applications.noRowsFound") || "No rows found in {table}").replace('{table}', table.name)}
-                          description={t("applications.tableEmpty") || "This table is currently empty."}
+                    {table.primaryKey && (
+                      <th className="px-4 py-3 font-medium whitespace-nowrap w-[40px]">
+                        <Checkbox 
+                          checked={data.length > 0 && selectedRows.length === data.length}
+                          onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                          aria-label="Select all"
                         />
-                      </div>
-                    </td>
+                      </th>
+                    )}
+                    {table.columns.map(col => (
+                      <th key={col.name} className="px-4 py-3 font-medium whitespace-nowrap">
+                        {col.name}
+                        {col.is_primary && <span className="ml-1 text-[10px] text-primary">PK</span>}
+                      </th>
+                    ))}
+                    <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
                   </tr>
-                ) : (
-                  data.map((row, i) => {
+                </thead>
+                <tbody className="divide-y">
+                  {data.length === 0 ? (
+                    <tr>
+                      <td colSpan={table.columns.length + (table.primaryKey ? 2 : 1)} className="px-4 py-8 h-32">
+                        {/* Empty state is rendered absolutely over the table body */}
+                      </td>
+                    </tr>
+                  ) : (
+                    data.map((row, i) => {
                     const isSelected = table.primaryKey ? selectedRows.includes(row[table.primaryKey]) : false;
                     return (
                     <tr 
@@ -311,6 +305,21 @@ export function TableDataGrid({ schema, table, refreshKey = 0, isAddModalOpen = 
                 )}
               </tbody>
             </table>
+          )}
+        </div>
+        
+        {/* Overlay for Empty State */}
+        {!loading && data.length === 0 && !error && (
+          <div className="absolute inset-0 top-[40px] pointer-events-none flex justify-center p-8 overflow-hidden">
+            <div className="pointer-events-auto mt-12">
+              <IsEmpty 
+                variant="fancy" 
+                icon={<Database />}
+                title={(t("applications.noRowsFound") || "No rows found in {table}").replace('{table}', table.name)}
+                description={t("applications.tableEmpty") || "This table is currently empty."}
+              />
+            </div>
+          </div>
         )}
       </div>
       

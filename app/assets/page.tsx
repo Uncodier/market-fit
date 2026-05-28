@@ -7,7 +7,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { ExternalLink, PlusCircle, Filter, Search, ChevronDown, ChevronUp, Trash2, Download, Image, FileVideo, FileText, UploadCloud, Link as LinkIcon, Unlink, TableRows, LayoutGrid, ListOrdered, Check } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { SearchInput } from "@/app/components/ui/search-input"
-import React, { useEffect, useState, Suspense } from "react"
+import React, { useEffect, useState, Suspense, useRef } from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { getAssets, deleteAsset, attachAssetToAgent, detachAssetFromAgent, getAgentAssets, type Asset } from "@/app/assets/actions"
 import { useSite } from "@/app/context/SiteContext"
@@ -151,6 +151,7 @@ function AssetCard({
   const [useGoogleViewer, setUseGoogleViewer] = useState(false)
   const [textContent, setTextContent] = useState<string | null>(null)
   const [isLoadingText, setIsLoadingText] = useState(false)
+  const pausedRef = useRef(false)
 
   const getDefaultThumbnail = (fileType: string): string | undefined => {
     const category = getFileTypeCategory(fileType)
@@ -437,12 +438,18 @@ function AssetCard({
               controls={false}
               muted
               playsInline
+              autoPlay={!asset.thumbnailUrl}
               preload="metadata"
               poster={asset.thumbnailUrl}
               onError={() => setImageError(true)}
-              onLoadedData={(e) => {
+              onLoadedData={() => {
+                // Initial fallback load flag
+              }}
+              onTimeUpdate={(e) => {
                 const video = e.target as HTMLVideoElement;
-                if (!asset.thumbnailUrl) {
+                if (!pausedRef.current && !asset.thumbnailUrl && video.currentTime > 0.1) {
+                  pausedRef.current = true;
+                  video.pause();
                   video.currentTime = 0.001;
                 }
               }}
@@ -635,6 +642,7 @@ function AssetListItem({
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const pausedRef = useRef(false)
 
   const shouldShowImage = asset.file_type.startsWith('image/') && !imageError
   const shouldShowVideoPreview = asset.file_type.startsWith('video/') && !imageError
@@ -713,12 +721,18 @@ function AssetListItem({
                     controls={false}
                     muted
                     playsInline
+                    autoPlay={!asset.thumbnailUrl}
                     preload="metadata"
                     poster={asset.thumbnailUrl}
                     onError={() => setImageError(true)}
-                    onLoadedData={(e) => {
+                    onLoadedData={() => {
+                      // Initial fallback load flag
+                    }}
+                    onTimeUpdate={(e) => {
                       const video = e.target as HTMLVideoElement;
-                      if (!asset.thumbnailUrl) {
+                      if (!pausedRef.current && !asset.thumbnailUrl && video.currentTime > 0.1) {
+                        pausedRef.current = true;
+                        video.pause();
                         video.currentTime = 0.001;
                       }
                     }}

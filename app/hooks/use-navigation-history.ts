@@ -71,6 +71,11 @@ function isRootRoute(fullPath: string): boolean {
   // Count path segments (excluding empty strings)
   const segments = pathname.split('/').filter(Boolean)
   
+  // Special case for nested root routes
+  if (segments[0] === 'applications' && segments[1] === 'database' && segments.length === 2) {
+    return true
+  }
+  
   // Root route = only one segment (e.g., /content, /chat, /leads)
   // NOT root = multiple segments (e.g., /content/123, /control-center/abc)
   const isRoot = segments.length <= 1
@@ -146,6 +151,27 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
   const pathSegments = pathname.split('/').filter(Boolean)
   
   if (pathSegments.length === 0) return 'Dashboard'
+  
+  // Special case for applications/database
+  if (pathSegments[0] === 'applications' && pathSegments[1] === 'database') {
+    let label = 'Database'
+    if (pathSegments.length > 2) {
+      const customTitle = searchParams?.get('title')
+      if (customTitle) {
+        const decodedTitle = decodeURIComponent(customTitle)
+        label = decodedTitle.length > 40 ? decodedTitle.substring(0, 40) + '...' : decodedTitle
+      } else {
+        const name = searchParams?.get('name')
+        if (name) {
+          const decodedName = decodeURIComponent(name)
+          label = decodedName.length > 40 ? decodedName.substring(0, 40) + '...' : decodedName
+        } else {
+          label = 'Database Details'
+        }
+      }
+    }
+    return label
+  }
   
   // Get the main route segment
   const mainSegment = pathSegments[0]
@@ -489,14 +515,20 @@ export function useNavigationHistory() {
       // E.g., /robots?instance=123 → { basePath: '/robots', hasId: true, segments: 1 }
       const getPathInfo = (path: string) => {
         const segments = path.split('/').filter(Boolean)
-        const basePath = segments.length > 0 ? `/${segments[0]}` : path
+        let basePath = segments.length > 0 ? `/${segments[0]}` : path
+        let hasId = segments.length > 1
+        let effectiveSegmentsLength = segments.length
         
-        const hasId = segments.length > 1
+        if (segments[0] === 'applications' && segments[1] === 'database') {
+          basePath = '/applications/database'
+          hasId = segments.length > 2
+          effectiveSegmentsLength = segments.length > 1 ? segments.length - 1 : 1
+        }
         
         return {
           basePath,
           hasId,
-          segments: segments.length
+          segments: effectiveSegmentsLength
         }
       }
       
@@ -676,11 +708,16 @@ export function useNavigationHistory() {
     
     // Check if we are jumping into a detail route directly from outside
     const segments = currentPathname.split('/').filter(Boolean)
-    const basePath = segments.length > 0 ? `/${segments[0]}` : currentPathname
+    let basePath = segments.length > 0 ? `/${segments[0]}` : currentPathname
+    let hasPathId = segments.length > 1
+    
+    if (segments[0] === 'applications' && segments[1] === 'database') {
+      basePath = '/applications/database'
+      hasPathId = segments.length > 2
+    }
     
     // Determine if this route has an ID
     // It has an ID if it has multiple path segments OR if it has ID-like query parameters
-    const hasPathId = segments.length > 1
     const currentParams = new URLSearchParams(fullPath.split('?')[1] || '')
     const idParams = ['id', 'agentId', 'conversationId', 'leadId', 'segmentId', 'campaignId', 'experimentId', 'requirementId', 'contentId', 'saleId', 'robotId', 'instance']
     const hasQueryId = idParams.some(param => currentParams.has(param))
@@ -712,7 +749,11 @@ export function useNavigationHistory() {
       // We should start a fresh breadcrumb rather than accumulating!
       const lastPathname = lastItem.path.split('?')[0]
       const lastSegments = lastPathname.split('/').filter(Boolean)
-      const lastBasePath = lastSegments.length > 0 ? `/${lastSegments[0]}` : lastPathname
+      let lastBasePath = lastSegments.length > 0 ? `/${lastSegments[0]}` : lastPathname
+      
+      if (lastSegments[0] === 'applications' && lastSegments[1] === 'database') {
+        lastBasePath = '/applications/database'
+      }
       
       if (basePath !== lastBasePath) {
         const newHistory: NavigationHistory = {

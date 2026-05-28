@@ -1758,8 +1758,17 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
     
+    const snap = viewportStoreRef.current?.get()
+    let initialPosition = undefined
+    if (!parentId && snap && snap.canvasWidth > 0 && snap.canvasHeight > 0) {
+      initialPosition = {
+        x: (snap.canvasWidth / 2 - snap.position.x) / snap.scale - 240,
+        y: (snap.canvasHeight / 2 - snap.position.y) / snap.scale - 150,
+      }
+    }
+    
     // Pass media type and params into settings
-    const nodeSettings = selectedMediaType === 'text' 
+    const nodeSettings: any = selectedMediaType === 'text' 
       ? { media_type: 'text', parameters: textParams } 
       : {
           media_type: selectedMediaType,
@@ -1767,6 +1776,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                       selectedMediaType === 'video' ? videoParams :
                       selectedMediaType === 'audio' ? audioParams : {}
         };
+        
+    if (initialPosition) {
+      nodeSettings.ui_position = initialPosition
+    }
     
     const newNode = {
       instance_id: activeInstanceId,

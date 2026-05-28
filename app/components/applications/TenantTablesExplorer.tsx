@@ -145,7 +145,7 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('breadcrumb:update', {
         detail: {
-          title: selectedTableMeta ? selectedTableMeta.name : "Applications Details"
+          title: selectedTableMeta ? selectedTableMeta.name : "Database Details"
         }
       }))
     }
@@ -166,7 +166,7 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] w-full bg-background flex-row relative overflow-hidden">
+    <div className="flex h-full flex-1 w-full bg-background flex-row relative overflow-hidden">
       {/* Sidebar List */}
       <div className={cn(
         "h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative flex flex-col overflow-hidden",
@@ -431,8 +431,8 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
         </div>
 
         {/* Content (Data Grid) */}
-        <div className="flex-1 overflow-hidden min-w-0 w-full relative">
-          <div className="transition-all duration-300 ease-in-out h-full">
+        <div className="flex-1 overflow-hidden min-w-0 w-full relative flex flex-col">
+          <div className="transition-all duration-300 ease-in-out flex-1 flex flex-col relative w-full h-full min-h-0">
             {!tableParam || !selectedTableMeta ? (
               <div className="flex-1 flex h-full items-center justify-center">
                 <IsEmpty 
