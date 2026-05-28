@@ -432,14 +432,20 @@ function AssetCard({
             />
           ) : shouldShowVideoPreview ? (
             <video
-              src={`${asset.file_path}#t=0.1`}
+              src={`${asset.file_path}`}
               className="object-cover w-full h-full transition-all duration-300 hover:scale-[1.02]"
               controls={false}
               muted
               playsInline
-              preload="metadata"
+              preload="auto"
               poster={asset.thumbnailUrl}
               onError={() => setImageError(true)}
+              onLoadedMetadata={(e) => {
+                const video = e.target as HTMLVideoElement;
+                if (!asset.thumbnailUrl) {
+                   video.currentTime = 0.001;
+                }
+              }}
             />
           ) : shouldShowDocumentPreview ? (
             getDocumentPreview()
@@ -702,14 +708,20 @@ function AssetListItem({
                   />
                 ) : shouldShowVideoPreview ? (
                   <video
-                    src={`${asset.file_path}#t=0.1`}
+                    src={`${asset.file_path}`}
                     className="object-cover w-full h-full"
                     controls={false}
                     muted
                     playsInline
-                    preload="metadata"
+                    preload="auto"
                     poster={asset.thumbnailUrl}
                     onError={() => setImageError(true)}
+                    onLoadedMetadata={(e) => {
+                      const video = e.target as HTMLVideoElement;
+                      if (!asset.thumbnailUrl) {
+                        video.currentTime = 0.001;
+                      }
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
