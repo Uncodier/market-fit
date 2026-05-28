@@ -20,15 +20,11 @@ const Switch = React.forwardRef<React.ElementRef<typeof SwitchPrimitives.Root>, 
     >
       <SwitchPrimitives.Thumb
         className={cn(
-          "pointer-events-none block h-5 w-5 rounded-full font-inter font-bold bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
-          thumbIcon && "flex items-center justify-center overflow-hidden p-px"
+          "pointer-events-none h-5 w-5 rounded-full font-inter font-bold bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
+          thumbIcon ? "flex items-center justify-center overflow-hidden text-muted-foreground group-data-[state=checked]:text-primary" : "block"
         )}
       >
-        {thumbIcon ? (
-          <span className="flex size-full max-h-full max-w-full shrink-0 items-center justify-center text-muted-foreground group-data-[state=checked]:text-primary [&_svg]:size-3 [&_svg]:shrink-0">
-            {thumbIcon}
-          </span>
-        ) : null}
+        {thumbIcon}
       </SwitchPrimitives.Thumb>
     </SwitchPrimitives.Root>
   )

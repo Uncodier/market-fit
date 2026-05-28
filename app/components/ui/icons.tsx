@@ -22,10 +22,12 @@ const IconWrapper = ({
 }: IconProps & { children: React.ReactNode }) => {
   return (
     <div 
-      className={`inline-flex items-center justify-center safari-icon-fix ${className}`}
+      className={`inline-flex items-center justify-center safari-icon-fix [&>svg]:w-full [&>svg]:h-full ${className}`}
       style={{ 
         width: size, 
         height: size, 
+        minWidth: size,
+        minHeight: size,
         display: 'inline-flex',  // Explicit display style for Safari
         alignItems: 'center',    // Explicit alignment for Safari
         justifyContent: 'center', // Explicit justification for Safari
