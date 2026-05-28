@@ -3567,12 +3567,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   const hasStructuredMedia = !!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio;
 
                                   const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
+                                  const isParentTextAction = parentNode && (parentNode.type === 'prompt' || parentNode.type === 'generate-text' || (parentNode.settings as any)?.media_type === 'text');
                                   
                                   // Detect intention: did this node intend to produce media?
-                                  const isMediaIntent = node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || 
+                                  const isMediaIntent = !isParentTextAction && (node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || 
                                                         (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
                                                         (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' ||
-                                                                        (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'));
+                                                                        (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio')));
 
                                   let extractedUrl: string | null = null;
                                   if (isMediaIntent) {
@@ -3683,7 +3684,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                                   }
 
                                   // Only for Text (prompt) and Publish types, show the markdown
-                                  if (hasStructuredMedia && textContent) {
+                                  if (hasStructuredMedia && textContent && !isParentTextAction) {
                                     textContent = textContent.replace(/https?:\/\/[^\s"'<>()]+\.(wav|mp3|ogg|m4a|aac|flac|webm)/gi, '').trim();
                                   }
                                   if (!textContent) return null;
