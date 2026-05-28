@@ -824,13 +824,13 @@ function RobotsPageContent() {
     const prev = prevArtifactsRef.current
     if (artifacts.length > 0) {
       const newestArtifact = artifacts[0]
-      const wasBrandNew = prev.length === 0 || new Date(newestArtifact.created_at).getTime() > new Date(prev[0].created_at).getTime()
+      const isInitialLoad = prev.length === 0;
+      const isNewlyCreated = !isInitialLoad && new Date(newestArtifact.created_at).getTime() > new Date(prev[0].created_at).getTime();
       
       // Auto-select artifact if:
-      // 1. It's a newly created artifact (wasBrandNew)
-      // 2. OR we have no requirement preview AND no artifacts were previously loaded (e.g. initial load of instance without requirement)
-      // We auto-select on initial load even if there is a requirement preview, to let the user see the latest artifact.
-      if (wasBrandNew || prev.length === 0) {
+      // 1. It's a newly created artifact (not initial load)
+      // 2. OR it's initial load AND there's no requirement preview
+      if (isNewlyCreated || (isInitialLoad && !hasRequirementPreview)) {
         setActiveBrowserTab({ kind: 'artifact', screen: newestArtifact.screen })
         if (newestArtifact.should_reload) {
           setArtifactReloadCounter(c => c + 1)
