@@ -316,10 +316,13 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   const {
     logs,
     isLoadingLogs,
+    isLoadingMore,
+    hasMoreLogs,
     collapsedSystemMessages,
     collapsedToolDetails,
     expandedToolGroups,
     loadInstanceLogs,
+    loadMoreLogs,
     addOptimisticUserMessage,
     toggleSystemMessageCollapse,
     toggleAllSystemMessages,
@@ -456,6 +459,30 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
     return () => window.removeEventListener('robot:send-message', handleRobotSendMessage);
   }, [setMessage, handleSendMessage]);
 
+  // After useInstanceLogs, we can define the scroll handler that uses hasMoreLogs
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    updateStickToBottomFromScroll()
+    
+    // Load more logs if near top
+    const container = e.currentTarget
+    if (container.scrollTop < 100 && hasMoreLogs) {
+      const oldScrollHeight = container.scrollHeight
+      const oldScrollTop = container.scrollTop
+
+      loadMoreLogs().then(() => {
+        // After prepending logs, adjust scrollTop so the view doesn't jump
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            const newScrollHeight = messagesContainerRef.current.scrollHeight
+            const heightDiff = newScrollHeight - oldScrollHeight
+            if (heightDiff > 0) {
+              messagesContainerRef.current.scrollTop = oldScrollTop + heightDiff
+            }
+          }
+        }, 50)
+      })
+    }
+  }, [updateStickToBottomFromScroll, hasMoreLogs, loadMoreLogs])
   // After logs finish loading, snap to the bottom by default (container did not exist during skeleton).
   useLayoutEffect(() => {
     const finishedLoading = wasLoadingLogsRef.current && !isLoadingLogs
@@ -667,12 +694,20 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           messagesBottomPaddingClass
         )}
         style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
-        onScroll={updateStickToBottomFromScroll}
+        onScroll={handleScroll}
       >
         <div className="w-full max-w-4xl mx-auto px-4 min-w-0">
           {/* Spacer for sticky header and topbar blur effect */}
           <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
           <div className="space-y-6 pt-6 pb-6">
+          
+          {/* Loading indicator when fetching older logs */}
+          {isLoadingMore && (
+            <div className="flex justify-center py-2">
+              <LoadingIndicator isVisible={true} />
+            </div>
+          )}
+          
         {(() => {
           if (shouldShowNewMakina) {
             return (

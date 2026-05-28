@@ -21,6 +21,9 @@ export const useInstanceLogs = ({
 }: UseInstanceLogsProps) => {
   const [logs, setLogs] = useState<InstanceLog[]>([])
   const [isLoadingLogs, setIsLoadingLogs] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const isLoadingMoreRef = useRef(false)
+  const [hasMoreLogs, setHasMoreLogs] = useState(true)
   const [collapsedSystemMessages, setCollapsedSystemMessages] = useState<Set<string>>(new Set())
   const [collapsedToolDetails, setCollapsedToolDetails] = useState<Set<string>>(new Set())
   const [expandedToolGroups, setExpandedToolGroups] = useState<Set<string>>(new Set())
@@ -32,6 +35,8 @@ export const useInstanceLogs = ({
   useEffect(() => {
     if (currentSiteId && currentSiteId !== prevSiteIdRef.current) {
       setLogs([])
+      setHasMoreLogs(true)
+      setIsLoadingMore(false)
       setCollapsedSystemMessages(new Set())
       setCollapsedToolDetails(new Set())
       setExpandedToolGroups(new Set())
@@ -50,6 +55,8 @@ export const useInstanceLogs = ({
     // Always clear logs when switching instances to avoid showing old instance's logs
     if (activeRobotInstance.id !== currentRobotInstanceIdRef.current) {
       setLogs([])
+      setHasMoreLogs(true)
+      setIsLoadingMore(false)
       setCollapsedSystemMessages(new Set())
       setCollapsedToolDetails(new Set())
       setExpandedToolGroups(new Set())
@@ -74,9 +81,9 @@ export const useInstanceLogs = ({
         const supabase = createClient()
         
         // Load latest messages first (descending order) and limit to 100 for performance
-        const { data, error, count } = await supabase
+        const { data, error } = await supabase
           .from('instance_logs')
-          .select('*', { count: 'exact' })
+          .select('*')
           .eq('instance_id', instanceId)
           .order('created_at', { ascending: false })
           .limit(100)
@@ -94,8 +101,9 @@ export const useInstanceLogs = ({
           success = true
           // Reverse the array to maintain chronological order (oldest first, newest last)
           // since we loaded them in descending order (newest first)
-          const logs = (data || []).reverse()
-          setLogs(logs)
+          const fetchedLogs = (data || []).reverse()
+          setLogs(fetchedLogs)
+          setHasMoreLogs(fetchedLogs.length === 100)
           
           // Scroll to bottom after React renders the new logs
           // setTimeout gives React time to commit the state update and the browser to lay out
@@ -108,7 +116,7 @@ export const useInstanceLogs = ({
           }, 100)
           
           // Auto-collapse long system messages (>200 characters)
-          const longSystemMessages = logs
+          const longSystemMessages = fetchedLogs
             .filter((log: InstanceLog) => log.log_type === 'system' && log.message.length > 200)
             .map((log: InstanceLog) => log.id)
           
@@ -117,7 +125,7 @@ export const useInstanceLogs = ({
           }
 
           // Auto-collapse ALL tool calls by default (any log with tool_name or toolName)
-          const logsWithToolDetails = logs
+          const logsWithToolDetails = fetchedLogs
             .filter((log: InstanceLog) => {
               const hasToolName = log.tool_name || log.toolName
               const isToolCall = log.log_type === 'tool_call' || log.log_type === 'tool_result'
@@ -136,16 +144,16 @@ export const useInstanceLogs = ({
           // If no logs found, let's check if there are any logs in the table at all
           if (!data || data.length === 0) {
             try {
-              const { data: allLogs, error: allLogsError, count: totalCount } = await supabase
+              const { data: allLogs, error: allLogsError } = await supabase
                 .from('instance_logs')
-                .select('instance_id, log_type, level, created_at', { count: 'exact' })
+                .select('instance_id, log_type, level, created_at')
                 .limit(5)
               
               
               setDebugInfo({
                 instanceId: activeRobotInstance.id,
                 logsFound: data?.length || 0,
-                totalLogsInTable: totalCount || 0,
+                totalLogsInTable: 0, // We no longer count all logs for performance
                 sampleInstanceIds: allLogs?.map((l: any) => l.instance_id) || [],
                 sampleLogs: allLogs || [],
                 lastChecked: new Date().toISOString(),
@@ -181,6 +189,72 @@ export const useInstanceLogs = ({
     
     setIsLoadingLogs(false)
   }
+
+  // Load older logs on demand
+  const loadMoreLogs = useCallback(async () => {
+    if (!activeRobotInstance?.id || isLoadingMoreRef.current || !hasMoreLogs || logs.length === 0) {
+      return
+    }
+
+    setIsLoadingMore(true)
+    isLoadingMoreRef.current = true
+    const instanceId = activeRobotInstance.id
+    // The oldest log we currently have
+    const oldestLogTime = logs[0].created_at
+
+    try {
+      const supabase = createClient()
+      
+      const { data, error } = await supabase
+        .from('instance_logs')
+        .select('*')
+        .eq('instance_id', instanceId)
+        .lt('created_at', oldestLogTime) // strictly older
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+      if (error) {
+        console.error('Error loading more logs:', error)
+      } else {
+        const fetchedLogs = (data || []).reverse()
+        setHasMoreLogs(fetchedLogs.length === 100)
+        
+        if (fetchedLogs.length > 0) {
+          setLogs(prevLogs => [...fetchedLogs, ...prevLogs])
+          
+          // Auto-collapse logic for newly fetched logs
+          const longSystemMessages = fetchedLogs
+            .filter((log: InstanceLog) => log.log_type === 'system' && log.message.length > 200)
+            .map((log: InstanceLog) => log.id)
+          
+          if (longSystemMessages.length > 0) {
+            setCollapsedSystemMessages(prev => new Set([...Array.from(prev), ...longSystemMessages]))
+          }
+
+          const logsWithToolDetails = fetchedLogs
+            .filter((log: InstanceLog) => {
+              const hasToolName = log.tool_name || log.toolName
+              const isToolCall = log.log_type === 'tool_call' || log.log_type === 'tool_result'
+              const hasToolResult = log.tool_result && Object.keys(log.tool_result).length > 0
+              const hasDetails = log.details && Object.keys(log.details).length > 0
+              const hasScreenshot = log.screenshot_base64
+              
+              return (hasToolName || isToolCall) && (hasToolResult || hasDetails || hasScreenshot)
+            })
+            .map((log: InstanceLog) => log.id)
+          
+          if (logsWithToolDetails.length > 0) {
+            setCollapsedToolDetails(prev => new Set([...Array.from(prev), ...logsWithToolDetails]))
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in loadMoreLogs:', error)
+    } finally {
+      setIsLoadingMore(false)
+      isLoadingMoreRef.current = false
+    }
+  }, [activeRobotInstance?.id, hasMoreLogs, logs])
 
   // Add optimistic user message to logs
   const addOptimisticUserMessage = useCallback((message: string) => {
@@ -475,11 +549,14 @@ export const useInstanceLogs = ({
   return {
     logs,
     isLoadingLogs,
+    isLoadingMore,
+    hasMoreLogs,
     collapsedSystemMessages,
     collapsedToolDetails,
     expandedToolGroups,
     debugInfo,
     loadInstanceLogs,
+    loadMoreLogs,
     addOptimisticUserMessage,
     toggleSystemMessageCollapse,
     toggleAllSystemMessages,
