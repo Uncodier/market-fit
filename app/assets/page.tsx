@@ -1040,6 +1040,10 @@ function AssetsContent() {
   // Get agent ID from URL parameters
   const searchParams = useSearchParams()
   const agentId = searchParams.get('agent')
+  const paramSiteId = searchParams.get('siteId')
+  
+  // Resolve effective site ID
+  const effectiveSiteId = currentSite?.id || paramSiteId
   
   // Usar el hook de Command+K
   useCommandK()
@@ -1047,18 +1051,18 @@ function AssetsContent() {
   useEffect(() => {
     async function loadAssets() {
       try {
-        // Si el sitio está cargando, mantenemos el estado de carga
-        if (isSiteLoading) return
+        // Si el sitio está cargando y no tenemos un siteId del param, mantenemos el estado de carga
+        if (isSiteLoading && !effectiveSiteId) return
 
         // Si no hay sitio seleccionado después de la carga
-        if (!currentSite?.id) {
+        if (!effectiveSiteId) {
           setError("Por favor, selecciona un sitio primero")
           setIsLoading(false)
           return
         }
         
         setIsLoading(true)
-        const { assets: fetchedAssets, error } = await getAssets(currentSite.id)
+        const { assets: fetchedAssets, error } = await getAssets(effectiveSiteId)
         
         if (error) throw new Error(error)
         
@@ -1102,7 +1106,7 @@ function AssetsContent() {
     }
     
     loadAssets()
-  }, [currentSite?.id, isSiteLoading, agentId])
+  }, [effectiveSiteId, isSiteLoading, agentId])
   
   // Handle attaching asset to agent
   const handleAttach = async (assetId: string) => {

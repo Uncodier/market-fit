@@ -1017,6 +1017,9 @@ function RobotsPageContent() {
         try {
           const url = new URL(artifact.url, window.location.origin)
           url.searchParams.set('theme', theme === 'dark' ? 'dark' : 'light')
+          if (currentSite?.id) {
+            url.searchParams.set('siteId', currentSite.id)
+          }
           // If the original URL was relative, we should keep it relative but with the search params
           if (!artifact.url.startsWith('http')) {
             return url.pathname + url.search
@@ -1484,7 +1487,7 @@ function RobotsPageContent() {
               <div className={`w-full ${isChatHidden ? 'lg:w-full' : 'lg:w-2/3'} border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative transition-all duration-300`}>
                 <div className={`grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden`}>
                   {/* Browser navigation bar */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-white dark:bg-black">
+                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-background">
                     {hasRequirementPreview ? (
                       <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-1">
                         {isZipUrl ? (

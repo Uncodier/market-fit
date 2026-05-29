@@ -46,6 +46,8 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
   const { t } = useLocalization()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const paramSiteId = searchParams?.get('siteId')
+  const effectiveSiteId = currentSite?.id || paramSiteId
   const isArtifact = searchParams.get("artifact") === "true"
   
   const handleTenantClick = (tenantId: string, schema: string) => {
@@ -66,12 +68,12 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
     let cancelled = false
 
     async function fetchTenants() {
-      if (!currentSite?.id) return
+      if (!effectiveSiteId) return
 
       setLoading(true)
 
       try {
-        let url = `/api/applications/tenants?siteId=${currentSite.id}`
+        let url = `/api/applications/tenants?siteId=${effectiveSiteId}`
         if (robotInstanceId) {
           url += `&robotInstanceId=${robotInstanceId}`
         }
@@ -143,7 +145,7 @@ export function AppsListSection({ searchQuery = "", viewMode = "kanban", robotIn
     return () => {
       cancelled = true
     }
-  }, [currentSite?.id])
+  }, [effectiveSiteId])
 
   if (loading) {
     return (

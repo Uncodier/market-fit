@@ -25,6 +25,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { useDropzone } from "react-dropzone"
 import { cn } from "@/lib/utils"
 import { useSite } from "@/app/context/SiteContext"
+import { useSearchParams } from "next/navigation"
 import { createAsset, uploadAssetFile, attachAssetToContent } from "@/app/assets/actions"
 import { useToast } from "@/app/components/ui/use-toast"
 import { useRouter } from "next/navigation"
@@ -68,6 +69,9 @@ export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: c
   const { currentSite } = useSite()
   const router = useRouter()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const paramSiteId = searchParams?.get('siteId')
+  const effectiveSiteId = currentSite?.id || paramSiteId
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const selectedFile = acceptedFiles[0]
@@ -162,7 +166,7 @@ export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: c
 
   const handleSubmit = async () => {
     // Validar que exista un sitio seleccionado
-    if (!currentSite?.id) {
+    if (!effectiveSiteId) {
       setError("Por favor, selecciona un sitio primero")
       return
     }
@@ -199,7 +203,7 @@ export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: c
         file_type: file.type || getFileType(),
         file_size: file.size,
         tags,
-        site_id: currentSite.id
+        site_id: effectiveSiteId
       }
 
       if (contentId) {

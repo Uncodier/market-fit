@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { 
@@ -154,6 +155,9 @@ export function UploadFileDialog({
   const [error, setError] = useState<string | null>(null)
   const { currentSite } = useSite()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const paramSiteId = searchParams?.get('siteId')
+  const effectiveSiteId = currentSite?.id || paramSiteId
   const supabase = createClient()
   
   // Initialize form with existing data when in update mode
@@ -284,7 +288,7 @@ export function UploadFileDialog({
 
   const handleSubmit = async () => {
     // Validate site is selected
-    if (!currentSite?.id) {
+    if (!effectiveSiteId) {
       setError("Please select a site first")
       return
     }
@@ -357,7 +361,7 @@ export function UploadFileDialog({
           file_type: getFileType(),
           file_size: file.size,
           tags: ["agent-context"],
-          site_id: currentSite.id
+          site_id: effectiveSiteId
         })
         
         if (assetError || !asset) {

@@ -102,7 +102,16 @@ export const useInstanceLogs = ({
           // Reverse the array to maintain chronological order (oldest first, newest last)
           // since we loaded them in descending order (newest first)
           const fetchedLogs = (data || []).reverse()
-          setLogs(fetchedLogs)
+          
+          // Deduplicate logs based on ID
+          const seenIds = new Set()
+          const uniqueLogs = fetchedLogs.filter((log: InstanceLog) => {
+            if (seenIds.has(log.id)) return false
+            seenIds.add(log.id)
+            return true
+          })
+          
+          setLogs(uniqueLogs)
           setHasMoreLogs(fetchedLogs.length === 100)
           
           // Scroll to bottom after React renders the new logs
@@ -220,7 +229,11 @@ export const useInstanceLogs = ({
         setHasMoreLogs(fetchedLogs.length === 100)
         
         if (fetchedLogs.length > 0) {
-          setLogs(prevLogs => [...fetchedLogs, ...prevLogs])
+          setLogs(prevLogs => {
+            const prevIds = new Set(prevLogs.map((l: InstanceLog) => l.id))
+            const newLogs = fetchedLogs.filter((l: InstanceLog) => !prevIds.has(l.id))
+            return [...newLogs, ...prevLogs]
+          })
           
           // Auto-collapse logic for newly fetched logs
           const longSystemMessages = fetchedLogs

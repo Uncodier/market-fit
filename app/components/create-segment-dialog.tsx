@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
+import { useSearchParams } from "next/navigation"
 
 interface CreateSegmentDialogProps {
   onCreateSegment: (data: { 
@@ -116,10 +117,13 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { currentSite } = useSite()
+  const searchParams = useSearchParams()
+  const paramSiteId = searchParams?.get('siteId')
+  const effectiveSiteId = currentSite?.id || paramSiteId
 
   const handleSubmit = async () => {
     // Validar que exista un sitio seleccionado
-    if (!currentSite?.id) {
+    if (!effectiveSiteId) {
       setError("Por favor, selecciona un sitio primero")
       return
     }
@@ -139,7 +143,7 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
         description,
         audience, 
         language,
-        site_id: currentSite.id
+        site_id: effectiveSiteId
       })
       
       // Limpiar el formulario y cerrar el modal
