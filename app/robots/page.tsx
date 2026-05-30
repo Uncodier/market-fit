@@ -115,11 +115,7 @@ function RobotsPageContent() {
   // Force component refresh when site changes
   const [siteChangeKey, setSiteChangeKey] = useState(0)
   
-  // 🆕 Show reload message in sticky header
-  const [showReloadMessage, setShowReloadMessage] = useState(false)
   
-  // 🆕 Force loading state when entering component or changing site
-  const [forceLoading, setForceLoading] = useState(true)
   
   const [isBrowserModalOpen, setIsBrowserModalOpen] = useState(false)
   const [isChatHidden, setIsChatHidden] = useState(false)
@@ -127,7 +123,7 @@ function RobotsPageContent() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [viewportSize, setViewportSize] = useState<'imac' | 'macbook' | 'ipad' | 'iphone'>('imac')
   const [scale, setScale] = useState(1)
-  const prevSiteIdRef = useRef<string | null>(null)
+  const prevSiteIdRef = useRef<string | null>(currentSite?.id || null)
   
   // Simplified site change handling - only reset when site actually changes
   useEffect(() => {
@@ -139,6 +135,8 @@ function RobotsPageContent() {
       setPendingInstanceId(null)
       setShouldAutoConvertTab(false)
       setSiteChangeKey(prev => prev + 1)
+      setIsResuming(false)
+      setIsAutoCreatingInstance(false)
       
       // Refresh robots for new site
       refreshRobots(siteId)
@@ -165,12 +163,6 @@ function RobotsPageContent() {
     }
   }, [currentSite?.id])
 
-  // Simplified initial loading - clear forceLoading after robots are loaded
-  useEffect(() => {
-    if (!isLoadingRobots && forceLoading) {
-      setForceLoading(false)
-    }
-  }, [isLoadingRobots, forceLoading])
 
   // Instance selection via URL param
   const selectedInstanceParam = searchParams.get('instance')
@@ -275,18 +267,6 @@ function RobotsPageContent() {
     activeTabRef.current = selectedInstanceId
   }, [selectedInstanceId])
 
-  // Reset connection state when site changes (simplified - main logic is in mount effect)
-  useEffect(() => {
-    const newSiteId = currentSite?.id || null
-    if (newSiteId && newSiteId !== prevSiteIdRef.current) {
-      
-      // Reset connection state only
-      setIsResuming(false)
-      setIsAutoCreatingInstance(false)
-      
-      prevSiteIdRef.current = newSiteId
-    }
-  }, [currentSite?.id])
 
   // Function to check if instances exist in database (bypassing state)
   const checkInstancesExistInDB = useCallback(async (siteId: string): Promise<boolean> => {
@@ -562,7 +542,7 @@ function RobotsPageContent() {
       // Get current sorted instances to find the last visible one
       const sortedInstances = sortInstances(tabInstances)
       
-      const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots || forceLoading
+      const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots
       const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
       const totalTabs = sortedInstances.length
       const needsOverflow = totalTabs > effectiveMaxTabs
@@ -1111,7 +1091,7 @@ function RobotsPageContent() {
                 <Tabs key={`tabs-${currentSite?.id}-${siteChangeKey}`} value={selectedInstanceId} onValueChange={handleTabChange} className="flex-1 min-w-0">
                   <TabsList ref={tabsListRef} className="flex flex-nowrap justify-start w-full overflow-hidden">
                     {/* Show New Agent tab if no instances or while loading */}
-                    {(tabInstances.length === 0 || isLoadingRobots || forceLoading) && (
+                    {(tabInstances.length === 0 || isLoadingRobots) && (
                       <TabsTrigger value="new">
                         <span className="flex items-center gap-2 whitespace-nowrap truncate max-w-[120px]">
                           <Plus className="h-3 w-3 text-muted-foreground flex-shrink-0" />
@@ -1126,7 +1106,7 @@ function RobotsPageContent() {
                       const sortedInstances = sortInstances(tabInstances)
                       
                       // Calculate how many tabs to show
-                      const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots || forceLoading
+                      const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots
                       // Account for "New Agent" tab in maxVisibleTabs if it's shown
                       const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
                       const totalTabs = sortedInstances.length
@@ -1397,7 +1377,7 @@ function RobotsPageContent() {
                 const sortedInstances = sortInstances(currentInstances)
                 
                 // Calculate which instances are visible (same logic as in tab rendering)
-                const showNewMakinaTab = currentInstances.length === 0 || isLoadingRobots || forceLoading
+                const showNewMakinaTab = currentInstances.length === 0 || isLoadingRobots
                 const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
                 const totalTabs = sortedInstances.length
                 const needsOverflow = totalTabs > effectiveMaxTabs

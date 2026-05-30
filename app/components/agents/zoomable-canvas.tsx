@@ -720,6 +720,13 @@ export function ZoomableCanvas({
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return;
     
+    e.preventDefault(); // Prevent text selection while dragging
+    
+    // Clear any selection that might have started
+    if (window.getSelection) {
+      window.getSelection()?.removeAllRanges();
+    }
+    
     const dx = e.clientX - startDragPositionRef.current.x;
     const dy = e.clientY - startDragPositionRef.current.y;
     startDragPositionRef.current = { x: e.clientX, y: e.clientY };
@@ -1047,17 +1054,19 @@ export function ZoomableCanvas({
     <div 
       ref={wrapperRef}
       className={`${className} relative w-full`}
-      style={{ 
-        height: height,
-        minHeight: minHeight,
-        overflow: "hidden",
-        cursor: isDragging ? "grabbing" : "grab",
-        margin: "0 auto",
-        width: "100%",
-        backgroundColor: "transparent",
-        padding: "0", 
-        position: "relative",
-      }}
+        style={{ 
+          height: height,
+          minHeight: minHeight,
+          overflow: "hidden",
+          cursor: isDragging ? "grabbing" : "grab",
+          margin: "0 auto",
+          width: "100%",
+          backgroundColor: "transparent",
+          padding: "0", 
+          position: "relative",
+          userSelect: isDragging ? "none" : undefined,
+          WebkitUserSelect: isDragging ? "none" : undefined,
+        }}
     >
       <div
         ref={canvasRef}

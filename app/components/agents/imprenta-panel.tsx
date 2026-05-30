@@ -724,7 +724,7 @@ const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
       data-node-id={node.id}
       data-imprenta-lite="1"
       className="absolute z-10 cursor-grab active:cursor-grabbing rounded-3xl border-2 border-foreground/10 bg-card shadow-[0_0_10px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col pointer-events-auto box-border"
-      style={{ left: pos.x, top: pos.y, width, height: h }}
+      style={{ transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`, left: 0, top: 0, width, height: h }}
       onMouseDown={onMouseDown}
       onMouseEnter={() => onHoverChange?.(node.id)}
       onMouseLeave={() => onHoverChange?.(null)}
@@ -1716,6 +1716,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       else if (file.type.startsWith('video/')) mediaType = 'video'
       else if (file.type.startsWith('audio/')) mediaType = 'audio'
 
+      const snap = viewportStoreRef.current?.get()
+      let initialPosition = undefined
+      if (snap && snap.canvasWidth > 0 && snap.canvasHeight > 0) {
+        initialPosition = {
+          x: (snap.canvasWidth / 2 - snap.position.x) / snap.scale - 240,
+          y: (snap.canvasHeight / 2 - snap.position.y) / snap.scale - 150,
+        }
+      }
+
       const newNode = {
         instance_id: activeInstanceId,
         site_id: currentSite.id,
@@ -1727,7 +1736,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         settings: { 
           imprenta_mode: true, 
           imprenta_source: "upload",
-          media_type: mediaType 
+          media_type: mediaType,
+          ...(initialPosition ? { ui_position: initialPosition } : {})
         },
         result: {
           outputs: [{ url: path, type: mediaType }]
@@ -1871,6 +1881,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const handleWindowMouseMove = useCallback((e: MouseEvent) => {
     const nodeId = draggingNodeRef.current
     if (!nodeId) return
+    
+    // Prevenir selección de texto durante el drag de la tarjeta
+    e.preventDefault()
+    if (window.getSelection) {
+      window.getSelection()?.removeAllRanges()
+    }
     
     let scale = 1
     const contentDiv = document.getElementById('imprenta-canvas-content')
@@ -3040,11 +3056,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                           key={node.id}
                           ref={(el) => registerNodeRef(node.id, el)}
                           data-node-id={node.id}
-                          className="absolute group z-10"
-                          style={{ 
-                            left: pos.x, 
-                            top: pos.y,
-                          }}
+                        className={cn(
+                          "absolute group z-10",
+                          draggingNodeId ? "select-none" : ""
+                        )}
+                        style={{ 
+                          transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+                          left: 0,
+                          top: 0,
+                        }}
                         >
                           <Card
                             className={
@@ -3129,10 +3149,14 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                         key={node.id}
                         ref={(el) => registerNodeRef(node.id, el)}
                         data-node-id={node.id}
-                        className="absolute cursor-grab active:cursor-grabbing"
+                        className={cn(
+                          "absolute cursor-grab active:cursor-grabbing",
+                          draggingNodeId ? "select-none" : ""
+                        )}
                         style={{ 
-                          left: pos.x, 
-                          top: pos.y,
+                          transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+                          left: 0,
+                          top: 0,
                           zIndex: 10
                         }}
                         onMouseDown={(e) => handleNodeMouseDown(e, node.id)}

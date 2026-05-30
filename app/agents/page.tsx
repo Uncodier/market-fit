@@ -67,6 +67,9 @@ const logAgent = (prefix: string, agent: ExtendedAgent) => {
   console.log(`${prefix}: ${agent.id} - ${agent.name} - isDisabled: ${agent.isDisabled} - dbData: ${agent.dbData ? 'SI' : 'NO'}`);
 };
 
+let cachedAgents: ExtendedAgent[] | null = null;
+let cachedSiteId: string | null = null;
+
 // Wrap the export in a Suspense boundary
 const AgentsPageWrapper = () => {
   return (
@@ -87,9 +90,14 @@ function AgentsPageContent() {
 
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [isLoading, setIsLoading] = useState(true)
-  const [agents, setAgents] = useState<ExtendedAgent[]>([])
   const { currentSite } = useSite()
+  
+  const [isLoading, setIsLoading] = useState(() => {
+    return !(cachedAgents && cachedSiteId === currentSite?.id)
+  })
+  const [agents, setAgents] = useState<ExtendedAgent[]>(() => {
+    return (cachedAgents && cachedSiteId === currentSite?.id) ? cachedAgents : []
+  })
   const supabase = createClient()
   const { user } = useAuthContext()
   
@@ -111,7 +119,9 @@ function AgentsPageContent() {
   // Fetch agents from API
   useEffect(() => {
     const fetchAgents = async () => {
-      setIsLoading(true);
+      if (!cachedAgents || cachedSiteId !== currentSite?.id) {
+        setIsLoading(true);
+      }
       try {
         // Comenzamos con los agentes mock originales para mantener la estructura del diagrama
         let modifiedMockAgents = [...mockAgents] as ExtendedAgent[];
@@ -251,11 +261,16 @@ function AgentsPageContent() {
           hasDbData: !!a.dbData
         })));
         
+        cachedAgents = modifiedMockAgents;
+        cachedSiteId = currentSite?.id || null;
         setAgents(modifiedMockAgents);
       } catch (error) {
         console.error("Error in fetchAgents:", error);
         // Fall back to mock agents on error
-        setAgents(mockAgents.map(a => ({...a, isDisabled: false})) as ExtendedAgent[]);
+        const fallbackAgents = mockAgents.map(a => ({...a, isDisabled: false})) as ExtendedAgent[];
+        cachedAgents = fallbackAgents;
+        cachedSiteId = currentSite?.id || null;
+        setAgents(fallbackAgents);
       } finally {
         setIsLoading(false);
       }

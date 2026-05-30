@@ -2175,6 +2175,10 @@ function RequirementDetailContent() {
                         const startPosY = node.position.y;
                         
                         const handleMouseMove = (moveEvent: MouseEvent) => {
+                          moveEvent.preventDefault();
+                          if (window.getSelection) {
+                            window.getSelection()?.removeAllRanges();
+                          }
                           const dx = (moveEvent.clientX - startX) / scale;
                           const dy = (moveEvent.clientY - startY) / scale;
                           
