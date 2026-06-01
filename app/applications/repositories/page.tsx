@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { RepositoriesSection } from "@/app/components/applications/RepositoriesSection"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -8,29 +9,33 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 
-export default function RepositoriesPage() {
+function RepositoriesPageContent() {
   const { t } = useLocalization()
+  const searchParams = useSearchParams()
+  const isArtifact = searchParams.get("artifact") === "true"
   const [searchQuery, setSearchQuery] = useState("")
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [viewMode, setViewMode] = useMobileView("table")
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+    <div className={`flex-1 min-w-0 w-full p-0 flex flex-col ${isArtifact ? 'h-full min-h-full' : 'min-h-[calc(100dvh-64px)]'}`}>
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-8">
-              <div className="flex items-center gap-2">
-                <SearchInput 
-                  value={searchQuery}
-                  onSearch={setSearchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t("applications.searchRepositories") || "Search repositories..."}
-                  ref={searchInputRef}
-                  className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                  alwaysExpanded={false}
-                />
-              </div>
+              {!isArtifact && (
+                <div className="flex items-center gap-2">
+                  <SearchInput 
+                    value={searchQuery}
+                    onSearch={setSearchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={t("applications.searchRepositories") || "Search repositories..."}
+                    ref={searchInputRef}
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                    alwaysExpanded={false}
+                  />
+                </div>
+              )}
             </div>
             <div className="ml-auto flex items-center gap-4">
               <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
@@ -50,5 +55,13 @@ export default function RepositoriesPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function RepositoriesPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-full">Loading...</div>}>
+      <RepositoriesPageContent />
+    </Suspense>
   )
 }

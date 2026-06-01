@@ -178,18 +178,20 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
           : "w-full md:w-[319px] translate-x-0",
         !isListCollapsed && !tableParam && "w-full md:w-[319px]"
       )}>
-        <div className="p-4 border-b h-[71px] min-h-[71px] flex items-center shrink-0">
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search tables..."
-              className="pl-9 h-9 bg-background"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        {!(searchParams.get("artifact") === "true") && (
+          <div className="p-4 border-b h-[71px] min-h-[71px] flex items-center shrink-0">
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search tables..."
+                className="pl-9 h-9 bg-background"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
-        </div>
+        )}
         
         <div className="flex-1 overflow-y-auto">
           {loading ? (

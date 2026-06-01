@@ -1,6 +1,7 @@
 "use client"
 
 import React, { forwardRef, useEffect, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Input } from "./input"
 import { Search, X } from "./icons"
 import { Button } from "./button"
@@ -29,6 +30,8 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     alwaysExpanded = false,
     ...props 
   }, ref) => {
+    const searchParams = useSearchParams()
+    const isArtifact = searchParams?.get("artifact") === "true"
     const localRef = useRef<HTMLInputElement>(null)
     const actualRef = ref || localRef
 
@@ -92,6 +95,10 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
     const expandedWidthClass = containerClassName || "w-64"
     const expandedHeightClass = className?.includes("h-9") ? "h-9" : "h-11"
+
+    if (isArtifact) {
+      return null
+    }
 
     return (
       <div 

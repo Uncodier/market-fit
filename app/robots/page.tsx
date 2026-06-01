@@ -56,6 +56,12 @@ const sortInstances = (instances: any[]) => {
   });
 };
 
+const formatScreenName = (screen?: string) => {
+  if (!screen) return "App";
+  if (screen === 'contentCreator') return 'Content Creator';
+  return (screen.charAt(0).toUpperCase() + screen.slice(1).replace(/([A-Z])/g, ' $1')).trim();
+};
+
 // Wrapper component for Suspense  
 export default function RobotsPage() {
   return (
@@ -943,7 +949,7 @@ function RobotsPageContent() {
           shortcuts.push({
             id: customId,
             title: activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen 
-              ? (artifacts.find(a => a.screen === activeBrowserTab.screen)?.title || activeBrowserTab.screen) 
+              ? formatScreenName(activeBrowserTab.screen) 
               : 'App Screen',
             href: cleanUrl,
             isCustom: true
@@ -1473,7 +1479,7 @@ function RobotsPageContent() {
                 <div className={`grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden`}>
                   {/* Browser navigation bar */}
                   <div className="flex items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-background">
-                    {hasRequirementPreview ? (
+                    {hasRequirementPreview && activeBrowserTab.kind !== 'artifact' ? (
                       <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-1">
                         {isZipUrl ? (
                           <>
@@ -1586,14 +1592,6 @@ function RobotsPageContent() {
                           <div className="absolute inset-0 bg-muted/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
                           <Plus className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground relative z-10" />
                         </button>
-                        <button
-                          onClick={() => setArtifactReloadCounter(c => c + 1)}
-                          className="group relative shrink-0 h-6 w-6 flex items-center justify-center rounded-full transition-colors overflow-hidden"
-                          title="Refresh"
-                        >
-                          <div className="absolute inset-0 bg-muted/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
-                          <RotateCw className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground relative z-10" />
-                        </button>
                       </div>
                     )}
 
@@ -1629,14 +1627,15 @@ function RobotsPageContent() {
                       {artifactScreens.map(a => {
                         if (hasRequirementPreview && a.screen === 'database') return null;
                         const isActive = activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === a.screen;
+                        const screenName = formatScreenName(a.screen);
                         return (
                           <button
                             key={a.screen}
                             onClick={() => setActiveBrowserTab({ kind: 'artifact', screen: a.screen })}
                             className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${isActive ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                            title={a.title ?? a.screen}
+                            title={screenName}
                           >
-                            {a.title ?? a.screen}
+                            {screenName}
                           </button>
                         )
                       })}
@@ -1687,7 +1686,7 @@ function RobotsPageContent() {
                               key={`artifact-${activeBrowserTab.screen}-${artifactReloadCounter}-${theme}`}
                               src={rawActiveUrlToDisplay}
                               className="absolute inset-0 w-full h-full border-0 bg-background contained-iframe"
-                              title={artifactScreens.find(a => a.screen === activeBrowserTab.screen)?.title ?? activeBrowserTab.screen}
+                              title={formatScreenName(activeBrowserTab.screen)}
                               allowFullScreen
                               allow="fullscreen; autoplay; camera; microphone; clipboard-read; clipboard-write"
                               style={{ isolation: 'isolate' }}
