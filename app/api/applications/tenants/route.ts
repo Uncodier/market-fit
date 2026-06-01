@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { createClient as createMainClient } from "@/lib/supabase/server"
+import { createClient as createMainClient, createServiceClient } from "@/lib/supabase/server"
+import { getApiKeyFromRequest, isValidApiKey } from "@/app/lib/api-keys-config"
 
 export async function GET(request: Request) {
   try {
@@ -14,12 +15,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Missing siteId, tenantId, requirementId or robotInstanceId parameter" }, { status: 400 })
     }
 
-    // Verify auth
-    const mainSupabase = await createMainClient()
-    const { data: { user } } = await mainSupabase.auth.getUser()
+    // 1. Authenticate (Dual Auth: API Key or User Cookie)
+    const apiKey = getApiKeyFromRequest(request.headers, searchParams)
+    const isServerRequest = isValidApiKey(apiKey)
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    let mainSupabase;
+    if (!isServerRequest) {
+      mainSupabase = await createMainClient()
+      const { data: { user } } = await mainSupabase.auth.getUser()
+
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+    } else {
+      mainSupabase = await createServiceClient()
     }
 
     // Connect to repositories DB

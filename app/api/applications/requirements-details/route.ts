@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient as createMainClient } from "@/lib/supabase/server"
+import { createClient as createMainClient, createServiceClient } from "@/lib/supabase/server"
+import { getApiKeyFromRequest, isValidApiKey } from "@/app/lib/api-keys-config"
 
 export async function POST(request: Request) {
   try {
@@ -8,11 +9,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ details: {} })
     }
 
-    const mainSupabase = await createMainClient()
-    const { data: { user } } = await mainSupabase.auth.getUser()
+    // 1. Authenticate (Dual Auth: API Key or User Cookie)
+    const url = new URL(request.url)
+    const apiKey = getApiKeyFromRequest(request.headers, url.searchParams)
+    const isServerRequest = isValidApiKey(apiKey)
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    let mainSupabase;
+    if (!isServerRequest) {
+      mainSupabase = await createMainClient()
+      const { data: { user } } = await mainSupabase.auth.getUser()
+
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+    } else {
+      mainSupabase = await createServiceClient()
     }
     
     // Fetch requirement_status
