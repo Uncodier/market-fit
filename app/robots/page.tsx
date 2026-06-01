@@ -812,12 +812,17 @@ function RobotsPageContent() {
       // 2. OR it's initial load AND there's no requirement preview
       if (isNewlyCreated || (isInitialLoad && !hasRequirementPreview)) {
         setActiveBrowserTab({ kind: 'artifact', screen: newestArtifact.screen })
-        if (newestArtifact.should_reload) {
+        // Only increment the reload counter if it's not the initial load,
+        // because on initial load the iframe is already mounting for the first time.
+        // If it's a newly created artifact and should_reload is true, we increment.
+        if (newestArtifact.should_reload && !isInitialLoad) {
           setArtifactReloadCounter(c => c + 1)
         }
       } else if (activeBrowserTab.kind === 'artifact' && newestArtifact.screen === activeBrowserTab.screen && newestArtifact.should_reload) {
+        // If the artifact has should_reload, we want to reload it even if it's the same artifact,
+        // so it reloads on visibility change (when fetchArtifacts updates the array).
         const prevNewestForScreen = prev.find(p => p.screen === activeBrowserTab.screen)
-        if (!prevNewestForScreen || new Date(newestArtifact.created_at).getTime() > new Date(prevNewestForScreen.created_at).getTime()) {
+        if (!prevNewestForScreen || new Date(newestArtifact.created_at).getTime() >= new Date(prevNewestForScreen.created_at).getTime()) {
            setArtifactReloadCounter(c => c + 1)
         }
       }
