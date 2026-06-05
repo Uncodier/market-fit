@@ -780,9 +780,37 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
               
 
               return processedTimeline.map((item, index) => {
+                let dateHeader = null;
+                const currentDate = new Date(item.timestamp);
+                const currentDateStr = currentDate.toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric'
+                });
+                
+                const prevDateStr = index > 0 
+                  ? new Date(processedTimeline[index - 1].timestamp).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })
+                  : null;
+
+                if (prevDateStr !== currentDateStr) {
+                  dateHeader = (
+                    <div key={`date-${currentDateStr}-${index}`} className="flex justify-center my-6">
+                      <span className="text-xs font-medium text-muted-foreground/60 bg-muted/50 px-3 py-1 rounded-full uppercase tracking-wider">
+                        {currentDateStr}
+                      </span>
+                    </div>
+                  );
+                }
+
+                let content = null;
+
                 if (item.type === 'tool_group') {
                   const group = item.data
-                  return (
+                  content = (
                     <ToolCallGroupItem
                       key={group.groupId}
                       group={group}
@@ -794,49 +822,55 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
                       isBrowserVisible={isBrowserVisible}
                     />
                   )
-                }
-                if (item.type === 'log') {
+                } else if (item.type === 'log') {
                   const log = item.data
                   const isStructuredOutput = (log.tool_name || log.toolName)?.toLowerCase() === 'structured_output'
                   const isStepCompleted = isStructuredOutput && log.message?.includes('event=step_completed')
                   
                   if (isStepCompleted) {
-                    return (
+                    content = (
                       <StepCompletedItem
                         key={log.id}
                         log={log}
                         isDarkMode={isDarkMode}
                       />
                     )
+                  } else {
+                    content = (
+                      <MessageItem
+                        key={log.id}
+                        log={log}
+                        isDarkMode={isDarkMode}
+                        collapsedSystemMessages={collapsedSystemMessages}
+                        onToggleSystemMessageCollapse={toggleSystemMessageCollapse}
+                        isBrowserVisible={isBrowserVisible}
+                      />
+                    )
                   }
-                  return (
-                    <MessageItem
-                      key={log.id}
-                      log={log}
-                      isDarkMode={isDarkMode}
-                      collapsedSystemMessages={collapsedSystemMessages}
-                      onToggleSystemMessageCollapse={toggleSystemMessageCollapse}
-                      isBrowserVisible={isBrowserVisible}
-                    />
-                  )
-                }
-                if (item.type === 'completed_plan') {
-                  return (
+                } else if (item.type === 'completed_plan') {
+                  content = (
                     <CompletedPlanCard 
                       key={`plan-${item.data.id}`}
                       plan={item.data}
                     />
                   )
-                }
-                if (item.type === 'requirement_status') {
-                  return (
+                } else if (item.type === 'requirement_status') {
+                  content = (
                     <RequirementStatusCard 
                       key={`req-status-${item.data.id}`}
                       status={item.data}
                     />
                   )
                 }
-                return null
+
+                if (!content) return null;
+
+                return (
+                  <React.Fragment key={`timeline-item-${index}`}>
+                    {dateHeader}
+                    {content}
+                  </React.Fragment>
+                );
               })
             })()}
             

@@ -241,6 +241,7 @@ function RobotsPageContent() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [instanceToDelete, setInstanceToDelete] = useState<{ id: string; name: string } | null>(null)
   const [deletingInstanceIds, setDeletingInstanceIds] = useState<Set<string>>(new Set())
+  const [instanceAvatars, setInstanceAvatars] = useState<Record<string, string>>({})
   
   // Refs and state for responsive tabs
   const tabsContainerRef = useRef<HTMLDivElement>(null)
@@ -272,6 +273,62 @@ function RobotsPageContent() {
   useEffect(() => {
     activeTabRef.current = selectedInstanceId
   }, [selectedInstanceId])
+
+  // Fetch latest image asset for each instance to use as avatar
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAvatars = async () => {
+      if (!allInstances || allInstances.length === 0) return;
+      
+      const supabase = createClient();
+      const instanceIds = allInstances.map(i => i.id);
+      
+      const chunkSize = 20;
+      for (let i = 0; i < instanceIds.length; i += chunkSize) {
+        if (!isMounted) break;
+        const chunk = instanceIds.slice(i, i + chunkSize);
+        
+        const promises = chunk.map(async (id) => {
+          const { data } = await supabase
+            .from('assets')
+            .select('file_path')
+            .eq('instance_id', id)
+            .like('file_type', 'image/%')
+            .order('created_at', { ascending: false })
+            .limit(1);
+            
+          if (data && data.length > 0 && data[0].file_path) {
+            let fileUrl = data[0].file_path;
+            if (!fileUrl.startsWith('http')) {
+              const { data: publicData } = supabase.storage.from('assets').getPublicUrl(fileUrl);
+              fileUrl = publicData?.publicUrl || "";
+            }
+            return { id, url: fileUrl };
+          }
+          return { id, url: null };
+        });
+        
+        const results = await Promise.all(promises);
+        if (isMounted) {
+          setInstanceAvatars(prev => {
+            const newAvatars = { ...prev };
+            results.forEach(res => {
+              if (res.url) {
+                newAvatars[res.id] = res.url;
+              }
+            });
+            return newAvatars;
+          });
+        }
+      }
+    };
+    
+    fetchAvatars();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [allInstances]);
 
 
   // Function to check if instances exist in database (bypassing state)
@@ -1149,10 +1206,21 @@ function RobotsPageContent() {
                                   const isStarting = ['starting','pending','initializing'].includes(status);
                                   
                                   const isActiveState = isRunning || isStarting;
+                                  const avatarUrl = instanceAvatars[inst.id];
+                                  
+                                  const StatusIcon = isRunning ? (
+                                    <Play className="h-2 w-2 text-green-600" />
+                                  ) : isPaused ? (
+                                    <Pause className="h-2 w-2 text-yellow-600" />
+                                  ) : isStarting ? (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                                  ) : (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                  );
                                   
                                   return (
                                     <span 
-                                      className="cursor-pointer hover:opacity-80 flex items-center justify-center w-4 h-4 flex-shrink-0"
+                                      className="cursor-pointer hover:opacity-80 flex items-center justify-center w-5 h-5 flex-shrink-0 relative"
                                       onClick={async (e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -1199,14 +1267,29 @@ function RobotsPageContent() {
                                       }}
                                       title={isActiveState ? "Pausar instancia y plan" : "Reanudar instancia y plan"}
                                     >
-                                      {isRunning ? (
-                                        <Play className="h-3 w-3 text-green-600" />
-                                      ) : isPaused ? (
-                                        <Pause className="h-3 w-3 text-yellow-600" />
-                                      ) : isStarting ? (
-                                        <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                      {avatarUrl ? (
+                                        <div className="relative w-full h-full flex-shrink-0">
+                                          <img 
+                                            src={avatarUrl} 
+                                            alt="avatar" 
+                                            className="w-full h-full object-cover rounded-full border border-border/50 shadow-sm"
+                                          />
+                                          <div className="absolute -bottom-0.5 -right-0.5 bg-background rounded-full p-[1px] shadow-sm flex items-center justify-center">
+                                            {StatusIcon}
+                                          </div>
+                                        </div>
                                       ) : (
-                                        <span className="w-2 h-2 rounded-full bg-gray-400" />
+                                        <div className="w-full h-full rounded-full flex items-center justify-center bg-muted/50 border border-border/50">
+                                          {isRunning ? (
+                                            <Play className="h-2.5 w-2.5 text-green-600" />
+                                          ) : isPaused ? (
+                                            <Pause className="h-2.5 w-2.5 text-yellow-600" />
+                                          ) : isStarting ? (
+                                            <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                          ) : (
+                                            <span className="w-2 h-2 rounded-full bg-gray-400" />
+                                          )}
+                                        </div>
                                       )}
                                     </span>
                                   );

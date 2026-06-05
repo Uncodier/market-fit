@@ -126,7 +126,7 @@ export const useInstanceLogs = ({
           
           // Auto-collapse long system messages (>200 characters)
           const longSystemMessages = fetchedLogs
-            .filter((log: InstanceLog) => log.log_type === 'system' && log.message.length > 200)
+            .filter((log: InstanceLog) => log.log_type === 'system' && (log.message?.length || 0) > 200)
             .map((log: InstanceLog) => log.id)
           
           if (longSystemMessages.length > 0) {
@@ -237,7 +237,7 @@ export const useInstanceLogs = ({
           
           // Auto-collapse logic for newly fetched logs
           const longSystemMessages = fetchedLogs
-            .filter((log: InstanceLog) => log.log_type === 'system' && log.message.length > 200)
+            .filter((log: InstanceLog) => log.log_type === 'system' && (log.message?.length || 0) > 200)
             .map((log: InstanceLog) => log.id)
           
           if (longSystemMessages.length > 0) {
@@ -413,14 +413,14 @@ export const useInstanceLogs = ({
               (newLog.log_type === 'agent_action') ||
               (newLog.log_type === 'tool_result') ||
               (newLog.log_type === 'system' && (
-                newLog.message.toLowerCase().includes('processing') ||
-                newLog.message.toLowerCase().includes('received') ||
-                newLog.message.toLowerCase().includes('completed') ||
-                newLog.message.toLowerCase().includes('response') ||
-                newLog.message.toLowerCase().includes('answer')
+                (newLog.message || '').toLowerCase().includes('processing') ||
+                (newLog.message || '').toLowerCase().includes('received') ||
+                (newLog.message || '').toLowerCase().includes('completed') ||
+                (newLog.message || '').toLowerCase().includes('response') ||
+                (newLog.message || '').toLowerCase().includes('answer')
               )) ||
-              (newLog.log_type === 'system' && newLog.message.length > 10) ||
-              (newLog.log_type !== 'user_action' && newLog.message.length > 5)
+              (newLog.log_type === 'system' && (newLog.message?.length || 0) > 10) ||
+              (newLog.log_type !== 'user_action' && (newLog.message?.length || 0) > 5)
             )
 
             if (isResponseToOurMessage) {
@@ -430,12 +430,12 @@ export const useInstanceLogs = ({
               }
             }
           } else {
-            if (newLog.log_type !== 'user_action' && newLog.message.length > 5) {
+            if (newLog.log_type !== 'user_action' && (newLog.message?.length || 0) > 5) {
               onResponseReceived?.()
             }
           }
 
-          if (newLog.log_type === 'system' && newLog.message.length > 200) {
+          if (newLog.log_type === 'system' && (newLog.message?.length || 0) > 200) {
             setCollapsedSystemMessages(prev => new Set(prev).add(newLog.id))
           }
 

@@ -1890,11 +1890,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     }
     
     let scale = 1
-    const contentDiv = document.getElementById('imprenta-canvas-content')
-    if (contentDiv && contentDiv.parentElement) {
-       const transform = contentDiv.parentElement.style.transform
-       const match = transform.match(/scale\(([^)]+)\)/)
-       if (match) scale = parseFloat(match[1]) || 1
+    const snap = viewportStore.get()
+    if (snap) {
+      scale = snap.scale
     }
 
     const dx = (e.clientX - dragStartPos.current.x) / scale
@@ -1906,8 +1904,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
     const el = nodeElementsRef.current[nodeId]
     if (el) {
-      el.style.left = `${nx}px`
-      el.style.top = `${ny}px`
+      el.style.transform = `translate3d(${nx}px, ${ny}px, 0)`
     }
 
     if (nodeDragRafRef.current == null) {
