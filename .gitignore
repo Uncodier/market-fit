@@ -49,3 +49,10 @@ next-env.d.ts
 .bugster/reports/
 *.bugster.log
 
+# Local debug / throwaway scripts (may contain secrets, never commit)
+check-instance.*
+check_logs.*
+test-schema*.js
+test-schema*.mjs
+test-schema*.ts
+

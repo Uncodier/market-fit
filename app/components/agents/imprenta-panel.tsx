@@ -2713,6 +2713,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           dotColorDark="rgba(255, 255, 255, 0.2)"
           fitOnChildrenChange={false}
           initialOffsetY={0}
+          enableWheelPan={true}
           viewportStore={viewportStore}
           screenSpaceBehind={
             <ImprentaParentEdgesCanvas

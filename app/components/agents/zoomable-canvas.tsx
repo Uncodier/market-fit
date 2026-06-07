@@ -67,6 +67,12 @@ interface ZoomableCanvasProps {
    * be occluded by DOM nodes.
    */
   screenSpaceFront?: React.ReactNode
+  /**
+   * When true, a plain mouse/trackpad wheel pans the canvas (vertical + horizontal),
+   * while Ctrl/Cmd+wheel still zooms. Shift+wheel pans horizontally on mice without an
+   * X-axis wheel. Off by default so other views keep page-scroll behaviour.
+   */
+  enableWheelPan?: boolean
 }
 
 /** Square 1:1 keycap for shortcut hints inside tooltips. */
@@ -93,6 +99,7 @@ export function ZoomableCanvas({
   viewportStore,
   screenSpaceBehind,
   screenSpaceFront,
+  enableWheelPan = false,
 }: ZoomableCanvasProps) {
   // Use the layout context to get the current state
   const { isLayoutCollapsed } = useLayout();
@@ -190,6 +197,9 @@ export function ZoomableCanvas({
   useEffect(() => {
     isDraggingRef.current = isDragging;
   }, [isDragging]);
+
+  const enableWheelPanRef = useRef(enableWheelPan);
+  enableWheelPanRef.current = enableWheelPan;
 
   const measureAsViewportFillRef = useRef(measureAsViewportFill);
   measureAsViewportFillRef.current = measureAsViewportFill;
@@ -786,16 +796,17 @@ export function ZoomableCanvas({
     endMouseDrag();
   };
   
-  // Ctrl+wheel zoom: non-passive listener on the canvas only (not document) so normal page scroll stays cheap on Safari.
-  // DOM updates every event; React state is flushed at most once per frame.
+  // Ctrl+wheel zoom (and optional plain-wheel pan): non-passive listener on the canvas only
+  // (not document) so normal page scroll stays cheap on Safari. DOM updates every event;
+  // React state is flushed at most once per frame.
   useEffect(() => {
     const el = canvasRef.current;
     if (!el) return;
 
-    let wheelZoomRaf: number | null = null;
+    let wheelRaf: number | null = null;
 
-    const flushWheelZoom = () => {
-      wheelZoomRaf = null;
+    const flushWheel = () => {
+      wheelRaf = null;
       setIsUserInteracting(true);
       setAutoRecenterEnabled(false);
       setScale(scaleRef.current);
@@ -817,40 +828,70 @@ export function ZoomableCanvas({
         return;
       }
 
-      if (!e.ctrlKey) return;
+      // Ctrl/Cmd+wheel zooms toward the canvas centre.
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const prevScale = scaleRef.current;
+        const position = positionRef.current;
+        const newScale = Math.max(prevScale + (e.deltaY < 0 ? 0.1 : -0.1), 0.3);
+
+        if (!canvasRef.current) return;
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        const centerX = canvasRect.width / 2;
+        const centerY = canvasRect.height / 2;
+        const scaleRatio = prevScale > 0 ? newScale / prevScale : 1;
+        const newX = centerX - (centerX - position.x) * scaleRatio;
+        const newY = centerY - (centerY - position.y) * scaleRatio;
+
+        scaleRef.current = newScale;
+        positionRef.current = { x: newX, y: newY };
+
+        if (contentRef.current) {
+          contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
+        }
+        applyBackgroundTransformRef.current(newX, newY, newScale);
+
+        if (wheelRaf == null) {
+          wheelRaf = requestAnimationFrame(flushWheel);
+        }
+        return;
+      }
+
+      // Plain wheel / trackpad scroll pans the canvas (opt-in).
+      if (!enableWheelPanRef.current) return;
 
       e.preventDefault();
       e.stopPropagation();
 
-      const prevScale = scaleRef.current;
-      const position = positionRef.current;
-      const newScale = Math.max(prevScale + (e.deltaY < 0 ? 0.1 : -0.1), 0.3);
+      let dx = -e.deltaX;
+      let dy = -e.deltaY;
+      // Mice without a horizontal wheel: Shift+wheel scrolls horizontally.
+      if (e.shiftKey && e.deltaX === 0) {
+        dx = -e.deltaY;
+        dy = 0;
+      }
 
-      if (!canvasRef.current) return;
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      const centerX = canvasRect.width / 2;
-      const centerY = canvasRect.height / 2;
-      const scaleRatio = prevScale > 0 ? newScale / prevScale : 1;
-      const newX = centerX - (centerX - position.x) * scaleRatio;
-      const newY = centerY - (centerY - position.y) * scaleRatio;
-
-      scaleRef.current = newScale;
+      const newX = positionRef.current.x + dx;
+      const newY = positionRef.current.y + dy;
       positionRef.current = { x: newX, y: newY };
 
+      const s = scaleRef.current;
       if (contentRef.current) {
-        contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
+        contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${s})`;
       }
-      applyBackgroundTransformRef.current(newX, newY, newScale);
+      applyBackgroundTransformRef.current(newX, newY, s);
 
-      if (wheelZoomRaf == null) {
-        wheelZoomRaf = requestAnimationFrame(flushWheelZoom);
+      if (wheelRaf == null) {
+        wheelRaf = requestAnimationFrame(flushWheel);
       }
     };
 
     el.addEventListener("wheel", wheelHandler, { passive: false });
     return () => {
       el.removeEventListener("wheel", wheelHandler);
-      if (wheelZoomRaf != null) cancelAnimationFrame(wheelZoomRaf);
+      if (wheelRaf != null) cancelAnimationFrame(wheelRaf);
     };
   }, []);
 
