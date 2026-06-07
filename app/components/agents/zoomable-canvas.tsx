@@ -119,6 +119,7 @@ export function ZoomableCanvas({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const backgroundRef = useRef<HTMLDivElement>(null);
+  const lastMousePosRef = useRef<{ x: number, y: number } | null>(null);
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 });
   const [isInitialized, setIsInitialized] = useState(false);
   const [isUserInteracting, setIsUserInteracting] = useState(false); // Track user interaction
@@ -634,18 +635,18 @@ export function ZoomableCanvas({
       setIsZoomedIn(true);
     }
     
-    // Adjust position to maintain center
+    // Adjust position to maintain focal point
     if (canvasRef.current) {
       const canvasRect = canvasRef.current.getBoundingClientRect();
       
-      // Calculate center point of visible canvas area
-      const centerX = canvasRect.width / 2;
-      const centerY = canvasRect.height / 2;
+      // Calculate target point: mouse pos if available, otherwise center
+      const targetX = lastMousePosRef.current ? lastMousePosRef.current.x : canvasRect.width / 2;
+      const targetY = lastMousePosRef.current ? lastMousePosRef.current.y : canvasRect.height / 2;
       
-      // Calculate new position maintaining the center point
+      // Calculate new position maintaining the target point
       const scaleRatio = newScale / scale;
-      const newX = centerX - (centerX - position.x) * scaleRatio;
-      const newY = centerY - (centerY - position.y) * scaleRatio;
+      const newX = targetX - (targetX - position.x) * scaleRatio;
+      const newY = targetY - (targetY - position.y) * scaleRatio;
       
       // Apply directly to DOM for better performance
       if (contentRef.current) {
@@ -671,18 +672,18 @@ export function ZoomableCanvas({
       setIsZoomedIn(false);
     }
     
-    // Adjust position to maintain center
+    // Adjust position to maintain focal point
     if (canvasRef.current) {
       const canvasRect = canvasRef.current.getBoundingClientRect();
       
-      // Calculate center point of visible canvas area
-      const centerX = canvasRect.width / 2;
-      const centerY = canvasRect.height / 2;
+      // Calculate target point: mouse pos if available, otherwise center
+      const targetX = lastMousePosRef.current ? lastMousePosRef.current.x : canvasRect.width / 2;
+      const targetY = lastMousePosRef.current ? lastMousePosRef.current.y : canvasRect.height / 2;
       
-      // Calculate new position maintaining the center point
+      // Calculate new position maintaining the target point
       const scaleRatio = newScale / scale;
-      const newX = centerX - (centerX - position.x) * scaleRatio;
-      const newY = centerY - (centerY - position.y) * scaleRatio;
+      const newX = targetX - (targetX - position.x) * scaleRatio;
+      const newY = targetY - (targetY - position.y) * scaleRatio;
       
       // Apply directly to DOM for better performance
       if (contentRef.current) {
@@ -839,11 +840,11 @@ export function ZoomableCanvas({
 
         if (!canvasRef.current) return;
         const canvasRect = canvasRef.current.getBoundingClientRect();
-        const centerX = canvasRect.width / 2;
-        const centerY = canvasRect.height / 2;
+        const mouseX = e.clientX - canvasRect.left;
+        const mouseY = e.clientY - canvasRect.top;
         const scaleRatio = prevScale > 0 ? newScale / prevScale : 1;
-        const newX = centerX - (centerX - position.x) * scaleRatio;
-        const newY = centerY - (centerY - position.y) * scaleRatio;
+        const newX = mouseX - (mouseX - position.x) * scaleRatio;
+        const newY = mouseY - (mouseY - position.y) * scaleRatio;
 
         scaleRef.current = newScale;
         positionRef.current = { x: newX, y: newY };
@@ -1059,6 +1060,32 @@ export function ZoomableCanvas({
       if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
       }
+    };
+  }, []);
+
+  // Track mouse position for zoom focal point
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    
+    const handleMove = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect();
+      lastMousePosRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    };
+    
+    const handleLeave = () => {
+      lastMousePosRef.current = null;
+    };
+    
+    el.addEventListener('mousemove', handleMove, { passive: true });
+    el.addEventListener('mouseleave', handleLeave, { passive: true });
+    
+    return () => {
+      el.removeEventListener('mousemove', handleMove);
+      el.removeEventListener('mouseleave', handleLeave);
     };
   }, []);
 
