@@ -1699,6 +1699,25 @@ export const Pause = ({ className = "", size = 18, ...props }: IconProps) => (
   </IconWrapper>
 )
 
+// MicroPause
+export const MicroPause = ({ className = "", size = 12, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 10 10" fill="currentColor">
+      <rect x="2" y="1" width="2" height="8" rx="0.5" />
+      <rect x="6" y="1" width="2" height="8" rx="0.5" />
+    </svg>
+  </IconWrapper>
+)
+
+// MicroPlay
+export const MicroPlay = ({ className = "", size = 12, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 10 10" fill="currentColor">
+      <path d="M2,1 L8,5 L2,9 Z" />
+    </svg>
+  </IconWrapper>
+)
+
 // Zap
 export const Zap = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>

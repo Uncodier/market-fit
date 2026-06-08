@@ -4,7 +4,7 @@ import React, { useState, useEffect, useLayoutEffect, Suspense, useCallback, use
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Settings, Globe, Target, Pause, Play, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, Database } from "@/app/components/ui/icons"
+import { Settings, Globe, Target, Pause, Play, MicroPause, MicroPlay, X, Plus, MoreHorizontal, ExternalLink, RotateCw, Loader, Monitor, Laptop, Tablet, Smartphone, Folder, Download, Archive, PanelRightClose, PanelRightOpen, Database } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -1209,9 +1209,9 @@ function RobotsPageContent() {
                                   const avatarUrl = instanceAvatars[inst.id];
                                   
                                   const StatusIcon = isRunning ? (
-                                    <Play className="h-2 w-2 text-green-600" />
+                                    <MicroPlay className="h-1.5 w-1.5 text-green-600" />
                                   ) : isPaused ? (
-                                    <Pause className="h-2 w-2 text-yellow-600" />
+                                    <MicroPause className="h-1.5 w-1.5 text-yellow-600" />
                                   ) : isStarting ? (
                                     <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
                                   ) : (

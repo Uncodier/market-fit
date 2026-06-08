@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Play, X, Bot, Loader, CheckCircle2, Pause, StopCircle, Clock, File, Image, FileVideo, FileText } from "@/app/components/ui/icons"
+import { Play, X, Bot, Loader, CheckCircle2, Pause, MicroPause, MicroPlay, StopCircle, Clock, File, Image, FileVideo, FileText } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import {
   Table,
@@ -277,10 +277,10 @@ export function InstanceBrowserModal({
                     let StatusIconLarge: React.ReactNode = <span className="w-4 h-4 rounded-full bg-gray-400" />
                     
                     if (isRunning) {
-                      StatusIconSmall = <Play className="h-3 w-3 text-green-600 flex-shrink-0" />
+                      StatusIconSmall = <MicroPlay className="h-1.5 w-1.5 text-green-600 flex-shrink-0 mx-[1px]" />
                       StatusIconLarge = <Play className="h-6 w-6 text-green-600 flex-shrink-0" />
                     } else if (isPaused) {
-                      StatusIconSmall = <Pause className="h-3 w-3 text-yellow-600 flex-shrink-0" />
+                      StatusIconSmall = <MicroPause className="h-1.5 w-1.5 text-yellow-600 flex-shrink-0 mx-[1px]" />
                       StatusIconLarge = <Pause className="h-6 w-6 text-yellow-600 flex-shrink-0" />
                     } else if (isStarting) {
                       StatusIconSmall = <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse flex-shrink-0 mx-0.5" />
