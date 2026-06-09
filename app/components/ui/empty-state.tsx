@@ -1,6 +1,6 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { PlusCircle } from "./icons"
+import { PlusCircle, Sparkles, Lightbulb } from "./icons"
 
 interface EmptyStateProps {
   icon?: React.ReactNode
@@ -17,7 +17,7 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  icon = <span className="text-8xl">✨</span>,
+  icon = <Sparkles className="h-12 w-12 text-primary" />,
   title,
   description,
   features,
@@ -124,7 +124,7 @@ export function EmptyState({
             {/* Automatic operation hint */}
             <div className="mt-12 pt-8 border-t dark:border-white/5 border-black/5/30">
               <p className="text-xs text-muted-foreground/60 max-w-lg mx-auto leading-relaxed text-center">
-                💡 <strong>Most operations run automatically.</strong> Your AI agents work in the background without manual direction. Feel free to return later if you prefer not to actively manage them right now.
+                <Lightbulb className="h-4 w-4 mr-1 text-primary inline" /> <strong>Most operations run automatically.</strong> Your AI agents work in the background without manual direction. Feel free to return later if you prefer not to actively manage them right now.
               </p>
             </div>
           </>

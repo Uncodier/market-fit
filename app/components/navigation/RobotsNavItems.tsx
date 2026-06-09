@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { MenuItem } from "./MenuItem"
+import { Bot, Printer } from "@/app/components/ui/icons"
 import { RobotsBadge } from "./RobotsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -41,7 +42,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
     <>
       <MenuItem
         href={agentHref}
-        emoji="🤖"
+        icon={Bot}
         title={t("layout.sidebar.agents") || "Agents"}
         isActive={agentActive}
         isCollapsed={isCollapsed}
@@ -54,7 +55,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       </MenuItem>
       <MenuItem
         href={imprentaHref}
-        emoji="🖨️"
+        icon={Printer}
         title={t("layout.sidebar.imprenta") || "Content Creator"}
         isActive={imprentaActive}
         isCollapsed={isCollapsed}

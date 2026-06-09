@@ -1473,7 +1473,7 @@ export default function LeadsPage() {
             ) : (
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-8">
-                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full hidden lg:flex">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.all') || 'All Companies'}>
                     <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.all') || 'All Companies'}</span>

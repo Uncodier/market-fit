@@ -505,7 +505,7 @@ export default function RoundRobinBookingPage(props: {
             `}</style>
             <div
               ref={containerRef}
-              className="flex flex-col md:block gap-6 md:gap-0 pb-4 md:pb-0 relative w-full md:h-[590px]"
+              className="flex flex-col md:block gap-6 md:gap-0 pb-4 md:pb-0 relative w-full md:h-[590px] overflow-hidden md:overflow-visible"
               style={{
                 "--cal-transform": activeStep === "calendar" ? "translateX(0) scale(1)" : activeStep === "time" ? "translateX(calc(-100% - 360px)) scale(0.95)" : activeStep === "details" ? "translateX(calc(-100% - 640px)) scale(0.9)" : "translateX(calc(-100% - 920px)) scale(0.85)",
                 "--cal-opacity": activeStep === "calendar" ? "1" : activeStep === "time" ? "0.3" : "0",
@@ -532,12 +532,12 @@ export default function RoundRobinBookingPage(props: {
               ref={calendarRef}
               className={cn(
                 "card-calendar bg-black/[0.005] dark:bg-white/[0.005] border dark:border-white/5 border-black/5 shadow-sm h-[590px] flex flex-col transition-all duration-500 ease-in-out w-full md:w-[590px] md:max-w-full",
-                activeStep !== "calendar" && "md:opacity-60 hover:md:opacity-100",
+                activeStep !== "calendar" && "md:opacity-60 hover:md:opacity-100"
               )}
             >
               {activeStep !== "calendar" && activeStep !== "success" && (
                 <div
-                  className="absolute inset-0 z-50 cursor-pointer"
+                  className="absolute inset-0 z-50 cursor-pointer hidden md:block"
                   onClick={() => setActiveStep("calendar")}
                 />
               )}
@@ -633,11 +633,23 @@ export default function RoundRobinBookingPage(props: {
             >
               {activeStep !== "time" && selectedDate && activeStep !== "success" && (
                 <div
-                  className="absolute inset-0 z-50 cursor-pointer"
+                  className="absolute inset-0 z-50 cursor-pointer hidden md:block"
                   onClick={() => setActiveStep("time")}
                 />
               )}
               <CardContent className="p-6 flex-1 flex flex-col min-h-0">
+                {selectedDate && (
+                  <div className="flex items-center justify-start mb-6 px-1 md:hidden">
+                    <Button
+                      variant="ghost"
+                      className="h-8 hover:bg-accent hover:text-accent-foreground relative z-20 text-muted-foreground pl-0"
+                      onClick={() => setActiveStep("calendar")}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      {t("booking.back")}
+                    </Button>
+                  </div>
+                )}
                 {selectedDate ? (
                   <div className="flex-1 flex flex-col h-full animate-in fade-in duration-300 w-full min-h-0">
                     <div className="flex items-center justify-between mb-6 px-1">
@@ -752,16 +764,26 @@ export default function RoundRobinBookingPage(props: {
               className={cn(
                 "card-details bg-black/[0.005] dark:bg-white/[0.005] border dark:border-white/5 border-black/5 shadow-sm h-[590px] flex flex-col transition-all duration-500 ease-in-out w-full md:w-[590px] md:max-w-full",
                 activeStep !== "details" && "md:opacity-60 hover:md:opacity-100",
-                !selectedSlot && "opacity-0 pointer-events-none hidden md:flex"
+                !selectedSlot && "pointer-events-none opacity-50"
               )}
             >
               {activeStep !== "details" && selectedSlot && activeStep !== "success" && (
                 <div
-                  className="absolute inset-0 z-50 cursor-pointer"
+                  className="absolute inset-0 z-50 cursor-pointer hidden md:block"
                   onClick={() => setActiveStep("details")}
                 />
               )}
               <CardContent className="p-6 space-y-6 flex-1 pt-6 overflow-y-auto relative z-20">
+                <div className="flex items-center justify-start mb-2 px-1 md:hidden">
+                  <Button
+                    variant="ghost"
+                    className="h-8 hover:bg-accent hover:text-accent-foreground relative z-20 text-muted-foreground pl-0"
+                    onClick={() => setActiveStep("time")}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    {t("booking.back")}
+                  </Button>
+                </div>
                 <div className="space-y-5">
                   <div className="grid gap-2">
                     <Label htmlFor="name" className="text-sm font-semibold">
@@ -835,41 +857,52 @@ export default function RoundRobinBookingPage(props: {
               ref={successRef}
               className={cn(
                 "card-success bg-black/[0.005] dark:bg-white/[0.005] border dark:border-white/5 border-black/5 shadow-sm h-[590px] flex flex-col transition-all duration-500 ease-in-out w-full md:w-[590px] md:max-w-full",
-                activeStep !== "success" && "md:opacity-60 hover:md:opacity-100 pointer-events-none"
+                activeStep !== "success" && "md:opacity-60 hover:md:opacity-100",
+                activeStep !== "success" && "pointer-events-none opacity-50"
               )}
             >
               <CardContent className="p-6 space-y-6 flex-1 pt-10 overflow-y-auto relative z-20 flex flex-col items-center justify-center text-center">
-                <div className="flex justify-center mb-4">
-                  <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-                    <CheckCircle2 className="h-10 w-10 text-green-600" />
+                {activeStep === "success" ? (
+                  <>
+                    <div className="flex justify-center mb-4">
+                      <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                        <CheckCircle2 className="h-10 w-10 text-green-600" />
+                      </div>
+                    </div>
+                    <h1 className="text-2xl font-bold">{t("booking.success.title")}</h1>
+                    <p className="text-muted-foreground max-w-[280px]">
+                      {t("booking.success.descRR")}
+                    </p>
+                    <div className="pt-4 border-t border-border mt-6 text-left space-y-2 w-full max-w-[280px]">
+                      <p className="text-sm">
+                        <strong>{t("booking.details.date")}:</strong>{" "}
+                        {selectedDate && format(selectedDate, "MMMM do, yyyy", { locale: dateLocale })}
+                      </p>
+                      <p className="text-sm">
+                        <strong>{t("booking.details.time")}:</strong> {selectedSlot}
+                      </p>
+                      <p className="text-sm">
+                        <strong>{t("booking.details.type")}:</strong> {calendar.name}
+                      </p>
+                    </div>
+                    <div className="pt-6 mt-2 w-full max-w-[280px]">
+                      <Button 
+                        onClick={handleDownloadCalendar} 
+                        className="w-full font-semibold shadow-sm flex items-center justify-center gap-2"
+                        variant="outline"
+                      >
+                        <CalendarIcon className="h-4 w-4" />
+                        {t("booking.addToCalendar")}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-50">
+                    <CheckCircle2 className="h-12 w-12 text-muted-foreground" />
+                    <h2 className="text-xl font-semibold text-muted-foreground">{t("booking.success.pending")}</h2>
+                    <p className="text-sm text-muted-foreground">{t("booking.success.pendingDesc")}</p>
                   </div>
-                </div>
-                <h1 className="text-2xl font-bold">{t("booking.success.title")}</h1>
-                <p className="text-muted-foreground max-w-[280px]">
-                  {t("booking.success.descRR")}
-                </p>
-                <div className="pt-4 border-t border-border mt-6 text-left space-y-2 w-full max-w-[280px]">
-                  <p className="text-sm">
-                    <strong>{t("booking.details.date")}:</strong>{" "}
-                    {selectedDate && format(selectedDate, "MMMM do, yyyy", { locale: dateLocale })}
-                  </p>
-                  <p className="text-sm">
-                    <strong>{t("booking.details.time")}:</strong> {selectedSlot}
-                  </p>
-                  <p className="text-sm">
-                    <strong>{t("booking.details.type")}:</strong> {calendar.name}
-                  </p>
-                </div>
-                <div className="pt-6 mt-2 w-full max-w-[280px]">
-                  <Button 
-                    onClick={handleDownloadCalendar} 
-                    className="w-full font-semibold shadow-sm flex items-center justify-center gap-2"
-                    variant="outline"
-                  >
-                    <CalendarIcon className="h-4 w-4" />
-                    {t("booking.addToCalendar")}
-                  </Button>
-                </div>
+                )}
               </CardContent>
             </Card>
             </div>

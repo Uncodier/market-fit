@@ -34,34 +34,66 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { cn } from "@/lib/utils"
 
-// Same mapping as in NavigationAreaGroups
-const NAV_ITEM_EMOJI: Record<string, string> = {
-  salesHome: "🏠",
-  campaigns: "🎯",
-  segments: "🏷️",
-  content: "📄",
-  contentCreator: "🖨️",
-  assets: "📁",
-  context: "🏢",
-  agentsConfiguration: "✨",
-  applicationsDatabase: "💾",
-  applicationsRepositories: "📦",
-  sales: "💰",
-  leads: "👥",
-  deals: "🤝",
-  chat: "💬",
-  people: "🔍",
-  controlCenter: "🚀",
-  requirements: "✅",
-  channels: "📡",
-  activities: "📋",
-  skills: "🧩",
-  reportPerformance: "📈",
-  reportOverview: "📋",
-  reportAnalytics: "🔎",
-  reportTraffic: "🌐",
-  reportCosts: "📊",
-  reportSales: "💵",
+import {
+  Megaphone,
+  Briefcase,
+  Zap,
+  Smartphone,
+  BarChart,
+  Home,
+  Target,
+  Tag,
+  FileText,
+  Printer,
+  Folder,
+  Building,
+  Cpu,
+  DatabaseIcon,
+  Archive,
+  DollarSign,
+  ActivitySquare,
+  CreditCard,
+  Users,
+  MessageCircle,
+  Search,
+  Rocket,
+  CheckSquare,
+  NetworkTree,
+  Activity,
+  Workflow,
+  TrendingUp,
+  PieChart,
+  Globe,
+  Star
+} from "@/app/components/ui/icons"
+
+const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
+  salesHome: Home,
+  campaigns: Target,
+  segments: Tag,
+  content: FileText,
+  contentCreator: Printer,
+  assets: Folder,
+  context: Building,
+    agentsConfiguration: Cpu,
+  applicationsDatabase: DatabaseIcon,
+  applicationsRepositories: Archive,
+  sales: DollarSign,
+  leads: Users,
+  deals: Briefcase,
+  chat: MessageCircle,
+  people: Search,
+  controlCenter: Rocket,
+  requirements: CheckSquare,
+  channels: NetworkTree,
+  activities: Activity,
+  skills: Workflow,
+  reportPerformance: TrendingUp,
+  reportOverview: PieChart,
+  reportAnalytics: BarChart,
+  reportTraffic: Globe,
+    reportCosts: CreditCard,
+    reportSales: ActivitySquare,
 }
 
 function reportItemTitle(item: AreaNavItem, t: (k: string) => string): string {
@@ -93,7 +125,7 @@ interface DynamicShortcutsProps {
 interface SortableShortcutItemProps {
   id: string
   item: AreaNavItem
-  emoji: string
+  icon: React.ComponentType<any> | null
   linkHref: string
   isActive: boolean
   isCollapsed: boolean
@@ -105,7 +137,7 @@ interface SortableShortcutItemProps {
 function SortableShortcutItem({
   id,
   item,
-  emoji,
+  icon,
   linkHref,
   isActive,
   isCollapsed,
@@ -177,7 +209,7 @@ function SortableShortcutItem({
             <div className={cn("relative z-10", isDragging && "opacity-50 pointer-events-none")}>
               <MenuItem
                 href={linkHref}
-                emoji={emoji}
+                icon={icon as any}
                 title={title}
                 isActive={isActive}
                 isCollapsed={isCollapsed}
@@ -471,21 +503,21 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
             const id = isCustom ? entry.id : entry
             
             let item: AreaNavItem | undefined;
-            let emoji = "📌"
+            let icon: React.ComponentType<any> | null = Star
             let linkHref = ""
             let isActive = false
             let title = ""
 
             if (isCustom) {
               item = { key: entry.id, href: entry.href }
-              emoji = "✨"
+              icon = Star
               linkHref = entry.href
               isActive = id === bestMatchId
               title = entry.title
             } else {
               item = ALL_ITEMS.find(i => i.key === id)
               if (!item) return null
-              emoji = NAV_ITEM_EMOJI[item.key] || "📌"
+              icon = NAV_ITEM_ICON[item.key] || Star
               linkHref = buildNavItemHref(item, navSearchParams)
               isActive = id === bestMatchId
               title = reportItemTitle(item, t)
@@ -496,7 +528,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
                 key={id}
                 id={id}
                 item={item}
-                emoji={emoji}
+                icon={icon}
                 linkHref={linkHref}
                 isActive={isActive}
                 isCollapsed={isCollapsed}

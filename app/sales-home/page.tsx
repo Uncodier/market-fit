@@ -4,7 +4,7 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
-import { PlusCircle, ArrowRight, Users, Briefcase } from "@/app/components/ui/icons"
+import { PlusCircle, ArrowRight, Users, Briefcase, Rocket, DollarSign, MessageCircle, Search } from "@/app/components/ui/icons"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 
@@ -36,37 +36,37 @@ export default function SalesHomePage() {
     {
       title: t('layout.sidebar.controlCenter') || "Control Center",
       description: "Manage your tasks and workflows",
-      icon: "🚀",
+      icon: Rocket,
       href: "/control-center"
     },
     {
       title: t('layout.sidebar.sales') || "Sales",
       description: "Track revenue and completed sales",
-      icon: "💰",
+      icon: DollarSign,
       href: "/sales"
     },
     {
       title: t('layout.sidebar.leads') || "Leads",
       description: "Manage potential customers and prospects",
-      icon: "👥",
+      icon: Users,
       href: "/leads"
     },
     {
       title: t('layout.sidebar.deals') || "Deals",
       description: "Track opportunities through your pipeline",
-      icon: "🤝",
+      icon: Briefcase,
       href: "/deals"
     },
     {
       title: t('layout.sidebar.chat') || "Chat",
       description: "Communicate with leads and customers",
-      icon: "💬",
+      icon: MessageCircle,
       href: "/chat"
     },
     {
       title: t('layout.sidebar.people') || "People",
       description: "Manage team members and roles",
-      icon: "🔍",
+      icon: Search,
       href: "/people"
     }
   ]
@@ -160,7 +160,10 @@ export default function SalesHomePage() {
               >
                 <CardContent className="p-6 flex items-center space-x-4">
                   <div className="w-12 h-12 rounded-lg border border-gray-300/50 bg-gray-100/50 dark:border-gray-700/50 dark:bg-gray-800/30 flex items-center justify-center flex-shrink-0 transition-colors group-hover:border-primary/20 group-hover:bg-primary/5">
-                    <span className="text-xl leading-none">{item.icon}</span>
+                    {(() => {
+                      const Icon = item.icon
+                      return <Icon className="text-foreground" size={24} />
+                    })()}
                   </div>
                   <div className="flex-1 space-y-1">
                     <h4 className="font-semibold group-hover:text-primary transition-colors flex items-center">

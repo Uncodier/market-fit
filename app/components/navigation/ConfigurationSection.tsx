@@ -34,10 +34,10 @@ interface ConfigItem {
 }
 
 const settingsChildItems: ConfigItem[] = [
-  { titleKey: "integrations", href: "/integrations", icon: Plug, emoji: "🔌", isSettingsChild: true },
-  { titleKey: "billing", href: "/billing", icon: CreditCard, emoji: "💳", isSettingsChild: true },
-  { titleKey: "security", href: "/security", icon: Shield, emoji: "🔒", isSettingsChild: true },
-  { titleKey: "theme", href: "#theme", icon: Sun, emoji: "🌓", isSettingsChild: true },
+  { titleKey: "integrations", href: "/integrations", icon: Plug, isSettingsChild: true },
+  { titleKey: "billing", href: "/billing", icon: CreditCard, isSettingsChild: true },
+  { titleKey: "security", href: "/security", icon: Shield, isSettingsChild: true },
+  { titleKey: "theme", href: "#theme", icon: Sun, isSettingsChild: true },
 ]
 
 
@@ -204,11 +204,9 @@ export function ConfigurationSection({
           isCollapsed ? "h-full w-full" : "h-[24px] w-[24px]"
         )}
       >
-        <EmojiIcon
-          emoji={SETTINGS_SECTION_EMOJI}
-          isActive={isGeneralSettingsActive}
-          isCollapsed={isCollapsed}
-          tone="section"
+        <Settings 
+          className={cn("shrink-0", isGeneralSettingsActive ? "text-primary-foreground" : "text-muted-foreground")} 
+          size={16} 
         />
       </div>
       {!isCollapsed && (
@@ -298,7 +296,6 @@ export function ConfigurationSection({
                     <MenuItem
                       href="#"
                       icon={isDarkMode ? Moon : Sun}
-                      emoji="🌓"
                       title={
                         isDarkMode
                           ? t("layout.sidebar.darkMode") || "Dark Mode"
@@ -341,7 +338,6 @@ export function ConfigurationSection({
                   <MenuItem
                     href={item.href}
                     icon={item.icon}
-                    emoji={item.emoji}
                     title={t(`layout.sidebar.${item.titleKey}`) || item.titleKey}
                     isActive={isActive}
                     isCollapsed={isCollapsed}

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Card, CardContent } from "@/app/components/ui/card";
+import { Lightbulb } from "./icons"
 import { cn } from "@/lib/utils";
 
 interface EmptyCardProps {
@@ -140,7 +141,7 @@ export function EmptyCard({
               {showHint && (
                 <div className="pt-3 border-t dark:border-white/5 border-black/5/20 relative z-[2]">
                   <p className="text-xs text-muted-foreground/50 max-w-sm mx-auto leading-relaxed text-center">
-                    💡 <span className="font-medium">Most operations run automatically.</span> Your AI agents work in the background without manual direction. Feel free to return later if you prefer not to actively manage them right now.
+                    <Lightbulb className="inline-block h-3 w-3 mr-1 mb-0.5" /> <span className="font-medium">Most operations run automatically.</span> Your AI agents work in the background without manual direction. Feel free to return later if you prefer not to actively manage them right now.
                   </p>
                 </div>
               )}

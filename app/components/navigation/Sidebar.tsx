@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { User, Bell } from "@/app/components/ui/icons"
+import { User, Bell, LayoutGrid } from "@/app/components/ui/icons"
 import { useEffect, useState, useRef, Suspense } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { ConfigurationSection } from "./ConfigurationSection"
@@ -26,7 +26,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   onMobileClose?: () => void
 }
 
-const profileMainItem = { key: "account", href: "/profile", icon: User, emoji: "👤" }
+const profileMainItem = { key: "account", href: "/profile", icon: User }
 
 export function Sidebar({
   className,
@@ -207,7 +207,7 @@ export function Sidebar({
             <div className={cn("relative", renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full px-1")}>
               <MenuItem
                 href="/navigation"
-                emoji="📱"
+                icon={LayoutGrid}
                 title={t("layout.sidebar.apps") === "layout.sidebar.apps" ? "Apps" : t("layout.sidebar.apps")}
                 isActive={pathname.startsWith("/navigation")}
                 isCollapsed={renderCollapsed}
@@ -229,7 +229,6 @@ export function Sidebar({
               <MenuItem
                 href="/notifications"
                 icon={Bell}
-                emoji="🔔"
                 title={t("layout.sidebar.notifications") || "Notifications"}
                 isActive={pathname.startsWith("/notifications")}
                 isCollapsed={renderCollapsed}
@@ -250,7 +249,6 @@ export function Sidebar({
                 <MenuItem
                   href={profileMainItem.href}
                   icon={profileMainItem.icon}
-                emoji={profileMainItem.emoji}
                   title={
                     user?.user_metadata?.full_name ||
                     user?.user_metadata?.name ||

@@ -5,46 +5,73 @@ import { cn } from "@/lib/utils"
 import { Category } from "@/app/types"
 import { Badge } from "@/app/components/ui/badge"
 import { useTheme } from "@/app/context/ThemeContext"
-import { Check, Tag } from "@/app/components/ui/icons"
+import { 
+  Check, 
+  Tag, 
+  Globe, 
+  Play, 
+  Users, 
+  Mail, 
+  Phone, 
+  DollarSign, 
+  FileText, 
+  CreditCard, 
+  NetworkTree, 
+  MessageCircle, 
+  Microscope, 
+  Rocket, 
+  Archive, 
+  Ticket, 
+  Lock, 
+  GraduationCap, 
+  Briefcase, 
+  RotateCcw, 
+  BarChart, 
+  Star, 
+  Info, 
+  Printer, 
+  BookOpen, 
+  LinkIcon,
+  Folder
+} from "@/app/components/ui/icons"
+
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { useLocalization } from "@/app/context/LocalizationContext"
-
-// Emoji mapping for task types
-const TYPE_EMOJIS: Record<string, string> = {
-  website_visit: "🌐",
-  demo: "🎮",
-  meeting: "👥",
-  email: "📧",
-  call: "📞",
-  quote: "💰",
-  contract: "📝",
-  payment: "💳",
-  referral: "🤝",
-  feedback: "💭",
-  trial: "🔬",
-  onboarding: "🚀",
-  refund: "💸",
-  ticket: "🎫",
-  kyc: "🔐",
-  training: "🎓",
-  consultation: "👨‍💼",
-  follow_up: "🔄",
-  survey: "📊",
-  review: "⭐",
-  support: "🆘",
-  billing: "🧾",
-  documentation: "📚",
-  integration: "🔗"
+const TYPE_ICONS: Record<string, React.ComponentType<any>> = {
+  website_visit: Globe,
+  demo: Play,
+  meeting: Users,
+  email: Mail,
+  call: Phone,
+  quote: DollarSign,
+  contract: FileText,
+  payment: CreditCard,
+  referral: NetworkTree,
+  feedback: MessageCircle,
+  trial: Microscope,
+  onboarding: Rocket,
+  refund: Archive,
+  ticket: Ticket, // Needs to be added or use an alternative if not present in icons.tsx. Let's use File
+  kyc: Lock,
+  training: GraduationCap,
+  consultation: Briefcase,
+  follow_up: RotateCcw,
+  survey: BarChart,
+  review: Star,
+  support: Info,
+  billing: Printer,
+  documentation: BookOpen,
+  integration: LinkIcon
 }
 
-// Function to get emoji for task type with fallback
-const getTypeEmoji = (type: string): string => {
-  return TYPE_EMOJIS[type] || "📋"
+// Function to get icon for task type with fallback
+const getTypeIcon = (type: string) => {
+  return TYPE_ICONS[type] || FileText
 }
 
 // Function to get category icon with fallback
-const getCategoryIcon = (category: Category): string => {
-  return category.icon || "📁"
+const getCategoryIcon = (category: Category): React.ComponentType<any> => {
+  return Folder
 }
 
 type StatusFilterType = 'all' | 'new' | 'completed'
@@ -128,7 +155,10 @@ export function TaskSidebar({
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center" style={{ gap: '7.2px' }}>
-                              <span style={{ fontSize: '16.2px' }}>{getCategoryIcon(category)}</span>
+                              {(() => {
+                                const Icon = getCategoryIcon(category)
+                                return <Icon className="text-muted-foreground" size={16} />
+                              })()}
                               <span>{category.name}</span>
                             </div>
                             <Badge variant="outline">
@@ -198,7 +228,10 @@ export function TaskSidebar({
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center" style={{ gap: '7.2px' }}>
-                              <span style={{ fontSize: '16.2px' }}>{getTypeEmoji(type)}</span>
+                              {(() => {
+                                const Icon = getTypeIcon(type)
+                                return <Icon className="text-muted-foreground" size={16} />
+                              })()}
                               <span className="capitalize">{type.replace('_', ' ')}</span>
                             </div>
                             <Badge variant="outline">

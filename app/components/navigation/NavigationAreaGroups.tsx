@@ -28,42 +28,74 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { requestNavigationHistoryReset } from "@/app/hooks/use-navigation-history"
 
-const AREA_EMOJI: Record<WorkspaceArea, string> = {
-  marketing: "📣",
-  sales: "🤝",
-  automation: "⚡",
-  applications: "📱",
-  reports: "📑",
+import {
+  Megaphone,
+  Briefcase,
+  Zap,
+  Smartphone,
+  BarChart,
+  Home,
+  Target,
+  Tag,
+  FileText,
+  Printer,
+  Folder,
+  Building,
+  Cpu,
+  DatabaseIcon,
+  Archive,
+  DollarSign,
+  ActivitySquare,
+  CreditCard,
+  Users,
+  MessageCircle,
+  Search,
+  Rocket,
+  CheckSquare,
+  NetworkTree,
+  Activity,
+  Workflow,
+  TrendingUp,
+  PieChart,
+  Globe
+} from "@/app/components/ui/icons"
+
+const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
+  marketing: Megaphone,
+  sales: Briefcase,
+  automation: Zap,
+  applications: Smartphone,
+  reports: BarChart,
 }
 
-/** Legacy sidebar: emoji inside bordered tile via MenuItem → EmojiIcon */
-const NAV_ITEM_EMOJI: Record<string, string> = {
-  salesHome: "🏠",
-  campaigns: "🎯",
-  segments: "🏷️",
-  content: "📄",
-  contentCreator: "🖨️",
-  assets: "📁",
-  context: "🏢",
-  agentsConfiguration: "✨",
-  applicationsDatabase: "💾",
-  applicationsRepositories: "📦",
-  sales: "💰",
-  leads: "👥",
-  deals: "🤝",
-  chat: "💬",
-  people: "🔍",
-  controlCenter: "🚀",
-  requirements: "✅",
-  channels: "📡",
-  activities: "📋",
-  skills: "🧩",
-  reportPerformance: "📈",
-  reportOverview: "📋",
-  reportAnalytics: "🔎",
-  reportTraffic: "🌐",
-  reportCosts: "📊",
-  reportSales: "💵",
+/** Legacy sidebar: icon via MenuItem */
+const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
+  salesHome: Home,
+  campaigns: Target,
+  segments: Tag,
+  content: FileText,
+  contentCreator: Printer,
+  assets: Folder,
+  context: Building,
+    agentsConfiguration: Cpu,
+  applicationsDatabase: DatabaseIcon,
+  applicationsRepositories: Archive,
+  sales: DollarSign,
+  leads: Users,
+  deals: Briefcase,
+  chat: MessageCircle,
+  people: Search,
+  controlCenter: Rocket,
+  requirements: CheckSquare,
+  channels: NetworkTree,
+  activities: Activity,
+  skills: Workflow,
+  reportPerformance: TrendingUp,
+  reportOverview: PieChart,
+  reportAnalytics: BarChart,
+  reportTraffic: Globe,
+    reportCosts: CreditCard,
+    reportSales: ActivitySquare,
 }
 
 function reportItemTitle(item: AreaNavItem, t: (k: string) => string): string {
@@ -176,8 +208,8 @@ export function NavigationAreaGroups({
   }
 
   const renderItem = (item: AreaNavItem) => {
-    const emoji = NAV_ITEM_EMOJI[item.key]
-    if (!emoji) return null
+    const Icon = NAV_ITEM_ICON[item.key]
+    if (!Icon) return null
     const linkHref = buildNavItemHref(item, navSearchParams)
     const isActive = item.robotsMode
       ? pathname.startsWith("/robots") && robotsViewMode === item.robotsMode
@@ -187,7 +219,7 @@ export function NavigationAreaGroups({
       <MenuItem
         key={item.key}
         href={linkHref}
-        emoji={emoji}
+        icon={Icon}
         title={title}
         isActive={isActive}
         isCollapsed={renderCollapsed}
@@ -253,12 +285,10 @@ export function NavigationAreaGroups({
                   renderCollapsed ? "h-full w-full" : "h-[24px] w-[24px]"
                 )}
               >
-                <EmojiIcon
-                  emoji={AREA_EMOJI[area]}
-                  isActive={expanded}
-                  isCollapsed={renderCollapsed}
-                  tone="section"
-                />
+                {(() => {
+                  const Icon = AREA_ICON[area]
+                  return <Icon className={cn("shrink-0", expanded ? "text-foreground" : "text-muted-foreground")} size={16} />
+                })()}
               </div>
               {!renderCollapsed && (
                 <>
