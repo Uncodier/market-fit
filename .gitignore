@@ -56,3 +56,6 @@ test-schema*.js
 test-schema*.mjs
 test-schema*.ts
 
+
+# Python
+venv/
