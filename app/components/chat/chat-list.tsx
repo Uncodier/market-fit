@@ -1045,8 +1045,8 @@ export function ChatList({
                 ))}
               </div>
             ) : showEmptyState ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="w-full max-w-[280px] px-4">
+              <div className="flex-1 flex flex-col items-center justify-center w-full h-full p-6 md:p-8">
+                <div className="w-full max-w-[280px] mx-auto flex items-center justify-center">
                   <EmptyCard
                     icon={<MessageSquare className="h-10 w-10 text-muted-foreground" />}
                     title="No conversations"

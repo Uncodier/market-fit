@@ -148,7 +148,7 @@ export const ChatInput = memo(function ChatInput({
       }}
     >
       <div className="w-full">
-        <div className="w-full max-w-3xl mx-auto relative pb-[20px] px-4 md:px-6">
+        <div className="w-full mx-auto relative pb-[20px] px-4">
           <form onSubmit={handleSubmit} className="relative w-full">
             <div className="relative w-full">
         <OptimizedTextarea

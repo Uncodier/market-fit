@@ -658,6 +658,7 @@ function ChatPageContent() {
               conversationId={conversationId}
               onRetryMessage={handleRetryMessage}
               onMessagesUpdate={setChatMessages}
+              isChatListCollapsed={isChatListCollapsed}
             />
           </div>
         </div>

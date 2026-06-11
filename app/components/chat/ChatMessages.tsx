@@ -30,6 +30,7 @@ import { truncateAgentName, truncateLeadName } from "@/app/utils/name-utils"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { getUserData } from "@/app/services/user-service"
 import { cn } from "@/lib/utils"
+import { useLayout } from "@/app/context/LayoutContext"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -147,6 +148,7 @@ interface ChatMessagesProps {
   conversationId?: string
   onRetryMessage?: (failedMessage: ChatMessage) => Promise<void>
   onMessagesUpdate?: (messages: ChatMessage[]) => void
+  isChatListCollapsed?: boolean
 }
 
 // Message feedback widget component
@@ -470,7 +472,8 @@ export function ChatMessages({
   leadData,
   conversationId,
   onRetryMessage,
-  onMessagesUpdate
+  onMessagesUpdate,
+  isChatListCollapsed = false
 }: ChatMessagesProps) {
   // Determine if we should show assignee instead of agent (same logic as ChatHeader)
   // Prefer prop for immediate rendering to avoid layout jumps; fallback to leadData if available
@@ -479,6 +482,8 @@ export function ChatMessages({
 
   // Use theme context for dark mode detection
   const { isDarkMode } = useTheme()
+  // Layout context for sidebar widths
+  const { isLayoutCollapsed } = useLayout()
   // Current user context for reliable team member name/avatar
   const { user } = useAuthContext()
   // Router for navigation
@@ -1024,6 +1029,13 @@ export function ChatMessages({
   // Check if a conversation is selected
   const hasSelectedConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-");
 
+  // Calculate left offset to visually center the empty state relative to the whole screen
+  const getLeftOffset = () => {
+    const sidebarWidth = isLayoutCollapsed ? 64 : 256;
+    const chatListWidth = isChatListCollapsed ? 0 : 319;
+    return sidebarWidth + chatListWidth;
+  };
+
   // Componentes personalizados para ReactMarkdown
   const markdownComponents = {
     img: ({ node, ...props }: any) => (
@@ -1063,13 +1075,18 @@ export function ChatMessages({
 
   if (!hasSelectedConversation) {
     return (
-      <div className="min-h-full flex flex-col justify-center py-6 transition-colors duration-300 ease-in-out">
-        <EmptyState
-          icon={<MessageSquare className="h-12 w-12" />}
-          title="No conversation selected"
-          description="Select a conversation from the list or start a new one to begin chatting."
-          className="min-h-0 w-full flex items-center justify-center"
-        />
+      <div 
+        className="fixed inset-0 flex flex-col items-center justify-center p-4 sm:p-8 transition-colors duration-300 ease-in-out z-[40]"
+        style={{ paddingLeft: typeof window !== 'undefined' && window.innerWidth >= 768 ? `${getLeftOffset()}px` : '0' }}
+      >
+        <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center">
+          <EmptyState
+            icon={<MessageSquare className="h-12 w-12" />}
+            title="No conversation selected"
+            description="Select a conversation from the list or start a new one to begin chatting."
+            className="min-h-0 w-full"
+          />
+        </div>
       </div>
     );
   }
@@ -1077,7 +1094,7 @@ export function ChatMessages({
   return (
     <div ref={containerRef} className="flex-1 py-6 transition-colors duration-300 ease-in-out pb-[180px] min-w-0 w-full transition-all flex flex-col min-h-full">
       <div className={cn(
-        "max-w-3xl mx-auto min-w-0 px-4 md:px-6 w-full relative flex-1 flex flex-col",
+        "mx-auto min-w-0 px-4 w-full relative flex-1 flex flex-col",
         chatMessages.length === 0 && !isLoadingMessages && !isTransitioningConversation ? "justify-center" : ""
       )}>
         {(isLoadingMessages || isTransitioningConversation) ? (

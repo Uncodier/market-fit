@@ -17,7 +17,7 @@ export function EmptyConversation({
   avatarSrc
 }: EmptyConversationProps) {
   return (
-    <div className="flex flex-col items-center justify-center w-full text-center">
+    <div className="flex flex-col items-center justify-center w-full h-full text-center p-6 md:p-12 mx-auto mt-[-5%]">
       <div className="w-16 h-16 rounded-full font-inter font-bold bg-primary/10 flex items-center justify-center mb-4">
         <Avatar className="h-12 w-12 border border-primary/20">
           <AvatarImage 
