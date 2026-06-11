@@ -30,6 +30,7 @@ import { useApiRequestTracker } from "@/app/hooks/useApiRequestTracker"
 import { useOptimizedMessageState } from "@/app/hooks/useOptimizedMessageState"
 // import { useSimpleMessageState } from "@/app/hooks/useSimpleMessageState" // For testing
 import { useOptimizedKeyboardHandler } from "@/app/hooks/useOptimizedKeyboardHandler"
+import { useLayout } from "@/app/context/LayoutContext"
 
 export default function ChatPage() {
   return (
@@ -68,6 +69,7 @@ function ChatPageContent() {
   
   // Initialize the theme context
   const { theme, isDarkMode } = useTheme()
+  const { isLayoutCollapsed } = useLayout()
   
   // Initialize the useCommandK hook
   useCommandK()
@@ -589,7 +591,7 @@ function ChatPageContent() {
             <div className="flex h-full relative overflow-hidden w-full bg-background flex-row min-w-0">
         {/* Chat list */}
       <div className={cn(
-        "h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative",
+        "h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative left-0",
         hasSelectedConversation ? "hidden md:block" : "w-full",
         !hasSelectedConversation && "md:w-[319px] md:min-w-[319px]",
         isChatListCollapsed
@@ -609,12 +611,16 @@ function ChatPageContent() {
       
       {/* Main chat content */}
       <div className={cn(
-        "flex flex-col h-full transition-all duration-300 ease-in-out min-w-0 min-h-0 relative",
+        "flex flex-col h-full transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
         !hasSelectedConversation ? "hidden md:flex" : "flex"
       )}
       style={{
-        width: "100%",
-        flex: "1 1 0%"
+        width: typeof window !== 'undefined' && window.innerWidth >= 768 
+          ? `calc(100% - ${isLayoutCollapsed ? 64 : 256}px - ${isChatListCollapsed ? 0 : 319}px)` 
+          : '100%',
+        left: typeof window !== 'undefined' && window.innerWidth >= 768 
+          ? `${(isLayoutCollapsed ? 64 : 256) + (isChatListCollapsed ? 0 : 319)}px` 
+          : '0px'
       }}
       >
               {/* Chat header with agent and lead info */}
@@ -641,7 +647,7 @@ function ChatPageContent() {
         </div>
 
         {/* Chat messages area */}
-        <div className="flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px] flex flex-col">
+        <div className="flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px] flex flex-col" ref={messagesContainerRef}>
           <div className="transition-all duration-300 ease-in-out flex-1 flex flex-col min-h-full">
             <ChatMessages 
               chatMessages={chatMessages}

@@ -1092,9 +1092,9 @@ export function ChatMessages({
   }
 
   return (
-    <div ref={containerRef} className="flex-1 py-6 transition-colors duration-300 ease-in-out pb-[180px] min-w-0 w-full transition-all flex flex-col min-h-full">
+    <div className="flex-1 py-6 transition-colors duration-300 ease-in-out pb-[180px] min-w-0 w-full transition-all flex flex-col min-h-full">
       <div className={cn(
-        "mx-auto min-w-0 px-4 w-full relative flex-1 flex flex-col",
+        "min-w-0 px-4 md:px-8 lg:px-12 xl:px-24 w-full relative flex-1 flex flex-col",
         chatMessages.length === 0 && !isLoadingMessages && !isTransitioningConversation ? "justify-center" : ""
       )}>
         {(isLoadingMessages || isTransitioningConversation) ? (
@@ -1599,11 +1599,6 @@ export function ChatMessages({
                                     agentId={agentId} 
                                   />
                                 )}
-                                {!msg.command_id && (
-                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                    <p className="text-xs text-muted-foreground">No command ID available for this message</p>
-                                  </div>
-                                )}
                               </div>
                               <div className="flex items-center justify-end flex-1">
                                 {(msg.metadata?.status === "pending" || msg.metadata?.status === "accepted") ? (
@@ -2024,7 +2019,7 @@ export function ChatMessages({
             )}
             
             {/* Agregar espacio adicional después de los mensajes para evitar que la animación quede pegada al área de texto */}
-            <div className="h-8"></div>
+            <div className="h-[250px]"></div>
           </div>
         )}
         {/* Elemento de referencia para el scroll automático */}
