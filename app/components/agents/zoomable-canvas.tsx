@@ -286,9 +286,11 @@ export function ZoomableCanvas({
   const calculateContainTransform = useCallback(async () => {
     if (!canvasRef.current) return { scale: 1, x: 0, y: 0 };
     
-    // If content dimensions are unknown, measure them
+    // Use graphBounds if provided (avoids DOM reads and 0x0 errors on absolute trees)
     let contentSize = contentDimensions;
-    if (contentSize.width === 0 || contentSize.height === 0) {
+    if (graphBoundsRef.current && graphBoundsRef.current.width > 0 && graphBoundsRef.current.height > 0) {
+      contentSize = graphBoundsRef.current;
+    } else if (contentSize.width === 0 || contentSize.height === 0) {
       contentSize = await measureContent();
     }
     
@@ -606,8 +608,7 @@ export function ZoomableCanvas({
     setAutoRecenterEnabled(true);
     setIsUserInteracting(false);
     
-    // Force a new measurement of content before applying transform
-    measureContent().then(() => {
+    const applyTransform = () => {
       calculateContainTransform().then(({ scale: newScale, x: newX, y: newY }) => {
         // Apply transform directly
         if (contentRef.current) {
@@ -620,7 +621,13 @@ export function ZoomableCanvas({
         setPosition({ x: newX, y: newY });
         setIsZoomedIn(false);
       });
-    });
+    };
+
+    if (graphBoundsRef.current && graphBoundsRef.current.width > 0 && graphBoundsRef.current.height > 0) {
+      applyTransform();
+    } else {
+      measureContent().then(applyTransform);
+    }
   }, [measureContent, calculateContainTransform]);
 
   // Zoom in function
@@ -628,7 +635,7 @@ export function ZoomableCanvas({
     setIsUserInteracting(true);
     setAutoRecenterEnabled(false);
     
-    const newScale = scale + 0.1;
+    const newScale = Math.min(scale * 1.1, 2);
     
     // Activate zoom state when above threshold
     if (newScale > 0.9) {
@@ -665,7 +672,7 @@ export function ZoomableCanvas({
     setIsUserInteracting(true);
     setAutoRecenterEnabled(false);
     
-    const newScale = Math.max(scale - 0.1, 0.3);
+    const newScale = Math.max(scale * 0.9, 0.01);
     
     // Deactivate zoom state when below threshold
     if (newScale <= 0.9) {
@@ -836,7 +843,7 @@ export function ZoomableCanvas({
 
         const prevScale = scaleRef.current;
         const position = positionRef.current;
-        const newScale = Math.max(prevScale + (e.deltaY < 0 ? 0.1 : -0.1), 0.3);
+        const newScale = Math.max(prevScale * (e.deltaY < 0 ? 1.1 : 0.9), 0.01);
 
         if (!canvasRef.current) return;
         const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -994,7 +1001,7 @@ export function ZoomableCanvas({
       }
       
       const scaleFactor = distance / touchStartDistance;
-      const newScale = Math.max(Math.min(touchStartScale * scaleFactor, 2), 0.3);
+      const newScale = Math.max(Math.min(touchStartScale * scaleFactor, 2), 0.01);
       
       // Apply direct transform for better performance
       if (contentRef.current) {

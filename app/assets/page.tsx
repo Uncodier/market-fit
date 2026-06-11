@@ -433,7 +433,7 @@ function AssetCard({
             />
           ) : shouldShowVideoPreview ? (
             <video
-              src={asset.file_path.includes('#') ? asset.file_path : `${asset.file_path}#t=0.001`}
+              src={asset.file_path ? (asset.file_path.includes('#') ? asset.file_path : `${asset.file_path}#t=0.001`) : undefined}
               className="object-cover w-full h-full transition-all duration-300 hover:scale-[1.02]"
               controls={false}
               muted
@@ -716,7 +716,7 @@ function AssetListItem({
                   />
                 ) : shouldShowVideoPreview ? (
                   <video
-                    src={asset.file_path.includes('#') ? asset.file_path : `${asset.file_path}#t=0.001`}
+                    src={asset.file_path ? (asset.file_path.includes('#') ? asset.file_path : `${asset.file_path}#t=0.001`) : undefined}
                     className="object-cover w-full h-full"
                     controls={false}
                     muted

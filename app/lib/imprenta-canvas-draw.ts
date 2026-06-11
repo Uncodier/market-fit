@@ -45,7 +45,7 @@ export interface ImprentaCanvasTheme {
 export function imprentaCanvasTheme(isDark: boolean): ImprentaCanvasTheme {
   if (isDark) {
     return {
-      cardBg: "#181818",
+      cardBg: "#020817",
       cardBorder: "rgba(255,255,255,0.14)",
       cardRing: "rgba(255,255,255,0.08)",
       labelFill: "rgba(255,255,255,0.55)",

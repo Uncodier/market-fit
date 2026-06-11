@@ -10,7 +10,8 @@ import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { createClient } from "@/lib/supabase/client"
 import { ZoomableCanvas, type ZoomableViewportInfo } from "./zoomable-canvas"
 import { ImprentaParentEdgesCanvas } from "./imprenta-parent-edges-canvas"
-import { ImprentaNodesCanvas } from "./imprenta-nodes-canvas"
+import { ImprentaNodesCanvas, readCachedIdsAndGrid, type GridCacheEntry } from "./imprenta-nodes-canvas"
+import { ImprentaContextEdges } from "./imprenta-context-edges"
 import {
   worldViewportFromCanvas,
   bboxIntersects,
@@ -25,6 +26,8 @@ import {
   type ViewportStore,
 } from "@/app/lib/imprenta-viewport-store"
 import { getImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
+import { createImprentaDragStore } from '@/app/lib/imprenta-drag-store'
+import { createImprentaHoverStore } from '@/app/lib/imprenta-hover-store'
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
@@ -178,19 +181,18 @@ const IMPRENTA_LOD_FULL_DETAIL_SCALE = 0.4
  * would otherwise explode. Keep this generous so typical workflows never see
  * the "skeleton pop" when zooming out.
  */
-const IMPRENTA_LOD_LITE_MIN_NODES = 100
 /**
  * Within lite shells only (scale < IMPRENTA_LOD_FULL_DETAIL_SCALE):
  * - micro: minimal chrome + optional tiny preview
  * - simple: compact type layout + one small preview when images exist
  * - rich: full lite skeleton + larger previews / extra thumbs
  *
- * ZoomableCanvas clamps user zoom to min 0.3 (wheel / buttons / pinch). Initial
- * "fit" can be below that; thresholds must sit inside (~0.3 … full) so all
+ * ZoomableCanvas clamps user zoom to min 0.01 (wheel / buttons / pinch). Initial
+ * "fit" can be below that; thresholds must sit inside (~0.01 … full) so all
  * three bands are reachable while zooming.
  */
-const IMPRENTA_LOD_LITE_MICRO_MAX = 0.32
-const IMPRENTA_LOD_LITE_SIMPLE_MAX = 0.36
+const IMPRENTA_LOD_LITE_MICRO_MAX = 0.05
+const IMPRENTA_LOD_LITE_SIMPLE_MAX = 0.10
 
 type ImprentaLiteSkeletonBand = "micro" | "simple" | "rich"
 
@@ -737,13 +739,1039 @@ const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
   )
 })
 
-const REMARK_PLUGINS = [remarkGfm] as const
+const REMARK_PLUGINS = [remarkGfm]
 
 const MemoMarkdown = memo(function MemoMarkdown({ text }: { text: string }) {
   return (
     <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={markdownComponents}>
       {text}
     </ReactMarkdown>
+  )
+})
+
+const ImprentaDummyCardInner = memo(({ 
+  node, 
+  pos, 
+  draggingNodeId, 
+  liteDummy, 
+  registerNodeRef 
+}: {
+  node: InstanceNode
+  pos: { x: number; y: number }
+  draggingNodeId: string | null
+  liteDummy: boolean
+  registerNodeRef: (id: string, el: HTMLDivElement | null) => void
+}) => {
+  const mediaTypeForDummy = (node.settings as any)?.media_type || node.type.replace('generate-', '')
+  const isMediaDummy = mediaTypeForDummy === 'image' || mediaTypeForDummy === 'video' || mediaTypeForDummy === 'audio'
+  const isVideoDummy = mediaTypeForDummy === 'video'
+  
+  const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio
+  let aspectStyle = "1/1"
+  if (isVideoDummy) aspectStyle = "16/9"
+  
+  if (aspectRatioParam) {
+    if (aspectRatioParam === "16:9") aspectStyle = "16/9"
+    else if (aspectRatioParam === "9:16") aspectStyle = "9/16"
+    else if (aspectRatioParam === "4:3") aspectStyle = "4/3"
+    else if (aspectRatioParam === "3:4") aspectStyle = "3/4"
+    else if (aspectRatioParam === "1:1") aspectStyle = "1/1"
+    else aspectStyle = String(aspectRatioParam).replace(':', '/')
+  }
+
+  return (
+<div 
+                          key={node.id}
+                          ref={(el) => registerNodeRef(node.id, el)}
+                          data-node-id={node.id}
+                        className={cn(
+                          "absolute group z-10",
+                          draggingNodeId ? "select-none" : ""
+                        )}
+                        style={{ 
+                          transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+                          left: 0,
+                          top: 0,
+                        }}
+                        >
+                          <Card
+                            className={
+                              "w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] border-2 border-foreground/10 bg-card rounded-3xl " +
+                              (liteDummy ? "" : "animate-pulse")
+                            }
+                          >
+                            <CardContent className="p-5 flex flex-col gap-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground leading-none truncate">
+                                  Result
+                                </span>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-secondary/50">
+                                  {node.status === 'pending' ? 'pending' : 'running'}
+                                </Badge>
+                              </div>
+                              
+                              {isMediaDummy ? (
+                                <div 
+                                  className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center`}
+                                  style={{ aspectRatio: aspectStyle }}
+                                >
+                                  {!liteDummy && (
+                                    <div className="relative w-full h-full">
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <Bot className="w-8 h-8 text-muted-foreground/30 animate-pulse" />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className={`flex-1 min-h-[140px] rounded-xl bg-muted/30 border border-border/50 p-4 flex flex-col gap-3 justify-center`}>
+                                  {!liteDummy && (
+                                    <>
+                                      <div className="h-2.5 w-[85%] rounded-full bg-muted-foreground/20 animate-pulse" />
+                                      <div className="h-2.5 w-[65%] rounded-full bg-muted-foreground/20 animate-pulse" />
+                                      <div className="h-2.5 w-[40%] rounded-full bg-muted-foreground/20 animate-pulse" />
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center justify-between pt-3 border-t border-white/5 opacity-50 pointer-events-none">
+                                <div className="flex gap-2 w-full">
+                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
+                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
+                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
+                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+  )
+})
+
+const ImprentaNodeCardInner = memo(({
+  node,
+  pos,
+  draggingNodeId,
+  hasResult,
+  actionRunning,
+  hasCnt,
+  hasAud,
+  needAudience,
+  registerNodeRef,
+  nodes,
+  dummyNodes,
+  contexts,
+  supabase,
+  generatingNodeIds,
+  currentSite,
+  textParams,
+  imageParams,
+  videoParams,
+  audioParams,
+  renderMediaWithZoom,
+  actions
+}: {
+  node: InstanceNode
+  pos: { x: number; y: number }
+  draggingNodeId: string | null
+  hasResult: boolean
+  actionRunning: boolean
+  hasCnt: boolean
+  hasAud: boolean
+  needAudience: boolean
+  registerNodeRef: (id: string, el: HTMLDivElement | null) => void
+  nodes: InstanceNode[]
+  dummyNodes: InstanceNode[]
+  contexts: any[]
+  supabase: any
+  generatingNodeIds: Set<string>
+  currentSite: any
+  textParams: any
+  imageParams: any
+  videoParams: any
+  audioParams: any
+  renderMediaWithZoom: any
+  actions: {
+    handleNodeMouseDown: (e: any, id: string) => void
+    handleDeleteNode: (id: string) => Promise<void>
+    handleDuplicateNode: (id: string) => Promise<void>
+    handleConnectionDrop: (e: any, id: string, type?: "content" | "context" | "audience") => void
+    handleConnectionStart: (e: any, id: string) => void
+    handleExecuteNode: (node: InstanceNode) => void
+    setNodes: any
+    setZoomedMedia: any
+    handleImprentaNodeHover: (id: string | null) => void
+    isImprentaWorkflowActionNode: (node: InstanceNode) => boolean
+    getParentNode: (node: InstanceNode) => InstanceNode | undefined
+    handleCreateActionFromContext: (ctx: any) => void
+  }
+}) => {
+  return (
+<div 
+                        key={node.id}
+                        ref={(el) => registerNodeRef(node.id, el)}
+                        data-node-id={node.id}
+                        className={cn(
+                          "absolute cursor-grab active:cursor-grabbing",
+                          draggingNodeId ? "select-none" : ""
+                        )}
+                        style={{ 
+                          transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+                          left: 0,
+                          top: 0,
+                          zIndex: 10
+                        }}
+                        onMouseDown={(e) => actions.handleNodeMouseDown(e, node.id)}
+                      >
+                        <Card
+                          // `transition-shadow` forced a repaint of every visible card on every
+                          // hover change in Safari. Keep a flat static shadow and skip the
+                          // transition. We DO NOT use `contain: paint` here: with many cards on
+                          // screen, promoting each to its own Safari composite layer (plus the
+                          // rounded-corner clip mask it implies) cost more than it saved.
+                          // `group` + toolbar inside the card so hover ends when the pointer
+                          // leaves the card surface (not the wider node wrapper used for drag).
+                          className={
+                            "group relative w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] border-2 border-foreground/10 bg-card rounded-3xl" +
+                            (node.type === "publish" && !hasResult ? " group/publish-in" : "") +
+                            (actionRunning ? " imprenta-action-running" : "")
+                          }
+                          onMouseEnter={() => actions.handleImprentaNodeHover(node.id)}
+                          onMouseLeave={() => actions.handleImprentaNodeHover(null)}
+                        >
+                          <div
+                            className="absolute z-20 flex flex-row-reverse items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto"
+                            style={{ top: -36, right: -6 }}
+                          >
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="h-8 w-8 rounded-full p-0 shadow-md shrink-0 [&_svg]:size-3"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    void actions.handleDeleteNode(node.id)
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={6} className="text-xs max-w-[240px]">
+                                Delete this node and all nested nodes
+                              </TooltipContent>
+                            </Tooltip>
+                            {actions.isImprentaWorkflowActionNode(node) && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-full p-0 shadow-md border border-border/70 bg-background hover:bg-muted shrink-0 [&_svg]:size-3"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      void actions.handleDuplicateNode(node.id)
+                                    }}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" sideOffset={6} className="text-xs max-w-[240px]">
+                                  Duplicate settings and context links; the new node starts as pending
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+
+                          <CardContent className="p-5 relative">
+                            {!hasResult &&
+                              (node.type === "publish" ? (
+                                (() => {
+                                  const contentWarn = !hasCnt;
+                                  const audienceWarn = needAudience && !hasAud;
+                                  const anchorClass = (warn: boolean) =>
+                                    `w-4 h-4 bg-background border-2 rounded-full flex items-center justify-center shrink-0 hover:scale-125 transition-transform ${
+                                      warn ? "border-amber-500" : "border-muted-foreground"
+                                    }`;
+                                  return (
+                                    <>
+                                      <div
+                                        className="absolute -left-3 z-20 w-4 -translate-y-1/2"
+                                        style={{ top: `${PUBLISH_ANCHOR_CONTENT_Y * 100}%` }}
+                                        title="Content: any creative output (same allowed sources as Context; not Audience-branched)"
+                                      >
+                                        <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-foreground bg-muted/95 border border-border px-1.5 py-0.5 rounded-md shadow-sm opacity-0 group-hover/publish-in:opacity-100 transition-opacity whitespace-nowrap">
+                                          {PUBLISH_ANCHOR_LABELS.content}
+                                        </span>
+                                        <div
+                                          className={anchorClass(contentWarn)}
+                                          onClick={(e) => actions.handleConnectionDrop(e, node.id, "content")}
+                                        >
+                                          <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
+                                        </div>
+                                      </div>
+                                      <div
+                                        className="absolute -left-3 z-20 w-4 -translate-y-1/2"
+                                        style={{ top: `${PUBLISH_ANCHOR_CONTEXT_Y * 100}%` }}
+                                        title="Context: normal references (style, data, other nodes)"
+                                      >
+                                        <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-foreground bg-muted/95 border border-border px-1.5 py-0.5 rounded-md shadow-sm opacity-0 group-hover/publish-in:opacity-100 transition-opacity whitespace-nowrap">
+                                          {PUBLISH_ANCHOR_LABELS.context}
+                                        </span>
+                                        <div
+                                          className={anchorClass(false)}
+                                          onClick={(e) => actions.handleConnectionDrop(e, node.id, "context")}
+                                        >
+                                          <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
+                                        </div>
+                                      </div>
+                                      <div
+                                        className="absolute -left-3 z-20 w-4 -translate-y-1/2"
+                                        style={{ top: `${PUBLISH_ANCHOR_AUDIENCE_Y * 100}%` }}
+                                        title={
+                                          needAudience
+                                            ? "Audience: Audience node including audience_id: (required for Mail, WhatsApp, Newsletter)"
+                                            : "Audience: Audience node including audience_id: (optional)"
+                                        }
+                                      >
+                                        <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-foreground bg-muted/95 border border-border px-1.5 py-0.5 rounded-md shadow-sm opacity-0 group-hover/publish-in:opacity-100 transition-opacity whitespace-nowrap">
+                                          {PUBLISH_ANCHOR_LABELS.audience}
+                                        </span>
+                                        <div
+                                          className={anchorClass(audienceWarn)}
+                                          onClick={(e) => actions.handleConnectionDrop(e, node.id, "audience")}
+                                        >
+                                          <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
+                                        </div>
+                                      </div>
+                                    </>
+                                  );
+                                })()
+                              ) : (
+                              <div 
+                                className="absolute top-1/2 -translate-y-1/2 -left-3 w-4 h-4 bg-background border-2 border-muted-foreground rounded-full flex items-center justify-center z-20 hover:scale-125 transition-transform" 
+                                  title="Drop context here"
+                                onClick={(e) => actions.handleConnectionDrop(e, node.id)}
+                              >
+                                <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
+                              </div>
+                              ))}
+
+                            {hasResult && (
+                              <div 
+                                className="absolute top-1/2 -translate-y-1/2 -right-3 w-4 h-4 bg-background border-2 border-primary rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-20 hover:scale-125 transition-transform" 
+                                title="Drag to a context input"
+                                onClick={(e) => actions.handleConnectionStart(e, node.id)}
+                              >
+                                <div className="w-1.5 h-1.5 bg-primary rounded-full pointer-events-none" />
+                              </div>
+                            )}
+
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-muted-foreground uppercase leading-none">
+                                  {hasResult ? 'Result' : node.type}
+                                </span>
+                                {hasResult && (
+                                  <Badge variant={
+                                    node.status === 'completed' ? 'success' as any :
+                                    node.status === 'failed' ? 'destructive' :
+                                    node.status === 'running' ? 'default' : 'secondary'
+                                  } className="text-[10px] px-1.5 py-0">
+                                    {node.status}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {actions.isImprentaWorkflowActionNode(node) &&
+                                !hasResult &&
+                                !isImprentaUploadedNode(node) &&
+                                (() => {
+                                  const hasRealChildren = nodes.some(
+                                    (ch) => ch.parent_node_id === node.id && !String(ch.id).startsWith("dummy-")
+                                  )
+                                  const outputTypeLocked =
+                                    hasRealChildren || node.status !== "pending" || generatingNodeIds.has(node.id)
+                                  const lockedTitle = outputTypeLocked
+                                    ? "Output type is locked. Duplicate this node to change it."
+                                    : "Card mode"
+
+                                  return (
+                                    <div
+                                      className="flex flex-wrap items-center bg-muted/50 p-1 rounded-2xl gap-1"
+                                      title={lockedTitle}
+                                    >
+                                      {IMPRENTA_MODE_OPTIONS.map(({ type: modeType, label }) => (
+                                        <Button
+                                          key={modeType}
+                                          type="button"
+                                          disabled={outputTypeLocked}
+                                          variant={node.type === modeType ? "outline" : "ghost"}
+                                          size="sm"
+                                          className={`flex-1 h-7 text-[11px] rounded-full font-medium ${
+                                            node.type === modeType
+                                              ? "bg-background shadow-sm border-white/10"
+                                              : "text-muted-foreground hover:text-foreground"
+                                          }`}
+                                          onClick={async (e) => {
+                                            e.stopPropagation()
+                                            if (outputTypeLocked) {
+                                              toast.error("Output type is locked. Duplicate this node to change it.")
+                                              return
+                                            }
+                                            actions.setNodes((prev: InstanceNode[]) =>
+                                              prev.map((n: InstanceNode) => (n.id === node.id ? { ...n, type: modeType } : n))
+                                            )
+                                            await supabase
+                                              .from("instance_nodes")
+                                              .update({ type: modeType })
+                                              .eq("id", node.id)
+                                          }}
+                                        >
+                                          {label}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                  )
+                                })()}
+                              
+                              {!hasResult && (
+                                <>
+                                <Textarea 
+                                  defaultValue={node.prompt?.text || ''}
+                                  onBlur={async (e) => {
+                                    const newText = e.target.value;
+                                    if (newText !== node.prompt?.text) {
+                                      actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, prompt: { ...n.prompt, text: newText } } : n));
+                                      const { error } = await supabase
+                                        .from('instance_nodes')
+                                        .update({ prompt: { ...node.prompt, text: newText } })
+                                        .eq('id', node.id);
+                                        
+                                      if (error) {
+                                        toast.error("Failed to save node text");
+                                        console.error(error);
+                                      }
+                                    }
+                                  }}
+                                  className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-xl resize-none focus-visible:ring-1 focus-visible:ring-secondary min-h-[60px] max-h-[150px]"
+                                  placeholder={node.type === 'publish' ? "Optional: custom instructions for publishing..." : "Type to edit prompt..."}
+                                />
+                                
+                                {node.type === 'generate-audience' && (
+                                  <TooltipProvider delayDuration={200}>
+                                    <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
+                                      {([
+                                        { key: 'email', label: 'Email', icon: Mail, hint: 'Only include leads that have an email address.' },
+                                        { key: 'web', label: 'Web', icon: Globe, hint: 'Only include leads that have a website URL.' },
+                                        { key: 'phone', label: 'Phone', icon: Phone, hint: 'Only include leads that have a phone number.' },
+                                        { key: 'deals', label: 'Deals', icon: Tag, hint: 'Only include leads that have at least one deal.' },
+                                      ] as const).map(({ key, label, icon: Icon, hint }) => {
+                                        const isSelected = !!(node.settings as any)?.audience_channels?.includes(key);
+                                        const toggleChannel = async () => {
+                                          const current = (node.settings as any)?.audience_channels || [];
+                                          const newChannels = isSelected
+                                            ? current.filter((c: string) => c !== key)
+                                            : [...current, key];
+                                          actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), audience_channels: newChannels } } : n));
+                                          await supabase.from('instance_nodes').update({
+                                            settings: { ...((node.settings as any) || {}), audience_channels: newChannels }
+                                          }).eq('id', node.id);
+                                        };
+                                        return (
+                                          <Tooltip key={key}>
+                                            <TooltipTrigger asChild>
+                                              <label
+                                                className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                <span className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
+                                                <Switch
+                                                  thumbIcon={<Icon className="h-3 w-3" />}
+                                                  checked={isSelected}
+                                                  onCheckedChange={toggleChannel}
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  className="h-[22px] w-[44px] shrink-0 [&>span]:h-[18px] [&>span]:w-[18px] [&>span[data-state=checked]]:translate-x-[22px] [&>span[data-state=unchecked]]:translate-x-0"
+                                                />
+                                              </label>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="text-[11px] max-w-[220px]">
+                                              {hint}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        );
+                                      })}
+                                    </div>
+                                  </TooltipProvider>
+                                )}
+
+                                {node.type === 'publish' && (() => {
+                                  const siteUrl = currentSite?.url && String(currentSite.url).trim();
+                                  const isEmailDistributionAvailable = currentSite?.settings?.channels?.email?.status === 'synced';
+                                  const isWhatsappAvailable = currentSite?.settings?.channels?.whatsapp?.status === 'active' || currentSite?.settings?.channels?.agent_whatsapp?.status === 'active';
+                                  const rawDestinations = (node.settings as any)?.publish_destinations;
+                                  // Treat unset destinations as blog-on-by-default when the site has a URL,
+                                  // so new publish nodes land preconfigured for the most common case.
+                                  const currentDestinations: string[] = Array.isArray(rawDestinations)
+                                    ? rawDestinations
+                                    : (siteUrl ? ['blog'] : []);
+                                  const toggleDestination = async (key: string) => {
+                                    const isOn = currentDestinations.includes(key);
+                                    const newDest = isOn
+                                      ? currentDestinations.filter((d: string) => d !== key)
+                                      : [...currentDestinations, key];
+                                    actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
+                                    await supabase.from('instance_nodes').update({
+                                      settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
+                                    }).eq('id', node.id);
+                                  };
+
+                                  const renderToggle = (key: string, label: string, icon: React.ReactNode, hint: string) => {
+                                    const isSelected = currentDestinations.includes(key);
+                                    return (
+                                      <Tooltip key={key}>
+                                        <TooltipTrigger asChild>
+                                          <label
+                                            className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <span
+                                              className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
+                                            >
+                                              {label}
+                                            </span>
+                                            <Switch
+                                              thumbIcon={icon}
+                                              checked={isSelected}
+                                              onCheckedChange={() => toggleDestination(key)}
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="h-[22px] w-[44px] shrink-0 [&>span]:h-[18px] [&>span]:w-[18px] [&>span[data-state=checked]]:translate-x-[22px] [&>span[data-state=unchecked]]:translate-x-0"
+                                            />
+                                          </label>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-[11px] max-w-[220px]">
+                                          {hint}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    );
+                                  };
+
+                                  return (
+                                    <TooltipProvider delayDuration={200}>
+                                      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
+                                        {(currentSite?.settings?.social_media || [])
+                                          .filter(isSocialMediaEntryConnected)
+                                          .map((sm: any) => {
+                                            const platformLabel = String(sm.platform).charAt(0).toUpperCase() + String(sm.platform).slice(1);
+                                            return renderToggle(
+                                              sm.platform,
+                                              platformLabel,
+                                              <SocialIcon platform={sm.platform} size={12} color="currentColor" />,
+                                              `Publish this content to your connected ${platformLabel} account.`
+                                            );
+                                          })}
+                                        {siteUrl && renderToggle(
+                                          'blog',
+                                          'Blog',
+                                          <Globe size={12} />,
+                                          'Publish this content as a blog post on your site.'
+                                        )}
+                                        {isEmailDistributionAvailable && renderToggle(
+                                          'mail',
+                                          'Mail',
+                                          <Mail size={12} />,
+                                          'Send this content as an individual email to the selected audience.'
+                                        )}
+                                        {isEmailDistributionAvailable && renderToggle(
+                                          'newsletter',
+                                          'Newsletter',
+                                          <FileText
+                                            size={12}
+                                            className="[&>svg]:block [&>svg]:-translate-x-px"
+                                          />,
+                                          'Include this content in your next newsletter to subscribers.'
+                                        )}
+                                        {isWhatsappAvailable && renderToggle(
+                                          'whatsapp',
+                                          'WhatsApp',
+                                          <SocialIcon platform="whatsapp" size={12} color="currentColor" />,
+                                          'Send this content through your connected WhatsApp channel.'
+                                        )}
+                                      </div>
+                                    </TooltipProvider>
+                                  );
+                                })()}
+                                
+                                {node.type !== 'publish' && node.type !== 'generate-audience' && (
+                                  <div className="flex justify-start w-full">
+                                    <MediaParametersToolbar
+                                      selectedActivity={node.type}
+                                      textParameters={(node.settings as any)?.parameters || textParams}
+                                      imageParameters={(node.settings as any)?.parameters || imageParams}
+                                      videoParameters={(node.settings as any)?.parameters || videoParams}
+                                      audioParameters={(node.settings as any)?.parameters || audioParams}
+                                      onTextParameterChange={async (key, value) => {
+                                        const currentParams = (node.settings as any)?.parameters || textParams;
+                                        const newParams = { ...currentParams, [key]: value };
+                                        const updatedSettings = { ...((node.settings as any) || {}), media_type: 'text', parameters: newParams };
+                                        actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: updatedSettings } : n));
+                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
+                                      }}
+                                      onImageParameterChange={async (key, value) => {
+                                        const currentParams = (node.settings as any)?.parameters || imageParams;
+                                        const newParams = { ...currentParams, [key]: value };
+                                        const updatedSettings = { ...((node.settings as any) || {}), media_type: 'image', parameters: newParams };
+                                        actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: updatedSettings } : n));
+                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
+                                      }}
+                                      onVideoParameterChange={async (key, value) => {
+                                        const currentParams = (node.settings as any)?.parameters || videoParams;
+                                        const newParams = { ...currentParams, [key]: value };
+                                        const updatedSettings = { ...((node.settings as any) || {}), media_type: 'video', parameters: newParams };
+                                        actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: updatedSettings } : n));
+                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
+                                      }}
+                                      onAudioParameterChange={async (key, value) => {
+                                        const currentParams = (node.settings as any)?.parameters || audioParams;
+                                        const newParams = { ...currentParams, [key]: value };
+                                        const updatedSettings = { ...((node.settings as any) || {}), media_type: 'audio', parameters: newParams };
+                                        actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, settings: updatedSettings } : n));
+                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            
+                              {hasResult && (
+                              (() => {
+                                const extractUrl = (text: any): string => {
+                                  if (!text) return '';
+                                  const str = String(text);
+                                  const urlMatch = str.match(/https?:\/\/[^\s"'<>()]+/);
+                                  return urlMatch ? urlMatch[0] : str;
+                                };
+
+                                return (
+                                <div className="flex flex-col gap-2">
+                                {(() => {
+                                  const allNodes = [...nodes, ...dummyNodes]
+                                  const embeddedRaw = (node.result as { audience_leads?: unknown })?.audience_leads
+                                  const embeddedLeads: AudienceLeadRow[] | undefined = Array.isArray(embeddedRaw)
+                                    ? (embeddedRaw as AudienceLeadRow[])
+                                    : undefined
+                                  const resolvedId = resolveAudienceSegmentIdForImprenta(node, allNodes)
+                                  const audienceId =
+                                    resolvedId ||
+                                    (embeddedLeads?.[0]?.audience_id
+                                      ? String(embeddedLeads[0].audience_id)
+                                      : "")
+                                  const showLeadsCarousel =
+                                    !!currentSite?.id &&
+                                    (isValidPublishAudienceSource(node) ||
+                                      isDescendantOfAudienceNode(node, allNodes)) &&
+                                    (!!audienceId || (embeddedLeads && embeddedLeads.length > 0))
+                                  if (!showLeadsCarousel) return null
+                                  return (
+                                    <ImprentaAudienceLeadsCarousel
+                                      audienceId={audienceId || String(embeddedLeads?.[0]?.audience_id ?? "")}
+                                      siteId={currentSite.id}
+                                      embeddedLeads={embeddedLeads}
+                                    />
+                                  )
+                                })()}
+                                {(node.result as any).outputs && Array.isArray((node.result as any).outputs) && (
+                                  <div className="flex flex-col gap-2">
+                                    {(node.result as any).outputs.map((outputItem: any, idx: number) => {
+                                      const rawUrl = outputItem.data?.url || outputItem.url;
+                                      if (!rawUrl) return null;
+                                      const url = extractUrl(rawUrl);
+                                      if (outputItem.type === 'image') return renderMediaWithZoom(url, 'image', idx);
+                                      if (outputItem.type === 'video') return renderMediaWithZoom(url, 'video', idx);
+                                      if (outputItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
+                                      return null;
+                                    })}
+                                  </div>
+                                )}
+                                {(node.result as any).media && Array.isArray((node.result as any).media) && (
+                                  <div className="flex flex-col gap-2">
+                                    {(node.result as any).media.map((mediaItem: any, idx: number) => {
+                                      if (!mediaItem.url) return null;
+                                      const url = extractUrl(mediaItem.url);
+                                      if (mediaItem.type === 'image') return renderMediaWithZoom(url, 'image', idx);
+                                      if (mediaItem.type === 'video') return renderMediaWithZoom(url, 'video', idx);
+                                      if (mediaItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
+                                      return null;
+                                    })}
+                                  </div>
+                                )}
+                                {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).images && Array.isArray((node.result as any).images) && (
+                                  <div className="flex flex-col gap-2">
+                                    {(node.result as any).images.map((img: any, idx: number) => (
+                                      img.url && renderMediaWithZoom(extractUrl(img.url), 'image', idx)
+                                    ))}
+                                  </div>
+                                )}
+                                {!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && (node.result as any).image && (node.result as any).image.url && (
+                                  renderMediaWithZoom(extractUrl((node.result as any).image.url), 'image', 'single-img')
+                                )}
+                                {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).video && (node.result as any).video.url && (
+                                  renderMediaWithZoom(extractUrl((node.result as any).video.url), 'video', 'single-vid')
+                                )}
+                                {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).audio && (node.result as any).audio.url && (
+                                  <AudioPlayer key={extractUrl((node.result as any).audio.url)} src={extractUrl((node.result as any).audio.url)} className="w-full" />
+                                )}
+                                {((node.result as any).text || (!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && !(node.result as any).image && !(node.result as any).video && !(node.result as any).audio && !(node.result as any).text)) && (() => {
+                                  let textContent = (node.result as any).text 
+                                    ? String((node.result as any).text) 
+                                    : "```json\n" + JSON.stringify(node.result, null, 2) + "\n```";
+                                  
+                                  const hasStructuredMedia = !!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio;
+
+                                  const parentNode = actions.getParentNode(node);
+                                  const isParentTextAction = parentNode && (parentNode.type === 'prompt' || parentNode.type === 'generate-text' || (parentNode.settings as any)?.media_type === 'text');
+                                  
+                                  // Detect intention: did this node intend to produce media?
+                                  const isMediaIntent = !isParentTextAction && (node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || 
+                                                        (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' ||
+                                                                        (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio')));
+
+                                  let extractedUrl: string | null = null;
+                                  if (isMediaIntent) {
+                                    // If we ALREADY successfully parsed structured media, we don't need to show ANY text. 
+                                    if (hasStructuredMedia) return null;
+
+                                    // If we ONLY got text back from the agent for a media node, forcefully extract the media link and discard the conversational text.
+                                    let expectedMediaType = (node.settings as any)?.media_type || node.type.replace('generate-', '');
+                                    if (!['image', 'video', 'audio'].includes(expectedMediaType) && parentNode) {
+                                      expectedMediaType = (parentNode.settings as any)?.media_type || parentNode.type.replace('generate-', '');
+                                    }
+                                    
+                                    if (expectedMediaType === 'image') {
+                                      const imgMatchMarkdown = textContent.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/);
+                                      const imgMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
+                                      if (imgMatchMarkdown) extractedUrl = imgMatchMarkdown[1];
+                                      else if (imgMatchUrl) extractedUrl = imgMatchUrl[0];
+                                      
+                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'image', 'extracted-img');
+                                    } else if (expectedMediaType === 'video') {
+                                      const vidMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp4|webm|mov|mkv)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
+                                      if (vidMatchUrl) extractedUrl = vidMatchUrl[0];
+                                      
+                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'video', 'extracted-vid');
+                                    } else if (expectedMediaType === 'audio') {
+                                      const audioMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp3|wav|ogg|m4a|aac|flac)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
+                                      if (audioMatchUrl) extractedUrl = audioMatchUrl[0];
+                                      
+                                      if (extractedUrl) return <AudioPlayer key="extracted-audio" src={extractedUrl} className="w-full" />;
+                                    }
+
+                                    // If no URL could be extracted yet and it's still running, show a placeholder
+                                    if (!extractedUrl && (node.status === 'running' || node.status === 'pending')) {
+                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio || (parentNode?.settings as any)?.parameters?.aspectRatio;
+                                      let aspectStyle = "1/1";
+                                      if (expectedMediaType === 'video') aspectStyle = "16/9";
+                                      
+                                      if (aspectRatioParam) {
+                                        if (aspectRatioParam === "16:9") aspectStyle = "16/9";
+                                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16";
+                                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3";
+                                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4";
+                                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1";
+                                        else aspectStyle = String(aspectRatioParam).replace(':', '/');
+                                      }
+
+                                      return (
+                                        <div 
+                                          className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center`}
+                                          style={{ aspectRatio: aspectStyle }}
+                                        >
+                                          <div className="relative w-full h-full">
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                              <Bot className="w-8 h-8 text-muted-foreground/30 animate-pulse" />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+
+                                    // If completed and no media could be extracted (e.g. error message from agent),
+                                    // we replace the text with an error placeholder and a retry button.
+                                    if (!extractedUrl && (node.status === 'completed' || node.status === 'failed')) {
+                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio || (parentNode?.settings as any)?.parameters?.aspectRatio;
+                                      let aspectStyle = "1/1";
+                                      if (expectedMediaType === 'video') aspectStyle = "16/9";
+                                      if (aspectRatioParam) {
+                                        if (aspectRatioParam === "16:9") aspectStyle = "16/9";
+                                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16";
+                                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3";
+                                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4";
+                                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1";
+                                        else aspectStyle = String(aspectRatioParam).replace(':', '/');
+                                      }
+
+                                      return (
+                                        <div 
+                                          className={`w-full overflow-hidden rounded-xl bg-muted/10 border border-destructive/20 flex flex-col items-center justify-center gap-3 p-6 text-center`}
+                                          style={{ aspectRatio: aspectStyle }}
+                                        >
+                                          <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mb-2">
+                                            <AlertCircle className="w-6 h-6" />
+                                          </div>
+                                          <div className="text-sm font-medium text-destructive">Failed to extract media</div>
+                                          <p className="text-xs text-muted-foreground mb-2">The AI responded with text instead of the expected format.</p>
+                                          
+                                          <div className="flex gap-2 pointer-events-auto">
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm"
+                                              className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                const parentNode = actions.getParentNode(node);
+                                                // Delete this faulty node and re-execute parent
+                                                actions.handleDeleteNode(node.id).then(() => {
+                                                  if (parentNode) actions.handleExecuteNode(parentNode);
+                                                });
+                                              }}
+                                            >
+                                              <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                                              Retry Generation
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                  }
+
+                                  // Only for Text (prompt) and Publish types, show the markdown
+                                  if (hasStructuredMedia && textContent && !isParentTextAction) {
+                                    textContent = textContent.replace(/https?:\/\/[^\s"'<>()]+\.(wav|mp3|ogg|m4a|aac|flac|webm)/gi, '').trim();
+                                  }
+                                  if (!textContent) return null;
+                                  
+                                  return (
+                                    <div className="text-xs bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground prose prose-sm dark:prose-invert max-w-none">
+                                      <MemoMarkdown text={textContent} />
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              );
+                              })()
+                            )}
+                            
+                              <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                              {(() => {
+                                const parentNode = actions.getParentNode(node);
+                                return hasResult ? (
+                                <div className="flex gap-2 w-full">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="flex-1"
+                                    disabled={
+                                      node.status === 'running' || 
+                                      node.status === 'pending' || 
+                                      node.status === 'failed' || 
+                                      (!!(node.settings as any)?.imprenta_mode && !contexts.some(ctx => ctx.target_node_id === node.id)) ||
+                                      // Disable if media was intended but failed to extract
+                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
+                                       !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
+                                       !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
+                                       !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
+                                    }
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const parentNode = actions.getParentNode(node);
+                                      if (parentNode) {
+                                        actions.handleExecuteNode(parentNode);
+                                      } else {
+                                        actions.handleExecuteNode(node); // Fallback: execute current if root
+                                      }
+                                    }}
+                                    title="New Variant"
+                                  >
+                                    <GitFork className="w-4 h-4 mr-2" /> Variant
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="flex-1"
+                                    disabled={
+                                      node.status === 'running' || 
+                                      node.status === 'pending' || 
+                                      node.status === 'failed' ||
+                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
+                                       !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
+                                       !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
+                                       !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
+                                    }
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      actions.handleCreateActionFromContext(node.id);
+                                    }}
+                                    title="New Action"
+                                  >
+                                    <Plus className="w-4 h-4 mr-2" /> Action
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1"
+                                    disabled={
+                                      node.status === 'running' || 
+                                      node.status === 'pending' || 
+                                      node.status === 'failed' ||
+                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
+                                       !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
+                                       !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
+                                       !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
+                                    }
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const res = node.result as any;
+                                      let textToCopy = "";
+                                      
+                                      if (res.outputs && Array.isArray(res.outputs) && res.outputs.length > 0 && (res.outputs[0]?.data?.url || res.outputs[0]?.url)) textToCopy = String(res.outputs[0].data?.url || res.outputs[0].url);
+                                      else if (res.media && Array.isArray(res.media) && res.media.length > 0 && res.media[0]?.url) textToCopy = String(res.media[0].url);
+                                      else if (res.url) textToCopy = String(res.url);
+                                      else if (res.images && res.images.length > 0 && res.images[0]?.url) textToCopy = String(res.images[0].url);
+                                      else if (res.image && res.image.url) textToCopy = String(res.image.url);
+                                      else if (res.audio && res.audio.url) textToCopy = String(res.audio.url);
+                                      else if (res.video && res.video.url) textToCopy = String(res.video.url);
+                                      else if (res.text) textToCopy = String(res.text);
+                                      else textToCopy = JSON.stringify(res, null, 2);
+                                      
+                                      try {
+                                        await navigator.clipboard.writeText(textToCopy);
+                                        toast.success("Copied to clipboard");
+                                      } catch (err) {
+                                        toast.error("Failed to copy");
+                                      }
+                                    }}
+                                    title="Copy Result"
+                                  >
+                                    <Copy className="h-4 w-4 mr-2" /> Copy
+                                  </Button>
+                                  {(() => {
+                                      const extractUrl = (text: any): string => {
+                                        if (!text) return '';
+                                        const str = String(text);
+                                        const urlMatch = str.match(/https?:\/\/[^\s"'<>()]+/);
+                                        return urlMatch ? urlMatch[0] : str;
+                                      };
+
+                                      const res = node.result as any;
+                                      let rawAssetUrl = "";
+                                      
+                                      if (res.outputs && Array.isArray(res.outputs) && res.outputs.length > 0 && (res.outputs[0]?.data?.url || res.outputs[0]?.url)) rawAssetUrl = String(res.outputs[0].data?.url || res.outputs[0].url);
+                                      else if (res.media && Array.isArray(res.media) && res.media.length > 0 && res.media[0]?.url) rawAssetUrl = String(res.media[0].url);
+                                      else if (res.images && res.images.length > 0 && res.images[0]?.url) rawAssetUrl = String(res.images[0].url);
+                                      else if (res.image && res.image.url) rawAssetUrl = String(res.image.url);
+                                      else if (res.audio && res.audio.url) rawAssetUrl = String(res.audio.url);
+                                      else if (res.video && res.video.url) rawAssetUrl = String(res.video.url);
+                                      else if (res.url) rawAssetUrl = String(res.url);
+
+                                      const assetUrl = extractUrl(rawAssetUrl);
+                                      const isAssetUrl = assetUrl && (assetUrl.startsWith('http') || assetUrl.startsWith('data:'));
+
+                                      return (
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm"
+                                          className="flex-1"
+                                          disabled={
+                                            node.status === 'running' || 
+                                            node.status === 'pending' || 
+                                            node.status === 'failed' ||
+                                            ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
+                                              (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
+                                             !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
+                                             !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
+                                             !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
+                                          }
+                                          onPointerDown={(e) => e.stopPropagation()}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (isAssetUrl) {
+                                              try {
+                                                const response = await fetch(assetUrl);
+                                                const blob = await response.blob();
+                                                const blobUrl = window.URL.createObjectURL(blob);
+                                                const link = document.createElement('a');
+                                                link.href = blobUrl;
+                                                link.download = assetUrl.split('/').pop()?.split('?')[0] || `asset-${Date.now()}`;
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                                window.URL.revokeObjectURL(blobUrl);
+                                                toast.success("Downloaded");
+                                              } catch (err) {
+                                                window.open(assetUrl, '_blank');
+                                              }
+                                            } else {
+                                              // Download text result
+                                              let textToDownload = "";
+                                              if (res.text) textToDownload = String(res.text);
+                                              else textToDownload = JSON.stringify(res, null, 2);
+                                              
+                                              const blob = new Blob([textToDownload], { type: 'text/plain;charset=utf-8' });
+                                              const blobUrl = window.URL.createObjectURL(blob);
+                                              const link = document.createElement('a');
+                                              link.href = blobUrl;
+                                              link.download = `result-${Date.now()}.txt`;
+                                              document.body.appendChild(link);
+                                              link.click();
+                                              document.body.removeChild(link);
+                                              window.URL.revokeObjectURL(blobUrl);
+                                              toast.success("Downloaded result");
+                                            }
+                                          }}
+                                          title="Download Result"
+                                        >
+                                          <Download className="w-4 h-4 mr-2" /> Download
+                                        </Button>
+                                      );
+                                  })()}
+                                </div>
+                              ) : (
+                                <div className="flex w-full">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full" 
+                                    title="Generate"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      actions.handleExecuteNode(node);
+                                    }}
+                                  >
+                                    <Play className="w-4 h-4 mr-2" /> Generate
+                                  </Button>
+                                </div>
+                              );
+                              })()}
+                            </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
   )
 })
 
@@ -768,7 +1796,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const [positions, setPositions] = useState<Record<string, {x: number, y: number}>>({})
   /** rAF-batched live position while dragging so edges stay aligned without setPositions every mousemove. */
-  const [nodeDragPreview, setNodeDragPreview] = useState<{ id: string; x: number; y: number } | null>(null)
+  const dragStore = useMemo(() => createImprentaDragStore(), [])
+  const hoverStore = useMemo(() => createImprentaHoverStore(), [])
   const nodeDragRafRef = useRef<number | null>(null)
   const lastNodeDragPosRef = useRef<{ x: number; y: number } | null>(null)
   const [viewportInfo, setViewportInfo] = useState<ZoomableViewportInfo | null>(null)
@@ -784,7 +1813,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [contexts, setContexts] = useState<any[]>([])
   const [selectedContextId, setSelectedContextId] = useState<string | null>(null)
   /** Drives stronger strokes on context + parent-chain edges while a card is hovered. */
-  const [imprentaHoveredNodeId, setImprentaHoveredNodeId] = useState<string | null>(null)
 
   const [tempConnection, setTempConnection] = useState<{fromNode: string, currentX: number, currentY: number} | null>(null)
   const drawingConnectionRef = useRef<{fromNode: string, mouseStartX: number, mouseStartY: number, nodeStartX: number, nodeStartY: number} | null>(null)
@@ -852,13 +1880,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     }
   }, [])
 
+  const canvasNodes = useMemo(() => [...nodes, ...dummyNodes], [nodes, dummyNodes])
+
   // Keep refs in sync for window event listeners
   positionsRef.current = positions;
-  nodesRef.current = [...nodes, ...dummyNodes];
+  nodesRef.current = canvasNodes;
 
   const { isDarkMode } = useTheme()
-
-  const canvasNodes = useMemo(() => [...nodes, ...dummyNodes], [nodes, dummyNodes])
 
   /**
    * Stable positions map (no drag override). Consumed by the canvas layers so
@@ -879,13 +1907,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
    * for the currently-dragged node. Only DOM consumers (card mounting + SVG
    * connection lines) need this, so the canvas grid cache stays stable.
    */
-  const resolvedPositions = useMemo(() => {
-    if (!nodeDragPreview) return stablePositions
-    return {
-      ...stablePositions,
-      [nodeDragPreview.id]: { x: nodeDragPreview.x, y: nodeDragPreview.y },
-    }
-  }, [stablePositions, nodeDragPreview])
+  const resolvedPositions = stablePositions
 
   const resolveNodePosition = useCallback(
     (nodeId: string): { x: number; y: number } => resolvedPositions[nodeId] || FALLBACK_POS,
@@ -897,11 +1919,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     [layoutEpoch, positions]
   )
 
+  const panelGridCacheRef = useRef<GridCacheEntry | null>(null)
+
   const visibleNodeIds = useMemo(() => {
-    const allIds = canvasNodes.map((n) => n.id)
     if (
       !viewportInfo ||
-      allIds.length === 0 ||
+      canvasNodes.length === 0 ||
       viewportInfo.canvasWidth < 2 ||
       viewportInfo.canvasHeight < 2
     ) {
@@ -916,14 +1939,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     )
     // Use stable positions so the visible-id set does not churn while the user
     // drags a node. Drag origin is always kept in DOM via `domRenderNodes`.
-    const grid = buildNodeCellGrid(
-      allIds,
+    const cached = readCachedIdsAndGrid(
+      panelGridCacheRef,
+      canvasNodes,
       stablePositions,
       nodeHeightsRef.current,
       IMPRENTA_NODE_W,
       IMPRENTA_ROW_H
     )
-    const candidates = collectIdsFromGrid(grid, vw)
+    const candidates = collectIdsFromGrid(cached.grid, vw)
     const out = new Set<string>()
     candidates.forEach((id) => {
       const p = stablePositions[id]
@@ -990,25 +2014,18 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const parentEdgeStroke = isDarkMode ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)"
   const parentEdgeHoverStroke = isDarkMode ? "rgba(147,197,253,0.92)" : "rgba(37,99,235,0.88)"
 
-  const imprentaHoverChainIds = useMemo(() => {
-    if (!imprentaHoveredNodeId) return null
-    return collectNodeAndAncestorIds(imprentaHoveredNodeId, canvasNodes)
-  }, [imprentaHoveredNodeId, canvasNodes])
 
   const handleImprentaNodeHover = useCallback((nodeId: string | null) => {
-    setImprentaHoveredNodeId(nodeId)
-  }, [])
+    hoverStore.set(nodeId)
+  }, [hoverStore])
 
   /**
    * Skip the lite canvas layer entirely for small/medium graphs. Canvas rendering
    * is only a win when DOM full-cards would otherwise flood the viewport at far
-   * zoom; below `IMPRENTA_LOD_LITE_MIN_NODES` total nodes, React virtualization
-   * handles the load and the skeleton-pop on zoom-out is just UX noise.
+   * zoom; React virtualization helps but canvas scale determines DOM mounting.
    */
-  const isLargeGraph = canvasNodes.length >= IMPRENTA_LOD_LITE_MIN_NODES
   const showFullNodeDetail =
     !viewportInfo ||
-    !isLargeGraph ||
     viewportInfo.scale >= IMPRENTA_LOD_FULL_DETAIL_SCALE
   /** Nodes we keep in DOM (dummies + drag origin + temp-connection origin). Canvas skips them. */
   const domOnlyNodeIds = useMemo(() => {
@@ -1159,7 +2176,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     setPositions({})
     setGeneratingNodeIds(new Set())
     setSelectedContextId(null)
-    setImprentaHoveredNodeId(null)
+    hoverStore.set(null)
     setZoomedMedia(null)
 
     if (!activeInstanceId) return
@@ -1238,8 +2255,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               console.error("Failed to create root node:", err)
             }
         } else {
-            console.log("Fetched nodes from DB:", data)
-            console.log("Nodes missing positions:", data.filter(n => !n.settings?.ui_position))
             setNodes(data)
             const nodeIds = data.map((n) => n.id)
             if (nodeIds.length > 0) {
@@ -1265,6 +2280,116 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     fetchNodes()
 
     // Subscribe to realtime updates for nodes
+    let nodeBatchBuffer: any[] = []
+    let nodeBatchTimeout: NodeJS.Timeout | null = null
+
+    const handleNodePayload = (payload: any) => {
+      if (payload.eventType === 'INSERT') {
+        const incoming = payload.new as InstanceNode
+        const normalized = normalizeImprentaNodeForResultMediaType(incoming)
+        const typeChanged = normalized.type !== incoming.type
+        const mediaChanged =
+          (normalized.settings as any)?.media_type !== (incoming.settings as any)?.media_type
+        if (typeChanged || mediaChanged) {
+          void supabase
+            .from("instance_nodes")
+            .update({ type: normalized.type, settings: normalized.settings })
+            .eq("id", incoming.id)
+        }
+        setNodes(prev => {
+          if (prev.some(n => n.id === incoming.id)) return prev;
+          return [...prev, normalized];
+        })
+        setDummyNodes(prev => {
+          // Find dummies for the same parent
+          const dummiesForParent = prev.filter(d => d.parent_node_id === incoming.parent_node_id);
+          
+          if (dummiesForParent.length > 0) {
+            // Get the first dummy that hasn't been replaced yet
+            const dummyToReplace = dummiesForParent[0];
+            const index = prev.findIndex(d => d.id === dummyToReplace.id);
+            
+            if (index !== -1) {
+              // Pre-assign the dummy's position and height to the new real node
+              setPositions(currPositions => {
+                if (currPositions[dummyToReplace.id]) {
+                  const newPositions = {
+                    ...currPositions,
+                    [incoming.id]: currPositions[dummyToReplace.id]
+                  };
+                  
+                  if (nodeHeightsRef.current[dummyToReplace.id]) {
+                    nodeHeightsRef.current[incoming.id] = nodeHeightsRef.current[dummyToReplace.id];
+                  }
+                  
+                  // Immediately clean up the dummy node's position so it doesn't bump the new node
+                  delete (newPositions as any)[dummyToReplace.id];
+                  
+                  return newPositions;
+                }
+                return currPositions;
+              });
+              
+              setGeneratingNodeIds(prev => {
+                const next = new Set(prev);
+                next.add(incoming.id);
+                return next;
+              });
+              
+              const copy = [...prev];
+              copy.splice(index, 1);
+              return copy;
+            }
+          }
+          return prev;
+        })
+      } else if (payload.eventType === 'UPDATE') {
+        const incoming = payload.new as InstanceNode
+        const normalized = normalizeImprentaNodeForResultMediaType(incoming)
+        const typeChanged = normalized.type !== incoming.type
+        const mediaChanged =
+          (normalized.settings as any)?.media_type !== (incoming.settings as any)?.media_type
+        if (typeChanged || mediaChanged) {
+          void supabase
+            .from("instance_nodes")
+            .update({ type: normalized.type, settings: normalized.settings })
+            .eq("id", incoming.id)
+        }
+
+        setNodes(prev => prev.map(n => n.id === incoming.id ? normalized : n))
+        
+        if (incoming.status === 'completed' || incoming.status === 'failed') {
+          setGeneratingNodeIds(prev => {
+            if (prev.has(incoming.id)) {
+              const next = new Set(prev);
+              next.delete(incoming.id);
+              return next;
+            }
+            return prev;
+          });
+        }
+        
+        // If the executed node fails or completes without a child, we might want to clear dummy children
+        if (incoming.status === 'failed' || incoming.status === 'completed') {
+          setDummyNodes(prev => {
+            const toRemove = prev.filter(d => d.parent_node_id === incoming.id);
+            if (toRemove.length > 0) {
+              // Also clean up their positions to prevent memory leaks
+              setPositions(curr => {
+                const copy = { ...curr };
+                toRemove.forEach(d => delete copy[d.id]);
+                return copy;
+              });
+              return prev.filter(d => d.parent_node_id !== incoming.id);
+            }
+            return prev;
+          });
+        }
+      } else if (payload.eventType === 'DELETE') {
+        setNodes(prev => prev.filter(n => n.id !== payload.old.id))
+      }
+    }
+
     const subscription = supabase
       .channel(`instance_nodes_${activeInstanceId}`)
       .on('postgres_changes', { 
@@ -1273,127 +2398,38 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         table: 'instance_nodes',
         filter: `instance_id=eq.${activeInstanceId}`
       }, (payload: any) => {
-        if (payload.eventType === 'INSERT') {
-          const incoming = payload.new as InstanceNode
-          const normalized = normalizeImprentaNodeForResultMediaType(incoming)
-          const typeChanged = normalized.type !== incoming.type
-          const mediaChanged =
-            (normalized.settings as any)?.media_type !== (incoming.settings as any)?.media_type
-          if (typeChanged || mediaChanged) {
-            void supabase
-              .from("instance_nodes")
-              .update({ type: normalized.type, settings: normalized.settings })
-              .eq("id", incoming.id)
-          }
-          setNodes(prev => {
-            if (prev.some(n => n.id === incoming.id)) return prev;
-            return [...prev, normalized];
-          })
-          setDummyNodes(prev => {
-            // Find dummies for the same parent
-            const dummiesForParent = prev.filter(d => d.parent_node_id === incoming.parent_node_id);
-            
-            if (dummiesForParent.length > 0) {
-              // Get the first dummy that hasn't been replaced yet
-              const dummyToReplace = dummiesForParent[0];
-              const index = prev.findIndex(d => d.id === dummyToReplace.id);
-              
-              if (index !== -1) {
-                // Pre-assign the dummy's position and height to the new real node
-                setPositions(currPositions => {
-                  if (currPositions[dummyToReplace.id]) {
-                    const newPositions = {
-                      ...currPositions,
-                      [incoming.id]: currPositions[dummyToReplace.id]
-                    };
-                    
-                    if (nodeHeightsRef.current[dummyToReplace.id]) {
-                      nodeHeightsRef.current[incoming.id] = nodeHeightsRef.current[dummyToReplace.id];
-                    }
-                    
-                    // Immediately clean up the dummy node's position so it doesn't bump the new node
-                    delete (newPositions as any)[dummyToReplace.id];
-                    
-                    return newPositions;
-                  }
-                  return currPositions;
-                });
-                
-                setGeneratingNodeIds(prev => {
-                  const next = new Set(prev);
-                  next.add(incoming.id);
-                  return next;
-                });
-                
-                const copy = [...prev];
-                copy.splice(index, 1);
-                return copy;
-              }
-            }
-            return prev;
-          })
-        } else if (payload.eventType === 'UPDATE') {
-          const incoming = payload.new as InstanceNode
-          const normalized = normalizeImprentaNodeForResultMediaType(incoming)
-          const typeChanged = normalized.type !== incoming.type
-          const mediaChanged =
-            (normalized.settings as any)?.media_type !== (incoming.settings as any)?.media_type
-          if (typeChanged || mediaChanged) {
-            void supabase
-              .from("instance_nodes")
-              .update({ type: normalized.type, settings: normalized.settings })
-              .eq("id", incoming.id)
-          }
-
-          setNodes(prev => prev.map(n => n.id === incoming.id ? normalized : n))
-          
-          if (incoming.status === 'completed' || incoming.status === 'failed') {
-            setGeneratingNodeIds(prev => {
-              if (prev.has(incoming.id)) {
-                const next = new Set(prev);
-                next.delete(incoming.id);
-                return next;
-              }
-              return prev;
-            });
-          }
-          
-          // If the executed node fails or completes without a child, we might want to clear dummy children
-          if (incoming.status === 'failed' || incoming.status === 'completed') {
-            setDummyNodes(prev => {
-              const toRemove = prev.filter(d => d.parent_node_id === incoming.id);
-              if (toRemove.length > 0) {
-                // Also clean up their positions to prevent memory leaks
-                setPositions(curr => {
-                  const copy = { ...curr };
-                  toRemove.forEach(d => delete copy[d.id]);
-                  return copy;
-                });
-                return prev.filter(d => d.parent_node_id !== incoming.id);
-              }
-              return prev;
-            });
-          }
-        } else if (payload.eventType === 'DELETE') {
-          setNodes(prev => prev.filter(n => n.id !== payload.old.id))
+        nodeBatchBuffer.push(payload)
+        if (!nodeBatchTimeout) {
+          nodeBatchTimeout = setTimeout(() => {
+            nodeBatchTimeout = null
+            const batch = nodeBatchBuffer
+            nodeBatchBuffer = []
+            // Using flushSync is generally not needed in React 18, 
+            // setNodes inside timeout is already batched automatically.
+            batch.forEach(handleNodePayload)
+          }, 100)
         }
       })
       .subscribe()
 
     // Subscribe to realtime updates for contexts
+    let contextTimeout: NodeJS.Timeout | null = null
     const contextSubscription = supabase
       .channel(`instance_node_contexts_${activeInstanceId}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'instance_node_contexts'
-      }, async () => {
-        // Refetch contexts on any change
-        const currentNodes = nodesRef.current.map(n => n.id)
-        if (currentNodes.length > 0) {
-          const { data } = await supabase.from('instance_node_contexts').select('*').in('target_node_id', currentNodes)
-          if (data) setContexts(data)
-        }
+      }, () => {
+        if (contextTimeout) clearTimeout(contextTimeout)
+        contextTimeout = setTimeout(async () => {
+          // Refetch contexts on any change
+          const currentNodes = nodesRef.current.map(n => n.id)
+          if (currentNodes.length > 0) {
+            const { data } = await supabase.from('instance_node_contexts').select('*').in('target_node_id', currentNodes)
+            if (data) setContexts(data)
+          }
+        }, 500)
       })
       .subscribe()
 
@@ -1913,7 +2949,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         const id = draggingNodeRef.current
         const last = lastNodeDragPosRef.current
         if (id && last) {
-          setNodeDragPreview({ id, x: last.x, y: last.y })
+          dragStore.set({ id, x: last.x, y: last.y })
         }
       })
     }
@@ -1935,7 +2971,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     window.removeEventListener('mouseup', handleWindowMouseUp)
     window.removeEventListener('click', handleWindowMouseUp, { capture: true })
 
-    setNodeDragPreview(null)
+    dragStore.set(null)
     setDraggingNodeId(null)
     if (newPos) {
       setPositions((prev) => ({ ...prev, [nodeId]: newPos }))
@@ -1964,7 +3000,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       x: dragStartNodePos.current.x,
       y: dragStartNodePos.current.y,
     }
-    setNodeDragPreview({
+    dragStore.set({
       id: nodeId,
       x: dragStartNodePos.current.x,
       y: dragStartNodePos.current.y,
@@ -2658,7 +3694,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     })
   }, [nodes, dummyNodes])
 
-  // Tight artboard from node extents (no fixed 800×600 floor when nodes exist).
+
   const maxBounds = useMemo(() => {
     let maxX = 0
     let maxY = 0
@@ -2680,6 +3716,38 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       height: Math.max(maxY, 320),
     }
   }, [positions])
+
+  const actionsRef = useRef({
+    handleNodeMouseDown,
+    handleDeleteNode,
+    handleDuplicateNode,
+    handleConnectionDrop,
+    handleConnectionStart,
+    handleExecuteNode,
+    setNodes,
+    setZoomedMedia,
+    handleImprentaNodeHover,
+    isImprentaWorkflowActionNode,
+    handleCreateActionFromContext,
+    getParentNode: (node: InstanceNode) => node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : undefined
+  })
+
+  useEffect(() => {
+    actionsRef.current = {
+      handleNodeMouseDown,
+      handleDeleteNode,
+      handleDuplicateNode,
+      handleConnectionDrop,
+      handleConnectionStart,
+      handleExecuteNode,
+      setNodes,
+      setZoomedMedia,
+      handleImprentaNodeHover,
+      isImprentaWorkflowActionNode,
+      handleCreateActionFromContext,
+      getParentNode: (node: InstanceNode) => node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : undefined
+    }
+  })
 
   return (
     <div 
@@ -2715,21 +3783,22 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           initialOffsetY={0}
           enableWheelPan={true}
           viewportStore={viewportStore}
+          graphBounds={maxBounds}
           screenSpaceBehind={
             <ImprentaParentEdgesCanvas
               nodes={canvasNodes}
               positions={stablePositions}
-              dragOverride={nodeDragPreview}
+              dragStore={dragStore}
               nodeHeights={nodeHeightsSnapshot}
               nodeW={NODE_W}
               rowH={ROW_H}
               strokeStyle={parentEdgeStroke}
-              hoverChainNodeIds={imprentaHoverChainIds}
+              hoverStore={hoverStore}
               hoverChainStroke={parentEdgeHoverStroke}
               viewportStore={viewportStore}
               // On small graphs we keep full bezier edges at every zoom; the
               // straight-line LOD only pays off when many edges fit on screen.
-              straightLinesBelowScale={isLargeGraph ? IMPRENTA_LOD_FULL_DETAIL_SCALE : 0}
+              straightLinesBelowScale={IMPRENTA_LOD_FULL_DETAIL_SCALE}
             />
           }
           screenSpaceFront={
@@ -2743,7 +3812,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               // it an unreachable threshold — it stays mounted (no layer
               // thrash on count crossings) but bails out of every paint and
               // hit test, so DOM cards render at every zoom.
-              fullDetailScale={isLargeGraph ? IMPRENTA_LOD_FULL_DETAIL_SCALE : 0.001}
+              fullDetailScale={IMPRENTA_LOD_FULL_DETAIL_SCALE}
               liteMicroMax={IMPRENTA_LOD_LITE_MICRO_MAX}
               liteSimpleMax={IMPRENTA_LOD_LITE_SIMPLE_MAX}
               viewportStore={viewportStore}
@@ -2859,71 +3928,21 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             <div 
               id="imprenta-canvas-content" 
               className="relative"
-              style={{ minWidth: maxBounds.width, minHeight: maxBounds.height }}
               onClick={() => setSelectedContextId(null)}
             >
                   {/* Parent edges are drawn by the viewport-sized canvas mounted in screenSpaceBehind. */}
 
                   {/* Context edges: single SVG for all paths; labels/UI stay in per-context overlays. */}
-                  {contexts.length > 0 && (
-                    <svg
-                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                      style={{ zIndex: 0, overflow: 'visible' }}
-                      shapeRendering="optimizeSpeed"
-                    >
-                      {contexts.map((ctx) => {
-                        if (!positions[ctx.context_node_id] || !positions[ctx.target_node_id]) return null
-                        const start = resolveNodePosition(ctx.context_node_id)
-                        const end = resolveNodePosition(ctx.target_node_id)
-                        const startCy = (nodeHeightsRef.current[ctx.context_node_id] || ROW_H) / 2
-                        const targetNodeForCtx = nodesRef.current.find((n) => n.id === ctx.target_node_id)
-                        const endH = nodeHeightsRef.current[ctx.target_node_id] || ROW_H
-                        const endCy = getPublishContextAnchorY(targetNodeForCtx?.type, ctx.type, endH)
-                        const startX = start.x + NODE_W
-                        const startY = start.y + startCy
-                        const endX = end.x
-                        const endY = end.y + endCy
-                        const isSelected = selectedContextId === ctx.id
-                        const chain = imprentaHoverChainIds
-                        const touchesHoverChain =
-                          chain != null &&
-                          (chain.has(ctx.context_node_id) || chain.has(ctx.target_node_id))
-                        const strokeClass =
-                          isSelected || touchesHoverChain ? "text-primary" : "text-primary/50"
-                        const strokeWidth = isSelected ? 4 : touchesHoverChain ? 3 : 2
-                        const d = `M ${startX} ${startY} C ${startX + 50} ${startY}, ${endX - 50} ${endY}, ${endX} ${endY}`
-                        return (
-                          <g key={`ctx-edge-${ctx.id}`}>
-                            <path
-                              d={d}
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth={strokeWidth}
-                              className={`${strokeClass} stroke-dashed cursor-pointer`}
-                              strokeDasharray="4 4"
-                              style={{ pointerEvents: "stroke" }}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedContextId(isSelected ? null : ctx.id)
-                              }}
-                            />
-                            <path
-                              d={d}
-                              fill="none"
-                              stroke="transparent"
-                              strokeWidth="20"
-                              className="cursor-pointer"
-                              style={{ pointerEvents: "stroke" }}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedContextId(isSelected ? null : ctx.id)
-                              }}
-                            />
-                          </g>
-                        )
-                      })}
-                    </svg>
-                  )}
+                  <ImprentaContextEdges
+                    contexts={contexts}
+                    nodesRef={nodesRef}
+                    positions={positions}
+                    nodeHeightsRef={nodeHeightsRef}
+                    selectedContextId={selectedContextId}
+                    setSelectedContextId={setSelectedContextId}
+                    hoverStore={hoverStore}
+                    visibleNodeIds={visibleNodeIds}
+                  />
 
                   {contexts.filter(ctx => !visibleNodeIds || visibleNodeIds.has(ctx.context_node_id) || visibleNodeIds.has(ctx.target_node_id)).map((ctx) => {
                     if (!positions[ctx.context_node_id] || !positions[ctx.target_node_id]) return null
@@ -2953,7 +3972,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                       >
                         {!isSelected && (ctx.type != null || targetNodeForCtx?.type === "publish") && (
                           <div
-                            className="absolute px-2 py-0.5 bg-background border border-primary/20 text-primary text-[10px] font-medium rounded-full shadow-sm pointer-events-auto cursor-pointer"
+                            className="absolute px-2 py-0.5 bg-background border border-primary/20 text-primary text-[10px] font-medium rounded-full shadow-sm pointer-events-auto cursor-pointer whitespace-nowrap"
                             style={{
                               left: midX,
                               top: midY,
@@ -3051,72 +4070,14 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                       }
 
                       return (
-                        <div 
+                        <ImprentaDummyCardInner
                           key={node.id}
-                          ref={(el) => registerNodeRef(node.id, el)}
-                          data-node-id={node.id}
-                        className={cn(
-                          "absolute group z-10",
-                          draggingNodeId ? "select-none" : ""
-                        )}
-                        style={{ 
-                          transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-                          left: 0,
-                          top: 0,
-                        }}
-                        >
-                          <Card
-                            className={
-                              "w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] border-2 border-foreground/10 bg-card rounded-3xl " +
-                              (liteDummy ? "" : "animate-pulse")
-                            }
-                          >
-                            <CardContent className="p-5 flex flex-col gap-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground leading-none truncate">
-                                  Result
-                                </span>
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-secondary/50">
-                                  {node.status === 'pending' ? 'pending' : 'running'}
-                                </Badge>
-                              </div>
-                              
-                              {isMediaDummy ? (
-                                <div 
-                                  className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center`}
-                                  style={{ aspectRatio: aspectStyle }}
-                                >
-                                  {!liteDummy && (
-                                    <div className="relative w-full h-full">
-                                      <div className="absolute inset-0 flex items-center justify-center">
-                                        <Bot className="w-8 h-8 text-muted-foreground/30 animate-pulse" />
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className={`flex-1 min-h-[140px] rounded-xl bg-muted/30 border border-border/50 p-4 flex flex-col gap-3 justify-center`}>
-                                  {!liteDummy && (
-                                    <>
-                                      <div className="h-2.5 w-[85%] rounded-full bg-muted-foreground/20 animate-pulse" />
-                                      <div className="h-2.5 w-[65%] rounded-full bg-muted-foreground/20 animate-pulse" />
-                                      <div className="h-2.5 w-[40%] rounded-full bg-muted-foreground/20 animate-pulse" />
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                              
-                              <div className="flex items-center justify-between pt-3 border-t border-white/5 opacity-50 pointer-events-none">
-                                <div className="flex gap-2 w-full">
-                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
-                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
-                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
-                                  <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
+                          node={node}
+                          pos={pos}
+                          draggingNodeId={draggingNodeId}
+                          liteDummy={liteDummy}
+                          registerNodeRef={registerNodeRef}
+                        />
                       )
                     }
 
@@ -3144,877 +4105,42 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     }
 
                     return (
-                      <div 
+                      <ImprentaNodeCardInner
                         key={node.id}
-                        ref={(el) => registerNodeRef(node.id, el)}
-                        data-node-id={node.id}
-                        className={cn(
-                          "absolute cursor-grab active:cursor-grabbing",
-                          draggingNodeId ? "select-none" : ""
-                        )}
-                        style={{ 
-                          transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-                          left: 0,
-                          top: 0,
-                          zIndex: 10
-                        }}
-                        onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
-                      >
-                        <Card
-                          // `transition-shadow` forced a repaint of every visible card on every
-                          // hover change in Safari. Keep a flat static shadow and skip the
-                          // transition. We DO NOT use `contain: paint` here: with many cards on
-                          // screen, promoting each to its own Safari composite layer (plus the
-                          // rounded-corner clip mask it implies) cost more than it saved.
-                          // `group` + toolbar inside the card so hover ends when the pointer
-                          // leaves the card surface (not the wider node wrapper used for drag).
-                          className={
-                            "group relative w-[480px] shadow-[0_0_10px_rgba(0,0,0,0.05)] border-2 border-foreground/10 bg-card rounded-3xl" +
-                            (node.type === "publish" && !hasResult ? " group/publish-in" : "") +
-                            (actionNodeIds.has(node.id) ? " imprenta-action-running" : "")
-                          }
-                          onMouseEnter={() => handleImprentaNodeHover(node.id)}
-                          onMouseLeave={() => handleImprentaNodeHover(null)}
-                        >
-                          <div
-                            className="absolute z-20 flex flex-row-reverse items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto"
-                            style={{ top: -36, right: -6 }}
-                          >
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  className="h-8 w-8 rounded-full p-0 shadow-md shrink-0 [&_svg]:size-3"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDeleteNode(node.id)
-                                  }}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" sideOffset={6} className="text-xs max-w-[240px]">
-                                Delete this node and all nested nodes
-                              </TooltipContent>
-                            </Tooltip>
-                            {isImprentaWorkflowActionNode(node) && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="secondary"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-full p-0 shadow-md border border-border/70 bg-background hover:bg-muted shrink-0 [&_svg]:size-3"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      void handleDuplicateNode(node.id)
-                                    }}
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" sideOffset={6} className="text-xs max-w-[240px]">
-                                  Duplicate settings and context links; the new node starts as pending
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-
-                          <CardContent className="p-5 relative">
-                            {!hasResult &&
-                              (node.type === "publish" ? (
-                                (() => {
-                                  const dest = Array.isArray((node.settings as any)?.publish_destinations)
-                                    ? ((node.settings as any).publish_destinations as string[])
-                                    : [];
-                                  const needAudience = destinationsRequireAudience(dest);
-                                  const allNodes = [...nodes, ...dummyNodes];
-                                  const hasCnt = hasPublishContentInput(contexts, node.id, allNodes);
-                                  const hasAud = hasPublishAudienceInput(contexts, node.id, allNodes);
-                                  const contentWarn = !hasCnt;
-                                  const audienceWarn = needAudience && !hasAud;
-                                  const anchorClass = (warn: boolean) =>
-                                    `w-4 h-4 bg-background border-2 rounded-full flex items-center justify-center shrink-0 hover:scale-125 transition-transform ${
-                                      warn ? "border-amber-500" : "border-muted-foreground"
-                                    }`;
-                                  return (
-                                    <>
-                                      <div
-                                        className="absolute -left-3 z-20 w-4 -translate-y-1/2"
-                                        style={{ top: `${PUBLISH_ANCHOR_CONTENT_Y * 100}%` }}
-                                        title="Content: any creative output (same allowed sources as Context; not Audience-branched)"
-                                      >
-                                        <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-foreground bg-muted/95 border border-border px-1.5 py-0.5 rounded-md shadow-sm opacity-0 group-hover/publish-in:opacity-100 transition-opacity whitespace-nowrap">
-                                          {PUBLISH_ANCHOR_LABELS.content}
-                                        </span>
-                                        <div
-                                          className={anchorClass(contentWarn)}
-                                          onClick={(e) => handleConnectionDrop(e, node.id, "content")}
-                                        >
-                                          <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
-                                        </div>
-                                      </div>
-                                      <div
-                                        className="absolute -left-3 z-20 w-4 -translate-y-1/2"
-                                        style={{ top: `${PUBLISH_ANCHOR_CONTEXT_Y * 100}%` }}
-                                        title="Context: normal references (style, data, other nodes)"
-                                      >
-                                        <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-foreground bg-muted/95 border border-border px-1.5 py-0.5 rounded-md shadow-sm opacity-0 group-hover/publish-in:opacity-100 transition-opacity whitespace-nowrap">
-                                          {PUBLISH_ANCHOR_LABELS.context}
-                                        </span>
-                                        <div
-                                          className={anchorClass(false)}
-                                          onClick={(e) => handleConnectionDrop(e, node.id, "context")}
-                                        >
-                                          <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
-                                        </div>
-                                      </div>
-                                      <div
-                                        className="absolute -left-3 z-20 w-4 -translate-y-1/2"
-                                        style={{ top: `${PUBLISH_ANCHOR_AUDIENCE_Y * 100}%` }}
-                                        title={
-                                          needAudience
-                                            ? "Audience: Audience node including audience_id: (required for Mail, WhatsApp, Newsletter)"
-                                            : "Audience: Audience node including audience_id: (optional)"
-                                        }
-                                      >
-                                        <span className="pointer-events-none absolute right-full mr-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-foreground bg-muted/95 border border-border px-1.5 py-0.5 rounded-md shadow-sm opacity-0 group-hover/publish-in:opacity-100 transition-opacity whitespace-nowrap">
-                                          {PUBLISH_ANCHOR_LABELS.audience}
-                                        </span>
-                                        <div
-                                          className={anchorClass(audienceWarn)}
-                                          onClick={(e) => handleConnectionDrop(e, node.id, "audience")}
-                                        >
-                                          <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
-                                        </div>
-                                      </div>
-                                    </>
-                                  );
-                                })()
-                              ) : (
-                              <div 
-                                className="absolute top-1/2 -translate-y-1/2 -left-3 w-4 h-4 bg-background border-2 border-muted-foreground rounded-full flex items-center justify-center z-20 hover:scale-125 transition-transform" 
-                                  title="Drop context here"
-                                onClick={(e) => handleConnectionDrop(e, node.id)}
-                              >
-                                <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full pointer-events-none" />
-                              </div>
-                              ))}
-
-                            {hasResult && (
-                              <div 
-                                className="absolute top-1/2 -translate-y-1/2 -right-3 w-4 h-4 bg-background border-2 border-primary rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-20 hover:scale-125 transition-transform" 
-                                title="Drag to a context input"
-                                onClick={(e) => handleConnectionStart(e, node.id)}
-                              >
-                                <div className="w-1.5 h-1.5 bg-primary rounded-full pointer-events-none" />
-                              </div>
-                            )}
-
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-medium text-muted-foreground uppercase leading-none">
-                                  {hasResult ? 'Result' : node.type}
-                                </span>
-                                {hasResult && (
-                                  <Badge variant={
-                                    node.status === 'completed' ? 'success' as any :
-                                    node.status === 'failed' ? 'destructive' :
-                                    node.status === 'running' ? 'default' : 'secondary'
-                                  } className="text-[10px] px-1.5 py-0">
-                                    {node.status}
-                                  </Badge>
-                                )}
-                              </div>
-
-                              {isImprentaWorkflowActionNode(node) &&
-                                !hasResult &&
-                                !isImprentaUploadedNode(node) &&
-                                (() => {
-                                  const hasRealChildren = nodes.some(
-                                    (ch) => ch.parent_node_id === node.id && !String(ch.id).startsWith("dummy-")
-                                  )
-                                  const outputTypeLocked =
-                                    hasRealChildren || node.status !== "pending" || generatingNodeIds.has(node.id)
-                                  const lockedTitle = outputTypeLocked
-                                    ? "Output type is locked. Duplicate this node to change it."
-                                    : "Card mode"
-
-                                  return (
-                                    <div
-                                      className="flex flex-wrap items-center bg-muted/50 p-1 rounded-2xl gap-1"
-                                      title={lockedTitle}
-                                    >
-                                      {IMPRENTA_MODE_OPTIONS.map(({ type: modeType, label }) => (
-                                        <Button
-                                          key={modeType}
-                                          type="button"
-                                          disabled={outputTypeLocked}
-                                          variant={node.type === modeType ? "outline" : "ghost"}
-                                          size="sm"
-                                          className={`flex-1 h-7 text-[11px] rounded-full font-medium ${
-                                            node.type === modeType
-                                              ? "bg-background shadow-sm border-white/10"
-                                              : "text-muted-foreground hover:text-foreground"
-                                          }`}
-                                          onClick={async (e) => {
-                                            e.stopPropagation()
-                                            if (outputTypeLocked) {
-                                              toast.error("Output type is locked. Duplicate this node to change it.")
-                                              return
-                                            }
-                                            setNodes((prev) =>
-                                              prev.map((n) => (n.id === node.id ? { ...n, type: modeType } : n))
-                                            )
-                                            await supabase
-                                              .from("instance_nodes")
-                                              .update({ type: modeType })
-                                              .eq("id", node.id)
-                                          }}
-                                        >
-                                          {label}
-                                        </Button>
-                                      ))}
-                                    </div>
-                                  )
-                                })()}
-                              
-                              {!hasResult && (
-                                <>
-                                <Textarea 
-                                  defaultValue={node.prompt?.text || ''}
-                                  onBlur={async (e) => {
-                                    const newText = e.target.value;
-                                    if (newText !== node.prompt?.text) {
-                                      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, prompt: { ...n.prompt, text: newText } } : n));
-                                      const { error } = await supabase
-                                        .from('instance_nodes')
-                                        .update({ prompt: { ...node.prompt, text: newText } })
-                                        .eq('id', node.id);
-                                        
-                                      if (error) {
-                                        toast.error("Failed to save node text");
-                                        console.error(error);
-                                      }
-                                    }
-                                  }}
-                                  className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-xl resize-none focus-visible:ring-1 focus-visible:ring-secondary min-h-[60px] max-h-[150px]"
-                                  placeholder={node.type === 'publish' ? "Optional: custom instructions for publishing..." : "Type to edit prompt..."}
-                                />
-                                
-                                {node.type === 'generate-audience' && (
-                                  <TooltipProvider delayDuration={200}>
-                                    <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
-                                      {([
-                                        { key: 'email', label: 'Email', icon: Mail, hint: 'Only include leads that have an email address.' },
-                                        { key: 'web', label: 'Web', icon: Globe, hint: 'Only include leads that have a website URL.' },
-                                        { key: 'phone', label: 'Phone', icon: Phone, hint: 'Only include leads that have a phone number.' },
-                                        { key: 'deals', label: 'Deals', icon: Tag, hint: 'Only include leads that have at least one deal.' },
-                                      ] as const).map(({ key, label, icon: Icon, hint }) => {
-                                        const isSelected = !!(node.settings as any)?.audience_channels?.includes(key);
-                                        const toggleChannel = async () => {
-                                          const current = (node.settings as any)?.audience_channels || [];
-                                          const newChannels = isSelected
-                                            ? current.filter((c: string) => c !== key)
-                                            : [...current, key];
-                                          setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), audience_channels: newChannels } } : n));
-                                          await supabase.from('instance_nodes').update({
-                                            settings: { ...((node.settings as any) || {}), audience_channels: newChannels }
-                                          }).eq('id', node.id);
-                                        };
-                                        return (
-                                          <Tooltip key={key}>
-                                            <TooltipTrigger asChild>
-                                              <label
-                                                className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
-                                                onClick={(e) => e.stopPropagation()}
-                                              >
-                                                <span className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
-                                                <Switch
-                                                  thumbIcon={<Icon className="h-3 w-3" />}
-                                                  checked={isSelected}
-                                                  onCheckedChange={toggleChannel}
-                                                  onClick={(e) => e.stopPropagation()}
-                                                  className="h-[22px] w-[44px] shrink-0 [&>span]:h-[18px] [&>span]:w-[18px] [&>span[data-state=checked]]:translate-x-[22px] [&>span[data-state=unchecked]]:translate-x-0"
-                                                />
-                                              </label>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" className="text-[11px] max-w-[220px]">
-                                              {hint}
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        );
-                                      })}
-                                    </div>
-                                  </TooltipProvider>
-                                )}
-
-                                {node.type === 'publish' && (() => {
-                                  const siteUrl = currentSite?.url && String(currentSite.url).trim();
-                                  const isEmailDistributionAvailable = currentSite?.settings?.channels?.email?.status === 'synced';
-                                  const isWhatsappAvailable = currentSite?.settings?.channels?.whatsapp?.status === 'active' || currentSite?.settings?.channels?.agent_whatsapp?.status === 'active';
-                                  const rawDestinations = (node.settings as any)?.publish_destinations;
-                                  // Treat unset destinations as blog-on-by-default when the site has a URL,
-                                  // so new publish nodes land preconfigured for the most common case.
-                                  const currentDestinations: string[] = Array.isArray(rawDestinations)
-                                    ? rawDestinations
-                                    : (siteUrl ? ['blog'] : []);
-                                  const toggleDestination = async (key: string) => {
-                                    const isOn = currentDestinations.includes(key);
-                                    const newDest = isOn
-                                      ? currentDestinations.filter((d: string) => d !== key)
-                                      : [...currentDestinations, key];
-                                    setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: { ...((n.settings as any) || {}), publish_destinations: newDest } } : n));
-                                    await supabase.from('instance_nodes').update({
-                                      settings: { ...((node.settings as any) || {}), publish_destinations: newDest }
-                                    }).eq('id', node.id);
-                                  };
-
-                                  const renderToggle = (key: string, label: string, icon: React.ReactNode, hint: string) => {
-                                    const isSelected = currentDestinations.includes(key);
-                                    return (
-                                      <Tooltip key={key}>
-                                        <TooltipTrigger asChild>
-                                          <label
-                                            className="flex w-full min-w-0 cursor-pointer select-none items-center gap-1.5 text-[11px]"
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            <span
-                                              className={`min-w-0 flex-1 truncate text-right font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
-                                            >
-                                              {label}
-                                            </span>
-                                            <Switch
-                                              thumbIcon={icon}
-                                              checked={isSelected}
-                                              onCheckedChange={() => toggleDestination(key)}
-                                              onClick={(e) => e.stopPropagation()}
-                                              className="h-[22px] w-[44px] shrink-0 [&>span]:h-[18px] [&>span]:w-[18px] [&>span[data-state=checked]]:translate-x-[22px] [&>span[data-state=unchecked]]:translate-x-0"
-                                            />
-                                          </label>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" className="text-[11px] max-w-[220px]">
-                                          {hint}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    );
-                                  };
-
-                                  return (
-                                    <TooltipProvider delayDuration={200}>
-                                      <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 [&>*]:min-w-0">
-                                        {(currentSite?.settings?.social_media || [])
-                                          .filter(isSocialMediaEntryConnected)
-                                          .map((sm: any) => {
-                                            const platformLabel = String(sm.platform).charAt(0).toUpperCase() + String(sm.platform).slice(1);
-                                            return renderToggle(
-                                              sm.platform,
-                                              platformLabel,
-                                              <SocialIcon platform={sm.platform} size={12} color="currentColor" />,
-                                              `Publish this content to your connected ${platformLabel} account.`
-                                            );
-                                          })}
-                                        {siteUrl && renderToggle(
-                                          'blog',
-                                          'Blog',
-                                          <Globe size={12} />,
-                                          'Publish this content as a blog post on your site.'
-                                        )}
-                                        {isEmailDistributionAvailable && renderToggle(
-                                          'mail',
-                                          'Mail',
-                                          <Mail size={12} />,
-                                          'Send this content as an individual email to the selected audience.'
-                                        )}
-                                        {isEmailDistributionAvailable && renderToggle(
-                                          'newsletter',
-                                          'Newsletter',
-                                          <FileText
-                                            size={12}
-                                            className="[&>svg]:block [&>svg]:-translate-x-px"
-                                          />,
-                                          'Include this content in your next newsletter to subscribers.'
-                                        )}
-                                        {isWhatsappAvailable && renderToggle(
-                                          'whatsapp',
-                                          'WhatsApp',
-                                          <SocialIcon platform="whatsapp" size={12} color="currentColor" />,
-                                          'Send this content through your connected WhatsApp channel.'
-                                        )}
-                                      </div>
-                                    </TooltipProvider>
-                                  );
-                                })()}
-                                
-                                {node.type !== 'publish' && node.type !== 'generate-audience' && (
-                                  <div className="flex justify-start w-full">
-                                    <MediaParametersToolbar
-                                      selectedActivity={node.type}
-                                      textParameters={(node.settings as any)?.parameters || textParams}
-                                      imageParameters={(node.settings as any)?.parameters || imageParams}
-                                      videoParameters={(node.settings as any)?.parameters || videoParams}
-                                      audioParameters={(node.settings as any)?.parameters || audioParams}
-                                      onTextParameterChange={async (key, value) => {
-                                        const currentParams = (node.settings as any)?.parameters || textParams;
-                                        const newParams = { ...currentParams, [key]: value };
-                                        const updatedSettings = { ...((node.settings as any) || {}), media_type: 'text', parameters: newParams };
-                                        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: updatedSettings } : n));
-                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
-                                      }}
-                                      onImageParameterChange={async (key, value) => {
-                                        const currentParams = (node.settings as any)?.parameters || imageParams;
-                                        const newParams = { ...currentParams, [key]: value };
-                                        const updatedSettings = { ...((node.settings as any) || {}), media_type: 'image', parameters: newParams };
-                                        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: updatedSettings } : n));
-                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
-                                      }}
-                                      onVideoParameterChange={async (key, value) => {
-                                        const currentParams = (node.settings as any)?.parameters || videoParams;
-                                        const newParams = { ...currentParams, [key]: value };
-                                        const updatedSettings = { ...((node.settings as any) || {}), media_type: 'video', parameters: newParams };
-                                        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: updatedSettings } : n));
-                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
-                                      }}
-                                      onAudioParameterChange={async (key, value) => {
-                                        const currentParams = (node.settings as any)?.parameters || audioParams;
-                                        const newParams = { ...currentParams, [key]: value };
-                                        const updatedSettings = { ...((node.settings as any) || {}), media_type: 'audio', parameters: newParams };
-                                        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, settings: updatedSettings } : n));
-                                        await supabase.from('instance_nodes').update({ settings: updatedSettings }).eq('id', node.id);
-                                      }}
-                                    />
-                                  </div>
-                                )}
-                              </>
-                            )}
-                            
-                              {hasResult && (
-                              (() => {
-                                const extractUrl = (text: any): string => {
-                                  if (!text) return '';
-                                  const str = String(text);
-                                  const urlMatch = str.match(/https?:\/\/[^\s"'<>()]+/);
-                                  return urlMatch ? urlMatch[0] : str;
-                                };
-
-                                return (
-                                <div className="flex flex-col gap-2">
-                                {(() => {
-                                  const allNodes = [...nodes, ...dummyNodes]
-                                  const embeddedRaw = (node.result as { audience_leads?: unknown })?.audience_leads
-                                  const embeddedLeads: AudienceLeadRow[] | undefined = Array.isArray(embeddedRaw)
-                                    ? (embeddedRaw as AudienceLeadRow[])
-                                    : undefined
-                                  const resolvedId = resolveAudienceSegmentIdForImprenta(node, allNodes)
-                                  const audienceId =
-                                    resolvedId ||
-                                    (embeddedLeads?.[0]?.audience_id
-                                      ? String(embeddedLeads[0].audience_id)
-                                      : "")
-                                  const showLeadsCarousel =
-                                    !!currentSite?.id &&
-                                    (isValidPublishAudienceSource(node) ||
-                                      isDescendantOfAudienceNode(node, allNodes)) &&
-                                    (!!audienceId || (embeddedLeads && embeddedLeads.length > 0))
-                                  if (!showLeadsCarousel) return null
-                                  return (
-                                    <ImprentaAudienceLeadsCarousel
-                                      audienceId={audienceId || String(embeddedLeads?.[0]?.audience_id ?? "")}
-                                      siteId={currentSite.id}
-                                      embeddedLeads={embeddedLeads}
-                                    />
-                                  )
-                                })()}
-                                {(node.result as any).outputs && Array.isArray((node.result as any).outputs) && (
-                                  <div className="flex flex-col gap-2">
-                                    {(node.result as any).outputs.map((outputItem: any, idx: number) => {
-                                      const rawUrl = outputItem.data?.url || outputItem.url;
-                                      if (!rawUrl) return null;
-                                      const url = extractUrl(rawUrl);
-                                      if (outputItem.type === 'image') return renderMediaWithZoom(url, 'image', idx);
-                                      if (outputItem.type === 'video') return renderMediaWithZoom(url, 'video', idx);
-                                      if (outputItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
-                                      return null;
-                                    })}
-                                  </div>
-                                )}
-                                {(node.result as any).media && Array.isArray((node.result as any).media) && (
-                                  <div className="flex flex-col gap-2">
-                                    {(node.result as any).media.map((mediaItem: any, idx: number) => {
-                                      if (!mediaItem.url) return null;
-                                      const url = extractUrl(mediaItem.url);
-                                      if (mediaItem.type === 'image') return renderMediaWithZoom(url, 'image', idx);
-                                      if (mediaItem.type === 'video') return renderMediaWithZoom(url, 'video', idx);
-                                      if (mediaItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
-                                      return null;
-                                    })}
-                                  </div>
-                                )}
-                                {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).images && Array.isArray((node.result as any).images) && (
-                                  <div className="flex flex-col gap-2">
-                                    {(node.result as any).images.map((img: any, idx: number) => (
-                                      img.url && renderMediaWithZoom(extractUrl(img.url), 'image', idx)
-                                    ))}
-                                  </div>
-                                )}
-                                {!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && (node.result as any).image && (node.result as any).image.url && (
-                                  renderMediaWithZoom(extractUrl((node.result as any).image.url), 'image', 'single-img')
-                                )}
-                                {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).video && (node.result as any).video.url && (
-                                  renderMediaWithZoom(extractUrl((node.result as any).video.url), 'video', 'single-vid')
-                                )}
-                                {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).audio && (node.result as any).audio.url && (
-                                  <AudioPlayer key={extractUrl((node.result as any).audio.url)} src={extractUrl((node.result as any).audio.url)} className="w-full" />
-                                )}
-                                {((node.result as any).text || (!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && !(node.result as any).image && !(node.result as any).video && !(node.result as any).audio && !(node.result as any).text)) && (() => {
-                                  let textContent = (node.result as any).text 
-                                    ? String((node.result as any).text) 
-                                    : "```json\n" + JSON.stringify(node.result, null, 2) + "\n```";
-                                  
-                                  const hasStructuredMedia = !!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio;
-
-                                  const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
-                                  const isParentTextAction = parentNode && (parentNode.type === 'prompt' || parentNode.type === 'generate-text' || (parentNode.settings as any)?.media_type === 'text');
-                                  
-                                  // Detect intention: did this node intend to produce media?
-                                  const isMediaIntent = !isParentTextAction && (node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || 
-                                                        (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
-                                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' ||
-                                                                        (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio')));
-
-                                  let extractedUrl: string | null = null;
-                                  if (isMediaIntent) {
-                                    // If we ALREADY successfully parsed structured media, we don't need to show ANY text. 
-                                    if (hasStructuredMedia) return null;
-
-                                    // If we ONLY got text back from the agent for a media node, forcefully extract the media link and discard the conversational text.
-                                    let expectedMediaType = (node.settings as any)?.media_type || node.type.replace('generate-', '');
-                                    if (!['image', 'video', 'audio'].includes(expectedMediaType) && parentNode) {
-                                      expectedMediaType = (parentNode.settings as any)?.media_type || parentNode.type.replace('generate-', '');
-                                    }
-                                    
-                                    if (expectedMediaType === 'image') {
-                                      const imgMatchMarkdown = textContent.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/);
-                                      const imgMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
-                                      if (imgMatchMarkdown) extractedUrl = imgMatchMarkdown[1];
-                                      else if (imgMatchUrl) extractedUrl = imgMatchUrl[0];
-                                      
-                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'image', 'extracted-img');
-                                    } else if (expectedMediaType === 'video') {
-                                      const vidMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp4|webm|mov|mkv)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
-                                      if (vidMatchUrl) extractedUrl = vidMatchUrl[0];
-                                      
-                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'video', 'extracted-vid');
-                                    } else if (expectedMediaType === 'audio') {
-                                      const audioMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp3|wav|ogg|m4a|aac|flac)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
-                                      if (audioMatchUrl) extractedUrl = audioMatchUrl[0];
-                                      
-                                      if (extractedUrl) return <AudioPlayer key="extracted-audio" src={extractedUrl} className="w-full" />;
-                                    }
-
-                                    // If no URL could be extracted yet and it's still running, show a placeholder
-                                    if (!extractedUrl && (node.status === 'running' || node.status === 'pending')) {
-                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio || (parentNode?.settings as any)?.parameters?.aspectRatio;
-                                      let aspectStyle = "1/1";
-                                      if (expectedMediaType === 'video') aspectStyle = "16/9";
-                                      
-                                      if (aspectRatioParam) {
-                                        if (aspectRatioParam === "16:9") aspectStyle = "16/9";
-                                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16";
-                                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3";
-                                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4";
-                                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1";
-                                        else aspectStyle = String(aspectRatioParam).replace(':', '/');
-                                      }
-
-                                      return (
-                                        <div 
-                                          className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center`}
-                                          style={{ aspectRatio: aspectStyle }}
-                                        >
-                                          <div className="relative w-full h-full">
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                              <Bot className="w-8 h-8 text-muted-foreground/30 animate-pulse" />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      );
-                                    }
-
-                                    // If completed and no media could be extracted (e.g. error message from agent),
-                                    // we replace the text with an error placeholder and a retry button.
-                                    if (!extractedUrl && (node.status === 'completed' || node.status === 'failed')) {
-                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio || (parentNode?.settings as any)?.parameters?.aspectRatio;
-                                      let aspectStyle = "1/1";
-                                      if (expectedMediaType === 'video') aspectStyle = "16/9";
-                                      if (aspectRatioParam) {
-                                        if (aspectRatioParam === "16:9") aspectStyle = "16/9";
-                                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16";
-                                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3";
-                                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4";
-                                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1";
-                                        else aspectStyle = String(aspectRatioParam).replace(':', '/');
-                                      }
-
-                                      return (
-                                        <div 
-                                          className={`w-full overflow-hidden rounded-xl bg-muted/10 border border-destructive/20 flex flex-col items-center justify-center gap-3 p-6 text-center`}
-                                          style={{ aspectRatio: aspectStyle }}
-                                        >
-                                          <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mb-2">
-                                            <AlertCircle className="w-6 h-6" />
-                                          </div>
-                                          <div className="text-sm font-medium text-destructive">Failed to extract media</div>
-                                          <p className="text-xs text-muted-foreground mb-2">The AI responded with text instead of the expected format.</p>
-                                          
-                                          <div className="flex gap-2 pointer-events-auto">
-                                            <Button 
-                                              variant="outline" 
-                                              size="sm"
-                                              className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
-                                                // Delete this faulty node and re-execute parent
-                                                handleDeleteNode(node.id).then(() => {
-                                                  if (parentNode) handleExecuteNode(parentNode);
-                                                });
-                                              }}
-                                            >
-                                              <RefreshCw className="w-3.5 h-3.5 mr-2" />
-                                              Retry Generation
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      );
-                                    }
-                                  }
-
-                                  // Only for Text (prompt) and Publish types, show the markdown
-                                  if (hasStructuredMedia && textContent && !isParentTextAction) {
-                                    textContent = textContent.replace(/https?:\/\/[^\s"'<>()]+\.(wav|mp3|ogg|m4a|aac|flac|webm)/gi, '').trim();
-                                  }
-                                  if (!textContent) return null;
-                                  
-                                  return (
-                                    <div className="text-xs bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground prose prose-sm dark:prose-invert max-w-none">
-                                      <MemoMarkdown text={textContent} />
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                              );
-                              })()
-                            )}
-                            
-                              <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                              {(() => {
-                                const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
-                                return hasResult ? (
-                                <div className="flex gap-2 w-full">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    className="flex-1"
-                                    disabled={
-                                      node.status === 'running' || 
-                                      node.status === 'pending' || 
-                                      node.status === 'failed' || 
-                                      (!!(node.settings as any)?.imprenta_mode && !contexts.some(ctx => ctx.target_node_id === node.id)) ||
-                                      // Disable if media was intended but failed to extract
-                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
-                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
-                                       !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
-                                       !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
-                                       !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
-                                    }
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const parentNode = node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : null;
-                                      if (parentNode) {
-                                        handleExecuteNode(parentNode);
-                                      } else {
-                                        handleExecuteNode(node); // Fallback: execute current if root
-                                      }
-                                    }}
-                                    title="New Variant"
-                                  >
-                                    <GitFork className="w-4 h-4 mr-2" /> Variant
-                                  </Button>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    className="flex-1"
-                                    disabled={
-                                      node.status === 'running' || 
-                                      node.status === 'pending' || 
-                                      node.status === 'failed' ||
-                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
-                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
-                                       !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
-                                       !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
-                                       !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
-                                    }
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCreateActionFromContext(node.id);
-                                    }}
-                                    title="New Action"
-                                  >
-                                    <Plus className="w-4 h-4 mr-2" /> Action
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1"
-                                    disabled={
-                                      node.status === 'running' || 
-                                      node.status === 'pending' || 
-                                      node.status === 'failed' ||
-                                      ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
-                                        (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
-                                       !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
-                                       !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
-                                       !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
-                                    }
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const res = node.result as any;
-                                      let textToCopy = "";
-                                      
-                                      if (res.outputs && Array.isArray(res.outputs) && res.outputs.length > 0 && (res.outputs[0]?.data?.url || res.outputs[0]?.url)) textToCopy = String(res.outputs[0].data?.url || res.outputs[0].url);
-                                      else if (res.media && Array.isArray(res.media) && res.media.length > 0 && res.media[0]?.url) textToCopy = String(res.media[0].url);
-                                      else if (res.url) textToCopy = String(res.url);
-                                      else if (res.images && res.images.length > 0 && res.images[0]?.url) textToCopy = String(res.images[0].url);
-                                      else if (res.image && res.image.url) textToCopy = String(res.image.url);
-                                      else if (res.audio && res.audio.url) textToCopy = String(res.audio.url);
-                                      else if (res.video && res.video.url) textToCopy = String(res.video.url);
-                                      else if (res.text) textToCopy = String(res.text);
-                                      else textToCopy = JSON.stringify(res, null, 2);
-                                      
-                                      try {
-                                        await navigator.clipboard.writeText(textToCopy);
-                                        toast.success("Copied to clipboard");
-                                      } catch (err) {
-                                        toast.error("Failed to copy");
-                                      }
-                                    }}
-                                    title="Copy Result"
-                                  >
-                                    <Copy className="h-4 w-4 mr-2" /> Copy
-                                  </Button>
-                                  {(() => {
-                                      const extractUrl = (text: any): string => {
-                                        if (!text) return '';
-                                        const str = String(text);
-                                        const urlMatch = str.match(/https?:\/\/[^\s"'<>()]+/);
-                                        return urlMatch ? urlMatch[0] : str;
-                                      };
-
-                                      const res = node.result as any;
-                                      let rawAssetUrl = "";
-                                      
-                                      if (res.outputs && Array.isArray(res.outputs) && res.outputs.length > 0 && (res.outputs[0]?.data?.url || res.outputs[0]?.url)) rawAssetUrl = String(res.outputs[0].data?.url || res.outputs[0].url);
-                                      else if (res.media && Array.isArray(res.media) && res.media.length > 0 && res.media[0]?.url) rawAssetUrl = String(res.media[0].url);
-                                      else if (res.images && res.images.length > 0 && res.images[0]?.url) rawAssetUrl = String(res.images[0].url);
-                                      else if (res.image && res.image.url) rawAssetUrl = String(res.image.url);
-                                      else if (res.audio && res.audio.url) rawAssetUrl = String(res.audio.url);
-                                      else if (res.video && res.video.url) rawAssetUrl = String(res.video.url);
-                                      else if (res.url) rawAssetUrl = String(res.url);
-
-                                      const assetUrl = extractUrl(rawAssetUrl);
-                                      const isAssetUrl = assetUrl && (assetUrl.startsWith('http') || assetUrl.startsWith('data:'));
-
-                                      return (
-                                        <Button 
-                                          variant="outline" 
-                                          size="sm"
-                                          className="flex-1"
-                                          disabled={
-                                            node.status === 'running' || 
-                                            node.status === 'pending' || 
-                                            node.status === 'failed' ||
-                                            ((node.type === 'generate-image' || node.type === 'generate-video' || node.type === 'generate-audio' || (node.settings as any)?.media_type === 'image' || (node.settings as any)?.media_type === 'video' || (node.settings as any)?.media_type === 'audio' ||
-                                              (parentNode && (parentNode.type === 'generate-image' || parentNode.type === 'generate-video' || parentNode.type === 'generate-audio' || (parentNode.settings as any)?.media_type === 'image' || (parentNode.settings as any)?.media_type === 'video' || (parentNode.settings as any)?.media_type === 'audio'))) && 
-                                             !(!!(node.result as any).outputs || !!(node.result as any).media || !!(node.result as any).images || !!(node.result as any).image || !!(node.result as any).video || !!(node.result as any).audio) &&
-                                             !(node.result as any)?.text?.match(/!\[.*?\]\((https?:\/\/[^\s"'<>()]+)\)/) &&
-                                             !(node.result as any)?.text?.match(/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mkv|mp3|wav|ogg|m4a|aac|flac)/i))
-                                          }
-                                          onPointerDown={(e) => e.stopPropagation()}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          onClick={async (e) => {
-                                            e.stopPropagation();
-                                            if (isAssetUrl) {
-                                              try {
-                                                const response = await fetch(assetUrl);
-                                                const blob = await response.blob();
-                                                const blobUrl = window.URL.createObjectURL(blob);
-                                                const link = document.createElement('a');
-                                                link.href = blobUrl;
-                                                link.download = assetUrl.split('/').pop()?.split('?')[0] || `asset-${Date.now()}`;
-                                                document.body.appendChild(link);
-                                                link.click();
-                                                document.body.removeChild(link);
-                                                window.URL.revokeObjectURL(blobUrl);
-                                                toast.success("Downloaded");
-                                              } catch (err) {
-                                                window.open(assetUrl, '_blank');
-                                              }
-                                            } else {
-                                              // Download text result
-                                              let textToDownload = "";
-                                              if (res.text) textToDownload = String(res.text);
-                                              else textToDownload = JSON.stringify(res, null, 2);
-                                              
-                                              const blob = new Blob([textToDownload], { type: 'text/plain;charset=utf-8' });
-                                              const blobUrl = window.URL.createObjectURL(blob);
-                                              const link = document.createElement('a');
-                                              link.href = blobUrl;
-                                              link.download = `result-${Date.now()}.txt`;
-                                              document.body.appendChild(link);
-                                              link.click();
-                                              document.body.removeChild(link);
-                                              window.URL.revokeObjectURL(blobUrl);
-                                              toast.success("Downloaded result");
-                                            }
-                                          }}
-                                          title="Download Result"
-                                        >
-                                          <Download className="w-4 h-4 mr-2" /> Download
-                                        </Button>
-                                      );
-                                  })()}
-                                </div>
-                              ) : (
-                                <div className="flex w-full">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="w-full" 
-                                    title="Generate"
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleExecuteNode(node);
-                                    }}
-                                  >
-                                    <Play className="w-4 h-4 mr-2" /> Generate
-                                  </Button>
-                                </div>
-                              );
-                              })()}
-                            </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
+                        node={node}
+                        pos={pos}
+                        draggingNodeId={draggingNodeId}
+                        hasResult={hasResult}
+                        actionRunning={actionNodeIds.has(node.id)}
+                        hasCnt={
+                           node.type === "publish" 
+                             ? hasPublishContentInput(contexts, node.id, [...nodes, ...dummyNodes]) 
+                             : false
+                        }
+                        hasAud={
+                           node.type === "publish" 
+                             ? hasPublishAudienceInput(contexts, node.id, [...nodes, ...dummyNodes]) 
+                             : false
+                        }
+                        needAudience={
+                           node.type === "publish" 
+                             ? destinationsRequireAudience(Array.isArray((node.settings as any)?.publish_destinations) ? (node.settings as any).publish_destinations as string[] : []) 
+                             : false
+                        }
+                        registerNodeRef={registerNodeRef}
+                        nodes={nodes}
+                        dummyNodes={dummyNodes}
+                        contexts={contexts}
+                        supabase={supabase}
+                        generatingNodeIds={generatingNodeIds}
+                        currentSite={currentSite}
+                        textParams={textParams}
+                        imageParams={imageParams}
+                        videoParams={videoParams}
+                        audioParams={audioParams}
+                        renderMediaWithZoom={renderMediaWithZoom}
+                        actions={actionsRef.current}
+                      />
                     )
                   })}
                   </TooltipProvider>
@@ -4028,6 +4154,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                       style={{ zIndex: 12, overflow: "visible" }}
                     >
                       {loadingRouteEdges.map(({ parentId, childId }) => {
+                        if (visibleNodeIds && !visibleNodeIds.has(parentId) && !visibleNodeIds.has(childId)) return null
                         if (!positions[parentId] || !positions[childId]) return null
                         const start = resolveNodePosition(parentId)
                         const end = resolveNodePosition(childId)

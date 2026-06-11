@@ -185,7 +185,7 @@ export const VideoFullscreenViewer: React.FC<VideoFullscreenViewerProps> = ({
           {/* Video */}
           <video
             key={selectedVideoIndex}
-            src={videoUrl}
+            src={videoUrl || undefined}
             controls
             autoPlay
             className="max-w-full max-h-full"

@@ -9,6 +9,21 @@ import {
   worldViewportFromCanvas,
 } from "@/app/lib/graph-viewport"
 
+import type { ImprentaHoverStore } from "@/app/lib/imprenta-hover-store"
+
+function collectNodeAndAncestorIds(startId: string, nodes: InstanceNode[]) {
+  const chain = new Set<string>()
+  const byId = new Map(nodes.map(n => [n.id, n]))
+  let curr = startId
+  while (curr) {
+    chain.add(curr)
+    const n = byId.get(curr)
+    if (!n || !n.parent_node_id) break
+    curr = n.parent_node_id
+  }
+  return chain
+}
+
 export interface ImprentaParentEdgesCanvasProps {
   nodes: InstanceNode[]
   positions: Record<string, { x: number; y: number }>
@@ -18,10 +33,10 @@ export interface ImprentaParentEdgesCanvasProps {
   strokeStyle: string
   /** Subscribes directly; bypasses React reconcile on pan/zoom. */
   viewportStore: ViewportStore
-  /** When set, tree edges whose endpoints are both in this set use `hoverChainStroke`. */
-  hoverChainNodeIds?: ReadonlySet<string> | null
-  /** Stroke for edges on the hovered node → root chain (see `hoverChainNodeIds`). */
+  hoverStore?: ImprentaHoverStore
+  /** Stroke for edges on the hovered node → root chain. */
   hoverChainStroke?: string
+  dragStore?: { get: () => any; subscribe: (l: any) => () => void }
   /** World padding beyond the visible viewport (keeps edges from popping when panning). */
   padWorld?: number
   /**
@@ -61,8 +76,9 @@ export function ImprentaParentEdgesCanvas({
   viewportStore,
   padWorld = DEFAULT_PAD_WORLD,
   dragOverride = null,
+  dragStore,
   straightLinesBelowScale = 0.4,
-  hoverChainNodeIds = null,
+  hoverStore,
   hoverChainStroke,
 }: ImprentaParentEdgesCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -83,10 +99,19 @@ export function ImprentaParentEdgesCanvas({
   padWorldRef.current = padWorld
   const dragOverrideRef = useRef(dragOverride)
   dragOverrideRef.current = dragOverride
+  
+  useEffect(() => {
+    if (!dragStore) return
+    return dragStore.subscribe((snap: any) => {
+      dragOverrideRef.current = snap
+      if (scheduleRef.current) scheduleRef.current()
+    })
+  }, [dragStore])
   const straightBelowRef = useRef(straightLinesBelowScale)
   straightBelowRef.current = straightLinesBelowScale
-  const hoverChainRef = useRef(hoverChainNodeIds)
-  hoverChainRef.current = hoverChainNodeIds
+  const hoverStoreRef = useRef(hoverStore)
+  hoverStoreRef.current = hoverStore
+  const hoverChainRef = useRef<ReadonlySet<string> | null>(null)
   const hoverChainStrokeRef = useRef(hoverChainStroke)
   hoverChainStrokeRef.current = hoverChainStroke
 
@@ -101,6 +126,8 @@ export function ImprentaParentEdgesCanvas({
     rowH: number
     ids: string[]
     grid: Map<string, Set<string>>
+    nodesById: Map<string, InstanceNode>
+    childrenMap: Map<string, string[]>
   } | null>(null)
 
   useEffect(() => {
@@ -128,9 +155,20 @@ export function ImprentaParentEdgesCanvas({
         return cached
       }
       const ids = new Array<string>(all.length)
-      for (let i = 0; i < all.length; i++) ids[i] = all[i].id
+      const nodesById = new Map<string, InstanceNode>()
+      const childrenMap = new Map<string, string[]>()
+      for (let i = 0; i < all.length; i++) {
+        const n = all[i]
+        ids[i] = n.id
+        nodesById.set(n.id, n)
+        if (n.parent_node_id) {
+          let children = childrenMap.get(n.parent_node_id)
+          if (!children) { children = []; childrenMap.set(n.parent_node_id, children) }
+          children.push(n.id)
+        }
+      }
       const grid = buildNodeCellGrid(ids, pos, h, w, rH)
-      const entry = { nodes: all, positions: pos, heights: h, nodeW: w, rowH: rH, ids, grid }
+      const entry = { nodes: all, positions: pos, heights: h, nodeW: w, rowH: rH, ids, grid, nodesById, childrenMap }
       gridCacheRef.current = entry
       return entry
     }
@@ -198,19 +236,18 @@ export function ImprentaParentEdgesCanvas({
       // at every zoom.
       const useStraightLines = snap.scale < straightBelowRef.current
 
-      for (let i = 0; i < allNodes.length; i++) {
-        const node = allNodes[i]
+      const drawnEdges = new Set<string>()
+
+      const drawEdge = (node: InstanceNode) => {
         const parentId = node.parent_node_id
-        if (!parentId) continue
+        if (!parentId) return
+        const edgeKey = `${parentId}->${node.id}`
+        if (drawnEdges.has(edgeKey)) return
+        drawnEdges.add(edgeKey)
+
         const start = resolve(parentId)
         const end = resolve(node.id)
-        if (!start || !end) continue
-
-        // Include both endpoints for culling; the override may push an endpoint
-        // far from its cached cell during drag — always accept it then.
-        const isOverrideEdge =
-          override && (override.id === node.id || override.id === parentId)
-        if (!isOverrideEdge && !candidates.has(node.id) && !candidates.has(parentId)) continue
+        if (!start || !end) return
 
         const startCy = (heights[parentId] || rH) / 2
         const endCy = (heights[node.id] || rH) / 2
@@ -243,6 +280,37 @@ export function ImprentaParentEdgesCanvas({
           ctx.stroke()
         }
       }
+
+      for (const candidateId of candidates) {
+        const node = cached.nodesById.get(candidateId)
+        if (!node) continue
+
+        if (node.parent_node_id) {
+          drawEdge(node)
+        }
+
+        const children = cached.childrenMap.get(candidateId)
+        if (children) {
+          for (const childId of children) {
+            const childNode = cached.nodesById.get(childId)
+            if (childNode) drawEdge(childNode)
+          }
+        }
+      }
+
+      if (override) {
+        const overrideNode = cached.nodesById.get(override.id)
+        if (overrideNode) {
+          if (overrideNode.parent_node_id) drawEdge(overrideNode)
+          const children = cached.childrenMap.get(overrideNode.id)
+          if (children) {
+            for (const childId of children) {
+              const childNode = cached.nodesById.get(childId)
+              if (childNode) drawEdge(childNode)
+            }
+          }
+        }
+      }
     }
 
     const schedule = () => {
@@ -256,10 +324,25 @@ export function ImprentaParentEdgesCanvas({
       schedule()
     })
 
+    const updateHoverChain = (hoveredId: string | null) => {
+      if (!hoveredId) {
+        hoverChainRef.current = null
+      } else {
+        hoverChainRef.current = collectNodeAndAncestorIds(hoveredId, nodesRef.current)
+      }
+      schedule()
+    }
+
+    if (hoverStore) {
+      updateHoverChain(hoverStore.get())
+    }
+    const unsubHover = hoverStore?.subscribe(updateHoverChain)
+
     schedule()
 
     return () => {
       unsub()
+      if (unsubHover) unsubHover()
       scheduleRef.current = null
       if (rafId != null) {
         window.cancelAnimationFrame(rafId)
@@ -279,7 +362,6 @@ export function ImprentaParentEdgesCanvas({
     strokeStyle,
     dragOverride,
     straightLinesBelowScale,
-    hoverChainNodeIds,
     hoverChainStroke,
   ])
 

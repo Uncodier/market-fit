@@ -59,6 +59,8 @@ function CarouselNavButton({
   )
 }
 
+const leadCache = new Map<string, any>()
+
 export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLeads }: Props) {
   const [page, setPage] = useState(0)
   const [total, setTotal] = useState(0)
@@ -68,6 +70,21 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
   const [leadDetail, setLeadDetail] = useState<Lead | null>(null)
   const [leadLoading, setLeadLoading] = useState(false)
   const [leadErr, setLeadErr] = useState<string | null>(null)
+  const [inViewport, setInViewport] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setInViewport(entry.isIntersecting)
+      },
+      { rootMargin: "300px" }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const embeddedSorted = useMemo(
     () => (embeddedLeads?.length ? sortAudienceLeadRows(embeddedLeads) : []),
@@ -75,13 +92,26 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
   )
 
   const loadRemote = useCallback(async () => {
-    if (!audienceId.trim()) {
-      setTotal(0)
-      setRow(null)
+    if (!audienceId.trim() || !inViewport) {
+      if (!audienceId.trim()) {
+        setTotal(0)
+        setRow(null)
+        setErr(null)
+        setLoading(false)
+      }
+      return
+    }
+    
+    const cacheKey = `audience_${audienceId}_${page}`
+    if (leadCache.has(cacheKey)) {
+      const res = leadCache.get(cacheKey)
+      setTotal(res.total)
+      setRow(res.rows[0] ?? null)
       setErr(null)
       setLoading(false)
       return
     }
+
     setLoading(true)
     setErr(null)
     const res = await getAudienceLeadsByAudienceIdPage(audienceId, page, 1)
@@ -90,11 +120,12 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
       setRow(null)
       setTotal(0)
     } else {
+      leadCache.set(cacheKey, res)
       setTotal(res.total)
       setRow(res.rows[0] ?? null)
     }
     setLoading(false)
-  }, [audienceId, page])
+  }, [audienceId, page, inViewport])
 
   useEffect(() => {
     if (embeddedSorted.length > 0) {
@@ -109,12 +140,28 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
 
   useEffect(() => {
     const leadId = row?.lead_id?.trim()
-    if (!leadId || !siteId.trim()) {
-      setLeadDetail(null)
-      setLeadErr(null)
+    if (!leadId || !siteId.trim() || !inViewport) {
+      if (!leadId || !siteId.trim()) {
+        setLeadDetail(null)
+        setLeadErr(null)
+        setLeadLoading(false)
+      }
+      return
+    }
+    
+    const cacheKey = `lead_${leadId}_${siteId}`
+    if (leadCache.has(cacheKey)) {
+      const res = leadCache.get(cacheKey)
+      if (res.error || !res.lead) {
+        setLeadErr(res.error || "Could not load lead")
+        setLeadDetail(null)
+      } else {
+        setLeadDetail(res.lead as Lead)
+      }
       setLeadLoading(false)
       return
     }
+
     let cancelled = false
     setLeadLoading(true)
     setLeadErr(null)
@@ -122,6 +169,7 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
     void getLeadById(leadId, siteId).then((res) => {
       if (cancelled) return
       setLeadLoading(false)
+      leadCache.set(cacheKey, res)
       if (res.error || !res.lead) {
         setLeadErr(res.error || "Could not load lead")
         setLeadDetail(null)
@@ -132,7 +180,7 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
     return () => {
       cancelled = true
     }
-  }, [row?.id, row?.lead_id, siteId])
+  }, [row?.id, row?.lead_id, siteId, inViewport])
 
   const maxPage = Math.max(0, total - 1)
   const canPrev = page > 0
@@ -148,7 +196,7 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
   }
 
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
+    <div ref={containerRef} className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
       {loading ? (
         <div className="flex items-center gap-2">
           <CarouselNavButton

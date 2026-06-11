@@ -294,7 +294,7 @@ export const GeneratedVideoDisplayCollapsed: React.FC<GeneratedVideoDisplayProps
             }}
           >
             <video 
-              src={videoUrl}
+              src={videoUrl || undefined}
               preload="metadata"
               playsInline
               muted

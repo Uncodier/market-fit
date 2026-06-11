@@ -55,21 +55,63 @@ export function ImprentaLazyPreviewVideo({
   url,
   className,
   priority = false,
+  scale = 1,
 }: {
   url: string
   className?: string
   priority?: boolean
+  scale?: number
 }) {
   const [ready, setReady] = useState(false)
-  const pausedRef = useRef(false)
+  const [inViewport, setInViewport] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const containerRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     setReady(false)
-    pausedRef.current = false
   }, [url])
 
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        setInViewport(entry.isIntersecting)
+      },
+      { rootMargin: "200px" } // Load slightly before it comes into view
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !inViewport) return
+
+    const shouldPlay = isHovered || scale >= 0.7
+
+    if (shouldPlay) {
+      video.play().catch(() => {
+        // Ignore auto-play errors
+      })
+    } else {
+      video.pause()
+    }
+  }, [inViewport, isHovered, scale, url])
+
+  const effectiveUrl = inViewport ? (url.includes('#') ? url : `${url}#t=0.001`) : ''
+
   return (
-    <span className="relative block h-full w-full min-h-0">
+    <span 
+      ref={containerRef} 
+      className="relative block h-full w-full min-h-0"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <span
         className={`absolute inset-0 z-0 flex animate-pulse items-center justify-center rounded-[inherit] bg-muted/75 dark:bg-muted/60 transition-opacity duration-300 ${
           ready ? "pointer-events-none opacity-0" : "opacity-100"
@@ -79,24 +121,16 @@ export function ImprentaLazyPreviewVideo({
         <span className="sr-only">Loading video preview</span>
       </span>
       <video
-        src={url.includes('#') ? url : `${url}#t=0.001`}
+        ref={videoRef}
+        src={effectiveUrl || undefined}
         muted
         playsInline
-        autoPlay
         preload={priority ? "auto" : "metadata"}
         className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
           ready ? "opacity-95" : "opacity-0"
         } ${className ?? ""}`}
         aria-hidden
         onLoadedData={() => setReady(true)}
-        onTimeUpdate={(e) => {
-          const video = e.target as HTMLVideoElement;
-          if (!pausedRef.current && video.currentTime > 0.1) {
-            pausedRef.current = true;
-            video.pause();
-            video.currentTime = 0.001;
-          }
-        }}
         onError={() => setReady(true)}
       />
     </span>

@@ -19,7 +19,7 @@ import {
 } from "@/app/lib/imprenta-canvas-draw"
 import type { ImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
 
-type GridCacheEntry = {
+export type GridCacheEntry = {
   nodes: InstanceNode[]
   positions: Record<string, { x: number; y: number }>
   heights: Record<string, number>
@@ -27,6 +27,8 @@ type GridCacheEntry = {
   rowH: number
   ids: string[]
   grid: Map<string, Set<string>>
+  nodesById: Map<string, InstanceNode>
+  nodeIndexes: Map<string, number>
 }
 
 /**
@@ -34,7 +36,7 @@ type GridCacheEntry = {
  * identity. Kept outside the component so it is not subject to HMR/React-Compiler closure
  * transforms that (in some Turbopack builds) renamed the equivalent `useCallback` target.
  */
-function readCachedIdsAndGrid(
+export function readCachedIdsAndGrid(
   cacheRef: MutableRefObject<GridCacheEntry | null>,
   nodes: InstanceNode[],
   positions: Record<string, { x: number; y: number }>,
@@ -54,7 +56,14 @@ function readCachedIdsAndGrid(
     return cached
   }
   const ids = new Array<string>(nodes.length)
-  for (let i = 0; i < nodes.length; i++) ids[i] = nodes[i].id
+  const nodesById = new Map<string, InstanceNode>()
+  const nodeIndexes = new Map<string, number>()
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    ids[i] = node.id
+    nodesById.set(node.id, node)
+    nodeIndexes.set(node.id, i)
+  }
   const grid = buildNodeCellGrid(ids, positions, heights, nodeW, rowH)
   const entry: GridCacheEntry = {
     nodes,
@@ -64,6 +73,8 @@ function readCachedIdsAndGrid(
     rowH,
     ids,
     grid,
+    nodesById,
+    nodeIndexes,
   }
   cacheRef.current = entry
   return entry
@@ -269,10 +280,16 @@ export function ImprentaNodesCanvas({
       const requestedUrls: string[] = []
       const drawLabel = band !== "micro"
 
-      // Draw in stable order (parent first) so child cards paint on top of siblings.
-      for (let i = 0; i < all.length; i++) {
-        const node = all[i]
-        if (!candidates.has(node.id)) continue
+      // Iterate in stable order (parent first) by sorting candidates using nodeIndexes.
+      const candidateArray = Array.from(candidates);
+      candidateArray.sort((a, b) => {
+        return (cached.nodeIndexes.get(a) || 0) - (cached.nodeIndexes.get(b) || 0);
+      });
+
+      for (let i = 0; i < candidateArray.length; i++) {
+        const nodeId = candidateArray[i];
+        const node = cached.nodesById.get(nodeId);
+        if (!node) continue;
         if (skip && skip.has(node.id)) continue
         const p = pos[node.id]
         if (!p) continue
