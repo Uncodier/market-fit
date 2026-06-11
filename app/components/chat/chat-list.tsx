@@ -1027,9 +1027,9 @@ export function ChatList({
         </div>
       </div>
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <div className="h-full overflow-auto flex flex-col pt-0">
-          <div className="w-full flex flex-col flex-1">
+          <div className="w-full min-w-0 flex flex-col flex-1">
             {/* Combined Filter - always visible */}
             <ChannelFilter
               selectedFilter={combinedFilter}

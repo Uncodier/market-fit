@@ -586,16 +586,16 @@ function ChatPageContent() {
         isDeleting={isDeletingConversation}
       />
       
-            <div className="flex h-full relative overflow-visible w-full bg-background flex-row">
+            <div className="flex h-full relative overflow-hidden w-full bg-background flex-row min-w-0">
         {/* Chat list */}
       <div className={cn(
         "h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative",
         hasSelectedConversation ? "hidden md:block" : "w-full",
-        !hasSelectedConversation && "md:w-[319px]",
+        !hasSelectedConversation && "md:w-[319px] md:min-w-[319px]",
         isChatListCollapsed
-          ? "w-0 md:w-0 md:opacity-0 -translate-x-full md:translate-x-0 border-none"
-          : "w-full md:w-[319px] translate-x-0",
-        !isChatListCollapsed && !hasSelectedConversation && "w-full md:w-[319px]"
+          ? "w-0 md:w-0 md:min-w-0 md:opacity-0 -translate-x-full md:translate-x-0 border-none"
+          : "w-full md:w-[319px] md:min-w-[319px] translate-x-0",
+        !isChatListCollapsed && !hasSelectedConversation && "w-full md:w-[319px] md:min-w-[319px]"
       )} style={{ overflow: 'hidden' }}>
         <ChatList 
           siteId={currentSite?.id || ""}
@@ -614,7 +614,7 @@ function ChatPageContent() {
       )}
       style={{
         width: "100%",
-        flex: "1"
+        flex: "1 1 0%"
       }}
       >
               {/* Chat header with agent and lead info */}
@@ -641,8 +641,8 @@ function ChatPageContent() {
         </div>
 
         {/* Chat messages area */}
-        <div className="flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px]">
-          <div className="transition-all duration-300 ease-in-out h-full">
+        <div className="flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px] flex flex-col">
+          <div className="transition-all duration-300 ease-in-out flex-1 flex flex-col min-h-full">
             <ChatMessages 
               chatMessages={chatMessages}
               isLoadingMessages={isLoadingMessages}

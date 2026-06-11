@@ -125,7 +125,7 @@ export const ChatInput = memo(function ChatInput({
   // Calculate dynamic left offset for fixed positioning
   const getLeftOffset = () => {
     if (typeof window === 'undefined') return '0px';
-    if (window.innerWidth < 768) return '0px'; // Mobile full width
+    if (windowWidth < 768) return '0px'; // Mobile full width
     
     // We know layout sidebar is either 64px or 256px
     const sidebarWidth = isLayoutCollapsed ? 64 : 256;
@@ -148,7 +148,7 @@ export const ChatInput = memo(function ChatInput({
       }}
     >
       <div className="w-full">
-        <div className="max-w-3xl mx-auto relative pb-[20px] px-4 md:px-6">
+        <div className="w-full max-w-3xl mx-auto relative pb-[20px] px-4 md:px-6">
           <form onSubmit={handleSubmit} className="relative w-full">
             <div className="relative w-full">
         <OptimizedTextarea

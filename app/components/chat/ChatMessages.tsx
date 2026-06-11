@@ -29,6 +29,7 @@ import { getConversationMessages } from "../../services/getConversationMessages.
 import { truncateAgentName, truncateLeadName } from "@/app/utils/name-utils"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { getUserData } from "@/app/services/user-service"
+import { cn } from "@/lib/utils"
 
 // Helper function to format date as "Month Day, Year"
 const formatDate = (date: Date) => {
@@ -1074,8 +1075,11 @@ export function ChatMessages({
   }
 
   return (
-    <div ref={containerRef} className="flex-1 py-6 transition-colors duration-300 ease-in-out pb-[180px] min-w-0 w-full transition-all">
-      <div className="max-w-3xl mx-auto min-w-0 px-4 md:px-6">
+    <div ref={containerRef} className="flex-1 py-6 transition-colors duration-300 ease-in-out pb-[180px] min-w-0 w-full transition-all flex flex-col min-h-full">
+      <div className={cn(
+        "max-w-3xl mx-auto min-w-0 px-4 md:px-6 w-full relative flex-1 flex flex-col",
+        chatMessages.length === 0 && !isLoadingMessages && !isTransitioningConversation ? "justify-center" : ""
+      )}>
         {(isLoadingMessages || isTransitioningConversation) ? (
           <div className="space-y-6 w-full">
             {[1, 2, 3].map((i) => (
@@ -1120,7 +1124,10 @@ export function ChatMessages({
             ))}
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className={cn(
+            "space-y-6 relative flex flex-col",
+            chatMessages.length === 0 ? "flex-1 justify-center" : ""
+          )}>
             {chatMessages.length === 0 ? (
               <EmptyConversation 
                 agentId={agentId}

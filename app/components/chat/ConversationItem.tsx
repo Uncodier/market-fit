@@ -102,7 +102,7 @@ export function ConversationItem({
       onClick={onSelect}
     >
       <div
-        className="w-full text-left"
+        className="w-full text-left min-w-0"
         style={{
           background: 'transparent',
           border: 'none',
@@ -144,9 +144,9 @@ export function ConversationItem({
         )}>
           {conversation.lastMessage || getDefaultMessage(conversation.title || "")}
         </div>
-        <div className="flex justify-between items-center mt-0.5">
+        <div className="flex justify-between items-center mt-0.5 gap-2">
           <div className={cn(
-            "text-[11px] flex items-center gap-1 truncate",
+            "text-[11px] flex items-center gap-1 truncate min-w-0 flex-1",
             isSelected ? "text-primary/70" : "text-muted-foreground/70"
           )}>
             {getChannelIcon(conversation.channel, !conversation.leadName && !!conversation.agentId)}

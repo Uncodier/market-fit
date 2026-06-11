@@ -21,7 +21,7 @@ const IconWrapper = ({
   "aria-hidden": ariaHidden = true
 }: IconProps & { children: React.ReactNode }) => {
   return (
-    <div 
+    <span 
       className={`inline-flex items-center justify-center safari-icon-fix [&>svg]:w-full [&>svg]:h-full ${className}`}
       style={{ 
         width: size, 
@@ -37,7 +37,7 @@ const IconWrapper = ({
       aria-hidden={ariaHidden}
     >
       {children}
-    </div>
+    </span>
   )
 }
 
