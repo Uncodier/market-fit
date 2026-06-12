@@ -191,14 +191,16 @@ const IMPRENTA_LOD_FULL_DETAIL_SCALE = 0.4
  * "fit" can be below that; thresholds must sit inside (~0.01 … full) so all
  * three bands are reachable while zooming.
  */
-const IMPRENTA_LOD_LITE_MICRO_MAX = 0.05
-const IMPRENTA_LOD_LITE_SIMPLE_MAX = 0.10
+const IMPRENTA_LOD_LITE_MARKER_MAX = 0.08
+const IMPRENTA_LOD_LITE_MICRO_MAX = 0.10
+const IMPRENTA_LOD_LITE_SIMPLE_MAX = 0.15
 
-type ImprentaLiteSkeletonBand = "micro" | "simple" | "rich"
+type ImprentaLiteSkeletonBand = "marker" | "micro" | "simple" | "rich"
 
 type LoadingRouteEdge = { parentId: string; childId: string }
 
 function imprentaLiteSkeletonBand(scale: number): ImprentaLiteSkeletonBand {
+  if (scale < IMPRENTA_LOD_LITE_MARKER_MAX) return "marker"
   if (scale < IMPRENTA_LOD_LITE_MICRO_MAX) return "micro"
   if (scale < IMPRENTA_LOD_LITE_SIMPLE_MAX) return "simple"
   return "rich"
@@ -754,13 +756,15 @@ const ImprentaDummyCardInner = memo(({
   pos, 
   draggingNodeId, 
   liteDummy, 
-  registerNodeRef 
+  registerNodeRef,
+  onMouseDown
 }: {
   node: InstanceNode
   pos: { x: number; y: number }
   draggingNodeId: string | null
   liteDummy: boolean
   registerNodeRef: (id: string, el: HTMLDivElement | null) => void
+  onMouseDown?: (e: React.MouseEvent) => void
 }) => {
   const mediaTypeForDummy = (node.settings as any)?.media_type || node.type.replace('generate-', '')
   const isMediaDummy = mediaTypeForDummy === 'image' || mediaTypeForDummy === 'video' || mediaTypeForDummy === 'audio'
@@ -785,7 +789,7 @@ const ImprentaDummyCardInner = memo(({
                           ref={(el) => registerNodeRef(node.id, el)}
                           data-node-id={node.id}
                         className={cn(
-                          "absolute group z-10",
+                          "absolute group z-10 cursor-grab active:cursor-grabbing pointer-events-auto",
                           draggingNodeId ? "select-none" : ""
                         )}
                         style={{ 
@@ -793,6 +797,7 @@ const ImprentaDummyCardInner = memo(({
                           left: 0,
                           top: 0,
                         }}
+                        onMouseDown={onMouseDown}
                         >
                           <Card
                             className={
@@ -812,7 +817,7 @@ const ImprentaDummyCardInner = memo(({
                               
                               {isMediaDummy ? (
                                 <div 
-                                  className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center`}
+                                  className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center pointer-events-none`}
                                   style={{ aspectRatio: aspectStyle }}
                                 >
                                   {!liteDummy && (
@@ -1820,6 +1825,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const draggingNodeRef = useRef<string | null>(null)
   const dragStartPos = useRef({ x: 0, y: 0 })
   const dragStartNodePos = useRef({ x: 0, y: 0 })
+  const nodeDragMovedRef = useRef(false)
   const positionsRef = useRef<Record<string, {x: number, y: number}>>({})
   const nodesRef = useRef<InstanceNode[]>([])
   
@@ -2781,10 +2787,17 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         }
       }
 
-      const { error } = await supabase.from('instance_nodes').insert(newNode)
+      const { data: newDbNode, error } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
       
       if (error) {
         throw error
+      }
+      
+      if (newDbNode) {
+        setNodes(prev => {
+          if (prev.some(n => n.id === newDbNode.id)) return prev;
+          return [...prev, newDbNode as InstanceNode];
+        });
       }
       
       toast.success("Asset uploaded successfully")
@@ -2840,12 +2853,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       result: {}
     }
     
-    const { data, error } = await supabase.from('instance_nodes').insert(newNode).select('id').single()
+    const { data, error } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
     if (error) {
       toast.error("Failed to create node")
       console.error(error)
       return null
     } else {
+      setNodes(prev => {
+        if (prev.some(n => n.id === data.id)) return prev;
+        return [...prev, data as InstanceNode];
+      });
       toast.success("Node created")
       return data.id
     }
@@ -2906,11 +2923,16 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       result: {}
     }
     
-    const { data: actionNode, error } = await supabase.from('instance_nodes').insert(newNode).select('id').single()
+    const { data: actionNode, error } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
     if (error || !actionNode) {
       toast.error("Failed to create action node")
       return
     }
+
+    setNodes(prev => {
+      if (prev.some(n => n.id === actionNode.id)) return prev;
+      return [...prev, actionNode as InstanceNode];
+    });
 
     toast.success("Action node created")
   }
@@ -2918,6 +2940,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const handleWindowMouseMove = useCallback((e: MouseEvent) => {
     const nodeId = draggingNodeRef.current
     if (!nodeId) return
+    
+    if (!nodeDragMovedRef.current) {
+      if (Math.abs(e.clientX - dragStartPos.current.x) > 5 || Math.abs(e.clientY - dragStartPos.current.y) > 5) {
+        nodeDragMovedRef.current = true
+      }
+    }
     
     // Prevenir selección de texto durante el drag de la tarjeta
     e.preventDefault()
@@ -2967,9 +2995,18 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
     // Termina el drag inmediatamente antes del await
     draggingNodeRef.current = null
-    window.removeEventListener('mousemove', handleWindowMouseMove)
-    window.removeEventListener('mouseup', handleWindowMouseUp)
-    window.removeEventListener('click', handleWindowMouseUp, { capture: true })
+    window.removeEventListener('pointermove', handleWindowMouseMove)
+    window.removeEventListener('pointerup', handleWindowMouseUp)
+
+    if (nodeDragMovedRef.current) {
+      const suppressClick = (ev: MouseEvent) => {
+        ev.stopPropagation()
+        ev.preventDefault()
+        window.removeEventListener('click', suppressClick, { capture: true })
+      }
+      window.addEventListener('click', suppressClick, { capture: true })
+      setTimeout(() => window.removeEventListener('click', suppressClick, { capture: true }), 0)
+    }
 
     dragStore.set(null)
     setDraggingNodeId(null)
@@ -2990,6 +3027,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   }, [handleWindowMouseMove])
 
   const beginNodeDrag = useCallback((nodeId: string, clientX: number, clientY: number) => {
+    nodeDragMovedRef.current = false
     draggingNodeRef.current = nodeId
     dragStartPos.current = { x: clientX, y: clientY }
     dragStartNodePos.current = {
@@ -3008,20 +3046,20 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     setDraggingNodeId(nodeId)
 
     // Ensure we don't attach multiple times if somehow called twice
-    window.removeEventListener('mousemove', handleWindowMouseMove)
-    window.removeEventListener('mouseup', handleWindowMouseUp)
-    window.removeEventListener('click', handleWindowMouseUp, { capture: true })
+    window.removeEventListener('pointermove', handleWindowMouseMove)
+    window.removeEventListener('pointerup', handleWindowMouseUp)
 
-    window.addEventListener('mousemove', handleWindowMouseMove)
-    window.addEventListener('mouseup', handleWindowMouseUp)
-    window.addEventListener('click', handleWindowMouseUp, { capture: true, once: true })
+    window.addEventListener('pointermove', handleWindowMouseMove)
+    window.addEventListener('pointerup', handleWindowMouseUp)
   }, [handleWindowMouseMove, handleWindowMouseUp])
 
   /** Entry point from the lite canvas layer (no React synthetic event is available). */
   const handleCanvasNodePointerDown = useCallback((nodeId: string, ev: PointerEvent) => {
     if (ev.button !== 0) return
     const target = ev.target as HTMLElement
-    if (target && (target.closest('button') || target.closest('textarea') || target.closest('input') || target.closest('a') || target.closest('[role="button"]') || target.closest('[role="menuitem"]') || target.closest('[role="menu"]') || target.closest('[role="dialog"]') || target.closest('[role="listbox"]') || target.closest('[role="option"]') || target.closest('[role="combobox"]') || target.closest('[role="tab"]') || target.closest('[role="tabpanel"]') || target.closest('video') || target.closest('audio'))) return
+    if (target && (target.closest('button') || target.closest('textarea') || target.closest('input') || target.closest('a') || target.closest('[role="button"]') || target.closest('[role="menuitem"]') || target.closest('[role="menu"]') || target.closest('[role="dialog"]') || target.closest('[role="listbox"]') || target.closest('[role="option"]') || target.closest('[role="combobox"]') || target.closest('[role="tab"]') || target.closest('[role="tabpanel"]'))) {
+      return;
+    }
     
     ev.stopPropagation()
     ev.preventDefault()
@@ -3032,10 +3070,13 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     if (e.button !== 0) return // Only left click
     const target = e.target as HTMLElement
     // Prevent dragging if clicking on an input/button or an SVG icon inside a button
-    if (target.closest('button') || target.closest('textarea') || target.closest('input') || target.closest('a') || target.closest('[role="button"]') || target.closest('[role="menuitem"]') || target.closest('[role="menu"]') || target.closest('[role="dialog"]') || target.closest('[role="listbox"]') || target.closest('[role="option"]') || target.closest('[role="combobox"]') || target.closest('[role="tab"]') || target.closest('[role="tabpanel"]') || target.closest('video') || target.closest('audio')) return
+    if (target.closest('button') || target.closest('textarea') || target.closest('input') || target.closest('a') || target.closest('[role="button"]') || target.closest('[role="menuitem"]') || target.closest('[role="menu"]') || target.closest('[role="dialog"]') || target.closest('[role="listbox"]') || target.closest('[role="option"]') || target.closest('[role="combobox"]') || target.closest('[role="tab"]') || target.closest('[role="tabpanel"]')) {
+      return;
+    }
     
     e.stopPropagation()
-    e.preventDefault() // Prevents native image drag and text selection which breaks mousemove
+    // Prevenir explícitamente el arrastre nativo de imágenes/elementos
+    e.preventDefault();
 
     beginNodeDrag(nodeId, e.clientX, e.clientY)
   }
@@ -3696,24 +3737,32 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
 
   const maxBounds = useMemo(() => {
-    let maxX = 0
-    let maxY = 0
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    let hasNodes = false
 
     Object.entries(positions).forEach(([id, pos]) => {
       if (typeof pos.x !== 'number' || typeof pos.y !== 'number' || isNaN(pos.x) || isNaN(pos.y)) return
 
-      const nh = (nodeHeightsRef.current[id] || ROW_H) + 50
-      maxX = Math.max(maxX, pos.x + NODE_W + 50)
+      hasNodes = true
+      const nh = (nodeHeightsRef.current[id] || ROW_H)
+      minX = Math.min(minX, pos.x)
+      minY = Math.min(minY, pos.y)
+      maxX = Math.max(maxX, pos.x + NODE_W)
       maxY = Math.max(maxY, pos.y + nh)
     })
 
-    if (maxX === 0 && maxY === 0) {
-      return { width: 800, height: 600 }
+    if (!hasNodes) {
+      return { width: 800, height: 600, offsetX: 0, offsetY: 0 }
     }
 
     return {
-      width: Math.max(maxX, 320),
-      height: Math.max(maxY, 320),
+      width: Math.max(maxX - minX + 100, 320),
+      height: Math.max(maxY - minY + 100, 320),
+      offsetX: minX - 50,
+      offsetY: minY - 50,
     }
   }, [positions])
 
@@ -3784,6 +3833,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           enableWheelPan={true}
           viewportStore={viewportStore}
           graphBounds={maxBounds}
+          recenterDependency={maxBounds}
           screenSpaceBehind={
             <ImprentaParentEdgesCanvas
               nodes={canvasNodes}
@@ -3799,6 +3849,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               // On small graphs we keep full bezier edges at every zoom; the
               // straight-line LOD only pays off when many edges fit on screen.
               straightLinesBelowScale={IMPRENTA_LOD_FULL_DETAIL_SCALE}
+              markerMax={IMPRENTA_LOD_LITE_MARKER_MAX}
             />
           }
           screenSpaceFront={
@@ -3813,6 +3864,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               // thrash on count crossings) but bails out of every paint and
               // hit test, so DOM cards render at every zoom.
               fullDetailScale={IMPRENTA_LOD_FULL_DETAIL_SCALE}
+              liteMarkerMax={IMPRENTA_LOD_LITE_MARKER_MAX}
               liteMicroMax={IMPRENTA_LOD_LITE_MICRO_MAX}
               liteSimpleMax={IMPRENTA_LOD_LITE_SIMPLE_MAX}
               viewportStore={viewportStore}
@@ -4077,6 +4129,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                           draggingNodeId={draggingNodeId}
                           liteDummy={liteDummy}
                           registerNodeRef={registerNodeRef}
+                          onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                         />
                       )
                     }

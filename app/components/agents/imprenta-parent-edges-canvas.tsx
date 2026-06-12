@@ -8,6 +8,7 @@ import {
   collectIdsFromGrid,
   worldViewportFromCanvas,
 } from "@/app/lib/graph-viewport"
+import { liteNodeMarkerRect } from "@/app/lib/imprenta-canvas-draw"
 
 import type { ImprentaHoverStore } from "@/app/lib/imprenta-hover-store"
 
@@ -52,6 +53,8 @@ export interface ImprentaParentEdgesCanvasProps {
    * Defaults to 0.4 (matches the lite-canvas full-detail threshold).
    */
   straightLinesBelowScale?: number
+  /** Scale below which edges clamp to marker bounds. */
+  markerMax?: number
 }
 
 const DEFAULT_PAD_WORLD = 240
@@ -78,6 +81,7 @@ export function ImprentaParentEdgesCanvas({
   dragOverride = null,
   dragStore,
   straightLinesBelowScale = 0.4,
+  markerMax = 0.08,
   hoverStore,
   hoverChainStroke,
 }: ImprentaParentEdgesCanvasProps) {
@@ -109,6 +113,8 @@ export function ImprentaParentEdgesCanvas({
   }, [dragStore])
   const straightBelowRef = useRef(straightLinesBelowScale)
   straightBelowRef.current = straightLinesBelowScale
+  const markerMaxRef = useRef(markerMax)
+  markerMaxRef.current = markerMax
   const hoverStoreRef = useRef(hoverStore)
   hoverStoreRef.current = hoverStore
   const hoverChainRef = useRef<ReadonlySet<string> | null>(null)
@@ -235,8 +241,12 @@ export function ImprentaParentEdgesCanvas({
       // graphs the parent passes `straightLinesBelowScale = 0` so we keep beziers
       // at every zoom.
       const useStraightLines = snap.scale < straightBelowRef.current
+      const useMarkers = snap.scale < markerMaxRef.current
 
       const drawnEdges = new Set<string>()
+
+      const scratchParent = { x: 0, y: 0, w: 0, h: 0 }
+      const scratchChild = { x: 0, y: 0, w: 0, h: 0 }
 
       const drawEdge = (node: InstanceNode) => {
         const parentId = node.parent_node_id
@@ -249,12 +259,24 @@ export function ImprentaParentEdgesCanvas({
         const end = resolve(node.id)
         if (!start || !end) return
 
-        const startCy = (heights[parentId] || rH) / 2
-        const endCy = (heights[node.id] || rH) / 2
-        const x1 = start.x + w
-        const y1 = start.y + startCy
-        const x2 = end.x
-        const y2 = end.y + endCy
+        let x1, y1, x2, y2
+
+        if (useMarkers) {
+          liteNodeMarkerRect(start.x, start.y, w, heights[parentId] || rH, s, scratchParent)
+          liteNodeMarkerRect(end.x, end.y, w, heights[node.id] || rH, s, scratchChild)
+          x1 = scratchParent.x + scratchParent.w
+          y1 = scratchParent.y + scratchParent.h / 2
+          x2 = scratchChild.x
+          y2 = scratchChild.y + scratchChild.h / 2
+        } else {
+          const startCy = (heights[parentId] || rH) / 2
+          const endCy = (heights[node.id] || rH) / 2
+          x1 = start.x + w
+          y1 = start.y + startCy
+          x2 = end.x
+          y2 = end.y + endCy
+        }
+
         ctx.beginPath()
         ctx.moveTo(x1, y1)
         if (useStraightLines) {

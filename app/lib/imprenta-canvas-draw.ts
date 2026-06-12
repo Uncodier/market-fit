@@ -19,7 +19,7 @@ import type { ImprentaThumbCache } from "./imprenta-thumb-cache"
  * No React dependencies; safe to call from any animation frame.
  */
 
-export type ImprentaLiteBand = "micro" | "simple" | "rich"
+export type ImprentaLiteBand = "marker" | "micro" | "simple" | "rich"
 
 export interface ImprentaCanvasTheme {
   cardBg: string
@@ -89,12 +89,41 @@ export function imprentaCanvasTheme(isDark: boolean): ImprentaCanvasTheme {
 
 export function bandFromScale(
   scale: number,
+  markerMax: number,
   microMax: number,
   simpleMax: number
 ): ImprentaLiteBand {
+  if (scale < markerMax) return "marker"
   if (scale < microMax) return "micro"
   if (scale < simpleMax) return "simple"
   return "rich"
+}
+
+export function liteNodeMarkerRect(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  scale: number,
+  out: { x: number; y: number; w: number; h: number }
+) {
+  const minScreenW = 44
+  const minScreenH = 32
+  
+  const minWorldW = minScreenW / scale
+  const minWorldH = minScreenH / scale
+  
+  const effectiveW = Math.max(w, minWorldW)
+  const effectiveH = Math.max(h, minWorldH)
+  
+  const cx = x + w / 2
+  const cy = y + h / 2
+  
+  out.x = cx - effectiveW / 2
+  out.y = cy - effectiveH / 2
+  out.w = effectiveW
+  out.h = effectiveH
+  return out
 }
 
 export function roundedRect(
@@ -420,6 +449,7 @@ export interface DrawLiteNodeInputs {
   y: number
   w: number
   h: number
+  scale: number
   band: ImprentaLiteBand
   theme: ImprentaCanvasTheme
   /** First image/video URL to paint as cover / thumbnail; null when none. */
@@ -438,10 +468,50 @@ export interface DrawLiteNodeInputs {
  * full-detail threshold.
  */
 export function drawLiteNode(ctx: CanvasRenderingContext2D, p: DrawLiteNodeInputs) {
-  const { node, x, y, w, h, band, theme, coverImageUrl, coverVideoUrl, extraImageUrls, thumbs, drawLabel } = p
+  const { node, x, y, w, h, scale, band, theme, coverImageUrl, coverVideoUrl, extraImageUrls, thumbs, drawLabel } = p
   const type = (node.type as string | undefined) ?? "prompt"
   const cornerR = 22
   const hasResult = nodeHasResult(node)
+
+  if (band === "marker") {
+    const scratch = { x: 0, y: 0, w: 0, h: 0 }
+    liteNodeMarkerRect(x, y, w, h, scale, scratch)
+    
+    // Line width clamped to ~2 screen pixels
+    const lw = Math.max(0.5, 2 / scale)
+    const r = Math.max(4, 8 / scale)
+    
+    fillAndStrokeRounded(ctx, scratch.x, scratch.y, scratch.w, scratch.h, r, theme.cardBg, theme.cardBorder, lw)
+    
+    const pad = 4 / scale
+    const innerX = scratch.x + pad
+    const innerY = scratch.y + pad
+    const innerW = scratch.w - pad * 2
+    const innerH = scratch.h - pad * 2
+    
+    if (coverImageUrl || coverVideoUrl) {
+      drawThumbOrSkeleton(ctx, innerX, innerY, innerW, innerH, r - pad/2, theme, coverImageUrl || coverVideoUrl, thumbs)
+      if (coverVideoUrl) {
+        // A simple centered circle instead of the full video glyph, which is too complex
+        ctx.fillStyle = theme.cardBg
+        ctx.beginPath()
+        ctx.arc(innerX + innerW / 2, innerY + innerH / 2, Math.min(innerW, innerH) * 0.25, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.strokeStyle = theme.mutedFill
+        ctx.lineWidth = lw
+        ctx.stroke()
+      }
+    } else {
+      const lineH = 6 / scale
+      const lineGap = 4 / scale
+      const lineW1 = innerW * 0.7
+      const lineW2 = innerW * 0.5
+      
+      fillRounded(ctx, innerX + innerW * 0.15, innerY + innerH / 2 - lineH - lineGap / 2, lineW1, lineH, lineH / 2, theme.skeletonLine)
+      fillRounded(ctx, innerX + innerW * 0.25, innerY + innerH / 2 + lineGap / 2, lineW2, lineH, lineH / 2, theme.skeletonLine)
+    }
+    return
+  }
 
   // Card background + 2px border (matches final card: border-2 border-foreground/10).
   // Single path, two rasterizations → saves ~100 arcs per frame on busy viewports.

@@ -13,6 +13,7 @@ import {
   bandFromScale,
   drawLiteNode,
   drawSelectionHighlight,
+  liteNodeMarkerRect,
   imprentaCanvasTheme,
   type ImprentaCanvasTheme,
   type ImprentaLiteBand,
@@ -89,6 +90,7 @@ export interface ImprentaNodesCanvasProps {
   rowH: number
   /** Full detail scale; below it, this canvas owns the node rendering. */
   fullDetailScale: number
+  liteMarkerMax: number
   liteMicroMax: number
   liteSimpleMax: number
   viewportStore: ViewportStore
@@ -129,6 +131,7 @@ export function ImprentaNodesCanvas({
   nodeW,
   rowH,
   fullDetailScale,
+  liteMarkerMax,
   liteMicroMax,
   liteSimpleMax,
   viewportStore,
@@ -161,6 +164,8 @@ export function ImprentaNodesCanvas({
   rowHRef.current = rowH
   const fullRef = useRef(fullDetailScale)
   fullRef.current = fullDetailScale
+  const markerMaxRef = useRef(liteMarkerMax)
+  markerMaxRef.current = liteMarkerMax
   const microMaxRef = useRef(liteMicroMax)
   microMaxRef.current = liteMicroMax
   const simpleMaxRef = useRef(liteSimpleMax)
@@ -237,7 +242,7 @@ export function ImprentaNodesCanvas({
       const s = snap.scale
       ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * snap.position.x, dpr * snap.position.y)
 
-      const band: ImprentaLiteBand = bandFromScale(s, microMaxRef.current, simpleMaxRef.current)
+      const band: ImprentaLiteBand = bandFromScale(s, markerMaxRef.current, microMaxRef.current, simpleMaxRef.current)
       const pos = positionsRef.current
       const h = heightsRef.current
       const w = nodeWRef.current
@@ -310,6 +315,7 @@ export function ImprentaNodesCanvas({
           y: p.y,
           w,
           h: hh,
+          scale: s,
           band,
           theme: themeVal,
           coverImageUrl: coverImage,
@@ -320,7 +326,13 @@ export function ImprentaNodesCanvas({
         })
 
         if (sel && sel === node.id) {
-          drawSelectionHighlight(ctx, p.x, p.y, w, hh, themeVal.primary)
+          if (band === "marker") {
+            const scratch = { x: 0, y: 0, w: 0, h: 0 }
+            liteNodeMarkerRect(p.x, p.y, w, hh, s, scratch)
+            drawSelectionHighlight(ctx, scratch.x, scratch.y, scratch.w, scratch.h, themeVal.primary)
+          } else {
+            drawSelectionHighlight(ctx, p.x, p.y, w, hh, themeVal.primary)
+          }
         }
       }
 
@@ -388,6 +400,9 @@ export function ImprentaNodesCanvas({
       const point: GraphBBox = { minX: wx, minY: wy, maxX: wx, maxY: wy }
       const candidates = collectIdsFromGrid(cached.grid, point)
       const all = cached.nodes
+      const s = snap.scale
+      const band = bandFromScale(s, markerMaxRef.current, microMaxRef.current, simpleMaxRef.current)
+      
       // Iterate in stable reverse order so children (later in array) win over parents.
       for (let i = all.length - 1; i >= 0; i--) {
         const node = all[i]
@@ -395,7 +410,22 @@ export function ImprentaNodesCanvas({
         const p = pos[node.id]
         if (!p) continue
         const hh = h[node.id] || rH
-        if (wx >= p.x && wx <= p.x + w && wy >= p.y && wy <= p.y + hh) {
+        
+        let targetX = p.x
+        let targetY = p.y
+        let targetW = w
+        let targetH = hh
+        
+        if (band === "marker") {
+          const scratch = { x: 0, y: 0, w: 0, h: 0 }
+          liteNodeMarkerRect(p.x, p.y, w, hh, s, scratch)
+          targetX = scratch.x
+          targetY = scratch.y
+          targetW = scratch.w
+          targetH = scratch.h
+        }
+        
+        if (wx >= targetX && wx <= targetX + targetW && wy >= targetY && wy <= targetY + targetH) {
           return node
         }
       }

@@ -47,7 +47,7 @@ interface ZoomableCanvasProps {
    */
   measureAsViewportFill?: boolean
   /** Intrinsic size of the graph/artboard (e.g. node bounding box) for fit scale when using viewport fill. */
-  graphBounds?: { width: number; height: number } | null
+  graphBounds?: { width: number; height: number; offsetX?: number; offsetY?: number } | null
   /** Fired when pan/zoom changes (throttled to rAF during drag). For viewport virtualization. */
   onViewportTransformChange?: (info: ZoomableViewportInfo) => void
   /**
@@ -146,6 +146,12 @@ export function ZoomableCanvas({
     viewportNotifyRafRef.current = null;
     if (!canvasRef.current) return;
     const r = canvasRef.current.getBoundingClientRect();
+
+    if (r.width < 2 || r.height < 2) {
+      viewportNotifyRafRef.current = requestAnimationFrame(flushViewportNotify);
+      return;
+    }
+
     const info: ZoomableViewportInfo = {
       scale: scaleRef.current,
       position: { ...positionRef.current },
@@ -338,12 +344,16 @@ export function ZoomableCanvas({
     }
     
     const contentWidth = contentSize.width * newScale;
+    const contentHeight = contentSize.height * newScale;
     
     const canvasCenter = availableWidth / 2;
     const canvasCenterY = availableHeight / 2;
     
-    const finalX = canvasCenter - (contentWidth / 2);
-    const finalY = canvasCenterY - (contentSize.height * newScale / 2) + initialOffsetY;
+    const offsetX = ('offsetX' in contentSize && contentSize.offsetX) ? contentSize.offsetX * newScale : 0;
+    const offsetY = ('offsetY' in contentSize && contentSize.offsetY) ? contentSize.offsetY * newScale : 0;
+    
+    const finalX = canvasCenter - (contentWidth / 2) - offsetX;
+    const finalY = canvasCenterY - (contentHeight / 2) + initialOffsetY - offsetY;
     
     return { scale: newScale, x: finalX, y: finalY };
   }, [contentDimensions, measureContent, initialOffsetY]);
@@ -710,6 +720,7 @@ export function ZoomableCanvas({
     
     // Completely ignore events on tabs and UI elements
     const target = e.target as HTMLElement;
+    
     if (target.closest('[role="tab"]') || 
         target.closest('[role="tablist"]') || 
         target.closest('[role="menuitem"]') || 
@@ -937,6 +948,7 @@ export function ZoomableCanvas({
   const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     // Skip for UI elements
     const target = e.target as HTMLElement;
+
     if (target.closest('[role="tab"]') || 
         target.closest('[role="tablist"]') || 
         target.closest('[role="menuitem"]') || 
