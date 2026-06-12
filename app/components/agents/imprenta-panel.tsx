@@ -3833,7 +3833,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           enableWheelPan={true}
           viewportStore={viewportStore}
           graphBounds={maxBounds}
-          recenterDependency={maxBounds}
           screenSpaceBehind={
             <ImprentaParentEdgesCanvas
               nodes={canvasNodes}
