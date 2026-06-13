@@ -1626,7 +1626,6 @@ export const Calendar = CalendarIcon
 export const Bot = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 8V4H8v4" />
       <rect width="16" height="12" x="4" y="8" rx="2" />
       <path d="M2 14h2" />
       <path d="M20 14h2" />
