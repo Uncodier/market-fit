@@ -165,6 +165,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
           <div className="relative w-full">
             <OptimizedTextarea
               ref={textareaRef}
+              defaultValue={message}
               onChange={handleMessageChange || ((e) => onMessageChange(e.target.value))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
