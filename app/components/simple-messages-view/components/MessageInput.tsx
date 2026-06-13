@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Image as ImageIcon, PlayCircle, Speaker, ChevronRight, Plus, X, File, ListTodo, CheckSquare } from "@/app/components/ui/icons"
+import { MessageSquare, Image as ImageIcon, PlayCircle, Speaker, ChevronRight, Plus, X, File, ListTodo, CheckSquare, Zap, Smartphone, Monitor } from "@/app/components/ui/icons"
 import { ContextSelectorModal } from "@/app/components/ui/context-selector-modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
@@ -81,8 +81,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   const contextCount = Object.values(selectedContext).reduce((acc: number, curr: any) => acc + (curr?.length || 0), 0) as number
   
   let dynamicPlaceholder = placeholder
-  if (placeholder === 'Ask anything...' || placeholder === 'Ask anything' || placeholder === 'Pregunta cualquier cosa...' || placeholder === 'Pregunta cualquier cosa') {
-    const askAnythingStr = t('chat.askAnything') !== 'chat.askAnything' ? t('chat.askAnything') : 'Pregunta cualquier cosa'
+  if (placeholder === 'Ask anything...' || placeholder === 'Ask anything' || placeholder === 'Pregunta cualquier cosa...' || placeholder === 'Pregunta cualquier cosa' || placeholder === '¿Cómo te puedo ayudar hoy?') {
+    const askAnythingStr = t('chat.askAnything') !== 'chat.askAnything' ? t('chat.askAnything') : '¿Cómo te puedo ayudar hoy?'
     const aboutStr = t('chat.about') !== 'chat.about' ? t('chat.about') : 'sobre'
     const andStr = t('chat.and') !== 'chat.and' ? t('chat.and') : 'y'
     const itemStr = t('chat.item') !== 'chat.item' ? t('chat.item') : 'elemento de contexto'
@@ -215,6 +215,10 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                       selectedActivity === 'plan' ? 'Planificar' :
                       selectedActivity === 'generate-image' ? 'Generar Imagen' :
                       selectedActivity === 'generate-video' ? 'Generar Video' :
+                      selectedActivity === 'create-automation' ? 'Crear Automatización' :
+                      selectedActivity === 'create-app' ? 'Crear App' :
+                      selectedActivity === 'create-presentation' ? 'Crear Presentación' :
+                      selectedActivity === 'create-document' ? 'Crear Documento' :
                       'Seleccionar actividad'
                     }
                   >
@@ -224,6 +228,10 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                         {selectedActivity === 'plan' && <ListTodo className="h-[16.2px] w-[16.2px] shrink-0 text-purple-600" />}
                         {selectedActivity === 'generate-image' && <ImageIcon className="h-[16.2px] w-[16.2px] shrink-0 text-green-600" />}
                         {selectedActivity === 'generate-video' && <PlayCircle className="h-[16.2px] w-[16.2px] shrink-0 text-red-600" />}
+                        {selectedActivity === 'create-automation' && <Zap className="h-[16.2px] w-[16.2px] shrink-0 text-yellow-600" />}
+                        {selectedActivity === 'create-app' && <Smartphone className="h-[16.2px] w-[16.2px] shrink-0 text-sky-600" />}
+                        {selectedActivity === 'create-presentation' && <Monitor className="h-[16.2px] w-[16.2px] shrink-0 text-indigo-600" />}
+                        {selectedActivity === 'create-document' && <File className="h-[16.2px] w-[16.2px] shrink-0 text-teal-600" />}
                       </div>
                       <div className="hidden md:flex flex-col min-w-0 ml-2">
                         <span className="truncate">
@@ -231,6 +239,10 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                            selectedActivity === 'plan' ? 'Planificar' :
                            selectedActivity === 'generate-image' ? 'Generar Imagen' :
                            selectedActivity === 'generate-video' ? 'Generar Video' :
+                           selectedActivity === 'create-automation' ? 'Crear Automatización' :
+                           selectedActivity === 'create-app' ? 'Crear App' :
+                           selectedActivity === 'create-presentation' ? 'Crear Presentación' :
+                           selectedActivity === 'create-document' ? 'Crear Documento' :
                            'Seleccionar actividad'}
                         </span>
                       </div>
@@ -303,6 +315,66 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                           </div>
                           <div className="flex flex-col min-w-0 ml-2">
                             <span className="truncate">Generar Video</span>
+                          </div>
+                        </div>
+                        <div 
+                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
+                          onClick={() => {
+                            onActivityChange('create-automation')
+                            setIsDropdownOpen(false)
+                          }}
+                          title="Crear Automatización"
+                        >
+                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                            <Zap className="h-[16.2px] w-[16.2px] shrink-0 text-yellow-600" />
+                          </div>
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Crear Automatización</span>
+                          </div>
+                        </div>
+                        <div 
+                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
+                          onClick={() => {
+                            onActivityChange('create-app')
+                            setIsDropdownOpen(false)
+                          }}
+                          title="Crear App"
+                        >
+                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                            <Smartphone className="h-[16.2px] w-[16.2px] shrink-0 text-sky-600" />
+                          </div>
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Crear App</span>
+                          </div>
+                        </div>
+                        <div 
+                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
+                          onClick={() => {
+                            onActivityChange('create-presentation')
+                            setIsDropdownOpen(false)
+                          }}
+                          title="Crear Presentación"
+                        >
+                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                            <Monitor className="h-[16.2px] w-[16.2px] shrink-0 text-indigo-600" />
+                          </div>
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Crear Presentación</span>
+                          </div>
+                        </div>
+                        <div 
+                          className="flex items-center hover:bg-accent cursor-pointer rounded-sm px-2 py-1.5"
+                          onClick={() => {
+                            onActivityChange('create-document')
+                            setIsDropdownOpen(false)
+                          }}
+                          title="Crear Documento"
+                        >
+                          <div className="flex items-center justify-center safari-icon-fix w-[16.2px] h-[16.2px]">
+                            <File className="h-[16.2px] w-[16.2px] shrink-0 text-teal-600" />
+                          </div>
+                          <div className="flex flex-col min-w-0 ml-2">
+                            <span className="truncate">Crear Documento</span>
                           </div>
                         </div>
                       </div>

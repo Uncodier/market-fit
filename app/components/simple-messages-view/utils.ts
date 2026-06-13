@@ -44,12 +44,16 @@ export const formatTime = (date: Date) => {
 
 export const getActivityName = (tabValue: string): string => {
   const activityMap: Record<string, string> = {
-    "ask": "Ask",
-    "plan": "Plan",
+    "ask": "Preguntar",
+    "plan": "Planificar",
     "robot": "Execute Plan",
     "generate-image": "Publish Content",
     "generate-video": "Publish Content",
-    "generate-audio": "Publish Content"
+    "generate-audio": "Publish Content",
+    "create-automation": "Crear Automatización",
+    "create-app": "Crear App",
+    "create-presentation": "Crear Presentación",
+    "create-document": "Crear Documento"
   }
   return activityMap[tabValue] || tabValue
 }
@@ -68,7 +72,11 @@ export const getSystemPromptForActivity = (
     "plan": "plan",
     "generate-image": "generate image",
     "generate-video": "generate video",
-    "generate-audio": "generate audio"
+    "generate-audio": "generate audio",
+    "create-automation": "create automation",
+    "create-app": "create app",
+    "create-presentation": "create presentation",
+    "create-document": "create document"
   }
   
   const basePrompt = basePromptMap[activity] || "answer"
