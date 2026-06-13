@@ -70,6 +70,7 @@ export interface RoundRobinCalendar {
   slug: string
   member_ids: string[] // user IDs
   description?: string
+  location?: string
   duration: number
   buffer: number
   created_at: string

@@ -262,7 +262,10 @@ export function Sidebar({
                   }
                   isActive={pathname.startsWith("/profile")}
                   isCollapsed={renderCollapsed}
-                  className="profile-parent-item ![padding-top:25.2px] ![padding-bottom:25.2px]"
+                  className={cn(
+                    "profile-parent-item",
+                    !renderCollapsed && "![padding-top:25.2px] ![padding-bottom:25.2px]"
+                  )}
                   onClick={(e) => handleProfileNavigation(e, profileMainItem.href)}
                 />
               </div>

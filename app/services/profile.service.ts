@@ -10,6 +10,7 @@ export interface EventType {
   enabled: boolean
   description?: string
   site_id?: string // for personal events, which site they belong to
+  location?: string // meeting room or link
 }
 
 export interface CalendarSettings {

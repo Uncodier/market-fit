@@ -309,6 +309,7 @@ export default function RoundRobinBookingPage(props: {
               .filter((e) => e)
           : undefined,
         notes,
+        location: calendar.location,
         title: `${calendar.name} with ${name}`,
       });
       setActiveStep("success");
@@ -344,9 +345,10 @@ export default function RoundRobinBookingPage(props: {
       `DTEND:${formatDate(endDate)}`,
       `SUMMARY:${calendar.name} with ${name}`,
       `DESCRIPTION:${notes || ""}`,
+      calendar.location ? `LOCATION:${calendar.location}` : "",
       "END:VEVENT",
       "END:VCALENDAR",
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -884,6 +886,18 @@ export default function RoundRobinBookingPage(props: {
                       <p className="text-sm">
                         <strong>{t("booking.details.type")}:</strong> {calendar.name}
                       </p>
+                      {calendar.location && (
+                        <p className="text-sm">
+                          <strong>Location:</strong>{" "}
+                          {calendar.location.startsWith("http") ? (
+                            <a href={calendar.location} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                              {calendar.location}
+                            </a>
+                          ) : (
+                            calendar.location
+                          )}
+                        </p>
+                      )}
                     </div>
                     <div className="pt-6 mt-2 w-full max-w-[280px]">
                       <Button 

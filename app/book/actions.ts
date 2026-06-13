@@ -161,6 +161,7 @@ export async function bookRRMeeting(data: {
   email: string;
   guests?: string[];
   notes?: string;
+  location?: string;
   title: string;
 }) {
   const supabase = await createServiceClient();
@@ -208,6 +209,7 @@ export async function bookRRMeeting(data: {
     email: data.email,
     guests: data.guests,
     notes: data.notes,
+    location: data.location,
     title: data.title,
   });
 }
@@ -567,6 +569,7 @@ export async function bookMeeting(data: {
   email: string;
   guests?: string[];
   notes?: string;
+  location?: string;
   title: string;
 }) {
   const supabase = await createServiceClient();
@@ -632,7 +635,8 @@ export async function bookMeeting(data: {
       description:
         (data.notes ||
         `Meeting booked via public page by ${data.name} (${data.email})`) +
-        (data.guests && data.guests.length > 0 ? `\n\nAttendees: ${[data.email, ...data.guests].join(', ')}` : ''),
+        (data.guests && data.guests.length > 0 ? `\n\nAttendees: ${[data.email, ...data.guests].join(', ')}` : '') +
+        (data.location ? `\n\nLocation / Meeting Room: ${data.location}` : ''),
       status: "pending",
       scheduled_date: scheduledDate.toISOString(),
       assignee: data.userId,

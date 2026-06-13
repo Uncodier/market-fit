@@ -346,29 +346,39 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                   </div>
                 </div>
 
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label className="text-xs font-semibold text-muted-foreground">Duration (min)</Label>
-                    <Input 
-                      className="bg-background h-12 text-base"
-                      type="number" 
-                      value={editingEventType.duration || 30} 
-                      onChange={e => setEditingEventType({...editingEventType, duration: parseInt(e.target.value) || 30})} 
-                    />
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label className="text-xs font-semibold text-muted-foreground">Duration (min)</Label>
+                      <Input 
+                        className="bg-background h-12 text-base"
+                        type="number" 
+                        value={editingEventType.duration || 30} 
+                        onChange={e => setEditingEventType({...editingEventType, duration: parseInt(e.target.value) || 30})} 
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="text-xs font-semibold text-muted-foreground">Buffer (min)</Label>
+                      <Input 
+                        className="bg-background h-12 text-base"
+                        type="number" 
+                        value={editingEventType.buffer || 0} 
+                        onChange={e => setEditingEventType({...editingEventType, buffer: parseInt(e.target.value) || 0})} 
+                      />
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label className="text-xs font-semibold text-muted-foreground">Buffer (min)</Label>
-                    <Input 
-                      className="bg-background h-12 text-base"
-                      type="number" 
-                      value={editingEventType.buffer || 0} 
-                      onChange={e => setEditingEventType({...editingEventType, buffer: parseInt(e.target.value) || 0})} 
-                    />
-                  </div>
-                </div>
 
-                <div className="grid gap-2">
-                  <Label className="text-xs font-semibold text-muted-foreground">Site Dependency</Label>
+                  <div className="grid gap-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">Meeting Room / Location URL</Label>
+                    <Input 
+                      className="bg-background h-12 text-base"
+                      value={editingEventType.location || ""} 
+                      onChange={e => setEditingEventType({...editingEventType, location: e.target.value})} 
+                      placeholder="https://meet.google.com/xxx-xxxx-xxx or physical location"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">Site Dependency</Label>
                   <Select 
                     value={editingEventType.site_id} 
                     onValueChange={v => setEditingEventType({...editingEventType, site_id: v})}
@@ -507,29 +517,39 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                                     </div>
                                   </div>
 
-                                  <div className="grid gap-5 md:grid-cols-2">
-                                    <div className="grid gap-2">
-                                      <Label className="text-xs font-semibold text-muted-foreground">Duration (min)</Label>
-                                      <Input 
-                                        className="bg-background h-12 text-base"
-                                        type="number" 
-                                        value={editingEventType.duration || 30} 
-                                        onChange={e => setEditingEventType({...editingEventType, duration: parseInt(e.target.value) || 30})} 
-                                      />
-                                    </div>
-                                    <div className="grid gap-2">
-                                      <Label className="text-xs font-semibold text-muted-foreground">Buffer (min)</Label>
-                                      <Input 
-                                        className="bg-background h-12 text-base"
-                                        type="number" 
-                                        value={editingEventType.buffer || 0} 
-                                        onChange={e => setEditingEventType({...editingEventType, buffer: parseInt(e.target.value) || 0})} 
-                                      />
-                                    </div>
-                                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label className="text-xs font-semibold text-muted-foreground">Duration (min)</Label>
+                      <Input 
+                        className="bg-background h-12 text-base"
+                        type="number" 
+                        value={editingEventType.duration || 30} 
+                        onChange={e => setEditingEventType({...editingEventType, duration: parseInt(e.target.value) || 30})} 
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="text-xs font-semibold text-muted-foreground">Buffer (min)</Label>
+                      <Input 
+                        className="bg-background h-12 text-base"
+                        type="number" 
+                        value={editingEventType.buffer || 0} 
+                        onChange={e => setEditingEventType({...editingEventType, buffer: parseInt(e.target.value) || 0})} 
+                      />
+                    </div>
+                  </div>
 
-                                  <div className="grid gap-2">
-                                    <Label className="text-xs font-semibold text-muted-foreground">Site Dependency</Label>
+                  <div className="grid gap-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">Meeting Room / Location URL</Label>
+                    <Input 
+                      className="bg-background h-12 text-base"
+                      value={editingEventType.location || ""} 
+                      onChange={e => setEditingEventType({...editingEventType, location: e.target.value})} 
+                      placeholder="https://meet.google.com/xxx-xxxx-xxx or physical location"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">Site Dependency</Label>
                                     <Select 
                                       value={editingEventType.site_id} 
                                       onValueChange={v => setEditingEventType({...editingEventType, site_id: v})}

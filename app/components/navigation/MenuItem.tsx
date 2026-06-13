@@ -208,8 +208,8 @@ export function MenuItem({
         "flex items-center text-sm transition-colors duration-200 relative group font-inter",
         isCollapsed
           ? isActive
-            ? "rounded-md font-inter justify-center h-[32px] w-[32px]"
-            : "rounded-md justify-center h-[32px] w-[32px]"
+            ? cn("font-inter justify-center h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
+            : cn("justify-center h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
           : "min-w-0 rounded-md justify-start h-[32px] overflow-hidden",
         isActive
           ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"

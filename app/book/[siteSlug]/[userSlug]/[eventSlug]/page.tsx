@@ -318,6 +318,7 @@ export default function UserBookingPage(props: {
               .filter((e) => e)
           : undefined,
         notes,
+        location: eventType.location,
         title: `${eventType.title} with ${profile.name || userSlug}`,
       });
       setActiveStep("success");
@@ -353,9 +354,10 @@ export default function UserBookingPage(props: {
       `DTEND:${formatDate(endDate)}`,
       `SUMMARY:${eventType.title} with ${profile.name || userSlug}`,
       `DESCRIPTION:${notes || ""}`,
+      eventType.location ? `LOCATION:${eventType.location}` : "",
       "END:VEVENT",
       "END:VCALENDAR",
-    ].join("\n");
+    ].filter(Boolean).join("\n");
 
     const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -901,6 +903,18 @@ export default function UserBookingPage(props: {
                       <p className="text-sm">
                         <strong>{t("booking.details.event")}:</strong> {eventType.title}
                       </p>
+                      {eventType.location && (
+                        <p className="text-sm">
+                          <strong>Location:</strong>{" "}
+                          {eventType.location.startsWith("http") ? (
+                            <a href={eventType.location} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                              {eventType.location}
+                            </a>
+                          ) : (
+                            eventType.location
+                          )}
+                        </p>
+                      )}
                     </div>
                     <div className="pt-6 mt-2 w-full max-w-[280px]">
                       <Button 

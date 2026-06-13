@@ -221,6 +221,17 @@ export function CalendarSection() {
                 </div>
               </div>
 
+              <div className="grid gap-2">
+                <Label className="text-xs font-semibold text-muted-foreground" htmlFor="rr-location-new">Meeting Room / Location URL</Label>
+                <Input 
+                  id="rr-location-new" 
+                  placeholder="https://meet.google.com/xxx-xxxx-xxx or physical location"
+                  className="bg-background h-12 text-base"
+                  value={editingCalendar.location || ""}
+                  onChange={(e) => setEditingCalendar({ ...editingCalendar, location: e.target.value })}
+                />
+              </div>
+
               <div className="space-y-3">
                 <Label className="text-xs font-semibold text-muted-foreground">Assign Team Members</Label>
                 <div className="grid gap-2 border border-border rounded-md p-4 bg-background max-h-60 overflow-y-auto">
@@ -369,6 +380,17 @@ export function CalendarSection() {
                             onChange={(e) => setEditingCalendar({ ...editingCalendar, buffer: parseInt(e.target.value) || 0 })}
                           />
                         </div>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label className="text-xs font-semibold text-muted-foreground" htmlFor={`rr-location-${calendar.id}`}>Meeting Room / Location URL</Label>
+                        <Input 
+                          id={`rr-location-${calendar.id}`} 
+                          placeholder="https://meet.google.com/xxx-xxxx-xxx or physical location"
+                          className="bg-background h-12 text-base"
+                          value={editingCalendar.location || ""}
+                          onChange={(e) => setEditingCalendar({ ...editingCalendar, location: e.target.value })}
+                        />
                       </div>
 
                       <div className="space-y-3">
