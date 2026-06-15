@@ -67,6 +67,7 @@ interface ContextFormProps {
   onDeleteSite?: () => void
   activeSegment: string
   siteId?: string
+  isSaving?: boolean
 }
 
 export function ContextForm({ 
@@ -81,7 +82,8 @@ export function ContextForm({
   onSaveCopywriting,
   onDeleteSite,
   activeSegment,
-  siteId 
+  siteId,
+  isSaving = false
 }: ContextFormProps) {
   
   const [lastSiteId, setLastSiteId] = useState<string | undefined>(siteId)

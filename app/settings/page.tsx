@@ -223,7 +223,6 @@ export default function SettingsPage() {
   const { theme } = useTheme()
   const { user } = useAuthContext()
   const router = useRouter()
-  const [isSaving, setIsSaving] = useState(false)
   const [activeSegment, setActiveSegment] = useState("general")
   const searchParams = useSearchParams()
   const [formKey, setFormKey] = useState(0)

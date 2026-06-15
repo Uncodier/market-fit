@@ -243,7 +243,6 @@ export default function ContextPage() {
   const { theme } = useTheme()
   const { user } = useAuthContext()
   const { t } = useLocalization()
-  const [isSaving, setIsSaving] = useState(false)
   const [activeSegment, setActiveSegment] = useState("company")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [formKey, setFormKey] = useState(0)
@@ -556,7 +555,6 @@ export default function ContextPage() {
                 value={confirmationName}
                 onChange={(e) => setConfirmationName(e.target.value)}
                 placeholder={t('context.delete.placeholder') || "Enter site name"}
-                disabled={isSaving}
                 className={confirmationName === currentSite?.name ? "border-green-500 focus-visible:ring-green-500" : ""}
               />
               {confirmationName && confirmationName !== currentSite?.name && (
@@ -576,9 +574,9 @@ export default function ContextPage() {
             <AlertDialogAction 
               onClick={onDeleteSite}
               className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSaving || confirmationName !== currentSite?.name}
+              disabled={confirmationName !== currentSite?.name}
             >
-              {isSaving ? (t('context.delete.deleting') || "Deleting...") : (t('context.delete.submit') || "Delete Site")}
+              {t('context.delete.submit') || "Delete Site"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
