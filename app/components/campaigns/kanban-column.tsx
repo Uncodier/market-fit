@@ -88,7 +88,7 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
     <div 
       className={cn(
         "flex flex-col transition-all duration-300 ease-in-out h-fit",
-        isCollapsed ? "w-12" : "w-[320px]"
+        isCollapsed ? "w-12 shrink-0" : "min-w-[280px] w-[320px] max-w-[400px] flex-1 shrink-0"
       )}
     >
       <div 
