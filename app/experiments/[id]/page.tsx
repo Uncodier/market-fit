@@ -131,7 +131,7 @@ const ExperimentStatusBar = ({
 
 const ExperimentSkeleton = () => {
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-var(--topbar-height,64px))]">
       {/* Main Content Area Skeleton */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none border-b p-2 h-[71px]">
@@ -697,7 +697,7 @@ export default function ExperimentDetailPage(props: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-var(--topbar-height,64px))]">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none">

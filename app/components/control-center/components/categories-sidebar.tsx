@@ -26,7 +26,7 @@ export function CategoriesSidebar({
       <div className="border-b flex items-center" style={{ height: '64px', paddingLeft: '21.6px', paddingRight: '21.6px' }}>
         <h2 className="font-semibold" style={{ fontSize: '14.58px' }}>Categories</h2>
       </div>
-      <ScrollArea style={{ height: 'calc(100vh - 64px)' }}>
+      <ScrollArea style={{ height: 'calc(100vh - var(--topbar-height, 64px))' }}>
         <div style={{ padding: '14.4px' }}>
           <Button
             variant="ghost"

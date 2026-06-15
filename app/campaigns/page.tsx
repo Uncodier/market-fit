@@ -717,7 +717,7 @@ export default function CampaignsPage() {
   }, [currentSite]);
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 h-auto overflow-visible bg-muted/30 min-h-[calc(100vh-64px)]">
+    <div className="flex-1 min-w-0 w-full p-0 h-auto overflow-visible bg-muted/30 min-h-[calc(100vh-var(--topbar-height,64px))]">
       <StickyHeader>
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-4">

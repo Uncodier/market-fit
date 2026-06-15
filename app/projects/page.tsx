@@ -230,7 +230,7 @@ export default function ProjectsPage() {
   }, [isLoading, hasSites, sites, currentSite?.id, isDemoMode, router])
 
   return (
-    <div className="min-h-[calc(100vh-64px)] w-full flex items-center justify-center p-6">
+    <div className="min-h-[calc(100vh-var(--topbar-height,64px))] w-full flex items-center justify-center p-6">
       <div className="w-full">
         <div className="flex items-center justify-center mb-8">
           <div className="p-3 rounded-full bg-primary/10">

@@ -1609,7 +1609,7 @@ export default function PeopleSearchPage() {
       "fixed transition-all duration-200 ease-in-out z-10 bg-background md:bg-transparent",
       isSidebarCollapsed ? "w-0 opacity-0" : "w-full md:w-[319px] opacity-100",
       showResultsOnMobile ? "hidden md:block" : "block"
-    )} style={{ left: sidebarLeft, top: "64px", height: "calc(100vh - 64px)" }}>
+    )} style={{ left: sidebarLeft, top: "var(--topbar-height, 64px)", height: "calc(100vh - var(--topbar-height, 64px))" }}>
       <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r relative flex flex-col">
         {/* Tab selector - min height matches main toolbar (71px) */}
         <div className="flex-shrink-0 min-h-[71px] flex items-center p-3 border-b border-border/50">
@@ -2705,7 +2705,7 @@ export default function PeopleSearchPage() {
             </div>
           </div>
         </StickyHeader>
-        <div className={cn("flex-1 bg-muted/30 transition-colors duration-300 ease-in-out", isEmptyView ? "overflow-visible" : "overflow-auto")} style={isEmptyView ? { height: 'calc(100vh - 64px - 71px)' } : undefined}>
+        <div className={cn("flex-1 bg-muted/30 transition-colors duration-300 ease-in-out", isEmptyView ? "overflow-visible" : "overflow-auto")} style={isEmptyView ? { height: 'calc(100vh - var(--topbar-height, 64px) - 71px)' } : undefined}>
           <div 
             className={cn("h-full transition-all duration-300 ease-in-out", isEmptyView ? "" : "p-8 space-y-4")}
             style={{ 

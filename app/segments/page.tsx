@@ -136,10 +136,6 @@ function SegmentCard({
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('segments.labels.size') || 'Size'}</p>
                   <p className="text-sm font-medium text-center">{getDisplayValue(segment.size, 'number')}</p>
                 </div>
-                <div className="w-[80px] min-w-[80px] flex-shrink-0">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('segments.labels.engagement') || 'Engagement'}</p>
-                  <p className="text-sm font-medium text-center">{segment.engagement ? `${segment.engagement}%` : 'N/A'}</p>
-                </div>
                 <div className="w-[120px] min-w-[120px] flex-shrink-0 pl-4" onClick={(e) => e.stopPropagation()}>
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('segments.labels.status') || 'Status'}</p>
                   <div className="flex items-center justify-center gap-0.5">
@@ -355,10 +351,6 @@ function SegmentRowSkeleton() {
             <div className="w-[80px] min-w-[80px] flex-shrink-0 hidden lg:block">
               <Skeleton className="h-4 w-full mb-2" />
               <Skeleton className="h-4 w-2/3 mx-auto" />
-            </div>
-            <div className="w-[80px] min-w-[80px] flex-shrink-0">
-              <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-1/2 mx-auto" />
             </div>
             <div className="w-[120px] min-w-[120px] flex-shrink-0 pl-4">
               <Skeleton className="h-4 w-full mb-2" />
@@ -741,7 +733,7 @@ export default function SegmentsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+      <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       <Tabs defaultValue="all" className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">
@@ -812,7 +804,7 @@ export default function SegmentsPage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       <Tabs defaultValue="all" className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">

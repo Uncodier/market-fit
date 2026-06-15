@@ -208,7 +208,7 @@ function DemoSelectorContent() {
 
 export default function DemoSelectorPage() {
   return (
-    <div className="min-h-[calc(100vh-64px)] w-full flex items-center justify-center p-6 relative">
+    <div className="min-h-[calc(100vh-var(--topbar-height,64px))] w-full flex items-center justify-center p-6 relative">
       <Suspense fallback={<div className="fixed inset-0 bg-background z-[9999]"></div>}>
         <DemoSelectorContent />
       </Suspense>

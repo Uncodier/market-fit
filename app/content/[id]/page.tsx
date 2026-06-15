@@ -472,7 +472,7 @@ const MenuBar = ({
 
 const ContentSkeleton = () => {
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-var(--topbar-height,64px))]">
       {/* Main Content Area Skeleton */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none border-b p-2 h-[71px]">
@@ -1945,7 +1945,7 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-var(--topbar-height,64px))]">
       {content?.id && (
         <UploadAssetDialog
           contentId={content.id}

@@ -230,7 +230,7 @@ interface Requirement {
 // Loading state skeleton component
 const RequirementSkeleton = () => {
   return (
-    <div className="flex h-[calc(100dvh-64px)]">
+    <div className="flex h-[calc(100dvh-var(--topbar-height,64px))]">
       {/* Main Content Area Skeleton */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-none border-b pl-[20px] pr-4 py-2 h-[71px]">
@@ -1927,7 +1927,7 @@ function RequirementDetailContent() {
   // Show error state
   if (error) {
     return (
-      <div className="flex h-[calc(100dvh-64px)] items-center justify-center flex-col gap-4">
+      <div className="flex h-[calc(100dvh-var(--topbar-height,64px))] items-center justify-center flex-col gap-4">
         <div className="text-destructive">
           <X className="h-16 w-16 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-center">Error Loading Requirement</h2>
@@ -1948,7 +1948,7 @@ function RequirementDetailContent() {
   // Show error if no requirement data
   if (!requirement) {
     return (
-      <div className="flex h-[calc(100dvh-64px)] items-center justify-center flex-col gap-4">
+      <div className="flex h-[calc(100dvh-var(--topbar-height,64px))] items-center justify-center flex-col gap-4">
         <div className="text-destructive">
           <X className="h-16 w-16 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-center">Requirement Not Found</h2>
@@ -1969,7 +1969,7 @@ function RequirementDetailContent() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-64px)]">
+    <div className="flex h-[calc(100dvh-var(--topbar-height,64px))]">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <div className="flex-none z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">

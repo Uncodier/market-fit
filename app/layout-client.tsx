@@ -443,60 +443,18 @@ function LayoutClientInner({
     window.dispatchEvent(new CustomEvent('deals:create'))
   }
 
-  // Check if TopBar is likely rendered in artifact mode (based on TopBar logic)
-  const isProfilePage = pathname === '/profile' || pathname?.startsWith('/profile/');
-  const hasArtifactTopBar = isArtifact && (
-    (pathname?.startsWith("/robots") && robotsViewMode !== 'imprenta') ||
-    (pathname?.startsWith("/content/") && !pathname?.startsWith("/content/deepResearch")) ||
-    pathname === "/control-center" ||
-    pathname === "/security" ||
-    pathname === "/dashboard" ||
-    pathname?.startsWith("/experiments") ||
-    pathname?.startsWith("/segments") ||
-    pathname?.startsWith("/requirements") ||
-    pathname?.startsWith("/leads") ||
-    pathname?.startsWith("/assets") ||
-    pathname?.startsWith("/campaigns") ||
-    pathname?.startsWith("/sales") ||
-    pathname?.startsWith("/deals") ||
-    isProfilePage
-  );
-
   if (isArtifact) {
     return (
       <div className="flex min-h-[100dvh] w-full bg-background">
         <div className="flex-1 flex flex-col min-w-0 transition-[padding] duration-300 ease-in-out">
-          <TopBar 
-            title={currentPage.title || ""}
-            helpText={currentPage.helpText || undefined}
-            helpWelcomeMessage={currentPage.helpWelcomeMessage || undefined}
-            helpTask={currentPage.helpTask || undefined}
-            isCollapsed={true}
-            onCollapse={() => {}}
-            hideSidebarToggle={true}
-            hideBreadcrumb={true}
-            onMobileToggle={() => {}}
-            segments={segments}
-            className="fixed top-0 right-0 left-0"
-            style={{ paddingLeft: 0 }}
-            breadcrumb={null}
-            isExperimentDetailPage={isExperimentDetailPage}
-            onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
-            onCreateDeal={pathname === "/deals" ? handleCreateDealClick : undefined}
-            viewMode={robotsViewMode}
-            isArtifact={isArtifact}
-          />
-          {hasArtifactTopBar && !isRobotsPage && (
-            <div className={"h-[64px] flex-none"}></div>
-          )}
           <main 
             className={cn(
               "flex-1 min-w-0 relative",
               (isChatPage) ? "flex flex-col overflow-hidden" : (isRobotsPage ? "flex flex-col overflow-visible" : "overflow-visible")
             )} 
             style={{
-              ...(isAppPage ? { height: isRobotsPage ? '100dvh' : (hasArtifactTopBar ? 'calc(100dvh - 64px)' : '100dvh') } : {}),
-              '--topbar-height': isArtifact && !hasArtifactTopBar ? '0px' : '64px'
+              ...(isAppPage ? { height: '100dvh' } : {}),
+              '--topbar-height': '0px'
             } as React.CSSProperties}
           >
             {children}
@@ -561,11 +519,10 @@ function LayoutClientInner({
                   "flex-1 min-w-0",
                   (isChatPage) ? "flex flex-col overflow-hidden" : (isRobotsPage ? "flex flex-col overflow-visible" : "overflow-visible")
                 )} 
-                style={
-                  isAppPage ? 
-                  { height: isRobotsPage ? '100dvh' : 'calc(100dvh - 64px)' } as React.CSSProperties 
-                  : {}
-                }
+                style={{
+                  ...(isAppPage ? { height: isRobotsPage ? '100dvh' : 'calc(100dvh - 64px)' } : {}),
+                  '--topbar-height': '64px'
+                } as React.CSSProperties}
               >
                 {children}
               </main>

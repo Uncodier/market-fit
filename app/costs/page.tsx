@@ -47,7 +47,7 @@ export default function CostsPage() {
   }, []);
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       <div className="p-8 space-y-4 bg-muted/30 flex-1">
         <div className="flex items-center justify-between space-y-2">
           <div>

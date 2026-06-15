@@ -249,26 +249,6 @@ export function TopBar({
   }, [currentSite, pathname]);
 
   const isProfilePage = pathname === '/profile' || pathname.startsWith('/profile/');
-  const hasArtifactTopBar = isArtifact && (
-    (pathname.startsWith("/robots") && viewMode !== 'imprenta') ||
-    (pathname.startsWith("/content/") && !pathname.startsWith("/content/deepResearch")) ||
-    pathname === "/control-center" ||
-    pathname === "/security" ||
-    pathname === "/dashboard" ||
-    pathname.startsWith("/experiments") ||
-    pathname.startsWith("/segments") ||
-    pathname.startsWith("/requirements") ||
-    pathname.startsWith("/leads") ||
-    pathname.startsWith("/assets") ||
-    pathname.startsWith("/campaigns") ||
-    pathname.startsWith("/sales") ||
-    pathname.startsWith("/deals") ||
-    isProfilePage
-  );
-
-  if (isArtifact && !hasArtifactTopBar) {
-    return null;
-  }
 
   return (
     <div

@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils"
 import { ReactNode, useRef } from "react"
 import { useLayout } from "@/app/context/LayoutContext"
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { Input } from "./input"
@@ -29,12 +29,18 @@ export function StickyHeader({
   searchPlaceholder = "Search..."
 }: StickyHeaderProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isArtifact = searchParams.get("artifact") === "true";
   const layoutContext = useLayout();
   const isMobile = useIsMobile();
   const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Use the command+k hook
   useCommandK();
+
+  if (isArtifact) {
+    return null;
+  }
   
   // Siempre usar el contexto si está disponible, de lo contrario usar la prop
   const isCollapsed = layoutContext?.isLayoutCollapsed ?? propIsLayoutCollapsed;

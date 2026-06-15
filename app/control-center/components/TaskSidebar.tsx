@@ -110,8 +110,8 @@ export function TaskSidebar({
       // Scoped class for Safari-specific fixes
       "task-sidebar"
     )}>
-      <div className="h-[calc(100vh-64px)] overflow-hidden">
-        <ScrollArea className="h-full" style={{ minHeight: 'calc(100vh - 64px)' }}>
+      <div className="h-[calc(100vh-var(--topbar-height,64px))] overflow-hidden">
+        <ScrollArea className="h-full" style={{ minHeight: 'calc(100vh - var(--topbar-height, 64px))' }}>
           <div className={cn(
             "w-[319px] transition-all duration-300 ease-in-out py-2",
             isCollapsed ? "opacity-0" : "opacity-100"

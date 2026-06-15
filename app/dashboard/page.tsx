@@ -392,7 +392,7 @@ function DashboardPageContent() {
   }, [shouldPreventRefresh])
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       {/* Navigation blocking indicator */}
       {navigationBlocked && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">

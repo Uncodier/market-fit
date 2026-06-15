@@ -88,7 +88,7 @@ export default function SalesHomePage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       <div className="p-8 space-y-8 bg-muted/30 flex-1">
         {/* Welcome Section */}
         <div className="flex flex-col space-y-2">

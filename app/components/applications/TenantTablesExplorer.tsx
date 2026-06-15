@@ -153,7 +153,7 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
 
   if (error) {
     return (
-      <div className="flex h-[calc(100vh-64px)] w-full items-center justify-center p-8">
+      <div className="flex h-[calc(100vh-var(--topbar-height,64px))] w-full items-center justify-center p-8">
         <div className="max-w-md text-center space-y-4">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <X className="h-6 w-6" />

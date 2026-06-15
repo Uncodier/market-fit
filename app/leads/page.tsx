@@ -1402,7 +1402,7 @@ export default function LeadsPage() {
   
   return (
     <LeadsContext.Provider value={{ segments }}>
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       {/* Attribution Modal */}
       {pendingStatusChange && (pendingStatusChange.newStatus === "converted" || pendingStatusChange.newStatus === "lost") && (
         <AttributionModal

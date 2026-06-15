@@ -659,7 +659,7 @@ export default function SalesPage() {
 
   return (
     <SalesContext.Provider value={{ segments, campaigns }}>
-      <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+      <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full min-h-0">
           <StickyHeader>
             <div className="w-full pt-0">

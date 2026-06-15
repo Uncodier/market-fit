@@ -999,7 +999,7 @@ export default function RequirementsPage() {
   )
 
   const LoadingState = () => (
-    <div className="space-y-3 min-h-[calc(100dvh-64px-71px)]">
+    <div className="space-y-3 min-h-[calc(100dvh-var(--topbar-height,64px)-71px)]">
       {[1, 2, 3].map(i => (
         <Card key={i} className="overflow-hidden border border-border">
           <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
@@ -1109,7 +1109,7 @@ export default function RequirementsPage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-64px)] flex flex-col">
+    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       {/* Modal de filtros */}
       <FilterModal
         isOpen={isFilterModalOpen}
