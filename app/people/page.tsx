@@ -2670,6 +2670,11 @@ export default function PeopleSearchPage() {
         <div className="w-full z-[50]">
           <StickyHeader
             className="transition-all duration-300 ease-in-out pl-0 md:pl-4 !top-[var(--topbar-height,64px)] !fixed"
+            style={{
+              width: typeof window !== 'undefined' && window.innerWidth >= 768 
+                ? `calc(100% - ${isLayoutCollapsed ? 64 : 256}px - ${isSidebarCollapsed ? 0 : 319}px)` 
+                : '100%',
+            }}
           >
             <div className="flex w-full items-center pl-2">
               <SidebarToggle
