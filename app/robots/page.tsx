@@ -1051,7 +1051,8 @@ function RobotsPageContent() {
   const isBrowserVisible = Boolean(
     (hasRequirementPreview || artifacts.length > 0) &&
     !pendingInstanceId &&
-    viewMode !== 'imprenta'
+    viewMode !== 'imprenta' &&
+    activeBrowserTab.kind !== 'artifact'
   )
 
   const rawActiveUrlToDisplay = (() => {

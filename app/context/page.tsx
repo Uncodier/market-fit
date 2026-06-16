@@ -249,6 +249,7 @@ export default function ContextPage() {
   const [confirmationName, setConfirmationName] = useState("")
   const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections())
   const [companySectionsState, setCompanySectionsState] = useState<QuickNavSection[]>(getCompanySections(t))
+  const [isSaving, setIsSaving] = useState(false)
 
   // Simple refresh prevention specifically for context page
   useSimpleRefreshPrevention()

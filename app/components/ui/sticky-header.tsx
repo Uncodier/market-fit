@@ -12,6 +12,7 @@ import { Search } from "./icons"
 interface StickyHeaderProps {
   children: ReactNode
   className?: string
+  style?: React.CSSProperties
   isLayoutCollapsed?: boolean
   showSearch?: boolean
   onSearch?: (value: string) => void
@@ -22,6 +23,7 @@ interface StickyHeaderProps {
 export function StickyHeader({ 
   children, 
   className, 
+  style,
   isLayoutCollapsed: propIsLayoutCollapsed,
   showSearch = false,
   onSearch,
@@ -60,7 +62,10 @@ export function StickyHeader({
         "top-[var(--topbar-height,64px)] min-h-[71px]",
         className
       )}
-      style={useFixedPosition ? { left: 0, right: 0, paddingLeft: sidebarLeft } : undefined}
+      style={{
+        ...(useFixedPosition ? { left: 0, right: 0, paddingLeft: sidebarLeft } : {}),
+        ...style
+      }}
     >
       <div className={cn(
         "transition-[padding] duration-300 ease-in-out w-full flex items-center h-full max-w-full overflow-hidden",

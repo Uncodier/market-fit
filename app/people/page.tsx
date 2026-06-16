@@ -2655,62 +2655,62 @@ export default function PeopleSearchPage() {
       {/* Main content: hidden on mobile step 1, full-screen on step 2 */}
       <div 
         className={cn(
-          "flex flex-col h-full w-full transition-all duration-200 ease-in-out relative",
+          "flex flex-col h-full transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
           !showResultsOnMobile ? "hidden md:flex" : "flex"
         )}
-        style={{ 
-          maxWidth: contentMaxWidth
+        style={{
+          width: typeof window !== 'undefined' && window.innerWidth >= 768 
+            ? `calc(100% - ${isLayoutCollapsed ? 64 : 256}px - ${isSidebarCollapsed ? 0 : 319}px)` 
+            : '100%',
+          left: typeof window !== 'undefined' && window.innerWidth >= 768 
+            ? `${(isLayoutCollapsed ? 64 : 256) + (isSidebarCollapsed ? 0 : 319)}px` 
+            : '0px'
         }}
       >
-        <StickyHeader className="sticky-left relative">
-          <SidebarToggle
-            isCollapsed={isSidebarCollapsed}
-            onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="absolute left-0 top-1/2 -translate-y-1/2 hidden md:flex z-50"
-            style={{
-              marginLeft: !isSidebarCollapsed ? "319px" : "0"
-            }}
-          />
-          <div 
-            className="ml-4 mr-4 md:mr-16 transition-all duration-300 ease-in-out"
-            style={{
-              paddingLeft: !isSidebarCollapsed ? "calc(319px + 120px)" : "120px"
-            }}
+        <div className="w-full z-[50]">
+          <StickyHeader
+            className="transition-all duration-300 ease-in-out pl-0 md:pl-4 !top-[var(--topbar-height,64px)] !fixed"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-1.5 text-sm md:!hidden"
-                  onClick={() => setShowResultsOnMobile(false)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Back
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" className="h-9 !hidden md:!flex" onClick={handleAddToLeads} disabled={totalResults === 0 || loading || addingToLeads}>
-                  {addingToLeads ? 'Processing...' : `Enrich ${(totalResults || 0).toLocaleString()} Leads`}
-                </Button>
-                <Button 
-                  variant="secondary" 
-                  className="h-9 hidden md:flex" 
-                  disabled={selectedPersonIds.length === 0 || isEnriching}
-                  onClick={() => setIsConfirmModalOpen(true)}
-                >
-                  {isEnriching ? 'Saving...' : `Enrich & prospect selected${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
-                </Button>
+            <div className="flex w-full items-center pl-2">
+              <SidebarToggle
+                isCollapsed={isSidebarCollapsed}
+                onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="hidden md:flex z-50 mr-4 shrink-0"
+              />
+              <div className="transition-all duration-300 ease-in-out w-full pr-4 md:pr-12">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1.5 text-sm md:!hidden"
+                    onClick={() => setShowResultsOnMobile(false)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Back
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" className="h-9 !hidden md:!flex" onClick={handleAddToLeads} disabled={totalResults === 0 || loading || addingToLeads}>
+                    {addingToLeads ? 'Processing...' : `Enrich ${(totalResults || 0).toLocaleString()} Leads`}
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    className="h-9 hidden md:flex" 
+                    disabled={selectedPersonIds.length === 0 || isEnriching}
+                    onClick={() => setIsConfirmModalOpen(true)}
+                  >
+                    {isEnriching ? 'Saving...' : `Enrich & prospect selected${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </StickyHeader>
-        <div className={cn("flex-1 bg-muted/30 transition-colors duration-300 ease-in-out", isEmptyView ? "overflow-visible" : "overflow-auto")} style={isEmptyView ? { height: 'calc(100vh - var(--topbar-height, 64px) - 71px)' } : undefined}>
+        </div>
+        <div className={cn("flex-1 overflow-y-auto min-w-0 w-full relative pt-[71px] flex flex-col bg-muted/30 transition-colors duration-300 ease-in-out", isEmptyView ? "overflow-visible" : "overflow-auto")} style={isEmptyView ? { height: 'calc(100vh - var(--topbar-height, 64px) - 71px)' } : undefined}>
           <div 
-            className={cn("h-full transition-all duration-300 ease-in-out", isEmptyView ? "" : "p-8 space-y-4")}
-            style={{ 
-              paddingLeft: !isSidebarCollapsed ? "calc(319px + 2rem)" : "2rem"
-            }}
+            className={cn("transition-all duration-300 ease-in-out flex-1 flex flex-col min-h-full", isEmptyView ? "" : "p-8 space-y-4")}
           >
             {isEmptyView ? (
               <EmptyState 
