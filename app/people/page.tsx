@@ -2674,6 +2674,9 @@ export default function PeopleSearchPage() {
               width: typeof window !== 'undefined' && window.innerWidth >= 768 
                 ? `calc(100% - ${isLayoutCollapsed ? 64 : 256}px - ${isSidebarCollapsed ? 0 : 319}px)` 
                 : '100%',
+              left: typeof window !== 'undefined' && window.innerWidth >= 768 
+                ? `${(isLayoutCollapsed ? 64 : 256) + (isSidebarCollapsed ? 0 : 319)}px` 
+                : '0px'
             }}
           >
             <div className="flex w-full items-center pl-2">

@@ -48,7 +48,7 @@ export function StickyHeader({
   const isCollapsed = layoutContext?.isLayoutCollapsed ?? propIsLayoutCollapsed;
   
   // Use fixed positioning on robots/chat - parent has overflow-hidden which breaks sticky
-  const useFixedPosition = pathname?.startsWith('/robots') || pathname?.startsWith('/chat');
+  const useFixedPosition = pathname?.startsWith('/robots') || pathname?.startsWith('/chat') || pathname?.startsWith('/people');
   const sidebarLeft = isMobile ? 0 : (isCollapsed ? 64 : 256);
   
   return (
@@ -63,7 +63,7 @@ export function StickyHeader({
         className
       )}
       style={{
-        ...(useFixedPosition ? { left: 0, right: 0, paddingLeft: sidebarLeft } : {}),
+        ...(useFixedPosition && !pathname?.startsWith('/people') ? { left: 0, right: 0, paddingLeft: sidebarLeft } : {}),
         ...style
       }}
     >
