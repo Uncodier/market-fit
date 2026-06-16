@@ -1,0 +1,11 @@
+---
+description: Instrucción para evaluar y utilizar Agent Skills disponibles en tareas complejas
+globs: *
+alwaysApply: true
+---
+
+# Uso proactivo de Agent Skills
+
+- Al iniciar cualquier request complejo o tarea que involucre múltiples pasos, **SIEMPRE revisa y evalúa primero los Agent Skills** que tienes disponibles.
+- Si identificas que un skill es relevante para la tarea, **usa la herramienta "Read"** para leer el archivo del skill (ubicado en `.cursor/skills-cursor/` o según corresponda) **ANTES** de empezar a modificar código o planear la solución.
+- Comienza tu respuesta siguiendo las instrucciones de dicho skill para maximizar tu efectividad y contexto.

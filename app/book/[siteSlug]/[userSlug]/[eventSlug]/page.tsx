@@ -357,17 +357,21 @@ export default function UserBookingPage(props: {
       eventType.location ? `LOCATION:${eventType.location}` : "",
       "END:VEVENT",
       "END:VCALENDAR",
-    ].filter(Boolean).join("\n");
+    ].filter(Boolean).join("\r\n");
 
-    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const blob = new Blob([icsContent], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `meeting-${format(startDate, "yyyyMMdd-HHmm")}.ics`);
+    link.download = `meeting-${format(startDate, "yyyyMMdd-HHmm")}.ics`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    
+    // Clean up with a small delay to ensure download starts
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
   };
 
   return (

@@ -20,7 +20,7 @@ import {
 export async function getProfileBySlug(
   slug: string,
 ): Promise<ProfileData | null> {
-  const supabase = await createServiceClient();
+  const supabase = await createServiceClient(true);
 
   // 1. Try to find by explicit calendar slug
   const { data, error } = await supabase
@@ -64,7 +64,7 @@ export async function getProfileBySlug(
 export async function getSiteInfoBySlug(
   siteSlug: string,
 ): Promise<{ id: string; name: string; logo_url: string | null } | null> {
-  const supabase = await createServiceClient();
+  const supabase = await createServiceClient(true);
 
   // Search settings/sites for a name that matches the slug
   const { data: settings } = await supabase
@@ -98,7 +98,7 @@ export async function getRRCalendarBySlug(
   slug: string,
   siteId?: string,
 ): Promise<{ calendar: RoundRobinCalendar; siteId: string } | null> {
-  const supabase = await createServiceClient();
+  const supabase = await createServiceClient(true);
   let query = supabase
     .from("settings")
     .select("site_id, calendars");
@@ -130,7 +130,7 @@ export async function getRRAvailability(
   duration: number,
   buffer: number,
 ) {
-  const supabase = await createServiceClient();
+  const supabase = await createServiceClient(true);
 
   // 1. Get all members' profiles
   const { data: profiles } = await supabase
@@ -164,7 +164,7 @@ export async function bookRRMeeting(data: {
   location?: string;
   title: string;
 }) {
-  const supabase = await createServiceClient();
+  const supabase = await createServiceClient(true);
 
   // 1. Find least busy member for that day
   const start = startOfDay(parseISO(date)).toISOString();
@@ -221,7 +221,7 @@ export async function getMonthAvailability(
   duration: number,
   buffer: number,
 ) {
-  const supabase = await createServiceClient();
+  const supabase = await createServiceClient(true);
 
   // 1. Get user profile for availability settings
   const { data: profile } = await supabase
@@ -381,7 +381,7 @@ export async function getRRMonthAvailability(
   duration: number,
   buffer: number,
 ) {
-  const supabase = await createServiceClient();
+  const supabase = await createServiceClient(true);
 
   // 1. Get all members' profiles
   const { data: profiles } = await supabase
@@ -418,7 +418,7 @@ export async function getAvailableSlots(
   duration: number,
   buffer: number,
 ) {
-  const supabase = await createServiceClient();
+  const supabase = await createServiceClient(true);
 
   // 1. Get user profile for availability settings
   const { data: profile } = await supabase
@@ -572,7 +572,7 @@ export async function bookMeeting(data: {
   location?: string;
   title: string;
 }) {
-  const supabase = await createServiceClient();
+  const supabase = await createServiceClient(true);
 
   // 1. Find Site if default
   let siteId = data.siteId;

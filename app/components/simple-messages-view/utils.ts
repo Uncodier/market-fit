@@ -100,10 +100,10 @@ export const getSystemPromptForActivity = (
   // Add attachments to system prompt if provided
   if (mediaParams?.attachments && mediaParams.attachments.length > 0) {
     const attachmentUrls = mediaParams.attachments.map(att => att.url).join(', ')
-    return `${basePrompt}\n\nAttachments: ${attachmentUrls}\n\nAntes de iniciar cualquier request complejo, busca y evalúa las skills disponibles y relevantes para la tarea.`
+    return `${basePrompt}\n\nAttachments: ${attachmentUrls}`
   }
   
-  return `${basePrompt}\n\nAntes de iniciar cualquier request complejo, busca y evalúa las skills disponibles y relevantes para la tarea.`
+  return basePrompt
 }
 
 // Helper function to remove duplicate steps
