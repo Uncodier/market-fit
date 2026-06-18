@@ -92,6 +92,14 @@ export const useInstanceLogs = ({
       const fetchedLogs = await mutate()
       if (!fetchedLogs) return
 
+      // If we just fetched logs and the latest one is a response, clear thinking state
+      if (fetchedLogs.length > 0) {
+        const latestLog = fetchedLogs[0] as InstanceLog
+        if (latestLog.log_type !== 'user_action' && (latestLog.message?.length || 0) > 5) {
+          onResponseReceived?.()
+        }
+      }
+
       setHasMoreLogs(fetchedLogs.length === 100)
 
       setTimeout(() => {

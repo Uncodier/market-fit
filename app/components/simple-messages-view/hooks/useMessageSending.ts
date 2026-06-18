@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
@@ -52,7 +52,7 @@ export const useMessageSending = ({
   const { toast } = useToast()
 
   // Clear thinking state - utility function
-  const clearThinkingState = () => {
+  const clearThinkingState = useCallback(() => {
     const currentInstanceId = activeRobotInstance?.id
     // Only clear if this state belongs to the current instance
     if (loadingInstanceIdRef.current !== null && loadingInstanceIdRef.current !== currentInstanceId) {
@@ -73,17 +73,17 @@ export const useMessageSending = ({
       clearTimeout(thinkingTimeoutRef.current)
       thinkingTimeoutRef.current = null
     }
-  }
+  }, [activeRobotInstance?.id])
 
   // New Makina specific thinking state management
-  const setNewMakinaThinking = () => {
+  const setNewMakinaThinking = useCallback(() => {
     // New Makina doesn't have an instance_id yet, so we use null as the identifier
     console.log('🤔 Setting New Makina thinking state (no instance_id yet)')
     loadingInstanceIdRef.current = null // null means "new makina" context
     setIsNewMakinaThinking(true)
-  }
+  }, [])
 
-  const clearNewMakinaThinking = () => {
+  const clearNewMakinaThinking = useCallback(() => {
     // Only clear if we're in the "new makina" context (loadingInstanceIdRef.current === null)
     // or if we don't have an active instance
     if (loadingInstanceIdRef.current !== null && activeRobotInstance?.id) {
@@ -99,10 +99,10 @@ export const useMessageSending = ({
     activeRequestIdRef.current = null
     loadingInstanceIdRef.current = null
     console.log('🛡️ [useMessageSending] New Makina thinking state cleared')
-  }
+  }, [activeRobotInstance?.id, isNewMakinaThinking])
 
   // Set thinking state with safety timeout
-  const setThinkingStateWithTimeout = () => {
+  const setThinkingStateWithTimeout = useCallback(() => {
     const currentInstanceId = activeRobotInstance?.id
     if (!currentInstanceId) {
       console.warn('⚠️ [useMessageSending] Cannot set thinking state: no active instance')
@@ -127,7 +127,7 @@ export const useMessageSending = ({
         loadingInstanceIdRef.current = null
       }
     }, 30000) // 30 seconds - shorter timeout for better UX
-  }
+  }, [activeRobotInstance?.id, clearThinkingState])
 
   // Handle assistant message (non-robot activities)
   const handleAssistantMessage = async (messageToSend: string) => {
@@ -399,10 +399,10 @@ export const useMessageSending = ({
   }
 
   // Reset message sent state - utility function
-  const resetMessageSentState = () => {
+  const resetMessageSentState = useCallback(() => {
     console.log('🔄 Resetting message sent state')
     setHasMessageBeenSent(false)
-  }
+  }, [])
 
   // Reset loading states when activeRobotInstance changes to a different instance
   useEffect(() => {
