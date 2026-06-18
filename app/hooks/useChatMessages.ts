@@ -29,6 +29,7 @@ export function useChatMessages(
   const messageSubscriptionStatusRef = useRef<string>('INIT')
   const isResubscribingRef = useRef(false)
   const lastConversationIdRef = useRef<string>('')
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const hasActiveRequest = hasActiveChatRequest(conversationId)
@@ -115,8 +116,13 @@ export function useChatMessages(
               schema: 'public',
               table: 'messages',
               filter: `conversation_id=eq.${conversationId}`,
-            }, async () => {
-              await mutate()
+            }, (payload: any) => {
+              if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
+              
+              const delay = payload.eventType === 'INSERT' ? 300 : 500
+              refreshTimeoutRef.current = setTimeout(() => {
+                mutate()
+              }, delay)
             })
             .subscribe((status: string) => {
               messageSubscriptionStatusRef.current = status
@@ -181,6 +187,7 @@ export function useChatMessages(
   useEffect(() => {
     return () => {
       teardownRealtimeSubscription()
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
     }
   }, [teardownRealtimeSubscription])
 

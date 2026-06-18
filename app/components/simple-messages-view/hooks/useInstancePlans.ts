@@ -12,6 +12,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
   const [instancePlans, setInstancePlans] = useState<InstancePlan[]>([])
   const [completedPlans, setCompletedPlans] = useState<InstancePlan[]>([])
   const [isLoadingPlans, setIsLoadingPlans] = useState(false)
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Load instance plans with proper status management
   const loadInstancePlans = useCallback(async () => {
@@ -229,7 +230,12 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
         },
         (payload) => {
           console.log(`[useInstancePlans] Realtime update for instance ${instanceId}`)
-          loadInstancePlans()
+          if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
+          
+          const delay = payload.eventType === 'INSERT' ? 300 : 500
+          refreshTimeoutRef.current = setTimeout(() => {
+            loadInstancePlans()
+          }, delay)
         }
       )
       .subscribe((status) => {
@@ -249,6 +255,7 @@ export const useInstancePlans = ({ activeRobotInstance }: UseInstancePlansProps)
       console.log(`[useInstancePlans] Cleaning up subscription for ${instanceId}`)
       document.removeEventListener('visibilitychange', handleVisibility)
       supabase.removeChannel(subscription)
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
     }
   }, [activeRobotInstance?.id, loadInstancePlans])
 

@@ -480,6 +480,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
     hasValidSessionRef.current = hasValidSession
   }, [hasValidSession])
   
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
   // ✅ Only consider redirects after sites have actually finished loading at least once
   const [sitesLoaded, setSitesLoaded] = useState(false)
   
@@ -868,10 +870,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
           // Be more conservative about when to reload
           if (payload.eventType === 'INSERT') {
             // Only reload if this is a new site for current user
-            loadSitesWithPrevention();
+            if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+            refreshTimeoutRef.current = setTimeout(() => {
+              loadSitesWithPrevention();
+            }, 500);
           } else if (payload.eventType === 'DELETE') {
             // Only reload if the deleted site affects current user
-            loadSitesWithPrevention();
+            if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+            refreshTimeoutRef.current = setTimeout(() => {
+              loadSitesWithPrevention();
+            }, 500);
           } else if (payload.eventType === 'UPDATE') {
             // For updates, be very selective - only reload if it's the current site AND it's a significant change
             const newRecord = payload.new as Site;
@@ -883,7 +891,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
                                        newRecord.description !== oldRecord.description;
               
               if (significantChanges) {
-                loadSitesWithPrevention();
+                if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+                refreshTimeoutRef.current = setTimeout(() => {
+                  loadSitesWithPrevention();
+                }, 500);
               }
             }
           }
@@ -896,6 +907,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       return () => {
         try {
           supabaseRef.current?.removeChannel(sitesSubscription)
+          if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
         } catch (error) {
           console.error("Error unsubscribing from sites channel:", error)
         }
