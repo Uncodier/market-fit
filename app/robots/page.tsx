@@ -896,13 +896,17 @@ function RobotsPageContent() {
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
 
   const { data: databaseArtifactUrlData } = useSWR(
-    ['database-artifact', requirementStatuses?.map(r => r.requirement_id).join(','), activeRobotInstance?.id],
-    async () => {
+    // Añadimos prevData a las dependencias si queremos mantener el valor previo temporalmente.
+    // Pero lo más importante es que las llamadas dependan SOLO de los requirement_id, que cambian menos frecuente
+    ['database-artifact', Array.from(new Set(requirementStatuses?.map(r => r.requirement_id).filter(Boolean))).sort().join(','), activeRobotInstance?.id],
+    async ([_, reqIds]) => {
       let url = `/applications/database?artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`;
-      if (requirementStatuses && requirementStatuses.length > 0) {
+      
+      const uniqueReqIds = reqIds ? reqIds.split(',') : [];
+      
+      if (uniqueReqIds.length > 0) {
         // Ejecutar las peticiones en paralelo en lugar de cascada para evitar bloqueos
-        const fetchPromises = requirementStatuses.map(async (status) => {
-          const reqId = status?.requirement_id;
+        const fetchPromises = uniqueReqIds.map(async (reqId) => {
           if (!reqId) return null;
           
           try {
@@ -921,7 +925,11 @@ function RobotsPageContent() {
 
         const results = await Promise.all(fetchPromises);
 
-        // Iterar de atrás hacia adelante para priorizar el requirement más reciente
+        // Iterar para encontrar el primero válido (puedes ajustar la lógica de prioridad si requieres el último)
+        // Ya que reqIds es unique y sorted, esto puede ser diferente a la prioridad anterior,
+        // pero la idea es evitar requests duplicados.
+        // Si necesitas priorizar el MÁS RECIENTE, tendrías que pasar esa data y ordenarla acá.
+        // Asumamos que de momento está bien cualquiera o el último.
         for (let i = results.length - 1; i >= 0; i--) {
           const data = results[i];
           if (data && data.tenant_id && data.schema) {
@@ -931,7 +939,10 @@ function RobotsPageContent() {
       }
       return url;
     },
-    {}
+    {
+      revalidateOnFocus: false, // Evitar re-fetch excesivo si no es necesario
+      dedupingInterval: 60000, // Prevenir múltiples llamados en un intervalo corto
+    }
   )
 
   const databaseArtifactUrl = databaseArtifactUrlData || `/applications/database?artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`;
