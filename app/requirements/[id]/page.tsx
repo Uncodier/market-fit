@@ -3078,7 +3078,7 @@ const MenuBar = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-9 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="h-9 w-9 p-0 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
               title="Delete Requirement"
             >
               <Trash2 className="h-4 w-4" />

@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useTheme } from "@/app/context/ThemeContext";
 import { PieChart } from "@/app/components/ui/icons";
@@ -51,7 +50,6 @@ export function TrafficPieChart({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
   const [data, setData] = useState<DataItem[]>([]);
   const [totalValue, setTotalValue] = useState(0);
   const [internalIsLoading, setInternalIsLoading] = useState(true);
@@ -156,7 +154,7 @@ export function TrafficPieChart({
 
         console.log(`[TrafficPieChart:${endpoint}] Making INDIVIDUAL API call (should not happen if batched correctly):`, params.toString());
         const response = await fetchWithRetry(
-          fetchWithController,
+          fetch,
           `/api/traffic/${endpoint}?${params.toString()}`,
           { maxRetries: 3 }
         );
@@ -206,7 +204,7 @@ export function TrafficPieChart({
 
     console.log(`[TrafficPieChart:${endpoint}] WARNING: Making individual API call - this should not happen if batching works correctly`);
     fetchData();
-  }, [shouldExecuteWidgets, currentSite, user, startDate, endDate, segmentId, endpoint, fetchWithController, onTotalUpdate, preloadedData, skipApiCall, colors]);
+  }, [shouldExecuteWidgets, currentSite, user, startDate, endDate, segmentId, endpoint, fetch, onTotalUpdate, preloadedData, skipApiCall, colors]);
 
   // Calculate angles for pie slices
   const createPieSlice = (item: DataItem, index: number, startAngle: number, endAngle: number) => {

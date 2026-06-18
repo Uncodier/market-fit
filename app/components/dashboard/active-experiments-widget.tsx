@@ -6,7 +6,6 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface ActiveExperimentsWidgetProps {
@@ -39,7 +38,6 @@ export function ActiveExperimentsWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
   const [activeExperiments, setActiveExperiments] = useState<ActiveExperimentsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -90,7 +88,7 @@ export function ActiveExperimentsWidget({
         console.log("[ActiveExperimentsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
         
         const response = await fetchWithRetry(
-          fetchWithController,
+          fetch,
           `/api/active-experiments?${params.toString()}`,
           { maxRetries: 3 }
         );
@@ -114,7 +112,7 @@ export function ActiveExperimentsWidget({
     };
 
     fetchActiveExperiments();
-  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user, fetchWithController]);
+  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user, ]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

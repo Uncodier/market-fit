@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { FinancialCostsReport } from "@/app/components/dashboard/financial-costs-report"
 import { useSite } from "@/app/context/SiteContext"
@@ -74,10 +75,6 @@ export function CostReports({
   segmentId = "all" 
 }: CostReportsProps) {
   const { currentSite } = useSite()
-  const [isLoading, setIsLoading] = useState(true)
-  const [costData, setCostData] = useState<CostData>(emptyData)
-  const [dataReady, setDataReady] = useState(false)
-  const [hasData, setHasData] = useState(false)
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30))
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date())
   
@@ -91,54 +88,27 @@ export function CostReports({
     }
   }, [propStartDate, propEndDate]);
 
-  useEffect(() => {
-    if (!currentSite || currentSite.id === "default") {
-      // Usar datos vacíos para el sitio por defecto
-      setCostData(emptyData)
-      setIsLoading(false)
-      setDataReady(true)
-      setHasData(false)
-      return
-    }
-    
-    // Fetch cost data from API
-    const fetchCostData = async () => {
-      try {
-        setIsLoading(true)
-        setDataReady(false)
-        
-        console.log(`Fetching cost data with: startDate=${startDate.toISOString()}, endDate=${endDate.toISOString()}, segmentId=${segmentId}`)
-        
-        const url = `/api/costs?siteId=${currentSite.id}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}${segmentId !== "all" ? `&segmentId=${segmentId}` : ''}`
-        const response = await fetch(url)
-        
-        if (!response.ok) {
-          throw new Error("Failed to fetch cost data")
-        }
-        
-        const data = await response.json()
-        console.log("Cost data received:", data)
-        
-        setCostData(data)
-        
-        // Check if the API returned the noData flag
-        setHasData(!data.noData)
-        
-        // Marcar datos como listos después de cargarlos y actualizar el estado
-        setDataReady(true)
-      } catch (error) {
-        console.error("Error fetching cost data:", error)
-        // Usar datos vacíos en caso de error
-        setCostData(emptyData)
-        setHasData(false)
-        setDataReady(true)
-      } finally {
-        setIsLoading(false)
+  const siteId = currentSite?.id === "default" ? null : currentSite?.id
+  const url = siteId 
+    ? `/api/costs?siteId=${siteId}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}${segmentId !== "all" ? `&segmentId=${segmentId}` : ''}`
+    : null
+
+  const { data: fetchedCostData, isLoading: isLoadingCosts } = useSWR(
+    url,
+    async (fetchUrl) => {
+      const response = await fetch(fetchUrl)
+      if (!response.ok) {
+        throw new Error('Failed to fetch cost data')
       }
-    }
-    
-    fetchCostData()
-  }, [currentSite, startDate, endDate, segmentId])
+      return await response.json()
+    },
+    {}
+  )
+
+  const isLoading = isLoadingCosts
+  const dataReady = !!fetchedCostData || !siteId
+  const costData = fetchedCostData || emptyData
+  const hasData = fetchedCostData ? !fetchedCostData.noData : false
 
   // Check if we have data to display
   const hasDistributionData = hasData && costData.costDistribution && costData.costDistribution.length > 0

@@ -19,7 +19,7 @@ import type { ImprentaThumbCache } from "./imprenta-thumb-cache"
  * No React dependencies; safe to call from any animation frame.
  */
 
-export type ImprentaLiteBand = "marker" | "micro" | "simple" | "rich"
+export type ImprentaLiteBand = "marker" | "micro" | "simple" | "rich" | "turbo"
 
 export interface ImprentaCanvasTheme {
   cardBg: string
@@ -467,11 +467,33 @@ export interface DrawLiteNodeInputs {
  * full card so pan/zoom and edges remain pixel-stable when crossing the
  * full-detail threshold.
  */
+/** Ultra-cheap node shell used during active pan/zoom (1 fill + 1 stroke). */
+export function drawTurboNode(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  scale: number,
+  theme: ImprentaCanvasTheme
+) {
+  ctx.fillStyle = theme.cardBg
+  ctx.fillRect(x, y, w, h)
+  ctx.strokeStyle = theme.cardBorder
+  ctx.lineWidth = Math.max(0.5, 1.5 / scale)
+  ctx.strokeRect(x, y, w, h)
+}
+
 export function drawLiteNode(ctx: CanvasRenderingContext2D, p: DrawLiteNodeInputs) {
   const { node, x, y, w, h, scale, band, theme, coverImageUrl, coverVideoUrl, extraImageUrls, thumbs, drawLabel } = p
   const type = (node.type as string | undefined) ?? "prompt"
   const cornerR = 22
   const hasResult = nodeHasResult(node)
+
+  if (band === "turbo") {
+    drawTurboNode(ctx, x, y, w, h, scale, theme)
+    return
+  }
 
   if (band === "marker") {
     const scratch = { x: 0, y: 0, w: 0, h: 0 }

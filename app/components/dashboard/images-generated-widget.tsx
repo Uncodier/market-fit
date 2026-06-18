@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { BaseKpiWidget } from "./base-kpi-widget";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
@@ -30,7 +29,6 @@ export function ImagesGeneratedWidget({
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { currentSite } = useSite();
-  const { fetchWithController } = useRequestController();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,7 +45,7 @@ export function ImagesGeneratedWidget({
       });
 
       const response = await fetchWithRetry(
-        fetchWithController,
+        fetch,
         `/api/performance/images-generated?${params}`,
         { maxRetries: 3 }
       );
@@ -65,7 +63,7 @@ export function ImagesGeneratedWidget({
     };
 
     fetchData();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, fetchWithController]);
+  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, ]);
 
   const formatPeriodType = (periodType: string) => {
     switch (periodType) {

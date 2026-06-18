@@ -161,16 +161,33 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
   return (
     <div className="space-y-12">
       {/* Global Enable Switch */}
-      <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-accent/5">
-        <div className="space-y-0.5">
-          <Label className="text-base font-medium">Global Calendar Enabled</Label>
-          <p className="text-sm text-muted-foreground">Master switch for all your booking links</p>
-        </div>
-        <Switch 
-          checked={formData.enabled} 
-          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))} 
-        />
-      </div>
+      <Card className="border border-border shadow-sm overflow-hidden">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-base font-medium">Global Calendar Enabled</Label>
+              <p className="text-sm text-muted-foreground">Master switch for all your booking links</p>
+            </div>
+            <Switch 
+              checked={formData.enabled} 
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))} 
+            />
+          </div>
+        </CardContent>
+        <ActionFooter>
+          <div className="flex items-center justify-end w-full">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSave}
+              disabled={isUpdating}
+              className="rounded-full px-6 border-foreground/20 font-medium"
+            >
+              {isUpdating ? "Saving..." : "Save Preferences"}
+            </Button>
+          </div>
+        </ActionFooter>
+      </Card>
 
       {/* Business Hours Section */}
       <div className="space-y-6">

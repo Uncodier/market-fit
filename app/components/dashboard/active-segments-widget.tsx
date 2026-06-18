@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useSWR from "swr";
 import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface ActiveSegmentsWidgetProps {
@@ -41,10 +41,6 @@ export function ActiveSegmentsWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
-  const [activeSegments, setActiveSegments] = useState<ActiveSegmentsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
@@ -58,71 +54,53 @@ export function ActiveSegmentsWidget({
     }
   }, [propStartDate, propEndDate]);
 
-  useEffect(() => {
-    const fetchActiveSegments = async () => {
-      // Global widget protection
-      if (!shouldExecuteWidgets) {
-        console.log("[ActiveSegmentsWidget] Widget execution disabled by context");
-        return;
+  const { data: activeSegments, isLoading: isSWRisLoading, error } = useSWR(
+    shouldExecuteWidgets && currentSite && currentSite.id !== "default"
+      ? [
+          'active-segments',
+          currentSite.id,
+          user?.id,
+          startDate ? format(startDate, "yyyy-MM-dd") : null,
+          endDate ? format(endDate, "yyyy-MM-dd") : null
+        ]
+      : null,
+    async ([_, siteId, userId, start, end]) => {
+      const params = new URLSearchParams();
+      params.append("siteId", siteId as string);
+      if (userId) {
+        params.append("userId", userId as string);
       }
-
-      if (!currentSite || currentSite.id === "default") return;
+      if (start) params.append("startDate", start as string);
+      if (end) params.append("endDate", end as string);
       
-      setIsLoading(true);
-      setHasError(false);
+      const apiUrl = `/api/active-segments?${params.toString()}`;
       
-      try {
-        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
-        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
-        
-        const params = new URLSearchParams();
-        params.append("siteId", currentSite.id);
-        if (user?.id) {
-          params.append("userId", user.id);
-        }
-        if (start) params.append("startDate", start);
-        if (end) params.append("endDate", end);
-        
-        const apiUrl = `/api/active-segments?${params.toString()}`;
-        console.log("[ActiveSegmentsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
-        
-        const response = await fetchWithRetry(
-          fetchWithController,
-          apiUrl,
-          { maxRetries: 3 }
-        );
-        
-        // Handle null response (all retries failed or request was cancelled)
-        if (!response) {
-          return;
-        }
-        
-        const data = await response.json();
-
-        
-        if (data && typeof data.actual !== 'undefined') {
-          setActiveSegments({
-            actual: Number(data.actual),
-            percentChange: Number(data.percentChange || 0),
-            periodType: data.periodType || 'monthly'
-          });
-        } else {
-          console.error("[ActiveSegmentsWidget] Invalid response format:", data);
-          setHasError(true);
-        }
-      } catch (error) {
-        // Only log non-abort errors
-        if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error("[ActiveSegmentsWidget] Error:", error);
-          setHasError(true);
-        }
-      } finally {
-        setIsLoading(false);
+      const response = await fetchWithRetry(
+        fetch,
+        apiUrl,
+        { maxRetries: 3 }
+      );
+      
+      if (!response) {
+        return null;
       }
-    };
+      
+      const data = await response.json();
 
-    fetchActiveSegments();
-  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user, fetchWithController]);
+      if (data && typeof data.actual !== 'undefined') {
+        return {
+          actual: Number(data.actual),
+          percentChange: Number(data.percentChange || 0),
+          periodType: data.periodType || 'monthly'
+        } as ActiveSegmentsData;
+      } else {
+        throw new Error("Invalid response format");
+      }
+    }
+  );
+
+  const isLoading = isSWRisLoading;
+  const hasError = !!error;
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

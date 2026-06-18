@@ -5,7 +5,6 @@ import { format, subDays } from "date-fns";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 const formatPeriodType = (periodType: string): string => {
@@ -45,7 +44,6 @@ export function SessionsWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
   const [sessions, setSessions] = useState<SessionsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -86,7 +84,7 @@ export function SessionsWidget({
         if (end) params.append("endDate", end);
         
         const response = await fetchWithRetry(
-          fetchWithController,
+          fetch,
           `/api/traffic/visits?${params.toString()}`,
           { maxRetries: 3 }
         );
@@ -108,7 +106,7 @@ export function SessionsWidget({
     };
 
     fetchSessions();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, ]);
 
   const formattedValue = sessions ? sessions.actual.toLocaleString() : "0";
   const changeText = `${sessions?.percentChange || 0}% from ${formatPeriodType(sessions?.periodType || "monthly")}`;

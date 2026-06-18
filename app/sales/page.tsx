@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { SearchInput } from "@/app/components/ui/search-input"
@@ -400,10 +401,6 @@ function PrintSaleDialog({ sale, open, onOpenChange, onConfirm }: PrintSaleDialo
 
 export default function SalesPage() {
   const { t } = useLocalization()
-  const [sales, setSales] = useState<Sale[]>([])
-  const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
-  const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string }>>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
@@ -425,71 +422,46 @@ export default function SalesPage() {
   const [printDialogOpen, setPrintDialogOpen] = useState(false)
   const [registerPaymentOpen, setRegisterPaymentOpen] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
-  
-  // Function to load sales data
-  const loadSales = async () => {
-    if (!currentSite?.id) return
 
-    setLoading(true)
-    try {
-      const result = await getSales(currentSite.id)
-      
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      
-      setSales(result.sales || [])
-    } catch (error) {
-      console.error("Error loading sales:", error)
-      toast.error("Error loading sales")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: salesData, isLoading: isLoadingSales, mutate: mutateSales } = useSWR(
+    currentSite?.id ? ['sales', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const result = await getSales(siteId)
+      if (result.error) throw new Error(result.error)
+      return result.sales || []
+    },
+    {}
+  )
 
-  // Load sales, segments, and campaigns
-  useEffect(() => {
-    async function loadSegments() {
-      if (!currentSite?.id) return
-      
-      try {
-        const response = await getSegments(currentSite.id)
-        if (response.error) {
-          console.error(response.error)
-          return
-        }
-        
-        if (response.segments) {
-          setSegments(response.segments.map(s => ({ id: s.id, name: s.name })))
-        }
-      } catch (error) {
-        console.error("Error loading segments:", error)
-      }
-    }
-    
-    async function loadCampaigns() {
-      if (!currentSite?.id) return
-      
-      try {
-        const result = await getCampaigns(currentSite.id)
-        
-        if (result.error) {
-          console.error(result.error)
-          return
-        }
-        
-        setCampaigns(result.data?.map(c => ({ id: c.id, title: c.title })) || [])
-      } catch (error) {
-        console.error("Error loading campaigns:", error)
-      }
-    }
+  const { data: segmentsData, isLoading: isLoadingSegments } = useSWR(
+    currentSite?.id ? ['segments', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const { segments, error } = await getSegments(siteId)
+      if (error) throw new Error(error)
+      return segments ? segments.map(s => ({ id: s.id, name: s.name })) : []
+    },
+    {}
+  )
 
-    loadSales()
-    loadSegments()
-    loadCampaigns()
-  }, [currentSite])
-  
+  const { data: campaignsData, isLoading: isLoadingCampaigns } = useSWR(
+    currentSite?.id ? ['campaigns', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const { data, error } = await getCampaigns(siteId)
+      if (error) throw new Error(error)
+      return data || []
+    },
+    {}
+  )
+
+  const sales = salesData || []
+  const segments = segmentsData || []
+  const campaigns = campaignsData || []
+  const loading = isLoadingSales || isLoadingSegments || isLoadingCampaigns
+
+  const loadSales = async () => { mutateSales() }
+  const loadSegments = async () => {} // Kept for compatibility if used
+  const loadCampaigns = async () => {} // Kept for compatibility if used
+
   // Search query change handler
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)

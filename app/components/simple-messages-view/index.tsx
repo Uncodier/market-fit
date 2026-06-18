@@ -704,7 +704,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
           {/* Loading indicator when fetching older logs */}
           {isLoadingMore && (
             <div className="flex justify-center py-2">
-              <LoadingIndicator isVisible={true} />
+              <LoadingIndicator isVisible={true} isDarkMode={isDarkMode} />
             </div>
           )}
           
@@ -766,7 +766,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
             )}
             
             {/* Show thinking indicator using existing LoadingIndicator component */}
-            <LoadingIndicator isVisible={isNewMakinaThinking} />
+            <LoadingIndicator isVisible={isNewMakinaThinking} isDarkMode={isDarkMode} />
           </>
             )
           } else {
@@ -877,6 +877,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
             {/* Loading indicator when waiting for response */}
             <LoadingIndicator 
               isVisible={isWaitingForResponse || isNewMakinaThinking}
+              isDarkMode={isDarkMode}
             />
           </>
             )

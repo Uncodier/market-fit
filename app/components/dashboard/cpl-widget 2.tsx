@@ -6,7 +6,6 @@ import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface CPLWidgetProps {
@@ -56,7 +55,6 @@ export function CPLWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
   const [cpl, setCpl] = useState<CPLData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -97,7 +95,7 @@ export function CPLWidget({
         if (end) params.append("endDate", end);
         
         const response = await fetchWithRetry(
-          fetchWithController,
+          fetch,
           `/api/cpl?${params.toString()}`,
           { maxRetries: 3 }
         );
@@ -119,7 +117,7 @@ export function CPLWidget({
     };
 
     fetchCpl();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, ]);
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Input } from "@/app/components/ui/input"
@@ -1879,10 +1880,64 @@ export default function ContentPage() {
   const { isLayoutCollapsed } = useLayout()
   const isMobile = useIsMobile()
   const router = useRouter()
-  const [contentItems, setContentItems] = useState<ContentItem[]>([])
+  const { data: segmentsData = [], isLoading: isLoadingSegments } = useSWR(
+    currentSite?.id ? ['segments', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const { segments, error } = await getSegments(siteId);
+      if (error) throw new Error(error);
+      return segments ? segments.map(s => ({ id: s.id, name: s.name, description: s.description })) : [];
+    },
+    {}
+  );
+  const segments = segmentsData;
+
+  const { data: campaignsData = [], isLoading: isLoadingCampaigns } = useSWR(
+    currentSite?.id ? ['campaigns', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const response = await getCampaigns(siteId);
+      if (response.error) throw new Error(response.error);
+      return response.data || [];
+    },
+    {}
+  );
+  const campaigns = campaignsData;
+
+  const { data: outstandPostsData, isLoading: isLoadingOutstand, mutate: mutateOutstand } = useSWR(
+    currentSite?.id ? ['outstand', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const result = await fetchOutstandPosts(siteId);
+      if (result?.error) throw new Error(result.error);
+      return { posts: result?.data || [] };
+    },
+    {}
+  );
+  const outstandPosts = outstandPostsData?.posts || [];
+
+  const { data: contentData, isLoading: isContentLoading, mutate: mutateContent, isValidating: isContentValidating } = useSWR(
+    currentSite?.id ? ['content', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const result = await getContent(siteId);
+      if (result.error) throw new Error(result.error);
+      
+      const content = result.content || [];
+      const ids = content.map((c: ContentItem) => c.id);
+      const { byContentId } = await getContentAssetsByContentIds(ids);
+      
+      return {
+        content,
+        count: result.count || 0,
+        assetsByContentId: byContentId || {}
+      };
+    },
+    {}
+  );
+
+  const contentItems = contentData?.content || [];
+  const totalContent = contentData?.count || 0;
+  const assetsByContentId = contentData?.assetsByContentId || {};
+  const isLoading = isContentLoading;
+
   const [socialMedia, setSocialMedia] = useState<any[]>([])
-  const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [viewType, setViewType] = useState<ViewType>('kanban')
   const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null)
@@ -1897,12 +1952,6 @@ export default function ContentPage() {
   const [filteredContent, setFilteredContent] = useState<ContentItem[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [totalContent, setTotalContent] = useState(0)
-  const [campaigns, setCampaigns] = useState<Array<{id: string, title: string, description?: string}>>([])
-  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(true)
-  const [assetsByContentId, setAssetsByContentId] = useState<Record<string, ContentAssetWithDetails[]>>({})
-  const [outstandPosts, setOutstandPosts] = useState<any[]>([])
-  const [isLoadingOutstand, setIsLoadingOutstand] = useState(false)
 
   const combinedContentItems = React.useMemo(() => {
     console.log("⚙️ [Content] Building combinedContentItems. Current local items:", contentItems.length, "Outstand posts:", outstandPosts.length);
@@ -1970,11 +2019,6 @@ export default function ContentPage() {
   
   useEffect(() => {
     if (currentSite?.id) {
-      refreshContentList()
-      loadSegments()
-      loadCampaigns()
-      loadOutstandPosts()
-      
       // Load social media settings for publishing
       const loadSettings = async () => {
         try {
@@ -1990,98 +2034,7 @@ export default function ContentPage() {
     }
   }, [currentSite?.id])
 
-  const loadOutstandPosts = async () => {
-    if (!currentSite?.id) return
-    
-    try {
-      console.log('🔄 [Content] Fetching Outstand posts in client...')
-      setIsLoadingOutstand(true)
-      const result = await fetchOutstandPosts(currentSite.id)
-      console.log('📦 [Content] Outstand API Response:', result?.data?.length || 0, 'posts')
-      setOutstandPosts(result?.data || [])
-    } catch (error) {
-      console.error('❌ Error fetching outstand posts in client:', error)
-      setOutstandPosts([])
-    } finally {
-      setIsLoadingOutstand(false)
-    }
-  }
-
-  const refreshContentList = useCallback(async () => {
-    if (!currentSite?.id) return
-
-    console.log("🔄 [Content] Fetching local Makinari content...");
-    setIsLoading(true)
-    try {
-      const result = await getContent(currentSite.id)
-      
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      
-      if (result.content) {
-        console.log(`📦 [Content] Local content received: ${result.content.length}`);
-        setContentItems(result.content)
-        setTotalContent(result.count)
-        setFilteredContent(result.content)
-        const ids = result.content.map((c: ContentItem) => c.id)
-        const { byContentId } = await getContentAssetsByContentIds(ids)
-        setAssetsByContentId(byContentId || {})
-      }
-    } catch (error) {
-      console.error("Error fetching content:", error)
-      toast.error(t('content.toast.loadError'))
-    } finally {
-      setIsLoading(false)
-    }
-  }, [currentSite?.id])
-
-  const loadSegments = async () => {
-    if (!currentSite?.id) return
-
-    try {
-      console.log(`📊 [Content] Loading segments for site: ${currentSite.id}`)
-      const { segments, error } = await getSegments(currentSite.id)
-      
-      if (error) {
-        toast.error(t('content.toast.segmentsError') + (error ? `: ${error}` : ''))
-        return
-      }
-      
-      if (segments) {
-        console.log(`📊 [Content] Loaded ${segments.length} segments:`, segments.map(s => s.name).join(', '))
-        setSegments(segments.map(segment => ({
-          id: segment.id,
-          name: segment.name,
-          description: segment.description
-        })))
-      }
-    } catch (error) {
-      console.error("Error loading segments:", error)
-      toast.error(t('content.toast.segmentsError'))
-    }
-  }
-
-  const loadCampaigns = async () => {
-    if (!currentSite?.id) return
-    
-    try {
-      setIsLoadingCampaigns(true)
-      const response = await getCampaigns(currentSite.id)
-      if (response.error) {
-        console.error('Error loading campaigns:', response.error)
-        setCampaigns([])
-      } else {
-        setCampaigns(response.data || [])
-      }
-    } catch (error) {
-      console.error('Error loading campaigns:', error)
-      setCampaigns([])
-    } finally {
-      setIsLoadingCampaigns(false)
-    }
-  }
+  const refreshContentList = mutateContent;
 
   const updateFilteredContent = useCallback((
     search: string, 

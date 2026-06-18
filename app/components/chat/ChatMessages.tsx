@@ -503,7 +503,7 @@ export function ChatMessages({
     
     // Debug logging to help identify ordering issues
     console.log(`🔍 [ChatMessages] Rendering ${chatMessages.length} messages:`)
-    console.log(`📝 Message order:`, chatMessages.map((msg, index) => `${index + 1}. ${msg.role} at ${msg.timestamp.toISOString()}`).slice(0, 5))
+    console.log(`📝 Message order:`, chatMessages.map((msg, index) => `${index + 1}. ${msg.role} at ${new Date(msg.timestamp).toISOString()}`).slice(0, 5))
     
     return chatMessages.map((msg) => {
       // CORRECTIVE LOGIC: Fix incorrect roles based on context FIRST

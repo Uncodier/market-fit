@@ -18,6 +18,7 @@ import {
 } from "@/app/components/ui/dropdown-menu"
 import { formatDistanceToNow, format } from "date-fns"
 import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
+import { coerceDate } from "@/app/utils/coerce-date"
 
 interface ConversationItemProps {
   conversation: ConversationListItem
@@ -35,9 +36,10 @@ function getDefaultMessage(title: string): string {
   return "New conversation"
 }
 
-function formatMessageDate(timestamp: Date): string {
+function formatMessageDate(timestamp: Date | string): string {
+  const date = coerceDate(timestamp)
   const now = new Date()
-  const diffInMs = now.getTime() - timestamp.getTime()
+  const diffInMs = now.getTime() - date.getTime()
   const diffInMinutes = Math.floor(diffInMs / (1000 * 60))
   const diffInHours = Math.floor(diffInMinutes / 60)
   const diffInDays = Math.floor(diffInHours / 24)
@@ -51,7 +53,7 @@ function formatMessageDate(timestamp: Date): string {
   } else if (diffInDays < 7) {
     return `${diffInDays}d`
   } else {
-    return format(timestamp, "MMM d")
+    return format(date, "MMM d")
   }
 }
 

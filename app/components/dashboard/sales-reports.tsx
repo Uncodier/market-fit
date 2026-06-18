@@ -11,7 +11,6 @@ import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
 import { SalesDistributionChart } from "@/app/components/dashboard/sales-distribution-chart"
 import { MonthlySalesEvolutionChart } from "@/app/components/dashboard/monthly-sales-evolution-chart"
 import { SalesBreakdownReport } from "@/app/components/dashboard/sales-breakdown-report"
-import { useRequestController } from "@/app/hooks/useRequestController"
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry"
 import { startOfMonth, format, subDays } from "date-fns"
 
@@ -101,7 +100,6 @@ export function SalesReports({
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dataReady, setDataReady] = useState(false);
-  const { fetchWithController, cancelAllRequests } = useRequestController();
   
   // Use state for dates with fallback values
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
@@ -146,7 +144,7 @@ export function SalesReports({
         }
         
         const response = await fetchWithRetry(
-          fetchWithController,
+          fetch,
           `/api/revenue?${params.toString()}`,
           { maxRetries: 3 }
         );
@@ -165,7 +163,7 @@ export function SalesReports({
           setDataReady(true);
         }
       } catch (error) {
-        // Ignore AbortError as it's handled in the fetchWithController
+        // Ignore AbortError as it's handled in the 
         if (error instanceof DOMException && error.name === 'AbortError') {
           console.log("[SalesReports] Request was aborted");
           return;

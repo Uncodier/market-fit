@@ -33,6 +33,7 @@ import {
   DialogFooter,
 } from "@/app/components/ui/dialog"
 import { getSegments, createSegment, type SegmentResponse, updateSegmentUrl, updateSegmentStatus } from "./actions"
+import useSWR from "swr"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
@@ -368,15 +369,11 @@ function SegmentRowSkeleton() {
 
 export default function SegmentsPage() {
   const { t } = useLocalization()
-  const [segments, setSegments] = useState<Segment[]>([])
-  const [filteredSegments, setFilteredSegments] = useState<Segment[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({})
   const [selectedAdPlatforms, setSelectedAdPlatforms] = useState<Record<string, AdPlatform>>({})
   const [activeSegments, setActiveSegments] = useState<Record<string, boolean>>({})
   const [iframeLoading, setIframeLoading] = useState<Record<string, boolean>>({})
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [isUrlModalOpen, setIsUrlModalOpen] = useState(false)
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null)
   const [urlInput, setUrlInput] = useState("")
@@ -385,9 +382,69 @@ export default function SegmentsPage() {
   const [copiedStates, setCopiedStates] = useState<Record<string, { keywords: boolean, url: boolean }>>({})
   const { currentSite } = useSite()
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const [initialFetchDone, setInitialFetchDone] = useState(false)
   const [loadAttemptsCount, setLoadAttemptsCount] = useState(0)
+  const emptyArrayRef = useRef<any[]>([]);
   const router = useRouter()
+
+  const { data: segmentsData, isLoading, error, mutate: mutateSegments } = useSWR(
+    currentSite?.id ? ['segments', currentSite.id, loadAttemptsCount] : null,
+    async ([_, siteId]) => {
+      const result = await getSegments(siteId);
+      if (result.error) throw new Error(result.error);
+      const loadedSegments = result.segments || [];
+
+      return loadedSegments.map((segment: any) => {
+        let icpObject = segment.icp;
+        if (!icpObject || typeof icpObject === 'string') {
+          icpObject = {
+            role: typeof icpObject === 'string' ? icpObject : '',
+            company_size: '',
+            industry: '',
+            age_range: '',
+            pain_points: [],
+            goals: [],
+            budget: '',
+            decision_maker: false,
+            location: '',
+            experience: ''
+          };
+        }
+        
+        return {
+          ...segment,
+          analysis: segment.analysis || null,
+          topics: segment.topics || null,
+          icp: icpObject
+        };
+      }) as Segment[];
+    },
+    {
+      onSuccess: (data) => {
+        setExpandedRows(prev => {
+          const newObj = { ...prev };
+          data.forEach(s => { if (newObj[s.id] === undefined) newObj[s.id] = false; });
+          return newObj;
+        });
+        setSelectedAdPlatforms(prev => {
+          const newObj = { ...prev };
+          data.forEach(s => { if (!newObj[s.id]) newObj[s.id] = "facebook"; });
+          return newObj;
+        });
+        setActiveSegments(prev => {
+          const newObj = { ...prev };
+          data.forEach(s => { if (newObj[s.id] === undefined) newObj[s.id] = s.is_active; });
+          return newObj;
+        });
+        setIframeLoading(prev => {
+          const newObj = { ...prev };
+          data.forEach(s => { if (newObj[s.id] === undefined) newObj[s.id] = false; });
+          return newObj;
+        });
+      }
+    }
+  );
+
+  const [filteredSegments, setFilteredSegments] = useState<Segment[]>([])
 
 
 
@@ -397,6 +454,8 @@ export default function SegmentsPage() {
   }
 
   // Función para filtrar segmentos
+  const segments = segmentsData || emptyArrayRef.current;
+
   const filterSegments = useCallback((term: string) => {
     if (!term.trim()) {
       setFilteredSegments(segments)
@@ -427,7 +486,6 @@ export default function SegmentsPage() {
 
   // Función para recargar los segmentos
   const retryLoadSegments = () => {
-    setError(null)
     setLoadAttemptsCount(prev => prev + 1)
   }
 
@@ -454,106 +512,6 @@ export default function SegmentsPage() {
     setFilteredSegments(segments)
   }, [segments])
 
-  // Efecto para cargar los segmentos
-  useEffect(() => {
-    const fetchSegments = async () => {
-      try {
-        if (initialFetchDone && loadAttemptsCount === 0) return;
-        
-        setIsLoading(true);
-        setError(null);
-        
-        // Verificar si tenemos un sitio seleccionado
-        if (!currentSite?.id) {
-          setIsLoading(false);
-          return;
-        }
-        
-        console.log("Cargando segmentos para el sitio:", currentSite.id);
-        
-        try {
-          const result = await getSegments(currentSite.id);
-          
-          if (result.error) {
-            setError(result.error);
-            setIsLoading(false);
-            return;
-          }
-          
-          const loadedSegments = result.segments || [];
-          console.log(`Se cargaron ${loadedSegments.length} segmentos`);
-          
-          // Procesar los segmentos cargados
-          const processedSegments = loadedSegments.map((segment: any) => {
-            // Procesar el ICP
-            let icpObject = segment.icp;
-            if (!icpObject || typeof icpObject === 'string') {
-              icpObject = {
-                role: typeof icpObject === 'string' ? icpObject : '',
-                company_size: '',
-                industry: '',
-                age_range: '',
-                pain_points: [],
-                goals: [],
-                budget: '',
-                decision_maker: false,
-                location: '',
-                experience: ''
-              };
-            }
-            
-            // Crear el segmento procesado
-            return {
-              ...segment,
-              // Usar analysis directamente ya que keywords ya no existe
-              analysis: segment.analysis || null,
-              // Usar topics directamente ya que hot_topics ya no existe
-              topics: segment.topics || null,
-              // Usar el ICP estructurado
-              icp: icpObject
-            };
-          });
-          
-          // Actualizar el estado de segmentos
-          setSegments(processedSegments as Segment[]);
-          
-          // Crear objetos para los estados
-          const expandedRowsObj: Record<string, boolean> = {};
-          const adPlatformsObj: Record<string, AdPlatform> = {};
-          const activeSegmentsObj: Record<string, boolean> = {};
-          const iframeLoadingObj: Record<string, boolean> = {};
-          
-          // Inicializar los estados para cada segmento
-          processedSegments.forEach((segment: any) => {
-            expandedRowsObj[segment.id] = false;
-            adPlatformsObj[segment.id] = "facebook";
-            activeSegmentsObj[segment.id] = segment.is_active;
-            iframeLoadingObj[segment.id] = false;
-          });
-          
-          // Actualizar los estados
-          setExpandedRows(expandedRowsObj);
-          setSelectedAdPlatforms(adPlatformsObj);
-          setActiveSegments(activeSegmentsObj);
-          setIframeLoading(iframeLoadingObj);
-          
-          // Marcar como completado
-          setError(null);
-          setInitialFetchDone(true);
-        } catch (innerError) {
-          console.error("Error llamando a getSegments:", innerError);
-          setError("Error al cargar los segmentos. Por favor, intenta nuevamente.");
-        }
-      } catch (err) {
-        console.error("Error loading segments:", err);
-        setError("Error al cargar los segmentos. Por favor, intenta nuevamente.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchSegments();
-  }, [currentSite?.id, initialFetchDone, loadAttemptsCount]);
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => ({
@@ -688,13 +646,14 @@ export default function SegmentsPage() {
         return
       }
 
-      setSegments(prevSegments => 
-        prevSegments.map(segment => 
+      mutateSegments((currentData: any) => {
+        if (!currentData) return currentData;
+        return currentData.map((segment: Segment) => 
           segment.id === selectedSegmentId 
             ? { ...segment, url: urlInput }
             : segment
-        )
-      )
+        );
+      }, { revalidate: false });
       
       setIsUrlModalOpen(false)
       setSelectedSegmentId(null)

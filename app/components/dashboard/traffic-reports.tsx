@@ -9,7 +9,6 @@ import { LeadConversionWidget } from "@/app/components/dashboard/traffic/lead-co
 import { TrafficPieChart } from "@/app/components/dashboard/traffic/traffic-pie-chart";
 import { SessionEventsContainer } from "@/app/components/dashboard/traffic/session-events-container";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
@@ -38,7 +37,6 @@ export function TrafficReports({
   siteId
 }: TrafficReportsProps) {
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
   const { currentSite } = useSite();
   const { user, isLoading: isAuthLoading } = useAuth();
   
@@ -201,7 +199,7 @@ export function TrafficReports({
             
             console.log(`[TrafficReports] Fetching ${endpoint} data...`);
             const response = await fetchWithRetry(
-              fetchWithController,
+              fetch,
               `/api/traffic/${endpoint}?${urlParams}`,
               { maxRetries: 3 }
             );
@@ -281,7 +279,7 @@ export function TrafficReports({
     return () => {
       isMounted = false;
     };
-  }, [shouldExecuteWidgets, currentSite, user, startDate, endDate, segmentId, fetchWithController, isAuthLoading]);
+  }, [shouldExecuteWidgets, currentSite, user, startDate, endDate, segmentId, fetch, isAuthLoading]);
 
   // Show loading state while authentication is in progress
   if (isAuthLoading) {

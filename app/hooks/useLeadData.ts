@@ -1,38 +1,16 @@
-"use client"
-
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { getUserData } from '@/app/services/user-service'
 
 export function useLeadData(conversationId: string, siteId?: string) {
-  const [leadData, setLeadData] = useState<any>(null)
-  const [isLoadingLead, setIsLoadingLead] = useState(false)
   const [isAgentOnlyConversation, setIsAgentOnlyConversation] = useState(false)
-  const [isLeadInvalidated, setIsLeadInvalidated] = useState(false)
-  const lastConversationIdRef = useRef<string>('')
-  const lastSiteIdRef = useRef<string>('')
   
-  // Helper to check if we have a lead
-  const isLead = leadData !== null
-  
-  // Optimized lead data loader
-  const loadLeadData = useCallback(async () => {
-    // Skip for new conversations or when siteId is missing
-    if (!conversationId || conversationId.startsWith("new-") || !siteId) {
-      setIsAgentOnlyConversation(false)
-      setLeadData(null)
-      setIsLoadingLead(false)
-      setIsLeadInvalidated(false)
-      return
-    }
-    
-    setIsLoadingLead(true)
-    
-    try {
+  const { data, isLoading: isSwrLoadingLead, mutate } = useSWR(
+    conversationId && !conversationId.startsWith("new-") && siteId ? ['lead-data', conversationId, siteId] : null,
+    async ([_, convId, sId]) => {
       const supabase = createClient()
       
-      // Get the lead data directly through the conversation using a JOIN
-      // This bypasses RLS issues since the user has access to the conversation
       const { data: conversationWithLead, error: conversationError } = await supabase
         .from("conversations")
         .select(`
@@ -53,57 +31,26 @@ export function useLeadData(conversationId: string, siteId?: string) {
             )
           )
         `)
-        .eq("id", conversationId)
+        .eq("id", convId)
         .maybeSingle()
         
-      if (conversationError) {
-        console.error("Error fetching conversation data:", conversationError)
-        setLeadData(null)
-        setIsLoadingLead(false)
-        setIsLeadInvalidated(false)
-        return
-      }
+      if (conversationError) throw conversationError
       
-      if (!conversationWithLead) {
-        setLeadData(null)
-        setIsLoadingLead(false)
-        setIsLeadInvalidated(false)
-        return
-      }
+      if (!conversationWithLead) return { leadData: null, isInvalidated: false, isAgentOnly: false }
       
       // Check if this is an agent-only conversation
       if (!conversationWithLead.lead_id && conversationWithLead.visitor_id === null) {
-        setIsAgentOnlyConversation(true)
-        setLeadData(null)
-        setIsLoadingLead(false)
-        return
-      } else {
-        setIsAgentOnlyConversation(false)
+        return { leadData: null, isInvalidated: false, isAgentOnly: true }
       }
       
-      // Extract lead data from the JOIN result
       const lead = conversationWithLead.leads
       
       if (!lead && conversationWithLead.lead_id) {
-        // Lead is referenced but doesn't exist - it was deleted/invalidated
-        console.warn("[useLeadData] Lead was invalidated/deleted:", conversationWithLead.lead_id)
-        setIsLeadInvalidated(true)
-        setLeadData(null)
-        setIsLoadingLead(false)
-        return
+        return { leadData: null, isInvalidated: true, isAgentOnly: false }
       }
       
-      if (!lead) {
-        setLeadData(null)
-        setIsLoadingLead(false)
-        setIsLeadInvalidated(false)
-        return
-      }
+      if (!lead) return { leadData: null, isInvalidated: false, isAgentOnly: false }
       
-      // Reset invalidated state if lead is found
-      setIsLeadInvalidated(false)
-
-      // Get assignee information if assignee_id exists
       let assigneeData = null
       if (lead.assignee_id) {
         try {
@@ -113,8 +60,6 @@ export function useLeadData(conversationId: string, siteId?: string) {
         }
       }
       
-      // Set the lead data with company and assignee information
-      // Handle both array and object company data
       let companyData = null
       if (lead.companies) {
         if (Array.isArray(lead.companies) && lead.companies.length > 0) {
@@ -130,48 +75,36 @@ export function useLeadData(conversationId: string, siteId?: string) {
         }
       }
       
-      setLeadData({
-        id: lead.id,
-        name: lead.name || "Unknown",
-        type: "Lead",
-        status: lead.status || "new",
-        avatarUrl: null,
-        email: lead.email,
-        phone: lead.phone,
-        assignee_id: lead.assignee_id,
-        assignee: assigneeData ? {
-          id: lead.assignee_id,
-          name: assigneeData.name,
-          avatar_url: assigneeData.avatar_url
-        } : null,
-        company: companyData,
-        site_id: lead.site_id
-      })
-      
-    } catch (error) {
-      console.error("Error loading lead data:", error)
-      setLeadData(null)
-    } finally {
-      setIsLoadingLead(false)
+      return {
+        leadData: {
+          id: lead.id,
+          name: lead.name || "Unknown",
+          type: "Lead",
+          status: lead.status || "new",
+          avatarUrl: null,
+          email: lead.email,
+          phone: lead.phone,
+          assignee_id: lead.assignee_id,
+          assignee: assigneeData ? {
+            id: lead.assignee_id,
+            name: assigneeData.name,
+            avatar_url: assigneeData.avatar_url
+          } : null,
+          company: companyData,
+          site_id: lead.site_id
+        },
+        isInvalidated: false,
+        isAgentOnly: false
+      }
     }
-  }, [conversationId, siteId])
+  )
   
-  // Load lead data only when necessary
   useEffect(() => {
-    // Only reload if conversation or site actually changed
-    if (lastConversationIdRef.current !== conversationId || lastSiteIdRef.current !== siteId) {
-      // Immediately clear lead data when conversation changes to avoid showing stale data
-      setLeadData(null)
-      setIsLoadingLead(true)
-      setIsLeadInvalidated(false)
-      
-      lastConversationIdRef.current = conversationId
-      lastSiteIdRef.current = siteId || ''
-      loadLeadData()
+    if (data?.isAgentOnly !== undefined) {
+      setIsAgentOnlyConversation(data.isAgentOnly)
     }
-  }, [conversationId, siteId, loadLeadData])
+  }, [data?.isAgentOnly])
   
-  // Check URL parameters for conversation mode - optimized to run once
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href)
@@ -181,22 +114,19 @@ export function useLeadData(conversationId: string, siteId?: string) {
         setIsAgentOnlyConversation(true)
       }
     }
-  }, []) // Only run once on mount
+  }, [])
   
-  // Function to manually refresh lead data
-  const refreshLeadData = useCallback(() => {
-    if (conversationId && !conversationId.startsWith("new-") && lastSiteIdRef.current) {
-      loadLeadData()
-    }
-  }, [conversationId, loadLeadData])
+  const refreshLeadData = useCallback(() => mutate(), [mutate])
+
+  const isLoadingLead = isSwrLoadingLead && data === undefined
 
   return {
-    leadData,
+    leadData: data?.leadData || null,
     isLoadingLead,
     isAgentOnlyConversation,
     setIsAgentOnlyConversation,
-    isLead,
-    isLeadInvalidated,
+    isLead: data?.leadData !== null && data?.leadData !== undefined,
+    isLeadInvalidated: data?.isInvalidated || false,
     refreshLeadData
   }
-} 
+}

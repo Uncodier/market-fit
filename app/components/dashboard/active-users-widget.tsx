@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useSWR from "swr";
 import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useLocalization } from "@/app/context/LocalizationContext";
 
@@ -43,9 +43,6 @@ export function ActiveUsersWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
-  const [activeUsers, setActiveUsers] = useState<PaidActiveUsersData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
@@ -59,54 +56,41 @@ export function ActiveUsersWidget({
     }
   }, [propStartDate, propEndDate]);
 
-  useEffect(() => {
-    const fetchActiveUsers = async () => {
-      // Global widget protection
-      if (!shouldExecuteWidgets) {
-        console.log("[PaidActiveUsersWidget] Widget execution disabled by context");
-        return;
+  const { data: activeUsers, isLoading: isSWRisLoading } = useSWR(
+    shouldExecuteWidgets && currentSite && currentSite.id !== "default"
+      ? [
+          'active-users',
+          segmentId,
+          currentSite.id,
+          user?.id,
+          startDate ? format(startDate, "yyyy-MM-dd") : null,
+          endDate ? format(endDate, "yyyy-MM-dd") : null
+        ]
+      : null,
+    async ([_, segId, siteId, userId, start, end]) => {
+      const params = new URLSearchParams();
+      params.append("segmentId", segId as string);
+      params.append("siteId", siteId as string);
+      if (userId) {
+        params.append("userId", userId as string);
       }
-
-      if (!currentSite || currentSite.id === "default") return;
+      if (start) params.append("startDate", start as string);
+      if (end) params.append("endDate", end as string);
       
-      setIsLoading(true);
-      try {
-        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
-        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
-        
-        const params = new URLSearchParams();
-        params.append("segmentId", segmentId);
-        params.append("siteId", currentSite.id);
-        if (user?.id) {
-          params.append("userId", user.id);
-        }
-        if (start) params.append("startDate", start);
-        if (end) params.append("endDate", end);
-        
-        const response = await fetchWithRetry(
-          fetchWithController,
-          `/api/active-users?${params.toString()}`,
-          { maxRetries: 3 }
-        );
-        
-        // Handle null response (all retries failed or request was cancelled)
-        if (!response) {
-          return;
-        }
-        const data = await response.json();
-        setActiveUsers(data);
-      } catch (error) {
-        // Only log non-abort errors
-        if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error("Error fetching paid active users:", error);
-        }
-      } finally {
-        setIsLoading(false);
+      const response = await fetchWithRetry(
+        fetch,
+        `/api/active-users?${params.toString()}`,
+        { maxRetries: 3 }
+      );
+      
+      if (!response) {
+        return null;
       }
-    };
+      return await response.json() as PaidActiveUsersData;
+    }
+  );
 
-    fetchActiveUsers();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
+  const isLoading = isSWRisLoading;
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

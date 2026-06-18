@@ -17,6 +17,7 @@ import { CohortTables } from "@/app/components/dashboard/cohort-tables"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { LeadsCohortTables } from "@/app/components/dashboard/leads-cohort-tables"
 import { useState, useEffect, useCallback, useRef, Suspense } from "react"
+import useSWR from "swr"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { getSegments } from "@/app/segments/actions"
@@ -34,7 +35,6 @@ import { CPLWidget } from "@/app/components/dashboard/cpl-widget"
 import { format, subMonths, isAfter, isFuture } from "date-fns"
 import { startOfMonth } from "date-fns"
 import { isSameDay, isSameMonth } from "date-fns"
-import { useRequestController } from "@/app/hooks/useRequestController"
 import { useProfile } from "@/app/hooks/use-profile"
 import { usePageRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
 import { useContextEntities } from "@/app/hooks/use-context-entities"
@@ -61,10 +61,15 @@ function DashboardPageContent() {
   const { user } = useAuth()
   const { currentSite } = useSite()
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
-  const [segments, setSegments] = useState<Segment[]>([])
   const [selectedSegment, setSelectedSegment] = useState<string>("all")
-  const [isLoadingSegments, setIsLoadingSegments] = useState(false)
-  const { cancelAllRequests } = useRequestController()
+  const { data: segments = [], isLoading: isLoadingSegments } = useSWR(
+    currentSite && currentSite.id !== "default" ? ['segments', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const result = await getSegments(siteId);
+      if (result.error) throw new Error(result.error);
+      return result.segments || [];
+    }
+  );
   const searchParams = useSearchParams()
   const tabFromUrlRef = useRef<string | null>(null)
   
@@ -113,7 +118,6 @@ function DashboardPageContent() {
 
     if (tabFromUrlRef.current !== next) {
       if (tabFromUrlRef.current !== null) {
-        cancelAllRequests()
         setFormattedTotal("")
         if (typeof window !== "undefined") {
           window.dispatchEvent(
@@ -124,7 +128,7 @@ function DashboardPageContent() {
       tabFromUrlRef.current = next
       setActiveTab(next)
     }
-  }, [searchParams, router, cancelAllRequests])
+  }, [searchParams, router])
   const [isInitialized, setIsInitialized] = useState(false)
 
   // Determine the type of date range based on start and end dates
@@ -227,9 +231,6 @@ function DashboardPageContent() {
       
       console.log(`[Dashboard] After validation: ${format(validatedDates.startDate, 'yyyy-MM-dd')} - ${format(validatedDates.endDate, 'yyyy-MM-dd')}`);
       
-      // Cancel all in-flight requests first to avoid race conditions
-      cancelAllRequests();
-      
       // Then update the date range
       setDateRange(validatedDates);
       determineRangeType(validatedDates.startDate, validatedDates.endDate);
@@ -246,7 +247,7 @@ function DashboardPageContent() {
       console.log(`[Dashboard] Using error fallback in handleDateRangeChange: ${format(safeDefaults.startDate, 'yyyy-MM-dd')} - ${format(safeDefaults.endDate, 'yyyy-MM-dd')}`);
       setDateRange(safeDefaults);
     }
-  }, [cancelAllRequests, determineRangeType, validateDates]);
+  }, [determineRangeType, validateDates]);
 
   // Safety effect to detect and fix future dates that might slip through
   useEffect(() => {
@@ -266,9 +267,6 @@ function DashboardPageContent() {
       if (needsReset) {
         console.log('[Dashboard] Resetting to safe date range');
         
-        // Cancel current requests
-        cancelAllRequests();
-        
         // Use safe dates
         const safeStartDate = subMonths(now, 1);
         const safeEndDate = now;
@@ -283,7 +281,7 @@ function DashboardPageContent() {
         determineRangeType(safeStartDate, safeEndDate);
       }
     }
-  }, [isInitialized, cancelAllRequests, determineRangeType]);
+  }, [isInitialized, determineRangeType]);
 
   // Initialize date range when the component mounts - ENHANCED
   useEffect(() => {
@@ -332,9 +330,6 @@ function DashboardPageContent() {
     if (currentSite?.id) {
       console.log('🔄 Dashboard: Site changed, resetting state and reloading data for site:', currentSite.id)
       
-      // Cancel all in-flight requests when site changes
-      cancelAllRequests()
-      
       // Reset dashboard state
       setSelectedSegment("all")
       setFormattedTotal("")
@@ -347,32 +342,11 @@ function DashboardPageContent() {
       refreshRequirements()
       refreshTasks()
     }
-  }, [currentSite?.id, cancelAllRequests, refreshLeads, refreshContents, refreshRequirements, refreshTasks])
+  }, [currentSite?.id, refreshLeads, refreshContents, refreshRequirements, refreshTasks])
 
-  useEffect(() => {
-    const loadSegments = async () => {
-      if (!currentSite || currentSite.id === "default") return
-
-      setIsLoadingSegments(true)
-      try {
-        const result = await getSegments(currentSite.id)
-        if (result.segments) {
-          setSegments(result.segments)
-        }
-      } catch (error) {
-        console.error("Error loading segments:", error)
-      } finally {
-        setIsLoadingSegments(false)
-      }
-    }
-
-    loadSegments()
-  }, [currentSite])
 
   // Handle segment change
   const handleSegmentChange = (newSegmentId: string) => {
-    // Cancel all in-flight requests when segment changes
-    cancelAllRequests();
     setSelectedSegment(newSegmentId);
   }
 

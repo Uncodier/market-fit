@@ -260,16 +260,52 @@ function safelyHandleError(error: any, fallbackMessage: string = "An error occur
 }
 
 export function AgentToolsPanel() {
-  const [logs, setLogs] = useState<InstanceLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const router = useRouter();
   const { currentSite } = useSite();
+
+  const { data: logsData, isLoading: loading, mutate: mutateLogs } = useSWR(
+    currentSite?.id ? ['logs', currentSite.id, currentPage] : null,
+    async ([_, siteId, page]) => {
+      const result = await getInstanceLogs(siteId, page as number);
+      if (result.error) throw new Error(result.error);
+      return result.logs || [];
+    },
+    { 
+       
+      refreshInterval: 60000 // Poll every minute
+    }
+  )
+
+  const [allLogs, setAllLogs] = useState<InstanceLog[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const error = null;
+
+  // Sync SWR data with accumulated logs for pagination
+  useEffect(() => {
+    if (logsData && logsData.length > 0) {
+      if (currentPage === 1) {
+        setAllLogs(logsData);
+      } else {
+        setAllLogs(prev => {
+          // Prevent duplicates
+          const newLogs = logsData.filter(newLog => !prev.some(p => p.id === newLog.id));
+          return [...prev, ...newLogs];
+        });
+      }
+      setHasMore(logsData.length === 40);
+      setIsLoadingMore(false);
+    } else if (logsData) {
+      if (currentPage === 1) {
+        setAllLogs(prev => prev.length === 0 ? prev : []);
+      }
+      setHasMore(false);
+      setIsLoadingMore(false);
+    }
+  }, [logsData, currentPage]);
+
+  const logs = allLogs;
   
   // Handle navigation to log detail page
   const handleNavigateToLog = useCallback((logId: string) => {
@@ -280,76 +316,13 @@ export function AgentToolsPanel() {
       console.error("Error navigating to log detail:", err);
     }
   }, [router]);
-  
-  // Function to load logs
-  const loadLogs = async (page: number = 1, append: boolean = false) => {
-    if (!currentSite?.id) {
-      console.log("No site ID available");
-      return;
-    }
-
-    try {
-      if (page === 1) {
-        setLoading(true);
-      } else {
-        setIsLoadingMore(true);
-      }
-
-      const result = await getInstanceLogs(currentSite.id, page);
-
-      if (result.error) {
-        console.error("Error:", result.error);
-        setError(result.error);
-        if (!isInitialLoad) {
-          toast.error("Error loading logs.");
-        }
-      } else {
-        if (result.logs && result.logs.length > 0) {
-          setLogs(prev => append ? [...prev, ...result.logs!] : result.logs!);
-          setHasMore(result.logs.length === 40); // If we got less than 40 items, we've reached the end
-          setError(null);
-        } else {
-          if (!append) {
-            setLogs([]);
-          }
-          setHasMore(false);
-        }
-      }
-    } catch (err) {
-      console.error("Error loading logs:", err);
-      setError("Failed to load logs");
-      if (!isInitialLoad) {
-        toast.error("Error loading logs.");
-      }
-    } finally {
-      setLoading(false);
-      setIsLoadingMore(false);
-      if (isInitialLoad) {
-        setIsInitialLoad(false);
-      }
-    }
-  };
 
   // Load more logs
   const handleLoadMore = async () => {
     if (isLoadingMore || !hasMore) return;
-    const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
-    await loadLogs(nextPage, true);
+    setIsLoadingMore(true);
+    setCurrentPage(prev => prev + 1);
   };
-  
-  // Load logs when component mounts or currentSite changes
-  useEffect(() => {
-    setCurrentPage(1);
-    loadLogs(1, false);
-    
-    // Set up polling for real-time updates with a higher interval to reduce load
-    const intervalId = setInterval(() => loadLogs(1, false), 60000); // Update every minute
-    
-    // Clear interval when unmounting
-    return () => clearInterval(intervalId);
-  }, [currentSite?.id]);
-  
   // Memoized logs list
   const filteredLogs = useMemo(() => {
     try {

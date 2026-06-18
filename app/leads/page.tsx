@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { SearchInput } from "@/app/components/ui/search-input"
@@ -347,11 +348,7 @@ export default function LeadsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [activeTab, setActiveTab] = useState("all")
-  const [dbLeads, setDbLeads] = useState<Lead[]>([])
-  const [loading, setLoading] = useState(true)
-  const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
+  const [segmentsData, setSegmentsData] = useState<Array<{ id: string; name: string }>>([])
   const [viewType, setViewType] = useMobileView("table")
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [filters, setFilters] = useState<LeadFilters>({
@@ -362,6 +359,87 @@ export default function LeadsPage() {
   })
   const { currentSite } = useSite()
   const { user } = useAuth()
+  
+  // Debounced search query for SWR
+  const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Fetch leads with SWR
+  const { 
+    data: leadsData, 
+    isLoading: isLeadsLoading, 
+    mutate: mutateLeads 
+  } = useSWR(
+    currentSite?.id ? ['leads', currentSite.id, debouncedSearchQuery] : null,
+    async ([_, siteId, q]) => {
+      if (q) {
+        const result = await searchLeadsWithCount(siteId, q, 200, 0)
+        if (result.error) throw new Error(result.error)
+        return {
+          leads: result.leads?.map((lead: any) => ({
+            ...lead,
+            origin: normalizeOrigin(lead.origin),
+            personal_email: lead.personal_email || null
+          })) || [],
+          totalCount: result.totalCount || 0,
+          isSearch: true
+        }
+      } else {
+        const result = await getLeads(siteId)
+        if (result.error) throw new Error(result.error)
+        
+        const supabase = createClient()
+        const { count } = await supabase
+          .from('leads')
+          .select('*', { count: 'exact', head: true })
+          .eq('site_id', siteId)
+          
+        return {
+          leads: result.leads?.map((lead: any) => ({
+            ...lead,
+            origin: normalizeOrigin(lead.origin),
+            personal_email: lead.personal_email || null
+          })) || [],
+          totalCount: count || 0,
+          isSearch: false
+        }
+      }
+    },
+    { revalidateOnFocus: false }
+  )
+
+  const dbLeads = leadsData?.leads || []
+  const loading = isLeadsLoading
+  const searchTotalCount = leadsData?.isSearch ? leadsData.totalCount : null
+  const allLeadsTotalCount = leadsData && !leadsData.isSearch ? leadsData.totalCount : null
+
+  // Fetch segments with SWR
+  const { data: segments } = useSWR(
+    currentSite?.id ? ['segments', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const response = await getSegments(siteId)
+      if (response.error) throw new Error(response.error)
+      return response.segments?.map(s => ({ id: s.id, name: s.name })) || []
+    },
+    { fallbackData: [] }
+  )
+
+  // Fetch campaigns with SWR
+  const { data: campaigns } = useSWR(
+    currentSite?.id ? ['campaigns', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const result = await getCampaigns(siteId)
+      if (result.error) throw new Error(result.error)
+      return result.data || []
+    },
+    { fallbackData: [] }
+  )
   const [showAttributionModal, setShowAttributionModal] = useState(false)
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     leadId: string
@@ -379,8 +457,6 @@ export default function LeadsPage() {
   const [leadJourneyStages, setLeadJourneyStages] = useState<Record<string, string>>({})
   const [isLoadingJourneyStages, setIsLoadingJourneyStages] = useState(false)
   const [reloadingLeads, setReloadingLeads] = useState<Set<string>>(new Set())
-  const [searchTotalCount, setSearchTotalCount] = useState<number | null>(null)
-  const [allLeadsTotalCount, setAllLeadsTotalCount] = useState<number | null>(null)
   const [sortBy, setSortBy] = useState<LeadSortOption>("newest")
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
@@ -425,109 +501,7 @@ export default function LeadsPage() {
   // Initialize command+k hook
   useCommandK()
   
-  // Función para cargar leads desde la base de datos
-  const loadLeads = async () => {
-    if (!currentSite?.id) return
 
-    setLoading(true)
-    try {
-      const result = await getLeads(currentSite.id)
-      
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      
-      // Asegurarse de que todos los leads tienen todos los campos de la interfaz Lead
-      const normalizedLeads = result.leads?.map((lead: any) => ({
-        ...lead,
-        origin: normalizeOrigin(lead.origin),
-        personal_email: lead.personal_email || null
-      })) || []
-      
-      setDbLeads(normalizedLeads)
-      setSearchTotalCount(null)
-
-      // Fetch exact total count for table view (non-search)
-      try {
-        const supabase = createClient()
-        const { count, error } = await supabase
-          .from('leads')
-          .select('*', { count: 'exact', head: true })
-          .eq('site_id', currentSite.id)
-        if (error) {
-          console.error('Error fetching total leads count:', error)
-          setAllLeadsTotalCount(null)
-        } else {
-          setAllLeadsTotalCount(count || 0)
-        }
-      } catch (err) {
-        console.error('Error in total leads count:', err)
-        setAllLeadsTotalCount(null)
-      }
-
-      // Load total counts for kanban view
-      if (viewType === 'kanban') {
-        await loadTotalCounts()
-      }
-    } catch (error) {
-      console.error("Error loading leads:", error)
-      toast.error("Error loading leads")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Cloud search (debounced) to query the full dataset on Supabase
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null
-    let cancelled = false
-
-    const run = async () => {
-      if (!currentSite?.id) return
-
-      const q = (searchQuery || "").trim()
-      if (q === "") {
-        // If query cleared, restore full dataset
-        await loadLeads()
-        return
-      }
-
-      setLoading(true)
-      try {
-        // Fetch page worth of data and exact count
-        const result = await searchLeadsWithCount(currentSite.id, q, 200, 0)
-        if (cancelled) return
-        if (result.error) {
-          toast.error(result.error)
-          setDbLeads([])
-          setSearchTotalCount(0)
-          return
-        }
-        setDbLeads(result.leads || [])
-        setSearchTotalCount(result.totalCount || 0)
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Error searching leads:", error)
-          toast.error("Error searching leads")
-          setDbLeads([])
-          setSearchTotalCount(0)
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    // Debounce to reduce requests while typing
-    if (searchQuery !== undefined) {
-      timeoutId = setTimeout(run, 350)
-    }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-      cancelled = true
-    }
-  }, [searchQuery, currentSite?.id])
 
   // Function to load total counts for kanban view
   const loadTotalCounts = React.useCallback(async () => {
@@ -634,12 +608,15 @@ export default function LeadsPage() {
       }))
 
       // Add new leads to the existing leads array
-      setDbLeads(prevLeads => {
-        // Remove any existing leads with the same IDs to avoid duplicates
-        const existingLeadIds = new Set(prevLeads.map((l: Lead) => l.id))
+      mutateLeads((currentData: any) => {
+        if (!currentData) return currentData
+        const existingLeadIds = new Set(currentData.leads.map((l: Lead) => l.id))
         const newLeads = normalizedMoreLeads.filter((l: any) => !existingLeadIds.has(l.id))
-        return [...prevLeads, ...newLeads]
-      })
+        return {
+          ...currentData,
+          leads: [...currentData.leads, ...newLeads]
+        }
+      }, { revalidate: false })
 
       // Update pagination state
       setKanbanPagination(prev => ({
@@ -669,48 +646,8 @@ export default function LeadsPage() {
     }
   }, [viewType, loading, loadTotalCounts])
 
-  // Cargar leads y datos relacionados
+  // Cargar leads y datos relacionados (handled by SWR, but invalidating cache when site changes)
   useEffect(() => {
-    async function loadSegments() {
-      if (!currentSite?.id) return
-      
-      try {
-        const response = await getSegments(currentSite.id)
-        if (response.error) {
-          console.error(response.error)
-          return
-        }
-        
-        if (response.segments) {
-          setSegments(response.segments.map(s => ({ id: s.id, name: s.name })))
-        }
-      } catch (error) {
-        console.error("Error loading segments:", error)
-      }
-    }
-    
-    async function loadCampaigns() {
-      if (!currentSite?.id) return
-      
-      try {
-        const result = await getCampaigns(currentSite.id)
-        
-        if (result.error) {
-          console.error(result.error)
-          return
-        }
-        
-        setCampaigns(result.data || [])
-      } catch (error) {
-        console.error("Error loading campaigns:", error)
-      }
-    }
-
-    loadLeads()
-    loadSegments()
-    loadCampaigns()
-    
-    // Invalidar cache de journey stages cuando se carga un nuevo site
     if (currentSite?.id) {
       setForceReload(prev => prev + 1)
     }
@@ -1033,19 +970,26 @@ export default function LeadsPage() {
 
   // Función para actualizar un lead localmente
   const handleUpdateLead = (leadId: string, updates: Partial<Lead> & { invalidated?: boolean }) => {
-    // Si el lead fue invalidado, removerlo completamente del estado
-    if (updates.invalidated) {
-      setDbLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId))
-      return
-    }
-    
-    setDbLeads(prevLeads => 
-      prevLeads.map(lead => 
-        lead.id === leadId 
-          ? { ...lead, ...updates }
-          : lead
-      )
-    )
+    mutateLeads((currentData: any) => {
+      if (!currentData) return currentData
+      
+      // Si el lead fue invalidado, removerlo completamente del estado
+      if (updates.invalidated) {
+        return {
+          ...currentData,
+          leads: currentData.leads.filter((lead: Lead) => lead.id !== leadId)
+        }
+      }
+      
+      return {
+        ...currentData,
+        leads: currentData.leads.map((lead: Lead) => 
+          lead.id === leadId 
+            ? { ...lead, ...updates }
+            : lead
+        )
+      }
+    }, { revalidate: false })
   }
 
   // Función para eliminar un lead
@@ -1059,7 +1003,13 @@ export default function LeadsPage() {
       }
       
       // Remover el lead del estado local
-      setDbLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId))
+      mutateLeads((currentData: any) => {
+        if (!currentData) return currentData
+        return {
+          ...currentData,
+          leads: currentData.leads.filter((lead: Lead) => lead.id !== leadId)
+        }
+      }, { revalidate: false })
       
       toast.success("Lead deleted successfully")
     } catch (error) {
@@ -1242,15 +1192,19 @@ export default function LeadsPage() {
       }
       
       // Actualizamos el lead en el estado local
-      setDbLeads(prevLeads => 
-        prevLeads.map(l => 
-          l.id === leadId ? { 
-            ...l, 
-            status: newStatus as any,
-            ...(attribution && { attribution })
-          } : l
-        )
-      );
+      mutateLeads((currentData: any) => {
+        if (!currentData) return currentData
+        return {
+          ...currentData,
+          leads: currentData.leads.map((l: Lead) => 
+            l.id === leadId ? { 
+              ...l, 
+              status: newStatus as any,
+              ...(attribution && { attribution })
+            } : l
+          )
+        }
+      }, { revalidate: false })
       
       toast.success("Lead updated successfully")
     } catch (error) {
@@ -1322,7 +1276,13 @@ export default function LeadsPage() {
       const promises = Array.from(selectedLeads).map(id => deleteLead(id))
       await Promise.all(promises)
       
-      setDbLeads(prev => prev.filter(lead => !selectedLeads.has(lead.id)))
+      mutateLeads((currentData: any) => {
+        if (!currentData) return currentData
+        return {
+          ...currentData,
+          leads: currentData.leads.filter((lead: Lead) => !selectedLeads.has(lead.id))
+        }
+      }, { revalidate: false })
       setSelectedLeads(new Set())
       toast.success(`${selectedLeads.size} leads deleted successfully`)
     } catch (error) {
@@ -1344,9 +1304,15 @@ export default function LeadsPage() {
       const promises = Array.from(selectedLeads).map(id => assignLeadToUser(id, user.id, currentSite.id))
       await Promise.all(promises)
       
-      setDbLeads(prev => prev.map(lead => 
-        selectedLeads.has(lead.id) ? { ...lead, assignee_id: user.id } : lead
-      ))
+      mutateLeads((currentData: any) => {
+        if (!currentData) return currentData
+        return {
+          ...currentData,
+          leads: currentData.leads.map((lead: Lead) => 
+            selectedLeads.has(lead.id) ? { ...lead, assignee_id: user.id } : lead
+          )
+        }
+      }, { revalidate: false })
       setSelectedLeads(new Set())
       toast.success(`${selectedLeads.size} leads assigned successfully`)
     } catch (error) {
@@ -1362,9 +1328,9 @@ export default function LeadsPage() {
 
     setIsBulkActionLoading(true)
     try {
-      const leadsToUpdate = dbLeads.filter(lead => selectedLeads.has(lead.id))
+      const leadsToUpdate = dbLeads.filter((lead: Lead) => selectedLeads.has(lead.id))
       
-      const promises = leadsToUpdate.map(lead => {
+      const promises = leadsToUpdate.map((lead: Lead) => {
         const normalizedCompany = normalizeCompanyField(lead)
         const updateData: any = {
           id: lead.id,
@@ -1387,9 +1353,15 @@ export default function LeadsPage() {
       
       await Promise.all(promises)
       
-      setDbLeads(prev => prev.map(lead => 
-        selectedLeads.has(lead.id) ? { ...lead, status: newStatus as any } : lead
-      ))
+      mutateLeads((currentData: any) => {
+        if (!currentData) return currentData
+        return {
+          ...currentData,
+          leads: currentData.leads.map((lead: Lead) => 
+            selectedLeads.has(lead.id) ? { ...lead, status: newStatus as any } : lead
+          )
+        }
+      }, { revalidate: false })
       setSelectedLeads(new Set())
       toast.success(`Status updated for ${selectedLeads.size} leads`)
     } catch (error) {

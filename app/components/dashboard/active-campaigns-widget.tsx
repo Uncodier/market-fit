@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useSWR from "swr";
 import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useLocalization } from "@/app/context/LocalizationContext";
 
@@ -41,10 +41,6 @@ export function ActiveCampaignsWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
-  const [activeCampaigns, setActiveCampaigns] = useState<ActiveCampaignsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
@@ -58,65 +54,49 @@ export function ActiveCampaignsWidget({
     }
   }, [propStartDate, propEndDate]);
 
-  useEffect(() => {
-    const fetchActiveCampaigns = async () => {
-      // Global widget protection
-      if (!shouldExecuteWidgets) {
-        console.log("[ActiveCampaignsWidget] Widget execution disabled by context");
-        return;
-      }
-
-      if (!currentSite || currentSite.id === "default") return;
+  const { data: activeCampaigns, isLoading: isSWRisLoading, error } = useSWR(
+    shouldExecuteWidgets && currentSite && currentSite.id !== "default"
+      ? [
+          'active-campaigns',
+          currentSite.id,
+          user?.id,
+          startDate ? format(startDate, "yyyy-MM-dd") : null,
+          endDate ? format(endDate, "yyyy-MM-dd") : null
+        ]
+      : null,
+    async ([_, siteId, userId, start, end]) => {
+      const now = new Date();
+      // Ensure we re-parse dates locally to validate if needed
+      const validStartDate = startDate > now ? new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()) : startDate;
+      const validEndDate = endDate > now ? now : endDate;
       
-      setIsLoading(true);
-      setHasError(false);
-      
-      try {
-        // Validate dates - don't allow future dates
-        const now = new Date();
-        const validStartDate = startDate > now ? new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()) : startDate;
-        const validEndDate = endDate > now ? now : endDate;
-        
-        console.log("[ActiveCampaignsWidget] Fetching for site:", currentSite.id);
-        const start = validStartDate ? format(validStartDate, "yyyy-MM-dd") : null;
-        const end = validEndDate ? format(validEndDate, "yyyy-MM-dd") : null;
-        
-        const params = new URLSearchParams();
-        params.append("siteId", currentSite.id);
-        if (user?.id) {
-          params.append("userId", user.id);
-        }
-        if (start) params.append("startDate", start);
-        if (end) params.append("endDate", end);
-        
-        console.log("[ActiveCampaignsWidget] Requesting data with params:", Object.fromEntries(params.entries()));
-        
-        const response = await fetchWithRetry(
-          fetchWithController,
-          `/api/active-campaigns?${params.toString()}`,
-          { maxRetries: 3 }
-        );
-        
-        // Handle null response (all retries failed or request was cancelled)
-        if (!response) {
-          return;
-        }
-        
-        const data = await response.json();
-        setActiveCampaigns(data);
-      } catch (error) {
-        // Only log non-abort errors
-        if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error("Error fetching active campaigns:", error);
-        }
-        setHasError(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      const startStr = validStartDate ? format(validStartDate, "yyyy-MM-dd") : null;
+      const endStr = validEndDate ? format(validEndDate, "yyyy-MM-dd") : null;
 
-    fetchActiveCampaigns();
-  }, [shouldExecuteWidgets, startDate, endDate, currentSite, user, fetchWithController]);
+      const params = new URLSearchParams();
+      params.append("siteId", siteId as string);
+      if (userId) {
+        params.append("userId", userId as string);
+      }
+      if (startStr) params.append("startDate", startStr as string);
+      if (endStr) params.append("endDate", endStr as string);
+      
+      const response = await fetchWithRetry(
+        fetch,
+        `/api/active-campaigns?${params.toString()}`,
+        { maxRetries: 3 }
+      );
+      
+      if (!response) {
+        return null;
+      }
+      
+      return await response.json() as ActiveCampaignsData;
+    }
+  );
+
+  const isLoading = isSWRisLoading;
+  const hasError = !!error;
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

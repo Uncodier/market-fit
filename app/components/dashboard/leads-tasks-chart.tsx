@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useSite } from "@/app/context/SiteContext";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -30,7 +29,6 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { currentSite } = useSite();
-  const { fetchWithController } = useRequestController();
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
@@ -48,7 +46,7 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
       });
 
       const response = await fetchWithRetry(
-        fetchWithController,
+        fetch,
         `/api/performance/metrics-overview?${params}`,
         { maxRetries: 3 }
       );
@@ -66,7 +64,7 @@ export function LeadsTasksChart({ startDate, endDate, segmentId = "all" }: Leads
     };
 
     fetchData();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, fetchWithController]);
+  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, ]);
 
   const colors = {
     text: isDarkMode ? "#CBD5E1" : "#9CA3AF",

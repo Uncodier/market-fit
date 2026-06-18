@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useLayoutEffect, Suspense, useCallback, useRef, useMemo } from "react"
+import useSWR from "swr"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -38,6 +39,8 @@ interface Robot {
   runs: number;
   successRate: number;
 }
+
+const EMPTY_AVATARS = {};
 
 // Helper to sort instances: 'play' status first, then by updated_at descending
 const sortInstances = (instances: any[]) => {
@@ -275,17 +278,15 @@ function RobotsPageContent() {
   }, [selectedInstanceId])
 
   // Fetch latest image asset for each instance to use as avatar
-  useEffect(() => {
-    let isMounted = true;
-    const fetchAvatars = async () => {
-      if (!allInstances || allInstances.length === 0) return;
-      
+  const { data: fetchedAvatars } = useSWR(
+    allInstances?.length > 0 ? ['instance-avatars', allInstances.map(i => i.id).join(',')] : null,
+    async () => {
       const supabase = createClient();
       const instanceIds = allInstances.map(i => i.id);
+      const avatarsMap: Record<string, string> = {};
       
       const chunkSize = 20;
       for (let i = 0; i < instanceIds.length; i += chunkSize) {
-        if (!isMounted) break;
         const chunk = instanceIds.slice(i, i + chunkSize);
         
         const promises = chunk.map(async (id) => {
@@ -309,28 +310,26 @@ function RobotsPageContent() {
         });
         
         const results = await Promise.all(promises);
-        if (isMounted) {
-          setInstanceAvatars(prev => {
-            const newAvatars = { ...prev };
-            results.forEach(res => {
-              if (res.url) {
-                newAvatars[res.id] = res.url;
-              }
-            });
-            return newAvatars;
-          });
-        }
+        results.forEach(res => {
+          if (res.url) avatarsMap[res.id] = res.url;
+        });
       }
-    };
-    
-    fetchAvatars();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [allInstances]);
+      return avatarsMap;
+    },
+    { fallbackData: EMPTY_AVATARS, keepPreviousData: true }
+  );
 
-
+  useEffect(() => {
+    if (fetchedAvatars && Object.keys(fetchedAvatars).length > 0) {
+      setInstanceAvatars(prev => {
+        const hasChanges = Object.entries(fetchedAvatars).some(([k, v]) => prev[k] !== v);
+        if (hasChanges) {
+          return { ...prev, ...fetchedAvatars };
+        }
+        return prev;
+      });
+    }
+  }, [fetchedAvatars]);
   // Function to check if instances exist in database (bypassing state)
   const checkInstancesExistInDB = useCallback(async (siteId: string): Promise<boolean> => {
     try {
@@ -895,43 +894,47 @@ function RobotsPageContent() {
 
 
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
-  const [databaseArtifactUrl, setDatabaseArtifactUrl] = useState<string>("/applications/database?artifact=true")
 
-  useEffect(() => {
-    let cancelled = false;
-    const fetchDatabaseUrl = async () => {
-      // First try to find a requirement with a tenant
+  const { data: databaseArtifactUrlData } = useSWR(
+    ['database-artifact', requirementStatuses?.map(r => r.requirement_id).join(','), activeRobotInstance?.id],
+    async () => {
+      let url = `/applications/database?artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`;
       if (requirementStatuses && requirementStatuses.length > 0) {
-        // We'll iterate backwards to find the most recent one
-        for (let i = requirementStatuses.length - 1; i >= 0; i--) {
-          const reqId = requirementStatuses[i]?.requirement_id;
-          if (!reqId) continue;
+        // Ejecutar las peticiones en paralelo en lugar de cascada para evitar bloqueos
+        const fetchPromises = requirementStatuses.map(async (status) => {
+          const reqId = status?.requirement_id;
+          if (!reqId) return null;
           
           try {
             const res = await fetch(`/api/applications/tenants?requirementId=${reqId}`);
             if (res.ok) {
               const data = await res.json();
-              if (!cancelled && data.tenant_id && data.schema) {
-                setDatabaseArtifactUrl(`/applications/database/${data.tenant_id}?schema=${data.schema}&artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`);
-                return;
+              if (data.tenant_id && data.schema) {
+                return data;
               }
             }
           } catch (e) {
             console.error("Error fetching tenant info for database artifact:", e);
           }
+          return null;
+        });
+
+        const results = await Promise.all(fetchPromises);
+
+        // Iterar de atrás hacia adelante para priorizar el requirement más reciente
+        for (let i = results.length - 1; i >= 0; i--) {
+          const data = results[i];
+          if (data && data.tenant_id && data.schema) {
+            return `/applications/database/${data.tenant_id}?schema=${data.schema}&artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`;
+          }
         }
       }
-      
-      // If we couldn't find a tenant from requirements, but we have an active instance, 
-      // let's try to pass the instance ID to the generic view so it can maybe figure it out 
-      // from the instance's requirements (although this should be caught by the above loop)
-      if (!cancelled) {
-        setDatabaseArtifactUrl(`/applications/database?artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`);
-      }
-    };
-    fetchDatabaseUrl();
-    return () => { cancelled = true; };
-  }, [requirementStatuses, activeRobotInstance?.id]);
+      return url;
+    },
+    {}
+  )
+
+  const databaseArtifactUrl = databaseArtifactUrlData || `/applications/database?artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`;
 
   useEffect(() => {
     const handleToggle = () => setActiveBrowserTab(prev => prev.kind === 'source' ? { kind: 'preview' } : { kind: 'source' })
@@ -1564,7 +1567,7 @@ function RobotsPageContent() {
                   {/* Browser navigation bar */}
                   <div className="flex items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-background">
                     {hasRequirementPreview && activeBrowserTab.kind !== 'artifact' ? (
-                      <div className="flex items-center gap-2 flex-1 min-w-0 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-1">
+                      <div className="flex items-center gap-2 flex-1 min-w-[120px] bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-1">
                         {isZipUrl ? (
                           <>
                             <div className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-muted-foreground">
@@ -1679,7 +1682,7 @@ function RobotsPageContent() {
                       </div>
                     )}
 
-                    <div className="hidden sm:flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1 overflow-x-auto">
+                    <div className="flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1 overflow-x-auto min-w-0 max-w-[40vw] sm:max-w-[50vw] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                       {hasRequirementPreview && (
                         <>
                           <button

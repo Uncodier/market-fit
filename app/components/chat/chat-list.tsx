@@ -19,6 +19,7 @@ import { DeleteConfirmationModal } from "./DeleteConfirmationModal"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { ConversationItem } from "./ConversationItem"
 import { ChannelFilter } from "./ChannelFilter"
+import { useConversationsList } from "@/app/hooks/useConversationsList"
 
 // Componente para renderizar esqueletos de carga
 function ConversationSkeleton() {
@@ -93,10 +94,6 @@ export function ChatList({
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
-  const [conversations, setConversations] = useState<ConversationListItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isInitialLoad, setIsInitialLoad] = useState(true)
-  const [hasEmptyResult, setHasEmptyResult] = useState(false)
   const [combinedFilter, setCombinedFilter] = useState<'all' | 'outbound' | 'inbound' | 'replied' | 'tasks' | 'assigned' | 'qualified'>('all')
   const { isDarkMode } = useTheme()
   const { user } = useAuthContext()
@@ -154,17 +151,29 @@ export function ChatList({
     return () => clearTimeout(timer)
   }, [searchQuery])
   
-  // Pagination states - similar to commands-panel.tsx
-  const [currentPage, setCurrentPage] = useState(1)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
-  
+  const {
+    conversations,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    hasEmptyResult,
+    isInitialLoad,
+    updateConversations,
+    refreshConversations,
+    loadMore,
+    refreshRef,
+  } = useConversationsList({
+    siteId,
+    userId: user?.id,
+    combinedFilter,
+    debouncedSearchQuery,
+  })
+
   // Reference for the subscription
   const subscriptionRef = useRef<any>(null);
   // Reference to store the current selected conversation ID
   const selectedConversationIdRef = useRef<string | undefined>(selectedConversationId);
-  // Reference to store the loadConversations function
-  const loadConversationsRef = useRef<(() => Promise<void>) | null>(null);
+  const loadConversationsRef = refreshRef;
   
   // Estado para el modal de renombrar
   const [renameModalOpen, setRenameModalOpen] = useState(false)
@@ -174,8 +183,6 @@ export function ChatList({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [conversationToDelete, setConversationToDelete] = useState<ConversationListItem | null>(null)
   
-  // New ref to track initial load state
-  const isFirstLoadRef = useRef(true);
 
   // State for bulk pending actions
   const [isAcceptingAll, setIsAcceptingAll] = useState(false)
@@ -186,126 +193,15 @@ export function ChatList({
     selectedConversationIdRef.current = selectedConversationId;
   }, [selectedConversationId]);
 
-  // Load conversations with pagination - similar to commands-panel.tsx
-  const loadConversations = useCallback(async (page: number = 1, append: boolean = false, searchQuery?: string) => {
-    if (!siteId) {
-      console.log('🔍 DEBUG: Cannot load conversations - no siteId provided');
-      return;
-    }
-    
-    console.log(`🔍 DEBUG: loadConversations called for site: ${siteId}, page: ${page}, append: ${append}, filter: ${combinedFilter}, search: ${searchQuery || 'none'}`);
-    
-    // Solo mostrar el esqueleto en la primera carga
-    const isFirstLoad = isFirstLoadRef.current && page === 1;
-    if (isFirstLoad) {
-      console.log('🔍 DEBUG: First load - showing skeleton');
-      setIsLoading(true);
-      // Establecer que ya no es la primera carga
-      isFirstLoadRef.current = false;
-    } else if (page > 1) {
-      console.log('🔍 DEBUG: Loading more - showing loading more state');
-      setIsLoadingMore(true);
-    }
-    
-    try {
-      // Request conversations from server with pagination and channel filter
-      // Separate combined filter into channel, assignee, initiatedBy, and tasks filters
-      const channelFilter = 'all' // Channel filters removed
-      const assigneeFilter = combinedFilter === 'assigned' ? 'assigned' : 'all'
-      const initiatedByFilter = combinedFilter === 'inbound' ? 'visitor' : combinedFilter === 'outbound' ? 'agent' : combinedFilter === 'replied' ? 'replied' : 'all'
-      const tasksOnly = combinedFilter === 'tasks'
-      const qualifiedLeadsOnly = combinedFilter === 'qualified'
-      
-      const { getConversations } = await import('@/app/services/getConversations.client')
-      const result = await getConversations(
-        siteId,
-        page,
-        20,
-        channelFilter,
-        assigneeFilter,
-        user?.id,
-        searchQuery,
-        initiatedByFilter,
-        tasksOnly,
-        qualifiedLeadsOnly
-      ) // 20 conversations per page
-      console.log(`🔍 DEBUG: getConversations returned ${result.length} conversations for page ${page}`);
-      
-      if (result.length > 0) {
-        if (append) {
-          setConversations(prev => {
-            // Filter out any conversations that already exist to avoid duplicates
-            const existingIds = new Set(prev.map(conv => conv.id));
-            const newConversations = result.filter(conv => !existingIds.has(conv.id));
-            return [...prev, ...newConversations];
-          })
-        } else {
-          setConversations(result)
-        }
-        
-        // If we got less than 20 items, we've reached the end
-        setHasMore(result.length === 20)
-        setHasEmptyResult(false)
-        setIsInitialLoad(false)
-      } else {
-        if (!append) {
-          setConversations([])
-          setHasEmptyResult(true)
-        }
-        setHasMore(false)
-        setIsInitialLoad(false)
-      }
-      
-      // Solo aplicar el retraso para la primera carga
-      if (isFirstLoad) {
-        // Pequeño retraso antes de ocultar el esqueleto para evitar parpadeos
-        setTimeout(() => {
-          setIsLoading(false)
-        }, 300)
-      }
-    } catch (error) {
-      console.error("Error loading conversations:", error)
-      if (!append) {
-        setHasEmptyResult(true)
-        setIsInitialLoad(false)
-      }
-      setIsLoading(false)
-      setHasMore(false)
-    } finally {
-      if (!isFirstLoad) {
-        setIsLoadingMore(false)
-      }
-      console.log('🔍 DEBUG: loadConversations completed');
-    }
-  }, [siteId, combinedFilter])
-
-  // Handle load more - similar to commands-panel.tsx
   const handleLoadMore = async () => {
-    if (isLoadingMore || !hasMore) return;
-    const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
-    await loadConversations(nextPage, true, debouncedSearchQuery);
-  };
+    await loadMore()
+  }
 
   useEffect(() => {
-    let active = true
-    
-    // Reset pagination state when siteId changes
-    setCurrentPage(1)
-    setHasMore(true)
-    
-    const loadInitialConversations = () => loadConversations(1, false)
-    
-    loadInitialConversations()
-    
-    // Store the loadConversations function in the ref
-    loadConversationsRef.current = loadInitialConversations;
-    
-    // Solo ejecutar onLoadConversations si la prop existe, evitando ejecutarlo si no es necesario
     if (onLoadConversations) {
-      onLoadConversations(loadInitialConversations);
+      onLoadConversations(refreshConversations)
     }
-    
+
     // Set up real-time subscription for conversations
     if (siteId && !subscriptionRef.current) {
       try {
@@ -401,7 +297,6 @@ export function ChatList({
             
             if (payload.new) {
               // Asegurar que isLoading sea false antes de actualizar
-              setIsLoading(false);
               
               try {
                 // Obtener detalles actualizados si es necesario
@@ -420,7 +315,7 @@ export function ChatList({
                 }
                 
                 // Actualizar sólo la conversación modificada en el estado
-                setConversations(prevConversations => 
+                updateConversations(prevConversations => 
                   prevConversations.map(conv => 
                     conv.id === payload.new.id 
                       ? { 
@@ -444,7 +339,7 @@ export function ChatList({
                 console.error('🔍 Error fetching conversation details for UPDATE:', error);
                 
                 // Fallback: actualizar solo con los datos disponibles
-                setConversations(prevConversations => 
+                updateConversations(prevConversations => 
                   prevConversations.map(conv => 
                     conv.id === payload.new.id 
                       ? { 
@@ -473,7 +368,6 @@ export function ChatList({
           console.log('🔍 INSERT event received:', payload);
           
           // Asegurar que isLoading sea false antes de actualizar
-          setIsLoading(false);
           
           // Obtener información completa de la nueva conversación
           if (payload.new && payload.new.id) {
@@ -509,7 +403,7 @@ export function ChatList({
               };
               
               // Añadir la nueva conversación al principio de la lista, evitando duplicados
-              setConversations(prev => {
+              updateConversations(prev => {
                 // Check if conversation already exists
                 const exists = prev.some(conv => conv.id === newConversation.id);
                 if (exists) {
@@ -531,7 +425,7 @@ export function ChatList({
                     .eq('id', payload.new.id)
                     .single();
                   if (!convErr && convRow && convRow.title && String(convRow.title).trim() !== "" && convRow.title !== newConversation.title) {
-                    setConversations(prev => prev.map(c => c.id === convRow.id ? { ...c, title: convRow.title } : c));
+                    updateConversations(prev => prev.map(c => c.id === convRow.id ? { ...c, title: convRow.title } : c));
                     console.log(`🔍 Title corrected from DB for conversation ${convRow.id}: ${convRow.title}`);
                   }
                 } catch (fetchErr) {
@@ -544,9 +438,6 @@ export function ChatList({
               
               // Fallback: recargar toda la lista si no podemos obtener los detalles
               if (loadConversationsRef.current) {
-                const wasFirstLoad = isFirstLoadRef.current;
-                isFirstLoadRef.current = false; // Forzar a falso para evitar el esqueleto
-                
                 loadConversationsRef.current().then(() => {
                   console.log(`🔍 List reloaded for INSERT due to error fetching details`);
                 });
@@ -557,9 +448,6 @@ export function ChatList({
           } else {
             // Solo si no tenemos información básica, recargamos la lista completa
             if (loadConversationsRef.current) {
-              const wasFirstLoad = isFirstLoadRef.current;
-              isFirstLoadRef.current = false; // Forzar a falso para evitar el esqueleto
-              
               loadConversationsRef.current().then(() => {
                 console.log(`🔍 List reloaded for INSERT without conversation ID`);
               });
@@ -579,11 +467,10 @@ export function ChatList({
           console.log('🔍 DELETE event received:', payload);
           
           // Asegurar que isLoading sea false antes de actualizar
-          setIsLoading(false);
           
           if (payload.old && payload.old.id) {
             // Eliminar la conversación del estado directamente
-            setConversations(prevConversations => 
+            updateConversations(prevConversations => 
               prevConversations.filter(conv => conv.id !== payload.old.id)
             );
             
@@ -630,8 +517,6 @@ export function ChatList({
     }
     
     return () => {
-      active = false;
-      
       // Clean up subscription
       if (subscriptionRef.current) {
         console.log('Unsubscribing from conversations');
@@ -640,7 +525,7 @@ export function ChatList({
         subscriptionRef.current = null;
       }
     }
-  }, [siteId, onLoadConversations])
+  }, [siteId, onLoadConversations, refreshConversations, updateConversations])
 
   // Listen for custom conversation deleted event
   useEffect(() => {
@@ -649,7 +534,7 @@ export function ChatList({
       console.log('🔍 Custom conversation:deleted event received:', deletedId)
       
       // Remove the conversation from the list immediately
-      setConversations(prevConversations => 
+      updateConversations(prevConversations => 
         prevConversations.filter(conv => conv.id !== deletedId)
       )
       
@@ -673,7 +558,7 @@ export function ChatList({
       console.log('🔍 Custom conversation:message-accepted event received:', acceptedConvId)
       
       // Update the conversation to mark it has an accepted message
-      setConversations(prevConversations => 
+      updateConversations(prevConversations => 
         prevConversations.map(conv => 
           conv.id === acceptedConvId 
             ? { ...conv, hasAcceptedMessage: true }
@@ -696,7 +581,7 @@ export function ChatList({
       console.log('🔍 Custom lead:status-updated event received:', { leadId, newStatus, conversationId: updatedConvId })
       
       // Update the conversation's leadStatus in the list
-      setConversations(prevConversations => 
+      updateConversations(prevConversations => 
         prevConversations.map(conv => 
           conv.id === updatedConvId && conv.leadName
             ? { ...conv, leadStatus: newStatus }
@@ -712,33 +597,6 @@ export function ChatList({
     }
   }, [])
 
-  // Reset conversations and reload when channel filter changes
-  useEffect(() => {
-    if (siteId) {
-      console.log(`🔍 DEBUG: Filter changed to: ${combinedFilter}, reloading conversations`);
-      // Reset pagination state
-      setCurrentPage(1)
-      setHasMore(true)
-      // Reset isFirstLoadRef so skeleton shows on filter change
-      isFirstLoadRef.current = true
-      // Load conversations with new filter
-      loadConversations(1, false)
-    }
-  }, [combinedFilter, siteId, loadConversations])
-
-  // Handle search query changes
-  useEffect(() => {
-    if (siteId) {
-      console.log(`🔍 DEBUG: Search query changed to: "${debouncedSearchQuery}", reloading conversations`);
-      // Reset pagination state
-      setCurrentPage(1)
-      setHasMore(true)
-      // Reset isFirstLoadRef so skeleton shows on search
-      isFirstLoadRef.current = true
-      // Load conversations with search query
-      loadConversations(1, false, debouncedSearchQuery)
-    }
-  }, [debouncedSearchQuery, siteId, loadConversations])
 
   // Note: conversation:deleted event is already handled above (lines 617-638)
   // which removes the conversation from state directly without reloading
@@ -769,7 +627,6 @@ export function ChatList({
   const deleteConversation = async (conversationId: string) => {
     try {
       // Asegurar que no se muestre el esqueleto
-      setIsLoading(false);
       
       // Call the Supabase client to delete the conversation
       const supabase = createClient();
@@ -802,7 +659,7 @@ export function ChatList({
       }
       
       // Eliminar directamente del estado en lugar de recargar
-      setConversations(prevConversations => 
+      updateConversations(prevConversations => 
         prevConversations.filter(conv => conv.id !== conversationId)
       );
       console.log(`🔍 DEBUG: Conversation ${conversationId} removed from state directly`);
@@ -815,7 +672,6 @@ export function ChatList({
       console.error("Error in deleteConversation:", error);
     } finally {
       // Asegurar que isLoading permanezca en false
-      setIsLoading(false);
     }
   };
 
@@ -823,7 +679,6 @@ export function ChatList({
   const archiveConversation = async (conversationId: string) => {
     try {
       // Asegurar que no se muestre el esqueleto
-      setIsLoading(false);
       
       const supabase = createClient();
       
@@ -839,7 +694,7 @@ export function ChatList({
       }
       
       // Actualizar directamente en el estado en lugar de recargar
-      setConversations(prevConversations => 
+      updateConversations(prevConversations => 
         prevConversations.filter(conv => conv.id !== conversationId)
       );
       console.log(`🔍 DEBUG: Archived conversation ${conversationId} removed from state directly`);
@@ -852,7 +707,6 @@ export function ChatList({
       console.error("Error in archiveConversation:", error);
     } finally {
       // Asegurar que isLoading permanezca en false
-      setIsLoading(false);
     }
   };
 
@@ -865,9 +719,8 @@ export function ChatList({
   // Función para actualizar directamente el título de una conversación en el estado
   const handleDirectTitleUpdate = (conversationId: string, newTitle: string) => {
     // Asegurar que no se muestre el esqueleto
-    setIsLoading(false);
     
-    setConversations(prevConversations => 
+    updateConversations(prevConversations => 
       prevConversations.map(conv => 
         conv.id === conversationId 
           ? { ...conv, title: newTitle } 
@@ -913,7 +766,7 @@ export function ChatList({
       const conversationIds: string[] = result.conversationIds ?? []
 
       // Update local state — mark affected conversations as having accepted messages
-      setConversations(prevConversations =>
+      updateConversations(prevConversations =>
         prevConversations.map(conv =>
           conversationIds.includes(conv.id)
             ? { ...conv, hasAcceptedMessage: true }
@@ -967,7 +820,7 @@ export function ChatList({
       const conversationsToDelete: string[] = result.conversationsToDelete ?? []
 
       // Remove deleted conversations from local state
-      setConversations((prev) =>
+      updateConversations((prev) =>
         prev.filter((conv) => !conversationsToDelete.includes(conv.id))
       )
 
@@ -1170,7 +1023,7 @@ export function ChatList({
           onOpenChange={setRenameModalOpen}
           conversationId={currentConversation.id}
           currentTitle={currentConversation.title}
-          onRename={loadConversationsRef.current || (() => Promise.resolve())}
+          onRename={refreshConversations}
           onDirectUpdate={handleDirectTitleUpdate}
         />
       )}

@@ -5,7 +5,6 @@ import { format, subDays } from "date-fns";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
@@ -46,7 +45,6 @@ export function UniqueVisitorsWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
   const [uniqueVisitors, setUniqueVisitors] = useState<UniqueVisitorsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -84,7 +82,7 @@ export function UniqueVisitorsWidget({
         
         // Use the SAME endpoint as the chart for 100% consistency
         const response = await fetchWithRetry(
-          fetchWithController,
+          fetch,
           `/api/traffic/session-events-combined?${params.toString()}`,
           { maxRetries: 3 }
         );
@@ -115,7 +113,7 @@ export function UniqueVisitorsWidget({
         prevParams.append("referrersLimit", "1");
         
         const prevResponse = await fetchWithRetry(
-          fetchWithController,
+          fetch,
           `/api/traffic/session-events-combined?${prevParams.toString()}`,
           { maxRetries: 3 }
         );
@@ -150,7 +148,7 @@ export function UniqueVisitorsWidget({
     };
 
     fetchUniqueVisitors();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, ]);
 
   const formattedValue = uniqueVisitors ? uniqueVisitors.actual.toLocaleString() : "0";
   const changeText = `${uniqueVisitors?.percentChange || 0}% from ${formatPeriodType(uniqueVisitors?.periodType || "monthly")}`;

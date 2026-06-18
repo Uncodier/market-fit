@@ -10,7 +10,6 @@ import { EmptyCard } from "@/app/components/ui/empty-card";
 import { ClipboardList, Circle } from "@/app/components/ui/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
 import { format } from "date-fns";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useRouter } from "next/navigation";
 
@@ -127,7 +126,6 @@ export function RecentActivity({
 }: RecentActivityProps) {
   const { t } = useLocalization();
   const { currentSite } = useSite();
-  const { fetchWithController, getSignalForEndpoint } = useRequestController();
   const router = useRouter();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -195,7 +193,7 @@ export function RecentActivity({
         
         // Use the request controller with retry logic
         const response = await fetchWithRetry(
-          fetchWithController,
+          fetch,
           apiUrl,
           { maxRetries: 3 }
         );
@@ -216,7 +214,7 @@ export function RecentActivity({
         
         console.timeEnd("Recent Activity API Request");
       } catch (error) {
-        // Don't handle AbortError explicitly as it's handled in fetchWithController
+        // Don't handle AbortError explicitly as it's handled in 
         if (error instanceof DOMException && error.name === 'AbortError') {
           console.log("[RecentActivity] Request was aborted");
           return;
@@ -256,7 +254,7 @@ export function RecentActivity({
     return () => {
       isMounted = false;
     };
-  }, [currentSite?.id, limit, startDate, endDate, fetchWithController, getSignalForEndpoint]);
+  }, [currentSite?.id, limit, startDate, endDate, fetch, getSignalForEndpoint]);
 
   if (isLoading) {
     return (

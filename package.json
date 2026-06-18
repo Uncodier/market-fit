@@ -104,6 +104,7 @@
     "sonner": "^2.0.1",
     "stream-browserify": "3.0.0",
     "stripe": "18.2.1",
+    "swr": "2.4.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tar-stream": "3.1.8",

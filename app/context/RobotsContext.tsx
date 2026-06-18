@@ -1,6 +1,5 @@
-"use client"
-
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react"
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef, useMemo } from "react"
+import useSWR from 'swr'
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
 
@@ -14,7 +13,9 @@ interface Robot {
   cdp_url?: string;
   site_id: string;
   created_at?: string;
+  updated_at?: string;
   requirement_title?: string;
+  requirement_backlog?: any;
 }
 
 interface RobotsByActivity {
@@ -54,12 +55,8 @@ interface RobotsProviderProps {
 
 export function RobotsProvider({ children }: RobotsProviderProps) {
   const { currentSite } = useSite()
-  const [robotsByActivity, setRobotsByActivity] = useState<RobotsByActivity>({})
-  const [totalRunningRobots, setTotalRunningRobots] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const hasInitiallyLoadedRef = useRef(false)
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null)
   const [refreshCount, setRefreshCount] = useState(0)
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true)
@@ -67,140 +64,37 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   const robotsSubscriptionStatusRef = useRef<string>('INIT')
   const isResubscribingRef = useRef(false)
   
-  // 🆕 Wait for site context to be fully synchronized (same logic as robots page)
   const [isSiteContextReady, setIsSiteContextReady] = useState(false)
   
   useEffect(() => {
     if (currentSite?.id) {
-      // Add a small delay to ensure site context is fully synchronized
       const syncTimer = setTimeout(() => {
         setIsSiteContextReady(true)
-      }, 100) // 100ms delay to ensure synchronization
-      
+      }, 100)
       return () => clearTimeout(syncTimer)
     } else {
       setIsSiteContextReady(false)
     }
   }, [currentSite?.id])
-  
-  // Log auto-refresh state changes
-  useEffect(() => {
-  }, [autoRefreshEnabled])
-  
 
-  // Map activity names
-  const activityMap: Record<string, string> = {
-    "free-agent": "Free Agent",
-    "channel-market-fit": "Channel Market Fit",
-    "engage": "Engage in Social Networks", 
-    "seo": "SEO",
-    "publish-content": "Publish Content",
-    "publish-ads": "Publish Ads",
-    "ux-analysis": "UX Analysis",
-    "build-requirements": "Build Requirements",
-    "execute-plan": "Execute Plan",
-    "Assistant Session": "Assistant Session"
-  }
-
-  // Get robots for a specific activity
-  const getRobotsForActivity = useCallback((activityName: string): Robot[] => {
-    const fullActivityName = activityMap[activityName] || activityName
-    return robotsByActivity[fullActivityName] || []
-  }, [robotsByActivity])
-
-  // Get the active robot for a specific activity
-  const getActiveRobotForActivity = useCallback((activityName: string): Robot | null => {
-    const robots = getRobotsForActivity(activityName)
-    const activeRobot = robots.find(robot => 
-      ['running', 'active'].includes(robot.status)
-    )
-    return activeRobot || null
-  }, [getRobotsForActivity])
-
-  // Check if there are active robots for a specific activity
-  const hasActiveRobotsForActivity = useCallback((activityName: string): boolean => {
-    const robots = getRobotsForActivity(activityName)
-    return robots.some(robot => 
-      ['running', 'active', 'starting', 'pending', 'initializing'].includes(robot.status)
-    )
-  }, [getRobotsForActivity])
-
-  // Return all instances across activities (includes paused)
-  const getAllInstances = useCallback((): Robot[] => {
-    
-    const allInstances = Object.values(robotsByActivity).flat()
-    
-    return allInstances
-  }, [robotsByActivity, currentSite?.id])
-
-  // Find instance by id
-  const getInstanceById = useCallback((id: string): Robot | null => {
-    for (const list of Object.values(robotsByActivity)) {
-      const found = list.find(r => r.id === id)
-      if (found) return found
-    }
-    return null
-  }, [robotsByActivity])
-
-  // Function to fetch all robots and organize by activity
-  const refreshRobots = useCallback(async (siteId?: string) => {
-    // 🆕 Use passed siteId or fallback to currentSite?.id
-    const targetSiteId = siteId || currentSite?.id
-    
-    // 🆕 CRITICAL: Force use of the most recent currentSite
-    if (!targetSiteId) {
-      console.error('🔄 [RobotsContext] CRITICAL: No siteId available, cannot proceed')
-      return
-    }
-    
-    // 🆕 Only proceed if site context is ready
-    if (!isSiteContextReady) {
-      return
-    }
-    
-    // 🆕 Homologated validation: same pattern as message temporal
-    if (!siteId) {
-      setRobotsByActivity({})
-      setTotalRunningRobots(0)
-      setIsLoading(false)
-      hasInitiallyLoadedRef.current = true
-      return
-    }
-
-    try {
-      // Only show loading state on initial load, not on refreshes
-      if (!hasInitiallyLoadedRef.current) {
-        setIsLoading(true)
-      }
-      setError(null)
-      
+  const { data: robotsData, isLoading, mutate } = useSWR(
+    isSiteContextReady && currentSite?.id ? ['remote_instances', currentSite.id] : null,
+    async ([_, siteId]) => {
       const supabase = createClient()
-      
-      
-      // Get all robots for the current site (includes active, paused, and stopped instances)
       const { data: robots, error: robotsError } = await supabase
         .from('remote_instances')
         .select('id, status, instance_type, name, provider_instance_id, cdp_url, site_id, created_at, updated_at')
-        .eq('site_id', targetSiteId)  // 🆕 Use targetSiteId variable
-        .order('updated_at', { ascending: false }) // Most recently updated first
+        .eq('site_id', siteId)
+        .order('updated_at', { ascending: false })
       
-      // CRITICAL: Log if we got no robots for the current site
-      if (!robots || robots.length === 0) {
-        console.warn('🔄 [RobotsContext] WARNING: No robots found for site:', targetSiteId)
-        console.warn('🔄 [RobotsContext] This might mean the site has no instances or there was a query error')
+      if (robotsError) {
+        console.error('Error fetching robots:', robotsError)
+        setError('Failed to fetch robots')
+        throw robotsError
       }
+      setError(null)
       
-      // CRITICAL: Check if we got robots for the correct site
       if (robots && robots.length > 0) {
-        const wrongSiteRobots = robots.filter((r: any) => r.site_id !== targetSiteId)
-        if (wrongSiteRobots.length > 0) {
-          console.error('🔄 [RobotsContext] CRITICAL: Got robots from wrong site!', {
-            requestedSiteId: targetSiteId,
-            wrongSiteRobots: wrongSiteRobots.map((r: any) => ({ id: r.id, site_id: r.site_id }))
-          })
-        }
-
-        // Fetch requirement titles for instances named req-runner-* or req-maint-*
         const requirementIds = robots.map((r: any) => {
           if (r.name?.startsWith('req-runner-')) return r.name.replace('req-runner-', '');
           if (r.name?.startsWith('req-maint-')) return r.name.replace('req-maint-', '');
@@ -233,65 +127,101 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
           }
         }
       }
+      return robots || []
+    }
+  )
 
-      if (robotsError) {
-        console.error('Error fetching robots:', robotsError)
-        setError('Failed to fetch robots')
-        return
+  const { robotsByActivity, totalRunningRobots } = useMemo(() => {
+    const organized: RobotsByActivity = {}
+    let runningCount = 0
+
+    const robots = robotsData || []
+
+    robots.forEach((robot: Robot) => {
+      if (!organized[robot.name]) {
+        organized[robot.name] = []
       }
+      organized[robot.name].push(robot)
 
-      // Organize robots by activity name
-      const organizedRobots: RobotsByActivity = {}
-      let runningCount = 0
+      if (robot.status === 'running') {
+        runningCount++
+      }
+    })
 
-      robots?.forEach((robot: Robot) => {
-        if (!organizedRobots[robot.name]) {
-          organizedRobots[robot.name] = []
+    Object.keys(organized).forEach(activityName => {
+      organized[activityName].sort((a, b) => {
+        const playStatuses = ['running', 'active', 'starting', 'pending', 'initializing'];
+        const aIsPlay = playStatuses.includes(a.status) ? 1 : 0;
+        const bIsPlay = playStatuses.includes(b.status) ? 1 : 0;
+        
+        if (aIsPlay !== bIsPlay) {
+          return bIsPlay - aIsPlay;
         }
-        organizedRobots[robot.name].push(robot)
-
-        // Count running robots for the badge
-        if (robot.status === 'running') {
-          runningCount++
-        }
+        
+        const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
+        const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
+        return dateB - dateA
       })
+    })
 
-      // Sort instances within each activity: 'play' status first, then by updated_at descending
-      Object.keys(organizedRobots).forEach(activityName => {
-        organizedRobots[activityName].sort((a, b) => {
-          const playStatuses = ['running', 'active', 'starting', 'pending', 'initializing'];
-          const aIsPlay = playStatuses.includes(a.status) ? 1 : 0;
-          const bIsPlay = playStatuses.includes(b.status) ? 1 : 0;
-          
-          if (aIsPlay !== bIsPlay) {
-            return bIsPlay - aIsPlay;
-          }
-          
-          const dateA = new Date(a.updated_at || a.created_at || 0).getTime()
-          const dateB = new Date(b.updated_at || b.created_at || 0).getTime()
-          return dateB - dateA // Newest first
-        })
-      })
+    return { robotsByActivity: organized, totalRunningRobots: runningCount }
+  }, [robotsData])
 
-      // Always update state when site changes to ensure fresh data
-      setRobotsByActivity(organizedRobots)
-      setTotalRunningRobots(runningCount)
+  const activityMap: Record<string, string> = {
+    "free-agent": "Free Agent",
+    "channel-market-fit": "Channel Market Fit",
+    "engage": "Engage in Social Networks", 
+    "seo": "SEO",
+    "publish-content": "Publish Content",
+    "publish-ads": "Publish Ads",
+    "ux-analysis": "UX Analysis",
+    "build-requirements": "Build Requirements",
+    "execute-plan": "Execute Plan",
+    "Assistant Session": "Assistant Session"
+  }
 
+  const getRobotsForActivity = useCallback((activityName: string): Robot[] => {
+    const fullActivityName = activityMap[activityName] || activityName
+    return robotsByActivity[fullActivityName] || []
+  }, [robotsByActivity])
 
+  const getActiveRobotForActivity = useCallback((activityName: string): Robot | null => {
+    const robots = getRobotsForActivity(activityName)
+    const activeRobot = robots.find(robot => 
+      ['running', 'active'].includes(robot.status)
+    )
+    return activeRobot || null
+  }, [getRobotsForActivity])
+
+  const hasActiveRobotsForActivity = useCallback((activityName: string): boolean => {
+    const robots = getRobotsForActivity(activityName)
+    return robots.some(robot => 
+      ['running', 'active', 'starting', 'pending', 'initializing'].includes(robot.status)
+    )
+  }, [getRobotsForActivity])
+
+  const getAllInstances = useCallback((): Robot[] => {
+    return Object.values(robotsByActivity).flat()
+  }, [robotsByActivity])
+
+  const getInstanceById = useCallback((id: string): Robot | null => {
+    for (const list of Object.values(robotsByActivity)) {
+      const found = list.find(r => r.id === id)
+      if (found) return found
+    }
+    return null
+  }, [robotsByActivity])
+
+  const refreshRobots = useCallback(async (siteId?: string) => {
+    if (!isSiteContextReady) return
+    try {
+      await mutate()
+      setLastRefreshAt(Date.now())
+      setRefreshCount(prev => prev + 1)
     } catch (error) {
       console.error('Error refreshing robots:', error)
-      setError('Failed to refresh robots')
-    } finally {
-      if (!hasInitiallyLoadedRef.current) {
-        setIsLoading(false)
-        hasInitiallyLoadedRef.current = true
-      }
-      const now = Date.now()
-      setLastRefreshAt(now)
-      setRefreshCount(prev => prev + 1)
-      // quiet: omit refresh completed log
     }
-  }, [currentSite?.id, isSiteContextReady])
+  }, [mutate, isSiteContextReady])
 
   const teardownRealtimeSubscription = useCallback(() => {
     if (robotsSubscriptionRef.current) {
@@ -325,16 +255,11 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         },
         (payload: any) => {
           if (!autoRefreshEnabled) return
-
-          // Refresh on any instance change (INSERT, UPDATE, DELETE)
-          if (refreshTimeoutRef.current) {
-            clearTimeout(refreshTimeoutRef.current)
-          }
-
-          // Use different delays based on event type
+          if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
+          
           const delay = payload.eventType === 'INSERT' ? 300 : 500
           refreshTimeoutRef.current = setTimeout(() => {
-            refreshRobots(currentSite?.id)
+            mutate()
           }, delay)
         }
       )
@@ -342,8 +267,6 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         robotsSubscriptionStatusRef.current = status
         if (status === 'SUBSCRIBED') {
         } else if (status === 'CHANNEL_ERROR') {
-          // CHANNEL_ERROR is expected temporarily when network drops or during fast tab switching.
-          // Supabase's realtime client auto-reconnects, so we don't need to log this as a critical error.
           console.warn('🔄 [RobotsContext] Temporary subscription error (auto-reconnecting...)', err || '')
         } else if (status === 'TIMED_OUT') {
           console.warn('🔄 [RobotsContext] Subscription timed out (auto-reconnecting...)')
@@ -351,7 +274,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       })
 
     robotsSubscriptionRef.current = channel
-  }, [autoRefreshEnabled, currentSite?.id, isSiteContextReady, refreshRobots, teardownRealtimeSubscription])
+  }, [autoRefreshEnabled, currentSite?.id, isSiteContextReady, teardownRealtimeSubscription, mutate])
 
   const ensureRealtimeHealthy = useCallback(() => {
     if (!currentSite?.id || !isSiteContextReady) return
@@ -375,68 +298,37 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     }
   }, [currentSite?.id, isSiteContextReady, setupRealtimeSubscription])
 
-  // Initial load when site changes - SIMPLIFIED to avoid clearing instances unnecessarily
-  useEffect(() => {
-    
-    // Only reset if we have a valid site
-    if (currentSite?.id) {
-      refreshRobots(currentSite.id)
-    } else {
-      setRobotsByActivity({})
-      setTotalRunningRobots(0)
-    }
-  }, [currentSite?.id, refreshRobots])
-
-  // Setup real-time monitoring
   useEffect(() => {
     if (!currentSite?.id || !isSiteContextReady) return
-
     setupRealtimeSubscription()
-
     return () => {
       teardownRealtimeSubscription()
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current)
-      }
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
     }
   }, [currentSite?.id, isSiteContextReady, setupRealtimeSubscription, teardownRealtimeSubscription])
 
-  // 🆕 Separate useEffect to handle site context synchronization
-  useEffect(() => {
-    if (isSiteContextReady && currentSite?.id) {
-      // The real-time monitoring will be handled by the previous useEffect
-    }
-  }, [isSiteContextReady, currentSite?.id])
-
-  // Solo recargar datos al volver a la pestaña (Supabase reconecta el socket automáticamente)
   useEffect(() => {
     let debounceTimer: NodeJS.Timeout;
-    
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         clearTimeout(debounceTimer)
         debounceTimer = setTimeout(() => {
           if (currentSite?.id && isSiteContextReady) {
-            refreshRobots(currentSite.id)
+            mutate()
           }
         }, 1000)
       }
     }
-
     document.addEventListener('visibilitychange', handleVisibility)
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility)
       clearTimeout(debounceTimer)
     }
-  }, [currentSite?.id, isSiteContextReady, refreshRobots])
+  }, [currentSite?.id, isSiteContextReady, mutate])
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current)
-      }
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
     }
   }, [])
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -560,23 +561,52 @@ function ControlCenterSkeleton() {
 
 export default function CampaignsPage() {
   const { t } = useLocalization()
-  const [isLoading, setIsLoading] = useState(true);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>(["high", "medium", "low"]);
   const [sortBy, setSortBy] = useState<"due_date" | "oldest" | "newest" | "budget" | "roi">("due_date");
   const [activeTab, setActiveTab] = useState("all");
-  const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([]);
-  const [requirements, setRequirements] = useState<Array<{ 
-    id: string; 
-    title: string; 
-    description: string;
-    status?: string;
-    priority?: "high" | "medium" | "low";
-    completion_status?: string;
-    campaign_requirements?: Array<{campaign_id: string}>;
-  }>>([]);
   const { currentSite } = useSite();
+
+  // Fetch campaigns with SWR
+  const { data: campaigns = [], isLoading: isCampaignsLoading } = useSWR(
+    currentSite?.id ? ['campaigns', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const response = await getCampaigns(siteId);
+      if (response.error) throw new Error(response.error);
+      return response.data || [];
+    }
+  );
+
+  // Fetch segments with SWR
+  const { data: segments = [] } = useSWR(
+    currentSite?.id ? ['segments', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const response = await getSegments(siteId);
+      if (response.error) throw new Error(response.error);
+      return (response.segments || []).map(segment => ({
+        id: segment.id,
+        name: segment.name,
+        description: segment.description || ""
+      }));
+    }
+  );
+
+  // Fetch requirements with SWR
+  const { data: requirements = [] } = useSWR(
+    currentSite?.id ? ['requirements', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("requirements")
+        .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id)")
+        .eq("site_id", siteId);
+      
+      if (error) throw error;
+      return data || [];
+    }
+  );
+
+  const isLoading = isCampaignsLoading;
   
   // Initialize command+k hook
   useCommandK()
@@ -645,76 +675,6 @@ export default function CampaignsPage() {
     campaignsByType[campaignType].sort(compareCampaigns);
   });
 
-  // Fetch campaigns and requirements
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentSite) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        
-        // Fetch campaigns
-        const campaignsResponse = await getCampaigns(currentSite.id);
-        if (campaignsResponse.error) {
-          toast.error(`Failed to load campaigns: ${campaignsResponse.error}`);
-        } else if (campaignsResponse.data) {
-          setCampaigns(campaignsResponse.data);
-        }
-
-        // Fetch existing segments
-        try {
-          const segmentsResponse = await getSegments(currentSite.id);
-          if (segmentsResponse.error) {
-            console.error("Error loading segments:", segmentsResponse.error);
-            setSegments([]);
-          } else {
-            const mappedSegments = (segmentsResponse.segments || []).map(segment => ({
-              id: segment.id,
-              name: segment.name,
-              description: segment.description || ""
-            }));
-            setSegments(mappedSegments);
-          }
-        } catch (segErr) {
-          console.error("Error loading segments:", segErr);
-          // Use empty segments array if fetch fails
-          setSegments([]);
-        }
-
-        // Fetch requirements from Supabase directly
-        try {
-          const supabase = createClient();
-          const { data: requirementData, error: requirementError } = await supabase
-            .from("requirements")
-            .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id)")
-            .eq("site_id", currentSite.id);
-            
-          if (requirementError) {
-            console.error("Error fetching requirements:", requirementError);
-            setRequirements([]);
-          } else if (requirementData) {
-            console.log("Requirements loaded:", requirementData.length);
-            console.log("Sample requirement:", requirementData[0]);
-            setRequirements(requirementData);
-          }
-        } catch (reqErr) {
-          console.error("Error loading requirements:", reqErr);
-          // Use empty requirements array if fetch fails
-          setRequirements([]);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast.error(t('campaigns.error.fetch') || "Failed to load data. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [currentSite]);
 
   return (
     <div className="flex-1 min-w-0 w-full p-0 h-auto overflow-visible bg-muted/30 min-h-[calc(100vh-var(--topbar-height,64px))]">

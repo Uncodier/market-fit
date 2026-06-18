@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import useSWR from "swr";
 import { format, subDays } from "date-fns";
 import { BaseKpiWidget } from "./base-kpi-widget";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 
 interface RevenueWidgetProps {
@@ -58,9 +58,6 @@ export function RevenueWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
-  const [revenue, setRevenue] = useState<RevenueData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
   const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
 
@@ -74,63 +71,45 @@ export function RevenueWidget({
     }
   }, [propStartDate, propEndDate]);
 
-  useEffect(() => {
-    const fetchRevenue = async () => {
-      // Global widget protection
-      if (!shouldExecuteWidgets) {
-        console.log("[RevenueWidget] Widget execution disabled by context");
-        return;
+  const { data: revenue, isLoading: isSWRisLoading } = useSWR(
+    shouldExecuteWidgets && currentSite && currentSite.id !== "default"
+      ? [
+          'revenue',
+          segmentId,
+          currentSite.id,
+          user?.id,
+          startDate ? format(startDate, "yyyy-MM-dd") : null,
+          endDate ? format(endDate, "yyyy-MM-dd") : null
+        ]
+      : null,
+    async ([_, segId, siteId, userId, start, end]) => {
+      const params = new URLSearchParams();
+      params.append("segmentId", segId as string);
+      params.append("siteId", siteId as string);
+      if (userId) {
+        params.append("userId", userId as string);
       }
-
-      if (!currentSite || currentSite.id === "default") return;
+      if (start) params.append("startDate", start as string);
+      if (end) params.append("endDate", end as string);
       
-      setIsLoading(true);
-      try {
-        const start = startDate ? format(startDate, "yyyy-MM-dd") : null;
-        const end = endDate ? format(endDate, "yyyy-MM-dd") : null;
-        
-        const params = new URLSearchParams();
-        params.append("segmentId", segmentId);
-        params.append("siteId", currentSite.id);
-        if (user?.id) {
-          params.append("userId", user.id);
-        }
-        if (start) params.append("startDate", start);
-        if (end) params.append("endDate", end);
-        
-        const response = await fetchWithRetry(
-          fetchWithController,
-          `/api/revenue?${params.toString()}`,
-          { maxRetries: 3 }
-        );
-        
-        // Handle null response (all retries failed or request was cancelled)
-        if (!response) {
-          return;
-        }
-        const data = await response.json();
-        
-        // Extract the relevant data from totalSales object
-        const revenueData = {
-          actual: data.totalSales?.actual || 0,
-          percentChange: data.totalSales?.percentChange || 0,
-          periodType: data.periodType || "monthly"
-        };
-        
-
-        setRevenue(revenueData);
-      } catch (error) {
-        // Only log non-abort errors
-        if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error("Error fetching revenue:", error);
-        }
-      } finally {
-        setIsLoading(false);
+      const response = await fetch(
+        `/api/revenue?${params.toString()}`
+      );
+      
+      if (!response) {
+        return null;
       }
-    };
+      const data = await response.json();
+      
+      return {
+        actual: data.totalSales?.actual || 0,
+        percentChange: data.totalSales?.percentChange || 0,
+        periodType: data.periodType || "monthly"
+      } as RevenueData;
+    }
+  );
 
-    fetchRevenue();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
+  const isLoading = isSWRisLoading;
 
   // Handle date range selection
   const handleDateChange = (start: Date, end: Date) => {

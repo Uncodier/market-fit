@@ -130,7 +130,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         
         console.log("[Overview] Fetching sales data with params:", Object.fromEntries(params.entries()));
         
-        // Use standard fetch instead of fetchWithController
+        // Use standard fetch instead of 
         const response = await fetch(`/api/sales?${params.toString()}`, {
           signal: controller.signal,
           headers: {

@@ -106,7 +106,7 @@ export function SegmentDonut({
         console.log(`[SegmentDonut:${endpoint}] Fetching data with params:`, Object.fromEntries(params.entries()));
         console.log(`[SegmentDonut:${endpoint}] Full API URL: ${apiUrl}`);
         
-        // Use basic fetch instead of fetchWithController
+        // Use basic fetch instead of 
         const response = await fetch(apiUrl, {
           signal: controller.signal,
           headers: {

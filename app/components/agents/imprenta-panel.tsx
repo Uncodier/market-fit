@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react"
+  import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, memo } from "react"
 import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
+import { useImprentaData } from "@/app/hooks/useImprentaData"
 import { createClient } from "@/lib/supabase/client"
 import { ZoomableCanvas, type ZoomableViewportInfo } from "./zoomable-canvas"
 import { ImprentaParentEdgesCanvas } from "./imprenta-parent-edges-canvas"
@@ -1787,13 +1788,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const sidebarWidth = isMobile ? 0 : isLayoutCollapsed ? 64 : 256;
   
   const supabase = createClient()
+  const { imprentaData, isLoading: isImprentaLoading } = useImprentaData(
+    activeInstanceId,
+    currentSite?.id
+  )
   const [nodes, setNodes] = useState<InstanceNode[]>([])
-  const [isLoading, setIsLoading] = useState(false)
   const [isUploadingAsset, setIsUploadingAsset] = useState(false)
   const [initialPrompt, setInitialPrompt] = useState("")
   const [zoomedMedia, setZoomedMedia] = useState<{url: string, type: 'image' | 'video'} | null>(null)
-  /** Prevents duplicate root inserts when parallel fetches both see an empty table before the first insert is visible. */
-  const rootCreationPendingRef = useRef<Set<string>>(new Set())
+  const imprentaSyncedInstanceRef = useRef<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [dummyNodes, setDummyNodes] = useState<InstanceNode[]>([])
@@ -2161,9 +2164,18 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     return edges
   }, [nodesById, loadingNodeIds])
 
-  // Reset initial prompt when changing instances
+  // Reset ephemeral UI when changing instances
   useEffect(() => {
+    imprentaSyncedInstanceRef.current = null
     setInitialPrompt("")
+    setNodes([])
+    setDummyNodes([])
+    setContexts([])
+    setPositions({})
+    setGeneratingNodeIds(new Set())
+    setSelectedContextId(null)
+    hoverStore.set(null)
+    setZoomedMedia(null)
   }, [activeInstanceId])
 
   // Media parameters state
@@ -2173,117 +2185,20 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [videoParams, setVideoParams] = useState<VideoParameters>({ aspectRatio: '16:9', resolution: '1080p', duration: 4, expectedResults: 1 })
   const [audioParams, setAudioParams] = useState<AudioParameters>({ format: 'MP3', sampleRate: '44.1kHz', channels: 'stereo', duration: 15, expectedResults: 1 })
 
-  // Fetch nodes for the selected instance
+  // Hydrate local state from SWR cache once per instance (realtime owns updates after that)
+  // useLayoutEffect prevents 1-frame flicker where Canvas renders with empty nodes
+  useLayoutEffect(() => {
+    if (!imprentaData || !activeInstanceId) return
+    if (imprentaSyncedInstanceRef.current === activeInstanceId) return
+
+    imprentaSyncedInstanceRef.current = activeInstanceId
+    setNodes(imprentaData.nodes)
+    setContexts(imprentaData.contexts)
+  }, [imprentaData, activeInstanceId])
+
+  // Realtime subscriptions for nodes and contexts
   useEffect(() => {
-    // Clear state when instance changes to avoid leftover data
-    setNodes([])
-    setDummyNodes([])
-    setContexts([])
-    setPositions({})
-    setGeneratingNodeIds(new Set())
-    setSelectedContextId(null)
-    hoverStore.set(null)
-    setZoomedMedia(null)
-
     if (!activeInstanceId) return
-
-    let cancelled = false
-    
-    const fetchNodes = async () => {
-      setIsLoading(true)
-      let deferLoadingEnd = false
-      try {
-        const PAGE = 500
-        let data: InstanceNode[] = []
-        let from = 0
-        let fetchError: unknown = null
-        while (!cancelled) {
-          const { data: page, error } = await supabase
-            .from('instance_nodes')
-            .select('*')
-            .eq('instance_id', activeInstanceId)
-            .order('created_at', { ascending: true })
-            .range(from, from + PAGE - 1)
-          if (cancelled) return
-          if (error) {
-            fetchError = error as unknown
-            break
-          }
-          if (!page?.length) break
-          data = data.concat(page as InstanceNode[])
-          if (page.length < PAGE) break
-          from += PAGE
-        }
-
-        if (cancelled) return
-
-        if (fetchError) {
-          console.error(fetchError)
-          toast.error("Failed to load workflow nodes")
-        } else if (data.length === 0) {
-            // Claim synchronously before any await so parallel requests cannot both insert.
-            if (rootCreationPendingRef.current.has(activeInstanceId)) {
-              deferLoadingEnd = true
-              return
-            }
-            rootCreationPendingRef.current.add(activeInstanceId)
-
-            try {
-              const { data: sessionData } = await supabase.auth.getSession()
-              if (cancelled) return
-              if (!sessionData?.session) return
-
-              const newNode = {
-                instance_id: activeInstanceId,
-                site_id: currentSite?.id,
-                user_id: sessionData.session.user.id,
-                parent_node_id: null,
-                type: 'prompt',
-                status: 'pending',
-                prompt: { text: '' },
-                settings: {},
-                result: {}
-              }
-              const { data: newDbNode, error: insertError } = await supabase.from('instance_nodes').insert(newNode).select('*').single()
-              if (insertError) {
-                rootCreationPendingRef.current.delete(activeInstanceId)
-                throw insertError
-              }
-              if (cancelled) return
-              if (newDbNode) {
-                setNodes(prev => {
-                  if (prev.some(n => n.id === newDbNode.id)) return prev
-                  return [...prev, newDbNode as InstanceNode]
-                })
-              }
-            } catch (err) {
-              rootCreationPendingRef.current.delete(activeInstanceId)
-              console.error("Failed to create root node:", err)
-            }
-        } else {
-            setNodes(data)
-            const nodeIds = data.map((n) => n.id)
-            if (nodeIds.length > 0) {
-              const CTX_CHUNK = 200
-              const allCtx: any[] = []
-              for (let i = 0; i < nodeIds.length; i += CTX_CHUNK) {
-                const slice = nodeIds.slice(i, i + CTX_CHUNK)
-                const { data: ctxData } = await supabase
-                  .from("instance_node_contexts")
-                  .select("*")
-                  .in("target_node_id", slice)
-                if (cancelled) return
-                if (ctxData?.length) allCtx.push(...ctxData)
-              }
-              if (allCtx.length) setContexts(allCtx)
-            }
-          }
-      } finally {
-        if (!cancelled && !deferLoadingEnd) setIsLoading(false)
-      }
-    }
-    
-    fetchNodes()
 
     // Subscribe to realtime updates for nodes
     let nodeBatchBuffer: any[] = []
@@ -2440,11 +2355,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       .subscribe()
 
     return () => {
-      cancelled = true
       subscription.unsubscribe()
       contextSubscription.unsubscribe()
     }
-  }, [activeInstanceId, supabase, currentSite])
+  }, [activeInstanceId, supabase])
 
   const handleExecuteNode = async (node: InstanceNode) => {
     if (node.type === "publish") {
@@ -3807,7 +3721,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       }}
     >
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-        {!activeInstanceId || isLoading ? (
+        {!activeInstanceId || isImprentaLoading ? (
           <ImprentaSkeleton />
         ) : (
           <div

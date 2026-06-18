@@ -6,7 +6,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { createClient } from "@/utils/supabase/client"
-import { Category, Task } from "@/app/types"
+import { Category } from "@/app/types"
 import { TaskSidebar } from "./components/TaskSidebar"
 import { TaskKanban } from "./components/TaskKanban"
 import { TasksTable } from "./components/TasksTable"
@@ -30,19 +30,8 @@ import { useCommandK } from "@/app/hooks/use-command-k"
 import { navigateToTask } from "@/app/hooks/use-navigation-history"
 import React from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useControlCenterData, ExtendedTask } from "./hooks/useControlCenterData"
 
-interface ExtendedTask extends Task {
-  leadName?: string
-  assigneeName?: string
-  comments_count?: number
-}
-
-
-
-interface TaskCounts {
-  byCategory: Record<string, number>
-  byType: Record<string, number>
-}
 
 export default function ControlCenterPage() {
   const { t } = useLocalization()
@@ -52,11 +41,19 @@ export default function ControlCenterPage() {
   const isMobile = useIsMobile()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [selectedItem, setSelectedItem] = useState<string>("all")
-  const [categories, setCategories] = useState<Category[]>([])
-  const [tasks, setTasks] = useState<ExtendedTask[]>([])
-  const [taskTypes, setTaskTypes] = useState<string[]>([])
-  const [taskCounts, setTaskCounts] = useState<TaskCounts>({ byCategory: {}, byType: {} })
-  const [isLoading, setIsLoading] = useState(true)
+  const {
+    categories,
+    leads,
+    users,
+    tasks,
+    taskTypes,
+    totalCounts,
+    taskCounts,
+    initialKanbanPagination,
+    isLoading,
+    refreshTasks,
+    updateTasksCache,
+  } = useControlCenterData(currentSite?.id, currentSite?.user_id)
   const [searchQuery, setSearchQuery] = useState("")
   const [viewType, setViewType] = useState<"table" | "kanban" | "calendar">("kanban")
   const [currentPage, setCurrentPage] = useState(1)
@@ -73,9 +70,6 @@ export default function ControlCenterPage() {
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
 
-  const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
-  const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
-
   // Kanban pagination state
   const [kanbanPagination, setKanbanPagination] = useState<Record<string, { page: number; hasMore: boolean; isLoading: boolean }>>({
     pending: { page: 1, hasMore: true, isLoading: false },
@@ -85,14 +79,11 @@ export default function ControlCenterPage() {
     canceled: { page: 1, hasMore: true, isLoading: false }
   })
 
-  // Total counts for each status from the database
-  const [totalCounts, setTotalCounts] = useState<Record<string, number>>({
-    pending: 0,
-    in_progress: 0,
-    completed: 0,
-    failed: 0,
-    canceled: 0
-  })
+  useEffect(() => {
+    if (initialKanbanPagination) {
+      setKanbanPagination(initialKanbanPagination)
+    }
+  }, [initialKanbanPagination])
 
   // Initialize command+k hook
   useCommandK()
@@ -127,211 +118,6 @@ export default function ControlCenterPage() {
     }
   }, [])
 
-  // Fetch leads
-  useEffect(() => {
-    const fetchLeads = async () => {
-      if (!currentSite) return
-
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('leads')
-        .select('id, name')
-        .eq('site_id', currentSite.id)
-        .order('name')
-
-      if (error) {
-        console.error('Error fetching leads:', error)
-        return
-      }
-
-      console.log('Fetched leads:', data)
-      setLeads(data || [])
-    }
-
-    fetchLeads()
-  }, [currentSite])
-
-  // Fetch users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!currentSite) return
-
-      const supabase = createClient()
-      
-      // Get site owner
-      const { data: ownerData, error: ownerError } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .eq('id', currentSite.user_id)
-        .single()
-
-      if (ownerError && ownerError.code !== 'PGRST116') {
-        console.error('Error fetching site owner:', ownerError)
-      }
-
-      // Get site members - first get the member records
-      const { data: siteMembers, error: siteMembersError } = await supabase
-        .from('site_members')
-        .select('user_id')
-        .eq('site_id', currentSite.id)
-        .eq('status', 'active')
-        .not('user_id', 'is', null)
-
-      if (siteMembersError) {
-        console.error('Error fetching site members:', siteMembersError)
-      }
-
-      // Get profiles for site members
-      let memberProfiles: Array<{ id: string; name: string }> = []
-      if (siteMembers && siteMembers.length > 0) {
-        const memberUserIds = siteMembers.map(m => m.user_id)
-        
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, name')
-          .in('id', memberUserIds)
-
-        if (profilesError) {
-          console.error('Error fetching member profiles:', profilesError)
-        } else {
-          memberProfiles = profilesData || []
-        }
-      }
-
-      // Combine owner and members
-      const allUsers = []
-      
-      // Add owner if found
-      if (ownerData) {
-        allUsers.push(ownerData)
-      }
-      
-      // Add members
-      allUsers.push(...memberProfiles)
-
-      // Remove duplicates (in case owner is also in members table) and sort
-      const uniqueUsers = allUsers.filter((user, index, self) => 
-        index === self.findIndex(u => u.id === user.id)
-      ).sort((a, b) => a.name.localeCompare(b.name))
-
-      console.log('Fetched users:', uniqueUsers)
-      setUsers(uniqueUsers)
-    }
-
-    fetchUsers()
-  }, [currentSite])
-
-  // Fetch initial tasks with user data and comments count (first 50 per status for kanban pagination)
-  const fetchTasks = React.useCallback(async () => {
-    if (!currentSite) return
-
-    setIsLoading(true)
-    const supabase = createClient()
-
-    try {
-      // Get initial tasks (limit to 50 per status for each status type for kanban view)
-      const statuses = ['pending', 'in_progress', 'completed', 'failed', 'canceled']
-      const allTasks = []
-      const counts: Record<string, number> = {}
-
-      // Fetch first 50 tasks and total count for each status
-      for (const status of statuses) {
-        // Get total count for this status
-        const { count, error: countError } = await supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true })
-          .eq('site_id', currentSite.id)
-          .eq('status', status)
-
-        if (countError) throw countError
-        counts[status] = count || 0
-
-        // Get first 50 tasks for this status
-        const { data: statusTasks, error } = await supabase
-          .from('tasks')
-          .select(`
-            *,
-            leads:lead_id (
-              id,
-              name
-            ),
-            comments_count:task_comments(count)
-          `)
-          .eq('site_id', currentSite.id)
-          .eq('status', status)
-          .order('priority', { ascending: false })
-          .order('scheduled_date', { ascending: true })
-          .limit(50)
-
-        if (error) throw error
-        if (statusTasks) allTasks.push(...statusTasks)
-      }
-
-      // Set total counts
-      setTotalCounts(counts)
-
-      // Enrich tasks with user data
-      const enrichedTasks = await Promise.all(
-        allTasks.map(async (task) => {
-          let assigneeName = undefined
-          if (task.assignee) {
-            const userData = await getUserData(task.assignee)
-            assigneeName = userData?.name
-          }
-
-          return {
-            ...task,
-            leadName: task.leads?.name,
-            assigneeName,
-            comments_count: task.comments_count?.[0]?.count || 0
-          }
-        })
-      )
-
-      setTasks(enrichedTasks)
-
-      // Set kanban pagination state based on total counts
-      setKanbanPagination({
-        pending: { page: 1, hasMore: counts.pending > 50, isLoading: false },
-        in_progress: { page: 1, hasMore: counts.in_progress > 50, isLoading: false },
-        completed: { page: 1, hasMore: counts.completed > 50, isLoading: false },
-        failed: { page: 1, hasMore: counts.failed > 50, isLoading: false },
-        canceled: { page: 1, hasMore: counts.canceled > 50, isLoading: false }
-      })
-
-      // Extract unique task types from the fetched tasks
-      const uniqueTypes = Array.from(new Set(
-        enrichedTasks
-          .map(task => task.type)
-          .filter(type => type && type.trim() !== '')
-      )).sort()
-      
-      console.log('Dynamic task types found:', uniqueTypes)
-      setTaskTypes(uniqueTypes)
-
-    } catch (error) {
-      console.error('Error fetching tasks:', error)
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        type: typeof error,
-        site_id: currentSite?.id
-      })
-      toast.error("Failed to load tasks")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [currentSite])
-
-  // Refresh tasks function that can be called from dialogs
-  const refreshTasks = React.useCallback(() => {
-    fetchTasks()
-  }, [fetchTasks])
-
-  useEffect(() => {
-    fetchTasks()
-  }, [fetchTasks])
-
   // Listen for task creation events
   useEffect(() => {
     const handleTaskCreated = () => {
@@ -345,57 +131,6 @@ export default function ControlCenterPage() {
     }
   }, [refreshTasks])
 
-  // Fetch categories
-  useEffect(() => {
-    const fetchCategories = async () => {
-      if (!currentSite) return
-
-      console.log('Fetching categories for site:', currentSite.id)
-      
-      const supabase = createClient()
-      const { data: categoriesData, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('site_id', currentSite.id)
-        .eq('is_active', true)
-
-      if (error) {
-        console.error('Error fetching categories:', error)
-        return
-      }
-
-      console.log('Fetched categories:', {
-        count: categoriesData?.length || 0,
-        categories: categoriesData?.map(c => ({ id: c.id, name: c.name }))
-      })
-      
-      setCategories(categoriesData || [])
-    }
-
-    fetchCategories()
-  }, [currentSite])
-
-  // Calculate task counts
-  useEffect(() => {
-    const newTaskCounts = {
-      byCategory: {} as Record<string, number>,
-      byType: {} as Record<string, number>
-    }
-
-    tasks.forEach(task => {
-      // Count by type
-      if (task.type) {
-        newTaskCounts.byType[task.type] = (newTaskCounts.byType[task.type] || 0) + 1
-      }
-
-      // Count by category
-      if (task.category_id) {
-        newTaskCounts.byCategory[task.category_id] = (newTaskCounts.byCategory[task.category_id] || 0) + 1
-      }
-    })
-
-    setTaskCounts(newTaskCounts)
-  }, [tasks])
 
   // Handle task status update
   const handleUpdateTaskStatus = async (taskId: string, newStatus: string, newPriority?: number) => {
@@ -432,77 +167,7 @@ export default function ControlCenterPage() {
       }
     }
 
-    // Refresh tasks and counts after update
-    const fetchTasksAgain = async () => {
-      try {
-        // Fetch updated counts for all statuses
-        const statuses = ['pending', 'in_progress', 'completed', 'failed', 'canceled']
-        const counts: Record<string, number> = {}
-        
-        for (const status of statuses) {
-          const { count, error: countError } = await supabase
-            .from('tasks')
-            .select('*', { count: 'exact', head: true })
-            .eq('site_id', currentSite.id)
-            .eq('status', status)
-
-          if (countError) throw countError
-          counts[status] = count || 0
-        }
-        
-        setTotalCounts(counts)
-
-        // Fetch updated tasks
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('tasks')
-          .select(`
-            *,
-            leads:lead_id (
-              id,
-              name
-            ),
-            comments_count:task_comments(count)
-          `)
-          .eq('site_id', currentSite.id)
-          .order('priority', { ascending: false })
-          .order('scheduled_date', { ascending: true })
-
-        if (tasksError) throw tasksError
-
-        const enrichedTasks = await Promise.all(
-          tasksData.map(async (task) => {
-            let assigneeName = undefined
-            if (task.assignee) {
-              const userData = await getUserData(task.assignee)
-              assigneeName = userData?.name
-            }
-
-            return {
-              ...task,
-              leadName: task.leads?.name,
-              assigneeName,
-              comments_count: task.comments_count?.[0]?.count || 0
-            }
-          })
-        )
-
-        setTasks(enrichedTasks)
-
-        // Update task types as well
-        const uniqueTypes = Array.from(new Set(
-          enrichedTasks
-            .map(task => task.type)
-            .filter(type => type && type.trim() !== '')
-        )).sort()
-        
-        setTaskTypes(uniqueTypes)
-
-      } catch (error) {
-        console.error('Error fetching tasks:', error)
-      }
-    }
-
-    await fetchTasksAgain()
+    await refreshTasks()
   }
 
   // Handle task click
@@ -527,64 +192,7 @@ export default function ControlCenterPage() {
   }
 
   const refreshTasksAfterBulkAction = async () => {
-    if (!currentSite) return
-
-    const supabase = createClient()
-    const statuses = ['pending', 'in_progress', 'completed', 'failed', 'canceled']
-    const counts: Record<string, number> = {}
-
-    for (const status of statuses) {
-      const { count, error: countError } = await supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('site_id', currentSite.id)
-        .eq('status', status)
-
-      if (countError) throw countError
-      counts[status] = count || 0
-    }
-
-    setTotalCounts(counts)
-
-    const { data: tasksData, error: tasksError } = await supabase
-      .from('tasks')
-      .select(`
-        *,
-        leads:lead_id (
-          id,
-          name
-        ),
-        comments_count:task_comments(count)
-      `)
-      .eq('site_id', currentSite.id)
-      .order('priority', { ascending: false })
-      .order('scheduled_date', { ascending: true })
-
-    if (tasksError) throw tasksError
-
-    const enrichedTasks = await Promise.all(
-      (tasksData || []).map(async (task) => {
-        let assigneeName = undefined
-        if (task.assignee) {
-          const userData = await getUserData(task.assignee)
-          assigneeName = userData?.name
-        }
-
-        return {
-          ...task,
-          leadName: task.leads?.name,
-          assigneeName,
-          comments_count: task.comments_count?.[0]?.count || 0
-        }
-      })
-    )
-
-    setTasks(enrichedTasks)
-    setTaskTypes(Array.from(new Set(
-      enrichedTasks
-        .map((task) => task.type)
-        .filter((type): type is string => Boolean(type && type.trim() !== ''))
-    )).sort())
+    await refreshTasks()
   }
 
   const handleBulkDelete = async () => {
@@ -704,12 +312,11 @@ export default function ControlCenterPage() {
         })
       )
 
-      // Add new tasks to the existing tasks array
-      setTasks(prevTasks => {
-        // Remove any existing tasks with the same IDs to avoid duplicates
-        const existingTaskIds = new Set(prevTasks.map(t => t.id))
-        const newTasks = enrichedMoreTasks.filter(t => !existingTaskIds.has(t.id))
-        return [...prevTasks, ...newTasks]
+      updateTasksCache((prev) => {
+        if (!prev) return prev
+        const existingTaskIds = new Set(prev.tasks.map((t) => t.id))
+        const newTasks = enrichedMoreTasks.filter((t) => !existingTaskIds.has(t.id))
+        return { ...prev, tasks: [...prev.tasks, ...newTasks] }
       })
 
       // Update pagination state

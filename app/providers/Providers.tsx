@@ -9,6 +9,7 @@ import { RobotsProvider } from '../context/RobotsContext';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { AuthProvider } from '../components/auth/auth-provider';
 import { LocalizationProvider } from '../context/LocalizationContext';
+import { SWRProvider } from './swr-provider';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ interface ProvidersProps {
 
 export default function Providers({ children, country }: ProvidersProps) {
   return (
+    <SWRProvider>
     <AuthProvider>
       <ThemeProvider>
         <LocalizationProvider initialCountry={country}>
@@ -34,5 +36,6 @@ export default function Providers({ children, country }: ProvidersProps) {
         </LocalizationProvider>
       </ThemeProvider>
     </AuthProvider>
+    </SWRProvider>
   );
 } 

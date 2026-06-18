@@ -5,7 +5,6 @@ import { format, subDays } from "date-fns";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useWidgetContext } from "@/app/context/WidgetContext";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget";
 
@@ -46,7 +45,6 @@ export function ClientConversionWidget({
   const { currentSite } = useSite();
   const { user } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
-  const { fetchWithController } = useRequestController();
   const [conversionData, setConversionData] = useState<ClientConversionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -80,7 +78,7 @@ export function ClientConversionWidget({
         console.log("[ClientConversionWidget] Fetching conversion data with params:", params.toString());
         
         const response = await fetchWithRetry(
-          fetchWithController,
+          fetch,
           `/api/traffic/client-conversion?${params.toString()}`,
           { maxRetries: 3 }
         );
@@ -105,7 +103,7 @@ export function ClientConversionWidget({
     };
 
     fetchClientConversion();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, fetchWithController]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, ]);
 
   const formattedValue = conversionData ? `${conversionData.actual}%` : "0%";
   const changeText = `${conversionData?.percentChange || 0}% from ${formatPeriodType(conversionData?.periodType || "monthly")}`;

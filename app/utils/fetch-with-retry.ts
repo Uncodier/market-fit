@@ -11,13 +11,13 @@ interface FetchWithRetryOptions {
 
 /**
  * Wraps fetchWithController with retry logic
- * @param fetchWithController - The fetch function from useRequestController hook
+ * @param fetchFn - The fetch function (e.g. global fetch)
  * @param url - URL to fetch
  * @param options - Retry configuration
  * @returns Response object on success, null on failure or cancellation
  */
 export async function fetchWithRetry(
-  fetchWithController: (url: string, options?: RequestInit) => Promise<Response | null>,
+  fetchFn: (url: string, options?: RequestInit) => Promise<Response | null>,
   url: string,
   options: FetchWithRetryOptions = {}
 ): Promise<Response | null> {
@@ -27,7 +27,7 @@ export async function fetchWithRetry(
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetchWithController(url);
+      const response = await fetchFn(url);
       
       // Request was cancelled (aborted) - return null immediately, no retry
       if (!response) {

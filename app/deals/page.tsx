@@ -3,6 +3,7 @@
 // app/deals/page.tsx needs to use Kanban view as default
 
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { getDeals } from "./actions"
@@ -103,35 +104,28 @@ export default function DealsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [activeTab, setActiveTab] = useState("all")
-  const [dbDeals, setDbDeals] = useState<Deal[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [viewType, setViewType] = useMobileView("kanban")
   const { currentSite } = useSite()
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "value_desc" | "value_asc">("newest")
 
-  const loadDeals = async (silent = false) => {
-    if (!currentSite?.id) return
+  const { data: dbDealsData, isLoading: loading, mutate: mutateDeals } = useSWR(
+    currentSite?.id ? ['deals', currentSite.id] : null,
+    async ([_, siteId]) => {
+      const result = await getDeals(siteId)
+      if (result.error) throw new Error(result.error)
+      return result.deals || []
+    },
+    {}
+  )
 
-    if (!silent) setLoading(true)
-    try {
-      const result = await getDeals(currentSite.id)
-      if (result.error) {
-        toast.error(result.error)
-        return
-      }
-      setDbDeals(result.deals || [])
-    } catch (error) {
-      console.error("Error loading deals:", error)
-      toast.error("Error loading deals")
-    } finally {
-      if (!silent) setLoading(false)
-    }
+  const dbDeals = dbDealsData || []
+
+  const loadDeals = async (silent = false) => {
+    await mutateDeals()
   }
 
   useEffect(() => {
-    loadDeals()
-    
     // Register global refresh function for when deals are created
     if (typeof window !== 'undefined') {
       (window as any).refreshDealsList = () => {
@@ -145,6 +139,7 @@ export default function DealsPage() {
       }
     }
   }, [currentSite])
+
 
   const getFilteredDeals = (status: string) => {
     let filtered = dbDeals

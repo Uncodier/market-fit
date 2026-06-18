@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useRequestController } from "@/app/hooks/useRequestController";
 import { useAuth } from "@/app/hooks/use-auth";
 import { useSite } from "@/app/context/SiteContext";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -40,7 +39,6 @@ export function TokenUsageChart({
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { currentSite } = useSite();
-  const { fetchWithController } = useRequestController();
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
@@ -58,7 +56,7 @@ export function TokenUsageChart({
       });
 
       const response = await fetchWithRetry(
-        fetchWithController,
+        fetch,
         `/api/performance/tokens?${params}`,
         { maxRetries: 3 }
       );
@@ -76,7 +74,7 @@ export function TokenUsageChart({
     };
 
     fetchData();
-  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, fetchWithController]);
+  }, [currentSite?.id, user?.id, startDate, endDate, segmentId, ]);
 
   // Colors for the chart
   const colors = {

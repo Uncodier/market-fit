@@ -8,6 +8,7 @@ import { ExternalLink, PlusCircle, Filter, Search, ChevronDown, ChevronUp, Trash
 import { Input } from "@/app/components/ui/input"
 import { SearchInput } from "@/app/components/ui/search-input"
 import React, { useEffect, useState, Suspense, useRef } from "react"
+import useSWR from "swr"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { getAssets, deleteAsset, attachAssetToAgent, detachAssetFromAgent, getAgentAssets, type Asset } from "@/app/assets/actions"
 import { useSite } from "@/app/context/SiteContext"
@@ -1027,12 +1028,8 @@ function AssetsLoadingPage() {
 function AssetsContent() {
   const { t } = useLocalization()
   const { currentSite, isLoading: isSiteLoading } = useSite()
-  const [assets, setAssets] = useState<AssetWithThumbnail[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [isSearching, setIsSearching] = useState(false)
-  const [attachedAssetIds, setAttachedAssetIds] = useState<string[]>([])
   const [viewType, setViewType] = useState<AssetViewType>('grid')
   const [activeTab, setActiveTab] = useState<"all" | "images" | "videos" | "documents">("all")
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest")
@@ -1048,86 +1045,66 @@ function AssetsContent() {
   // Usar el hook de Command+K
   useCommandK()
 
-  useEffect(() => {
-    async function loadAssets() {
-      try {
-        // Si el sitio está cargando y no tenemos un siteId del param, mantenemos el estado de carga
-        if (isSiteLoading && !effectiveSiteId) return
+  const { data: fetchedAssetsData, isLoading: isLoadingAssets, mutate: mutateAssets } = useSWR(
+    effectiveSiteId && !isSiteLoading ? ['assets', effectiveSiteId] : null,
+    async ([_, siteId]) => {
+      const { assets: fetchedAssets, error } = await getAssets(siteId)
+      if (error) throw new Error(error)
+      
+      return fetchedAssets?.map(asset => {
+        const metadata = asset.metadata as { tags?: string[], thumbnail_url?: string, cover_url?: string } || {}
+        return {
+          ...asset,
+          tags: metadata.tags || [],
+          thumbnailUrl: metadata.thumbnail_url || metadata.cover_url,
+          isAttachedToAgent: false
+        }
+      }) || []
+    },
+    {}
+  )
 
-        // Si no hay sitio seleccionado después de la carga
-        if (!effectiveSiteId) {
-          setError("Por favor, selecciona un sitio primero")
-          setIsLoading(false)
-          return
-        }
-        
-        setIsLoading(true)
-        const { assets: fetchedAssets, error } = await getAssets(effectiveSiteId)
-        
-        if (error) throw new Error(error)
-        
-        // Transformar los assets para incluir las etiquetas desde metadata
-        const assetsWithTags = fetchedAssets?.map(asset => {
-          const metadata = asset.metadata as { tags?: string[], thumbnail_url?: string, cover_url?: string } || {}
-          return {
-            ...asset,
-            tags: metadata.tags || [],
-            thumbnailUrl: metadata.thumbnail_url || metadata.cover_url,
-            isAttachedToAgent: false // Will be updated when agent assets are loaded
-          }
-        }) || []
-        
-        setAssets(assetsWithTags)
-        
-        // If agentId is provided, load attached assets
-        if (agentId) {
-          console.log("Loading attached assets for agent:", agentId)
-          const { assetIds, error: agentAssetsError } = await getAgentAssets(agentId)
-          
-          if (agentAssetsError) {
-            console.error("Error loading agent assets:", agentAssetsError)
-          } else if (assetIds) {
-            console.log("Found attached assets:", assetIds)
-            setAttachedAssetIds(assetIds)
-            
-            // Update assets to mark which ones are attached
-            setAssets(prev => prev.map(asset => ({
-              ...asset,
-              isAttachedToAgent: assetIds.includes(asset.id)
-            })))
-          }
-        }
-      } catch (err) {
-        console.error("Error loading assets:", err)
-        setError("Error al cargar los assets")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    
-    loadAssets()
-  }, [effectiveSiteId, isSiteLoading, agentId])
-  
+  const { data: attachedAssetIdsData, mutate: mutateAttachedAssetIds } = useSWR(
+    agentId ? ['agent-assets', agentId] : null,
+    async ([_, aid]) => {
+      const { assetIds, error } = await getAgentAssets(aid)
+      if (error) throw new Error(error)
+      return assetIds || []
+    },
+    {}
+  )
+
+  const attachedAssetIds = attachedAssetIdsData || []
+  const isLoading = isLoadingAssets || isSiteLoading
+  const error = !effectiveSiteId && !isSiteLoading ? "Por favor, selecciona un sitio primero" : null
+
+  const assets = React.useMemo(() => {
+    return (fetchedAssetsData || []).map(asset => ({
+      ...asset,
+      isAttachedToAgent: attachedAssetIds.includes(asset.id)
+    }))
+  }, [fetchedAssetsData, attachedAssetIds])
+
+  const loadAssets = async () => {
+    await mutateAssets()
+    if (agentId) await mutateAttachedAssetIds()
+  }
+
   // Handle attaching asset to agent
   const handleAttach = async (assetId: string) => {
     if (!agentId) return
     
     console.log("Attaching asset", assetId, "to agent", agentId)
+    mutateAttachedAssetIds((current = []) => [...current, assetId], false)
+    
     const { error } = await attachAssetToAgent(agentId, assetId)
     
     if (error) {
       console.error("Error attaching asset:", error)
+      mutateAttachedAssetIds() // revert
       toast.error("Failed to attach asset to agent")
       return
     }
-    
-    // Update local state
-    setAttachedAssetIds(prev => [...prev, assetId])
-    setAssets(prev => prev.map(asset => 
-      asset.id === assetId 
-        ? { ...asset, isAttachedToAgent: true }
-        : asset
-    ))
     
     toast.success("Asset attached to agent successfully")
   }
@@ -1137,21 +1114,16 @@ function AssetsContent() {
     if (!agentId) return
     
     console.log("Detaching asset", assetId, "from agent", agentId)
+    mutateAttachedAssetIds((current = []) => current.filter(id => id !== assetId), false)
+    
     const { error } = await detachAssetFromAgent(agentId, assetId)
     
     if (error) {
       console.error("Error detaching asset:", error)
+      mutateAttachedAssetIds() // revert
       toast.error("Failed to detach asset from agent")
       return
     }
-    
-    // Update local state
-    setAttachedAssetIds(prev => prev.filter(id => id !== assetId))
-    setAssets(prev => prev.map(asset => 
-      asset.id === assetId 
-        ? { ...asset, isAttachedToAgent: false }
-        : asset
-    ))
     
     toast.success("Asset detached from agent successfully")
   }
@@ -1188,7 +1160,10 @@ function AssetsContent() {
   })
 
   const handleDeleteAsset = (assetId: string) => {
-    setAssets(assets.filter(a => a.id !== assetId))
+    mutateAssets(
+      (current = []) => current.filter(a => a.id !== assetId),
+      false
+    )
   }
 
   // Si el sitio está cargando, mostramos el skeleton

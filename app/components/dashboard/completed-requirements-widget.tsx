@@ -1,7 +1,6 @@
 "use client"
 
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
-import { useRequestController } from "@/app/hooks/useRequestController"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
 import { CheckSquare } from "@/app/components/ui/icons"
