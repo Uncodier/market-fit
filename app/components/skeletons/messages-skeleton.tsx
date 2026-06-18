@@ -28,15 +28,15 @@ export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpac
           <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
           <div className="space-y-6 pt-6 pb-6">
         {/* System/Agent message */}
-        <div className="flex justify-start">
-          <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
-            <div className="flex items-center mb-1 gap-2">
-              <div className="relative">
-                <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
-              </div>
-              <Skeleton className="h-4 w-24 bg-primary/10" />
+        <div className="flex flex-col w-full min-w-0 items-start">
+          <div className="flex items-center mb-1 gap-2 w-full">
+            <div className="relative">
+              <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
             </div>
-            <div className="ml-9 rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
+            <Skeleton className="h-4 w-24 bg-primary/10" />
+          </div>
+          <div className="w-full min-w-0 overflow-hidden pl-8">
+            <div className="w-full rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
               <Skeleton className="h-4 w-[90%] mb-3" />
               <Skeleton className="h-4 w-[75%] mb-3" />
               <Skeleton className="h-4 w-[85%] mb-3" />
@@ -49,13 +49,13 @@ export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpac
         </div>
 
         {/* User message */}
-        <div className="flex justify-end">
-          <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 items-end px-4 md:px-0 w-full md:w-[60%]">
-            <div className="flex items-center mb-1 gap-2 flex-row-reverse">
-              <Skeleton className="h-7 w-7 rounded-full bg-amber-500/10" />
-              <Skeleton className="h-4 w-20 bg-amber-500/10" />
-            </div>
-            <div className="rounded-lg p-4 mr-9 w-full bg-muted/30 dark:bg-muted/10">
+        <div className="flex flex-col w-full min-w-0 items-end">
+          <div className="flex items-center mb-1 gap-2 justify-end w-full">
+            <Skeleton className="h-4 w-20 bg-amber-500/10" />
+            <Skeleton className="h-7 w-7 rounded-full bg-amber-500/10" />
+          </div>
+          <div className="w-full min-w-0 overflow-hidden flex justify-end pr-8">
+            <div className="rounded-lg p-4 mr-12 w-full md:w-3/4 lg:w-2/3 bg-muted/30 dark:bg-muted/10">
               <Skeleton className="h-4 w-[95%] mb-3" />
               <Skeleton className="h-4 w-[80%] mb-3" />
               <div className="flex justify-between items-center mt-3">
@@ -67,15 +67,15 @@ export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpac
         </div>
 
         {/* Agent message with details */}
-        <div className="flex justify-start">
-          <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
-            <div className="flex items-center mb-1 gap-2">
-              <div className="relative">
-                <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
-              </div>
-              <Skeleton className="h-4 w-28 bg-primary/10" />
+        <div className="flex flex-col w-full min-w-0 items-start">
+          <div className="flex items-center mb-1 gap-2 w-full">
+            <div className="relative">
+              <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
             </div>
-            <div className="ml-9 rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
+            <Skeleton className="h-4 w-28 bg-primary/10" />
+          </div>
+          <div className="w-full min-w-0 overflow-hidden pl-8">
+            <div className="w-full rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
               <Skeleton className="h-4 w-[95%] mb-3" />
               <Skeleton className="h-4 w-[85%] mb-3" />
               <div className="bg-muted p-3 rounded-md mb-3 space-y-2">
@@ -93,15 +93,15 @@ export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpac
         </div>
 
         {/* Tool result message */}
-        <div className="flex justify-start">
-          <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
-            <div className="flex items-center mb-1 gap-2">
-              <div className="relative">
-                <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
-              </div>
-              <Skeleton className="h-4 w-24 bg-primary/10" />
+        <div className="flex flex-col w-full min-w-0 items-start">
+          <div className="flex items-center mb-1 gap-2 w-full">
+            <div className="relative">
+              <Skeleton className="h-7 w-7 rounded-full bg-primary/10" />
             </div>
-            <div className="ml-9 rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
+            <Skeleton className="h-4 w-24 bg-primary/10" />
+          </div>
+          <div className="w-full min-w-0 overflow-hidden pl-8">
+            <div className="w-full rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
               <Skeleton className="h-4 w-[80%] mb-3" />
               <div className="bg-muted p-2 rounded-md space-y-1">
                 <Skeleton className="h-3 w-32 mb-2" />
