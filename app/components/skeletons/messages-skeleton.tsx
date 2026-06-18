@@ -1,13 +1,16 @@
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
+import { cn } from "@/lib/utils"
 
 type MessagesSkeletonProps = {
   /** When false, omits the fixed composer skeleton (e.g. robots agent panel). */
   showComposerSkeleton?: boolean
+  /** When false, hides the top header spacer */
+  hasTopHeaderSpace?: boolean
 }
 
-export function MessagesSkeleton({ showComposerSkeleton = true }: MessagesSkeletonProps) {
+export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpace = true }: MessagesSkeletonProps) {
   const layoutContext = useLayout()
   const isMobile = useIsMobile()
   const isLayoutCollapsed = layoutContext?.isLayoutCollapsed ?? false
@@ -16,12 +19,14 @@ export function MessagesSkeleton({ showComposerSkeleton = true }: MessagesSkelet
     <div className="flex flex-col h-full w-full relative min-h-0">
       {/* Messages list skeleton */}
       <div
-        className={`flex-1 overflow-y-auto overflow-x-hidden py-6 w-full min-w-0 min-h-0 ${
+        className={`flex-1 overflow-y-auto overflow-x-hidden w-full min-w-0 min-h-0 ${
           showComposerSkeleton ? "pb-[220px]" : "pb-6"
         }`}
       >
         <div className="w-full max-w-4xl mx-auto px-4 min-w-0">
-        <div className="space-y-6">
+          {/* Spacer for sticky header and topbar blur effect */}
+          <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
+          <div className="space-y-6 pt-6 pb-6">
         {/* System/Agent message */}
         <div className="flex justify-start">
           <div className="flex flex-col max-w-[85%] md:max-w-[75%] min-w-0 px-4 md:px-0 w-full md:w-[60%]">
@@ -112,12 +117,13 @@ export function MessagesSkeleton({ showComposerSkeleton = true }: MessagesSkelet
 
       {showComposerSkeleton ? (
         <div
-          className="fixed right-0 bottom-0 z-20 pointer-events-none flex flex-col items-center justify-end pb-[15px] transition-all duration-500 ease-in-out chat-input-container !bg-transparent !p-0"
+          className="absolute right-0 left-0 bottom-0 z-20 pointer-events-none flex flex-col items-center justify-end pb-[15px] transition-all duration-500 ease-in-out chat-input-container !bg-transparent !p-0"
           style={{
-            left: isMobile ? 0 : isLayoutCollapsed ? 64 : 256,
+            width: '100%',
+            maxWidth: '100%'
           }}
         >
-          <div className="w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0">
+          <div className="w-full max-w-[800px] px-4 pointer-events-auto relative z-10 !bg-transparent !p-0 mx-auto flex flex-col">
             <div className="relative">
               <Skeleton className="h-[135px] w-full rounded-2xl" />
               <Skeleton className="absolute bottom-[15px] right-[15px] h-[35.1px] w-[35.1px] rounded-[9999px]" />
