@@ -1,11 +1,11 @@
 import { createClient } from "@/lib/supabase/client"
+import { mutate } from "swr"
 
 type Unsubscribe = () => void
 
 type Entry = {
   refCount: number
   channel: { unsubscribe?: () => void } | null
-  listeners: Set<() => void>
   debounce: ReturnType<typeof setTimeout> | null
 }
 
@@ -18,17 +18,15 @@ const DEBOUNCE_MS = 200
  * avoids multiple hook instances tearing down a shared channel name.
  */
 export function subscribeRequirementStatusRealtime(
-  instanceId: string,
-  onChange: () => void
+  instanceId: string
 ): Unsubscribe {
   let entry = byInstance.get(instanceId)
   if (!entry) {
-    entry = { refCount: 0, channel: null, listeners: new Set(), debounce: null }
+    entry = { refCount: 0, channel: null, debounce: null }
     byInstance.set(instanceId, entry)
   }
 
   entry.refCount += 1
-  entry.listeners.add(onChange)
 
   if (!entry.channel) {
     const supabase = createClient()
@@ -54,10 +52,8 @@ export function subscribeRequirementStatusRealtime(
             if (latest) {
               latest.debounce = null
             }
-            if (!latest?.listeners.size) return
-            for (const fn of latest.listeners) {
-              fn()
-            }
+            // Disparar un mutate global de SWR para este instanceId
+            mutate(['requirement_status', instanceId])
           }, DEBOUNCE_MS)
         }
       )
@@ -68,7 +64,6 @@ export function subscribeRequirementStatusRealtime(
   return () => {
     const e = byInstance.get(instanceId)
     if (!e) return
-    e.listeners.delete(onChange)
     e.refCount -= 1
     if (e.refCount <= 0 && e.channel) {
       if (e.debounce) {
@@ -78,7 +73,6 @@ export function subscribeRequirementStatusRealtime(
       const supabase = createClient()
       supabase.removeChannel(e.channel as Parameters<typeof supabase.removeChannel>[0])
       e.channel = null
-      e.listeners.clear()
       byInstance.delete(instanceId)
     }
   }

@@ -68,10 +68,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   
   useEffect(() => {
     if (currentSite?.id) {
-      const syncTimer = setTimeout(() => {
-        setIsSiteContextReady(true)
-      }, 100)
-      return () => clearTimeout(syncTimer)
+      // 🆕 Eliminado delay artificial para mayor velocidad
+      setIsSiteContextReady(true)
     } else {
       setIsSiteContextReady(false)
     }

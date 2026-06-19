@@ -990,8 +990,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
     
     // Solo guardar si es un sitio válido y no es el 'default'
     if (site && site.id) {
+      // ACTUALIZACIÓN OPTIMISTA: Cambiar el UI inmediatamente sin bloquear
+      setLocalStorage("currentSiteId", site.id)
+      setCurrentSite(site)
+      
       try {
-        // Cargar los settings específicamente para este sitio
+        // Cargar los settings específicamente para este sitio en background
         if (!site.settings && supabaseRef.current) {
 
         let settingsData = null;
@@ -1043,7 +1047,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
             // Parse business_hours specifically
             const parsedBusinessHours = parseJsonField(settingsData.business_hours, []);
             
-            site = {
+            const enrichedSite = {
               ...site,
               settings: {
                 id: settingsData.id,
@@ -1150,6 +1154,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
                 // allowed_domains is handled in a separate table, not in settings
               }
             };
+            
+            // Actualizar solo si sigue siendo el mismo sitio actual (por si el usuario cambió rápido)
+            setCurrentSite(current => current?.id === enrichedSite.id ? enrichedSite : current);
           }
         } else {
         }
@@ -1157,13 +1164,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
         console.error(`Error handling settings for site ${site.id}:`, err);
         // Continuamos con el sitio sin settings en caso de error
       }
-      
-      // Guardar el ID directamente - nuestra función setLocalStorage ya maneja la limpieza
-      setLocalStorage("currentSiteId", site.id)
+    } else {
+      // Establecer el sitio como actual (para casos sin ID válido)
+      setCurrentSite(site)
     }
-    
-    // Establecer el sitio como actual
-    setCurrentSite(site)
   }
 
   // Actualizar un sitio en Supabase

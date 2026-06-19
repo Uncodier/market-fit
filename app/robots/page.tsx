@@ -161,12 +161,8 @@ function RobotsPageContent() {
     // 🆕 Homologated site ID validation (same pattern as RobotsProvider)
     const siteId = currentSite?.id
     if (siteId) {
-      // Add a small delay to ensure site context is fully synchronized
-      const syncTimer = setTimeout(() => {
-        setIsSiteContextReady(true)
-      }, 100) // 100ms delay to ensure synchronization
-      
-      return () => clearTimeout(syncTimer)
+      // 🆕 Eliminado delay artificial para mayor velocidad
+      setIsSiteContextReady(true)
     } else {
       setIsSiteContextReady(false)
     }
@@ -278,16 +274,36 @@ function RobotsPageContent() {
   }, [selectedInstanceId])
 
   // Fetch latest image asset for each instance to use as avatar
-  const { data: fetchedAvatars } = useSWR(
-    allInstances?.length > 0 ? ['instance-avatars', allInstances.map(i => i.id).join(',')] : null,
-    async () => {
+  // Mantiene cache incremental de avatares para evitar llamadas repetitivas
+  useEffect(() => {
+    if (!allInstances || allInstances.length === 0) return;
+
+    const fetchMissingAvatars = async () => {
+      const missingIds = allInstances
+        .map(i => i.id)
+        .filter(id => instanceAvatars[id] === undefined); // Solo los que no han sido fetcheados
+        
+      if (missingIds.length === 0) return;
+
+      // Mark them as empty string temporarily to avoid concurrent fetches
+      setInstanceAvatars(prev => {
+        const next = { ...prev };
+        let changed = false;
+        missingIds.forEach(id => {
+          if (next[id] === undefined) {
+            next[id] = ''; // string vacío significa "fetched pero sin avatar o en proceso"
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+
       const supabase = createClient();
-      const instanceIds = allInstances.map(i => i.id);
       const avatarsMap: Record<string, string> = {};
       
       const chunkSize = 20;
-      for (let i = 0; i < instanceIds.length; i += chunkSize) {
-        const chunk = instanceIds.slice(i, i + chunkSize);
+      for (let i = 0; i < missingIds.length; i += chunkSize) {
+        const chunk = missingIds.slice(i, i + chunkSize);
         
         const promises = chunk.map(async (id) => {
           const { data } = await supabase
@@ -314,22 +330,14 @@ function RobotsPageContent() {
           if (res.url) avatarsMap[res.id] = res.url;
         });
       }
-      return avatarsMap;
-    },
-    { fallbackData: EMPTY_AVATARS, keepPreviousData: true }
-  );
 
-  useEffect(() => {
-    if (fetchedAvatars && Object.keys(fetchedAvatars).length > 0) {
-      setInstanceAvatars(prev => {
-        const hasChanges = Object.entries(fetchedAvatars).some(([k, v]) => prev[k] !== v);
-        if (hasChanges) {
-          return { ...prev, ...fetchedAvatars };
-        }
-        return prev;
-      });
-    }
-  }, [fetchedAvatars]);
+      if (Object.keys(avatarsMap).length > 0) {
+        setInstanceAvatars(prev => ({ ...prev, ...avatarsMap }));
+      }
+    };
+
+    fetchMissingAvatars();
+  }, [allInstances, instanceAvatars]);
   // Function to check if instances exist in database (bypassing state)
   const checkInstancesExistInDB = useCallback(async (siteId: string): Promise<boolean> => {
     try {
@@ -1841,7 +1849,7 @@ function RobotsPageContent() {
                     </div>
                   ) : (
                     <SimpleMessagesView 
-                      key={`${currentSite?.id}-${siteChangeKey}-${activeRobotInstance?.id || 'new'}`}
+                      key={`${currentSite?.id}-${siteChangeKey}`}
                       className="h-full absolute inset-0"
                       activeRobotInstance={activeRobotInstance}
                       isBrowserVisible={isBrowserVisible}
