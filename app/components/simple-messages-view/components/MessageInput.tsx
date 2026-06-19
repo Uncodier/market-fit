@@ -193,7 +193,6 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,text/csv,text/plain,application/csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/json,application/xml,text/xml"
               multiple
               onChange={handleFileSelect}
               className="hidden"

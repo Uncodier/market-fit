@@ -528,7 +528,14 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
 
   // Show loading skeleton when loading logs
   if (isLoadingLogs) {
-    return <MessagesSkeleton showComposerSkeleton={false} hasTopHeaderSpace={hasTopHeaderSpace} />
+    return (
+      <MessagesSkeleton 
+        showComposerSkeleton={false} 
+        hasTopHeaderSpace={hasTopHeaderSpace} 
+        className={cn("flex flex-col w-full min-w-0 h-full min-h-0", className, !className?.includes('absolute') && "relative")}
+        isBrowserVisible={isBrowserVisible}
+      />
+    )
   }
 
   // Calculate if chat is empty

@@ -8,15 +8,24 @@ type MessagesSkeletonProps = {
   showComposerSkeleton?: boolean
   /** When false, hides the top header spacer */
   hasTopHeaderSpace?: boolean
+  /** Additional classes to pass to the root container */
+  className?: string
+  /** Whether the browser pane is visible */
+  isBrowserVisible?: boolean
 }
 
-export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpace = true }: MessagesSkeletonProps) {
+export function MessagesSkeleton({ 
+  showComposerSkeleton = true, 
+  hasTopHeaderSpace = true,
+  className = "",
+  isBrowserVisible = false
+}: MessagesSkeletonProps) {
   const layoutContext = useLayout()
   const isMobile = useIsMobile()
   const isLayoutCollapsed = layoutContext?.isLayoutCollapsed ?? false
 
   return (
-    <div className="flex flex-col h-full w-full relative min-h-0">
+    <div className={cn("flex flex-col h-full w-full min-h-0", className, !className?.includes('absolute') && "relative")}>
       {/* Messages list skeleton */}
       <div
         className={`flex-1 overflow-y-auto overflow-x-hidden w-full min-w-0 min-h-0 ${
@@ -35,7 +44,7 @@ export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpac
             </div>
             <Skeleton className="h-4 w-24 bg-primary/10" />
           </div>
-          <div className="w-full min-w-0 overflow-hidden pl-8">
+          <div className={cn("w-full min-w-0 overflow-hidden", isBrowserVisible ? "pl-3" : "pl-8")}>
             <div className="w-full rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
               <Skeleton className="h-4 w-[90%] mb-3" />
               <Skeleton className="h-4 w-[75%] mb-3" />
@@ -54,8 +63,8 @@ export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpac
             <Skeleton className="h-4 w-20 bg-amber-500/10" />
             <Skeleton className="h-7 w-7 rounded-full bg-amber-500/10" />
           </div>
-          <div className="w-full min-w-0 overflow-hidden flex justify-end pr-8">
-            <div className="rounded-lg p-4 mr-12 w-full md:w-3/4 lg:w-2/3 bg-muted/30 dark:bg-muted/10">
+          <div className={cn("w-full min-w-0 overflow-hidden flex justify-end", isBrowserVisible ? "pr-2" : "pr-8")}>
+            <div className={cn("rounded-lg w-full md:w-3/4 lg:w-2/3 bg-muted/30 dark:bg-muted/10", isBrowserVisible ? "mr-2 p-3" : "mr-12 p-4")}>
               <Skeleton className="h-4 w-[95%] mb-3" />
               <Skeleton className="h-4 w-[80%] mb-3" />
               <div className="flex justify-between items-center mt-3">
@@ -74,7 +83,7 @@ export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpac
             </div>
             <Skeleton className="h-4 w-28 bg-primary/10" />
           </div>
-          <div className="w-full min-w-0 overflow-hidden pl-8">
+          <div className={cn("w-full min-w-0 overflow-hidden", isBrowserVisible ? "pl-3" : "pl-8")}>
             <div className="w-full rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
               <Skeleton className="h-4 w-[95%] mb-3" />
               <Skeleton className="h-4 w-[85%] mb-3" />
@@ -100,7 +109,7 @@ export function MessagesSkeleton({ showComposerSkeleton = true, hasTopHeaderSpac
             </div>
             <Skeleton className="h-4 w-24 bg-primary/10" />
           </div>
-          <div className="w-full min-w-0 overflow-hidden pl-8">
+          <div className={cn("w-full min-w-0 overflow-hidden", isBrowserVisible ? "pl-3" : "pl-8")}>
             <div className="w-full rounded-lg p-4 bg-muted/50 dark:bg-muted/20">
               <Skeleton className="h-4 w-[80%] mb-3" />
               <div className="bg-muted p-2 rounded-md space-y-1">

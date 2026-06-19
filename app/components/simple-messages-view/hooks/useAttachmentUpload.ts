@@ -14,23 +14,6 @@ export const useAttachmentUpload = ({ siteId, instanceId }: UseAttachmentUploadP
   const { toast } = useToast()
 
   const uploadFile = async (file: File): Promise<MessageAttachment | null> => {
-    // Validate file type
-    const allowedTypes = [
-      'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp',
-      'text/csv', 'text/plain', 'application/csv',
-      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/json', 'application/xml', 'text/xml'
-    ]
-    if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please select an image, document, or text file (PNG, JPG, GIF, WebP, CSV, TXT, PDF, DOC, DOCX, XLS, XLSX, JSON, XML)',
-        variant: 'destructive'
-      })
-      return null
-    }
-
     // Validate file size (5MB max)
     const maxSize = 5 * 1024 * 1024 // 5MB in bytes
     if (file.size > maxSize) {
@@ -64,12 +47,15 @@ export const useAttachmentUpload = ({ siteId, instanceId }: UseAttachmentUploadP
       // Determine file type folder based on MIME type
       const getFileTypeFolder = (mimeType: string) => {
         if (mimeType.startsWith('image/')) return 'image'
+        if (mimeType.startsWith('video/')) return 'video'
+        if (mimeType.startsWith('audio/')) return 'audio'
         if (mimeType.startsWith('text/') || mimeType === 'application/csv') return 'text'
         if (mimeType === 'application/pdf') return 'pdf'
         if (mimeType.includes('word') || mimeType.includes('document')) return 'document'
         if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'spreadsheet'
         if (mimeType.includes('json') || mimeType.includes('xml')) return 'data'
-        return 'document'
+        if (mimeType.includes('zip') || mimeType.includes('tar') || mimeType.includes('rar') || mimeType.includes('gzip')) return 'archive'
+        return 'other'
       }
       
       const fileTypeFolder = getFileTypeFolder(file.type)
