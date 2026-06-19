@@ -1172,6 +1172,93 @@ function RobotsPageContent() {
     };
   }, [calculateScale, isBrowserVisible]);
 
+  const allArtifactItems = useMemo(() => {
+    const items: Array<{
+      id: string;
+      kind: 'preview' | 'source' | 'artifact';
+      screen?: string;
+      label: string;
+      icon: any;
+      isActive: boolean;
+    }> = [];
+    
+    if (hasRequirementPreview) {
+      items.push({
+        id: 'preview',
+        kind: 'preview',
+        label: 'Preview',
+        icon: Globe,
+        isActive: activeBrowserTab.kind === 'preview'
+      });
+      items.push({
+        id: 'source',
+        kind: 'source',
+        label: 'Source',
+        icon: Folder,
+        isActive: activeBrowserTab.kind === 'source'
+      });
+      items.push({
+        id: 'database',
+        kind: 'artifact',
+        screen: 'database',
+        label: 'Database',
+        icon: Database,
+        isActive: activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'database'
+      });
+    }
+    
+    artifactScreens.forEach(a => {
+      if (hasRequirementPreview && a.screen === 'database') return;
+      const isActive = activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === a.screen;
+      items.push({
+        id: `artifact-${a.screen}`,
+        kind: 'artifact',
+        screen: a.screen,
+        label: formatScreenName(a.screen),
+        icon: null,
+        isActive
+      });
+    });
+    
+    return items;
+  }, [hasRequirementPreview, activeBrowserTab, artifactScreens]);
+
+  const { visibleArtifacts, hiddenArtifacts } = useMemo(() => {
+    // Determine max visible based on containerWidth (or fallback to windowWidth/default)
+    let maxVisible = 4;
+    if (containerWidth > 0) {
+      if (containerWidth < 640) maxVisible = 1;
+      else if (containerWidth < 768) maxVisible = 2;
+      else if (containerWidth < 1024) maxVisible = 3;
+      else maxVisible = 4;
+    }
+    
+    if (allArtifactItems.length <= maxVisible) {
+      return { visibleArtifacts: allArtifactItems, hiddenArtifacts: [] };
+    }
+    
+    const activeIndex = allArtifactItems.findIndex(item => item.isActive);
+    const effectiveMax = maxVisible - 1; // leave room for dropdown trigger
+    
+    if (activeIndex === -1 || activeIndex < effectiveMax) {
+      return {
+        visibleArtifacts: allArtifactItems.slice(0, effectiveMax),
+        hiddenArtifacts: allArtifactItems.slice(effectiveMax)
+      };
+    } else {
+      return {
+        visibleArtifacts: [
+          ...allArtifactItems.slice(0, effectiveMax - 1),
+          allArtifactItems[activeIndex]
+        ],
+        hiddenArtifacts: [
+          ...allArtifactItems.slice(effectiveMax - 1, activeIndex),
+          ...allArtifactItems.slice(activeIndex + 1)
+        ]
+      };
+    }
+  }, [allArtifactItems, containerWidth]);
+
   return (
     <div className={`flex flex-col h-full w-full ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'} relative`}>
       <StickyHeader key={`${currentSite?.id}-${siteChangeKey}`} className="flex-none transition-all duration-300">
@@ -1701,50 +1788,61 @@ function RobotsPageContent() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1 overflow-x-auto min-w-0 max-w-[40vw] sm:max-w-[50vw] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                      {hasRequirementPreview && (
-                        <>
-                          <button
-                            onClick={() => setActiveBrowserTab({ kind: 'preview' })}
-                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${activeBrowserTab.kind === 'preview' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                            title="Live Preview"
-                          >
-                            <Globe className="h-3.5 w-3.5 mr-1.5" />
-                            Preview
-                          </button>
-                          <button
-                            onClick={() => setActiveBrowserTab({ kind: 'source' })}
-                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${activeBrowserTab.kind === 'source' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                            title="Source Code"
-                          >
-                            <Folder className="h-3.5 w-3.5 mr-1.5" />
-                            Source
-                          </button>
-                          <button
-                            onClick={() => setActiveBrowserTab({ kind: 'artifact', screen: 'database' })}
-                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === 'database' ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                            title="Database"
-                          >
-                            <Database className="h-3.5 w-3.5 mr-1.5" />
-                            Database
-                          </button>
-                        </>
-                      )}
-                      {artifactScreens.map(a => {
-                        if (hasRequirementPreview && a.screen === 'database') return null;
-                        const isActive = activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === a.screen;
-                        const screenName = formatScreenName(a.screen);
+                    <div className="flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1 min-w-0">
+                      {visibleArtifacts.map(item => {
+                        const Icon = item.icon;
                         return (
                           <button
-                            key={a.screen}
-                            onClick={() => setActiveBrowserTab({ kind: 'artifact', screen: a.screen })}
-                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${isActive ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
-                            title={screenName}
+                            key={item.id}
+                            onClick={() => {
+                              if (item.kind === 'artifact' && item.screen) {
+                                setActiveBrowserTab({ kind: 'artifact', screen: item.screen });
+                              } else if (item.kind === 'preview' || item.kind === 'source') {
+                                setActiveBrowserTab({ kind: item.kind });
+                              }
+                            }}
+                            className={`shrink-0 h-6 px-3 flex items-center justify-center rounded-full transition-colors text-xs font-medium ${item.isActive ? 'bg-white dark:bg-white/10 shadow-sm text-foreground' : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground'}`}
+                            title={item.label}
                           >
-                            {screenName}
+                            {Icon && <Icon className="h-3.5 w-3.5 mr-1.5" />}
+                            {item.label}
                           </button>
-                        )
+                        );
                       })}
+                      
+                      {hiddenArtifacts.length > 0 && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="shrink-0 h-6 w-8 flex items-center justify-center rounded-full transition-colors text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+                              title="More options"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-[180px]">
+                            {hiddenArtifacts.map(item => {
+                              const Icon = item.icon;
+                              return (
+                                <DropdownMenuItem 
+                                  key={item.id} 
+                                  onClick={() => {
+                                    if (item.kind === 'artifact' && item.screen) {
+                                      setActiveBrowserTab({ kind: 'artifact', screen: item.screen });
+                                    } else if (item.kind === 'preview' || item.kind === 'source') {
+                                      setActiveBrowserTab({ kind: item.kind });
+                                    }
+                                  }}
+                                  className={item.isActive ? 'bg-muted' : ''}
+                                >
+                                  {Icon && <Icon className="h-3.5 w-3.5 mr-2" />}
+                                  {item.label}
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
 
                     <button
