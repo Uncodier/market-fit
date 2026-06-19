@@ -1,4 +1,5 @@
 import useSWR from "swr"
+import { useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { subscribeRequirementStatusRealtime } from "./subscribeRequirementStatusRealtime"
 
