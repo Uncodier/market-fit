@@ -226,6 +226,7 @@ export default function SettingsPage() {
   const [activeSegment, setActiveSegment] = useState("general")
   const searchParams = useSearchParams()
   const [formKey, setFormKey] = useState(0)
+  const [isSaving, setIsSaving] = useState(false)
   const [teamSections, setTeamSections] = useState<QuickNavSection[]>(getInitialTeamSections(t))
   const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections(t))
   const [socialSections, setSocialSections] = useState<QuickNavSection[]>(getInitialSocialSections(t))

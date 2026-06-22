@@ -906,7 +906,7 @@ function RobotsPageContent() {
   const { data: databaseArtifactUrlData } = useSWR(
     // Añadimos prevData a las dependencias si queremos mantener el valor previo temporalmente.
     // Pero lo más importante es que las llamadas dependan SOLO de los requirement_id, que cambian menos frecuente
-    ['database-artifact', Array.from(new Set(requirementStatuses?.map(r => r.requirement_id).filter(Boolean))).sort().join(','), activeRobotInstance?.id],
+    ['database-artifact', Array.from(new Set(requirementStatuses?.map((r: any) => r.requirement_id).filter(Boolean))).sort().join(','), activeRobotInstance?.id],
     async ([_, reqIds]) => {
       let url = `/applications/database?artifact=true&robotInstanceId=${activeRobotInstance?.id || ''}`;
       
@@ -1355,7 +1355,7 @@ function RobotsPageContent() {
                                               await supabase
                                                 .from('instance_plans')
                                                 .update({ status: 'paused', updated_at: new Date().toISOString() })
-                                                .in('id', plans.map(p => p.id));
+                                                .in('id', plans.map((p: any) => p.id));
                                             }
                                           } else {
                                             const { data: plans } = await supabase
@@ -1367,7 +1367,7 @@ function RobotsPageContent() {
                                               await supabase
                                                 .from('instance_plans')
                                                 .update({ status: 'in_progress', updated_at: new Date().toISOString() })
-                                                .in('id', plans.map(p => p.id));
+                                                .in('id', plans.map((p: any) => p.id));
                                             }
                                           }
                                           refreshRobots(currentSite?.id);
