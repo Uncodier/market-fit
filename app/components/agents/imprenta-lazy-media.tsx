@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { getImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
 
-/** Lite / graph shells: skeleton until decode; lazy by default, eager when nearly full-detail zoom. */
+import { useEffect, useState, useRef } from "react"
+import { imprentaVideoManager } from "@/app/lib/imprenta-video-playback"
 export function ImprentaLazyPreviewImage({
   url,
   className,
@@ -65,12 +66,48 @@ export function ImprentaLazyPreviewVideo({
   const [ready, setReady] = useState(false)
   const [inViewport, setInViewport] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
+  const [shouldMountVideo, setShouldMountVideo] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLSpanElement>(null)
+
+  const posterCanvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     setReady(false)
   }, [url])
+
+  // Use thumb cache for the poster frame
+  useEffect(() => {
+    if (shouldMountVideo || !inViewport) return
+    
+    const cache = getImprentaThumbCache()
+    const frame = cache.get(url)
+    
+    if (frame) {
+      setReady(true)
+      const ctx = posterCanvasRef.current?.getContext('2d')
+      if (ctx && posterCanvasRef.current) {
+        posterCanvasRef.current.width = frame.width
+        posterCanvasRef.current.height = frame.height
+        ctx.drawImage(frame as any, 0, 0)
+      }
+    } else {
+      cache.request(url)
+      const unsub = cache.onDecoded((decodedUrl) => {
+        if (decodedUrl === url) {
+          setReady(true)
+          const newFrame = cache.get(url)
+          const ctx = posterCanvasRef.current?.getContext('2d')
+          if (ctx && posterCanvasRef.current && newFrame) {
+            posterCanvasRef.current.width = newFrame.width
+            posterCanvasRef.current.height = newFrame.height
+            ctx.drawImage(newFrame as any, 0, 0)
+          }
+        }
+      })
+      return unsub
+    }
+  }, [url, shouldMountVideo, inViewport])
 
   useEffect(() => {
     const el = containerRef.current
@@ -89,19 +126,29 @@ export function ImprentaLazyPreviewVideo({
   }, [])
 
   useEffect(() => {
+    const shouldPlay = isHovered || scale >= 0.7
+
+    if (shouldPlay && inViewport) {
+      setShouldMountVideo(true)
+    }
+  }, [inViewport, isHovered, scale])
+
+  useEffect(() => {
     const video = videoRef.current
-    if (!video || !inViewport) return
+    if (!video) return
 
     const shouldPlay = isHovered || scale >= 0.7
 
-    if (shouldPlay) {
-      video.play().catch(() => {
-        // Ignore auto-play errors
-      })
+    if (shouldPlay && inViewport) {
+      imprentaVideoManager.acquire(video)
     } else {
-      video.pause()
+      imprentaVideoManager.release(video)
     }
-  }, [inViewport, isHovered, scale, url])
+    
+    return () => {
+      imprentaVideoManager.release(video)
+    }
+  }, [inViewport, isHovered, scale, url, shouldMountVideo])
 
   const effectiveUrl = inViewport ? (url.includes('#') ? url : `${url}#t=0.001`) : ''
 
@@ -120,19 +167,30 @@ export function ImprentaLazyPreviewVideo({
       >
         <span className="sr-only">Loading video preview</span>
       </span>
-      <video
-        ref={videoRef}
-        src={effectiveUrl || undefined}
-        muted
-        playsInline
-        preload={priority ? "auto" : "metadata"}
-        className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
-          ready ? "opacity-95" : "opacity-0"
-        } ${className ?? ""}`}
-        aria-hidden
-        onLoadedData={() => setReady(true)}
-        onError={() => setReady(true)}
-      />
+      {shouldMountVideo ? (
+        <video
+          ref={videoRef}
+          src={effectiveUrl || undefined}
+          muted
+          playsInline
+          loop
+          preload={priority ? "auto" : "metadata"}
+          className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
+            ready ? "opacity-95" : "opacity-0"
+          } ${className ?? ""}`}
+          aria-hidden
+          onLoadedData={() => setReady(true)}
+          onError={() => setReady(true)}
+        />
+      ) : (
+        <canvas
+          ref={posterCanvasRef}
+          className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
+            ready ? "opacity-95" : "opacity-0"
+          } ${className ?? ""}`}
+          aria-hidden
+        />
+      )}
     </span>
   )
 }

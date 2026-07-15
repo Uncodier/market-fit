@@ -163,6 +163,7 @@ export async function bookRRMeeting(data: {
   notes?: string;
   location?: string;
   title: string;
+  metadata?: Record<string, string>;
 }) {
   const supabase = await createServiceClient(true);
 
@@ -211,6 +212,7 @@ export async function bookRRMeeting(data: {
     notes: data.notes,
     location: data.location,
     title: data.title,
+    metadata: data.metadata,
   });
 }
 
@@ -571,6 +573,7 @@ export async function bookMeeting(data: {
   notes?: string;
   location?: string;
   title: string;
+  metadata?: Record<string, string>;
 }) {
   const supabase = await createServiceClient(true);
 
@@ -600,7 +603,7 @@ export async function bookMeeting(data: {
   // 2. Find or Create Lead
   let { data: lead } = await supabase
     .from("leads")
-    .select("id")
+    .select("id, metadata")
     .eq("email", data.email)
     .eq("site_id", siteId)
     .single();
@@ -615,12 +618,24 @@ export async function bookMeeting(data: {
         user_id: data.userId, // Attributed to the calendar owner
         status: "new",
         origin: "Public Booking",
+        metadata: data.metadata || {},
       })
       .select("id")
       .single();
 
     if (leadError) throw leadError;
     lead = newLead;
+  } else if (data.metadata && Object.keys(data.metadata).length > 0) {
+    // If lead exists and we have new metadata, merge it
+    const existingMetadata = lead.metadata || {};
+    const newMetadata = { ...existingMetadata, ...data.metadata };
+    
+    const { error: updateError } = await supabase
+      .from("leads")
+      .update({ metadata: newMetadata })
+      .eq("id", lead.id);
+      
+    if (updateError) console.error("Error updating lead metadata:", updateError);
   }
 
   // 3. Create Task

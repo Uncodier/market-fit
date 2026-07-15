@@ -18,13 +18,13 @@ export type ThumbCacheStatus = "idle" | "loading" | "ready" | "error"
 type CacheEntry = {
   url: string
   status: ThumbCacheStatus
-  image: HTMLImageElement | HTMLCanvasElement | null
+  image: ImageBitmap | HTMLCanvasElement | null
   /** Monotonic touch counter for LRU. */
   lastUsed: number
 }
 
 export type ImprentaThumbCache = {
-  get: (url: string) => HTMLImageElement | HTMLCanvasElement | null
+  get: (url: string) => ImageBitmap | HTMLCanvasElement | null
   status: (url: string) => ThumbCacheStatus
   /** Kick off a decode if not already loading/ready. No-op server-side. */
   request: (url: string) => void
@@ -71,7 +71,7 @@ export function createImprentaThumbCache(
 
       inFlight++
       
-      const done = (ok: boolean, resultImage: HTMLImageElement | HTMLCanvasElement | null) => {
+      const done = (ok: boolean, resultImage: ImageBitmap | HTMLCanvasElement | null) => {
         inFlight--
         const current = entries.get(url)
         if (current) {
@@ -138,24 +138,87 @@ export function createImprentaThumbCache(
         video.src = url
         video.load()
       } else {
-        const img = new Image()
-        img.crossOrigin = "anonymous"
-        img.decoding = "async"
-        ;(img as unknown as { fetchPriority?: string }).fetchPriority = "low"
+        const TARGET = Math.round(512 * (window.devicePixelRatio || 1))
         
-        img.onload = () => {
-          // Prefer img.decode when available to move bitmap build off the main thread.
-          if (typeof img.decode === "function") {
-            img.decode().then(() => done(true, img)).catch(() => done(true, img))
-          } else {
-            done(true, img)
+        const processWithImageFallback = () => {
+          const img = new Image()
+          img.crossOrigin = "anonymous"
+          img.decoding = "async"
+          ;(img as unknown as { fetchPriority?: string }).fetchPriority = "low"
+          
+          img.onload = async () => {
+            const iw = img.naturalWidth || 1
+            const ih = img.naturalHeight || 1
+            
+            // Si el browser soporta createImageBitmap y la imagen es más grande que el target,
+            // creamos un bitmap downscaled y liberamos el DOM element
+            if (typeof createImageBitmap === "function") {
+              try {
+                let bitmap
+                if (iw > TARGET) {
+                  bitmap = await createImageBitmap(img, {
+                    resizeWidth: TARGET,
+                    resizeQuality: "medium"
+                  })
+                } else {
+                  bitmap = await createImageBitmap(img)
+                }
+                img.src = ""
+                done(true, bitmap)
+                return
+              } catch (e) {
+                // fall through to canvas
+              }
+            }
+            
+            // Fallback a dibujar a un canvas offscreen reducido
+            const scale = Math.min(1, TARGET / iw)
+            const canvas = document.createElement("canvas")
+            canvas.width = iw * scale
+            canvas.height = ih * scale
+            const ctx = canvas.getContext("2d")
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+              img.src = ""
+              done(true, canvas)
+            } else {
+              img.src = ""
+              done(false, null)
+            }
+          }
+          img.onerror = () => done(false, null)
+          try {
+            img.src = url
+          } catch {
+            done(false, null)
           }
         }
-        img.onerror = () => done(false, null)
-        try {
-          img.src = url
-        } catch {
-          done(false, null)
+
+        if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+          // Intentar fetch -> blob -> createImageBitmap
+          fetch(url, { mode: 'cors' })
+            .then(res => {
+              if (!res.ok) throw new Error('Fetch failed')
+              return res.blob()
+            })
+            .then(blob => {
+              if (typeof createImageBitmap === 'function') {
+                return createImageBitmap(blob, {
+                  resizeWidth: TARGET,
+                  resizeQuality: "medium"
+                }).then(bitmap => {
+                  done(true, bitmap)
+                })
+              } else {
+                throw new Error('createImageBitmap not available')
+              }
+            })
+            .catch(() => {
+              // CORS failure or createImageBitmap unsupported
+              processWithImageFallback()
+            })
+        } else {
+          processWithImageFallback()
         }
       }
     }
@@ -175,12 +238,9 @@ export function createImprentaThumbCache(
     for (let i = 0; i < toDrop && i < candidates.length; i++) {
       const c = candidates[i]
       if (c.image) {
-        if (c.image instanceof HTMLImageElement) {
-          try {
-            c.image.src = ""
-          } catch {
-            /* ignore */
-          }
+        if (typeof (c.image as any).close === 'function') {
+          // ImageBitmap
+          (c.image as any).close()
         } else if (c.image instanceof HTMLCanvasElement) {
           c.image.width = 0
           c.image.height = 0
@@ -247,12 +307,8 @@ export function createImprentaThumbCache(
     clear() {
       entries.forEach((e) => {
         if (e.image) {
-          if (e.image instanceof HTMLImageElement) {
-            try {
-              e.image.src = ""
-            } catch {
-              /* ignore */
-            }
+          if (typeof (e.image as any).close === 'function') {
+            (e.image as any).close()
           } else if (e.image instanceof HTMLCanvasElement) {
             e.image.width = 0
             e.image.height = 0

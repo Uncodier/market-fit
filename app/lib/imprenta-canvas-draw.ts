@@ -241,8 +241,8 @@ function drawThumbOrSkeleton(
     if (img) {
       ctx.save()
       clipRounded(ctx, x, y, w, h, r)
-      const iw = img.naturalWidth || img.width
-      const ih = img.naturalHeight || img.height
+      const iw = img instanceof HTMLCanvasElement ? img.width : img.width
+      const ih = img instanceof HTMLCanvasElement ? img.height : img.height
       if (iw > 0 && ih > 0) {
         const scale = Math.max(w / iw, h / ih)
         const dw = iw * scale

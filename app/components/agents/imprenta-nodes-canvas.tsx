@@ -228,8 +228,9 @@ export function ImprentaNodesCanvas({
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         return
       }
-      // Only paint when we own the node rendering (lite band).
-      if (snap.scale >= fullRef.current) {
+      // Only paint when we own the node rendering (lite band), OR we are in turbo mode (missing full cards).
+      const isTurbo = snap.interacting && snap.scale >= fullRef.current
+      if (!isTurbo && snap.scale >= fullRef.current) {
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         return
@@ -242,7 +243,9 @@ export function ImprentaNodesCanvas({
       const s = snap.scale
       ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * snap.position.x, dpr * snap.position.y)
 
-      const band: ImprentaLiteBand = bandFromScale(s, markerMaxRef.current, microMaxRef.current, simpleMaxRef.current)
+      const band: ImprentaLiteBand = isTurbo 
+        ? "turbo" 
+        : bandFromScale(s, markerMaxRef.current, microMaxRef.current, simpleMaxRef.current)
       const pos = positionsRef.current
       const h = heightsRef.current
       const w = nodeWRef.current

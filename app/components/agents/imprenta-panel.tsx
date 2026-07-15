@@ -1997,7 +1997,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         snap.canvasHeight,
         snap.scale,
         snap.position,
-        IMPRENTA_VIEWPORT_CULL_PAD
+        IMPRENTA_VIEWPORT_UNMOUNT_PAD // Usar el anillo exterior para key para no commitear demasiado seguido
       )
       const key = `${quantizeViewport(world)}|${snap.scale >= IMPRENTA_LOD_FULL_DETAIL_SCALE ? "F" : "L"}`
       const crossedBoundary = key !== lastKey
@@ -2007,11 +2007,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
         commit(snap)
         return
       }
+      // Durante interacción, no hacemos commit al React state. El canvas dibujará 
+      // los nodos faltantes en modo turbo.
       if (crossedBoundary) {
         lastKey = key
-        debounceId = setTimeout(() => commit(snap), 0)
-      } else {
-        debounceId = setTimeout(() => commit(snap), 120)
       }
     })
     return () => {
@@ -2070,6 +2069,22 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       if (!showFullNodeDetail && !isEffectivelyDummy && !isDragOrigin) continue
       out.push(node)
     }
+    
+    // Sort by distance to center to prioritize mounting visible nodes
+    if (viewportInfo && out.length > 12) {
+      const worldCx = -viewportInfo.position.x / viewportInfo.scale + viewportInfo.canvasWidth / (2 * viewportInfo.scale)
+      const worldCy = -viewportInfo.position.y / viewportInfo.scale + viewportInfo.canvasHeight / (2 * viewportInfo.scale)
+      
+      out.sort((a, b) => {
+        const pA = stablePositions[a.id]
+        const pB = stablePositions[b.id]
+        if (!pA || !pB) return 0
+        const dA = (pA.x + IMPRENTA_NODE_W/2 - worldCx)**2 + (pA.y + IMPRENTA_ROW_H/2 - worldCy)**2
+        const dB = (pB.x + IMPRENTA_NODE_W/2 - worldCx)**2 + (pB.y + IMPRENTA_ROW_H/2 - worldCy)**2
+        return dA - dB
+      })
+    }
+    
     return out
   }, [
     canvasNodes,
@@ -2078,7 +2093,35 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     draggingNodeId,
     tempConnection?.fromNode,
     generatingNodeIds,
+    viewportInfo,
+    stablePositions,
   ])
+
+  const [mountedCount, setMountedCount] = useState(0)
+  
+  useEffect(() => {
+    if (domRenderNodes.length > mountedCount) {
+      const id = requestAnimationFrame(() => {
+        // Mount 12 cards per frame to avoid blocking the main thread
+        setMountedCount(c => Math.min(c + 12, domRenderNodes.length))
+      })
+      return () => cancelAnimationFrame(id)
+    } else if (domRenderNodes.length < mountedCount) {
+      setMountedCount(domRenderNodes.length)
+    }
+  }, [domRenderNodes.length, mountedCount])
+
+  const slicedRenderNodes = useMemo(() => {
+    return domRenderNodes.slice(0, mountedCount)
+  }, [domRenderNodes, mountedCount])
+
+  const mountedNodeIds = useMemo(() => {
+    const ids = new Set<string>(domOnlyNodeIds)
+    for (let i = 0; i < slicedRenderNodes.length; i++) {
+      ids.add(slicedRenderNodes[i].id)
+    }
+    return ids
+  }, [slicedRenderNodes, domOnlyNodeIds])
 
   const canvasGetImages = useCallback(
     (node: InstanceNode) => collectImprentaLiteImagePreviewUrls(node, 4),
@@ -3783,7 +3826,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
               viewportStore={viewportStore}
               thumbs={thumbCache}
               isDarkMode={isDarkMode}
-              skipIds={domOnlyNodeIds}
+              skipIds={mountedNodeIds}
               getImageUrls={canvasGetImages}
               getVideoUrls={canvasGetVideos}
               onNodePointerDown={handleCanvasNodePointerDown}
@@ -4006,7 +4049,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                   
                   {/* Draw nodes (virtualized + LOD when graph is large). */}
                   <TooltipProvider delayDuration={200}>
-                  {domRenderNodes.map(node => {
+                  {slicedRenderNodes.map(node => {
                     const pos = resolvedPositions[node.id] || FALLBACK_POS
                     const isDummy = node.id.startsWith('dummy-');
                     const hasResult = node.result && Object.keys(node.result).length > 0;

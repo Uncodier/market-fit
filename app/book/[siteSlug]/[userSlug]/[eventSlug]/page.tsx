@@ -304,6 +304,15 @@ export default function UserBookingPage(props: {
 
     setIsSubmitting(true);
     try {
+      // Extract custom URL parameters
+      const metadata: Record<string, string> = {};
+      const standardParams = ["embed", "tz", "timezone", "region", "theme", "tema", "locale", "lang", "idioma"];
+      searchParams.forEach((value, key) => {
+        if (!standardParams.includes(key)) {
+          metadata[key] = value;
+        }
+      });
+
       await bookMeeting({
         userId: profile.id,
         siteId: siteInfo?.id || "default",
@@ -320,6 +329,7 @@ export default function UserBookingPage(props: {
         notes,
         location: eventType.location,
         title: `${eventType.title} with ${profile.name || userSlug}`,
+        metadata,
       });
       setActiveStep("success");
     } catch (error) {

@@ -854,7 +854,13 @@ export function ZoomableCanvas({
 
         const prevScale = scaleRef.current;
         const position = positionRef.current;
-        const newScale = Math.max(prevScale * (e.deltaY < 0 ? 1.1 : 0.9), 0.01);
+        
+        // Usamos un factor de zoom suave proporcional al deltaY, ideal para trackpads
+        // Limitamos el delta a un máximo para que ratones normales sigan teniendo pasos de zoom lógicos (~10%)
+        const delta = Math.max(-20, Math.min(20, e.deltaY));
+        const ZOOM_SENSITIVITY = 0.005;
+        const zoomFactor = Math.exp(-delta * ZOOM_SENSITIVITY);
+        const newScale = Math.max(prevScale * zoomFactor, 0.01);
 
         if (!canvasRef.current) return;
         const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -944,6 +950,15 @@ export function ZoomableCanvas({
     }
   }, [isDragging]);
 
+  const touchRafRef = useRef<number | null>(null);
+
+  const flushTouch = useCallback(() => {
+    touchRafRef.current = null;
+    setScale(scaleRef.current);
+    setPosition({ ...positionRef.current });
+    setIsZoomedIn(scaleRef.current > 0.9);
+  }, []);
+
   // Handle touch start for pinch-to-zoom
   const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     // Skip for UI elements
@@ -1003,6 +1018,8 @@ export function ZoomableCanvas({
     
     // Simplified touch handler
     if (e.touches.length === 2 && touchStartDistance !== null) {
+      // Usar preventDefault para evitar zoom/scroll del navegador
+      if (e.cancelable) e.preventDefault();
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1012,7 +1029,10 @@ export function ZoomableCanvas({
         return;
       }
       
-      const scaleFactor = distance / touchStartDistance;
+      const rawScaleFactor = distance / touchStartDistance;
+      // Reducimos la sensibilidad amortiguando el factor (ej. 0.6)
+      const PINCH_SENSITIVITY = 0.6;
+      const scaleFactor = 1 + (rawScaleFactor - 1) * PINCH_SENSITIVITY;
       const newScale = Math.max(Math.min(touchStartScale * scaleFactor, 2), 0.01);
       
       // Apply direct transform for better performance
@@ -1032,11 +1052,13 @@ export function ZoomableCanvas({
           contentRef.current.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(${newScale})`;
           applyBackgroundTransformRef.current(newX, newY, newScale);
           
-          setScale(newScale);
-          setPosition({ x: newX, y: newY });
           scaleRef.current = newScale;
           positionRef.current = { x: newX, y: newY };
           scheduleViewportNotify();
+          
+          if (touchRafRef.current === null) {
+            touchRafRef.current = requestAnimationFrame(flushTouch);
+          }
         }
       }
     } else if (e.touches.length === 1 && isDraggingRef.current && singleFingerPanRef.current) {
@@ -1056,6 +1078,14 @@ export function ZoomableCanvas({
     }
   }, [touchStartDistance, touchStartScale, scheduleViewportNotify]);
   
+  useEffect(() => {
+    return () => {
+      if (touchRafRef.current !== null) {
+        cancelAnimationFrame(touchRafRef.current);
+      }
+    };
+  }, []);
+
   // Handle touch end
   const handleTouchEnd = useCallback(() => {
     setTouchStartDistance(null);
