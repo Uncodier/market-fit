@@ -173,6 +173,12 @@ const IMPRENTA_ROW_H = 300
  * Keeps a small band so edges/nodes do not pop when panning.
  */
 const IMPRENTA_VIEWPORT_CULL_PAD = 96
+/**
+ * Outer hysteresis ring used to quantize the viewport commit key: nodes mount when
+ * they enter the CULL_PAD ring but the commit key only changes when the viewport
+ * crosses this larger ring, so small pans do not re-commit React state.
+ */
+const IMPRENTA_VIEWPORT_UNMOUNT_PAD = 512
 /** Canvas scale above which full node cards render; below uses lite shells. */
 const IMPRENTA_LOD_FULL_DETAIL_SCALE = 0.4
 /**

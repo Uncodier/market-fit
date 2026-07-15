@@ -118,7 +118,6 @@ export function ZoomableCanvas({
   const canvasRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const backgroundRef = useRef<HTMLDivElement>(null);
   const lastMousePosRef = useRef<{ x: number, y: number } | null>(null);
   const [contentDimensions, setContentDimensions] = useState({ width: 0, height: 0 });
   const [isInitialized, setIsInitialized] = useState(false);
@@ -349,8 +348,10 @@ export function ZoomableCanvas({
     const canvasCenter = availableWidth / 2;
     const canvasCenterY = availableHeight / 2;
     
-    const offsetX = ('offsetX' in contentSize && contentSize.offsetX) ? contentSize.offsetX * newScale : 0;
-    const offsetY = ('offsetY' in contentSize && contentSize.offsetY) ? contentSize.offsetY * newScale : 0;
+    const rawOffsetX = 'offsetX' in contentSize ? contentSize.offsetX : undefined;
+    const rawOffsetY = 'offsetY' in contentSize ? contentSize.offsetY : undefined;
+    const offsetX = typeof rawOffsetX === 'number' ? rawOffsetX * newScale : 0;
+    const offsetY = typeof rawOffsetY === 'number' ? rawOffsetY * newScale : 0;
     
     const finalX = canvasCenter - (contentWidth / 2) - offsetX;
     const finalY = canvasCenterY - (contentHeight / 2) + initialOffsetY - offsetY;
@@ -642,7 +643,7 @@ export function ZoomableCanvas({
 
   // Zoom in function
   const zoomIn = useCallback(() => {
-    setIsUserInteracting(true);
+    bumpInteractionSettleRef.current();
     setAutoRecenterEnabled(false);
     
     const newScale = Math.min(scale * 1.1, 2);
@@ -679,7 +680,7 @@ export function ZoomableCanvas({
 
   // Zoom out function
   const zoomOut = useCallback(() => {
-    setIsUserInteracting(true);
+    bumpInteractionSettleRef.current();
     setAutoRecenterEnabled(false);
     
     const newScale = Math.max(scale * 0.9, 0.01);
@@ -741,6 +742,11 @@ export function ZoomableCanvas({
     setIsUserInteracting(true);
     startDragPositionRef.current = { x: e.clientX, y: e.clientY };
     
+    // Clear any selection to ensure clean drag start
+    if (window.getSelection) {
+      window.getSelection()?.removeAllRanges();
+    }
+    
     // Don't prevent default - only stop propagation
     // e.stopPropagation(); // Removed to allow dropdowns to close when clicking the canvas
   };
@@ -750,11 +756,6 @@ export function ZoomableCanvas({
     if (!isDraggingRef.current) return;
     
     e.preventDefault(); // Prevent text selection while dragging
-    
-    // Clear any selection that might have started
-    if (window.getSelection) {
-      window.getSelection()?.removeAllRanges();
-    }
     
     const dx = e.clientX - startDragPositionRef.current.x;
     const dy = e.clientY - startDragPositionRef.current.y;
@@ -785,6 +786,35 @@ export function ZoomableCanvas({
     setTimeout(() => setIsUserInteracting(false), 200);
     scheduleViewportNotify();
   }, [scheduleViewportNotify]);
+
+  /**
+   * Wheel / zoom-button interactions have no natural "end" event (unlike drag).
+   * Without this settle timer `isUserInteracting` stayed true forever after the
+   * first trackpad scroll, which froze viewport commits (turbo mode) and kept
+   * canvases at interaction DPR — the canvas looked stuck, especially on Safari
+   * where trackpad wheel is the primary navigation.
+   */
+  const interactionSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bumpInteractionSettleRef = useRef<() => void>(() => {});
+  bumpInteractionSettleRef.current = () => {
+    setIsUserInteracting(true);
+    if (interactionSettleTimerRef.current) clearTimeout(interactionSettleTimerRef.current);
+    interactionSettleTimerRef.current = setTimeout(() => {
+      interactionSettleTimerRef.current = null;
+      // Don't end the interaction if a drag is still in progress (drag has its own end).
+      if (isDraggingRef.current) return;
+      setIsUserInteracting(false);
+      scheduleViewportNotify();
+    }, 180);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (interactionSettleTimerRef.current) {
+        clearTimeout(interactionSettleTimerRef.current);
+      }
+    };
+  }, []);
 
   // Handle mouse up globally to prevent stuck drag
   useEffect(() => {
@@ -826,7 +856,7 @@ export function ZoomableCanvas({
 
     const flushWheel = () => {
       wheelRaf = null;
-      setIsUserInteracting(true);
+      bumpInteractionSettleRef.current();
       setAutoRecenterEnabled(false);
       setScale(scaleRef.current);
       setPosition({ ...positionRef.current });
@@ -920,28 +950,97 @@ export function ZoomableCanvas({
     };
   }, []);
 
-  // Dot pattern: painted directly on the canvas-sized container via background-repeat.
-  // Pan is applied as background-position and zoom as background-size, so the grid is
-  // infinite within the canvas regardless of pan distance or zoom level. Using a
-  // transformed giant tile (old approach) left bare bands on deep pans / zoom-outs
-  // because the tile edges eventually entered the viewport.
+  // Dot pattern: painted on a dedicated canvas via createPattern to avoid CSS radial-gradient 
+  // re-rasterization per frame in Safari.
   const currentColor = isDarkMode ? dotColorDark : dotColorLight;
   const dotSizeNum = parseFloat(dotSize) || 24;
   const dotRadiusNum = parseFloat(dotRadius) || 1;
-  // `closest-side` makes the gradient extent = half the tile side; stop in % so the dot
-  // radius scales proportionally with backgroundSize (consistent look at any zoom).
-  const dotStopPct = Math.min(50, Math.max(0, (dotRadiusNum / (dotSizeNum / 2)) * 100));
-  const dotBackgroundImage = `radial-gradient(circle closest-side, ${currentColor} ${dotStopPct}%, transparent ${dotStopPct}%)`;
+  
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
+  const dotPatternCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const bgDrawRafRef = useRef<number | null>(null);
 
-  /** Mirror the content transform onto the dot pattern by updating bgSize + bgPosition. */
+  const drawBg = useCallback((x: number, y: number, s: number) => {
+    if (!bgCanvasRef.current) return;
+    const canvas = bgCanvasRef.current;
+    
+    const rect = canvas.parentElement?.getBoundingClientRect();
+    if (!rect || rect.width === 0 || rect.height === 0) return;
+    
+    // Use DPR 1 for background to save fill-rate, dots are very subtle
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+    
+    const size = dotSizeNum * s;
+    if (size < 2) return;
+    
+    // Quantize size to avoid recreating the pattern too often during smooth zoom
+    const qSize = Math.max(2, Math.round(size * 2) / 2);
+    
+    if (!dotPatternCanvasRef.current || 
+        dotPatternCanvasRef.current.width !== qSize || 
+        dotPatternCanvasRef.current.dataset.color !== currentColor) {
+      
+      const patCanvas = document.createElement('canvas');
+      patCanvas.width = qSize;
+      patCanvas.height = qSize;
+      patCanvas.dataset.color = currentColor;
+      const pCtx = patCanvas.getContext('2d', { alpha: true });
+      if (pCtx) {
+        const cx = qSize / 2;
+        const cy = qSize / 2;
+        const r = (dotRadiusNum / dotSizeNum) * qSize;
+        
+        pCtx.fillStyle = currentColor;
+        pCtx.beginPath();
+        pCtx.arc(cx, cy, r, 0, Math.PI * 2);
+        pCtx.fill();
+      }
+      dotPatternCanvasRef.current = patCanvas;
+    }
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const pattern = ctx.createPattern(dotPatternCanvasRef.current, 'repeat');
+    if (pattern) {
+      ctx.fillStyle = pattern;
+      ctx.save();
+      const offsetX = x % qSize;
+      const offsetY = y % qSize;
+      ctx.translate(offsetX, offsetY);
+      // Fill enough to cover the screen including the negative offset shift
+      ctx.fillRect(-offsetX, -offsetY, canvas.width + qSize, canvas.height + qSize);
+      ctx.restore();
+    }
+  }, [currentColor, dotSizeNum, dotRadiusNum]);
+
+  /** Mirror the content transform onto the dot pattern by drawing on the background canvas. */
   const applyBackgroundTransformRef = useRef<(x: number, y: number, s: number) => void>(() => {});
   applyBackgroundTransformRef.current = (x: number, y: number, s: number) => {
-    const el = backgroundRef.current;
-    if (!el) return;
-    const size = dotSizeNum * s;
-    el.style.backgroundSize = `${size}px ${size}px`;
-    el.style.backgroundPosition = `${x}px ${y}px`;
+    if (bgDrawRafRef.current) cancelAnimationFrame(bgDrawRafRef.current);
+    bgDrawRafRef.current = requestAnimationFrame(() => {
+      bgDrawRafRef.current = null;
+      drawBg(x, y, s);
+    });
   };
+
+  useEffect(() => {
+    // Initial draw when dependencies change
+    drawBg(positionRef.current.x, positionRef.current.y, scaleRef.current);
+  }, [drawBg]);
+
+  // Clean up
+  useEffect(() => {
+    return () => {
+      if (bgDrawRafRef.current !== null) {
+        cancelAnimationFrame(bgDrawRafRef.current);
+      }
+    };
+  }, []);
 
   // Update cursor when drag state changes
   useEffect(() => {
@@ -1203,19 +1302,15 @@ export function ZoomableCanvas({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Dot pattern background: fills the canvas; pan/zoom via bg-position + bg-size
-            so the pattern is effectively infinite (no bare edges on deep pans / zoom-out). */}
-        <div
-          ref={backgroundRef}
+        {/* Dot pattern background: fills the canvas; pan/zoom via canvas createPattern 
+            so the pattern is effectively infinite and cheap to render. */}
+        <canvas
+          ref={bgCanvasRef}
           style={{
             position: 'absolute',
             inset: 0,
             zIndex: 0,
             pointerEvents: 'none',
-            backgroundImage: dotBackgroundImage,
-            backgroundSize: `${dotSizeNum * scale}px ${dotSizeNum * scale}px`,
-            backgroundPosition: `${position.x}px ${position.y}px`,
-            backgroundRepeat: 'repeat',
             backgroundColor: 'transparent',
             transition: 'opacity 0.2s ease-in',
             opacity: isInitialized ? 1 : 0,

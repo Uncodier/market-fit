@@ -206,7 +206,8 @@ export function ImprentaNodesCanvas({
     let lastSnapshot: ViewportSnapshot = viewportStore.get()
 
     const resizeToViewport = (snap: ViewportSnapshot) => {
-      const dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2)
+      const maxDpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2)
+      const dpr = snap.interacting ? 1 : maxDpr
       const wCss = Math.max(0, Math.floor(snap.canvasWidth))
       const hCss = Math.max(0, Math.floor(snap.canvasHeight))
       const targetW = Math.max(1, Math.floor(wCss * dpr))

@@ -1,9 +1,52 @@
 "use client"
 
-import { getImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
-
 import { useEffect, useState, useRef } from "react"
+import { getImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
 import { imprentaVideoManager } from "@/app/lib/imprenta-video-playback"
+
+/**
+ * Resolve a downscaled display URL for a media asset via the shared thumb cache.
+ *
+ * Cards render the compressed ~1024px object URL instead of the original 2-4K
+ * asset, which is what keeps Safari from resampling huge bitmaps on every paint.
+ * Falls back to the original URL when the cache cannot process it (e.g. CORS).
+ */
+function useImprentaDisplayUrl(url: string, enabled = true): string | null {
+  const [displayUrl, setDisplayUrl] = useState<string | null>(() => {
+    if (!enabled || !url) return null
+    return getImprentaThumbCache().getDisplayUrl(url)
+  })
+
+  useEffect(() => {
+    if (!enabled || !url) {
+      setDisplayUrl(null)
+      return
+    }
+    const cache = getImprentaThumbCache()
+
+    const resolve = () => {
+      const status = cache.status(url)
+      if (status === "error") return url
+      return cache.getDisplayUrl(url)
+    }
+
+    const initial = resolve()
+    setDisplayUrl(initial)
+    if (initial) return
+
+    cache.request(url)
+    const unsub = cache.onDecoded((decodedUrl) => {
+      if (decodedUrl !== url) return
+      const next = resolve()
+      if (next) setDisplayUrl(next)
+    })
+    return unsub
+  }, [url, enabled])
+
+  return displayUrl
+}
+
+/** Lite / graph shells: skeleton until decode; served from the downscaled display cache. */
 export function ImprentaLazyPreviewImage({
   url,
   className,
@@ -19,9 +62,13 @@ export function ImprentaLazyPreviewImage({
   priority?: boolean
 }) {
   const [loaded, setLoaded] = useState(false)
+  const [useOriginal, setUseOriginal] = useState(false)
+  const displayUrl = useImprentaDisplayUrl(url)
+  const src = useOriginal ? url : displayUrl
 
   useEffect(() => {
     setLoaded(false)
+    setUseOriginal(false)
   }, [url])
 
   return (
@@ -34,20 +81,25 @@ export function ImprentaLazyPreviewImage({
       >
         <span className="sr-only">Loading preview</span>
       </span>
-      <img
-        src={url}
-        alt=""
-        width={width}
-        height={height}
-        loading={priority ? "eager" : "lazy"}
-        decoding="async"
-        draggable={false}
-        onLoad={() => setLoaded(true)}
-        onError={() => setLoaded(true)}
-        className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
-          loaded ? "opacity-95" : "opacity-0"
-        } ${className ?? ""}`}
-      />
+      {src && (
+        <img
+          src={src}
+          alt=""
+          width={width}
+          height={height}
+          decoding="async"
+          draggable={false}
+          onLoad={() => setLoaded(true)}
+          onError={() => {
+            // Blob URL blocked/revoked: retry once with the original asset URL.
+            if (!useOriginal && src !== url) setUseOriginal(true)
+            else setLoaded(true)
+          }}
+          className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
+            loaded ? "opacity-95" : "opacity-0"
+          } ${className ?? ""}`}
+        />
+      )}
     </span>
   )
 }
@@ -70,44 +122,18 @@ export function ImprentaLazyPreviewVideo({
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLSpanElement>(null)
 
-  const posterCanvasRef = useRef<HTMLCanvasElement>(null)
+  // Poster: downscaled first frame from the thumb cache. The real <video> mounts
+  // only on play intent so Safari never holds dozens of decoders at once.
+  const rawPosterUrl = useImprentaDisplayUrl(url, inViewport && !shouldMountVideo)
+  const [posterFailed, setPosterFailed] = useState(false)
+  // A video URL can't render inside <img>; only use blob/object URLs as poster.
+  const posterUrl = !posterFailed && rawPosterUrl && rawPosterUrl !== url ? rawPosterUrl : null
 
   useEffect(() => {
     setReady(false)
+    setShouldMountVideo(false)
+    setPosterFailed(false)
   }, [url])
-
-  // Use thumb cache for the poster frame
-  useEffect(() => {
-    if (shouldMountVideo || !inViewport) return
-    
-    const cache = getImprentaThumbCache()
-    const frame = cache.get(url)
-    
-    if (frame) {
-      setReady(true)
-      const ctx = posterCanvasRef.current?.getContext('2d')
-      if (ctx && posterCanvasRef.current) {
-        posterCanvasRef.current.width = frame.width
-        posterCanvasRef.current.height = frame.height
-        ctx.drawImage(frame as any, 0, 0)
-      }
-    } else {
-      cache.request(url)
-      const unsub = cache.onDecoded((decodedUrl) => {
-        if (decodedUrl === url) {
-          setReady(true)
-          const newFrame = cache.get(url)
-          const ctx = posterCanvasRef.current?.getContext('2d')
-          if (ctx && posterCanvasRef.current && newFrame) {
-            posterCanvasRef.current.width = newFrame.width
-            posterCanvasRef.current.height = newFrame.height
-            ctx.drawImage(newFrame as any, 0, 0)
-          }
-        }
-      })
-      return unsub
-    }
-  }, [url, shouldMountVideo, inViewport])
 
   useEffect(() => {
     const el = containerRef.current
@@ -144,13 +170,14 @@ export function ImprentaLazyPreviewVideo({
     } else {
       imprentaVideoManager.release(video)
     }
-    
+
     return () => {
       imprentaVideoManager.release(video)
     }
   }, [inViewport, isHovered, scale, url, shouldMountVideo])
 
   const effectiveUrl = inViewport ? (url.includes('#') ? url : `${url}#t=0.001`) : ''
+  const showSkeleton = shouldMountVideo ? !ready : !posterUrl
 
   return (
     <span 
@@ -161,7 +188,7 @@ export function ImprentaLazyPreviewVideo({
     >
       <span
         className={`absolute inset-0 z-0 flex animate-pulse items-center justify-center rounded-[inherit] bg-muted/75 dark:bg-muted/60 transition-opacity duration-300 ${
-          ready ? "pointer-events-none opacity-0" : "opacity-100"
+          showSkeleton ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         aria-hidden
       >
@@ -175,6 +202,7 @@ export function ImprentaLazyPreviewVideo({
           playsInline
           loop
           preload={priority ? "auto" : "metadata"}
+          poster={posterUrl ?? undefined}
           className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
             ready ? "opacity-95" : "opacity-0"
           } ${className ?? ""}`}
@@ -182,15 +210,17 @@ export function ImprentaLazyPreviewVideo({
           onLoadedData={() => setReady(true)}
           onError={() => setReady(true)}
         />
-      ) : (
-        <canvas
-          ref={posterCanvasRef}
-          className={`relative z-[1] h-full w-full object-cover transition-opacity duration-300 ${
-            ready ? "opacity-95" : "opacity-0"
-          } ${className ?? ""}`}
+      ) : posterUrl ? (
+        <img
+          src={posterUrl}
+          alt=""
+          decoding="async"
+          draggable={false}
+          onError={() => setPosterFailed(true)}
+          className={`relative z-[1] h-full w-full object-cover opacity-95 ${className ?? ""}`}
           aria-hidden
         />
-      )}
+      ) : null}
     </span>
   )
 }
@@ -208,15 +238,22 @@ export function ImprentaLazyCardImage({
   alt?: string
 }) {
   const [loaded, setLoaded] = useState(false)
+  const [useOriginal, setUseOriginal] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
+  const displayUrl = useImprentaDisplayUrl(url)
+  const src = useOriginal ? url : displayUrl
 
   useEffect(() => {
-    if (imgRef.current?.complete) {
+    setUseOriginal(false)
+  }, [url])
+
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
       setLoaded(true)
     } else {
       setLoaded(false)
     }
-  }, [url])
+  }, [url, src])
 
   return (
     <div className="relative w-full overflow-hidden rounded-xl bg-black/10">
@@ -229,20 +266,29 @@ export function ImprentaLazyCardImage({
       >
         <span className="sr-only">Loading image</span>
       </div>
-      <img
-        ref={imgRef}
-        src={url}
-        alt={alt}
-        onLoad={() => setLoaded(true)}
-        onError={() => setLoaded(true)}
-        onClick={(e) => {
-          e.stopPropagation()
-          onOpen()
-        }}
-        className={`relative z-[1] w-full h-auto max-h-[800px] object-contain cursor-pointer transition-opacity duration-300 ${
-          loaded ? "opacity-100" : "opacity-0"
-        } ${className ?? ""}`}
-      />
+      {/* Reserve a square while the display bitmap is generated so layout doesn't jump. */}
+      {!src && <div className="w-full aspect-square" />}
+      {src && (
+        <img
+          ref={imgRef}
+          src={src}
+          alt={alt}
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+          onError={() => {
+            // Blob URL blocked/revoked: retry once with the original asset URL.
+            if (!useOriginal && src !== url) setUseOriginal(true)
+            else setLoaded(true)
+          }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpen()
+          }}
+          className={`relative z-[1] w-full h-auto max-h-[800px] object-contain cursor-pointer transition-opacity duration-300 ${
+            loaded ? "opacity-100" : "opacity-0"
+          } ${className ?? ""}`}
+        />
+      )}
     </div>
   )
 }
