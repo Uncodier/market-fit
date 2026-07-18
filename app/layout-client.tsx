@@ -17,6 +17,13 @@ import { useLocalization } from "./context/LocalizationContext"
 const pathToNavKey: Record<string, string> = {
   "/dashboard": "dashboard",
   "/control-center": "controlCenter",
+    "/pos": "pos",
+    "/catalog": "catalog",
+    "/price-lists": "priceLists",
+    "/inventory": "inventory",
+    "/shipments": "shipments",
+    "/promotions": "promotions",
+
   "/segments": "segments",
   "/people": "people",
   "/content": "content",
@@ -39,9 +46,15 @@ const pathToNavKey: Record<string, string> = {
 }
 
 function getNavigationTitle(pathname: string, t: (key: string) => string): { title: string, helpText?: string, helpWelcomeMessage?: string, helpTask?: string } {
-  const key = pathToNavKey[pathname]
+  // Find matching key (support exact paths and subpaths like /catalog/[id])
+  let key = pathToNavKey[pathname];
+  if (!key) {
+    const matchingPrefix = Object.keys(pathToNavKey).find(path => pathname.startsWith(path + '/'));
+    if (matchingPrefix) key = pathToNavKey[matchingPrefix];
+  }
+  
   if (!key) return { title: t('layout.topbar.dashboard') || 'Dashboard' }
-  const title = t(`layout.nav.${key}.title`) || pathname
+  const title = t(`layout.nav.${key}.title`) || key.charAt(0).toUpperCase() + key.slice(1)
   const helpText = t(`layout.nav.${key}.help`)
   const helpWelcomeMessage = key === 'dashboard' ? (t('layout.nav.dashboard.helpWelcome') || undefined) : undefined
   const helpTask = key === 'dashboard' ? (t('layout.nav.dashboard.helpTask') || undefined) : undefined

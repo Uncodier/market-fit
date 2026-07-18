@@ -38,7 +38,10 @@ import {
   TrendingUp,
   PieChart,
   Globe,
-  Star
+  Star,
+  Store,
+  Send,
+  Ticket
 } from "@/app/components/ui/icons"
 
 export default function NavigationPage() {
@@ -63,6 +66,13 @@ export default function NavigationPage() {
 
   const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
     salesHome: Home,
+    pos: Store,
+    catalog: Archive,
+    priceLists: Tag,
+    inventory: DatabaseIcon,
+    shipments: Send,
+    promotions: Ticket,
+
     campaigns: Target,
     segments: Tag,
     content: FileText,

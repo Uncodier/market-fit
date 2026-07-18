@@ -355,3 +355,113 @@ export interface Task {
   }
   comments?: TaskComment[]
 } 
+// --- New Commerce Types ---
+
+export interface CatalogItem {
+  id: string;
+  site_id: string;
+  kind: 'product' | 'service';
+  name: string;
+  description?: string;
+  sku?: string;
+  cost?: number;
+  lowest_sale_price?: number;
+  target_sale_price?: number;
+  track_inventory: boolean;
+  availability_mode: 'manual' | 'inventory' | 'always';
+  availability_status: 'available' | 'unavailable' | 'sold_out';
+  status: 'active' | 'archived';
+  metadata?: any;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Location {
+  id: string;
+  site_id: string;
+  name: string;
+  code?: string;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryLevel {
+  id: string;
+  site_id: string;
+  catalog_item_id: string;
+  location_id: string;
+  quantity: number;
+  updated_at: string;
+}
+
+export interface PriceList {
+  id: string;
+  site_id: string;
+  name: string;
+  code?: string;
+  currency: string;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PriceListItem {
+  id: string;
+  site_id: string;
+  price_list_id: string;
+  catalog_item_id: string;
+  unit_price: number;
+  updated_at: string;
+}
+
+export interface Shipment {
+  id: string;
+  site_id: string;
+  sale_order_id: string;
+  sale_id?: string;
+  lead_id?: string;
+  origin_location_id: string;
+  status: 'pending' | 'preparing' | 'shipped' | 'in_transit' | 'delivered' | 'cancelled' | 'failed';
+  carrier?: string;
+  tracking_number?: string;
+  shipping_address?: any;
+  stock_decremented: boolean;
+  estimated_delivery_at?: string;
+  shipped_at?: string;
+  delivered_at?: string;
+  notes?: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Promotion {
+  id: string;
+  site_id: string;
+  campaign_id: string;
+  name: string;
+  description?: string;
+  code?: string;
+  discount_type: 'percent' | 'fixed';
+  discount_value: number;
+  applies_to: 'all' | 'selected_items';
+  min_order_amount?: number;
+  usage_limit?: number;
+  usage_count: number;
+  status: 'draft' | 'active' | 'paused' | 'expired';
+  starts_at?: string;
+  ends_at?: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PromotionCatalogItem {
+  id: string;
+  promotion_id: string;
+  catalog_item_id: string;
+  site_id: string;
+}

@@ -46,7 +46,8 @@ import {
   Bot,
   Globe,
   Folder,
-  Eye
+  Eye,
+  ShoppingCart
 } from "@/app/components/ui/icons"
 
 import { subMonths, format } from "date-fns"
@@ -1927,6 +1928,40 @@ The success of this experiment will be measured by:
           </>
         ) : null
       )}
+      
+      {pathname === "/catalog" && currentSite && (
+        <Button 
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
+          onClick={() => window.dispatchEvent(new CustomEvent('catalog:create'))}
+          title={t('catalog.addItem') || 'Add Item'}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline ml-2">{t('catalog.addItem') || 'Add Item'}</span>
+        </Button>
+      )}
+
+      {pathname === "/price-lists" && currentSite && (
+        <Button 
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
+          onClick={() => window.dispatchEvent(new CustomEvent('price-lists:create'))}
+          title={t('priceLists.addList') || 'Create List'}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline ml-2">{t('priceLists.addList') || 'Create List'}</span>
+        </Button>
+      )}
+
+      {pathname === "/promotions" && currentSite && (
+        <Button 
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
+          onClick={() => window.dispatchEvent(new CustomEvent('promotions:create'))}
+          title={t('promotions.add') || 'Create Promotion'}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline ml-2">{t('promotions.add') || 'Create Promotion'}</span>
+        </Button>
+      )}
+
       {isDealsPage && (
         currentSite ? (
           <CreateDealDialog 

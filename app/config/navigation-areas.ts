@@ -52,6 +52,12 @@ export const NAVIGATION_AREAS: Record<
     categoryKey: "layout.category.sales",
     items: [
       { key: "salesHome", href: "/sales-home", hidden: true },
+      { key: "pos", href: "/pos" },
+      { key: "catalog", href: "/catalog" },
+      { key: "priceLists", href: "/price-lists" },
+      { key: "inventory", href: "/inventory" },
+      { key: "shipments", href: "/shipments" },
+      { key: "promotions", href: "/promotions" },
       { key: "controlCenter", href: "/control-center" },
       { key: "sales", href: "/sales" },
       { key: "leads", href: "/leads" },

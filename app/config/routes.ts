@@ -32,6 +32,15 @@ export const routes: RouteConfig[] = [
   { path: "/help", hasLayout: true },
   { path: "/profile", hasLayout: true },
   { path: "/context", hasLayout: true },
+  
+  // Commerce routes
+  { path: "/pos", hasLayout: true },
+  { path: "/catalog", hasLayout: true },
+  { path: "/price-lists", hasLayout: true },
+  { path: "/inventory", hasLayout: true },
+  { path: "/shipments", hasLayout: true },
+  { path: "/promotions", hasLayout: true },
+
   { path: "/create-site", hasLayout: false },
   
   // Routes without layout (default)

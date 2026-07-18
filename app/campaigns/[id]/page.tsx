@@ -32,6 +32,8 @@ import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { createClient } from "@/lib/supabase/client"
 import { getSegments } from "@/app/segments/actions"
+import { listPromotions } from "@/app/promotions/actions"
+import useSWR from "swr"
 import { 
   CampaignSummary, 
   FinancialDetails, 
@@ -190,6 +192,12 @@ export default function TaskDetailPage(props: { params: Promise<{ id: string }> 
   const [activeTab, setActiveTab] = useState("summary");
   const [saving, setSaving] = useState(false);
   const formRef = useRef<HTMLFormElement>(null) as MutableRefObject<HTMLFormElement>;
+  
+  // Load promotions for this campaign
+  const { data: promotionsData, isLoading: loadingPromotions } = useSWR(
+    unwrappedParams.id && currentSite?.id ? ['campaign_promotions', unwrappedParams.id, currentSite.id] : null,
+    () => listPromotions({ siteId: currentSite!.id, campaignId: unwrappedParams.id as string, pageSize: 10 })
+  );
   
   // Function to convert segment IDs to full segment objects
   const getSegmentObjectsFromIds = (segmentIds: string[]): Array<{ id: string; name: string; description: string | null }> => {
@@ -787,6 +795,7 @@ export default function TaskDetailPage(props: { params: Promise<{ id: string }> 
                 <TabsList>
                   <TabsTrigger value="summary">{t('campaigns.detail.tabs.summary') || 'Campaign Summary'}</TabsTrigger>
                   <TabsTrigger value="financials">{t('campaigns.detail.tabs.financials') || 'Finances'}</TabsTrigger>
+                  <TabsTrigger value="promotions">{t('campaigns.detail.tabs.promotions') || 'Promotions'}</TabsTrigger>
                   <TabsTrigger value="details">{t('campaigns.detail.tabs.details') || 'Details'}</TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-8">
@@ -827,7 +836,56 @@ export default function TaskDetailPage(props: { params: Promise<{ id: string }> 
                 onUpdateCampaign={handleUpdateCampaign} 
               />
             </TabsContent>
-            
+
+            <TabsContent value="promotions" className="mt-0 p-0">
+              <Card className="border-t-0 rounded-t-none">
+                <CardContent className="p-0">
+                  <div className="flex items-center justify-between p-4 border-b">
+                    <div>
+                      <h3 className="font-semibold">Promotions</h3>
+                      <p className="text-sm text-gray-500">Promotions linked to this campaign.</p>
+                    </div>
+                    <a href={`/promotions?artifact=true`}>
+                      <Button variant="outline" size="sm">Manage Promotions</Button>
+                    </a>
+                  </div>
+                  <div className="p-0">
+                    {loadingPromotions ? (
+                      <div className="p-8 text-center text-gray-500">Loading promotions...</div>
+                    ) : promotionsData?.data && promotionsData.data.length > 0 ? (
+                      <div className="divide-y">
+                        {promotionsData.data.map((promo: any) => (
+                          <div key={promo.id} className="p-4 flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{promo.name}</div>
+                              {promo.code && <div className="text-xs font-mono bg-gray-100 px-1 py-0.5 rounded mt-1 inline-block">{promo.code}</div>}
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium text-sm">
+                                {promo.discount_type === 'percent' ? `${promo.discount_value}% OFF` : `$${promo.discount_value} OFF`}
+                              </div>
+                              <Badge className={`mt-1 text-[10px] ${promo.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                {promo.status.toUpperCase()}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-gray-500">
+                        <div className="mb-2">
+                          <Badge variant="outline" className="h-12 w-12 rounded-full inline-flex items-center justify-center p-0 mb-2 border-dashed">
+                            <span className="text-xl">🎟️</span>
+                          </Badge>
+                        </div>
+                        <p>No promotions linked to this campaign yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="details" className="mt-0 p-0">
               <div className="px-16 py-8">
                 <CampaignDetails 

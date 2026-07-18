@@ -1,0 +1,24 @@
+import { CatalogItem } from "@/app/types";
+
+export interface CatalogListParams {
+  siteId: string;
+  kind?: 'product' | 'service' | 'all';
+  q?: string;
+  status?: 'active' | 'archived' | 'all';
+  availabilityStatus?: 'available' | 'unavailable' | 'sold_out' | 'all';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CatalogListResponse {
+  data: CatalogItem[];
+  count: number;
+  error?: string;
+}
+
+export interface CatalogAvailabilityResult {
+  sellable: boolean;
+  reason?: string;
+  availableQty?: number;
+  policy: 'allow' | 'warn' | 'block';
+}

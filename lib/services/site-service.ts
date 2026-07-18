@@ -76,6 +76,24 @@ export async function createSite(
     
     if (error) throw new SiteServiceError(`Error al crear el sitio: ${error.message}`)
     if (!data) throw new SiteServiceError('No se pudo crear el sitio')
+
+    // Commerce seeding: create default location and price list
+    try {
+      await supabase.from("locations").insert({
+        site_id: data.id,
+        name: "Main",
+        is_default: true,
+        is_active: true
+      });
+      await supabase.from("price_lists").insert({
+        site_id: data.id,
+        name: "Standard",
+        is_default: true,
+        is_active: true
+      });
+    } catch (e) {
+      console.warn("Error seeding commerce defaults for new site", e);
+    }
     
     return data as SiteWithResourceUrls
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Store, Archive, DatabaseIcon, Tag, Send, Ticket,  useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
@@ -71,6 +71,13 @@ const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
 /** Legacy sidebar: icon via MenuItem */
 const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   salesHome: Home,
+    pos: Store,
+    catalog: Archive,
+    priceLists: Tag,
+    inventory: DatabaseIcon,
+    shipments: Send,
+    promotions: Ticket,
+
   campaigns: Target,
   segments: Tag,
   content: FileText,

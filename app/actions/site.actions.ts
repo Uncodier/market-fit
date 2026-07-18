@@ -41,7 +41,7 @@ type UpdateSiteInput = z.infer<typeof updateSiteSchema>
 type DeleteSiteInput = { id: string }
 
 // Acción para crear un sitio
-export const createSiteAction = action(createSiteSchema, async (data: CreateSiteInput) => {
+export const createSiteAction = action.schema(createSiteSchema).action(async ({ parsedInput: data }) => {
   try {
     const user = await getUserProfileFromServer()
     
@@ -78,7 +78,7 @@ export const createSiteAction = action(createSiteSchema, async (data: CreateSite
 })
 
 // Acción para actualizar un sitio
-export const updateSiteAction = action(updateSiteSchema, async (data: UpdateSiteInput) => {
+export const updateSiteAction = action.schema(updateSiteSchema).action(async ({ parsedInput: data }) => {
   try {
     const user = await getUserProfileFromServer()
     
@@ -124,11 +124,11 @@ export const updateSiteAction = action(updateSiteSchema, async (data: UpdateSite
 })
 
 // Acción para eliminar un sitio
-export const deleteSiteAction = action(
+export const deleteSiteAction = action.schema(
   z.object({
     id: z.string().min(1, 'ID is required')
-  }),
-  async ({ id }: DeleteSiteInput) => {
+  })
+).action(async ({ parsedInput: { id } }) => {
     try {
       const user = await getUserProfileFromServer()
       
