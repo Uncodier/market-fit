@@ -845,7 +845,7 @@ export default function TaskDetailPage(props: { params: Promise<{ id: string }> 
                       <h3 className="font-semibold">Promotions</h3>
                       <p className="text-sm text-gray-500">Promotions linked to this campaign.</p>
                     </div>
-                    <a href={`/promotions?artifact=true`}>
+                    <a href={`/promotions`}>
                       <Button variant="outline" size="sm">Manage Promotions</Button>
                     </a>
                   </div>

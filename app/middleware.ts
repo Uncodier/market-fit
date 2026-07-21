@@ -8,7 +8,8 @@ const ALLOWED_PUBLIC_PATHS = [
   '/auth/callback',
   '/auth/logout',
   '/demo',
-  '/book'
+  '/book',
+  '/shop'
 ]
 
 // Define suspicious patterns that should be blocked immediately

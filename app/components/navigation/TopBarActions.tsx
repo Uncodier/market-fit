@@ -1940,6 +1940,50 @@ The success of this experiment will be measured by:
         </Button>
       )}
 
+      {pathname === "/orders" && currentSite && (
+        <Button 
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
+          onClick={() => window.dispatchEvent(new CustomEvent('orders:create'))}
+          title={t('orders.add') || 'Create Order'}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline ml-2">{t('orders.add') || 'Create Order'}</span>
+        </Button>
+      )}
+
+      {pathname === "/shipments" && currentSite && (
+        <Button 
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
+          onClick={() => window.dispatchEvent(new CustomEvent('shipments:create'))}
+          title={t('shipments.add') || 'Create Shipment'}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline ml-2">{t('shipments.add') || 'Create Shipment'}</span>
+        </Button>
+      )}
+
+      {pathname === "/inventory" && currentSite && (
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="secondary"
+            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
+            onClick={() => window.dispatchEvent(new CustomEvent('inventory:open-location-dialog'))}
+            title={t('inventory.addLocation') || 'Add Location'}
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">{t('inventory.addLocation') || 'Add Location'}</span>
+          </Button>
+          <Button 
+            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
+            onClick={() => window.dispatchEvent(new CustomEvent('inventory:create-stock'))}
+            title={t('inventory.addStock') || 'Add Stock'}
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">{t('inventory.addStock') || 'Add Stock'}</span>
+          </Button>
+        </div>
+      )}
+
       {pathname === "/price-lists" && currentSite && (
         <Button 
           className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
@@ -1959,6 +2003,28 @@ The success of this experiment will be measured by:
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
           <span className="hidden md:inline ml-2">{t('promotions.add') || 'Create Promotion'}</span>
+        </Button>
+      )}
+
+      {pathname === "/subscriptions" && currentSite && (
+        <Button 
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
+          onClick={() => window.dispatchEvent(new CustomEvent('subscriptions:create'))}
+          title="Create Subscription"
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline ml-2">Create Subscription</span>
+        </Button>
+      )}
+
+      {pathname === "/reservations" && currentSite && (
+        <Button 
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
+          onClick={() => window.dispatchEvent(new CustomEvent('reservations:create'))}
+          title="Create Reservation"
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline ml-2">Create Reservation</span>
         </Button>
       )}
 

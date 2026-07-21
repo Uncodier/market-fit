@@ -299,6 +299,10 @@ export async function getSaleOrderBySaleId(siteId: string, saleId: string) {
       discountTotal: saleOrderData.discount_total,
       total: saleOrderData.total,
       notes: saleOrderData.notes,
+      status: saleOrderData.status || 'completed',
+      siteId: saleOrderData.site_id,
+      promotionId: saleOrderData.promotion_id || undefined,
+      priceListId: saleOrderData.price_list_id || undefined,
       createdAt: saleOrderData.created_at,
       updatedAt: saleOrderData.updated_at
     };
@@ -377,6 +381,10 @@ export async function createSaleOrder(data: {
         discountTotal: saleOrder.discount_total,
         total: saleOrder.total,
         notes: saleOrder.notes,
+        status: saleOrder.status || 'completed',
+        siteId: saleOrder.site_id,
+        promotionId: saleOrder.promotion_id || undefined,
+        priceListId: saleOrder.price_list_id || undefined,
         createdAt: saleOrder.created_at,
         updatedAt: saleOrder.updated_at
       }

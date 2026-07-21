@@ -10,17 +10,20 @@ export async function getShopSite(slug: string) {
 export async function getShopCatalog(siteId: string) {
   const supabase = await createServiceClient(true);
   
-  // Get active items
+  // 1. Get active items with their categories
   const { data: items, error } = await supabase
     .from("catalog_items")
-    .select("*")
+    .select(`
+      *,
+      category:catalog_categories(name)
+    `)
     .eq("site_id", siteId)
     .eq("status", "active")
     .order("name");
     
   if (error || !items) return { data: [], error: error?.message };
   
-  // Get default price list
+  // 2. Get default price list to override target_sale_price
   const { data: defaultList } = await supabase
     .from("price_lists")
     .select("id")
@@ -28,6 +31,7 @@ export async function getShopCatalog(siteId: string) {
     .eq("is_default", true)
     .single();
     
+  let priceMap = new Map();
   if (defaultList) {
     const { data: prices } = await supabase
       .from("price_list_items")
@@ -35,16 +39,62 @@ export async function getShopCatalog(siteId: string) {
       .eq("price_list_id", defaultList.id);
       
     if (prices && prices.length > 0) {
-      const priceMap = new Map(prices.map(p => [p.catalog_item_id, p.unit_price]));
-      const itemsWithPrice = items.map(item => ({
-        ...item,
-        target_sale_price: priceMap.get(item.id) ?? item.target_sale_price
-      }));
-      return { data: itemsWithPrice };
+      priceMap = new Map(prices.map(p => [p.catalog_item_id, p.unit_price]));
     }
   }
+
+  // 3. Get inventory levels and commerce settings for availability check
+  const [levelsRes, settingsRes] = await Promise.all([
+    supabase
+      .from("inventory_levels")
+      .select("catalog_item_id, quantity")
+      .eq("site_id", siteId),
+    supabase
+      .from("settings")
+      .select("commerce")
+      .eq("site_id", siteId)
+      .single()
+  ]);
+
+  const inventoryMap = new Map<string, number>();
+  if (levelsRes.data) {
+    for (const level of levelsRes.data) {
+      const current = inventoryMap.get(level.catalog_item_id) || 0;
+      inventoryMap.set(level.catalog_item_id, current + Number(level.quantity));
+    }
+  }
+
+  const commerceSettings = settingsRes.data?.commerce as any || { stock_shortage_policy: 'allow' };
+  const policy = commerceSettings.stock_shortage_policy || 'allow';
+
+  // 4. Transform and enrich items
+  const enrichedItems = items.map(item => {
+    // Determine price
+    const finalPrice = priceMap.get(item.id) ?? item.target_sale_price;
+
+    // Determine availability
+    let sellable = true;
+    let availableQty: number | undefined = undefined;
+
+    if (item.availability_mode === 'manual') {
+      sellable = item.availability_status === 'available';
+    } else if (item.availability_mode === 'inventory') {
+      availableQty = inventoryMap.get(item.id) || 0;
+      sellable = availableQty > 0 || policy !== 'block';
+    }
+
+    return {
+      ...item,
+      target_sale_price: finalPrice,
+      _shop: {
+        categoryName: item.category?.[0]?.name || null,
+        sellable,
+        availableQty
+      }
+    };
+  });
     
-  return { data: items };
+  return { data: enrichedItems };
 }
 
 export async function getShopLocations(siteId: string) {

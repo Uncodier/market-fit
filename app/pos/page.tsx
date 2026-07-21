@@ -18,10 +18,12 @@ import { Input } from "@/app/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/app/components/ui/sheet"
 import { toast } from "sonner"
-import { Archive, Store, Search, X, Plus, ChevronDown, CreditCard, DatabaseIcon, ShoppingCart } from "@/app/components/ui/icons"
+import { EmptyCard } from "@/app/components/ui/empty-card"
+import { Archive, Store, Search, X, Plus, Minus, ChevronDown, CreditCard, DatabaseIcon, ShoppingCart, SearchIcon } from "@/app/components/ui/icons"
 import { SimpleSearchSelect } from "@/app/components/ui/simple-search-select"
 import { listLocations } from "@/app/inventory/actions"
 import { getLeads } from "@/app/leads/actions"
+import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialog"
 import { useRouter } from "next/navigation"
 
 interface CartItem extends CatalogItem {
@@ -45,11 +47,12 @@ export default function POSPage() {
   const [promotionCode, setPromotionCode] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
 
   // Fetch sellable catalog items (can be optimized to only show active)
   const { data: catalogData, isLoading: catalogLoading } = useSWR(
     currentSite?.id ? ['pos_catalog', currentSite.id, searchQuery] : null,
-    () => listCatalogItems({ siteId: currentSite!.id, status: 'active', q: searchQuery, pageSize: 100 })
+    () => listCatalogItems({ siteId: currentSite!.id, status: 'active', isPosAvailable: true, q: searchQuery, pageSize: 100 })
   )
 
   const { data: locationsData } = useSWR(currentSite?.id ? ['locations', currentSite.id] : null, () => listLocations(currentSite!.id))
@@ -98,20 +101,22 @@ export default function POSPage() {
 
   const subtotal = cart.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0)
 
-  const handleCheckout = async () => {
-    if (!currentSite || !user) return
+  const initiateCheckout = () => {
     if (cart.length === 0) return
-    
     if (!originLocationId) {
       toast.error("Select an origin location")
       return
     }
-
     if (fulfillment === 'ship' && (!leadId || leadId === 'none')) {
       toast.error("Select a customer for shipping")
       return
     }
+    setIsPaymentDialogOpen(true)
+  }
 
+  const handleCheckout = async (payments: { method: string; amount: number; tendered: number; change: number }[]) => {
+    if (!currentSite || !user) return
+    
     setCheckoutLoading(true)
     
     const lines: CheckoutLine[] = cart.map(c => ({
@@ -127,12 +132,14 @@ export default function POSPage() {
       fulfillment,
       originLocationId: originLocationId,
       promotionCode: promotionCode || undefined,
-      source: 'pos'
+      source: 'pos',
+      payments
     })
 
     if (res.error) {
       toast.error(res.error)
       setCheckoutLoading(false)
+      setIsPaymentDialogOpen(false)
       return
     }
 
@@ -140,8 +147,9 @@ export default function POSPage() {
     setCart([])
     setLeadId(undefined)
     setPromotionCode("")
+    setIsPaymentDialogOpen(false)
     if (res.saleId) {
-      router.push(`/sales/${res.saleId}?artifact=true`)
+      router.push(`/sales/${res.saleId}`)
     }
     
     setCheckoutLoading(false)
@@ -158,47 +166,58 @@ export default function POSPage() {
   }, [t]);
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-gray-50/30">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
-        <div className="w-full pt-0 flex justify-end md:hidden">
-          <Sheet open={isMobileCartOpen} onOpenChange={setIsMobileCartOpen}>
-            <SheetContent className="w-full sm:max-w-md p-0 flex flex-col z-[100]">
-              <CartPanel 
-                cart={cart}
-                subtotal={subtotal}
-                updateQty={updateQty}
-                leadId={leadId}
-                setLeadId={setLeadId}
-                fulfillment={fulfillment}
-                setFulfillment={setFulfillment}
-                originLocationId={originLocationId}
-                setOriginLocationId={setOriginLocationId}
-                promotionCode={promotionCode}
-                setPromotionCode={setPromotionCode}
-                handleCheckout={handleCheckout}
-                checkoutLoading={checkoutLoading}
-                leads={leadsData?.leads || []}
-                locations={locations}
-                isMobile={true}
-                closeCart={() => setIsMobileCartOpen(false)}
-              />
-            </SheetContent>
-          </Sheet>
-        </div>
-        
-        <div className="w-full pt-0">
-          <SearchInput 
-            placeholder="Search catalog..." 
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="max-w-md"
-          />
+        <div className="w-full pt-0 flex items-center gap-2 justify-between">
+          <div className="flex-1 max-w-md">
+            <SearchInput 
+              placeholder="Search catalog..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="flex justify-end md:hidden flex-shrink-0">
+            <Sheet open={isMobileCartOpen} onOpenChange={setIsMobileCartOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="relative h-9 w-9">
+                  <ShoppingCart className="h-4 w-4" />
+                  {cart.length > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                      {cart.reduce((s, c) => s + c.cartQty, 0)}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-md p-0 flex flex-col z-[100]">
+                <CartPanel 
+                  cart={cart}
+                  subtotal={subtotal}
+                  updateQty={updateQty}
+                  leadId={leadId}
+                  setLeadId={setLeadId}
+                  fulfillment={fulfillment}
+                  setFulfillment={setFulfillment}
+                  originLocationId={originLocationId}
+                  setOriginLocationId={setOriginLocationId}
+                  promotionCode={promotionCode}
+                  setPromotionCode={setPromotionCode}
+                  handleCheckout={initiateCheckout}
+                  checkoutLoading={checkoutLoading}
+                  leads={leadsData?.leads || []}
+                  locations={locations}
+                  isMobile={true}
+                  closeCart={() => setIsMobileCartOpen(false)}
+                />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </StickyHeader>
 
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Left: Catalog Grid */}
-        <div className="flex-1 flex flex-col overflow-hidden border-r bg-gray-50/50">
+        <div className="flex-1 flex flex-col overflow-hidden border-r bg-muted/30">
           <div className="flex-1 overflow-auto p-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {catalogLoading ? (
@@ -206,8 +225,13 @@ export default function POSPage() {
                   <Card key={i} className="animate-pulse h-32"></Card>
                 ))
               ) : items.length === 0 ? (
-                <div className="col-span-full py-12 text-center text-gray-500">
-                  No items found.
+                <div className="col-span-full py-8">
+                  <EmptyCard
+                    variant="fancy"
+                    icon={<Search className="w-8 h-8 text-muted-foreground" />}
+                    title="No items found"
+                    description="No products or services found for your current search."
+                  />
                 </div>
               ) : (
                 items.map(item => {
@@ -220,14 +244,14 @@ export default function POSPage() {
                     >
                       <div className="p-4 flex-1 flex flex-col">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2 text-gray-400">
+                          <div className="flex items-center gap-2 mb-2 text-muted-foreground">
                             {item.kind === 'product' ? <Archive className="h-4 w-4" /> : <DatabaseIcon className="h-4 w-4" />}
                           </div>
-                          <h3 className="font-medium text-sm text-gray-900 line-clamp-2 leading-snug">{item.name}</h3>
-                          {item.sku && <p className="text-xs text-gray-500 font-mono mt-1">{item.sku}</p>}
+                          <h3 className="font-medium text-sm text-foreground line-clamp-2 leading-snug">{item.name}</h3>
+                          {item.sku && <p className="text-xs text-muted-foreground font-mono mt-1">{item.sku}</p>}
                         </div>
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="font-bold text-gray-900">
+                  <span className="font-bold text-foreground">
                     {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.cartPrice || item.target_sale_price || 0)}
                   </span>
                   {!isAvailable && (
@@ -244,7 +268,7 @@ export default function POSPage() {
         </div>
 
         {/* Right: Cart (Desktop) */}
-        <div className="hidden md:flex w-96 flex-col bg-white">
+        <div className="hidden md:flex w-96 flex-col bg-card">
           <CartPanel 
             cart={cart}
             subtotal={subtotal}
@@ -257,13 +281,21 @@ export default function POSPage() {
             setOriginLocationId={setOriginLocationId}
             promotionCode={promotionCode}
             setPromotionCode={setPromotionCode}
-            handleCheckout={handleCheckout}
+            handleCheckout={initiateCheckout}
             checkoutLoading={checkoutLoading}
             leads={leadsData?.leads || []}
             locations={locations}
           />
         </div>
       </div>
+
+      <PaymentConfirmationDialog 
+        open={isPaymentDialogOpen}
+        onOpenChange={setIsPaymentDialogOpen}
+        totalAmount={subtotal}
+        onConfirm={handleCheckout}
+        isLoading={checkoutLoading}
+      />
     </div>
   )
 }
@@ -275,36 +307,48 @@ function CartPanel({
   originLocationId, setOriginLocationId,
   promotionCode, setPromotionCode,
   handleCheckout, checkoutLoading,
-  leads, locations
+  leads, locations,
+  isMobile, closeCart
 }: any) {
   return (
     <>
-      <div className="p-4 border-b bg-gray-50/50">
-        <h2 className="font-semibold text-lg flex items-center gap-2">
-          <Store className="h-5 w-5 text-gray-500" /> Current Order
-        </h2>
-      </div>
+      {isMobile && (
+        <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
+          <h2 className="font-semibold text-lg flex items-center gap-2">
+            <Store className="h-5 w-5 text-muted-foreground" /> Current Order
+          </h2>
+          {closeCart && (
+            <Button variant="ghost" size="icon" onClick={closeCart} className="md:hidden">
+              <X className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+      )}
       
       {/* Cart Items */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {cart.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
-            <Store className="h-12 w-12 opacity-20" />
-            <p>Cart is empty</p>
+          <div className="h-full flex items-center justify-center">
+            <EmptyCard
+              variant="fancy"
+              icon={<ShoppingCart className="w-8 h-8 text-muted-foreground" />}
+              title="Current Order is empty"
+              description="Add items from the catalog to start a new order."
+            />
           </div>
         ) : (
           <div className="space-y-3">
             {cart.map((item: CartItem) => (
-              <div key={item.id} className="flex items-center gap-3 bg-white p-3 rounded-lg border shadow-sm">
+              <div key={item.id} className="flex items-center gap-3 bg-card p-3 rounded-lg border shadow-sm">
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm text-gray-900 truncate">{item.name}</h4>
-                  <div className="text-gray-500 text-xs mt-0.5">
+                  <h4 className="font-medium text-sm text-foreground truncate">{item.name}</h4>
+                  <div className="text-muted-foreground text-xs mt-0.5">
                     {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.cartPrice)}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={() => updateQty(item.id, -1)}>
-                    <ChevronDown className="h-3 w-3" />
+                    <Minus className="h-3 w-3" />
                   </Button>
                   <span className="w-4 text-center text-sm font-medium">{item.cartQty}</span>
                   <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={() => updateQty(item.id, 1)}>
@@ -318,14 +362,14 @@ function CartPanel({
       </div>
 
       {/* Checkout Controls */}
-      <div className="p-4 bg-gray-50 border-t space-y-4">
+      <div className="p-4 bg-muted/30 border-t space-y-4">
         <div className="space-y-3">
           <Select value={leadId || 'none'} onValueChange={setLeadId}>
-            <SelectTrigger className="bg-white">
+            <SelectTrigger className="bg-card">
               <SelectValue placeholder="Walk-in Customer" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none" className="text-gray-500 italic">Walk-in Customer</SelectItem>
+              <SelectItem value="none" className="text-muted-foreground italic">Walk-in Customer</SelectItem>
               {leads.map((l: any) => (
                 <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
               ))}
@@ -333,7 +377,7 @@ function CartPanel({
           </Select>
 
           <Select value={fulfillment} onValueChange={setFulfillment}>
-            <SelectTrigger className="bg-white">
+            <SelectTrigger className="bg-card">
               <SelectValue placeholder="Fulfillment" />
             </SelectTrigger>
             <SelectContent>
@@ -346,7 +390,7 @@ function CartPanel({
           
           {fulfillment !== 'none' && (
             <Select value={originLocationId} onValueChange={setOriginLocationId}>
-              <SelectTrigger className="bg-white">
+              <SelectTrigger className="bg-card">
                 <SelectValue placeholder={fulfillment === 'ship' ? "Ship From Location" : "Origin Location"} />
               </SelectTrigger>
               <SelectContent>
@@ -362,15 +406,15 @@ function CartPanel({
               placeholder="Promo code..." 
               value={promotionCode} 
               onChange={e => setPromotionCode(e.target.value)}
-              className="bg-white uppercase"
+              className="bg-card uppercase"
             />
           </div>
         </div>
 
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-4 border-t border-border">
           <div className="flex justify-between items-center mb-4">
-            <span className="text-gray-600">Subtotal</span>
-            <span className="text-xl font-bold text-gray-900">
+            <span className="text-muted-foreground">Subtotal</span>
+            <span className="text-xl font-bold text-foreground">
               {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(subtotal)}
             </span>
           </div>

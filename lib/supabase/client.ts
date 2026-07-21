@@ -84,7 +84,10 @@ export function createClient() {
   }
 
   if (isServerSide()) {
-    console.warn('Usando cliente Supabase MOCK (server-side)')
+    // We shouldn't use browser client on the server, but some components might mistakenly do it
+    // console.warn('Usando cliente Supabase MOCK (server-side)')
+    // We can't safely return a real client here because we don't have access to cookies
+    // Return a mock client that warns on usage
     return createMockClient('server-side')
   }
   

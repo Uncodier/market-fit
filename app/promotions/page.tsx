@@ -21,7 +21,7 @@ import { format } from "date-fns"
 import { CreatePromotionDialog } from "./components/CreatePromotionDialog"
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 hover:bg-gray-100 border-none",
+  draft: "bg-muted text-foreground hover:bg-muted/50 border-none",
   active: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
   paused: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
   expired: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
@@ -71,7 +71,7 @@ export default function PromotionsPage() {
   }, [])
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-gray-50/30">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between w-full">
@@ -108,7 +108,7 @@ export default function PromotionsPage() {
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="mx-auto w-full max-w-[1200px] flex flex-col gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
             {isLoading ? (
               <div className="p-6 space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -136,20 +136,20 @@ export default function PromotionsPage() {
                     {data.data.map((promo) => (
                       <TableRow key={promo.id}>
                         <TableCell>
-                          <div className="font-medium text-gray-900">{promo.name}</div>
-                          {promo.code && <div className="text-xs font-mono bg-gray-100 text-gray-600 px-1 py-0.5 rounded mt-1 inline-block">{promo.code}</div>}
+                          <div className="font-medium text-foreground">{promo.name}</div>
+                          {promo.code && <div className="text-xs font-mono bg-muted text-muted-foreground px-1 py-0.5 rounded mt-1 inline-block">{promo.code}</div>}
                         </TableCell>
                         <TableCell>
-                          <Link href={`/campaigns/${promo.campaign_id}?artifact=true`} className="text-sm text-blue-600 hover:underline">
+                          <Link href={`/campaigns/${promo.campaign_id}`} className="text-sm text-blue-600 hover:underline">
                             {promo.campaigns?.title || 'Unknown'}
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium text-gray-900">
+                          <div className="font-medium text-foreground">
                             {promo.discount_type === 'percent' ? `${promo.discount_value}% OFF` : `$${promo.discount_value} OFF`}
                           </div>
                           {promo.applies_to === 'selected_items' && (
-                            <div className="text-xs text-gray-500">Selected items</div>
+                            <div className="text-xs text-muted-foreground">Selected items</div>
                           )}
                         </TableCell>
                         <TableCell>
@@ -162,15 +162,15 @@ export default function PromotionsPage() {
                             {promo.status.toUpperCase()}
                           </Badge>
                           {(promo.starts_at || promo.ends_at) && (
-                            <div className="text-[10px] text-gray-500 mt-1 flex items-center">
+                            <div className="text-[10px] text-muted-foreground mt-1 flex items-center">
                               <Calendar className="h-3 w-3 mr-1" /> Scheduled
                             </div>
                           )}
                         </TableCell>
                         <TableCell>
                           <Link 
-                            href={`/promotions/${promo.id}?artifact=true`} 
-                            className="inline-flex items-center justify-center rounded-md h-8 w-8 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                            href={`/promotions/${promo.id}`} 
+                            className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
@@ -181,7 +181,7 @@ export default function PromotionsPage() {
                 </Table>
                 
                 {data.count > pageSize && (
-                  <div className="p-4 border-t flex justify-center bg-gray-50/30">
+                  <div className="p-4 border-t flex justify-center bg-muted/30">
                     <Pagination 
                       currentPage={page}
                       totalPages={Math.ceil(data.count / pageSize)}

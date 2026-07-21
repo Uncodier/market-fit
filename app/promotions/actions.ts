@@ -124,6 +124,23 @@ export async function setPromotionItems(promotionId: string, siteId: string, cat
   }
 }
 
+export async function deletePromotion(id: string) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("promotions")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw new Error(error.message);
+    
+    revalidatePath(`/promotions`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
 export async function applyPromotionToOrder(siteId: string, saleOrderId: string, promotionCode: string, forceServiceRole: boolean = false) {
   try {
     const supabase = forceServiceRole ? await createServiceClient(true) : await createClient();

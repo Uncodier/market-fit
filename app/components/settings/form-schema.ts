@@ -497,6 +497,28 @@ export const siteFormSchema = z.object({
     emotions_to_evoke: [],
     brand_archetype: undefined
   }),
+  // Shop Storefront fields
+  shop: z.object({
+    hero_title: z.string().optional(),
+    hero_subtitle: z.string().optional(),
+    hero_cta_label: z.string().optional(),
+    hero_image_url: z.string().optional(),
+    free_shipping_threshold: z.number().nullable().optional(),
+    return_policy_summary: z.string().optional(),
+    trust_badges: z.array(z.object({
+      title: z.string(),
+      subtitle: z.string(),
+      icon: z.string()
+    })).max(3).optional().default([])
+  }).optional().default({
+    hero_title: "",
+    hero_subtitle: "",
+    hero_cta_label: "Shop Now",
+    hero_image_url: "",
+    free_shipping_threshold: null,
+    return_policy_summary: "30-Day Returns",
+    trust_badges: []
+  }),
   
   // Customer Journey Configuration
   customer_journey: z.object({

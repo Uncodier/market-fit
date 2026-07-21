@@ -54,7 +54,7 @@ export default function PriceListsPage() {
   }, [])
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-gray-50/30">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0 flex justify-end">
         </div>
@@ -62,7 +62,7 @@ export default function PriceListsPage() {
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="mx-auto w-full max-w-[1200px]">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
             {isLoading ? (
               <div className="p-6 space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -90,8 +90,8 @@ export default function PriceListsPage() {
                       <TableRow key={list.id} className={!list.is_active ? 'opacity-60' : ''}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Tag className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium text-gray-900">{list.name}</span>
+                            <Tag className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-foreground">{list.name}</span>
                             {list.is_default && (
                               <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none ml-2 text-[10px]">
                                 Default
@@ -101,9 +101,9 @@ export default function PriceListsPage() {
                         </TableCell>
                         <TableCell>
                           {list.code ? (
-                            <span className="font-mono text-sm text-gray-600">{list.code}</span>
+                            <span className="font-mono text-sm text-muted-foreground">{list.code}</span>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
                         <TableCell>{list.currency}</TableCell>
@@ -116,8 +116,8 @@ export default function PriceListsPage() {
                         </TableCell>
                         <TableCell>
                           <Link 
-                            href={`/price-lists/${list.id}?artifact=true`} 
-                            className="inline-flex items-center justify-center rounded-md h-8 w-8 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                            href={`/price-lists/${list.id}`} 
+                            className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
@@ -128,7 +128,7 @@ export default function PriceListsPage() {
                 </Table>
                 
                 {data.count > pageSize && (
-                  <div className="p-4 border-t flex justify-center bg-gray-50/30">
+                  <div className="p-4 border-t flex justify-center bg-muted/30">
                     <Pagination 
                       currentPage={page}
                       totalPages={Math.ceil(data.count / pageSize)}

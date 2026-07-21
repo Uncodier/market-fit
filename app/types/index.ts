@@ -141,6 +141,10 @@ export interface SaleOrder {
   discountTotal: number;
   total: number;
   notes?: string;
+  status: string;
+  siteId: string;
+  promotionId?: string;
+  priceListId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -155,6 +159,10 @@ export interface SaleOrderData {
   discount_total: number;
   total: number;
   notes?: string;
+  status: string;
+  site_id: string;
+  promotion_id?: string;
+  price_list_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -357,12 +365,23 @@ export interface Task {
 } 
 // --- New Commerce Types ---
 
+export interface CatalogCategory {
+  id: string;
+  site_id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CatalogItem {
   id: string;
   site_id: string;
+  category_id?: string;
   kind: 'product' | 'service';
   name: string;
   description?: string;
+  image_url?: string;
   sku?: string;
   cost?: number;
   lowest_sale_price?: number;
@@ -371,9 +390,42 @@ export interface CatalogItem {
   availability_mode: 'manual' | 'inventory' | 'always';
   availability_status: 'available' | 'unavailable' | 'sold_out';
   status: 'active' | 'archived';
+  is_pos_available: boolean;
+  is_recurring: boolean;
+  is_reservation: boolean;
   metadata?: any;
   created_at: string;
   updated_at: string;
+}
+
+export interface Subscription {
+  id: string;
+  site_id: string;
+  lead_id: string;
+  catalog_item_id: string;
+  status: 'active' | 'paused' | 'cancelled' | 'expired';
+  start_date: string;
+  next_billing_date?: string;
+  amount: number;
+  created_at: string;
+  updated_at: string;
+  catalog_item?: Partial<CatalogItem>;
+  lead?: { name: string; email?: string };
+}
+
+export interface Reservation {
+  id: string;
+  site_id: string;
+  lead_id: string;
+  catalog_item_id: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  start_time: string;
+  end_time: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  catalog_item?: Partial<CatalogItem>;
+  lead?: { name: string; email?: string };
 }
 
 export interface Location {

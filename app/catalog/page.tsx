@@ -17,6 +17,11 @@ import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { toast } from "sonner"
+import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { useMobileView } from "@/app/hooks/use-mobile-view"
+import { KanbanView } from "./components/KanbanView"
+import { upsertCatalogItem } from "./actions"
+import { cn } from "@/lib/utils"
 
 export default function CatalogPage() {
   const { currentSite } = useSite()
@@ -28,6 +33,7 @@ export default function CatalogPage() {
   const [kindFilter, setKindFilter] = useState<'all' | 'product' | 'service'>('all')
   const [statusFilter, setStatusFilter] = useState<'active' | 'archived'>('active')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [viewType, setViewType] = useMobileView("table")
 
   const fetcher = async (params: CatalogListParams) => {
     const res = await listCatalogItems(params)
@@ -63,6 +69,21 @@ export default function CatalogPage() {
     mutate()
   }
 
+  const handleUpdateKind = async (itemId: string, newKind: string) => {
+    if (!currentSite?.id) return
+    try {
+      const result = await upsertCatalogItem({ id: itemId, site_id: currentSite.id, kind: newKind as 'product' | 'service' })
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success("Item kind updated")
+      mutate()
+    } catch (error) {
+      toast.error("Error updating item")
+    }
+  }
+
   useEffect(() => {
     const handleCreate = () => setIsCreateOpen(true)
     window.addEventListener('catalog:create', handleCreate)
@@ -70,43 +91,53 @@ export default function CatalogPage() {
   }, [])
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-gray-50/30">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-8">
-              <Tabs 
-                value={kindFilter} 
-                onValueChange={(val) => { setKindFilter(val as any); setPage(1); }}
-                className="w-full md:w-auto"
-              >
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full hidden md:flex">
-                  <TabsTrigger value="all" className="text-xs rounded-full">{t('catalog.kind.all') || 'All Items'}</TabsTrigger>
-                  <TabsTrigger value="product" className="gap-2 text-xs rounded-full"><Archive className="h-4 w-4"/> {t('catalog.kind.product') || 'Products'}</TabsTrigger>
-                  <TabsTrigger value="service" className="gap-2 text-xs rounded-full"><DatabaseIcon className="h-4 w-4"/> {t('catalog.kind.service') || 'Services'}</TabsTrigger>
-                </TabsList>
-              </Tabs>
+            <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                <Tabs 
+                  value={kindFilter} 
+                  onValueChange={(val) => { setKindFilter(val as any); setPage(1); }}
+                  className="flex-shrink-0"
+                >
+                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                    <TabsTrigger value="all" className="text-xs rounded-full">{t('catalog.kind.all') || 'All Items'}</TabsTrigger>
+                    <TabsTrigger value="product" className="gap-2 text-xs rounded-full"><Archive className="h-4 w-4"/> {t('catalog.kind.product') || 'Products'}</TabsTrigger>
+                    <TabsTrigger value="service" className="gap-2 text-xs rounded-full"><DatabaseIcon className="h-4 w-4"/> {t('catalog.kind.service') || 'Services'}</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                
+                <Tabs 
+                  value={statusFilter} 
+                  onValueChange={(val) => { setStatusFilter(val as any); setPage(1); }}
+                  className="flex-shrink-0"
+                >
+                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                    <TabsTrigger value="active" className="text-xs rounded-full">{t('status.active') || 'Active'}</TabsTrigger>
+                    <TabsTrigger value="archived" className="text-xs rounded-full">{t('status.archived') || 'Archived'}</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto">
+                <form onSubmit={handleSearch} className="w-full md:w-auto">
+                  <SearchInput 
+                    placeholder={t('catalog.search') || "Search catalog..."} 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    alwaysExpanded={false}
+                  />
+                </form>
+                <div className="hidden md:flex ml-2">
+                  <ViewSelector currentView={viewType} onViewChange={setViewType} />
+                </div>
+              </div>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <Tabs 
-                value={statusFilter} 
-                onValueChange={(val) => { setStatusFilter(val as any); setPage(1); }}
-                className="hidden lg:block"
-              >
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="active" className="text-xs rounded-full">{t('status.active') || 'Active'}</TabsTrigger>
-                  <TabsTrigger value="archived" className="text-xs rounded-full">{t('status.archived') || 'Archived'}</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <form onSubmit={handleSearch} className="w-full md:w-64">
-                <SearchInput 
-                  placeholder={t('catalog.search') || "Search catalog..."} 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  alwaysExpanded={false}
-                />
-              </form>
+            {/* Mobile View Selector */}
+            <div className="md:hidden flex justify-end mt-2">
+              <ViewSelector currentView={viewType} onViewChange={setViewType} />
             </div>
           </div>
         </div>
@@ -114,7 +145,7 @@ export default function CatalogPage() {
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="mx-auto w-full max-w-[1200px] flex flex-col gap-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className={cn(viewType === 'table' ? "bg-card rounded-xl shadow-sm border border-border overflow-hidden" : "")}>
             {isLoading ? (
               <div className="p-6 space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -127,18 +158,31 @@ export default function CatalogPage() {
               </div>
             ) : data?.data && data.data.length > 0 ? (
               <>
-                <CatalogTable 
-                  items={data.data} 
-                  onUpdate={() => mutate()} 
-                />
-                
-                {data.count > pageSize && (
-                  <div className="p-4 border-t flex justify-center bg-gray-50/30">
-                    <Pagination 
-                      currentPage={page}
-                      totalPages={Math.ceil(data.count / pageSize)}
-                      onPageChange={setPage}
+                {viewType === 'table' ? (
+                  <>
+                    <CatalogTable 
+                      items={data.data} 
+                      onUpdate={() => mutate()} 
                     />
+                    
+                    {data.count > pageSize && (
+                      <div className="p-4 border-t flex justify-center bg-muted/30">
+                        <Pagination 
+                          currentPage={page}
+                          totalPages={Math.ceil(data.count / pageSize)}
+                          onPageChange={setPage}
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className={viewType === 'kanban' ? "overflow-x-auto -mx-4 md:-mx-6" : ""}>
+                    <div className={viewType === 'kanban' ? "px-4 md:px-6" : ""}>
+                      <KanbanView 
+                        items={data.data} 
+                        onUpdateKind={handleUpdateKind} 
+                      />
+                    </div>
                   </div>
                 )}
               </>

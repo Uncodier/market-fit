@@ -64,11 +64,26 @@ import {
   TrendingUp,
   PieChart,
   Globe,
-  Star
+  Star,
+  Store,
+  Send,
+  Ticket,
+  Repeat,
+  CalendarDays,
+  ListOrdered,
 } from "@/app/components/ui/icons"
 
 const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   salesHome: Home,
+  pos: Store,
+  catalog: Archive,
+  priceLists: Tag,
+  inventory: DatabaseIcon,
+  orders: ListOrdered,
+  shipments: Send,
+  promotions: Ticket,
+  subscriptions: Repeat,
+  reservations: CalendarDays,
   campaigns: Target,
   segments: Tag,
   content: FileText,

@@ -9,6 +9,7 @@ import { headers } from 'next/headers'
 import { shouldUseLayout } from './config/routes'
 import LoggerInit from './components/LoggerInit'
 import ChunkErrorGuard from './components/ChunkErrorGuard'
+import EarlyBrowserInit from './components/EarlyBrowserInit'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://makinari.com'),
@@ -54,60 +55,6 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var path = window.location.pathname;
-                  if (path && path.indexOf('/auth') === 0) {
-                    document.documentElement.classList.add('dark');
-                    document.documentElement.style.background = '#030303';
-                  }
-                } catch (e) {}
-
-                try {
-                  // MOCK GEOLOCATION TO PREVENT BROWSER PROMPTS
-                  // And use Vercel headers if available
-                  var lat = parseFloat("${latitude || ''}");
-                  var lon = parseFloat("${longitude || ''}");
-                  
-                  if (navigator && !navigator.geolocation) {
-                    navigator.geolocation = {};
-                  }
-                  
-                  if (navigator && navigator.geolocation) {
-                    var originalGetCurrentPosition = navigator.geolocation.getCurrentPosition;
-                    navigator.geolocation.getCurrentPosition = function(successCallback, errorCallback, options) {
-                      if (!isNaN(lat) && !isNaN(lon)) {
-                        successCallback({
-                          coords: {
-                            latitude: lat,
-                            longitude: lon,
-                            accuracy: 100,
-                            altitude: null,
-                            altitudeAccuracy: null,
-                            heading: null,
-                            speed: null
-                          },
-                          timestamp: Date.now()
-                        });
-                      } else {
-                        // Fallback to error to avoid asking the user
-                        if (errorCallback) {
-                          errorCallback({
-                            code: 1, // PERMISSION_DENIED
-                            message: "Geolocation blocked by app configuration"
-                          });
-                        }
-                      }
-                    };
-                  }
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -272,6 +219,7 @@ export default async function RootLayout({
 
       </head>
       <body className="font-sans">
+        <EarlyBrowserInit latitude={latitude} longitude={longitude} />
         <Providers country={country}>
           <LoggerInit />
           <ChunkErrorGuard />

@@ -63,14 +63,14 @@ export function CatalogTable({ items, onUpdate }: CatalogTableProps) {
               )}
             </TableCell>
             <TableCell>
-              <div className="font-medium text-gray-900">{item.name}</div>
-              {item.sku && <div className="text-xs text-gray-500 font-mono mt-0.5">{item.sku}</div>}
+              <div className="font-medium text-foreground">{item.name}</div>
+              {item.sku && <div className="text-xs text-muted-foreground font-mono mt-0.5">{item.sku}</div>}
             </TableCell>
             <TableCell>
-              <div className="text-gray-900">
+              <div className="text-foreground">
                 {item.target_sale_price != null 
                   ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.target_sale_price)
-                  : <span className="text-gray-400">-</span>
+                  : <span className="text-muted-foreground">-</span>
                 }
               </div>
             </TableCell>
@@ -127,8 +127,8 @@ export function CatalogTable({ items, onUpdate }: CatalogTableProps) {
             </TableCell>
             <TableCell>
               <Link 
-                href={`/catalog/${item.id}?artifact=true`} 
-                className="inline-flex items-center justify-center rounded-md h-8 w-8 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                href={`/catalog/${item.id}`} 
+                className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               >
                 <Edit className="h-4 w-4" />
               </Link>

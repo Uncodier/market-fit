@@ -8,6 +8,9 @@ export interface CatalogListParams {
   availabilityStatus?: 'available' | 'unavailable' | 'sold_out' | 'all';
   page?: number;
   pageSize?: number;
+  isPosAvailable?: boolean;
+  isRecurring?: boolean;
+  isReservation?: boolean;
 }
 
 export interface CatalogListResponse {

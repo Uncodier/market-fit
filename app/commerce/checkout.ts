@@ -24,6 +24,7 @@ export interface CheckoutCartParams {
   userId?: string;
   customerName?: string; // Used if creating lead on the fly for shop
   customerEmail?: string;
+  payments?: { method: string; amount: number; tendered?: number; change?: number }[];
 }
 
 export async function checkoutCart({
@@ -38,7 +39,8 @@ export async function checkoutCart({
   source,
   userId,
   customerName,
-  customerEmail
+  customerEmail,
+  payments
 }: CheckoutCartParams) {
   try {
     const supabase = await createClient();
@@ -111,17 +113,33 @@ export async function checkoutCart({
       });
     }
 
+    // Calculate total paid if payments are provided
+    const totalPaid = payments ? payments.reduce((sum, p) => sum + p.amount, 0) : 0;
+    const isFullyPaid = source === 'pos' && payments && totalPaid >= orderSubtotal;
+    const paymentMethodToStore = payments && payments.length > 0 
+      ? (payments.length === 1 ? payments[0].method : 'multiple')
+      : undefined;
+
     // 4. Create Sale
     const saleData: any = {
       site_id: siteId,
       lead_id: finalLeadId,
       title: `Order - ${new Date().toLocaleDateString()}`,
-      status: fulfillment === 'none' || fulfillment === 'dine_in' || fulfillment === 'pickup' ? 'completed' : 'pending',
+      status: isFullyPaid ? 'completed' : (fulfillment === 'none' || fulfillment === 'dine_in' || fulfillment === 'pickup' ? 'completed' : 'pending'),
       amount: orderSubtotal,
-      amount_due: orderSubtotal,
+      amount_due: payments ? Math.max(0, orderSubtotal - totalPaid) : orderSubtotal,
       user_id: resolvedUserId,
       sale_date: new Date().toISOString().split('T')[0],
-      source: source === 'shop' ? 'online' : 'retail'
+      source: source === 'shop' ? 'online' : 'retail',
+      payment_method: paymentMethodToStore,
+      payments: payments ? payments.map(p => ({
+        method: p.method,
+        amount: p.amount,
+        tendered: p.tendered || p.amount,
+        change: p.change || 0,
+        date: new Date().toISOString(),
+        status: 'completed'
+      })) : []
     };
 
     const { data: sale, error: saleError } = await (source === 'shop' ? supabaseAdmin : supabase)
@@ -140,7 +158,7 @@ export async function checkoutCart({
       subtotal: orderSubtotal,
       total: orderSubtotal,
       discount_total: 0,
-      status: 'pending', // payment status
+      status: isFullyPaid ? 'completed' : 'pending', // payment status
       order_number: `ORD-${Date.now().toString().slice(-6)}`,
       user_id: resolvedUserId,
       items: processedLines.map(pl => ({

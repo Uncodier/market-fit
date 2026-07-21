@@ -1,6 +1,6 @@
 "use client"
 
-import { Store, Archive, DatabaseIcon, Tag, Send, Ticket,  useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
@@ -57,7 +57,13 @@ import {
   Workflow,
   TrendingUp,
   PieChart,
-  Globe
+  Globe,
+  Store,
+  Send,
+  Ticket,
+  Repeat,
+  CalendarDays,
+  ListOrdered,
 } from "@/app/components/ui/icons"
 
 const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
@@ -75,8 +81,11 @@ const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
     catalog: Archive,
     priceLists: Tag,
     inventory: DatabaseIcon,
+    orders: ListOrdered,
     shipments: Send,
     promotions: Ticket,
+    subscriptions: Repeat,
+    reservations: CalendarDays,
 
   campaigns: Target,
   segments: Tag,

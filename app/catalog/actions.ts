@@ -5,6 +5,45 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { CatalogItem } from "@/app/types";
 import { CatalogListParams, CatalogListResponse, CatalogAvailabilityResult } from "./types";
 
+export async function listCatalogCategories(siteId: string) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("catalog_categories")
+      .select("*")
+      .eq("site_id", siteId)
+      .order("name", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching categories:", error);
+      return { data: [], error: error.message };
+    }
+    
+    return { data };
+  } catch (error: any) {
+    return { data: [], error: error.message };
+  }
+}
+
+export async function upsertCatalogCategory(category: { id?: string, site_id: string, name: string, description?: string }) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("catalog_categories")
+      .upsert({
+        ...category,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) return { error: error.message };
+    return { data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
 export async function listCatalogItems({
   siteId,
   kind = 'all',
@@ -12,7 +51,10 @@ export async function listCatalogItems({
   status = 'active',
   availabilityStatus = 'all',
   page = 1,
-  pageSize = 50
+  pageSize = 50,
+  isPosAvailable,
+  isRecurring,
+  isReservation
 }: CatalogListParams): Promise<CatalogListResponse> {
   try {
     const supabase = await createClient();
@@ -31,6 +73,15 @@ export async function listCatalogItems({
     }
     if (availabilityStatus !== 'all') {
       query = query.eq('availability_status', availabilityStatus);
+    }
+    if (isPosAvailable !== undefined) {
+      query = query.eq('is_pos_available', isPosAvailable);
+    }
+    if (isRecurring !== undefined) {
+      query = query.eq('is_recurring', isRecurring);
+    }
+    if (isReservation !== undefined) {
+      query = query.eq('is_reservation', isReservation);
     }
     if (q) {
       query = query.ilike('name', `%${q}%`);

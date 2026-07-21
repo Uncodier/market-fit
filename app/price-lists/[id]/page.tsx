@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSite } from "@/app/context/SiteContext"
+import React, { useState, useEffect } from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useRouter } from "next/navigation"
 import { getPriceList, listPriceListItems, setPriceListItem, removePriceListItem, upsertPriceList } from "../actions"
 import { listCatalogItems } from "@/app/catalog/actions"
@@ -20,8 +20,10 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 
-export default function PriceListDetail({ params }: { params: { id: string } }) {
+export default function PriceListDetail(props: { params: Promise<{ id: string }> }) {
+  const params = React.use(props.params)
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const router = useRouter()
   
   const [list, setList] = useState<PriceList | null>(null)
@@ -129,7 +131,7 @@ export default function PriceListDetail({ params }: { params: { id: string } }) 
   )
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-gray-50/30">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0 flex justify-end">
           <div className="flex items-center gap-2">
@@ -145,7 +147,7 @@ export default function PriceListDetail({ params }: { params: { id: string } }) 
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="mx-auto max-w-[1000px]">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -177,10 +179,10 @@ export default function PriceListDetail({ params }: { params: { id: string } }) 
                   items.map(item => (
                     <TableRow key={item.id}>
                       <TableCell>
-                        <div className="font-medium text-gray-900">{item.catalog_item?.name}</div>
-                        {item.catalog_item?.sku && <div className="text-xs text-gray-500 font-mono">{item.catalog_item.sku}</div>}
+                        <div className="font-medium text-foreground">{item.catalog_item?.name}</div>
+                        {item.catalog_item?.sku && <div className="text-xs text-muted-foreground font-mono">{item.catalog_item.sku}</div>}
                       </TableCell>
-                      <TableCell className="text-gray-500">
+                      <TableCell className="text-muted-foreground">
                         {item.catalog_item?.target_sale_price != null 
                           ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.catalog_item.target_sale_price) 
                           : '-'}

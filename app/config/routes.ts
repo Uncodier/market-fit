@@ -38,8 +38,11 @@ export const routes: RouteConfig[] = [
   { path: "/catalog", hasLayout: true },
   { path: "/price-lists", hasLayout: true },
   { path: "/inventory", hasLayout: true },
+  { path: "/orders", hasLayout: true },
   { path: "/shipments", hasLayout: true },
   { path: "/promotions", hasLayout: true },
+  { path: "/subscriptions", hasLayout: true },
+  { path: "/reservations", hasLayout: true },
 
   { path: "/create-site", hasLayout: false },
   

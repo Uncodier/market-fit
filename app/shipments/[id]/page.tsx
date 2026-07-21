@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSite } from "@/app/context/SiteContext"
+import React, { useState, useEffect } from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useRouter } from "next/navigation"
 import { getShipment, updateShipmentStatus, updateShipmentTracking } from "../actions"
 import { ShipmentWithRelations } from "../types"
@@ -10,6 +10,9 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
+import { ActionFooter } from "@/app/components/ui/card-footer"
+import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Badge } from "@/app/components/ui/badge"
 import { toast } from "sonner"
 import { ChevronLeft, Save, Send, MapPin, User, Archive, ExternalLink, Calendar, CheckCircle2 } from "@/app/components/ui/icons"
@@ -18,7 +21,7 @@ import { format } from "date-fns"
 import Link from "next/link"
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-gray-100 text-gray-700 hover:bg-gray-100 border-none",
+  pending: "bg-muted text-foreground hover:bg-muted/50 border-none",
   preparing: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
   shipped: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
   in_transit: "bg-indigo-50 text-indigo-700 hover:bg-indigo-50 border-indigo-200",
@@ -27,8 +30,10 @@ const STATUS_STYLES: Record<string, string> = {
   failed: "bg-red-100 text-red-800 hover:bg-red-100 border-red-300",
 }
 
-export default function ShipmentDetail({ params }: { params: { id: string } }) {
+export default function ShipmentDetail(props: { params: Promise<{ id: string }> }) {
+  const params = React.use(props.params)
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const router = useRouter()
   
   const [shipment, setShipment] = useState<ShipmentWithRelations | null>(null)
@@ -110,11 +115,16 @@ export default function ShipmentDetail({ params }: { params: { id: string } }) {
   const address = shipment.shipping_address as any || {}
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-gray-50/30">
-      <StickyHeader>
-        <div className="w-full pt-0 flex justify-end">
-          <div className="flex items-center gap-2">
-            {/* Next logical actions based on status */}
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
+      <Tabs defaultValue="details" className="flex-1 flex flex-col">
+        <StickyHeader>
+          <div className="w-full pt-0 flex justify-between items-center">
+            <TabsList>
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="timeline">Timeline</TabsTrigger>
+            </TabsList>
+            <div className="flex items-center gap-2">
+              {/* Next logical actions based on status */}
             {shipment.status === 'pending' && (
               <Button onClick={() => handleStatusChange('preparing')} disabled={updatingStatus}>
                 Start Preparing
@@ -140,13 +150,14 @@ export default function ShipmentDetail({ params }: { params: { id: string } }) {
       </StickyHeader>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
-        <div className="mx-auto max-w-[1000px] grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* Main Content */}
+        <TabsContent value="details" className="m-0 border-0 p-0">
+          <div className="mx-auto max-w-[1000px] grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-gray-500"/> Tracking Info</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-muted-foreground"/> Tracking Info</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -159,39 +170,79 @@ export default function ShipmentDetail({ params }: { params: { id: string } }) {
                     <Input value={tracking} onChange={e => setTracking(e.target.value)} placeholder="Tracking code" />
                   </div>
                 </div>
-                <Button onClick={handleSaveTracking} disabled={savingTracking || (carrier === shipment.carrier && tracking === shipment.tracking_number)}>
+              </CardContent>
+              <ActionFooter>
+                <Button variant="outline" onClick={handleSaveTracking} disabled={savingTracking || (carrier === shipment.carrier && tracking === shipment.tracking_number)}>
                   <Save className="h-4 w-4 mr-2" /> Save Tracking
                 </Button>
-              </CardContent>
+              </ActionFooter>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5 text-gray-500"/> Destination Address</CardTitle>
+                <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5 text-muted-foreground"/> Destination Address</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-gray-50 p-4 rounded-lg border">
+                <div className="bg-muted/30 rounded-lg border overflow-hidden">
                   {Object.keys(address).length > 0 ? (
-                    <>
+                    <div className="p-4">
                       <div className="font-medium">{address.contact_name || shipment.leads?.name}</div>
-                      <div className="text-gray-600 mt-1">
+                      <div className="text-muted-foreground mt-1">
                         {address.street}<br/>
                         {address.city}{address.city && address.region ? ', ' : ''}{address.region} {address.postal_code}<br/>
                         {address.country}
                       </div>
                       {(address.phone || address.email) && (
-                        <div className="mt-3 text-sm text-gray-500 pt-3 border-t">
+                        <div className="mt-3 text-sm text-muted-foreground pt-3 border-t">
                           {address.phone && <div>Phone: {address.phone}</div>}
                           {address.email && <div>Email: {address.email}</div>}
                         </div>
                       )}
-                    </>
+                    </div>
                   ) : (
-                    <span className="text-gray-500 italic">No shipping address recorded.</span>
+                    <div className="p-6">
+                      <EmptyCard 
+                        icon={<MapPin className="h-10 w-10 text-muted-foreground" />}
+                        title="No Address"
+                        description="No shipping address recorded."
+                        variant="fancy"
+                        showShadow={false}
+                      />
+                    </div>
                   )}
                 </div>
               </CardContent>
             </Card>
+            
+            {(shipment.status === 'pending' || shipment.status === 'preparing') && (
+              <div className="rounded-lg border-destructive/50 border bg-destructive/5 p-6">
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-destructive mb-1">Danger Zone</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Actions in this section cannot be undone
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium mb-1">Cancel Shipment</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Cancel this shipment. This will stop the fulfillment process.
+                      </p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      type="button"
+                      onClick={() => handleStatusChange('cancelled')}
+                      disabled={updatingStatus}
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Cancel Shipment
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -199,29 +250,33 @@ export default function ShipmentDetail({ params }: { params: { id: string } }) {
             <Card>
               <CardContent className="p-4 space-y-4">
                 <div>
-                  <div className="text-xs text-gray-500 font-medium mb-1">CUSTOMER</div>
+                  <div className="text-xs text-muted-foreground font-medium mb-1">CUSTOMER</div>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-400" />
-                    <Link href={`/leads/${shipment.lead_id}?artifact=true`} className="font-medium hover:underline text-blue-600">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <Link href={`/leads/${shipment.lead_id}`} className="font-medium hover:underline text-blue-600">
                       {shipment.leads?.name || 'View Customer'}
                     </Link>
                   </div>
                 </div>
                 
                 <div>
-                  <div className="text-xs text-gray-500 font-medium mb-1">ORIGIN LOCATION</div>
+                  <div className="text-xs text-muted-foreground font-medium mb-1">ORIGIN LOCATION</div>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
                     <span>{shipment.locations?.name || 'Unknown'}</span>
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-xs text-gray-500 font-medium mb-1">ORDER</div>
+                  <div className="text-xs text-muted-foreground font-medium mb-1">ORDER</div>
                   <div className="flex items-center gap-2">
-                    <Archive className="h-4 w-4 text-gray-400" />
-                    {shipment.sale_id ? (
-                      <Link href={`/sales/${shipment.sale_id}?artifact=true`} className="font-medium hover:underline text-blue-600">
+                    <Archive className="h-4 w-4 text-muted-foreground" />
+                    {shipment.sale_order_id ? (
+                      <Link href={`/orders/${shipment.sale_order_id}`} className="font-medium hover:underline text-blue-600">
+                        {shipment.sale_orders?.order_number}
+                      </Link>
+                    ) : shipment.sale_id ? (
+                      <Link href={`/sales/${shipment.sale_id}`} className="font-medium hover:underline text-blue-600">
                         {shipment.sale_orders?.order_number}
                       </Link>
                     ) : (
@@ -239,35 +294,41 @@ export default function ShipmentDetail({ params }: { params: { id: string } }) {
                 )}
               </CardContent>
             </Card>
+          </div>
+        </div>
+        </TabsContent>
 
+        <TabsContent value="timeline" className="m-0 border-0 p-0 h-full">
+          <div className="mx-auto max-w-[800px] mt-6">
             <Card>
-              <CardHeader className="py-3 px-4 border-b">
-                <CardTitle className="text-sm font-medium">Timeline</CardTitle>
+              <CardHeader className="py-4 px-6 border-b">
+                <CardTitle className="text-lg font-medium">Timeline</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y text-sm">
-                  <div className="p-3 flex justify-between items-center bg-gray-50">
-                    <span className="text-gray-600">Created</span>
-                    <span className="font-medium">{format(new Date(shipment.created_at), 'MMM d, h:mm a')}</span>
+                  <div className="p-4 px-6 flex justify-between items-center bg-muted/30">
+                    <span className="text-muted-foreground">Created</span>
+                    <span className="font-medium">{format(new Date(shipment.created_at), 'MMM d, yyyy h:mm a')}</span>
                   </div>
                   {shipment.shipped_at && (
-                    <div className="p-3 flex justify-between items-center">
-                      <span className="text-gray-600">Shipped</span>
-                      <span className="font-medium">{format(new Date(shipment.shipped_at), 'MMM d, h:mm a')}</span>
+                    <div className="p-4 px-6 flex justify-between items-center">
+                      <span className="text-muted-foreground">Shipped</span>
+                      <span className="font-medium">{format(new Date(shipment.shipped_at), 'MMM d, yyyy h:mm a')}</span>
                     </div>
                   )}
                   {shipment.delivered_at && (
-                    <div className="p-3 flex justify-between items-center bg-gray-50">
-                      <span className="text-gray-600">Delivered</span>
-                      <span className="font-medium">{format(new Date(shipment.delivered_at), 'MMM d, h:mm a')}</span>
+                    <div className="p-4 px-6 flex justify-between items-center bg-muted/30">
+                      <span className="text-muted-foreground">Delivered</span>
+                      <span className="font-medium">{format(new Date(shipment.delivered_at), 'MMM d, yyyy h:mm a')}</span>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
           </div>
-        </div>
+        </TabsContent>
       </div>
+      </Tabs>
     </div>
   )
 }

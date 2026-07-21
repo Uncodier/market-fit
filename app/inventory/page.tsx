@@ -23,7 +23,9 @@ import { Label } from "@/app/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
-import { Save, MapPin, DatabaseIcon, Settings, Edit, Plus } from "@/app/components/ui/icons"
+import { Save, MapPin, DatabaseIcon, Settings, Edit, Plus, PlusCircle } from "@/app/components/ui/icons"
+
+import { CreateInventoryStockDialog } from "./components/CreateInventoryStockDialog"
 
 export default function InventoryPage() {
   const { currentSite } = useSite()
@@ -55,44 +57,73 @@ export default function InventoryPage() {
     window.dispatchEvent(event);
   }, [t]);
 
+  useEffect(() => {
+    const handleReload = () => {
+      // Forzar recarga del componente hijo modificando el estado "q" brevemente o disparando una revalidación,
+      // Aunque en este caso mutar el SWR global es mejor si se expone, pero podemos hacerlo 
+      // cambiando y restaurando la página.
+      setPage(1)
+    }
+    window.addEventListener('inventory:reload', handleReload)
+    return () => window.removeEventListener('inventory:reload', handleReload)
+  }, []);
+
+  useEffect(() => {
+    const handleOpenLocation = () => {
+      setActiveTab("locations")
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('inventory:open-location-dialog-internal'))
+      }, 50)
+    }
+    const handleOpenStock = () => {
+      setActiveTab("levels")
+    }
+    window.addEventListener('inventory:open-location-dialog', handleOpenLocation)
+    window.addEventListener('inventory:create-stock', handleOpenStock)
+    return () => {
+      window.removeEventListener('inventory:open-location-dialog', handleOpenLocation)
+      window.removeEventListener('inventory:create-stock', handleOpenStock)
+    }
+  }, []);
+
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-gray-50/30">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-8">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="flex items-center gap-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full hidden md:flex">
                   <TabsTrigger value="levels" className="gap-2 text-xs rounded-full"><DatabaseIcon className="h-4 w-4"/> Stock Levels</TabsTrigger>
                   <TabsTrigger value="locations" className="gap-2 text-xs rounded-full"><MapPin className="h-4 w-4"/> Locations</TabsTrigger>
                   <TabsTrigger value="settings" className="gap-2 text-xs rounded-full"><Settings className="h-4 w-4"/> Commerce Settings</TabsTrigger>
                 </TabsList>
               </Tabs>
+              {activeTab === "levels" && (
+                <form onSubmit={handleSearch} className="w-full md:w-64">
+                  <SearchInput 
+                    placeholder="Search catalog..." 
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    alwaysExpanded={false}
+                  />
+                </form>
+              )}
             </div>
             
             <div className="flex items-center gap-2">
               {activeTab === "levels" && (
-                <>
-                  <Select value={selectedLocation} onValueChange={(v) => { setSelectedLocation(v); setPage(1); }}>
-                    <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
-                      <SelectValue placeholder="All Locations" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Locations</SelectItem>
-                      {locations.map((loc: any) => (
-                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <form onSubmit={handleSearch} className="w-full md:w-64">
-                    <SearchInput 
-                      placeholder="Search catalog..." 
-                      value={q}
-                      onChange={(e) => setQ(e.target.value)}
-                      alwaysExpanded={false}
-                    />
-                  </form>
-                </>
+                <Select value={selectedLocation} onValueChange={(v) => { setSelectedLocation(v); setPage(1); }}>
+                  <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
+                    <SelectValue placeholder="All Locations" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((loc: any) => (
+                      <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
           </div>
@@ -124,6 +155,7 @@ export default function InventoryPage() {
           </Tabs>
         </div>
       </div>
+      <CreateInventoryStockDialog />
     </div>
   )
 }
@@ -179,7 +211,7 @@ function InventoryLevelsTab({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
         {isLoading ? (
           <div className="p-6 space-y-4">
             <Skeleton className="h-12 w-full" />
@@ -206,6 +238,12 @@ function InventoryLevelsTab({
                         title="No stock levels found"
                         description="Stock is created when items are added to catalog with inventory tracking enabled."
                         showShadow={false}
+                        actionButton={
+                          <Button onClick={() => window.dispatchEvent(new CustomEvent('inventory:create-stock'))} variant="outline">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Stock
+                          </Button>
+                        }
                       />
                     </TableCell>
                   </TableRow>
@@ -215,8 +253,8 @@ function InventoryLevelsTab({
                     return (
                       <TableRow key={level.id}>
                         <TableCell>
-                          <div className="font-medium text-gray-900">{level.catalog_item?.name}</div>
-                          {level.catalog_item?.sku && <div className="text-xs text-gray-500 font-mono">{level.catalog_item.sku}</div>}
+                          <div className="font-medium text-foreground">{level.catalog_item?.name}</div>
+                          {level.catalog_item?.sku && <div className="text-xs text-muted-foreground font-mono">{level.catalog_item.sku}</div>}
                         </TableCell>
                         <TableCell>
                           {loc?.name || 'Unknown'} {loc?.is_default && <Badge className="ml-2 text-[10px]">Default</Badge>}
@@ -262,6 +300,16 @@ function LocationsTab({ siteId }: { siteId?: string }) {
   const [saving, setSaving] = useState(false)
   const [newLocName, setNewLocName] = useState("")
 
+  useEffect(() => {
+    const handleOpen = () => setIsDialogOpen(true)
+    window.addEventListener('inventory:open-location-dialog-internal', handleOpen)
+    window.addEventListener('inventory:open-location-dialog', handleOpen)
+    return () => {
+      window.removeEventListener('inventory:open-location-dialog-internal', handleOpen)
+      window.removeEventListener('inventory:open-location-dialog', handleOpen)
+    }
+  }, [])
+
   const handleCreate = async () => {
     if (!newLocName.trim() || !siteId) return
     setSaving(true)
@@ -280,11 +328,11 @@ function LocationsTab({ siteId }: { siteId?: string }) {
   if (isLoading) return <Skeleton className="h-32 w-full" />
 
   return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b flex justify-between items-center bg-gray-50/50">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="p-4 border-b flex justify-between items-center bg-muted/30">
           <div>
             <h3 className="font-semibold text-lg">Physical Locations</h3>
-            <p className="text-sm text-gray-500">Manage store fronts, warehouses, and fulfillment centers.</p>
+            <p className="text-sm text-muted-foreground">Manage store fronts, warehouses, and fulfillment centers.</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -340,7 +388,7 @@ function LocationsTab({ siteId }: { siteId?: string }) {
                   <span className="font-medium">{loc.name}</span>
                   {loc.is_default && <Badge className="ml-2 bg-blue-100 text-blue-700 border-none text-[10px]">Default</Badge>}
                 </TableCell>
-                <TableCell className="font-mono text-sm text-gray-500">{loc.code || '-'}</TableCell>
+                <TableCell className="font-mono text-sm text-muted-foreground">{loc.code || '-'}</TableCell>
                 <TableCell>
                   {loc.is_active ? <Badge variant="outline" className="text-green-700 bg-green-50 border-green-200">Active</Badge> : <Badge variant="outline">Inactive</Badge>}
                 </TableCell>
@@ -404,7 +452,7 @@ function CommerceSettingsTab({ siteId }: { siteId?: string }) {
               <SelectItem value="block">Block (Reject sale when qty insufficient)</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-sm text-gray-500">Only applies to items where Availability Mode is "Inventory".</p>
+          <p className="text-sm text-muted-foreground">Only applies to items where Availability Mode is "Inventory".</p>
         </div>
 
         <div className="space-y-2">
@@ -436,7 +484,7 @@ function CommerceSettingsTab({ siteId }: { siteId?: string }) {
               <SelectItem value="never">Never (Do not auto-decrement)</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-sm text-gray-500">Determines when inventory is subtracted during the fulfillment lifecycle. Walk-in and pickup sales decrement immediately unless set to "Never".</p>
+          <p className="text-sm text-muted-foreground">Determines when inventory is subtracted during the fulfillment lifecycle. Walk-in and pickup sales decrement immediately unless set to "Never".</p>
         </div>
 
         <div className="pt-4 border-t">

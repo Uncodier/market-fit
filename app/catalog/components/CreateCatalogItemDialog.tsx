@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
-import { upsertCatalogItem } from "../actions"
+import { upsertCatalogItem, listCatalogCategories } from "../actions"
+import { CatalogCategory } from "@/app/types"
+import { ImageUpload } from "@/app/components/ui/image-upload"
 
 interface CreateCatalogItemDialogProps {
   open: boolean
@@ -26,11 +28,18 @@ type FormData = {
   cost: string
   availability_mode: 'manual' | 'inventory' | 'always'
   track_inventory: boolean
+  category_id?: string
+  is_pos_available: boolean
+  is_recurring: boolean
+  is_reservation: boolean
+  image_url?: string
 }
 
 export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: CreateCatalogItemDialogProps) {
   const { currentSite } = useSite()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [categories, setCategories] = useState<CatalogCategory[]>([])
+  const [image, setImage] = useState<string>('')
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: {
@@ -39,13 +48,28 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
       track_inventory: false,
       sku: '',
       target_sale_price: '',
-      cost: ''
+      cost: '',
+      is_pos_available: true,
+      is_recurring: false,
+      is_reservation: false
     }
   })
+
+  useEffect(() => {
+    if (open && currentSite) {
+      listCatalogCategories(currentSite.id).then(res => {
+        if (res.data) setCategories(res.data as CatalogCategory[])
+      })
+    }
+  }, [open, currentSite])
 
   const kind = watch('kind')
   const mode = watch('availability_mode')
   const trackInventory = watch('track_inventory')
+  const categoryId = watch('category_id')
+  const isPos = watch('is_pos_available')
+  const isRecurring = watch('is_recurring')
+  const isReservation = watch('is_reservation')
 
   const onSubmit = async (data: FormData) => {
     if (!currentSite) return
@@ -62,13 +86,19 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
         availability_mode: data.availability_mode,
         track_inventory: data.track_inventory,
         status: 'active',
-        availability_status: 'available'
+        availability_status: 'available',
+        category_id: data.category_id === 'none' ? undefined : (data.category_id || undefined),
+        is_pos_available: data.is_pos_available,
+        is_recurring: data.is_recurring,
+        is_reservation: data.is_reservation,
+        image_url: image || undefined
       })
 
       if (res.error) throw new Error(res.error)
 
       toast.success('Catalog item created successfully')
       reset()
+      setImage('')
       onSuccess()
       onOpenChange(false)
     } catch (error: any) {
@@ -80,7 +110,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add to Catalog</DialogTitle>
           <DialogDescription>
@@ -88,7 +118,16 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
+          <div className="space-y-2">
+            <Label>Image</Label>
+            <ImageUpload 
+              value={image} 
+              onChange={setImage} 
+              onRemove={() => setImage('')} 
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2 md:col-span-1">
               <Label htmlFor="kind">Type</Label>
@@ -107,19 +146,38 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
             </div>
             
             <div className="space-y-2 col-span-2 md:col-span-1">
-              <Label htmlFor="sku">SKU / Code (Optional)</Label>
-              <Input id="sku" placeholder="e.g. TSHIRT-01" {...register("sku")} />
+              <Label htmlFor="category">Category</Label>
+              <Select 
+                value={categoryId} 
+                onValueChange={(val: any) => setValue('category_id', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input 
-              id="name" 
-              placeholder={kind === 'product' ? "e.g. Classic T-Shirt" : "e.g. 1hr Consultation"} 
-              {...register("name", { required: "Name is required" })} 
-            />
-            {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="name">Name</Label>
+              <Input 
+                id="name" 
+                placeholder={kind === 'product' ? "e.g. Classic T-Shirt" : "e.g. 1hr Consultation"} 
+                {...register("name", { required: "Name is required" })} 
+              />
+              {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+            </div>
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <Label htmlFor="sku">SKU / Code (Optional)</Label>
+              <Input id="sku" placeholder="e.g. TSHIRT-01" {...register("sku")} />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -144,6 +202,36 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                 placeholder="0.00" 
                 {...register("cost")} 
               />
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-4 border-t">
+            <h4 className="text-sm font-medium">Features</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center space-x-2 border p-3 rounded-md">
+                <Checkbox 
+                  id="is_pos_available" 
+                  checked={isPos}
+                  onCheckedChange={(checked) => setValue('is_pos_available', checked as boolean)}
+                />
+                <Label htmlFor="is_pos_available" className="cursor-pointer">Available in POS</Label>
+              </div>
+              <div className="flex items-center space-x-2 border p-3 rounded-md">
+                <Checkbox 
+                  id="is_recurring" 
+                  checked={isRecurring}
+                  onCheckedChange={(checked) => setValue('is_recurring', checked as boolean)}
+                />
+                <Label htmlFor="is_recurring" className="cursor-pointer">Recurring (Subscription)</Label>
+              </div>
+              <div className="flex items-center space-x-2 border p-3 rounded-md">
+                <Checkbox 
+                  id="is_reservation" 
+                  checked={isReservation}
+                  onCheckedChange={(checked) => setValue('is_reservation', checked as boolean)}
+                />
+                <Label htmlFor="is_reservation" className="cursor-pointer">Reservable (Booking)</Label>
+              </div>
             </div>
           </div>
 
@@ -175,7 +263,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
               />
               <div className="space-y-1 leading-none">
                 <Label htmlFor="track_inventory">Track inventory levels</Label>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   Keep a count of how many items are in stock at each location.
                 </p>
               </div>

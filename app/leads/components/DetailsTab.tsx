@@ -170,7 +170,7 @@ export function DetailsTab({
       
       <div className="flex items-center gap-3 min-w-0">
         <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-          <CalendarDays className="h-5 w-5 text-primary" />
+          <CalendarDays size={20} className="text-primary" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs text-muted-foreground mb-[5px] truncate">Birthday</p>

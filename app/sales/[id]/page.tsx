@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { getSaleById, getSaleOrderBySaleId, updateSale, deleteSale } from "@/app/sales/actions"
@@ -363,8 +364,15 @@ function SaleInvoice({ sale, saleOrder, segments, campaigns, siteName, siteUrl, 
         {saleOrder ? (
           <>
             <div className="mb-4 flex justify-between items-center">
-              <div className="text-base font-medium">Order #{saleOrder.orderNumber}</div>
-              <div className="text-sm text-muted-foreground dark:text-muted-foreground">Created: {formatDate(saleOrder.createdAt)}</div>
+              <div>
+                <div className="text-base font-medium flex items-center gap-2">
+                  Order #{saleOrder.orderNumber}
+                  <Link href={`/orders/${saleOrder.id}`} className="text-xs font-normal text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                    View Details
+                  </Link>
+                </div>
+                <div className="text-sm text-muted-foreground dark:text-muted-foreground mt-0.5">Created: {formatDate(saleOrder.createdAt)}</div>
+              </div>
             </div>
             
             <div className="border border-border dark:border-border rounded-md overflow-hidden mb-6">

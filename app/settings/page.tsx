@@ -163,6 +163,7 @@ function SettingsFormSkeleton() {
 const getGeneralSections = (t: (key: string) => string): QuickNavSection[] => [
   { id: "site-information", title: t('settings.nav.siteInfo') || "Site Information" },
   { id: "web-resources", title: t('settings.nav.webResources') || "Web Resources" },
+  { id: "shop-storefront", title: "Shop Storefront" },
 ]
 
 const getChannelsSections = (t: (key: string) => string): QuickNavSection[] => [

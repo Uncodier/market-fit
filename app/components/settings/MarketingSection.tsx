@@ -323,7 +323,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
                 Products and services have moved to the new dedicated Catalog module.
               </p>
             </div>
-            <a href="/catalog?artifact=true">
+            <a href="/catalog">
               <Button
                 variant="outline"
                 size="sm"

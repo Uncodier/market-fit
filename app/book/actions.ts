@@ -63,14 +63,8 @@ export async function getProfileBySlug(
 
 export async function getSiteInfoBySlug(
   siteSlug: string,
-): Promise<{ id: string; name: string; logo_url: string | null } | null> {
+): Promise<{ id: string; name: string; logo_url: string | null; settings?: any } | null> {
   const supabase = await createServiceClient(true);
-
-  // Search settings/sites for a name that matches the slug
-  const { data: settings } = await supabase
-    .from("settings")
-    .select("site_id")
-    .limit(100); // This is a bit inefficient but sites don't have slugs yet
 
   // Try to find by ID if it's a valid UUID
   const isUUID =
@@ -78,20 +72,40 @@ export async function getSiteInfoBySlug(
       siteSlug,
     );
 
-  const { data: sites } = await supabase
-    .from("sites")
-    .select("id, name, logo_url");
-
   if (isUUID) {
-    const site = sites?.find((s) => s.id === siteSlug);
+    const { data: site } = await supabase
+      .from("sites")
+      .select("id, name, logo_url, settings")
+      .eq("id", siteSlug)
+      .single();
     if (site) return site;
   }
 
   // Fallback to searching by name
-  const site = sites?.find(
+  // To ensure we don't miss any sites, we fetch a good amount
+  const { data: sites, error } = await supabase
+    .from("sites")
+    .select("id, name, logo_url")
+    .limit(1000);
+
+  if (error) {
+    console.error("[getSiteInfoBySlug] DB Error:", error);
+  }
+
+  const exactMatch = sites?.find(
     (s) => s.name.toLowerCase().replace(/[^a-z0-9-]/g, "-") === siteSlug,
   );
-  return site || null;
+
+  console.log("[getSiteInfoBySlug] requested siteSlug:", siteSlug);
+  console.log("[getSiteInfoBySlug] total sites loaded:", sites?.length);
+  if (sites && sites.length > 0) {
+    console.log("[getSiteInfoBySlug] some available sites:", sites.slice(0, 5).map(s => s.name));
+  }
+  console.log("[getSiteInfoBySlug] exactMatch found:", !!exactMatch);
+
+  return exactMatch || null;
+
+  return exactMatch || null;
 }
 
 export async function getRRCalendarBySlug(
