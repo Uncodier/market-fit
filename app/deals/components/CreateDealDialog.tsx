@@ -31,7 +31,8 @@ import {
   SelectValue,
 } from "@/app/components/ui/select"
 import { DatePicker } from "@/app/components/ui/date-picker"
-import { Combobox } from "@/app/components/ui/combobox"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { format } from "date-fns"
 import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
@@ -61,8 +62,8 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
   const [amount, setAmount] = useState("")
   const [currency, setCurrency] = useState("USD")
   const [stage, setStage] = useState<string>("prospecting")
-  const [companyId, setCompanyId] = useState("")
-  const [leadId, setLeadId] = useState("")
+  const [companyValue, setCompanyValue] = useState<RelationSelectValue>(null)
+  const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
   const [expectedCloseDate, setExpectedCloseDate] = useState<Date | undefined>(undefined)
   const [notes, setNotes] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -129,16 +130,30 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
     setError(null)
 
     try {
+      let resolvedCompanyId = null;
+      if (companyValue) {
+        const { id, error } = await resolveRelationId("company", companyValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedCompanyId = id;
+      }
+
+      let resolvedLeadId = null;
+      if (leadValue) {
+        const { id, error } = await resolveRelationId("lead", leadValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedLeadId = id;
+      }
+
       const result = await onCreateDeal({ 
         name, 
         amount: amount ? Number(amount) : undefined,
         currency,
         stage,
-        company: companyId || undefined,
+        company: resolvedCompanyId || undefined,
         expected_close_date: expectedCloseDate ? format(expectedCloseDate, 'yyyy-MM-dd') : undefined,
         notes: notes || undefined,
         site_id: currentSite.id,
-        lead_id: leadId || undefined
+        lead_id: resolvedLeadId || undefined
       } as any)
       
       if (result.error) {
@@ -151,8 +166,8 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
       setAmount("")
       setCurrency("USD")
       setStage("prospecting")
-      setCompanyId("")
-      setLeadId("")
+      setCompanyValue(null)
+      setLeadValue(null)
       setExpectedCloseDate(undefined)
       setNotes("")
       setError(null)
@@ -173,8 +188,8 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
     setAmount("")
     setCurrency("USD")
     setStage("prospecting")
-    setCompanyId("")
-    setLeadId("")
+    setCompanyValue(null)
+    setLeadValue(null)
     setExpectedCloseDate(undefined)
     setNotes("")
     setError(null)
@@ -303,14 +318,12 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
               <label htmlFor="company" className="text-sm font-medium">
                 Company
               </label>
-              <Combobox
-                options={companiesList}
-                value={companyId}
-                onValueChange={setCompanyId}
+              <RelationSelect
+                options={companiesList.map(c => ({ id: c.value, label: c.label }))}
+                value={companyValue}
+                onValueChange={setCompanyValue}
                 placeholder="Search company..."
                 emptyMessage="No companies found"
-                icon={<Globe className="h-4 w-4 text-muted-foreground" />}
-                className="h-12 w-full"
               />
             </div>
           </div>
@@ -320,14 +333,12 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
               <label htmlFor="lead" className="text-sm font-medium">
                 Primary Contact (Lead)
               </label>
-              <Combobox
-                options={leadsList}
-                value={leadId}
-                onValueChange={setLeadId}
+              <RelationSelect
+                options={leadsList.map(l => ({ id: l.value, label: l.label }))}
+                value={leadValue}
+                onValueChange={setLeadValue}
                 placeholder="Search lead..."
                 emptyMessage="No leads found"
-                icon={<User className="h-4 w-4 text-muted-foreground" />}
-                className="h-12 w-full"
               />
             </div>
 

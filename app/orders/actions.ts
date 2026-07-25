@@ -13,6 +13,7 @@ export async function listOrders({ siteId, status, q, page = 1, pageSize = 50 }:
       .from("sale_orders")
       .select(`
         *,
+        sale_order_items (status),
         sales (
           status,
           source,
@@ -102,11 +103,37 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
       .single();
 
     if (error) throw new Error(error.message);
+
+    if (status === 'completed') {
+      await supabase
+        .from("sale_order_items")
+        .update({ status: 'completed' })
+        .eq("sale_order_id", orderId);
+    }
+
     revalidatePath(`/orders`);
     revalidatePath(`/orders/${orderId}`);
     return { data: data as SaleOrderData };
   } catch (error: any) {
     console.error("Error in updateOrderStatus:", error);
+    return { error: error.message };
+  }
+}
+
+export async function updateOrderItemStatus(siteId: string, itemId: string, orderId: string, status: string) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("sale_order_items")
+      .update({ status })
+      .eq("site_id", siteId)
+      .eq("id", itemId);
+
+    if (error) throw new Error(error.message);
+    revalidatePath(`/orders/${orderId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in updateOrderItemStatus:", error);
     return { error: error.message };
   }
 }

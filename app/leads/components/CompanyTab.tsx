@@ -5,14 +5,21 @@ import { MapPin } from "./custom-icons"
 import { Lead } from "@/app/leads/types"
 import { Company, COMPANY_INDUSTRIES, COMPANY_SIZES, COMPANY_ANNUAL_REVENUES } from "@/app/companies/types"
 import { CompanySelector } from "./CompanySelector"
+import { RelationSelectValue } from "@/app/components/ui/relation-select"
 import { getCompanyById, updateCompany } from "@/app/companies/actions"
 import { toast } from "sonner"
+
+type CompanyEditForm = Omit<Lead, "id" | "created_at"> & {
+  companyValue?: RelationSelectValue
+  segmentValue?: RelationSelectValue
+  campaignValue?: RelationSelectValue
+}
 
 interface CompanyTabProps {
   lead: Lead
   isEditing: boolean
-  editForm: Omit<Lead, "id" | "created_at">
-  setEditForm: React.Dispatch<React.SetStateAction<Omit<Lead, "id" | "created_at">>>
+  editForm: CompanyEditForm
+  setEditForm: React.Dispatch<React.SetStateAction<CompanyEditForm>>
 }
 
 export function CompanyTab({ 
@@ -28,7 +35,13 @@ export function CompanyTab({
   useEffect(() => {
     const loadCompanyData = async () => {
       const companyId = isEditing ? editForm.company_id : lead.company_id
-      
+
+      // Pending passive create: show label-only placeholder, skip fetch
+      if (editForm.companyValue?.mode === "create") {
+        setSelectedCompany({ id: "", name: editForm.companyValue.label } as Company)
+        return
+      }
+
       if (companyId) {
         setLoading(true)
         try {
@@ -49,13 +62,21 @@ export function CompanyTab({
     }
 
     loadCompanyData()
-  }, [lead.company_id, editForm.company_id, isEditing])
+  }, [lead.company_id, editForm.company_id, editForm.companyValue, isEditing])
 
   const handleCompanyChange = (company: Company | null) => {
     setSelectedCompany(company)
-    setEditForm(prev => ({
+    setEditForm((prev) => ({
       ...prev,
-      company_id: company?.id || null
+      company_id: company?.id || null,
+    }))
+  }
+
+  const handleCompanyValueChange = (value: RelationSelectValue) => {
+    setEditForm((prev) => ({
+      ...prev,
+      companyValue: value,
+      company_id: value?.mode === "existing" ? value.id : null,
     }))
   }
 
@@ -284,35 +305,42 @@ export function CompanyTab({
             <CompanySelector
               selectedCompanyId={editForm.company_id}
               onCompanyChange={handleCompanyChange}
+              onCompanyValueChange={handleCompanyValueChange}
               isEditing={isEditing}
             />
           </div>
         </div>
 
         {/* Selected Company Card with Edit Profile Button */}
-        <div className="flex items-center gap-3 p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors min-w-0">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-            <Globe className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-[5px] truncate">Selected Company</p>
-            <p className="text-sm font-medium truncate" title={selectedCompany.name}>
-              {selectedCompany.name}
-            </p>
-            {selectedCompany.industry && (
-              <p className="text-xs text-muted-foreground truncate">
-                {COMPANY_INDUSTRIES.find(i => i.id === selectedCompany.industry)?.name || selectedCompany.industry}
+        {selectedCompany.id ? (
+          <div className="flex items-center gap-3 p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors min-w-0">
+            <div className="bg-primary/10 rounded-md flex items-center justify-center flex-shrink-0" style={{ width: '48px', height: '48px' }}>
+              <Globe className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground mb-[5px] truncate">Selected Company</p>
+              <p className="text-sm font-medium truncate" title={selectedCompany.name}>
+                {selectedCompany.name}
               </p>
-            )}
+              {selectedCompany.industry && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {COMPANY_INDUSTRIES.find(i => i.id === selectedCompany.industry)?.name || selectedCompany.industry}
+                </p>
+              )}
+            </div>
+            <div
+              className="flex items-center gap-1 text-primary hover:underline cursor-pointer flex-shrink-0"
+              onClick={() => window.open(`/companies/${selectedCompany.id}`, '_blank')}
+            >
+              <ExternalLink className="h-4 w-4" />
+              <span className="text-sm font-medium hidden sm:inline">Edit Profile</span>
+            </div>
           </div>
-          <div 
-            className="flex items-center gap-1 text-primary hover:underline cursor-pointer flex-shrink-0"
-            onClick={() => window.open(`/companies/${selectedCompany.id}`, '_blank')}
-          >
-            <ExternalLink className="h-4 w-4" />
-            <span className="text-sm font-medium hidden sm:inline">Edit Profile</span>
-          </div>
-        </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Will create company &quot;{selectedCompany.name}&quot; when you save.
+          </p>
+        )}
       </div>
     )
   }
@@ -329,6 +357,7 @@ export function CompanyTab({
           <CompanySelector
             selectedCompanyId={isEditing ? editForm.company_id : lead.company_id}
             onCompanyChange={handleCompanyChange}
+            onCompanyValueChange={handleCompanyValueChange}
             isEditing={isEditing}
           />
         </div>

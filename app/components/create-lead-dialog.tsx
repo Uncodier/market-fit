@@ -24,13 +24,8 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/app/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/components/ui/select"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
 
@@ -70,8 +65,8 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
   const [phone, setPhone] = useState("")
   const [company, setCompany] = useState("")
   const [position, setPosition] = useState("")
-  const [segmentId, setSegmentId] = useState("")
-  const [campaignId, setCampaignId] = useState("")
+  const [segmentValue, setSegmentValue] = useState<RelationSelectValue>(null)
+  const [campaignValue, setCampaignValue] = useState<RelationSelectValue>(null)
   const [status, setStatus] = useState<"new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified">("new")
   const [notes, setNotes] = useState("")
   const [origin, setOrigin] = useState("")
@@ -95,6 +90,12 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
     setError(null)
 
     try {
+      const { id: resolvedSegmentId, error: segError } = await resolveRelationId("segment", segmentValue, currentSite.id)
+      if (segError) throw new Error(`Segment error: ${segError}`)
+
+      const { id: resolvedCampaignId, error: campError } = await resolveRelationId("campaign", campaignValue, currentSite.id)
+      if (campError) throw new Error(`Campaign error: ${campError}`)
+
       const result = await onCreateLead({ 
         name, 
         email,
@@ -102,8 +103,8 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
         phone: phone || undefined,
         company: company || undefined,
         position: position || undefined,
-        segment_id: segmentId || undefined,
-        campaign_id: campaignId === "none" ? undefined : campaignId || undefined,
+        segment_id: resolvedSegmentId || undefined,
+        campaign_id: resolvedCampaignId || undefined,
         status,
         notes: notes || undefined,
         origin: origin || undefined,
@@ -122,8 +123,8 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
       setPhone("")
       setCompany("")
       setPosition("")
-      setSegmentId("")
-      setCampaignId("")
+      setSegmentValue(null)
+      setCampaignValue(null)
       setStatus("new")
       setNotes("")
       setOrigin("")
@@ -304,56 +305,32 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
               <label htmlFor="segment" className="text-sm font-medium">
                 Segment
               </label>
-              <div className="relative">
-                <Select value={segmentId} onValueChange={setSegmentId}>
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Select segment" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {segments.length > 0 ? (
-                      segments.map((segment) => (
-                        <SelectItem key={segment.id} value={segment.id} className="py-2 px-1">
-                          <div className="font-medium">{segment.name}</div>
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="py-2 px-4 text-sm text-muted-foreground">
-                        No segments available
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+              <RelationSelect
+                options={segments.map(s => ({ id: s.id, label: s.name }))}
+                value={segmentValue}
+                onValueChange={setSegmentValue}
+                placeholder="Select segment"
+                emptyMessage="No segments available"
+                className="h-12"
+              />
             </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="campaign" className="text-sm font-medium">
-                Campaign
+              <label htmlFor="campaign" className="text-sm font-medium flex justify-between">
+                <span>Campaign Attribution</span>
+                <span className="text-muted-foreground font-normal">Optional</span>
               </label>
-              <div className="relative">
-                <Target className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
-                <Select value={campaignId} onValueChange={setCampaignId}>
-                  <SelectTrigger className="h-12 pl-9">
-                    <SelectValue placeholder="Select campaign" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Not specified</SelectItem>
-                    {campaigns.length > 0 ? (
-                      campaigns.map((campaign) => (
-                        <SelectItem key={campaign.id} value={campaign.id} className="py-2 px-1">
-                          <div className="font-medium">{campaign.title}</div>
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="py-2 px-4 text-sm text-muted-foreground">
-                        No campaigns available
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+              <RelationSelect
+                options={campaigns.map(c => ({ id: c.id, label: c.title }))}
+                value={campaignValue}
+                onValueChange={setCampaignValue}
+                placeholder="Select campaign"
+                emptyMessage="No campaigns available"
+                icon={<Target className="h-4 w-4" />}
+                className="h-12"
+              />
             </div>
 
             <div className="space-y-2">

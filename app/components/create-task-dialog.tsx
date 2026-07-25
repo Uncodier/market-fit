@@ -25,8 +25,10 @@ import { useSite } from "@/app/context/SiteContext"
 import { createTask } from "@/app/tasks/actions"
 import { toast } from "sonner"
 import { type CreateTaskFormValues } from "@/app/tasks/types"
-import { TASK_TYPES } from "@/app/leads/types"
 import { Combobox } from "./ui/combobox"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { TASK_TYPES } from "@/app/leads/types"
 import { createClient } from "@/lib/supabase/client"
 
 const TASK_STAGES = [
@@ -50,6 +52,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
   const [date, setDate] = useState<Date>(new Date())
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
+  const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
   const [formData, setFormData] = useState<CreateTaskFormValues>({
     title: "",
     description: "",
@@ -58,8 +61,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
     site_id: currentSite?.id || "",
     type: "",
     stage: "",
-    amount: 0,
-    lead_id: ""
+    amount: 0
   })
 
   useEffect(() => {
@@ -157,12 +159,19 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
 
     setIsSubmitting(true)
     try {
+      let resolvedLeadId = null;
+      if (leadValue) {
+        const { id, error } = await resolveRelationId("lead", leadValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedLeadId = id;
+      }
+
       // Clean the data - convert empty strings to undefined for optional fields
       const cleanedData = {
         ...formData,
         scheduled_date: date,
         site_id: currentSite.id,
-        lead_id: formData.lead_id || undefined,
+        lead_id: resolvedLeadId || undefined,
         assignee: formData.assignee || undefined,
         type: formData.type || undefined,
         stage: formData.stage || undefined,
@@ -184,9 +193,9 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
         site_id: currentSite.id,
         type: "",
         stage: "",
-        amount: 0,
-        lead_id: ""
+        amount: 0
       })
+      setLeadValue(null)
       setDate(new Date())
       
       // Emit custom event for task creation
@@ -362,13 +371,12 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Lead</Label>
-                <Combobox
-                  options={leads.map(lead => ({ value: lead.id, label: lead.name }))}
-                  value={formData.lead_id || ""}
-                  onValueChange={(value) => setFormData({ ...formData, lead_id: value })}
+                <RelationSelect
+                  options={leads.map(lead => ({ id: lead.id, label: lead.name }))}
+                  value={leadValue}
+                  onValueChange={setLeadValue}
                   placeholder="Select lead"
                   emptyMessage="No leads found"
-                  className="h-12"
                 />
               </div>
               <div className="grid gap-2">

@@ -18,6 +18,9 @@ import { toast } from "sonner"
 import { listLocations, setInventoryLevel } from "../actions"
 import { listCatalogItems } from "@/app/catalog/actions"
 
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
+
 export function CreateInventoryStockDialog() {
   const { currentSite } = useSite()
   const { t } = useLocalization()
@@ -28,7 +31,7 @@ export function CreateInventoryStockDialog() {
   const [catalogItems, setCatalogItems] = useState<any[]>([])
 
   const [selectedLocation, setSelectedLocation] = useState("")
-  const [selectedItem, setSelectedItem] = useState("")
+  const [itemValue, setItemValue] = useState<RelationSelectValue>(null)
   const [quantity, setQuantity] = useState("1")
 
   useEffect(() => {
@@ -55,7 +58,7 @@ export function CreateInventoryStockDialog() {
       toast.error(t("inventory.selectLocationError") || "Please select a location")
       return
     }
-    if (!selectedItem) {
+    if (!itemValue) {
       toast.error(t("inventory.selectItemError") || "Please select an item")
       return
     }
@@ -67,21 +70,36 @@ export function CreateInventoryStockDialog() {
     }
 
     setSaving(true)
-    const res = await setInventoryLevel(currentSite.id, selectedLocation, selectedItem, qtyNum)
-    setSaving(false)
 
-    if (res.error) {
-      toast.error(res.error)
-    } else {
-      toast.success(t("inventory.stockAdded") || "Stock added successfully")
-      setOpen(false)
-      // Reset form
-      setSelectedLocation("")
-      setSelectedItem("")
-      setQuantity("1")
-      // Dispatch event to reload inventory table
-      const event = new Event('inventory:reload')
-      window.dispatchEvent(event)
+    try {
+      const { id: resolvedItemId, error: itemError } = await resolveRelationId(
+        "catalog_item", 
+        itemValue, 
+        currentSite.id,
+        { kind: "product", availability_mode: "inventory", track_inventory: true }
+      )
+      if (itemError) throw new Error(`Catalog error: ${itemError}`)
+      if (!resolvedItemId) throw new Error("Catalog item is required")
+
+      const res = await setInventoryLevel(currentSite.id, selectedLocation, resolvedItemId, qtyNum)
+
+      if (res.error) {
+        toast.error(res.error)
+      } else {
+        toast.success(t("inventory.stockAdded") || "Stock added successfully")
+        setOpen(false)
+        // Reset form
+        setSelectedLocation("")
+        setItemValue(null)
+        setQuantity("1")
+        // Dispatch event to reload inventory table
+        const event = new Event('inventory:reload')
+        window.dispatchEvent(event)
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add stock")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -95,18 +113,16 @@ export function CreateInventoryStockDialog() {
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>{t("inventory.item") || "Catalog Item"}</Label>
-            <Select value={selectedItem} onValueChange={setSelectedItem}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("inventory.selectItem") || "Select an item"} />
-              </SelectTrigger>
-              <SelectContent>
-                {catalogItems.map(item => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.name} {item.sku ? `(${item.sku})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RelationSelect 
+              options={catalogItems.map(item => ({ 
+                id: item.id, 
+                label: `${item.name} ${item.sku ? `(${item.sku})` : ''}` 
+              }))}
+              value={itemValue} 
+              onValueChange={setItemValue}
+              placeholder={t("inventory.selectItem") || "Select an item"}
+              emptyMessage="No items found"
+            />
           </div>
 
           <div className="space-y-2">

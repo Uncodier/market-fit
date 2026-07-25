@@ -2,49 +2,21 @@
 
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useState, useRef, useEffect } from "react"
-import { Card } from "@/app/components/ui/card"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { ArrowLeft } from "@/app/components/ui/icons"
+import { ArrowLeft, Star } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { useRouter } from "next/navigation"
 import { NAVIGATION_AREAS, WorkspaceArea, AreaNavItem } from "@/app/config/navigation-areas"
-import {
-  Megaphone,
-  Briefcase,
-  Zap,
-  Smartphone,
-  BarChart,
-  Home,
-  Target,
-  Tag,
-  FileText,
-  Printer,
-  Folder,
-  Building,
-  Cpu,
-  DatabaseIcon,
-  Archive,
-  DollarSign,
-  ActivitySquare,
-  CreditCard,
-  Users,
-  MessageCircle,
-  Search,
-  Rocket,
-  CheckSquare,
-  NetworkTree,
-  Activity,
-  Workflow,
-  TrendingUp,
-  PieChart,
-  Globe,
-  Star,
-  Store,
-  Send,
-  Ticket
-} from "@/app/components/ui/icons"
+import { AREA_ICON, NAV_ITEM_ICON, getAreaFamilyAccent } from "@/app/config/module-visuals"
+import { ModuleTile } from "@/app/components/navigation/ModuleTile"
+import { cn } from "@/lib/utils"
 
-export default function NavigationPage() {
+interface NavigationPageProps {
+  isOverlay?: boolean
+  onClose?: () => void
+}
+
+export default function NavigationPage({ isOverlay, onClose }: NavigationPageProps) {
   const { t } = useLocalization()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
@@ -55,50 +27,6 @@ export default function NavigationPage() {
       inputRef.current.focus()
     }
   }, [])
-
-  const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
-    marketing: Megaphone,
-    sales: Briefcase,
-    automation: Zap,
-    applications: Smartphone,
-    reports: BarChart,
-  }
-
-  const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
-    salesHome: Home,
-    pos: Store,
-    catalog: Archive,
-    priceLists: Tag,
-    inventory: DatabaseIcon,
-    shipments: Send,
-    promotions: Ticket,
-
-    campaigns: Target,
-    segments: Tag,
-    content: FileText,
-    contentCreator: Printer,
-    assets: Folder,
-    context: Building,
-    agentsConfiguration: Cpu,
-    applicationsDatabase: DatabaseIcon,
-    applicationsRepositories: Archive,
-    sales: DollarSign,
-    leads: Users,
-    deals: Briefcase,
-    chat: MessageCircle,
-    people: Search,
-    controlCenter: Rocket,
-    requirements: CheckSquare,
-    channels: NetworkTree,
-    activities: Activity,
-    skills: Workflow,
-    reportPerformance: TrendingUp,
-    reportOverview: PieChart,
-    reportAnalytics: BarChart,
-    reportTraffic: Globe,
-    reportCosts: CreditCard,
-    reportSales: ActivitySquare,
-  }
 
   const buildHref = (item: AreaNavItem) => {
     if (item.dashboardTab) return `/dashboard?tab=${item.dashboardTab}`
@@ -137,35 +65,59 @@ export default function NavigationPage() {
   }
 
   // Define the order of sections to render
-  const sectionsOrder: WorkspaceArea[] = ["marketing", "sales", "automation", "applications", "reports"]
+  const sectionsOrder: WorkspaceArea[] = ["marketing", "sales", "operations", "buying", "automation", "applications", "reports"]
+
+  const handleBack = () => {
+    if (onClose) {
+      onClose()
+    } else {
+      router.back()
+    }
+  }
+
+  const handleTileClick = (item: AreaNavItem) => {
+    router.push(buildHref(item))
+    if (onClose) {
+      onClose()
+    }
+  }
 
   return (
-    <div className="flex-1 min-w-0 w-full flex flex-col min-h-[100dvh] bg-muted/30">
-      <div className="flex-none p-8 pb-0 max-w-[1200px] w-full mx-auto relative flex flex-col justify-center min-h-[64px]">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => router.back()}
-          className="gap-2 text-muted-foreground hover:text-foreground absolute left-8"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t("common.back") === "common.back" ? "Back" : t("common.back")}
-        </Button>
+    <div className={cn("flex-1 min-w-0 w-full flex flex-col min-h-[100dvh]", isOverlay ? "bg-transparent" : "bg-muted/30")}>
+      <div className={cn(
+        "flex-none flex flex-col justify-center border-b dark:border-white/5 border-black/5 h-[64px] bg-background/95 backdrop-blur-sm sticky top-0 z-[200]"
+      )}>
+        <div className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">
+          <div className="flex items-center flex-1 min-w-0">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleBack}
+              className="gap-2 text-muted-foreground hover:text-foreground font-inter"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t("common.back") === "common.back" ? "Back" : t("common.back")}
+            </Button>
+          </div>
+          
+          <div className="flex items-center justify-center flex-1 min-w-0">
+            <SearchInput 
+              ref={inputRef}
+              data-command-k-input
+              placeholder={t("common.search") === "common.search" ? "Search..." : t("common.search")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="rounded-full pr-10 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+              containerClassName="w-[280px] lg:w-[400px]"
+              alwaysExpanded={true}
+            />
+          </div>
 
-        <div className="flex justify-center w-full">
-          <SearchInput 
-            ref={inputRef}
-            data-command-k-input
-            placeholder={t("common.search") === "common.search" ? "Search..." : t("common.search")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="rounded-full pr-20 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-            containerClassName="w-64"
-            alwaysExpanded={true}
-          />
+          <div className="flex items-center justify-end flex-1 min-w-0">
+          </div>
         </div>
       </div>
-      <div className="flex-1 p-8 flex flex-col items-center">
+      <div className={cn("flex-1 px-4 lg:px-8 py-8 flex flex-col items-center w-full", isOverlay ? "overflow-y-auto" : "")}>
         <div className="flex flex-col gap-12 max-w-[1200px] w-full pb-12">
           {sectionsOrder.map((areaKey) => {
             const area = NAVIGATION_AREAS[areaKey]
@@ -177,46 +129,39 @@ export default function NavigationPage() {
             if (items.length === 0) return null
 
             const categoryTitle = t(area.categoryKey) === area.categoryKey ? areaKey : t(area.categoryKey)
+            const areaAccent = getAreaFamilyAccent(areaKey)
 
             return (
               <div key={areaKey} className="flex flex-col gap-6">
-                <div className="flex items-center gap-2 px-1">
-                  {(() => {
-                    const Icon = AREA_ICON[areaKey]
-                    return <Icon className="text-foreground" size={24} />
-                  })()}
-                  <h2 className="text-lg font-semibold text-foreground capitalize">{categoryTitle}</h2>
+                <div className="flex items-center gap-2.5 px-1">
+                  <div
+                    className="flex items-center justify-center w-8 h-8 rounded-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${areaAccent}33 0%, ${areaAccent}14 100%)`,
+                      boxShadow: `0 2px 8px -2px ${areaAccent}40`,
+                    }}
+                  >
+                    {(() => {
+                      const Icon = AREA_ICON[areaKey]
+                      return <Icon style={{ color: areaAccent }} size={18} />
+                    })()}
+                  </div>
+                  <h2 className="text-lg font-semibold text-foreground capitalize tracking-tight">{categoryTitle}</h2>
                 </div>
                 <div className="flex flex-wrap gap-8">
-                  {items.map((item) => (
-                    <div 
-                      key={item.key} 
-                      onClick={() => router.push(buildHref(item))} 
-                      className="flex flex-col items-center gap-3 group outline-none w-[100px] cursor-pointer"
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          router.push(buildHref(item))
-                        }
-                      }}
-                    >
-                      <Card
-                        className="flex flex-col items-center justify-center cursor-pointer hover:shadow-md hover:border-primary/30 transition-all duration-200 w-16 h-16 rounded-xl bg-card border dark:border-white/5 border-black/5"
-                      >
-                        <div className="flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                          {(() => {
-                            const Icon = NAV_ITEM_ICON[item.key] || Star
-                            return <Icon className="text-foreground" size={28} />
-                          })()}
-                        </div>
-                      </Card>
-                      <div className="text-[11px] font-medium text-center text-muted-foreground group-hover:text-foreground transition-colors leading-tight line-clamp-2 w-full px-1">
-                        {getTitle(item)}
-                      </div>
-                    </div>
-                  ))}
+                  {items.map((item) => {
+                    const Icon = NAV_ITEM_ICON[item.key] || Star
+                    return (
+                      <ModuleTile
+                        key={item.key}
+                        area={areaKey}
+                        itemKey={item.key}
+                        title={getTitle(item)}
+                        icon={Icon}
+                        onClick={() => handleTileClick(item)}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             )

@@ -362,6 +362,25 @@ mcporter call makinari.system_notification \\
   --config /home/sergio/.openclaw/workspace/config/mcporter.json
 \`\`\`
 
+### 3.5. Commerce Tools (\`quotations\`, \`checkout\`, \`entitlements\`, \`catalog_commerce\`)
+Permiten gestionar el ciclo de ventas. El asistente puede crear cotizaciones, órdenes de venta y generar links de pago para compartir con los clientes.
+
+**Ejemplo - Crear orden y generar link de pago:**
+\`\`\`bash
+# 1. Crear Orden
+mcporter call makinari.checkout \\
+  action="create_order" \\
+  buyer_user_id="<USER_ID>" \\
+  lines='[{"catalogItemId":"<CATALOG_ITEM_ID>", "quantity": 1}]' \\
+  --config /home/sergio/.openclaw/workspace/config/mcporter.json
+
+# 2. Generar Link
+mcporter call makinari.checkout \\
+  action="create_payment_link" \\
+  order_id="<ORDER_ID>" \\
+  --config /home/sergio/.openclaw/workspace/config/mcporter.json
+\`\`\`
+
 ## Referencias
 
 - Vea \`references/tools.md\` para el detalle exhaustivo de todas las herramientas adicionales.
@@ -405,7 +424,13 @@ Manage client requirements/tickets — read, update status (backlog → in-progr
 Generate, store or retrieve generated content (copywriting, blog posts, client responses).
 
 ### system_notification
-Send notifications to the system or end user for task closures, critical alerts or review requests.`,
+Send notifications to the system or end user for task closures, critical alerts or review requests.
+
+### Commerce tools
+- \`catalog_commerce\`: list/update marketplace listing and digital subtypes
+- \`quotations\` / \`quotation_items\`: draft→sent quote lifecycle
+- \`checkout\`: create pending order + Stripe payment link URL
+- \`entitlements\` / \`subscription_plan_items\`: digital access library and plan mappings`,
   },
 ]
 

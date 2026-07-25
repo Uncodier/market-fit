@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useRouter } from "next/navigation"
-import { getShipment, updateShipmentStatus, updateShipmentTracking } from "../actions"
+import { getShipment, updateShipmentStatus, updateShipmentTracking, setShipmentLineItems } from "../actions"
 import { ShipmentWithRelations } from "../types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
@@ -11,11 +11,12 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
+import { Checkbox } from "@/app/components/ui/checkbox"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Badge } from "@/app/components/ui/badge"
 import { toast } from "sonner"
-import { ChevronLeft, Save, Send, MapPin, User, Archive, ExternalLink, Calendar, CheckCircle2 } from "@/app/components/ui/icons"
+import { ChevronLeft, Save, Send, MapPin, User, Archive, ExternalLink, Calendar, CheckCircle2, ListOrdered } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { format } from "date-fns"
 import Link from "next/link"
@@ -43,6 +44,10 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
   const [tracking, setTracking] = useState("")
   const [savingTracking, setSavingTracking] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  
+  const [assignableLines, setAssignableLines] = useState<any[]>([])
+  const [selectedLines, setSelectedLines] = useState<Set<string>>(new Set())
+  const [savingLines, setSavingLines] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -53,6 +58,19 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
         setShipment(data)
         setCarrier(data.carrier || "")
         setTracking(data.tracking_number || "")
+        
+        // Extract items from order that are not completed and are unassigned or assigned to this shipment
+        const items = data.sale_orders?.sale_order_items || []
+        const pool = items.filter((item: any) => 
+          item.status !== 'completed' && (!item.shipment_id || item.shipment_id === params.id)
+        )
+        setAssignableLines(pool)
+        
+        const initialSelected = new Set<string>()
+        pool.forEach((item: any) => {
+          if (item.shipment_id === params.id) initialSelected.add(item.id)
+        })
+        setSelectedLines(initialSelected)
       }
       setLoading(false)
     }
@@ -88,6 +106,18 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
       setShipment(prev => prev ? { ...prev, carrier: data.carrier, tracking_number: data.tracking_number } : null)
     }
     setSavingTracking(false)
+  }
+
+  const handleSaveLineItems = async () => {
+    if (!currentSite || !shipment) return
+    setSavingLines(true)
+    const { error } = await setShipmentLineItems(currentSite.id, shipment.id, Array.from(selectedLines))
+    if (error) {
+      toast.error(error)
+    } else {
+      toast.success("Shipment lines updated")
+    }
+    setSavingLines(false)
   }
 
   // Trigger breadcrumb update
@@ -174,6 +204,45 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
               <ActionFooter>
                 <Button variant="outline" onClick={handleSaveTracking} disabled={savingTracking || (carrier === shipment.carrier && tracking === shipment.tracking_number)}>
                   <Save className="h-4 w-4 mr-2" /> Save Tracking
+                </Button>
+              </ActionFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><ListOrdered className="h-5 w-5 text-muted-foreground"/> Line Items</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {assignableLines.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No assignable lines found for this order.</div>
+                  ) : (
+                    assignableLines.map((item) => (
+                      <div key={item.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`item-${item.id}`} 
+                          checked={selectedLines.has(item.id)}
+                          onCheckedChange={(checked) => {
+                            const newSelected = new Set(selectedLines)
+                            if (checked) newSelected.add(item.id)
+                            else newSelected.delete(item.id)
+                            setSelectedLines(newSelected)
+                          }}
+                        />
+                        <label 
+                          htmlFor={`item-${item.id}`} 
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {item.quantity}x {item.name}
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+              <ActionFooter>
+                <Button variant="outline" onClick={handleSaveLineItems} disabled={savingLines || assignableLines.length === 0}>
+                  <Save className="h-4 w-4 mr-2" /> Save Items
                 </Button>
               </ActionFooter>
             </Card>

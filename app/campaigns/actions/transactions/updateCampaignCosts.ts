@@ -3,8 +3,12 @@
 import { createClient } from "@/lib/supabase/server"
 
 // Helper function to update campaign costs based on transactions
-export async function updateCampaignCosts(campaignId: string) {
+export async function updateCampaignCosts(campaignId: string | null | undefined) {
   try {
+    if (!campaignId) {
+      return { success: true, error: null }
+    }
+
     const supabase = await createClient()
 
     // Get all transactions for this campaign

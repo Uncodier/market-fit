@@ -627,7 +627,41 @@ async function handleCompanyForLead(data: CreateLeadInput | Partial<UpdateLeadIn
   return { company_id, error: null }
 }
 
+export async function findOrCreateLead(site_id: string, name: string) {
+  try {
+    if (!name || !name.trim()) return { lead: null, error: "Name is required" }
+    const trimmed = name.trim()
+
+    const supabase = await createClient()
+    const { data: existing, error: searchError } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("site_id", site_id)
+      .ilike("name", trimmed)
+      .limit(1)
+      .single()
+
+    if (existing) return { lead: existing, error: null }
+    if (searchError && searchError.code !== "PGRST116") {
+      return { lead: null, error: searchError.message }
+    }
+
+    const { lead, error } = await createLead({
+      site_id,
+      name: trimmed,
+      status: "new",
+      origin: "inbound"
+    })
+
+    return { lead, error }
+  } catch (error: any) {
+    console.error("Error finding or creating lead:", error)
+    return { lead: null, error: error.message || "Failed to find or create lead" }
+  }
+}
+
 export async function createLead(data: CreateLeadInput): Promise<{ error?: string; lead?: any }> {
+
   try {
     const supabase = await createClient()
     

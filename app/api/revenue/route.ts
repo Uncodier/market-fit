@@ -21,6 +21,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Handle demo sites to prevent invalid UUID database errors
+    if (siteId.startsWith("demo-")) {
+      return NextResponse.json({
+        totalSales: {
+          actual: 0,
+          previous: 0,
+          percentChange: 0,
+          formattedActual: "0",
+          formattedPrevious: "0"
+        },
+        channelSales: {
+          online: { amount: 0, prevAmount: 0, percentChange: 0 },
+          retail: { amount: 0, prevAmount: 0, percentChange: 0 }
+        },
+        averageOrderValue: { actual: 0, previous: 0, percentChange: 0 },
+        salesCategories: [],
+        monthlyData: [],
+        salesDistribution: [],
+        periodType: "custom",
+        noData: true,
+        metadata: {
+          warning: "Demo site detected"
+        }
+      });
+    }
+
     // Parse dates
     const endDate = endDateParam ? new Date(endDateParam) : new Date();
     const startDate = startDateParam ? new Date(startDateParam) : subDays(endDate, 30);

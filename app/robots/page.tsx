@@ -465,7 +465,7 @@ function RobotsPageContent() {
   // Derive instance status flags
   const isInstanceStarting = !!(activeRobotInstance && ['starting','pending','initializing'].includes((activeRobotInstance as any).status))
   const isInstanceRunning = !!(activeRobotInstance && ['running','active'].includes((activeRobotInstance as any).status))
-  const isInstancePausedOrUninstantiated = !!(activeRobotInstance && ['paused','uninstantiated'].includes((activeRobotInstance as any).status))
+  const isInstancePausedOrUninstantiated = !!(activeRobotInstance && ['paused','pending'].includes((activeRobotInstance as any).status))
 
 
   // Listen for resume events to immediately show loading on the left explorer
@@ -525,7 +525,7 @@ function RobotsPageContent() {
           user_id: user.id,
           created_by: user.id,
           name: 'Assistant Session',
-          status: 'uninstantiated',
+          status: 'pending',
           instance_type: 'ubuntu'
         })
         .select()
@@ -1290,17 +1290,30 @@ function RobotsPageContent() {
                       const totalTabs = sortedInstances.length
                       const needsOverflow = totalTabs > effectiveMaxTabs
                       
-                      // Ensure selected instance is always visible
                       const selectedInstanceIndex = sortedInstances.findIndex(inst => inst.id === selectedInstanceId)
-                      let visibleTabsCount = needsOverflow ? effectiveMaxTabs - 1 : totalTabs
                       
-                      // If selected instance is beyond visible range, adjust to show it
-                      if (selectedInstanceIndex >= 0 && selectedInstanceIndex >= visibleTabsCount) {
-                        visibleTabsCount = Math.min(selectedInstanceIndex + 1, effectiveMaxTabs - 1)
+                      let visibleInstances = []
+                      let hiddenInstances = []
+
+                      if (!needsOverflow) {
+                        visibleInstances = sortedInstances
+                      } else {
+                        const effectiveMax = effectiveMaxTabs - 1
+                        if (selectedInstanceIndex === -1 || selectedInstanceIndex < effectiveMax) {
+                          visibleInstances = sortedInstances.slice(0, effectiveMax)
+                          hiddenInstances = sortedInstances.slice(effectiveMax)
+                        } else {
+                          // Swap the selected one into the visible ones
+                          visibleInstances = [
+                            ...sortedInstances.slice(0, effectiveMax - 1),
+                            sortedInstances[selectedInstanceIndex]
+                          ]
+                          hiddenInstances = [
+                            ...sortedInstances.slice(effectiveMax - 1, selectedInstanceIndex),
+                            ...sortedInstances.slice(selectedInstanceIndex + 1)
+                          ]
+                        }
                       }
-                      
-                      const visibleInstances = sortedInstances.slice(0, visibleTabsCount)
-                      const hiddenInstances = sortedInstances.slice(visibleTabsCount)
                       
                       return (
                         <>

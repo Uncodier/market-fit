@@ -1,15 +1,15 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
-import { useSite } from "../context/SiteContext"
-import { useTheme } from "../context/ThemeContext"
-import { type Site, type SiteSettings } from "../context/SiteContext"
-import { Button } from "../components/ui/button"
-import { StickyHeader } from "../components/ui/sticky-header"
-import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs"
-import { Skeleton } from "../components/ui/skeleton"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import { useSimpleRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
+import { useSite } from "@/app/context/SiteContext"
+import { useTheme } from "@/app/context/ThemeContext"
+import { type Site, type SiteSettings } from "@/app/context/SiteContext"
+import { Button } from "@/app/components/ui/button"
+import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Skeleton } from "@/app/components/ui/skeleton"
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,15 +19,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../components/ui/alert-dialog"
-import { ContextForm } from "../components/settings/context-form"
-import { type SiteFormValues } from "../components/settings/form-schema"
-import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
-import { handleDeleteSite, handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveCopywriting } from "../components/settings/save-handlers"
-import { Input } from "../components/ui/input"
-import { useAuthContext } from "../components/auth/auth-provider"
-import { QuickNav, type QuickNavSection } from "../components/ui/quick-nav"
-import { useLocalization } from "../context/LocalizationContext"
+} from "@/app/components/ui/alert-dialog"
+import { ContextForm } from "@/app/components/settings/context-form"
+import { type SiteFormValues } from "@/app/components/settings/form-schema"
+import { adaptSiteToForm, type AdaptedSiteFormValues } from "@/app/components/settings/data-adapter"
+import { handleDeleteSite, handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveCopywriting } from "@/app/components/settings/save-handlers"
+import { Input } from "@/app/components/ui/input"
+import { useAuthContext } from "@/app/components/auth/auth-provider"
+import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 function ContextFormSkeleton() {
   return (
@@ -243,7 +243,7 @@ export default function ContextPage() {
   const { theme } = useTheme()
   const { user } = useAuthContext()
   const { t } = useLocalization()
-  const [activeSegment, setActiveSegment] = useState("company")
+  const [activeSegment, setActiveSegment] = useState("branding")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [confirmationName, setConfirmationName] = useState("")
@@ -503,7 +503,6 @@ export default function ContextPage() {
         <div className="flex items-center justify-between px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
             <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-              <TabsTrigger value="company" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.company') || 'Company'}</TabsTrigger>
               <TabsTrigger value="branding" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.branding') || 'Branding'}</TabsTrigger>
               <TabsTrigger value="marketing" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.marketing') || 'Marketing'}</TabsTrigger>
               <TabsTrigger value="copywriting" className="text-xs rounded-full px-4 whitespace-nowrap">{t('settings.nav.copySequences') || 'Copy Sequences'}</TabsTrigger>

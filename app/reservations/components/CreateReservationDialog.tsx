@@ -7,12 +7,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { upsertReservation } from "../actions"
 import { getLeads } from "@/app/leads/actions"
 import { listCatalogItems } from "@/app/catalog/actions"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 interface CreateReservationDialogProps {
   open: boolean
@@ -21,8 +22,8 @@ interface CreateReservationDialogProps {
 }
 
 type FormData = {
-  catalog_item_id: string
-  lead_id: string
+  catalog_item_value: RelationSelectValue
+  lead_value: RelationSelectValue
   start_time: string
   end_time: string
   notes?: string
@@ -34,8 +35,8 @@ export function CreateReservationDialog({ open, onOpenChange, onSuccess }: Creat
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>()
 
-  const catalogItemId = watch('catalog_item_id')
-  const leadId = watch('lead_id')
+  const catalogItemValue = watch('catalog_item_value')
+  const leadValue = watch('lead_value')
 
   const { data: leadsData } = useSWR(
     open && currentSite ? ['leads', currentSite.id] : null,
@@ -55,10 +56,25 @@ export function CreateReservationDialog({ open, onOpenChange, onSuccess }: Creat
     setIsSubmitting(true)
 
     try {
+      const { id: resolvedLeadId, error: leadError } = await resolveRelationId("lead", data.lead_value, currentSite.id)
+      if (leadError) throw new Error(`Lead error: ${leadError}`)
+
+      const { id: resolvedCatalogItemId, error: catalogError } = await resolveRelationId(
+        "catalog_item", 
+        data.catalog_item_value, 
+        currentSite.id,
+        { kind: "service" } // defaults to service since it's a reservation
+      )
+      if (catalogError) throw new Error(`Catalog error: ${catalogError}`)
+
+      if (!resolvedCatalogItemId || !resolvedLeadId) {
+        throw new Error("Lead and Service/Product are required")
+      }
+
       const res = await upsertReservation({
         site_id: currentSite.id,
-        catalog_item_id: data.catalog_item_id,
-        lead_id: data.lead_id,
+        catalog_item_id: resolvedCatalogItemId,
+        lead_id: resolvedLeadId,
         start_time: new Date(data.start_time).toISOString(),
         end_time: new Date(data.end_time).toISOString(),
         notes: data.notes,
@@ -90,46 +106,24 @@ export function CreateReservationDialog({ open, onOpenChange, onSuccess }: Creat
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="catalog_item_id">Service / Product</Label>
-            <Select 
-              value={catalogItemId || ''} 
-              onValueChange={(val: any) => setValue('catalog_item_id', val, { shouldValidate: true })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a service..." />
-              </SelectTrigger>
-              <SelectContent>
-                {items.length === 0 ? (
-                  <SelectItem value="none" disabled>No reservable services found</SelectItem>
-                ) : (
-                  items.map((item: any) => (
-                    <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            <input type="hidden" {...register("catalog_item_id", { required: true })} />
+            <Label htmlFor="catalog_item_value">Service / Product</Label>
+            <RelationSelect 
+              options={items.map((i: any) => ({ id: i.id, label: i.name }))}
+              value={catalogItemValue} 
+              onValueChange={(val) => setValue('catalog_item_value', val, { shouldValidate: true })}
+              placeholder="Select a service..."
+              emptyMessage="No reservable services found"
+            />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="lead_id">Customer</Label>
-            <Select 
-              value={leadId || ''} 
-              onValueChange={(val: any) => setValue('lead_id', val, { shouldValidate: true })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select customer..." />
-              </SelectTrigger>
-              <SelectContent>
-                {leads.length === 0 ? (
-                  <SelectItem value="none" disabled>No customers found</SelectItem>
-                ) : (
-                  leads.map((lead: any) => (
-                    <SelectItem key={lead.id} value={lead.id}>{lead.name || lead.email}</SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            <input type="hidden" {...register("lead_id", { required: true })} />
+            <Label htmlFor="lead_value">Customer</Label>
+            <RelationSelect 
+              options={leads.map((l: any) => ({ id: l.id, label: l.name || l.email }))}
+              value={leadValue} 
+              onValueChange={(val) => setValue('lead_value', val, { shouldValidate: true })}
+              placeholder="Select customer..."
+              emptyMessage="No customers found"
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

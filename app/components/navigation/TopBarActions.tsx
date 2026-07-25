@@ -1,39 +1,48 @@
-import { createSegment } from "@/app/segments/actions"
-import { createExperiment, type ExperimentFormValues } from "@/app/experiments/actions"
-import { createAsset } from "@/app/assets/actions"
-import { createRequirement } from "@/app/requirements/actions"
-import { createLead, importLeads } from "@/app/leads/actions"
-import { createDeal, addDealContact } from "@/app/deals/actions"
-import { Lead } from "@/app/leads/types"
-import { createCampaign } from "@/app/campaigns/actions/campaigns/create"
-import { buildSegmentsWithAI, buildExperimentsWithAI, buildCampaignsWithAI, buildContentWithAI } from "@/app/services/ai-service"
-import { Button } from "../ui/button"
-import { CreateSegmentDialog } from "../create-segment-dialog"
-import { CreateExperimentDialog } from "../create-experiment-dialog"
-import { UploadAssetDialog } from "../upload-asset-dialog"
-import { CreateRequirementDialog } from "../create-requirement-dialog"
-import { CreateLeadDialog } from "../create-lead-dialog"
-import { ImportLeadsDialog } from "../leads/import-leads-dialog"
-import { CreateContentDialog } from "@/app/content/components"
-import { CreateCampaignDialog } from "../create-campaign-dialog"
-import { CreateTaskDialog } from "../create-task-dialog"
-import { CalendarDateRangePicker } from "../ui/date-range-picker"
-import { CreateDealDialog } from "@/app/deals/components/CreateDealDialog"
-import { AIActionModal } from "@/app/components/ui/ai-action-modal"
-import { useSite } from "@/app/context/SiteContext"
-import { useLocalization } from "@/app/context/LocalizationContext"
-import { useRouter, usePathname } from "next/navigation"
-import { useState, useEffect, useRef, useMemo } from "react"
-import { toast } from "sonner"
-import { createClient } from "@/lib/supabase/client"
-import { useRobots } from "@/app/context/RobotsContext"
-import { 
-  BarChart, 
-  PlusCircle, 
-  FlaskConical, 
-  Download, 
+import { createSegment } from "@/app/segments/actions";
+import {
+  createExperiment,
+  type ExperimentFormValues,
+} from "@/app/experiments/actions";
+import { createAsset } from "@/app/assets/actions";
+import { createRequirement } from "@/app/requirements/actions";
+import { createLead, importLeads } from "@/app/leads/actions";
+import { createDeal, addDealContact } from "@/app/deals/actions";
+import { Lead } from "@/app/leads/types";
+import { createCampaign } from "@/app/campaigns/actions/campaigns/create";
+import {
+  buildSegmentsWithAI,
+  buildExperimentsWithAI,
+  buildCampaignsWithAI,
+  buildContentWithAI,
+} from "@/app/services/ai-service";
+import { Button } from "../ui/button";
+import { CreateSegmentDialog } from "../create-segment-dialog";
+import { CreateExperimentDialog } from "../create-experiment-dialog";
+import { UploadAssetDialog } from "../upload-asset-dialog";
+import { CreateRequirementDialog } from "../create-requirement-dialog";
+import { CreateLeadDialog } from "../create-lead-dialog";
+import { ImportLeadsDialog } from "../leads/import-leads-dialog";
+import { CreateContentDialog } from "@/app/content/components";
+import { CreateCampaignDialog } from "../create-campaign-dialog";
+import { CreateTaskDialog } from "../create-task-dialog";
+import { CalendarDateRangePicker } from "../ui/date-range-picker";
+import { CreateDealDialog } from "@/app/deals/components/CreateDealDialog";
+import { CreateQuotationDialog } from "@/app/quotations/components/CreateQuotationDialog";
+import { AIActionModal } from "@/app/components/ui/ai-action-modal";
+import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
+import { useRouter, usePathname } from "next/navigation";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import { useRobots } from "@/app/context/RobotsContext";
+import {
+  BarChart,
+  PlusCircle,
+  FlaskConical,
+  Download,
   Key,
-  Users, 
+  Users,
   FileText,
   UploadCloud,
   PlayCircle,
@@ -47,84 +56,114 @@ import {
   Globe,
   Folder,
   Eye,
-  ShoppingCart
-} from "@/app/components/ui/icons"
+  ShoppingCart,
+} from "@/app/components/ui/icons";
 
-import { subMonths, format } from "date-fns"
-import { safeReload } from "../../utils/safe-reload"
-import { useSearchParams } from "next/navigation"
-import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import { AuthenticateSessionsModal } from "./AuthenticateSessionsModal"
-import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
-
+import { subMonths, format } from "date-fns";
+import { safeReload } from "../../utils/safe-reload";
+import { useSearchParams } from "next/navigation";
+import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton";
+import { AuthenticateSessionsModal } from "./AuthenticateSessionsModal";
+import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus";
+import { Switch } from "@/app/components/ui/switch";
+import { Label } from "@/app/components/ui/label";
 
 // Robot Start Button Component
-function RobotStartButton({ currentSite, viewMode }: { currentSite: any, viewMode?: string }) {
-  const { t } = useLocalization()
-  const [isStartingRobot, setIsStartingRobot] = useState(false)
-  const [isStoppingRobot, setIsStoppingRobot] = useState(false)
-  const [isAuthenticateModalOpen, setIsAuthenticateModalOpen] = useState(false)
-  const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount } = useRobots()
-  const searchParams = useSearchParams()
-  
+function RobotStartButton({
+  currentSite,
+  viewMode,
+}: {
+  currentSite: any;
+  viewMode?: string;
+}) {
+  const { t } = useLocalization();
+  const [isStartingRobot, setIsStartingRobot] = useState(false);
+  const [isStoppingRobot, setIsStoppingRobot] = useState(false);
+  const [isAuthenticateModalOpen, setIsAuthenticateModalOpen] = useState(false);
+  const {
+    getAllInstances,
+    getInstanceById,
+    refreshRobots,
+    isLoading: isLoadingRobots,
+    refreshCount,
+  } = useRobots();
+  const searchParams = useSearchParams();
+
   // Get all instances and find the appropriate one to display
-  const allInstances = getAllInstances()
-  const selectedInstanceParam = searchParams.get('instance')
-  
+  const allInstances = getAllInstances();
+  const selectedInstanceParam = searchParams.get("instance");
+
   // Determine the active robot instance with improved logic:
   // 1. If URL has instance param, try to use that instance
-  // 2. Otherwise, find the first paused/uninstantiated instance from all instances
+  // 2. Otherwise, find the first paused/pending instance from all instances
   const activeRobotInstance = useMemo(() => {
     // Don't calculate if data is still loading - wait for complete data
     if (isLoadingRobots) {
-      return null
+      return null;
     }
-    
+
     // If URL param exists, try to get that instance first
     if (selectedInstanceParam) {
-      if (selectedInstanceParam === 'new') {
-        return null
+      if (selectedInstanceParam === "new") {
+        return null;
       }
-      const urlInstance = getInstanceById(selectedInstanceParam)
+      const urlInstance = getInstanceById(selectedInstanceParam);
       if (urlInstance) {
-        return urlInstance
+        return urlInstance;
       }
     }
-    
+
     // If no URL param or URL instance not found, use the most recently updated instance
     // This matches the fallback logic in robots/page.tsx
     if (allInstances.length > 0) {
       const sortedInstances = [...allInstances].sort((a, b) => {
-        const playStatuses = ['running', 'active', 'starting', 'pending', 'initializing'];
+        const playStatuses = [
+          "running",
+          "active",
+          "starting",
+          "pending",
+          "initializing",
+        ];
         const aIsPlay = playStatuses.includes((a as any).status) ? 1 : 0;
         const bIsPlay = playStatuses.includes((b as any).status) ? 1 : 0;
-        
+
         if (aIsPlay !== bIsPlay) {
           return bIsPlay - aIsPlay;
         }
-        
-        const aTime = new Date((a as any).updated_at || (a as any).created_at || 0).getTime()
-        const bTime = new Date((b as any).updated_at || (b as any).created_at || 0).getTime()
-        return bTime - aTime
-      })
-      return sortedInstances[0]
+
+        const aTime = new Date(
+          (a as any).updated_at || (a as any).created_at || 0,
+        ).getTime();
+        const bTime = new Date(
+          (b as any).updated_at || (b as any).created_at || 0,
+        ).getTime();
+        return bTime - aTime;
+      });
+      return sortedInstances[0];
     }
-    
-    return null
-  }, [selectedInstanceParam, allInstances, getInstanceById, isLoadingRobots, refreshCount])
-  
-  const { requirementStatuses } = useRequirementStatus(activeRobotInstance)
-  
-  const [showSourceCodePreview, setShowSourceCodePreview] = useState(false)
+
+    return null;
+  }, [
+    selectedInstanceParam,
+    allInstances,
+    getInstanceById,
+    isLoadingRobots,
+    refreshCount,
+  ]);
+
+  const { requirementStatuses } = useRequirementStatus(activeRobotInstance);
+
+  const [showSourceCodePreview, setShowSourceCodePreview] = useState(false);
   useEffect(() => {
-    const handleToggle = () => setShowSourceCodePreview(prev => !prev)
-    window.addEventListener('robot:toggle-source-code', handleToggle)
-    return () => window.removeEventListener('robot:toggle-source-code', handleToggle)
-  }, [])
+    const handleToggle = () => setShowSourceCodePreview((prev) => !prev);
+    window.addEventListener("robot:toggle-source-code", handleToggle);
+    return () =>
+      window.removeEventListener("robot:toggle-source-code", handleToggle);
+  }, []);
 
   const latestPreviewUrl = useMemo(() => {
     if (!requirementStatuses || requirementStatuses.length === 0) return null;
-    
+
     // Find the most recent requirement_status that has a preview
     for (let i = requirementStatuses.length - 1; i >= 0; i--) {
       const status = requirementStatuses[i];
@@ -132,21 +171,39 @@ function RobotStartButton({ currentSite, viewMode }: { currentSite: any, viewMod
         return status.preview_url;
       }
       // Fallback: If no preview_url but repo_url points to a zip file in Supabase
-      if (!status.preview_url && status.repo_url && (status.repo_url.endsWith('.zip') || status.repo_url.includes('.zip?') || status.repo_url.endsWith('.tar.gz') || status.repo_url.includes('.tar.gz?') || status.repo_url.endsWith('.tar') || status.repo_url.includes('.tar?'))) {
+      if (
+        !status.preview_url &&
+        status.repo_url &&
+        (status.repo_url.endsWith(".zip") ||
+          status.repo_url.includes(".zip?") ||
+          status.repo_url.endsWith(".tar.gz") ||
+          status.repo_url.includes(".tar.gz?") ||
+          status.repo_url.endsWith(".tar") ||
+          status.repo_url.includes(".tar?"))
+      ) {
         return status.repo_url;
       }
       // Fallback: Check source_code if it points to a zip
-      if (!status.preview_url && status.source_code && (status.source_code.endsWith('.zip') || status.source_code.includes('.zip?') || status.source_code.endsWith('.tar.gz') || status.source_code.includes('.tar.gz?') || status.source_code.endsWith('.tar') || status.source_code.includes('.tar?'))) {
+      if (
+        !status.preview_url &&
+        status.source_code &&
+        (status.source_code.endsWith(".zip") ||
+          status.source_code.includes(".zip?") ||
+          status.source_code.endsWith(".tar.gz") ||
+          status.source_code.includes(".tar.gz?") ||
+          status.source_code.endsWith(".tar") ||
+          status.source_code.includes(".tar?"))
+      ) {
         return status.source_code;
       }
     }
-    
+
     return null;
   }, [requirementStatuses]);
 
   const latestSourceCodeUrl = useMemo(() => {
     if (!requirementStatuses || requirementStatuses.length === 0) return null;
-    
+
     // Find the most recent requirement_status that has source_code
     for (let i = requirementStatuses.length - 1; i >= 0; i--) {
       const status = requirementStatuses[i];
@@ -154,44 +211,63 @@ function RobotStartButton({ currentSite, viewMode }: { currentSite: any, viewMod
         return status.source_code;
       }
       // Fallback: If no source_code but repo_url points to a zip file in Supabase
-      if (!status.source_code && status.repo_url && (status.repo_url.endsWith('.zip') || status.repo_url.includes('.zip?') || status.repo_url.endsWith('.tar.gz') || status.repo_url.includes('.tar.gz?') || status.repo_url.endsWith('.tar') || status.repo_url.includes('.tar?'))) {
+      if (
+        !status.source_code &&
+        status.repo_url &&
+        (status.repo_url.endsWith(".zip") ||
+          status.repo_url.includes(".zip?") ||
+          status.repo_url.endsWith(".tar.gz") ||
+          status.repo_url.includes(".tar.gz?") ||
+          status.repo_url.endsWith(".tar") ||
+          status.repo_url.includes(".tar?"))
+      ) {
         return status.repo_url;
       }
       // Fallback: Check preview_url if it points to a zip
-      if (!status.source_code && status.preview_url && (status.preview_url.endsWith('.zip') || status.preview_url.includes('.zip?') || status.preview_url.endsWith('.tar.gz') || status.preview_url.includes('.tar.gz?') || status.preview_url.endsWith('.tar') || status.preview_url.includes('.tar?'))) {
+      if (
+        !status.source_code &&
+        status.preview_url &&
+        (status.preview_url.endsWith(".zip") ||
+          status.preview_url.includes(".zip?") ||
+          status.preview_url.endsWith(".tar.gz") ||
+          status.preview_url.includes(".tar.gz?") ||
+          status.preview_url.endsWith(".tar") ||
+          status.preview_url.includes(".tar?"))
+      ) {
         return status.preview_url;
       }
     }
-    
+
     return null;
   }, [requirementStatuses]);
 
-  const selectedInstanceId = activeRobotInstance?.id || selectedInstanceParam || 'new'
-  const activeTabRef = useRef(selectedInstanceId)
+  const selectedInstanceId =
+    activeRobotInstance?.id || selectedInstanceParam || "new";
+  const activeTabRef = useRef(selectedInstanceId);
 
   // Map tab values to activity names (fallback for create-from-new)
   const getActivityName = (tabValue: string): string => {
     const activityMap: Record<string, string> = {
-      "ask": "Ask",
+      ask: "Ask",
       "channel-market-fit": "Channel Market Fit",
-      "engage": "Engage in Social Networks", 
-      "seo": "SEO",
+      engage: "Engage in Social Networks",
+      seo: "SEO",
       "publish-content": "Publish Content",
       "publish-ads": "Publish Ads",
       "ux-analysis": "UX Analysis",
       "build-requirements": "Build Requirements",
       "execute-plan": "Execute Plan",
-      "deep-research": "Deep Research"
-    }
-    return activityMap[tabValue] || tabValue
-  }
+      "deep-research": "Deep Research",
+    };
+    return activityMap[tabValue] || tabValue;
+  };
 
   // Note: Robot checking now handled by RobotsContext
 
   // Update ref when selected instance changes
   useEffect(() => {
-    activeTabRef.current = selectedInstanceId
-  }, [selectedInstanceId])
+    activeTabRef.current = selectedInstanceId;
+  }, [selectedInstanceId]);
 
   // Note: Robot state monitoring now handled by RobotsContext
 
@@ -201,384 +277,441 @@ function RobotStartButton({ currentSite, viewMode }: { currentSite: any, viewMod
   // Function to start robot (used only for New Makina)
   const handleStartRobot = async () => {
     if (!currentSite) {
-      toast.error("No site selected")
-      return
+      toast.error("No site selected");
+      return;
     }
 
+    setIsStartingRobot(true);
 
-    setIsStartingRobot(true)
-    
     try {
-      const { apiClient } = await import('@/app/services/api-client-service')
-      
-        const response = await apiClient.post('/api/workflow/startRobot', {
+      const { apiClient } = await import("@/app/services/api-client-service");
+
+      const response = await apiClient.post("/api/workflow/startRobot", {
         site_id: currentSite.id,
         user_id: currentSite.user_id,
-          activity: getActivityName('execute-plan')
-      })
-      
+        activity: getActivityName("execute-plan"),
+      });
+
       if (response.success) {
-        toast.success("Robot workflow initiated - setting up browser...")
-        
+        toast.success("Robot workflow initiated - setting up browser...");
+
         // Also resume any paused plans for this instance
         if (activeRobotInstance?.id) {
           try {
-            const supabase = createClient()
+            const supabase = createClient();
             const { data: plans } = await supabase
-              .from('instance_plans')
-              .select('id')
-              .eq('instance_id', activeRobotInstance.id)
-              .eq('status', 'paused')
-            
+              .from("instance_plans")
+              .select("id")
+              .eq("instance_id", activeRobotInstance.id)
+              .eq("status", "paused");
+
             if (plans && plans.length > 0) {
               await supabase
-                .from('instance_plans')
-                .update({ status: 'in_progress', updated_at: new Date().toISOString() })
-                .in('id', plans.map(p => p.id))
+                .from("instance_plans")
+                .update({
+                  status: "in_progress",
+                  updated_at: new Date().toISOString(),
+                })
+                .in(
+                  "id",
+                  plans.map((p) => p.id),
+                );
             }
           } catch (err) {
-            console.error('Error resuming plans on robot start:', err)
+            console.error("Error resuming plans on robot start:", err);
           }
         }
-        
+
         // Small delay to allow database to update, then refresh
         setTimeout(async () => {
-          await refreshRobots()
-        }, 1000)
-        
+          await refreshRobots();
+        }, 1000);
+
         // Check if robot is already running after the API call
-        if (activeRobotInstance && ['running', 'active'].includes(activeRobotInstance.status)) {
-          setIsStartingRobot(false)
-          return
+        if (
+          activeRobotInstance &&
+          ["running", "active"].includes(activeRobotInstance.status)
+        ) {
+          setIsStartingRobot(false);
+          return;
         }
-        
+
         // Setup fallback polling in case real-time updates fail
-        let pollAttempts = 0
-        const maxPollAttempts = 20 // 20 attempts * 2 seconds = 40 seconds
-        let pollingActive = true
-        
+        let pollAttempts = 0;
+        const maxPollAttempts = 20; // 20 attempts * 2 seconds = 40 seconds
+        let pollingActive = true;
+
         const pollForStartedInstance = async () => {
-          if (!pollingActive) return
-          
-          pollAttempts++
-          
+          if (!pollingActive) return;
+
+          pollAttempts++;
+
           try {
-            await refreshRobots()
-            
+            await refreshRobots();
+
             // Check if robot is now running - if so, stop polling and clear loading state
-            const activityName = getActivityName('execute-plan')
-            const supabase = createClient()
-            
-            const { data: currentInstance, error: instanceError } = await supabase
-              .from('remote_instances')
-              .select('id, status, name')
-              .eq('site_id', currentSite.id)
-              .eq('name', activityName)
-              .neq('status', 'error')
-              .limit(1)
-            
+            const activityName = getActivityName("execute-plan");
+            const supabase = createClient();
+
+            const { data: currentInstance, error: instanceError } =
+              await supabase
+                .from("remote_instances")
+                .select("id, status, name")
+                .eq("site_id", currentSite.id)
+                .eq("name", activityName)
+                .neq("status", "error")
+                .limit(1);
+
             if (instanceError) {
-              console.error('Error checking robot status:', instanceError)
+              console.error("Error checking robot status:", instanceError);
               // Continue polling unless max attempts reached
             } else if (currentInstance && currentInstance.length > 0) {
-              const instance = currentInstance[0]
-              if (['running', 'active'].includes(instance.status)) {
-                pollingActive = false
-                setIsStartingRobot(false)
-                
+              const instance = currentInstance[0];
+              if (["running", "active"].includes(instance.status)) {
+                pollingActive = false;
+                setIsStartingRobot(false);
+
                 // Emit custom event to notify robots page to refresh
-                window.dispatchEvent(new CustomEvent('robotStarted', { 
-                  detail: { instanceId: instance.id, instance }
-                }))
-                
-                return
-              } else if (['failed', 'error'].includes(instance.status)) {
-                pollingActive = false
-                setIsStartingRobot(false)
-                toast.error("Robot failed to start - please try again")
-                return
+                window.dispatchEvent(
+                  new CustomEvent("robotStarted", {
+                    detail: { instanceId: instance.id, instance },
+                  }),
+                );
+
+                return;
+              } else if (["failed", "error"].includes(instance.status)) {
+                pollingActive = false;
+                setIsStartingRobot(false);
+                toast.error("Robot failed to start - please try again");
+                return;
               }
             }
-            
+
             if (pollAttempts < maxPollAttempts && pollingActive) {
-              setTimeout(pollForStartedInstance, 2000) // Poll every 2 seconds
+              setTimeout(pollForStartedInstance, 2000); // Poll every 2 seconds
             } else if (pollingActive) {
-              pollingActive = false
-              setIsStartingRobot(false)
-              toast.warning("Robot startup is taking longer than expected. Please check the robots page.")
+              pollingActive = false;
+              setIsStartingRobot(false);
+              toast.warning(
+                "Robot startup is taking longer than expected. Please check the robots page.",
+              );
               // Final refresh attempt
               setTimeout(() => {
-                refreshRobots()
-              }, 3000)
+                refreshRobots();
+              }, 3000);
             }
           } catch (pollError) {
-            console.error('Error during robot polling:', pollError)
+            console.error("Error during robot polling:", pollError);
             if (pollAttempts >= maxPollAttempts || !pollingActive) {
-              pollingActive = false
-              setIsStartingRobot(false)
-              toast.error("Unable to verify robot status - please check the robots page")
+              pollingActive = false;
+              setIsStartingRobot(false);
+              toast.error(
+                "Unable to verify robot status - please check the robots page",
+              );
             } else if (pollingActive) {
               // Continue polling even if there's an error, but with longer delay
-              setTimeout(pollForStartedInstance, 3000)
+              setTimeout(pollForStartedInstance, 3000);
             }
           }
-        }
-        
+        };
+
         // Start polling after 3 seconds (allow real-time to work first)
-        setTimeout(pollForStartedInstance, 3000)
-        
+        setTimeout(pollForStartedInstance, 3000);
       } else {
         // Handle API response errors
-        const errorMessage = response.error?.message || 'Unknown error occurred'
-        console.error('API Error starting robot:', response.error || response)
-        
+        const errorMessage =
+          response.error?.message || "Unknown error occurred";
+        console.error("API Error starting robot:", response.error || response);
+
         // Log additional debugging information if available
         if (response.error?.details) {
-          console.error('Error details:', response.error.details)
-          
+          console.error("Error details:", response.error.details);
+
           // If it's a configuration issue, provide more specific guidance
           if (response.error.details.suggestion) {
-            console.error('Suggestion:', response.error.details.suggestion)
+            console.error("Suggestion:", response.error.details.suggestion);
           }
         }
-        
-        throw new Error(errorMessage)
+
+        throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error('Error starting robot:', error)
-      
+      console.error("Error starting robot:", error);
+
       // Provide more specific error messages based on the error type
-      let errorMessage = "Failed to start robot"
-      
+      let errorMessage = "Failed to start robot";
+
       if (error instanceof Error) {
-        if (error.message.includes('fetch')) {
-          errorMessage = "Network error - please check your connection and try again"
-        } else if (error.message.includes('timeout')) {
-          errorMessage = "Request timed out - please try again"
-        } else if (error.message.includes('permission') || error.message.includes('unauthorized')) {
-          errorMessage = "Permission denied - please refresh the page and try again"
-        } else if (error.message && error.message !== 'Unknown error') {
-          errorMessage = error.message
+        if (error.message.includes("fetch")) {
+          errorMessage =
+            "Network error - please check your connection and try again";
+        } else if (error.message.includes("timeout")) {
+          errorMessage = "Request timed out - please try again";
+        } else if (
+          error.message.includes("permission") ||
+          error.message.includes("unauthorized")
+        ) {
+          errorMessage =
+            "Permission denied - please refresh the page and try again";
+        } else if (error.message && error.message !== "Unknown error") {
+          errorMessage = error.message;
         }
       }
-      
-      toast.error(errorMessage)
-      setIsStartingRobot(false)
+
+      toast.error(errorMessage);
+      setIsStartingRobot(false);
     }
     // Note: Don't set setIsStartingRobot(false) here in finally block
     // It will be set when polling detects the robot is running or fails
-  }
+  };
 
   // Function to stop robot
   const handleStopRobot = async () => {
     if (!activeRobotInstance) {
-      toast.error("No active robot to stop")
-      return
+      toast.error("No active robot to stop");
+      return;
     }
 
-    setIsStoppingRobot(true)
-    
+    setIsStoppingRobot(true);
+
     try {
-      const { apiClient } = await import('@/app/services/api-client-service')
-      
-      const response = await apiClient.post('/api/robots/instance/stop', {
-        instance_id: activeRobotInstance.id
-      })
-      
+      const { apiClient } = await import("@/app/services/api-client-service");
+
+      const response = await apiClient.post("/api/robots/instance/stop", {
+        instance_id: activeRobotInstance.id,
+      });
+
       if (response.success) {
-        toast.success("Robot stopped successfully")
-        
+        toast.success("Robot stopped successfully");
+
         // Also pause any active plans for this instance
         try {
-          const supabase = createClient()
+          const supabase = createClient();
           const { data: plans } = await supabase
-            .from('instance_plans')
-            .select('id')
-            .eq('instance_id', activeRobotInstance.id)
-            .in('status', ['in_progress', 'pending'])
-          
+            .from("instance_plans")
+            .select("id")
+            .eq("instance_id", activeRobotInstance.id)
+            .in("status", ["in_progress", "pending"]);
+
           if (plans && plans.length > 0) {
             await supabase
-              .from('instance_plans')
-              .update({ status: 'paused', updated_at: new Date().toISOString() })
-              .in('id', plans.map(p => p.id))
+              .from("instance_plans")
+              .update({
+                status: "paused",
+                updated_at: new Date().toISOString(),
+              })
+              .in(
+                "id",
+                plans.map((p) => p.id),
+              );
           }
         } catch (err) {
-          console.error('Error pausing plans on robot stop:', err)
+          console.error("Error pausing plans on robot stop:", err);
         }
-        
+
         // Emit custom event to notify robots page
-        window.dispatchEvent(new CustomEvent('robotStopped', { 
-          detail: { instanceId: activeRobotInstance.id }
-        }))
-        
+        window.dispatchEvent(
+          new CustomEvent("robotStopped", {
+            detail: { instanceId: activeRobotInstance.id },
+          }),
+        );
+
         // REMOVED: refreshRobots() and polling loop
         // Real-time subscription will handle the update automatically
-        
       } else {
         // Handle API response errors
-        const errorMessage = response.error?.message || 'Failed to stop robot'
-        console.error('API Error stopping robot:', response.error || response)
-        
+        const errorMessage = response.error?.message || "Failed to stop robot";
+        console.error("API Error stopping robot:", response.error || response);
+
         // Log additional debugging information if available
         if (response.error?.details) {
-          console.error('Error details:', response.error.details)
-          
+          console.error("Error details:", response.error.details);
+
           // If it's a configuration issue, provide more specific guidance
           if (response.error.details.suggestion) {
-            console.error('Suggestion:', response.error.details.suggestion)
+            console.error("Suggestion:", response.error.details.suggestion);
           }
         }
-        
-        throw new Error(errorMessage)
+
+        throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error('Error stopping robot:', error)
-      
+      console.error("Error stopping robot:", error);
+
       // Provide more specific error messages based on the error type
-      let errorMessage = "Failed to stop robot"
-      
+      let errorMessage = "Failed to stop robot";
+
       if (error instanceof Error) {
-        if (error.message.includes('fetch')) {
-          errorMessage = "Network error - please check your connection and try again"
-        } else if (error.message.includes('timeout')) {
-          errorMessage = "Request timed out - please try again"
-        } else if (error.message.includes('permission') || error.message.includes('unauthorized')) {
-          errorMessage = "Permission denied - please refresh the page and try again"
-        } else if (error.message.includes('not found')) {
-          errorMessage = "Robot instance not found - it may have already stopped"
-        } else if (error.message && error.message !== 'Unknown error') {
-          errorMessage = error.message
+        if (error.message.includes("fetch")) {
+          errorMessage =
+            "Network error - please check your connection and try again";
+        } else if (error.message.includes("timeout")) {
+          errorMessage = "Request timed out - please try again";
+        } else if (
+          error.message.includes("permission") ||
+          error.message.includes("unauthorized")
+        ) {
+          errorMessage =
+            "Permission denied - please refresh the page and try again";
+        } else if (error.message.includes("not found")) {
+          errorMessage =
+            "Robot instance not found - it may have already stopped";
+        } else if (error.message && error.message !== "Unknown error") {
+          errorMessage = error.message;
         }
       }
-      
-      toast.error(errorMessage)
+
+      toast.error(errorMessage);
     } finally {
-      setIsStoppingRobot(false)
+      setIsStoppingRobot(false);
     }
-  }
+  };
 
   // Show nothing while loading robots
   if (isLoadingRobots) {
-    return null
+    return null;
   }
 
   // If there's an active robot instance (from URL param or found paused instance), decide which controls to show
-  if (activeRobotInstance && viewMode !== 'imprenta') {
+  if (activeRobotInstance && viewMode !== "imprenta") {
     // Only show stop/authenticate buttons when robot is running or active
-    const isRunning = ['running', 'active'].includes(activeRobotInstance.status)
+    const isRunning = ["running", "active"].includes(
+      activeRobotInstance.status,
+    );
 
     // Running-instance controls (Authenticate, Save Auth Session, Stop Robot)
     // are intentionally disabled. We still compute `isRunning` so this behavior
     // can be re-enabled later by flipping the flag below. Requirement status
     // and source-code (preview) behavior remain fully active.
-    const SHOW_RUNNING_INSTANCE_CONTROLS = false
-    const showRunningControls = SHOW_RUNNING_INSTANCE_CONTROLS && isRunning
+    const SHOW_RUNNING_INSTANCE_CONTROLS = false;
+    const showRunningControls = SHOW_RUNNING_INSTANCE_CONTROLS && isRunning;
 
     // Resume button hidden - removed per user request
     // Allow rendering if we have a source code url to download
     if (!showRunningControls && !latestSourceCodeUrl) {
-      return null
+      return null;
     }
-    
+
     const handleSaveAuthSession = async () => {
       if (!activeRobotInstance) {
-        toast.error("No active robot instance to save auth session")
-        return
+        toast.error("No active robot instance to save auth session");
+        return;
       }
 
       try {
-        const { apiClient } = await import('@/app/services/api-client-service')
-        
-        const response = await apiClient.post('/api/robots/auth', {
+        const { apiClient } = await import("@/app/services/api-client-service");
+
+        const response = await apiClient.post("/api/robots/auth", {
           site_id: currentSite.id,
-          remote_instance_id: activeRobotInstance.id
-        })
-        
+          remote_instance_id: activeRobotInstance.id,
+        });
+
         if (response.success) {
-          toast.success('Auth session saved successfully')
+          toast.success("Auth session saved successfully");
         } else {
           // Handle API response errors
-          const errorMessage = response.error?.message || 'Failed to save auth session'
-          console.error('API Error saving auth session:', response.error || response)
-          
+          const errorMessage =
+            response.error?.message || "Failed to save auth session";
+          console.error(
+            "API Error saving auth session:",
+            response.error || response,
+          );
+
           // Log additional debugging information if available
           if (response.error?.details) {
-            console.error('Error details:', response.error.details)
-            
+            console.error("Error details:", response.error.details);
+
             // If it's a configuration issue, provide more specific guidance
             if (response.error.details.suggestion) {
-              console.error('Suggestion:', response.error.details.suggestion)
+              console.error("Suggestion:", response.error.details.suggestion);
             }
           }
-          
-          throw new Error(errorMessage)
+
+          throw new Error(errorMessage);
         }
       } catch (error) {
-        console.error('Error saving auth session:', error)
-        
+        console.error("Error saving auth session:", error);
+
         // Provide more specific error messages based on the error type
-        let errorMessage = "Failed to save auth session"
-        
+        let errorMessage = "Failed to save auth session";
+
         if (error instanceof Error) {
-          if (error.message.includes('fetch')) {
-            errorMessage = "Network error - please check your connection and try again"
-          } else if (error.message.includes('timeout')) {
-            errorMessage = "Request timed out - please try again"
-          } else if (error.message.includes('permission') || error.message.includes('unauthorized')) {
-            errorMessage = "Permission denied - please refresh the page and try again"
-          } else if (error.message.includes('not found')) {
-            errorMessage = "Robot instance not found - please try refreshing the page"
-          } else if (error.message && error.message !== 'Unknown error') {
-            errorMessage = error.message
+          if (error.message.includes("fetch")) {
+            errorMessage =
+              "Network error - please check your connection and try again";
+          } else if (error.message.includes("timeout")) {
+            errorMessage = "Request timed out - please try again";
+          } else if (
+            error.message.includes("permission") ||
+            error.message.includes("unauthorized")
+          ) {
+            errorMessage =
+              "Permission denied - please refresh the page and try again";
+          } else if (error.message.includes("not found")) {
+            errorMessage =
+              "Robot instance not found - please try refreshing the page";
+          } else if (error.message && error.message !== "Unknown error") {
+            errorMessage = error.message;
           }
         }
-        
-        toast.error(errorMessage)
+
+        toast.error(errorMessage);
       }
-    }
+    };
 
     return (
       <>
         <div className="flex items-center gap-2">
           {showRunningControls && (
             <>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 size="default"
                 className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 onClick={() => setIsAuthenticateModalOpen(true)}
-                title={t('layout.topbar.authenticate')}
+                title={t("layout.topbar.authenticate")}
               >
                 <Shield className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.authenticate')}</span>
+                <span className="hidden md:inline font-inter font-medium text-sm">
+                  {t("layout.topbar.authenticate")}
+                </span>
               </Button>
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 size="default"
                 className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 onClick={handleSaveAuthSession}
-                title={t('layout.topbar.saveAuthSession')}
+                title={t("layout.topbar.saveAuthSession")}
               >
                 <Key className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.saveAuthSession')}</span>
+                <span className="hidden md:inline font-inter font-medium text-sm">
+                  {t("layout.topbar.saveAuthSession")}
+                </span>
               </Button>
-              <Button 
+              <Button
                 size="default"
                 className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 onClick={handleStopRobot}
                 disabled={isStoppingRobot}
-                title={t('layout.topbar.stopRobot')}
+                title={t("layout.topbar.stopRobot")}
               >
                 {isStoppingRobot ? (
                   <>
-                    <LoadingSkeleton variant="button" size="sm" className="text-white" />
-                    <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.stopping')}</span>
+                    <LoadingSkeleton
+                      variant="button"
+                      size="sm"
+                      className="text-white"
+                    />
+                    <span className="hidden md:inline font-inter font-medium text-sm">
+                      {t("layout.topbar.stopping")}
+                    </span>
                   </>
                 ) : (
                   <>
                     <StopCircle className="h-4 w-4 shrink-0" />
-                    <span className="hidden md:inline ml-2 font-inter font-medium text-sm">{t('layout.topbar.stopRobot')}</span>
+                    <span className="hidden md:inline ml-2 font-inter font-medium text-sm">
+                      {t("layout.topbar.stopRobot")}
+                    </span>
                   </>
                 )}
               </Button>
@@ -593,39 +726,50 @@ function RobotStartButton({ currentSite, viewMode }: { currentSite: any, viewMod
           />
         )}
       </>
-    )
+    );
   }
 
-
   // Default state: if New Makina is selected or in imprenta mode, hide start
-  if (selectedInstanceId === 'new' || viewMode === 'imprenta') return null
+  if (selectedInstanceId === "new" || viewMode === "imprenta") return null;
 
   // Otherwise, show start button as fallback (should rarely show)
   return (
-    <Button 
+    <Button
       size="default"
       className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
       onClick={handleStartRobot}
       disabled={isStartingRobot}
-      title={t('layout.topbar.startRobot')}
+      title={t("layout.topbar.startRobot")}
     >
       {isStartingRobot ? (
         <>
           <LoadingSkeleton variant="button" size="sm" className="text-white" />
-          <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.startingRobot')}</span>
+          <span className="hidden md:inline font-inter font-medium text-sm">
+            {t("layout.topbar.startingRobot")}
+          </span>
         </>
       ) : (
         <>
           <PlayCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2 font-inter font-medium text-sm">{t('layout.topbar.startRobot')}</span>
+          <span className="hidden md:inline ml-2 font-inter font-medium text-sm">
+            {t("layout.topbar.startRobot")}
+          </span>
         </>
       )}
     </Button>
-  )
+  );
 }
 
 // Cpu icon para representación de AI
-const Cpu = ({ className = "", size = 20, ...props }: { className?: string, size?: number, [key: string]: any }) => (
+const Cpu = ({
+  className = "",
+  size = 20,
+  ...props
+}: {
+  className?: string;
+  size?: number;
+  [key: string]: any;
+}) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={size}
@@ -653,53 +797,60 @@ const Cpu = ({ className = "", size = 20, ...props }: { className?: string, size
 );
 
 interface TopBarActionsProps {
-  isProcessing: boolean
-  setIsProcessing: (value: boolean) => void
-  isDashboardPage: boolean
-  isSegmentsPage: boolean
-  isExperimentsPage: boolean
-  isRequirementsPage: boolean
-  isLeadsPage: boolean
-  isAgentsPage: boolean
-  isAssetsPage: boolean
-  isContentPage: boolean
-  isControlCenterPage: boolean
-  isCampaignsPage: boolean
-  isSalesPage: boolean
-  isRobotsPage: boolean
-  isSecurityPage: boolean
-  isExperimentDetailPage?: boolean
-  dashboardActiveTab?: string
+  isProcessing: boolean;
+  setIsProcessing: (value: boolean) => void;
+  isPosPage?: boolean;
+  isDashboardPage: boolean;
+  isSegmentsPage: boolean;
+  isExperimentsPage: boolean;
+  isRequirementsPage: boolean;
+  isLeadsPage: boolean;
+  isAgentsPage: boolean;
+  isAssetsPage: boolean;
+  isContentPage: boolean;
+  isControlCenterPage: boolean;
+  isCampaignsPage: boolean;
+  isSalesPage: boolean;
+  isRobotsPage: boolean;
+  isSecurityPage: boolean;
+  isExperimentDetailPage?: boolean;
+  dashboardActiveTab?: string;
   segmentData: {
-    id: string
-    activeTab: string
-    isAnalyzing: boolean
-    isGeneratingTopics: boolean
-    openAIModal: (type: 'analysis' | 'icp' | 'topics') => void
-  } | null
+    id: string;
+    activeTab: string;
+    isAnalyzing: boolean;
+    isGeneratingTopics: boolean;
+    openAIModal: (type: "analysis" | "icp" | "topics") => void;
+  } | null;
   requirementData?: {
-    id: string
-    isBuilding: boolean
-    hasRequirementStatus: boolean
-  } | null
+    id: string;
+    isBuilding: boolean;
+    hasRequirementStatus: boolean;
+  } | null;
   contentData?: {
-    id: string
-    type: string
-    status: string
-  } | null
-  segments: Array<{ id: string; name: string; description: string }>
-  propSegments?: Array<{ id: string; name: string; description: string }>
-  requirements: Array<{ id: string; title: string; description: string }>
-  campaigns: Array<{ id: string; title: string; description: string }>
-  isDealsPage?: boolean
-  onCreateSale?: () => void
-  onCreateDeal?: () => void
-  viewMode?: string
+    id: string;
+    type: string;
+    status: string;
+  } | null;
+  priceListData?: {
+    id: string;
+    is_active: boolean;
+  } | null;
+  segments: Array<{ id: string; name: string; description: string }>;
+  propSegments?: Array<{ id: string; name: string; description: string }>;
+  requirements: Array<{ id: string; title: string; description: string }>;
+  campaigns: Array<{ id: string; title: string; description: string }>;
+  isDealsPage?: boolean;
+  isQuotationsPage?: boolean;
+  onCreateSale?: () => void;
+  onCreateDeal?: () => void;
+  viewMode?: string;
 }
 
 export function TopBarActions({
   isProcessing,
   setIsProcessing,
+  isPosPage,
   isDashboardPage,
   isSegmentsPage,
   isExperimentsPage,
@@ -718,119 +869,130 @@ export function TopBarActions({
   segmentData,
   requirementData,
   contentData,
+  priceListData,
   segments,
   propSegments,
   requirements,
   campaigns,
   isDealsPage,
+  isQuotationsPage,
   onCreateSale,
   onCreateDeal,
-  viewMode
+  viewMode,
 }: TopBarActionsProps) {
-  const { t } = useLocalization()
-  const { currentSite } = useSite()
-  const router = useRouter()
-  const pathname = usePathname()
-  const [dateRange, setDateRange] = useState<{ startDate: Date; endDate: Date }>({
+  const { t } = useLocalization();
+  const { currentSite } = useSite();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [dateRange, setDateRange] = useState<{
+    startDate: Date;
+    endDate: Date;
+  }>({
     startDate: subMonths(new Date(), 1),
-    endDate: new Date()
-  })
-  const [selectedSegment, setSelectedSegment] = useState<string>("all")
-  
+    endDate: new Date(),
+  });
+  const [selectedSegment, setSelectedSegment] = useState<string>("all");
+
   // Check if we're on dashboard onboarding tab
-  const [currentDashboardTab, setCurrentDashboardTab] = useState<string | null>(null)
-  
+  const [currentDashboardTab, setCurrentDashboardTab] = useState<string | null>(
+    null,
+  );
+
   useEffect(() => {
-    if (isDashboardPage && typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const tab = params.get('tab')
+    if (isDashboardPage && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
       // If no tab parameter, we need to check if user is in onboarding mode
-      const finalTab = tab || 'overview'
-      setCurrentDashboardTab(finalTab)
-      
+      const finalTab = tab || "overview";
+      setCurrentDashboardTab(finalTab);
+
       // Listen for popstate events (back/forward navigation)
       const handlePopState = () => {
-        const newParams = new URLSearchParams(window.location.search)
-        const newTab = newParams.get('tab') || 'overview'
-        setCurrentDashboardTab(newTab)
-      }
-      
+        const newParams = new URLSearchParams(window.location.search);
+        const newTab = newParams.get("tab") || "overview";
+        setCurrentDashboardTab(newTab);
+      };
+
       // Listen for custom events from dashboard tab changes
       const handleTabChange = () => {
-        const newParams = new URLSearchParams(window.location.search)
-        const newTab = newParams.get('tab') || 'overview'
-        setCurrentDashboardTab(newTab)
-      }
-      
-      window.addEventListener('popstate', handlePopState)
-      window.addEventListener('dashboard:tabchange', handleTabChange)
+        const newParams = new URLSearchParams(window.location.search);
+        const newTab = newParams.get("tab") || "overview";
+        setCurrentDashboardTab(newTab);
+      };
+
+      window.addEventListener("popstate", handlePopState);
+      window.addEventListener("dashboard:tabchange", handleTabChange);
       return () => {
-        window.removeEventListener('popstate', handlePopState)
-        window.removeEventListener('dashboard:tabchange', handleTabChange)
-      }
+        window.removeEventListener("popstate", handlePopState);
+        window.removeEventListener("dashboard:tabchange", handleTabChange);
+      };
     }
-  }, [isDashboardPage])
-  
+  }, [isDashboardPage]);
+
   // AI Action Modal state
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
-  const [isGeneratingExperiment, setIsGeneratingExperiment] = useState(false)
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [isGeneratingExperiment, setIsGeneratingExperiment] = useState(false);
   const [AIModalConfig, setAIModalConfig] = useState({
     title: "",
     description: "",
     actionLabel: "",
     estimatedTime: 0,
-    action: async (): Promise<any> => {}
-  })
+    action: async (): Promise<any> => {},
+  });
 
   // Get current user
-  const supabase = createClient()
-  const [userId, setUserId] = useState<string | null>(null)
+  const supabase = createClient();
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function getUserId() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
-        setUserId(user.id)
+        setUserId(user.id);
       }
     }
-    getUserId()
-  }, [])
+    getUserId();
+  }, []);
 
-  const handleCreateSegment = async ({ 
-    name, 
-    description, 
-    audience, 
+  const handleCreateSegment = async ({
+    name,
+    description,
+    audience,
     language,
-    site_id 
-  }: { 
-    name: string
-    description: string
-    audience: string
-    language: string
-    site_id: string
+    site_id,
+  }: {
+    name: string;
+    description: string;
+    audience: string;
+    language: string;
+    site_id: string;
   }) => {
     try {
-      const result = await createSegment({ 
-        name, 
-        description, 
-        audience, 
+      const result = await createSegment({
+        name,
+        description,
+        audience,
         language,
-        site_id
-      })
+        site_id,
+      });
 
       if (result.error) {
-        throw new Error(result.error)
+        throw new Error(result.error);
       }
 
       // Recargar la página para mostrar el nuevo segmento
-      safeReload(false, 'New segment created')
+      safeReload(false, "New segment created");
     } catch (error) {
-      console.error("Error creating segment:", error)
-      throw error
+      console.error("Error creating segment:", error);
+      throw error;
     }
-  }
+  };
 
-  const handleCreateExperiment = async (values: ExperimentFormValues): Promise<{ data?: any; error?: string }> => {
+  const handleCreateExperiment = async (
+    values: ExperimentFormValues,
+  ): Promise<{ data?: any; error?: string }> => {
     try {
       const result = await createExperiment(values);
 
@@ -839,112 +1001,135 @@ export function TopBarActions({
       }
 
       // Recargar la página para mostrar el nuevo experimento
-      safeReload(false, 'New experiment created');
+      safeReload(false, "New experiment created");
       return { data: result.data };
     } catch (error) {
       console.error("Error creating experiment:", error);
-      return { error: error instanceof Error ? error.message : "Error inesperado" };
+      return {
+        error: error instanceof Error ? error.message : "Error inesperado",
+      };
     }
-  }
+  };
 
-  const handleCreateRequirement = async (values: any): Promise<{ data?: any; error?: string }> => {
+  const handleCreateRequirement = async (
+    values: any,
+  ): Promise<{ data?: any; error?: string }> => {
     try {
-      const result = await createRequirement(values)
+      const result = await createRequirement(values);
 
       if (result.error) {
-        return { error: result.error }
+        return { error: result.error };
       }
 
       // Recargar la página para mostrar el nuevo requerimiento
-      safeReload(false, 'New requirement created')
-      return { data: result.data }
+      safeReload(false, "New requirement created");
+      return { data: result.data };
     } catch (error) {
-      console.error("Error creating requirement:", error)
-      return { error: error instanceof Error ? error.message : "Error inesperado" }
+      console.error("Error creating requirement:", error);
+      return {
+        error: error instanceof Error ? error.message : "Error inesperado",
+      };
     }
-  }
+  };
 
   const handleBuildWithAI = () => {
     // Avoid multiple clicks while processing
     if (isProcessing) return;
-    
+
     // Configure the AI modal according to the current page
     if (isSegmentsPage) {
       setAIModalConfig({
-        title: t('layout.modal.ai.titleSegments') || "Building Segments with AI",
-        description: t('layout.modal.ai.descSegments') || "Our AI will analyze your site data and automatically create optimized audience segments based on your business goals and target market.",
-        actionLabel: t('layout.modal.ai.actionSegments') || "Build Segments",
+        title:
+          t("layout.modal.ai.titleSegments") || "Building Segments with AI",
+        description:
+          t("layout.modal.ai.descSegments") ||
+          "Our AI will analyze your site data and automatically create optimized audience segments based on your business goals and target market.",
+        actionLabel: t("layout.modal.ai.actionSegments") || "Build Segments",
         estimatedTime: 120, // 2 minutes
-        action: handleBuildSegmentsWithAI
+        action: handleBuildSegmentsWithAI,
       });
     } else if (isExperimentsPage) {
       setAIModalConfig({
-        title: t('layout.modal.ai.titleExperiments') || "Building Experiments with AI",
-        description: t('layout.modal.ai.descExperiments') || "Our AI will analyze your site data and automatically create A/B test experiments designed to improve conversion rates and user experience.",
-        actionLabel: t('layout.modal.ai.actionExperiments') || "Build Experiments",
+        title:
+          t("layout.modal.ai.titleExperiments") ||
+          "Building Experiments with AI",
+        description:
+          t("layout.modal.ai.descExperiments") ||
+          "Our AI will analyze your site data and automatically create A/B test experiments designed to improve conversion rates and user experience.",
+        actionLabel:
+          t("layout.modal.ai.actionExperiments") || "Build Experiments",
         estimatedTime: 120, // 2 minutes
-        action: handleBuildExperimentsWithAI
+        action: handleBuildExperimentsWithAI,
       });
     } else if (isCampaignsPage) {
       setAIModalConfig({
-        title: t('layout.modal.ai.titleCampaigns') || "Building Campaigns with AI",
-        description: t('layout.modal.ai.descCampaigns') || "Our AI will analyze your site data and automatically create optimized marketing campaigns tailored to your business objectives.",
-        actionLabel: t('layout.modal.ai.actionCampaigns') || "Build Campaigns",
+        title:
+          t("layout.modal.ai.titleCampaigns") || "Building Campaigns with AI",
+        description:
+          t("layout.modal.ai.descCampaigns") ||
+          "Our AI will analyze your site data and automatically create optimized marketing campaigns tailored to your business objectives.",
+        actionLabel: t("layout.modal.ai.actionCampaigns") || "Build Campaigns",
         estimatedTime: 120, // 2 minutes
-        action: handleBuildCampaignsWithAI
+        action: handleBuildCampaignsWithAI,
       });
     } else if (isContentPage) {
       setAIModalConfig({
-        title: t('layout.modal.ai.titleContent') || "Building Content with AI",
-        description: t('layout.modal.ai.descContent') || "Our AI will analyze your site data and automatically create high-quality content pieces optimized for your target audience.",
-        actionLabel: t('layout.modal.ai.actionContent') || "Build Content",
+        title: t("layout.modal.ai.titleContent") || "Building Content with AI",
+        description:
+          t("layout.modal.ai.descContent") ||
+          "Our AI will analyze your site data and automatically create high-quality content pieces optimized for your target audience.",
+        actionLabel: t("layout.modal.ai.actionContent") || "Build Content",
         estimatedTime: 120, // 2 minutes
-        action: handleBuildContentWithAI
+        action: handleBuildContentWithAI,
       });
     }
-    
+
     // Open the modal after configuring it
     setTimeout(() => {
       setIsAIModalOpen(true);
     }, 0);
   };
-  
+
   // Function to handle the AI segment building process
   const handleBuildSegmentsWithAI = async (): Promise<any> => {
     try {
       // Mark as processing
       setIsProcessing(true);
-      
+
       // Verify that there is a selected site
       if (!currentSite) {
         setIsProcessing(false);
         toast.error("Please select a site first");
         return {
           success: false,
-          error: "No site selected"
+          error: "No site selected",
         };
       }
 
       // Verify that the site has a URL
       if (!currentSite.url) {
         setIsProcessing(false);
-        toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+        toast.error(
+          "The selected site doesn't have a URL. Please add a URL to your site in the settings.",
+        );
         return {
           success: false,
-          error: "Site URL is missing"
+          error: "Site URL is missing",
         };
       }
 
       // Get the current user ID
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         setIsProcessing(false);
         toast.error("You must be logged in to use this feature");
         return {
           success: false,
-          error: "Authentication required"
+          error: "Authentication required",
         };
       }
 
@@ -952,7 +1137,7 @@ export function TopBarActions({
         user_id: user.id,
         site_id: currentSite.id,
         url: currentSite.url,
-        segmentCount: 3
+        segmentCount: 3,
       });
 
       // Call the AI service to build segments
@@ -960,7 +1145,7 @@ export function TopBarActions({
         user_id: user.id,
         site_id: currentSite.id,
         url: currentSite.url,
-        segmentCount: 3
+        segmentCount: 3,
       });
 
       console.log("AI segment building result:", result);
@@ -968,14 +1153,17 @@ export function TopBarActions({
       if (result.success) {
         toast.success("Segments created successfully!");
         // Redirect to the segments page
-        router.push(`/segments/${result.data?.segmentId || ''}`);
+        router.push(`/segments/${result.data?.segmentId || ""}`);
         return result;
       } else {
         // Instead of throwing an error, return the complete result
         // so the modal can display the error and HTML response if it exists
         console.error("Error building segments with AI:", result.error);
         if (result.rawResponse) {
-          console.error("Raw response from server:", result.rawResponse.substring(0, 200) + "...");
+          console.error(
+            "Raw response from server:",
+            result.rawResponse.substring(0, 200) + "...",
+          );
         }
         if (result.details) {
           console.error("Error details:", result.details);
@@ -984,15 +1172,18 @@ export function TopBarActions({
       }
     } catch (error) {
       console.error("Unexpected error in handleBuildSegmentsWithAI:", error);
-      
+
       // Return an object with the format expected by the modal
       return {
         success: false,
-        error: error instanceof Error ? error.message : "An unexpected error occurred",
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
         details: {
           stack: error instanceof Error ? error.stack : undefined,
-          name: error instanceof Error ? error.name : "Unknown Error"
-        }
+          name: error instanceof Error ? error.name : "Unknown Error",
+        },
       };
     } finally {
       // Always mark as not processing when finished
@@ -1005,37 +1196,41 @@ export function TopBarActions({
     try {
       // Mark as processing
       setIsProcessing(true);
-      
+
       // Verify that there is a selected site
       if (!currentSite) {
         setIsProcessing(false);
         toast.error("Please select a site first");
         return {
           success: false,
-          error: "No site selected"
+          error: "No site selected",
         };
       }
 
       // Verify that the site has a URL
       if (!currentSite.url) {
         setIsProcessing(false);
-        toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+        toast.error(
+          "The selected site doesn't have a URL. Please add a URL to your site in the settings.",
+        );
         return {
           success: false,
-          error: "Site URL is missing"
+          error: "Site URL is missing",
         };
       }
 
       // Get the current user ID
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         setIsProcessing(false);
         toast.error("You must be logged in to use this feature");
         return {
           success: false,
-          error: "Authentication required"
+          error: "Authentication required",
         };
       }
 
@@ -1043,7 +1238,7 @@ export function TopBarActions({
         user_id: user.id,
         site_id: currentSite.id,
         url: currentSite.url,
-        experimentCount: 2
+        experimentCount: 2,
       });
 
       // Call the AI service to build experiments
@@ -1051,7 +1246,7 @@ export function TopBarActions({
         user_id: user.id,
         site_id: currentSite.id,
         url: currentSite.url,
-        experimentCount: 2
+        experimentCount: 2,
       });
 
       console.log("AI experiment building result:", result);
@@ -1059,14 +1254,17 @@ export function TopBarActions({
       if (result.success) {
         toast.success("Experiments created successfully!");
         // Redirect to the experiments page
-        router.push(`/experiments/${result.data?.experimentId || ''}`);
+        router.push(`/experiments/${result.data?.experimentId || ""}`);
         return result;
       } else {
         // Instead of throwing an error, return the complete result
         // so the modal can display the error and HTML response if it exists
         console.error("Error building experiments with AI:", result.error);
         if (result.rawResponse) {
-          console.error("Raw response from server:", result.rawResponse.substring(0, 200) + "...");
+          console.error(
+            "Raw response from server:",
+            result.rawResponse.substring(0, 200) + "...",
+          );
         }
         if (result.details) {
           console.error("Error details:", result.details);
@@ -1075,15 +1273,18 @@ export function TopBarActions({
       }
     } catch (error) {
       console.error("Unexpected error in handleBuildExperimentsWithAI:", error);
-      
+
       // Return an object with the format expected by the modal
       return {
         success: false,
-        error: error instanceof Error ? error.message : "An unexpected error occurred",
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
         details: {
           stack: error instanceof Error ? error.stack : undefined,
-          name: error instanceof Error ? error.name : "Unknown Error"
-        }
+          name: error instanceof Error ? error.name : "Unknown Error",
+        },
       };
     } finally {
       // Always mark as not processing when finished
@@ -1096,37 +1297,41 @@ export function TopBarActions({
     try {
       // Mark as processing
       setIsProcessing(true);
-      
+
       // Verify that there is a selected site
       if (!currentSite) {
         setIsProcessing(false);
         toast.error("Please select a site first");
         return {
           success: false,
-          error: "No site selected"
+          error: "No site selected",
         };
       }
 
       // Verify that the site has a URL
       if (!currentSite.url) {
         setIsProcessing(false);
-        toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+        toast.error(
+          "The selected site doesn't have a URL. Please add a URL to your site in the settings.",
+        );
         return {
           success: false,
-          error: "Site URL is missing"
+          error: "Site URL is missing",
         };
       }
 
       // Get the current user ID
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         setIsProcessing(false);
         toast.error("You must be logged in to use this feature");
         return {
           success: false,
-          error: "Authentication required"
+          error: "Authentication required",
         };
       }
 
@@ -1134,7 +1339,7 @@ export function TopBarActions({
         user_id: user.id,
         site_id: currentSite.id,
         url: currentSite.url,
-        campaignCount: 3
+        campaignCount: 3,
       });
 
       // Call the AI service to build campaigns
@@ -1142,7 +1347,7 @@ export function TopBarActions({
         user_id: user.id,
         site_id: currentSite.id,
         url: currentSite.url,
-        campaignCount: 3
+        campaignCount: 3,
       });
 
       console.log("AI campaign building result:", result);
@@ -1153,7 +1358,7 @@ export function TopBarActions({
         if (isCampaignsPage) {
           setTimeout(() => {
             // Trigger a refresh of campaigns data without full page reload
-            safeReload(false, 'AI campaigns created');
+            safeReload(false, "AI campaigns created");
           }, 1000);
         }
         return result;
@@ -1162,7 +1367,10 @@ export function TopBarActions({
         // so the modal can display the error and HTML response if it exists
         console.error("Error building campaigns with AI:", result.error);
         if (result.rawResponse) {
-          console.error("Raw response from server:", result.rawResponse.substring(0, 200) + "...");
+          console.error(
+            "Raw response from server:",
+            result.rawResponse.substring(0, 200) + "...",
+          );
         }
         if (result.details) {
           console.error("Error details:", result.details);
@@ -1171,15 +1379,18 @@ export function TopBarActions({
       }
     } catch (error) {
       console.error("Unexpected error in handleBuildCampaignsWithAI:", error);
-      
+
       // Return an object with the format expected by the modal
       return {
         success: false,
-        error: error instanceof Error ? error.message : "An unexpected error occurred",
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
         details: {
           stack: error instanceof Error ? error.stack : undefined,
-          name: error instanceof Error ? error.name : "Unknown Error"
-        }
+          name: error instanceof Error ? error.name : "Unknown Error",
+        },
       };
     } finally {
       // Always mark as not processing when finished
@@ -1192,37 +1403,41 @@ export function TopBarActions({
     try {
       // Mark as processing
       setIsProcessing(true);
-      
+
       // Verify that there is a selected site
       if (!currentSite) {
         setIsProcessing(false);
         toast.error("Please select a site first");
         return {
           success: false,
-          error: "No site selected"
+          error: "No site selected",
         };
       }
 
       // Verify that the site has a URL
       if (!currentSite.url) {
         setIsProcessing(false);
-        toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
+        toast.error(
+          "The selected site doesn't have a URL. Please add a URL to your site in the settings.",
+        );
         return {
           success: false,
-          error: "Site URL is missing"
+          error: "Site URL is missing",
         };
       }
 
       // Get the current user ID
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         setIsProcessing(false);
         toast.error("You must be logged in to use this feature");
         return {
           success: false,
-          error: "Authentication required"
+          error: "Authentication required",
         };
       }
 
@@ -1230,7 +1445,7 @@ export function TopBarActions({
         user_id: user.id,
         site_id: currentSite.id,
         url: currentSite.url,
-        contentCount: 3
+        contentCount: 3,
       });
 
       // Call the AI service to build content
@@ -1238,7 +1453,7 @@ export function TopBarActions({
         user_id: user.id,
         site_id: currentSite.id,
         url: currentSite.url,
-        contentCount: 3
+        contentCount: 3,
       });
 
       console.log("AI content building result:", result);
@@ -1249,7 +1464,7 @@ export function TopBarActions({
         if (isContentPage) {
           setTimeout(() => {
             // Trigger a refresh of content data without full page reload
-            safeReload(false, 'AI content created');
+            safeReload(false, "AI content created");
           }, 1000);
         }
         return result;
@@ -1258,7 +1473,10 @@ export function TopBarActions({
         // so the modal can display the error and HTML response if it exists
         console.error("Error building content with AI:", result.error);
         if (result.rawResponse) {
-          console.error("Raw response from server:", result.rawResponse.substring(0, 200) + "...");
+          console.error(
+            "Raw response from server:",
+            result.rawResponse.substring(0, 200) + "...",
+          );
         }
         if (result.details) {
           console.error("Error details:", result.details);
@@ -1267,15 +1485,18 @@ export function TopBarActions({
       }
     } catch (error) {
       console.error("Unexpected error in handleBuildContentWithAI:", error);
-      
+
       // Return an object with the format expected by the modal
       return {
         success: false,
-        error: error instanceof Error ? error.message : "An unexpected error occurred",
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
         details: {
           stack: error instanceof Error ? error.stack : undefined,
-          name: error instanceof Error ? error.name : "Unknown Error"
-        }
+          name: error instanceof Error ? error.name : "Unknown Error",
+        },
       };
     } finally {
       // Always mark as not processing when finished
@@ -1283,147 +1504,163 @@ export function TopBarActions({
     }
   };
 
-  const handleCreateAsset = async ({ 
-    name, 
-    description, 
-    file_path, 
+  const handleCreateAsset = async ({
+    name,
+    description,
+    file_path,
     file_type,
     file_size,
     tags,
-    site_id 
-  }: { 
-    name: string
-    description?: string
-    file_path: string
-    file_type: string
-    file_size: number
-    tags: string[]
-    site_id: string
+    site_id,
+  }: {
+    name: string;
+    description?: string;
+    file_path: string;
+    file_type: string;
+    file_size: number;
+    tags: string[];
+    site_id: string;
   }) => {
     try {
-      const result = await createAsset({ 
-        name, 
-        description, 
-        file_path, 
+      const result = await createAsset({
+        name,
+        description,
+        file_path,
         file_type,
         file_size,
         tags,
-        site_id
-      })
+        site_id,
+      });
 
       if (result.error) {
-        throw new Error(result.error)
+        throw new Error(result.error);
       }
 
       // Recargar la página para mostrar el nuevo asset
-      safeReload(false, 'New asset created')
+      safeReload(false, "New asset created");
     } catch (error) {
-      console.error("Error creating asset:", error)
-      throw error
+      console.error("Error creating asset:", error);
+      throw error;
     }
-  }
+  };
 
-  const handleCreateLead = async (data: any): Promise<{ error?: string; lead?: any }> => {
+  const handleCreateLead = async (
+    data: any,
+  ): Promise<{ error?: string; lead?: any }> => {
     try {
-      const result = await createLead(data)
+      const result = await createLead(data);
 
       if (result.error) {
-        return { error: result.error }
+        return { error: result.error };
       }
 
       // Recargar la página para mostrar el nuevo lead
-      safeReload(false, 'New lead created')
-      return { lead: result.lead }
+      safeReload(false, "New lead created");
+      return { lead: result.lead };
     } catch (error) {
-      console.error("Error creating lead:", error)
-      return { error: error instanceof Error ? error.message : "Error inesperado" }
+      console.error("Error creating lead:", error);
+      return {
+        error: error instanceof Error ? error.message : "Error inesperado",
+      };
     }
-  }
+  };
 
-  const handleCreateDeal = async (data: any): Promise<{ error?: string; deal?: any }> => {
+  const handleCreateDeal = async (
+    data: any,
+  ): Promise<{ error?: string; deal?: any }> => {
     try {
       const { lead_id, ...dealData } = data;
-      const result = await createDeal(dealData)
+      const result = await createDeal(dealData);
 
       if (result.error) {
-        return { error: result.error }
+        return { error: result.error };
       }
 
       // If a lead was selected, link it to the deal
       if (lead_id && result.deal?.id) {
-        await addDealContact(result.deal.id, lead_id, 'Primary Contact', true);
+        await addDealContact(result.deal.id, lead_id, "Primary Contact", true);
       }
 
       // Update UI without full page reload if possible
-      if (typeof window !== 'undefined' && (window as any).refreshDealsList) {
+      if (typeof window !== "undefined" && (window as any).refreshDealsList) {
         (window as any).refreshDealsList();
       } else {
-        safeReload(false, 'New deal created');
+        safeReload(false, "New deal created");
       }
 
-      return { deal: result.deal }
+      return { deal: result.deal };
     } catch (error) {
-      console.error("Error creating deal:", error)
-      return { error: error instanceof Error ? error.message : "Error inesperado" }
+      console.error("Error creating deal:", error);
+      return {
+        error: error instanceof Error ? error.message : "Error inesperado",
+      };
     }
-  }
+  };
 
   const handleImportLeads = async (leads: Partial<Lead>[]) => {
     if (!currentSite?.id) {
-      return { success: false, count: 0, errors: ['No site selected'] }
+      return { success: false, count: 0, errors: ["No site selected"] };
     }
 
     try {
-      const result = await importLeads(leads, currentSite.id)
-      
+      const result = await importLeads(leads, currentSite.id);
+
       if (result.success) {
         // Recargar la página para mostrar los nuevos leads
-        safeReload(false, 'Leads imported successfully')
+        safeReload(false, "Leads imported successfully");
       }
-      
-      return result
-    } catch (error) {
-      console.error('Error importing leads:', error)
-      return { 
-        success: false, 
-        count: 0, 
-        errors: ['Failed to import leads'] 
-      }
-    }
-  }
 
-  const handleCreateCampaign = async (values: any): Promise<{ data?: any; error?: string }> => {
+      return result;
+    } catch (error) {
+      console.error("Error importing leads:", error);
+      return {
+        success: false,
+        count: 0,
+        errors: ["Failed to import leads"],
+      };
+    }
+  };
+
+  const handleCreateCampaign = async (
+    values: any,
+  ): Promise<{ data?: any; error?: string }> => {
     try {
       const response = await createCampaign(values);
       if (response.error) {
         return { error: response.error };
       }
-      
+
       toast.success("Campaign created successfully");
-      
+
       // Reload the page to show the new campaign
-      safeReload(false, 'New campaign created');
-      
+      safeReload(false, "New campaign created");
+
       return { data: response.data };
     } catch (error) {
       console.error("Error creating campaign:", error);
-      return { error: error instanceof Error ? error.message : "An unexpected error occurred" };
+      return {
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+      };
     }
   };
 
   // Function to handle Build with AI for experiment detail page
   const handleGenerateExperimentWithAI = () => {
     setIsGeneratingExperiment(true);
-    
+
     // Simulate API call to generate experiment content
     setTimeout(() => {
       // In a real implementation, this would call an API to update the experiment
       toast.success("Experiment content generated successfully");
-      
+
       // Trigger an event that the experiment detail page can listen for
-      window.dispatchEvent(new CustomEvent('experiment:ai-generated', {
-        detail: {
-          content: `
+      window.dispatchEvent(
+        new CustomEvent("experiment:ai-generated", {
+          detail: {
+            content: `
 # AI Generated Experiment
 
 This is a sample experiment generated by AI based on your site data.
@@ -1445,174 +1682,202 @@ The success of this experiment will be measured by:
 - Increased click-through rate on CTA buttons
 - Reduced cart abandonment
 - Higher overall conversion rate
-          `
-        }
-      }));
-      
+          `,
+          },
+        }),
+      );
+
       setIsGeneratingExperiment(false);
     }, 2000);
   };
 
   // Handle logout function
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const handleLogout = async () => {
     try {
-      setIsLoggingOut(true)
-      toast.loading(t('layout.topbar.signingOut'))
-      
-      const supabase = createClient()
-      await supabase.auth.signOut()
-      
-      window.location.href = '/api/auth/logout'
+      setIsLoggingOut(true);
+      toast.loading(t("layout.topbar.signingOut"));
+
+      const supabase = createClient();
+      await supabase.auth.signOut();
+
+      window.location.href = "/api/auth/logout";
     } catch (error) {
-      console.error("Error logging out:", error)
-      toast.error("Error signing out")
-      
-      window.location.href = '/api/auth/logout'
+      console.error("Error logging out:", error);
+      toast.error("Error signing out");
+
+      window.location.href = "/api/auth/logout";
     }
-  }
+  };
 
   return (
     <div className="flex items-center gap-4">
-      {pathname.startsWith("/content/") && pathname !== "/content/deepResearch" && (
-        <Button 
-          variant="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
-          title={t('layout.topbar.publishToSocial') || "Publish"}
-          onClick={() => window.dispatchEvent(new CustomEvent('content:publish'))}
-        >
-          <Globe className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.publishToSocial') || "Publish"}</span>
-        </Button>
-      )}
+      {pathname.startsWith("/content/") &&
+        pathname !== "/content/deepResearch" && (
+          <Button
+            variant="default"
+            className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+            title={t("layout.topbar.publishToSocial") || "Publish"}
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("content:publish"))
+            }
+          >
+            <Globe className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline font-inter font-medium text-sm">
+              {t("layout.topbar.publishToSocial") || "Publish"}
+            </span>
+          </Button>
+        )}
 
       {isControlCenterPage && currentSite ? (
-        <CreateTaskDialog trigger={
-              <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.newTask')}>
-            <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">{t('layout.topbar.newTask')}</span>
-          </Button>
-        } />
+        <CreateTaskDialog
+          trigger={
+            <Button
+              className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              title={t("layout.topbar.newTask")}
+            >
+              <PlusCircle className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline ml-2">
+                {t("layout.topbar.newTask")}
+              </span>
+            </Button>
+          }
+        />
       ) : null}
-      
+
       {/* Docs Button */}
       {isSecurityPage && (
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="default"
           className="text-muted-foreground hover:text-foreground flex items-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-          onClick={() => window.open('https://docs.makinari.com', '_blank')}
+          onClick={() => window.open("https://docs.makinari.com", "_blank")}
           title="Documentation"
         >
           <BookOpen className="h-5 w-5 shrink-0" />
-          <span className="hidden md:inline">{t('layout.topbar.docs')}</span>
+          <span className="hidden md:inline">{t("layout.topbar.docs")}</span>
         </Button>
       )}
 
       {currentSite ? (
         <>
-          {isDashboardPage && (
+          {isDashboardPage &&
             (() => {
-              if (typeof window !== 'undefined') {
-                const params = new URLSearchParams(window.location.search)
-                const tab = params.get('tab')
+              if (typeof window !== "undefined") {
+                const params = new URLSearchParams(window.location.search);
+                const tab = params.get("tab");
                 // Show export button only if explicitly NOT on onboarding tab
-                return tab !== 'onboarding'
+                return tab !== "onboarding";
               }
-              return true // Default to showing it if we can't determine
-            })()
-          ) && (
-            <Button 
-              className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              onClick={async () => {
-                if (!userId) {
-                  toast.error('User not authenticated')
-                  return
-                }
+              return true; // Default to showing it if we can't determine
+            })() && (
+              <Button
+                className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                onClick={async () => {
+                  if (!userId) {
+                    toast.error("User not authenticated");
+                    return;
+                  }
 
-                try {
-                  const response = await fetch(
-                    `/api/dashboard/export?siteId=${currentSite.id}&segmentId=${selectedSegment}&userId=${userId}&startDate=${format(dateRange.startDate, 'yyyy-MM-dd')}&endDate=${format(dateRange.endDate, 'yyyy-MM-dd')}`,
-                    {
-                      method: 'GET',
-                      headers: {
-                        'Content-Type': 'application/json',
+                  try {
+                    const response = await fetch(
+                      `/api/dashboard/export?siteId=${currentSite.id}&segmentId=${selectedSegment}&userId=${userId}&startDate=${format(dateRange.startDate, "yyyy-MM-dd")}&endDate=${format(dateRange.endDate, "yyyy-MM-dd")}`,
+                      {
+                        method: "GET",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
                       },
-                    }
-                  )
-                  
-                  if (!response.ok) throw new Error('Export failed')
-                  
-                  const blob = await response.blob()
-                  const url = window.URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `dashboard-report-${format(new Date(), 'yyyy-MM-dd')}.csv`
-                  document.body.appendChild(a)
-                  a.click()
-                  window.URL.revokeObjectURL(url)
-                  document.body.removeChild(a)
-                  
-                  toast.success('Report exported successfully')
-                } catch (error) {
-                  console.error('Error exporting dashboard data:', error)
-                  toast.error('Failed to export report')
-                }
-              }}
-              title={t('layout.topbar.export')}
-            >
-              <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">{t('layout.topbar.export')}</span>
-            </Button>
-          )}
+                    );
+
+                    if (!response.ok) throw new Error("Export failed");
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `dashboard-report-${format(new Date(), "yyyy-MM-dd")}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    toast.success("Report exported successfully");
+                  } catch (error) {
+                    console.error("Error exporting dashboard data:", error);
+                    toast.error("Failed to export report");
+                  }
+                }}
+                title={t("layout.topbar.export")}
+              >
+                <Download className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline ml-2">
+                  {t("layout.topbar.export")}
+                </span>
+              </Button>
+            )}
         </>
       ) : null}
       {/* Experiment Detail Page AI Button */}
       {isExperimentDetailPage && currentSite && (
-          <Button 
-          variant="secondary" 
+        <Button
+          variant="secondary"
           size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={handleGenerateExperimentWithAI}
           disabled={isGeneratingExperiment}
-          title={t('layout.topbar.buildWithAI')}
+          title={t("layout.topbar.buildWithAI")}
         >
           {isGeneratingExperiment ? (
             <>
               <LoadingSkeleton variant="button" size="sm" />
-              <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.generating')}</span>
+              <span className="hidden md:inline font-inter font-medium text-sm">
+                {t("layout.topbar.generating")}
+              </span>
             </>
           ) : (
             <>
               <Cpu className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.buildWithAI')}</span>
+              <span className="hidden md:inline font-inter font-medium text-sm">
+                {t("layout.topbar.buildWithAI")}
+              </span>
             </>
           )}
         </Button>
       )}
-      
+
       {/* Requirement Detail Page Build Button */}
       {requirementData && currentSite && (
-          <Button 
-          variant="default" 
+        <Button
+          variant="default"
           size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() => {
-            window.dispatchEvent(new CustomEvent('requirement:build-trigger'));
+            window.dispatchEvent(new CustomEvent("requirement:build-trigger"));
           }}
           disabled={requirementData.isBuilding}
-          title={requirementData.hasRequirementStatus ? 'Rebuild Requirement' : 'Build Requirement'}
+          title={
+            requirementData.hasRequirementStatus
+              ? "Rebuild Requirement"
+              : "Build Requirement"
+          }
         >
           {requirementData.isBuilding ? (
             <>
               <div className="h-4 w-4 animate-pulse bg-primary-foreground/50 rounded" />
-              <span className="hidden md:inline font-inter font-medium text-sm">Building...</span>
+              <span className="hidden md:inline font-inter font-medium text-sm">
+                Building...
+              </span>
             </>
           ) : (
             <>
               <Bot className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline font-inter font-medium text-sm">{requirementData.hasRequirementStatus ? 'Rebuild Requirement' : 'Build Requirement'}</span>
+              <span className="hidden md:inline font-inter font-medium text-sm">
+                {requirementData.hasRequirementStatus
+                  ? "Rebuild Requirement"
+                  : "Build Requirement"}
+              </span>
             </>
           )}
         </Button>
@@ -1620,254 +1885,304 @@ The success of this experiment will be measured by:
       {/* Segment Detail Page AI Buttons */}
       {segmentData && (
         <>
-          {(segmentData.activeTab === "analysis" || segmentData.activeTab === "icp") && (
-          <Button 
-          variant="secondary" 
-          size="default"
+          {(segmentData.activeTab === "analysis" ||
+            segmentData.activeTab === "icp") && (
+            <Button
+              variant="secondary"
+              size="default"
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              onClick={() => segmentData.openAIModal('analysis')}
+              onClick={() => segmentData.openAIModal("analysis")}
               disabled={segmentData.isAnalyzing}
-              title={t('layout.topbar.analyzeWithAI')}
+              title={t("layout.topbar.analyzeWithAI")}
             >
               {segmentData.isAnalyzing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.analyzing')}</span>
+                  <span className="hidden md:inline font-inter font-medium text-sm">
+                    {t("layout.topbar.analyzing")}
+                  </span>
                 </>
               ) : (
                 <>
                   <BarChart className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.analyzeWithAI')}</span>
+                  <span className="hidden md:inline font-inter font-medium text-sm">
+                    {t("layout.topbar.analyzeWithAI")}
+                  </span>
                 </>
               )}
             </Button>
           )}
           {segmentData.activeTab === "topics" && (
-          <Button 
-          variant="secondary" 
-          size="default"
+            <Button
+              variant="secondary"
+              size="default"
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              onClick={() => segmentData.openAIModal('topics')}
+              onClick={() => segmentData.openAIModal("topics")}
               disabled={segmentData.isGeneratingTopics}
-              title={t('layout.topbar.getTopicsWithAI')}
+              title={t("layout.topbar.getTopicsWithAI")}
             >
               {segmentData.isGeneratingTopics ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.gettingTopics')}</span>
+                  <span className="hidden md:inline font-inter font-medium text-sm">
+                    {t("layout.topbar.gettingTopics")}
+                  </span>
                 </>
               ) : (
                 <>
                   <FileText className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline">{t('layout.topbar.getTopicsWithAI')}</span>
+                  <span className="hidden md:inline">
+                    {t("layout.topbar.getTopicsWithAI")}
+                  </span>
                 </>
               )}
             </Button>
           )}
         </>
       )}
-      {isSegmentsPage && (
-        currentSite ? (
+      {isSegmentsPage &&
+        (currentSite ? (
           <div className="flex items-center gap-2">
-          <Button 
-          variant="secondary" 
-          size="default"
+            <Button
+              variant="secondary"
+              size="default"
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
-              title={t('layout.topbar.buildWithAI')}
+              title={t("layout.topbar.buildWithAI")}
             >
               {isProcessing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.processing')}</span>
+                  <span className="hidden md:inline font-inter font-medium text-sm">
+                    {t("layout.topbar.processing")}
+                  </span>
                 </>
               ) : (
                 <>
                   <FlaskConical className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.buildWithAI')}</span>
+                  <span className="hidden md:inline font-inter font-medium text-sm">
+                    {t("layout.topbar.buildWithAI")}
+                  </span>
                 </>
               )}
             </Button>
-            <CreateSegmentDialog 
+            <CreateSegmentDialog
               onCreateSegment={handleCreateSegment}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.newSegment')}>
+                <Button
+                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  title={t("layout.topbar.newSegment")}
+                >
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">{t('layout.topbar.newSegment')}</span>
+                  <span className="hidden md:inline ml-2">
+                    {t("layout.topbar.newSegment")}
+                  </span>
                 </Button>
               }
             />
           </div>
-        ) : null
-      )}
-      {isExperimentsPage && (
-        currentSite ? (
+        ) : null)}
+      {isExperimentsPage &&
+        (currentSite ? (
           <div className="flex items-center gap-2">
-            <CreateExperimentDialog 
+            <CreateExperimentDialog
               segments={segments || []}
               campaigns={campaigns}
               onCreateExperiment={handleCreateExperiment}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.newExperiment')}>
+                <Button
+                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  title={t("layout.topbar.newExperiment")}
+                >
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">{t('layout.topbar.newExperiment')}</span>
+                  <span className="hidden md:inline ml-2">
+                    {t("layout.topbar.newExperiment")}
+                  </span>
                 </Button>
               }
             />
           </div>
-        ) : null
-      )}
-      {isRequirementsPage && (
-        currentSite ? (
+        ) : null)}
+      {isRequirementsPage &&
+        (currentSite ? (
           <>
-            <CreateRequirementDialog 
+            <CreateRequirementDialog
               segments={segments || []}
               campaigns={campaigns}
               onCreateRequirement={handleCreateRequirement}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.newRequirement')}>
+                <Button
+                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  title={t("layout.topbar.newRequirement")}
+                >
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">{t('layout.topbar.newRequirement')}</span>
+                  <span className="hidden md:inline ml-2">
+                    {t("layout.topbar.newRequirement")}
+                  </span>
                 </Button>
               }
             />
           </>
-        ) : null
-      )}
-      {isLeadsPage && (
-        currentSite ? (
+        ) : null)}
+      {isLeadsPage &&
+        (currentSite ? (
           <>
-            <ImportLeadsDialog 
+            <ImportLeadsDialog
               segments={segments.length > 0 ? segments : propSegments || []}
               onImportLeads={handleImportLeads}
               trigger={
-                <Button variant="secondary" className="flex items-center justify-center gap-2 md:h-9 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.import')}>
+                <Button
+                  variant="secondary"
+                  className="flex items-center justify-center gap-2 md:h-9 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  title={t("layout.topbar.import")}
+                >
                   <UploadCloud className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">{t('layout.topbar.import')}</span>
+                  <span className="hidden md:inline ml-2">
+                    {t("layout.topbar.import")}
+                  </span>
                 </Button>
               }
             />
-            <Button 
+            <Button
               variant="secondary"
               className="flex items-center justify-center gap-2 md:h-9 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              title={t('layout.topbar.export')}
+              title={t("layout.topbar.export")}
               onClick={async () => {
                 try {
-                  const response = await fetch(`/api/leads/export?siteId=${currentSite.id}`, {
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json',
+                  const response = await fetch(
+                    `/api/leads/export?siteId=${currentSite.id}`,
+                    {
+                      method: "GET",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
                     },
-                  });
-                  
-                  if (!response.ok) throw new Error('Export failed');
-                  
+                  );
+
+                  if (!response.ok) throw new Error("Export failed");
+
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
+                  const a = document.createElement("a");
                   a.href = url;
-                  a.download = `leads-${new Date().toISOString().split('T')[0]}.csv`;
+                  a.download = `leads-${new Date().toISOString().split("T")[0]}.csv`;
                   document.body.appendChild(a);
                   a.click();
                   window.URL.revokeObjectURL(url);
                   document.body.removeChild(a);
                 } catch (error) {
-                  console.error('Error exporting leads:', error);
-                  toast.error('Failed to export leads');
+                  console.error("Error exporting leads:", error);
+                  toast.error("Failed to export leads");
                 }
               }}
             >
               <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">{t('layout.topbar.export')}</span>
+              <span className="hidden md:inline ml-2">
+                {t("layout.topbar.export")}
+              </span>
             </Button>
-            <CreateLeadDialog 
+            <CreateLeadDialog
               segments={segments.length > 0 ? segments : propSegments || []}
               campaigns={campaigns}
               onCreateLead={handleCreateLead}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title="Add Lead">
+                <Button
+                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  title="Add Lead"
+                >
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">{t('layout.topbar.addLead')}</span>
+                  <span className="hidden md:inline ml-2">
+                    {t("layout.topbar.addLead")}
+                  </span>
                 </Button>
               }
             />
           </>
-        ) : null
-      )}
-      {isAgentsPage && (
-        currentSite ? (
-          <></>
-        ) : null
-      )}
-      {isAssetsPage && (
-        currentSite ? (
+        ) : null)}
+      {isAgentsPage && (currentSite ? <></> : null)}
+      {isAssetsPage &&
+        (currentSite ? (
           <UploadAssetDialog onUploadAsset={handleCreateAsset} />
-        ) : null
-      )}
-      {isContentPage && (
-        currentSite ? (
+        ) : null)}
+      {isContentPage &&
+        (currentSite ? (
           <div className="flex items-center gap-2">
-          <Button 
-          variant="secondary" 
-          size="default"
+            <Button
+              variant="secondary"
+              size="default"
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
-              title={t('layout.topbar.buildWithAI')}
+              title={t("layout.topbar.buildWithAI")}
             >
               {isProcessing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.processing')}</span>
+                  <span className="hidden md:inline font-inter font-medium text-sm">
+                    {t("layout.topbar.processing")}
+                  </span>
                 </>
               ) : (
                 <>
                   <FlaskConical className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.buildWithAI')}</span>
+                  <span className="hidden md:inline font-inter font-medium text-sm">
+                    {t("layout.topbar.buildWithAI")}
+                  </span>
                 </>
               )}
             </Button>
 
-            <CreateContentDialog 
+            <CreateContentDialog
               segments={segments.length > 0 ? segments : propSegments || []}
               onSuccess={() => {
-                if (typeof window !== 'undefined' && (window as any).refreshContentList) {
+                if (
+                  typeof window !== "undefined" &&
+                  (window as any).refreshContentList
+                ) {
                   (window as any).refreshContentList();
                 } else {
-                  safeReload(false, 'New content created');
+                  safeReload(false, "New content created");
                 }
               }}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.newContent')}>
+                <Button
+                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  title={t("layout.topbar.newContent")}
+                >
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">{t('layout.topbar.newContent')}</span>
+                  <span className="hidden md:inline ml-2">
+                    {t("layout.topbar.newContent")}
+                  </span>
                 </Button>
               }
             />
           </div>
-        ) : null
-      )}
-      {isCampaignsPage && (
-        currentSite ? (
+        ) : null)}
+      {isCampaignsPage &&
+        (currentSite ? (
           <div className="flex items-center gap-2">
-          <Button 
-          variant="secondary" 
-          size="default"
+            <Button
+              variant="secondary"
+              size="default"
               className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               onClick={handleBuildWithAI}
               disabled={isProcessing}
-              title={t('layout.topbar.buildWithAI')}
+              title={t("layout.topbar.buildWithAI")}
             >
               {isProcessing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.processing')}</span>
+                  <span className="hidden md:inline font-inter font-medium text-sm">
+                    {t("layout.topbar.processing")}
+                  </span>
                 </>
               ) : (
                 <>
                   <FlaskConical className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">{t('layout.topbar.buildWithAI')}</span>
+                  <span className="hidden md:inline font-inter font-medium text-sm">
+                    {t("layout.topbar.buildWithAI")}
+                  </span>
                 </>
               )}
             </Button>
@@ -1876,140 +2191,228 @@ The success of this experiment will be measured by:
               requirements={requirements}
               onCreateCampaign={handleCreateCampaign}
               trigger={
-                <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.newCampaign')}>
+                <Button
+                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  title={t("layout.topbar.newCampaign")}
+                >
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">{t('layout.topbar.newCampaign')}</span>
+                  <span className="hidden md:inline ml-2">
+                    {t("layout.topbar.newCampaign")}
+                  </span>
                 </Button>
               }
             />
           </div>
-        ) : null
-      )}
-      {isSalesPage && (
-        currentSite ? (
+        ) : null)}
+      {isSalesPage &&
+        (currentSite ? (
           <>
-            <Button 
+            <Button
               variant="secondary"
               className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              title={t('layout.topbar.export')}
+              title={t("layout.topbar.export")}
               onClick={async () => {
                 try {
-                  const response = await fetch(`/api/sales/export?siteId=${currentSite.id}`, {
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json',
+                  const response = await fetch(
+                    `/api/sales/export?siteId=${currentSite.id}`,
+                    {
+                      method: "GET",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
                     },
-                  });
-                  
-                  if (!response.ok) throw new Error('Export failed');
-                  
+                  );
+
+                  if (!response.ok) throw new Error("Export failed");
+
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
+                  const a = document.createElement("a");
                   a.href = url;
-                  a.download = `sales-${new Date().toISOString().split('T')[0]}.csv`;
+                  a.download = `sales-${new Date().toISOString().split("T")[0]}.csv`;
                   document.body.appendChild(a);
                   a.click();
                   window.URL.revokeObjectURL(url);
                   document.body.removeChild(a);
                 } catch (error) {
-                  console.error('Error exporting sales:', error);
-                  toast.error('Failed to export sales');
+                  console.error("Error exporting sales:", error);
+                  toast.error("Failed to export sales");
                 }
               }}
             >
               <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">{t('layout.topbar.export')}</span>
+              <span className="hidden md:inline ml-2">
+                {t("layout.topbar.export")}
+              </span>
             </Button>
-            <Button onClick={onCreateSale} className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.addSale')}>
+            <Button
+              onClick={onCreateSale}
+              className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              title={t("layout.topbar.addSale")}
+            >
               <PlusCircle className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">{t('layout.topbar.addSale')}</span>
+              <span className="hidden md:inline ml-2">
+                {t("layout.topbar.addSale")}
+              </span>
             </Button>
           </>
-        ) : null
+        ) : null)}
+
+      {isPosPage && currentSite && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="default"
+            className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("pos:send-order"))
+            }
+            title={t("layout.topbar.sendOrder") || "Send Order"}
+          >
+            <ShoppingCart className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline font-inter font-medium text-sm">
+              {t("layout.topbar.sendOrder") || "Send Order"}
+            </span>
+          </Button>
+        </div>
       )}
-      
+
       {pathname === "/catalog" && currentSite && (
-        <Button 
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
-          onClick={() => window.dispatchEvent(new CustomEvent('catalog:create'))}
-          title={t('catalog.addItem') || 'Add Item'}
+        <Button
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("catalog:create"))
+          }
+          title={t("catalog.addItem") || "Add Item"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">{t('catalog.addItem') || 'Add Item'}</span>
+          <span className="hidden md:inline ml-2">
+            {t("catalog.addItem") || "Add Item"}
+          </span>
         </Button>
       )}
 
       {pathname === "/orders" && currentSite && (
-        <Button 
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
-          onClick={() => window.dispatchEvent(new CustomEvent('orders:create'))}
-          title={t('orders.add') || 'Create Order'}
+        <Button
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          onClick={() => window.dispatchEvent(new CustomEvent("orders:create"))}
+          title={t("orders.add") || "Create Order"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">{t('orders.add') || 'Create Order'}</span>
+          <span className="hidden md:inline ml-2">
+            {t("orders.add") || "Create Order"}
+          </span>
         </Button>
       )}
 
       {pathname === "/shipments" && currentSite && (
-        <Button 
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
-          onClick={() => window.dispatchEvent(new CustomEvent('shipments:create'))}
-          title={t('shipments.add') || 'Create Shipment'}
+        <Button
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("shipments:create"))
+          }
+          title={t("shipments.add") || "Create Shipment"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">{t('shipments.add') || 'Create Shipment'}</span>
+          <span className="hidden md:inline ml-2">
+            {t("shipments.add") || "Create Shipment"}
+          </span>
         </Button>
       )}
 
       {pathname === "/inventory" && currentSite && (
         <div className="flex items-center gap-2">
-          <Button 
+          <Button
             variant="secondary"
-            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
-            onClick={() => window.dispatchEvent(new CustomEvent('inventory:open-location-dialog'))}
-            title={t('inventory.addLocation') || 'Add Location'}
+            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("inventory:open-location-dialog"),
+              )
+            }
+            title={t("inventory.addLocation") || "Add Location"}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">{t('inventory.addLocation') || 'Add Location'}</span>
+            <span className="hidden md:inline ml-2">
+              {t("inventory.addLocation") || "Add Location"}
+            </span>
           </Button>
-          <Button 
-            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
-            onClick={() => window.dispatchEvent(new CustomEvent('inventory:create-stock'))}
-            title={t('inventory.addStock') || 'Add Stock'}
+          <Button
+            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("inventory:create-stock"))
+            }
+            title={t("inventory.addStock") || "Add Stock"}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">{t('inventory.addStock') || 'Add Stock'}</span>
+            <span className="hidden md:inline ml-2">
+              {t("inventory.addStock") || "Add Stock"}
+            </span>
           </Button>
         </div>
       )}
 
       {pathname === "/price-lists" && currentSite && (
-        <Button 
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
-          onClick={() => window.dispatchEvent(new CustomEvent('price-lists:create'))}
-          title={t('priceLists.addList') || 'Create List'}
+        <Button
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("price-lists:create"))
+          }
+          title={t("priceLists.addList") || "Create List"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">{t('priceLists.addList') || 'Create List'}</span>
+          <span className="hidden md:inline ml-2">
+            {t("priceLists.addList") || "Create List"}
+          </span>
         </Button>
       )}
 
+      {pathname.startsWith("/price-lists/") && pathname !== "/price-lists" && currentSite && priceListData && (
+        <div className="flex items-center gap-4">
+          <div className="flex items-center space-x-2">
+             <Label htmlFor="active-status" className="text-sm font-medium">Active</Label>
+             <Switch 
+                id="active-status" 
+                checked={priceListData.is_active} 
+                onCheckedChange={() => window.dispatchEvent(new CustomEvent("price-list:toggle-active"))} 
+             />
+          </div>
+          <Button
+            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("price-list:add-price"))
+            }
+            title="Add Price"
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">
+              Add Price
+            </span>
+          </Button>
+        </div>
+      )}
+
       {pathname === "/promotions" && currentSite && (
-        <Button 
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
-          onClick={() => window.dispatchEvent(new CustomEvent('promotions:create'))}
-          title={t('promotions.add') || 'Create Promotion'}
+        <Button
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("promotions:create"))
+          }
+          title={t("promotions.add") || "Create Promotion"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">{t('promotions.add') || 'Create Promotion'}</span>
+          <span className="hidden md:inline ml-2">
+            {t("promotions.add") || "Create Promotion"}
+          </span>
         </Button>
       )}
 
       {pathname === "/subscriptions" && currentSite && (
-        <Button 
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
-          onClick={() => window.dispatchEvent(new CustomEvent('subscriptions:create'))}
+        <Button
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("subscriptions:create"))
+          }
           title="Create Subscription"
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
@@ -2018,9 +2421,11 @@ The success of this experiment will be measured by:
       )}
 
       {pathname === "/reservations" && currentSite && (
-        <Button 
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" 
-          onClick={() => window.dispatchEvent(new CustomEvent('reservations:create'))}
+        <Button
+          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("reservations:create"))
+          }
           title="Create Reservation"
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
@@ -2028,24 +2433,40 @@ The success of this experiment will be measured by:
         </Button>
       )}
 
-      {isDealsPage && (
-        currentSite ? (
-          <CreateDealDialog 
+      {isQuotationsPage && currentSite && (
+        <CreateQuotationDialog
+          trigger={
+            <Button
+              className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              title="Create Quotation"
+            >
+              <PlusCircle className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline ml-2">Create Quotation</span>
+            </Button>
+          }
+        />
+      )}
+      {isDealsPage &&
+        (currentSite ? (
+          <CreateDealDialog
             onCreateDeal={handleCreateDeal}
             trigger={
-              <Button className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm" title={t('layout.topbar.createDeal')}>
+              <Button
+                className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                title={t("layout.topbar.createDeal")}
+              >
                 <PlusCircle className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline ml-2">{t('layout.topbar.createDeal')}</span>
+                <span className="hidden md:inline ml-2">
+                  {t("layout.topbar.createDeal")}
+                </span>
               </Button>
             }
           />
-        ) : null
-      )}
-      {isRobotsPage && (
-        currentSite ? (
+        ) : null)}
+      {isRobotsPage &&
+        (currentSite ? (
           <RobotStartButton currentSite={currentSite} viewMode={viewMode} />
-        ) : null
-      )}
+        ) : null)}
 
       {/* AI Action Modal */}
       <AIActionModal
@@ -2061,20 +2482,77 @@ The success of this experiment will be measured by:
         estimatedTime={AIModalConfig.estimatedTime}
         refreshOnComplete={isSegmentsPage || isExperimentsPage} // Only refresh for segments and experiments
       />
-      
+
+      {/* New Purchase button in toolbar */}
+      {pathname.startsWith("/purchases/orders") && currentSite && (
+        <Button
+          size="default"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          onClick={() => router.push(`/marketplace?ownerSiteId=${currentSite.id}&returnTo=/purchases/orders`)}
+          title={t("buyer.orders.newPurchase") || "New Purchase"}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline font-inter font-medium text-sm">
+            {t("buyer.orders.newPurchase") || "New Purchase"}
+          </span>
+        </Button>
+      )}
+
+      {/* New Subscription button in toolbar */}
+      {pathname.startsWith("/purchases/subscriptions") && currentSite && (
+        <Button
+          size="default"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          onClick={() => router.push(`/marketplace?ownerSiteId=${currentSite.id}&returnTo=/purchases/subscriptions&filter=recurring`)}
+          title={t("buyer.subscriptions.newSubscription") || "New Subscription"}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline font-inter font-medium text-sm">
+            {t("buyer.subscriptions.newSubscription") || "New Subscription"}
+          </span>
+        </Button>
+      )}
+
+      {/* Add Expense button in toolbar */}
+      {pathname === "/transactions" && currentSite && (
+        <Button
+          size="default"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          onClick={() => {
+            // Desencadenamos un evento personalizado para que la página lo escuche y abra su diálogo
+            const event = new CustomEvent('transactions:create');
+            window.dispatchEvent(event);
+          }}
+          title={t("expenses.create.button") || "Add Expense"}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline font-inter font-medium text-sm">
+            {t("expenses.create.button") || "Add Expense"}
+          </span>
+        </Button>
+      )}
+
       {/* Logout button in toolbar - only visible on profile page */}
-      {pathname.startsWith('/profile') && (
-        <Button 
-          variant="secondary" 
+      {pathname.startsWith("/profile") && (
+        <Button
+          variant="secondary"
           size="default"
           className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={handleLogout}
-          title={isLoggingOut ? t('layout.topbar.signingOut') : t('layout.topbar.logOut')}
+          title={
+            isLoggingOut
+              ? t("layout.topbar.signingOut")
+              : t("layout.topbar.logOut")
+          }
         >
           <LogOut className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline font-inter font-medium text-sm pt-0.5">{isLoggingOut ? t('layout.topbar.signingOut') : t('layout.topbar.logOut')}</span>
+          <span className="hidden md:inline font-inter font-medium text-sm pt-0.5">
+            {isLoggingOut
+              ? t("layout.topbar.signingOut")
+              : t("layout.topbar.logOut")}
+          </span>
         </Button>
       )}
     </div>
-  )
-} 
+  );
+}

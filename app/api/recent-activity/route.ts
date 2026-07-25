@@ -51,6 +51,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Handle demo sites to prevent invalid UUID database errors
+    if (siteId.startsWith("demo-")) {
+      return NextResponse.json({
+        activities: [],
+        metadata: { warning: "Demo site detected" }
+      });
+    }
+
     // Verificar variables de entorno
     console.log("🔑 Environment check:", { 
       supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,

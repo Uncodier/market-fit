@@ -12,6 +12,7 @@ import {
 } from "../ui/tooltip"
 import { useRef } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
+import { ModuleVariant } from "@/app/config/module-visuals"
 
 // Wrapper component for emoji icons with grayscale filter that adapts to theme
 interface EmojiIconProps {
@@ -116,6 +117,8 @@ export function EmojiIcon({
   )
 }
 
+import { AnimatedIcon } from "./AnimatedIcon"
+
 interface MenuItemProps {
   href: string
   icon?: LucideIcon
@@ -126,6 +129,7 @@ interface MenuItemProps {
   avatarUrl?: string
   isActive?: boolean
   isCollapsed?: boolean
+  visual?: ModuleVariant
   children?: React.ReactNode
   className?: string
   onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void
@@ -141,6 +145,7 @@ export function MenuItem({
   avatarUrl,
   isActive, 
   isCollapsed,
+  visual,
   children,
   className,
   onClick
@@ -150,8 +155,8 @@ export function MenuItem({
   const content = (
     <>
       <div className={cn(
-        "flex items-center justify-center safari-icon-fix flex-shrink-0",
-        isCollapsed ? "w-[32px] h-[32px] mx-auto" : "w-[24px] h-[24px]"
+        "flex items-center justify-center flex-shrink-0",
+        isCollapsed ? "w-full h-full" : "w-[24px] h-[24px] safari-icon-fix"
       )}>
         {customIcon ? customIcon : avatarUrl ? (
           <MenuAvatar className="h-7 w-7">
@@ -163,7 +168,12 @@ export function MenuItem({
         ) : emoji ? (
           <EmojiIcon emoji={emoji} isActive={isActive} isCollapsed={isCollapsed} />
         ) : Icon && (
-          <Icon className="h-[16.2px] w-[16.2px] shrink-0" />
+          <AnimatedIcon 
+            icon={Icon} 
+            size={16.2} 
+            strokeWidth={2} 
+            color={isActive && visual ? visual.ink : undefined} 
+          />
         )}
       </div>
       
@@ -175,8 +185,11 @@ export function MenuItem({
         style={{ fontSize: "11.3px", lineHeight: 1 }}
       >
         <span
-          className="block truncate whitespace-nowrap"
-          style={{ lineHeight: "normal" }}
+          className="block truncate whitespace-nowrap transition-colors duration-200"
+          style={{ 
+            lineHeight: "normal",
+            color: isActive && visual ? visual.ink : undefined 
+          }}
         >
           {title}
           {subtitle ? (
@@ -208,12 +221,16 @@ export function MenuItem({
         "flex items-center text-sm transition-colors duration-200 relative group font-inter",
         isCollapsed
           ? isActive
-            ? cn("font-inter justify-center h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
-            : cn("justify-center h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
+            ? cn("font-inter justify-center mx-auto h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
+            : cn("justify-center mx-auto h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
           : "min-w-0 rounded-md justify-start h-[32px] overflow-hidden",
         isActive
-          ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          ? visual
+            ? "font-medium"
+            : "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
+          : visual
+            ? "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       )}
       style={{ 
         paddingLeft: isCollapsed ? '0px' : '9.7px', 
@@ -221,7 +238,11 @@ export function MenuItem({
         paddingTop: isCollapsed ? '0px' : '6.5px', 
         paddingBottom: isCollapsed ? '0px' : '6.5px',
         gap: isCollapsed ? '0px' : '9.7px',
-        fontSize: '11.3px'
+        fontSize: '11.3px',
+        ...(isActive && visual ? {
+          background: `color-mix(in srgb, ${visual.accent} 12%, transparent)`,
+          color: visual.ink,
+        } : {})
       }}
       onClick={onClick}
     >

@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
           user_id: session.user.id,
           name: 'New Makina',
           status: 'pending',
-          instance_type: 'assistant',
+          instance_type: 'ubuntu',
           created_at: new Date().toISOString()
         })
         .select()

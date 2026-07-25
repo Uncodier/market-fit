@@ -11,9 +11,11 @@ import { ShoppingCart, CreditCard, ExternalLink, PlusCircle, FileText, DollarSig
 import { toast } from "sonner"
 import { createSale, getSaleById } from "@/app/sales/actions"
 import { updateDeal } from "@/app/deals/actions"
+import { createQuotationFromDeal } from "@/app/quotations/actions"
 import { Sale } from "@/app/types"
 import { useRouter } from "next/navigation"
 import { RegisterPaymentDialog } from "@/app/sales/components/RegisterPaymentDialog"
+import { format } from "date-fns"
 
 interface DealSalesOrderProps {
   deal: Deal
@@ -23,38 +25,43 @@ interface DealSalesOrderProps {
 export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
   const router = useRouter()
   const [sale, setSale] = useState<Sale | null>(null)
+  const [quotations, setQuotations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [isCreating, setIsCreating] = useState(false)
+  const [isCreatingSale, setIsCreatingSale] = useState(false)
+  const [isCreatingQuote, setIsCreatingQuote] = useState(false)
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
 
-  const loadSale = async () => {
-    if (!deal.sales_order_id) {
-      setSale(null)
-      setLoading(false)
-      return
-    }
-
+  const loadData = async () => {
     try {
       setLoading(true)
-      const result = await getSaleById(deal.site_id, deal.sales_order_id)
-      if (result.sale) {
-        setSale(result.sale)
-      } else {
-        setSale(null)
+      const supabase = (await import("@/lib/supabase/client")).createClient()
+      
+      const promises: any[] = [
+        supabase.from('quotations').select('*').eq('deal_id', deal.id).order('created_at', { ascending: false })
+      ]
+
+      if (deal.sales_order_id) {
+        promises.push(getSaleById(deal.site_id, deal.sales_order_id))
       }
+
+      const [quoteRes, saleRes] = await Promise.all(promises)
+      
+      if (!quoteRes.error && quoteRes.data) setQuotations(quoteRes.data)
+      if (saleRes && saleRes.sale) setSale(saleRes.sale)
+
     } catch (e) {
-      console.error("Failed to load sale", e)
+      console.error("Failed to load deal sales data", e)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadSale()
-  }, [deal.sales_order_id, deal.site_id])
+    loadData()
+  }, [deal.sales_order_id, deal.site_id, deal.id])
 
   const handleCreateSale = async () => {
-    setIsCreating(true)
+    setIsCreatingSale(true)
     try {
       const result = await createSale({
         siteId: deal.site_id,
@@ -69,7 +76,6 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
       if (result.error) {
         toast.error(result.error)
       } else if (result.sale) {
-        // Link sale to deal
         const updateResult = await updateDeal({
           id: deal.id,
           sales_order_id: result.sale.id
@@ -85,7 +91,39 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
     } catch (e) {
       toast.error("Failed to create sales order")
     } finally {
-      setIsCreating(false)
+      setIsCreatingSale(false)
+    }
+  }
+
+  const handleCreateQuotation = async () => {
+    setIsCreatingQuote(true)
+    try {
+      const supabase = (await import("@/lib/supabase/client")).createClient()
+      let leadId = null
+      
+      if (deal.company_id) {
+        const { data: leads } = await supabase.from('leads').select('id').eq('company_id', deal.company_id).limit(1)
+        if (leads && leads.length > 0) leadId = leads[0].id
+      }
+      
+      if (!leadId) {
+        toast.error("Please ensure the deal's company has at least one lead (contact) before creating a quote.")
+        setIsCreatingQuote(false)
+        return
+      }
+
+      const result = await createQuotationFromDeal(deal.site_id, deal.id, leadId)
+
+      if (result.error) {
+        toast.error(result.error)
+      } else if (result.data) {
+        toast.success("Quotation created successfully")
+        router.push(`/quotations/${result.data.id}`)
+      }
+    } catch (e) {
+      toast.error("Failed to create quotation")
+    } finally {
+      setIsCreatingQuote(false)
     }
   }
 
@@ -101,13 +139,6 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
     return new Date(dateString).toLocaleDateString()
   }
 
-  const formatPaymentMethod = (method: string) => {
-    return method
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-  }
-
   if (loading) {
     return (
       <div className="space-y-6 md:space-y-8 animate-pulse">
@@ -119,6 +150,54 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
 
   return (
     <div className="space-y-6 md:space-y-12">
+      {/* Quotations Card */}
+      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
+          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            <FileText className="h-5 w-5" /> Quotations
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={handleCreateQuotation} disabled={isCreatingQuote}>
+            <PlusCircle className="mr-2 h-4 w-4" /> {isCreatingQuote ? "Creating..." : "Create Quote"}
+          </Button>
+        </CardHeader>
+        <CardContent className="px-6 md:px-8 pb-8">
+          {quotations.length === 0 ? (
+            <EmptyCard
+              variant="fancy"
+              icon={<FileText />}
+              title="No Quotations"
+              description="Create a quotation to send pricing details to your prospect."
+              className="min-h-[200px] border border-dashed rounded-lg bg-muted/5"
+              showShadow={false}
+            />
+          ) : (
+            <div className="space-y-3">
+              {quotations.map(q => (
+                <div 
+                  key={q.id} 
+                  className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer ${deal.accepted_quotation_id === q.id ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}
+                  onClick={() => router.push(`/quotations/${q.id}`)}
+                >
+                  <div className="flex flex-col gap-1">
+                    <div className="font-semibold flex items-center gap-2">
+                      Quote {q.id.substring(0, 8)}
+                      {deal.accepted_quotation_id === q.id && <Badge variant="default" className="text-[10px]">Accepted</Badge>}
+                    </div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> {format(new Date(q.created_at), 'MMM d, yyyy')}
+                    </div>
+                  </div>
+                  <div className="text-right flex flex-col items-end gap-1">
+                    <div className="font-bold">{formatCurrency(q.total, q.currency)}</div>
+                    <Badge variant="outline" className="text-xs uppercase">{q.status}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Sales Order Card */}
       <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
         <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
@@ -130,8 +209,8 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
               <ExternalLink className="mr-2 h-4 w-4" /> View Order
             </Button>
           ) : (
-            <Button variant="outline" size="sm" onClick={handleCreateSale} disabled={isCreating}>
-              <PlusCircle className="mr-2 h-4 w-4" /> {isCreating ? "Creating..." : "Create Sales Order"}
+            <Button variant="outline" size="sm" onClick={handleCreateSale} disabled={isCreatingSale}>
+              <PlusCircle className="mr-2 h-4 w-4" /> {isCreatingSale ? "Creating..." : "Create Sales Order"}
             </Button>
           )}
         </CardHeader>
@@ -190,18 +269,6 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
                   />
                 </div>
               </div>
-
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground">Date</label>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    className="pl-12 h-12 text-base bg-muted/10 border-transparent focus-visible:ring-0 cursor-default"
-                    value={formatDate(sale.saleDate)}
-                    readOnly
-                  />
-                </div>
-              </div>
             </div>
           ) : (
             <EmptyCard
@@ -209,7 +276,7 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
               icon={<ShoppingCart />}
               title="No Sales Order"
               description="Create a sales order for this deal to track revenue, products and payments."
-              className="min-h-[300px] border border-dashed rounded-lg bg-muted/5"
+              className="min-h-[200px] border border-dashed rounded-lg bg-muted/5"
               showShadow={false}
             />
           )}
@@ -217,69 +284,30 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
       </Card>
 
       {/* Sales Payments Card */}
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
-            <CreditCard className="h-5 w-5" /> Sales Payments
-          </CardTitle>
-          {sale && (
+      {sale && (
+        <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
+            <CardTitle className="text-xl font-semibold flex items-center gap-2">
+              <CreditCard className="h-5 w-5" /> Sales Payments
+            </CardTitle>
             <Button variant="outline" size="sm" onClick={() => setIsPaymentOpen(true)} disabled={sale.amount_due <= 0}>
               <PlusCircle className="mr-2 h-4 w-4" /> Register Payment
             </Button>
-          )}
-        </CardHeader>
-        <CardContent className="px-6 md:px-8 pb-8">
-          {!sale ? (
-            <EmptyCard
-              variant="fancy"
-              icon={<CreditCard />}
-              title="No Sales Order"
-              description="You need a sales order before you can track payments."
-              className="min-h-[300px] border border-dashed rounded-lg bg-muted/5"
-              showShadow={false}
-            />
-          ) : sale.payments && sale.payments.length > 0 ? (
-            <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full min-w-[500px]">
-                <thead>
-                  <tr className="bg-muted/50 border-b">
-                    <th className="px-6 py-4 text-sm font-semibold text-left">Date</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-left">Amount</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-left">Method</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-left">Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sale.payments.map((payment, index) => (
-                    <tr key={payment.id || index} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium">{formatDate(payment.date)}</td>
-                      <td className="px-6 py-4 text-sm text-green-600 font-semibold">{formatCurrency(payment.amount, sale.currency)}</td>
-                      <td className="px-6 py-4 text-sm">{formatPaymentMethod(payment.method)}</td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">{payment.notes || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <EmptyCard
-              variant="fancy"
-              icon={<CreditCard />}
-              title="No Payments"
-              description="No payments have been registered for this sales order yet."
-              className="min-h-[300px] border border-dashed rounded-lg bg-muted/5"
-              showShadow={false}
-            />
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+        </Card>
+      )}
 
-      <RegisterPaymentDialog 
-        sale={sale} 
-        open={isPaymentOpen} 
-        onOpenChange={setIsPaymentOpen} 
-        onSuccess={() => loadSale()} 
-      />
+      {sale && isPaymentOpen && (
+        <RegisterPaymentDialog
+          sale={sale}
+          open={isPaymentOpen}
+          onOpenChange={setIsPaymentOpen}
+          onSuccess={() => {
+            loadData()
+            setIsPaymentOpen(false)
+          }}
+        />
+      )}
     </div>
   )
 }

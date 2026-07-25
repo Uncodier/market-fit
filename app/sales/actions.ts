@@ -35,6 +35,7 @@ export async function getSales(siteId: string) {
       amount_due: sale.amount_due || 0,
       currency: sale.currency || undefined,
       status: sale.status,
+      locationId: sale.location_id || null,
       leadId: sale.lead_id,
       leadName: sale.leads?.name || "Anonymous Customer",
       campaignId: sale.campaign_id,
@@ -77,6 +78,7 @@ export async function createSale(data: {
   leadId?: string;
   campaignId?: string | null;
   segmentId?: string;
+  locationId?: string | null;
   saleDate: string;
   paymentMethod?: string;
   source: 'retail' | 'online';
@@ -100,6 +102,7 @@ export async function createSale(data: {
       amount: data.amount,
       amount_due: data.amount_due !== undefined ? data.amount_due : data.amount,
       status: data.status,
+      location_id: data.locationId || null,
       lead_id: data.leadId || null,
       campaign_id: data.campaignId || null,
       segment_id: data.segmentId || null,
@@ -235,6 +238,7 @@ export async function getSaleById(siteId: string, saleId: string) {
       amount_due: saleData.amount_due || 0,
       currency: saleData.currency || undefined,
       status: saleData.status,
+      locationId: saleData.location_id || null,
       leadId: saleData.lead_id,
       leadName: saleData.leads?.name || "Anonymous Customer",
       campaignId: saleData.campaign_id,

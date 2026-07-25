@@ -96,6 +96,37 @@ export async function getSegments(site_id: string): Promise<SegmentResponse> {
   }
 }
 
+export async function findOrCreateSegment(site_id: string, name: string) {
+  try {
+    if (!name || !name.trim()) return { segment: null, error: "Name is required" }
+    const trimmed = name.trim()
+
+    const supabase = await createClient()
+    const { data: existing, error: searchError } = await supabase
+      .from("segments")
+      .select("*")
+      .eq("site_id", site_id)
+      .ilike("name", trimmed)
+      .limit(1)
+      .single()
+
+    if (existing) return { segment: existing, error: null }
+    if (searchError && searchError.code !== "PGRST116") {
+      return { segment: null, error: searchError.message }
+    }
+
+    const { segment, error } = await createSegment({
+      site_id,
+      name: trimmed,
+    })
+
+    return { segment, error }
+  } catch (error: any) {
+    console.error("Error finding or creating segment:", error)
+    return { segment: null, error: error.message || "Failed to find or create segment" }
+  }
+}
+
 export async function createSegment(data: CreateSegmentInput): Promise<{ error?: string, segment?: any }> {
   try {
     const supabase = createClient()

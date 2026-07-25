@@ -91,7 +91,7 @@ export default function InventoryPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 w-full md:w-auto">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full hidden md:flex">
                   <TabsTrigger value="levels" className="gap-2 text-xs rounded-full"><DatabaseIcon className="h-4 w-4"/> Stock Levels</TabsTrigger>
@@ -131,7 +131,7 @@ export default function InventoryPage() {
       </StickyHeader>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
-        <div className="mx-auto w-full max-w-[1200px]">
+        <div>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsContent value="levels">
               <InventoryLevelsTab 

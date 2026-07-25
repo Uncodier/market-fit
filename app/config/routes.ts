@@ -17,6 +17,7 @@ export const routes: RouteConfig[] = [
   { path: "/campaigns", hasLayout: true },
   { path: "/assets", hasLayout: true },
   { path: "/deals", hasLayout: true },
+  { path: "/quotations", hasLayout: true },
   { path: "/leads", hasLayout: true },
   { path: "/sales", hasLayout: true },
   { path: "/sales-home", hasLayout: true },
@@ -43,8 +44,11 @@ export const routes: RouteConfig[] = [
   { path: "/promotions", hasLayout: true },
   { path: "/subscriptions", hasLayout: true },
   { path: "/reservations", hasLayout: true },
+  { path: "/purchases", hasLayout: true },
+  { path: "/transactions", hasLayout: true },
 
   { path: "/create-site", hasLayout: false },
+  { path: "/buyer", hasLayout: false },
   
   // Routes without layout (default)
   { path: "/login", hasLayout: false },

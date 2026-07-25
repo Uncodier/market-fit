@@ -8,6 +8,7 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { CatalogItem } from "@/app/types"
 import { Archive, DatabaseIcon, Edit } from "@/app/components/ui/icons"
+import { resolveItemImage } from "@/app/lib/image-utils"
 import Link from "next/link"
 
 const KIND_COLUMNS = [
@@ -89,6 +90,9 @@ export function KanbanView({
                                     item.status === 'archived' ? 'opacity-60' : ''
                                   )}
                                 >
+                                  <div className="h-32 w-full bg-muted/30 relative flex-shrink-0">
+                                    <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
+                                  </div>
                                   <div className="p-3 pb-2">
                                     <div className="flex justify-between items-start mb-2">
                                       <div className="text-sm font-medium line-clamp-2 pr-2">

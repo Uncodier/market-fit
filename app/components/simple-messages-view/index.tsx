@@ -539,7 +539,7 @@ export function SimpleMessagesView({ className = "", activeRobotInstance, isBrow
   }
 
   // Calculate if chat is empty
-  const shouldShowNewMakina = !activeRobotInstance || !activeRobotInstance.id || (activeRobotInstance.status === 'uninstantiated' && logs.length === 0)
+  const shouldShowNewMakina = !activeRobotInstance || !activeRobotInstance.id || (activeRobotInstance.status === 'pending' && logs.length === 0)
   const isEmptyNewMakina = shouldShowNewMakina && !hasMessageBeenSent && !lastUserMessage && !isNewMakinaThinking
   
   // Calculate timeline for Explorer view

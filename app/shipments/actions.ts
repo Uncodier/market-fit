@@ -47,19 +47,58 @@ export async function listShipments({ siteId, status, leadId, q, page = 1, pageS
 
 export async function getShipment(id: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("shipments")
-    .select(`
-      *,
-      leads (name, email, phone),
-      sale_orders (order_number, total, status),
-      locations!origin_location_id (name)
-    `)
-    .eq("id", id)
-    .single();
+    const { data, error } = await supabase
+      .from("shipments")
+      .select(`
+        *,
+        leads (name, email, phone),
+        sale_orders (
+          order_number, 
+          total, 
+          status,
+          sale_order_items (id, catalog_item_id, name, quantity, status, shipment_id)
+        ),
+        locations!origin_location_id (name)
+      `)
+      .eq("id", id)
+      .single();
 
   if (error) return { error: error.message };
   return { data: data as any as ShipmentWithRelations };
+}
+
+export async function setShipmentLineItems(siteId: string, shipmentId: string, itemIds: string[]) {
+  try {
+    const supabase = await createClient();
+    
+    // First, clear shipment_id from items that are currently assigned to this shipment
+    // but are NOT in the new itemIds array.
+    let clearQuery = supabase
+      .from("sale_order_items")
+      .update({ shipment_id: null })
+      .eq("site_id", siteId)
+      .eq("shipment_id", shipmentId);
+      
+    if (itemIds.length > 0) {
+      clearQuery = clearQuery.not("id", "in", `(${itemIds.join(',')})`);
+    }
+    await clearQuery;
+
+    // Next, assign the new itemIds to this shipment
+    if (itemIds.length > 0) {
+      await supabase
+        .from("sale_order_items")
+        .update({ shipment_id: shipmentId })
+        .eq("site_id", siteId)
+        .in("id", itemIds);
+    }
+
+    revalidatePath(`/shipments/${shipmentId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in setShipmentLineItems:", error);
+    return { error: error.message };
+  }
 }
 
 export async function createShipment(params: {
@@ -141,6 +180,7 @@ export async function updateShipmentStatus(siteId: string, shipmentId: string, n
           .from("sale_order_items")
           .select("catalog_item_id, quantity")
           .eq("sale_order_id", current.sale_order_id)
+          .eq("shipment_id", shipmentId) // ONLY decrement for items in this shipment!
           .not("catalog_item_id", "is", null);
 
         if (orderItems && orderItems.length > 0) {

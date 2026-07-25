@@ -4,12 +4,14 @@
  * Reports: each entry is its own destination — dashboard tabs via `?tab=` or standalone `/costs`.
  */
 
-export type WorkspaceArea = "marketing" | "sales" | "automation" | "applications" | "reports"
+export type WorkspaceArea = "marketing" | "sales" | "operations" | "buying" | "automation" | "applications" | "reports"
 
-/** Middle sidebar (scroll): Marketing, Sales, Reports */
+/** Middle sidebar (scroll): Marketing, Sales, Operations, Buying, Reports */
 export const SIDEBAR_SCROLL_AREA_ORDER: WorkspaceArea[] = [
   "marketing",
   "sales",
+  "operations",
+  "buying",
   "reports",
 ]
 
@@ -43,6 +45,7 @@ export const NAVIGATION_AREAS: Record<
     items: [
       { key: "campaigns", href: "/campaigns" },
       { key: "segments", href: "/segments" },
+      { key: "promotions", href: "/promotions" },
       { key: "content", href: "/content" },
       { key: "contentCreator", href: "/robots", robotsMode: "imprenta" },
       { key: "assets", href: "/assets" },
@@ -55,18 +58,33 @@ export const NAVIGATION_AREAS: Record<
       { key: "pos", href: "/pos" },
       { key: "catalog", href: "/catalog" },
       { key: "priceLists", href: "/price-lists" },
-      { key: "inventory", href: "/inventory" },
-      { key: "orders", href: "/orders" },
-      { key: "shipments", href: "/shipments" },
-      { key: "promotions", href: "/promotions" },
       { key: "subscriptions", href: "/subscriptions" },
-      { key: "reservations", href: "/reservations" },
-      { key: "controlCenter", href: "/control-center" },
       { key: "sales", href: "/sales" },
       { key: "leads", href: "/leads" },
       { key: "deals", href: "/deals" },
-      { key: "chat", href: "/chat" },
+      { key: "quotations", href: "/quotations" },
       { key: "people", href: "/people" },
+    ],
+  },
+  operations: {
+    categoryKey: "layout.category.operations",
+    items: [
+      { key: "chat", href: "/chat" },
+      { key: "orders", href: "/orders" },
+      { key: "shipments", href: "/shipments" },
+      { key: "controlCenter", href: "/control-center" },
+      { key: "reservations", href: "/reservations" },
+      { key: "inventory", href: "/inventory" },
+    ],
+  },
+  buying: {
+    categoryKey: "layout.category.buying",
+    items: [
+      { key: "purchasesOrders", href: "/purchases/orders" },
+      { key: "transactions", href: "/transactions" },
+      { key: "purchasesSubscriptions", href: "/purchases/subscriptions" },
+      { key: "purchasesQuotes", href: "/purchases/quotes" },
+      { key: "purchasesLibrary", href: "/purchases/library" },
     ],
   },
   automation: {
@@ -173,4 +191,13 @@ export function isAreaActive(
   return NAVIGATION_AREAS[area].items.some((item) =>
     isNavItemActive(item, pathname, searchParams)
   )
+}
+
+export function getModuleArea(itemKey: string): WorkspaceArea | undefined {
+  for (const [area, config] of Object.entries(NAVIGATION_AREAS)) {
+    if (config.items.some((item) => item.key === itemKey)) {
+      return area as WorkspaceArea
+    }
+  }
+  return undefined
 }

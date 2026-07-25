@@ -94,7 +94,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
       
       if (result.error) {
         console.error("Error loading transactions:", result.error);
-        toast.error("Failed to load transaction data");
+        toast.error("Failed to load expense data");
         return;
       }
       
@@ -141,7 +141,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
       }
     } catch (error) {
       console.error("Error in loadTransactions:", error);
-      toast.error("Failed to load transaction data");
+      toast.error("Failed to load expense data");
     } finally {
       setLoadingTransactions(false);
     }
@@ -258,7 +258,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         userId: currentSite.user_id // Using the site's user ID
       };
 
-      // Save transaction to the database
+      // Save expense to the database
       const result = await createTransaction(transactionData);
       
       if (result.error) {
@@ -266,7 +266,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         return;
       }
 
-      toast.success("Transaction added successfully");
+      toast.success("Expense added successfully");
       
       // Reset form
       setNewTransaction({
@@ -277,11 +277,11 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         notes: ""
       });
       
-      // Después de agregar una transacción, simplemente volvemos a cargar las transacciones
+      // Después de agregar un gasto, simplemente volvemos a cargar las transacciones
       await loadTransactions();
     } catch (error) {
-      console.error("Error adding transaction:", error);
-      toast.error("Failed to add transaction. Please try again.");
+      console.error("Error adding expense:", error);
+      toast.error("Failed to add expense. Please try again.");
     }
   };
 
@@ -361,7 +361,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
   
   const handleUpdateTransaction = async () => {
     if (!editingTransaction || !editingTransaction.id) {
-      toast.error("Transaction data is missing");
+      toast.error("Expense data is missing");
       return;
     }
     
@@ -384,20 +384,20 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         return;
       }
       
-      toast.success("Transaction updated successfully");
+      toast.success("Expense updated successfully");
       setIsEditingTransaction(false);
       
       // Reload transactions to reflect the update
       loadTransactions();
     } catch (error) {
       console.error("Error updating transaction:", error);
-      toast.error("Failed to update transaction");
+      toast.error("Failed to update expense");
     }
   };
   
   const handleDeleteTransaction = async () => {
     if (!transactionToDelete) {
-      toast.error("Transaction ID is missing");
+      toast.error("Expense ID is missing");
       return;
     }
     
@@ -409,7 +409,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         return;
       }
       
-      toast.success("Transaction deleted successfully");
+      toast.success("Expense deleted successfully");
       setIsDeletingTransaction(false);
       setTransactionToDelete(null);
       
@@ -417,7 +417,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
       loadTransactions();
     } catch (error) {
       console.error("Error deleting transaction:", error);
-      toast.error("Failed to delete transaction");
+      toast.error("Failed to delete expense");
     }
   };
   
@@ -438,14 +438,14 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Transaction
+                    Add Expense
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="sm:max-w-[425px]">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Add New Transaction</AlertDialogTitle>
+                    <AlertDialogTitle>Add New Expense</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Add a new transaction to the campaign cost breakdown.
+                      Add a new expense to the campaign cost breakdown.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="grid gap-4 py-4">
@@ -552,7 +552,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
                   </div>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleAddTransaction}>Add Transaction</AlertDialogAction>
+                    <AlertDialogAction onClick={handleAddTransaction}>Add Expense</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -599,8 +599,8 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
                       <td colSpan={5} className="p-4 text-center">
                         <EmptyCard
                           icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
-                          title="No transactions"
-                          description="No transactions recorded yet"
+                          title="No expenses"
+                          description="No expenses recorded yet"
                           className="border-none shadow-none"
                           contentClassName="py-4"
                         />
@@ -678,13 +678,13 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         </div>
       </div>
 
-      {/* Edit Transaction Dialog */}
+      {/* Edit Expense Dialog */}
       <AlertDialog open={isEditingTransaction} onOpenChange={setIsEditingTransaction}>
         <AlertDialogContent className="sm:max-w-[425px]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Edit Transaction</AlertDialogTitle>
+            <AlertDialogTitle>Edit Expense</AlertDialogTitle>
             <AlertDialogDescription>
-              Update the transaction details below.
+              Update the expense details below.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid gap-4 py-4">
@@ -781,18 +781,18 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleUpdateTransaction}>Update Transaction</AlertDialogAction>
+            <AlertDialogAction onClick={handleUpdateTransaction}>Update Expense</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Transaction Confirmation Dialog */}
+      {/* Delete Expense Confirmation Dialog */}
       <AlertDialog open={isDeletingTransaction} onOpenChange={setIsDeletingTransaction}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogTitle>Delete Expense</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this transaction? This action cannot be undone.
+              Are you sure you want to delete this expense? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

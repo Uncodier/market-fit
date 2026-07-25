@@ -3,21 +3,21 @@
 import { useState, useEffect, useMemo, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
-import { useSite } from "../context/SiteContext"
-import { useTheme } from "../context/ThemeContext"
-import { type Site, type SiteSettings } from "../context/SiteContext"
-import { StickyHeader } from "../components/ui/sticky-header"
-import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs"
-import { Skeleton } from "../components/ui/skeleton"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import { SiteForm } from "../components/settings/site-form"
-import { type SiteFormValues } from "../components/settings/form-schema"
-import { adaptSiteToForm, type AdaptedSiteFormValues } from "../components/settings/data-adapter"
-import { handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities } from "../components/settings/save-handlers"
-import { useAuthContext } from "../components/auth/auth-provider"
-import { QuickNav, type QuickNavSection } from "../components/ui/quick-nav"
-import { useLocalization } from "../context/LocalizationContext"
+import { useSimpleRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
+import { useSite } from "@/app/context/SiteContext"
+import { useTheme } from "@/app/context/ThemeContext"
+import { type Site, type SiteSettings } from "@/app/context/SiteContext"
+import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Skeleton } from "@/app/components/ui/skeleton"
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { SiteForm } from "@/app/components/settings/site-form"
+import { type SiteFormValues } from "@/app/components/settings/form-schema"
+import { adaptSiteToForm, type AdaptedSiteFormValues } from "@/app/components/settings/data-adapter"
+import { handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities } from "@/app/components/settings/save-handlers"
+import { useAuthContext } from "@/app/components/auth/auth-provider"
+import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 function SettingsFormSkeleton() {
   return (
@@ -295,7 +295,7 @@ export default function SettingsPage() {
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('segment')
-    if (tab && ["general", "channels", "team", "activities", "social", "calendar"].includes(tab)) {
+    if (tab && ["general", "company", "channels", "team", "activities", "social", "calendar"].includes(tab)) {
       setActiveSegment(tab)
     }
   }, [searchParams])
@@ -490,6 +490,7 @@ export default function SettingsPage() {
             <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                 <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
+                <TabsTrigger value="company" className="text-xs rounded-full px-4">{t('context.tabs.company') || 'Company'}</TabsTrigger>
                 <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
                 <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>

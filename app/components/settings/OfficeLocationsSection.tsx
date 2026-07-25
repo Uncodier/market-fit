@@ -10,6 +10,9 @@ import { PlusCircle, Trash2, ChevronDown, ChevronRight, Home } from "../ui/icons
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { ActionFooter } from "../ui/card-footer"
 import { type SiteFormValues as SiteFormValuesType } from "./form-schema"
+import { listLocations, upsertLocation } from "@/app/inventory/actions"
+import { useSite } from "@/app/context/SiteContext"
+import { toast } from "sonner"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +31,7 @@ interface OfficeLocationsSectionProps {
 
 // Helper function to ensure proper location structure
 const normalizeLocation = (location: any) => ({
+  id: location.id,
   name: location.name || "",
   address: location.address || "",
   city: location.city || "",
@@ -43,12 +47,22 @@ const normalizeLocation = (location: any) => ({
 
 export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) {
   const form = useFormContext<SiteFormValues>()
-  const [locationsList, setLocationsList] = useState(() => {
-    const locations = form.getValues("locations") || []
-    return locations.map(normalizeLocation)
-  })
+  const { currentSite } = useSite()
+  const [locationsList, setLocationsList] = useState<any[]>([])
   const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set())
   const [isSavingLocation, setIsSavingLocation] = useState<number | null>(null)
+  
+  // Load locations from db
+  useEffect(() => {
+    async function load() {
+      if (!currentSite?.id) return;
+      const res = await listLocations(currentSite.id);
+      if (res.data) {
+        setLocationsList(res.data.map(normalizeLocation));
+      }
+    }
+    load();
+  }, [currentSite?.id]);
 
   // Emit locations update event whenever list changes
   useEffect(() => {
@@ -80,16 +94,14 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
     const newLocation = normalizeLocation({ name: "" })
     const newLocations = [newLocation, ...locationsList]
     setLocationsList(newLocations)
-    form.setValue("locations", newLocations)
     // Auto-expand the new location (now at index 0)
     setExpandedLocations(new Set([0, ...Array.from(expandedLocations).map(i => i + 1)]))
-  }, [form, locationsList, expandedLocations])
+  }, [locationsList, expandedLocations])
 
   // Remove location
   const removeLocation = useCallback((index: number) => {
     const newLocations = locationsList.filter((_, i) => i !== index)
     setLocationsList(newLocations)
-    form.setValue("locations", newLocations)
     
     // Update expanded indices
     const newExpanded = new Set<number>()
@@ -101,7 +113,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
       }
     })
     setExpandedLocations(newExpanded)
-  }, [form, locationsList, expandedLocations])
+  }, [locationsList, expandedLocations])
   
   // Handle location field update
   const handleLocationUpdate = useCallback((index: number, field: string, value: string) => {
@@ -111,18 +123,40 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
       [field]: value
     }
     setLocationsList(newLocations)
-    form.setValue("locations", newLocations)
-  }, [form, locationsList])
+  }, [locationsList])
 
   // Save individual location
   const handleSaveLocation = async (index: number) => {
-    if (!onSave) return
     setIsSavingLocation(index)
     try {
-      const formData = form.getValues()
-      await onSave(formData)
+      if (!currentSite?.id) return;
+      const loc = locationsList[index]
+      const payload = {
+        id: loc.id,
+        site_id: currentSite.id,
+        name: loc.name,
+        address: loc.address,
+        city: loc.city,
+        state: loc.state,
+        zip: loc.zip,
+        country: loc.country,
+        is_active: true
+      }
+      
+      const res = await upsertLocation(payload)
+      if (res.error) {
+        toast.error(res.error)
+      } else {
+        toast.success("Location saved")
+        // Update local state with the returned location (which includes generated IDs)
+        const updatedList = [...locationsList]
+        updatedList[index] = normalizeLocation(res.data)
+        updatedList[index].id = res.data.id
+        setLocationsList(updatedList)
+      }
     } catch (error) {
       console.error("Error saving location:", error)
+      toast.error("Error saving location")
     } finally {
       setIsSavingLocation(null)
     }

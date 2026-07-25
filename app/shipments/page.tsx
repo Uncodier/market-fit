@@ -131,7 +131,7 @@ export default function ShipmentsPage() {
                 </TabsList>
               </div>
               
-              <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto">
+              <div className="flex items-center gap-2 w-full md:w-auto">
                 <form onSubmit={handleSearch} className="w-full md:w-auto">
                   <SearchInput 
                     placeholder={t('shipments.search') || "Search tracking or customer..."} 
@@ -140,6 +140,9 @@ export default function ShipmentsPage() {
                     alwaysExpanded={false}
                   />
                 </form>
+              </div>
+
+              <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto">
                 <div className="hidden md:flex ml-2">
                   <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
@@ -153,7 +156,7 @@ export default function ShipmentsPage() {
         </StickyHeader>
 
         <div className="flex-1 p-4 md:p-6 overflow-auto">
-          <div className="mx-auto w-full max-w-[1200px] flex flex-col gap-6">
+          <div className="flex flex-col gap-6">
             <div className={cn(viewType === 'table' ? "bg-card rounded-xl shadow-sm border border-border overflow-hidden" : "")}>
               {isLoading ? (
                 <div className="p-6 space-y-4">
@@ -165,7 +168,7 @@ export default function ShipmentsPage() {
                 <div className="p-6 text-center text-red-500">
                   Failed to load shipments. {error.message}
                 </div>
-              ) : data?.data && data.data.length > 0 ? (
+              ) : (
                 <>
                   {viewType === 'table' ? (
                     <>
@@ -181,65 +184,78 @@ export default function ShipmentsPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {data.data.map((shipment) => (
-                            <TableRow key={shipment.id}>
-                              <TableCell>
-                                <div className="font-medium text-foreground">
-                                  {shipment.sale_order_id ? (
-                                    <Link href={`/orders/${shipment.sale_order_id}`} className="hover:underline text-blue-600">
-                                      {shipment.sale_orders?.order_number || 'Unknown Order'}
-                                    </Link>
-                                  ) : (
-                                    shipment.sale_orders?.order_number || 'Unknown Order'
+                          {data?.data && data.data.length > 0 ? (
+                            data.data.map((shipment) => (
+                              <TableRow key={shipment.id}>
+                                <TableCell>
+                                  <div className="font-medium text-foreground">
+                                    {shipment.sale_order_id ? (
+                                      <Link href={`/orders/${shipment.sale_order_id}`} className="hover:underline text-blue-600">
+                                        {shipment.sale_orders?.order_number || 'Unknown Order'}
+                                      </Link>
+                                    ) : (
+                                      shipment.sale_orders?.order_number || 'Unknown Order'
+                                    )}
+                                  </div>
+                                  {shipment.locations?.name && (
+                                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center">
+                                      <Send className="h-3 w-3 mr-1" /> From: {shipment.locations.name}
+                                    </div>
                                   )}
-                                </div>
-                                {shipment.locations?.name && (
-                                  <div className="text-xs text-muted-foreground mt-0.5 flex items-center">
-                                    <Send className="h-3 w-3 mr-1" /> From: {shipment.locations.name}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="font-medium">{shipment.leads?.name || 'Unknown'}</div>
+                                  {shipment.leads?.email && <div className="text-xs text-muted-foreground">{shipment.leads.email}</div>}
+                                </TableCell>
+                                <TableCell>
+                                  {shipment.tracking_number ? (
+                                    <div className="text-sm">
+                                      <div className="font-mono">{shipment.tracking_number}</div>
+                                      <div className="text-xs text-muted-foreground">{shipment.carrier || 'Unknown Carrier'}</div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">Not assigned</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={STATUS_STYLES[shipment.status] || ''}>
+                                    {shipment.status.replace('_', ' ').toUpperCase()}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm text-foreground">
+                                    {format(new Date(shipment.created_at), 'MMM d, yyyy')}
                                   </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className="font-medium">{shipment.leads?.name || 'Unknown'}</div>
-                                {shipment.leads?.email && <div className="text-xs text-muted-foreground">{shipment.leads.email}</div>}
-                              </TableCell>
-                              <TableCell>
-                                {shipment.tracking_number ? (
-                                  <div className="text-sm">
-                                    <div className="font-mono">{shipment.tracking_number}</div>
-                                    <div className="text-xs text-muted-foreground">{shipment.carrier || 'Unknown Carrier'}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {format(new Date(shipment.created_at), 'h:mm a')}
                                   </div>
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">Not assigned</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={STATUS_STYLES[shipment.status] || ''}>
-                                  {shipment.status.replace('_', ' ').toUpperCase()}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm text-foreground">
-                                  {format(new Date(shipment.created_at), 'MMM d, yyyy')}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {format(new Date(shipment.created_at), 'h:mm a')}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Link 
-                                  href={`/shipments/${shipment.id}`} 
-                                  className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Link>
+                                </TableCell>
+                                <TableCell>
+                                  <Link 
+                                    href={`/shipments/${shipment.id}`} 
+                                    className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Link>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={6} className="h-24 text-center">
+                                <EmptyCard
+                                  icon={<Send className="h-6 w-6 text-muted-foreground" />}
+                                  title={t('shipments.empty.title') || "No shipments found"}
+                                  description={t('shipments.empty.description') || (searchQuery ? "No shipments match your search criteria." : "Shipments will appear here once an order is created with shipping.")}
+                                  className="border-0 shadow-none bg-transparent"
+                                />
                               </TableCell>
                             </TableRow>
-                          ))}
+                          )}
                         </TableBody>
                       </Table>
                       
-                      {data.count > pageSize && (
+                      {(data?.count ?? 0) > pageSize && (
                         <div className="p-4 border-t flex justify-center bg-muted/30">
                           <Pagination 
                             currentPage={page}
@@ -252,20 +268,25 @@ export default function ShipmentsPage() {
                   ) : (
                     <div className={viewType === 'kanban' ? "overflow-x-auto -mx-4 md:-mx-6" : ""}>
                       <div className={viewType === 'kanban' ? "px-4 md:px-6" : ""}>
-                        <KanbanView 
-                          shipments={data.data} 
-                          onUpdateShipmentStatus={handleUpdateShipmentStatus} 
-                        />
+                        {data?.data && data.data.length > 0 ? (
+                          <KanbanView 
+                            shipments={data.data} 
+                            onUpdateShipmentStatus={handleUpdateShipmentStatus} 
+                          />
+                        ) : (
+                          <div className="pt-4">
+                            <EmptyCard
+                              icon={<Send className="h-6 w-6 text-muted-foreground" />}
+                              title={t('shipments.empty.title') || "No shipments found"}
+                              description={t('shipments.empty.description') || (searchQuery ? "No shipments match your search criteria." : "Shipments will appear here once an order is created with shipping.")}
+                              className="border-0 shadow-none bg-transparent"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
                 </>
-              ) : (
-                <EmptyCard
-                  icon={<Send className="h-6 w-6" />}
-                  title={t('shipments.empty.title') || "No shipments found"}
-                  description={t('shipments.empty.description') || (searchQuery ? "No shipments match your search criteria." : "Shipments will appear here once an order is created with shipping.")}
-                />
               )}
             </div>
           </div>

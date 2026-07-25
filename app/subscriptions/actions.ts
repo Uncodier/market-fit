@@ -62,6 +62,15 @@ export async function updateSubscriptionStatus(siteId: string, subscriptionId: s
 
     if (error) return { error: error.message };
     
+    // Revoke entitlements if subscription is cancelled, expired, or paused
+    if (['cancelled', 'expired', 'paused'].includes(status)) {
+      const { revokeForSubscription } = await import('@/app/commerce/entitlements');
+      await revokeForSubscription(subscriptionId, true);
+    } else if (status === 'active') {
+      const { syncSubscriptionEntitlements } = await import('@/app/commerce/entitlements');
+      await syncSubscriptionEntitlements(subscriptionId, true);
+    }
+    
     revalidatePath("/subscriptions");
     return { data: data as Subscription };
   } catch (error: any) {

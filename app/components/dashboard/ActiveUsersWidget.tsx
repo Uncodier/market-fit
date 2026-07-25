@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthContext as useAuth } from '@/app/components/auth/auth-provider';
 
 interface ActiveUsersWidgetProps {
   title?: string;
@@ -24,7 +24,7 @@ export const ActiveUsersWidget = ({
   skipKpiCreation,
   useDemoData = false
 }: ActiveUsersWidgetProps) => {
-  const authUser = useAuth();
+  const { user: authUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
 

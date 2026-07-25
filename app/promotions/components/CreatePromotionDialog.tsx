@@ -10,11 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { upsertPromotion } from "../actions"
-import { useCommandK } from "@/app/hooks/use-command-k" // Note: we'll simulate a simple input if not available
-import { SimpleSearchSelect } from "@/app/components/ui/simple-search-select"
 import useSWR from "swr"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 interface CreatePromotionDialogProps {
   open: boolean
@@ -25,7 +25,7 @@ interface CreatePromotionDialogProps {
 type FormData = {
   name: string
   code: string
-  campaign_id: string
+  campaign_value: RelationSelectValue
   discount_type: 'percent' | 'fixed'
   discount_value: string
   applies_to: 'all' | 'selected_items'
@@ -42,24 +42,28 @@ export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreateP
     defaultValues: {
       discount_type: 'percent',
       applies_to: 'all',
-      campaign_id: ''
+      campaign_value: null
     }
   })
 
   const discountType = watch('discount_type')
-  const campaignId = watch('campaign_id')
+  const campaignValue = watch('campaign_value')
 
   const onSubmit = async (data: FormData) => {
     if (!currentSite || !user) return
     setIsSubmitting(true)
 
     try {
+      const { id: resolvedCampaignId, error: campError } = await resolveRelationId("campaign", data.campaign_value, currentSite.id)
+      if (campError) throw new Error(`Campaign error: ${campError}`)
+      if (!resolvedCampaignId) throw new Error("Campaign is required")
+
       const res = await upsertPromotion({
         site_id: currentSite.id,
         user_id: user.id,
         name: data.name,
         code: data.code || undefined,
-        campaign_id: data.campaign_id,
+        campaign_id: resolvedCampaignId,
         discount_type: data.discount_type,
         discount_value: parseFloat(data.discount_value),
         applies_to: data.applies_to,
@@ -92,17 +96,14 @@ export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreateP
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Campaign</Label>
-            <Select value={campaignId} onValueChange={v => setValue('campaign_id', v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select campaign..." />
-              </SelectTrigger>
-              <SelectContent>
-                {campaigns?.data?.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!campaignId && <p className="text-xs text-red-500">Campaign is required</p>}
+            <RelationSelect 
+              options={campaigns?.data?.map(c => ({ id: c.id, label: c.title })) || []}
+              value={campaignValue} 
+              onValueChange={v => setValue('campaign_value', v)}
+              placeholder="Select campaign..."
+              emptyMessage="No campaigns found"
+            />
+            {!campaignValue && <p className="text-xs text-red-500">Campaign is required</p>}
           </div>
 
           <div className="space-y-2">
@@ -138,7 +139,7 @@ export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreateP
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !campaignId}>
+            <Button type="submit" disabled={isSubmitting || !campaignValue}>
               {isSubmitting ? "Creating..." : "Create Promotion"}
             </Button>
           </DialogFooter>

@@ -17,7 +17,8 @@ import {
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { SimpleSearchSelect, Option } from "@/app/components/ui/simple-search-select"
+import { RelationSelect, RelationSelectValue, RelationSelectOption } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { 
   Select,
   SelectContent,
@@ -25,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select"
+import { listLocations } from "@/app/inventory/actions"
+import { Location } from "@/app/types"
 import { useSite } from "@/app/context/SiteContext"
 
 interface EditSaleDialogProps {
@@ -71,19 +74,22 @@ export function EditSaleDialog({
   const [amount, setAmount] = useState("")
   const [amountDue, setAmountDue] = useState("")
   const [status, setStatus] = useState<"pending" | "completed" | "cancelled" | "refunded">("pending")
-  const [leadId, setLeadId] = useState<string>("")
-  const [leads, setLeads] = useState<Option[]>([])
-  const [segmentId, setSegmentId] = useState<string>("")
-  const [segments, setSegments] = useState<Option[]>([])
-  const [source, setSource] = useState<"retail" | "online">("online")
+  const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
+  const [leads, setLeads] = useState<RelationSelectOption[]>([])
+  const [segmentValue, setSegmentValue] = useState<RelationSelectValue>(null)
+  const [segments, setSegments] = useState<RelationSelectOption[]>([])
+  const [source, setSource] = useState<"retail" | "online" | "quote" | "marketplace">("online")
   const [productName, setProductName] = useState("")
   const [category, setCategory] = useState<string>("")
+  const [locations, setLocations] = useState<Location[]>([])
+  const [locationId, setLocationId] = useState<string | null>(null)
   
   // Load lead and segment data when the component mounts
   useEffect(() => {
     if (currentSite?.id && open) {
       loadLeads()
       loadSegments()
+      loadLocations()
     }
   }, [currentSite?.id, open])
   
@@ -94,14 +100,40 @@ export function EditSaleDialog({
       setAmount(sale.amount.toString())
       setAmountDue((sale.amount_due || 0).toString())
       setStatus(sale.status)
-      setLeadId(sale.leadId || "")
-      setSegmentId(sale.segmentId || "")
       setSource(sale.source)
       setProductName(sale.productName || "")
       setCategory(sale.productType || "")
+      setLocationId(sale.locationId || null)
+
+      if (sale.leadId) {
+        setLeadValue({ mode: "existing", id: sale.leadId, label: sale.leadName || "Unknown" })
+      } else {
+        setLeadValue(null)
+      }
+
+      if (sale.segmentId) {
+        setSegmentValue({ mode: "existing", id: sale.segmentId, label: "Unknown" })
+      } else {
+        setSegmentValue(null)
+      }
     }
   }, [sale])
   
+  // Sync labels when options load
+  useEffect(() => {
+    if (leadValue?.mode === "existing" && leadValue.label === "Unknown") {
+      const match = leads.find(l => l.id === leadValue.id)
+      if (match) setLeadValue({ ...leadValue, label: match.label })
+    }
+  }, [leads, leadValue])
+
+  useEffect(() => {
+    if (segmentValue?.mode === "existing" && segmentValue.label === "Unknown") {
+      const match = segments.find(s => s.id === segmentValue.id)
+      if (match) setSegmentValue({ ...segmentValue, label: match.label })
+    }
+  }, [segments, segmentValue])
+
   // Load leads for the combobox
   const loadLeads = async () => {
     if (!currentSite?.id) return
@@ -116,8 +148,8 @@ export function EditSaleDialog({
       
       if (result.leads && result.leads.length > 0) {
         const leadOptions = result.leads.map(lead => ({
-          value: lead.id,
-          label: lead.name
+          id: lead.id,
+          label: lead.name || lead.email
         }))
         setLeads(leadOptions)
       }
@@ -140,7 +172,7 @@ export function EditSaleDialog({
       
       if (result.segments && result.segments.length > 0) {
         const segmentOptions = result.segments.map(segment => ({
-          value: segment.id,
+          id: segment.id,
           label: segment.name
         }))
         setSegments(segmentOptions)
@@ -150,6 +182,26 @@ export function EditSaleDialog({
     }
   }
   
+  // Load locations
+  const loadLocations = async () => {
+    if (!currentSite?.id) return
+    
+    try {
+      const result = await listLocations(currentSite.id)
+      
+      if (result.error) {
+        console.error("Error loading locations:", result.error)
+        return
+      }
+      
+      if (result.data) {
+        setLocations(result.data)
+      }
+    } catch (error) {
+      console.error("Error loading locations:", error)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -179,15 +231,22 @@ export function EditSaleDialog({
         return
       }
       
+      const { id: resolvedLeadId, error: leadError } = await resolveRelationId("lead", leadValue, currentSite.id)
+      if (leadError) throw new Error(`Lead error: ${leadError}`)
+
+      const { id: resolvedSegmentId, error: segmentError } = await resolveRelationId("segment", segmentValue, currentSite.id)
+      if (segmentError) throw new Error(`Segment error: ${segmentError}`)
+
       const updatedSale: Sale = {
         ...sale,
         title,
         amount: numericAmount,
         amount_due: numericAmountDue,
         status,
-        leadId: leadId || null,
-        segmentId: segmentId || null,
+        leadId: resolvedLeadId || null,
+        segmentId: resolvedSegmentId || null,
         source,
+        locationId,
         productName: productName || "",
         productType: category === "none" ? null : category || null
       }
@@ -291,11 +350,11 @@ export function EditSaleDialog({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="leadId">Customer</Label>
-              <SimpleSearchSelect
+              <Label htmlFor="leadValue">Customer</Label>
+              <RelationSelect
                 options={leads}
-                value={leadId}
-                onChange={setLeadId}
+                value={leadValue}
+                onValueChange={setLeadValue}
                 placeholder="Select a customer"
                 emptyMessage="No customers found"
                 icon={<User className="h-4 w-4" />}
@@ -303,16 +362,36 @@ export function EditSaleDialog({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="segmentId">Segment</Label>
-              <SimpleSearchSelect
+              <Label htmlFor="segmentValue">Segment</Label>
+              <RelationSelect
                 options={segments}
-                value={segmentId}
-                onChange={setSegmentId}
+                value={segmentValue}
+                onValueChange={setSegmentValue}
                 placeholder="Select a segment"
                 emptyMessage="No segments found"
                 icon={<Tag className="h-4 w-4" />}
               />
             </div>
+            
+            {locations.length > 1 && (
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Select 
+                  value={locationId || "none"} 
+                  onValueChange={(value) => setLocationId(value === "none" ? null : value)}
+                >
+                  <SelectTrigger id="location" className="h-12">
+                    <SelectValue placeholder="Select a location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not specified</SelectItem>
+                    {locations.map(loc => (
+                      <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             
             <div className="space-y-2">
               <Label htmlFor="productName">Product Name</Label>

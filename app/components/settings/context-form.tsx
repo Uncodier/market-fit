@@ -250,10 +250,6 @@ export function ContextForm({
             <GeneralSection active={true} onSave={onSaveGeneral} />
           )}
 
-          {renderCard("company",
-            <CompanySection active={true} onSave={onSaveCompany} />
-          )}
-
           {renderCard("branding",
             <BrandingSection active={true} onSave={onSaveBranding} />
           )}

@@ -5,7 +5,8 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { toast } from "sonner"
 import { createContent } from "./actions"
@@ -63,8 +64,8 @@ export function CreateContentDialog({
   const [description, setDescription] = useState('')
   const [text, setText] = useState('')
   const [type, setType] = useState<"blog_post" | "video" | "podcast" | "social_post" | "newsletter" | "case_study" | "whitepaper" | "infographic" | "webinar" | "ebook" | "ad" | "landing_page">('blog_post')
-  const [selectedSegment, setSelectedSegment] = useState<string | null>(null)
-  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null)
+  const [segmentValue, setSegmentValue] = useState<RelationSelectValue>(null)
+  const [campaignValue, setCampaignValue] = useState<RelationSelectValue>(null)
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [isCreating, setIsCreating] = useState(false)
@@ -79,13 +80,27 @@ export function CreateContentDialog({
 
     setIsCreating(true)
     try {
+      let resolvedSegmentId = null;
+      if (segmentValue) {
+        const { id, error } = await resolveRelationId("segment", segmentValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedSegmentId = id;
+      }
+
+      let resolvedCampaignId = null;
+      if (campaignValue) {
+        const { id, error } = await resolveRelationId("campaign", campaignValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedCampaignId = id;
+      }
+
       const result = await createContent({
         siteId: currentSite.id,
         title,
         description,
         type,
-        segment_id: selectedSegment,
-        campaign_id: selectedCampaign,
+        segment_id: resolvedSegmentId,
+        campaign_id: resolvedCampaignId,
         tags: tags.length > 0 ? tags : null,
         text: text
       })
@@ -101,8 +116,8 @@ export function CreateContentDialog({
       setDescription('')
       setText('')
       setType('blog_post')
-      setSelectedSegment(null)
-      setSelectedCampaign(null)
+      setSegmentValue(null)
+      setCampaignValue(null)
       setTags([])
       setTagInput('')
       
@@ -220,66 +235,30 @@ export function CreateContentDialog({
                 <Users className="h-4 w-4 text-muted-foreground" />
                 Segment
               </Label>
-              <Select
-                value={selectedSegment || ""}
-                onValueChange={(value) => setSelectedSegment(value === "none" ? null : value)}
-              >
-                <SelectTrigger id="segment" className="h-12">
-                  <SelectValue placeholder="Select a segment (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No segment</SelectItem>
-                  {segments.map((segment) => (
-                    <SelectItem key={segment.id} value={segment.id}>
-                      {segment.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <RelationSelect
+                options={segments.map(s => ({ id: s.id, label: s.name }))}
+                value={segmentValue}
+                onValueChange={setSegmentValue}
+                placeholder="Select a segment (optional)"
+                emptyMessage="No segments found"
+                className="h-12"
+              />
             </div>
 
-            {campaigns.length > 0 && (
-              <div className="grid gap-2">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                  <Label htmlFor="campaign">Campaign</Label>
-                </div>
-                <ScrollArea className="h-[200px] rounded-md border">
-                  <div className="p-4">
-                    {campaigns.map((campaign) => {
-                      const isSelected = selectedCampaign === campaign.id;
-                      
-                      return (
-                        <div 
-                          key={campaign.id} 
-                          className={cn(
-                            "flex items-center justify-between space-x-3 space-y-0 rounded-lg border p-4 mb-2 last:mb-0",
-                            "transition-colors hover:bg-muted/50"
-                          )}
-                        >
-                          <div className="grid gap-1.5 leading-none">
-                            <label
-                              htmlFor={`campaign-${campaign.id}`}
-                              className="text-sm font-medium leading-none cursor-pointer"
-                            >
-                              {campaign.title}
-                            </label>
-                            <p className="text-sm text-muted-foreground">
-                              {campaign.description || "No description available"}
-                            </p>
-                          </div>
-                          <Switch
-                            id={`campaign-${campaign.id}`}
-                            checked={isSelected}
-                            onCheckedChange={() => toggleCampaign(campaign.id)}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
+            <div className="grid gap-2">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="campaign">Campaign</Label>
               </div>
-            )}
+              <RelationSelect
+                options={campaigns.map(c => ({ id: c.id, label: c.title }))}
+                value={campaignValue}
+                onValueChange={setCampaignValue}
+                placeholder="Select a campaign (optional)"
+                emptyMessage="No campaigns found"
+                className="h-12"
+              />
+            </div>
 
             <div className="grid gap-2">
               <Label htmlFor="tags" className="flex items-center gap-2">

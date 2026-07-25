@@ -636,7 +636,7 @@ export default function SalesPage() {
           <StickyHeader>
             <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-8">
+                <div className="flex items-center gap-4">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                     <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.all') || "All Sales"}>
                       <LayoutGrid size={13} className="md:!hidden" />
@@ -659,87 +659,88 @@ export default function SalesPage() {
                       <span className="tab-label">{t('sales.tabs.refunded') || 'Refunded'}</span>
                     </TabsTrigger>
                   </TabsList>
-                  <div className="flex items-center gap-2">
-                    <SearchInput
-                      data-command-k-input
-                      placeholder={t('sales.search.placeholder') || "Search sales..."}
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      alwaysExpanded={false}
-                    />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">
-                          <Filter className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("all")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "all" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.all') || "All Sales"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("pending")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "pending" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.pending') || "Pending"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("completed")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "completed" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.completed') || "Completed"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("cancelled")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "cancelled" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.cancelled') || "Cancelled"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("refunded")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "refunded" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.refunded') || "Refunded"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <SearchInput
+                    data-command-k-input
+                    placeholder={t('sales.search.placeholder') || "Search sales..."}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    alwaysExpanded={false}
+                  />
+                </div>
+                
+                <div className="ml-auto flex flex-wrap justify-end items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">
+                        <Filter className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("all")}>
+                        <Check className={cn("mr-2 h-4 w-4", activeTab === "all" ? "opacity-100" : "opacity-0")} />
+                        {t('sales.tabs.all') || "All Sales"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("pending")}>
+                        <Check className={cn("mr-2 h-4 w-4", activeTab === "pending" ? "opacity-100" : "opacity-0")} />
+                        {t('sales.tabs.pending') || "Pending"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("completed")}>
+                        <Check className={cn("mr-2 h-4 w-4", activeTab === "completed" ? "opacity-100" : "opacity-0")} />
+                        {t('sales.tabs.completed') || "Completed"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("cancelled")}>
+                        <Check className={cn("mr-2 h-4 w-4", activeTab === "cancelled" ? "opacity-100" : "opacity-0")} />
+                        {t('sales.tabs.cancelled') || "Cancelled"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("refunded")}>
+                        <Check className={cn("mr-2 h-4 w-4", activeTab === "refunded" ? "opacity-100" : "opacity-0")} />
+                        {t('sales.tabs.refunded') || "Refunded"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title="Sort by">
-                          <ListOrdered className="h-4 w-4" />
-                          <span className="hidden sm:inline font-normal">
-                            {sortBy === "newest"
-                              ? "Newest"
-                              : sortBy === "oldest"
-                                ? "Oldest"
-                                : sortBy === "value_desc"
-                                  ? "Highest Value"
-                                  : "Lowest Value"}
-                          </span>
-                          <ChevronDown className="h-3 w-3 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                          Newest
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                          Oldest
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_desc")}>
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "value_desc" ? "opacity-100" : "opacity-0")} />
-                          Highest Value
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_asc")}>
-                          <Check className={cn("mr-2 h-4 w-4", sortBy === "value_asc" ? "opacity-100" : "opacity-0")} />
-                          Lowest Value
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title="Sort by">
+                        <ListOrdered className="h-4 w-4" />
+                        <span className="hidden sm:inline font-normal">
+                          {sortBy === "newest"
+                            ? "Newest"
+                            : sortBy === "oldest"
+                              ? "Oldest"
+                              : sortBy === "value_desc"
+                                ? "Highest Value"
+                                : "Lowest Value"}
+                        </span>
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                        Newest
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                        Oldest
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_desc")}>
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "value_desc" ? "opacity-100" : "opacity-0")} />
+                        Highest Value
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_asc")}>
+                        <Check className={cn("mr-2 h-4 w-4", sortBy === "value_asc" ? "opacity-100" : "opacity-0")} />
+                        Lowest Value
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
                   <CalendarDateRangePicker 
                     onRangeChange={handleDateRangeChange} 
                     initialStartDate={dateRange.startDate}
                     initialEndDate={dateRange.endDate}
                   />
-                </div>
-                <div className="ml-auto flex items-center gap-4">
+                  
                   <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
               </div>

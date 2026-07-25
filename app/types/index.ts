@@ -97,7 +97,9 @@ export interface Sale {
   amount: number;
   amount_due: number;
   currency?: string;
+  location_id?: string | null;
   status: 'pending' | 'completed' | 'cancelled' | 'refunded';
+  locationId?: string | null;
   leadId: string | null;
   leadName: string | null;
   campaignId: string | null;
@@ -109,12 +111,14 @@ export interface Sale {
   invoiceNumber?: string;
   referenceCode?: string;
   externalId?: string;
-  source: 'retail' | 'online';
+  source: 'retail' | 'online' | 'quote' | 'marketplace';
   channel?: string;
   notes?: string;
   tags?: string[];
   siteId: string;
   userId: string;
+  buyerUserId?: string | null;
+  ownerSiteId?: string | null;
   createdAt: string;
   updatedAt: string;
   commandId?: string;
@@ -143,6 +147,8 @@ export interface SaleOrder {
   notes?: string;
   status: string;
   siteId: string;
+  buyerUserId?: string | null;
+  ownerSiteId?: string | null;
   promotionId?: string;
   priceListId?: string;
   createdAt: string;
@@ -161,6 +167,8 @@ export interface SaleOrderData {
   notes?: string;
   status: string;
   site_id: string;
+  buyer_user_id?: string | null;
+  owner_site_id?: string | null;
   promotion_id?: string;
   price_list_id?: string;
   created_at: string;
@@ -263,10 +271,12 @@ export interface SaleData {
   sale_date: string;
   payment_method: string | null;
   payments?: Payment[];
-  source: 'retail' | 'online';
+  source: 'retail' | 'online' | 'quote' | 'marketplace';
   notes: string | null;
   site_id: string;
   user_id: string;
+  buyer_user_id?: string | null;
+  owner_site_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -374,11 +384,33 @@ export interface CatalogCategory {
   updated_at: string;
 }
 
+export interface Tax {
+  id: string;
+  site_id: string;
+  name: string;
+  /** Percentage rate, e.g. 16 for 16%. */
+  rate: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CatalogItemTax {
+  id: string;
+  site_id: string;
+  catalog_item_id: string;
+  tax_id: string;
+  created_at: string;
+  tax?: Tax;
+}
+
 export interface CatalogItem {
   id: string;
   site_id: string;
   category_id?: string;
-  kind: 'product' | 'service';
+  kind: 'product' | 'service' | 'digital_asset';
+  digital_subtype?: 'ticket' | 'course' | 'file' | 'pass' | 'license' | null;
+  is_marketplace_listed?: boolean;
   name: string;
   description?: string;
   image_url?: string;
@@ -402,6 +434,8 @@ export interface Subscription {
   id: string;
   site_id: string;
   lead_id: string;
+  buyer_user_id?: string | null;
+  owner_site_id?: string | null;
   catalog_item_id: string;
   status: 'active' | 'paused' | 'cancelled' | 'expired';
   start_date: string;
@@ -417,6 +451,8 @@ export interface Reservation {
   id: string;
   site_id: string;
   lead_id: string;
+  buyer_user_id?: string | null;
+  owner_site_id?: string | null;
   catalog_item_id: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   start_time: string;
@@ -428,11 +464,70 @@ export interface Reservation {
   lead?: { name: string; email?: string };
 }
 
+export interface Quotation {
+  id: string;
+  site_id: string;
+  deal_id?: string | null;
+  lead_id: string;
+  buyer_user_id?: string | null;
+  price_list_id?: string | null;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  valid_until?: string | null;
+  currency: string;
+  notes?: string | null;
+  subtotal: number;
+  discount_total: number;
+  tax_total: number;
+  total: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuotationItem {
+  id: string;
+  quotation_id: string;
+  catalog_item_id: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  metadata?: any;
+}
+
+export interface Entitlement {
+  id: string;
+  site_id: string;
+  buyer_user_id: string;
+  owner_site_id?: string | null;
+  catalog_item_id: string;
+  source_type: 'purchase' | 'subscription';
+  source_id: string;
+  status: 'active' | 'revoked' | 'expired' | 'used';
+  granted_at: string;
+  expires_at?: string | null;
+  metadata?: any;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionPlanItem {
+  id: string;
+  site_id: string;
+  plan_catalog_item_id: string;
+  digital_catalog_item_id: string;
+  created_at: string;
+}
+
 export interface Location {
   id: string;
   site_id: string;
   name: string;
   code?: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  country?: string | null;
   is_default: boolean;
   is_active: boolean;
   created_at: string;

@@ -14,6 +14,9 @@ import { upsertCatalogItem, listCatalogCategories } from "../actions"
 import { CatalogCategory } from "@/app/types"
 import { ImageUpload } from "@/app/components/ui/image-upload"
 
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
+
 interface CreateCatalogItemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -22,13 +25,15 @@ interface CreateCatalogItemDialogProps {
 
 type FormData = {
   name: string
-  kind: 'product' | 'service'
+  kind: 'product' | 'service' | 'digital_asset'
+  digital_subtype?: 'ticket' | 'course' | 'file' | 'pass' | 'license' | 'none'
+  is_marketplace_listed: boolean
   sku: string
   target_sale_price: string
   cost: string
   availability_mode: 'manual' | 'inventory' | 'always'
   track_inventory: boolean
-  category_id?: string
+  category_value: RelationSelectValue
   is_pos_available: boolean
   is_recurring: boolean
   is_reservation: boolean
@@ -44,6 +49,8 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: {
       kind: 'product',
+      digital_subtype: 'none',
+      is_marketplace_listed: true,
       availability_mode: 'manual',
       track_inventory: false,
       sku: '',
@@ -66,7 +73,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
   const kind = watch('kind')
   const mode = watch('availability_mode')
   const trackInventory = watch('track_inventory')
-  const categoryId = watch('category_id')
+  const categoryValue = watch('category_value')
   const isPos = watch('is_pos_available')
   const isRecurring = watch('is_recurring')
   const isReservation = watch('is_reservation')
@@ -76,10 +83,15 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
     setIsSubmitting(true)
 
     try {
+      const { id: resolvedCategoryId, error: catError } = await resolveRelationId("catalog_category", data.category_value, currentSite.id)
+      if (catError) throw new Error(`Category error: ${catError}`)
+
       const res = await upsertCatalogItem({
         site_id: currentSite.id,
         name: data.name,
         kind: data.kind,
+        digital_subtype: data.digital_subtype === 'none' ? undefined : (data.digital_subtype || undefined),
+        is_marketplace_listed: data.is_marketplace_listed,
         sku: data.sku || undefined,
         target_sale_price: data.target_sale_price ? parseFloat(data.target_sale_price) : undefined,
         cost: data.cost ? parseFloat(data.cost) : undefined,
@@ -87,7 +99,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
         track_inventory: data.track_inventory,
         status: 'active',
         availability_status: 'available',
-        category_id: data.category_id === 'none' ? undefined : (data.category_id || undefined),
+        category_id: resolvedCategoryId || undefined,
         is_pos_available: data.is_pos_available,
         is_recurring: data.is_recurring,
         is_reservation: data.is_reservation,
@@ -139,28 +151,44 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="product">Product (Physical/Digital)</SelectItem>
+                  <SelectItem value="product">Physical Product</SelectItem>
                   <SelectItem value="service">Service</SelectItem>
+                  <SelectItem value="digital_asset">Digital Asset</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
-            <div className="space-y-2 col-span-2 md:col-span-1">
-              <Label htmlFor="category">Category</Label>
-              <Select 
-                value={categoryId} 
-                onValueChange={(val: any) => setValue('category_id', val)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {kind === 'digital_asset' && (
+              <div className="space-y-2 col-span-2 md:col-span-1">
+                <Label htmlFor="digital_subtype">Digital Subtype</Label>
+                <Select 
+                  value={watch('digital_subtype')} 
+                  onValueChange={(val: any) => setValue('digital_subtype', val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="ticket">Ticket</SelectItem>
+                    <SelectItem value="course">Course</SelectItem>
+                    <SelectItem value="file">File</SelectItem>
+                    <SelectItem value="pass">Pass</SelectItem>
+                    <SelectItem value="license">License</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            <div className={`space-y-2 col-span-2 ${kind === 'digital_asset' ? 'md:col-span-2' : 'md:col-span-1'}`}>
+              <Label htmlFor="category_value">Category</Label>
+              <RelationSelect 
+                options={categories.map(cat => ({ id: cat.id, label: cat.name }))}
+                value={categoryValue} 
+                onValueChange={(val) => setValue('category_value', val, { shouldValidate: true })}
+                placeholder="Select category..."
+                emptyMessage="No categories found"
+              />
             </div>
           </div>
 
@@ -191,6 +219,9 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                 placeholder="0.00" 
                 {...register("target_sale_price")} 
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("catalog.item.priceHint")}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="cost">Unit Cost</Label>
@@ -207,14 +238,14 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
 
           <div className="space-y-4 pt-4 border-t">
             <h4 className="text-sm font-medium">Features</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="flex items-center space-x-2 border p-3 rounded-md">
                 <Checkbox 
                   id="is_pos_available" 
                   checked={isPos}
                   onCheckedChange={(checked) => setValue('is_pos_available', checked as boolean)}
                 />
-                <Label htmlFor="is_pos_available" className="cursor-pointer">Available in POS</Label>
+                <Label htmlFor="is_pos_available" className="cursor-pointer text-xs">Available in POS</Label>
               </div>
               <div className="flex items-center space-x-2 border p-3 rounded-md">
                 <Checkbox 
@@ -222,7 +253,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                   checked={isRecurring}
                   onCheckedChange={(checked) => setValue('is_recurring', checked as boolean)}
                 />
-                <Label htmlFor="is_recurring" className="cursor-pointer">Recurring (Subscription)</Label>
+                <Label htmlFor="is_recurring" className="cursor-pointer text-xs">Recurring</Label>
               </div>
               <div className="flex items-center space-x-2 border p-3 rounded-md">
                 <Checkbox 
@@ -230,7 +261,15 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                   checked={isReservation}
                   onCheckedChange={(checked) => setValue('is_reservation', checked as boolean)}
                 />
-                <Label htmlFor="is_reservation" className="cursor-pointer">Reservable (Booking)</Label>
+                <Label htmlFor="is_reservation" className="cursor-pointer text-xs">Reservable</Label>
+              </div>
+              <div className="flex items-center space-x-2 border p-3 rounded-md">
+                <Checkbox 
+                  id="is_marketplace_listed" 
+                  checked={watch('is_marketplace_listed') ?? false}
+                  onCheckedChange={(checked) => setValue('is_marketplace_listed', checked as boolean)}
+                />
+                <Label htmlFor="is_marketplace_listed" className="cursor-pointer text-xs">Marketplace</Label>
               </div>
             </div>
           </div>

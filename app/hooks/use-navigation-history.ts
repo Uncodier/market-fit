@@ -72,7 +72,11 @@ function isRootRoute(fullPath: string): boolean {
   const segments = pathname.split('/').filter(Boolean)
   
   // Special case for nested root routes
-  if (segments[0] === 'applications' && segments[1] === 'database' && segments.length === 2) {
+  if (
+    (segments[0] === 'applications' && segments[1] === 'database' && segments.length === 2) ||
+    (segments[0] === 'purchases' && segments.length === 2) ||
+    (segments[0] === 'buyer' && segments.length === 2)
+  ) {
     return true
   }
   

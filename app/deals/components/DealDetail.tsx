@@ -14,6 +14,8 @@ import { updateDeal, removeDealContact, getDealById, getSiteQualificationCriteri
 import { toast } from "sonner"
 import { Briefcase, Building, Calendar, DollarSign, FileText, Target, Users, Settings, Edit, BarChart, User, PlusCircle, Plus } from "@/app/components/ui/icons"
 import { CompanySelector } from "@/app/leads/components/CompanySelector"
+import { RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { LinkContactDialog } from "./LinkContactDialog"
 import { LinkTeamMemberDialog } from "./LinkTeamMemberDialog"
 import { DealSalesOrder } from "./DealSalesOrder"
@@ -46,6 +48,9 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
     amount: deal.amount?.toString() || "",
     expected_close_date: deal.expected_close_date ? new Date(deal.expected_close_date).toISOString().split('T')[0] : "",
     company_id: deal.company_id || "",
+    companyValue: (deal.company_id && deal.companies
+      ? { mode: "existing" as const, id: deal.company_id, label: deal.companies.name }
+      : null) as RelationSelectValue,
   })
   
   const [stageForm, setStageForm] = useState({
@@ -63,6 +68,9 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
       amount: deal.amount?.toString() || "",
       expected_close_date: deal.expected_close_date ? new Date(deal.expected_close_date).toISOString().split('T')[0] : "",
       company_id: deal.company_id || "",
+      companyValue: deal.company_id && deal.companies
+        ? { mode: "existing", id: deal.company_id, label: deal.companies.name }
+        : null,
     })
     setStageForm({
       stage: deal.stage || "prospecting",
@@ -91,12 +99,23 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
   const handleSaveGeneral = async () => {
     setIsUpdating(true)
     try {
+      let companyId = generalForm.company_id || null
+      if (generalForm.companyValue !== undefined) {
+        const { id, error } = await resolveRelationId(
+          "company",
+          generalForm.companyValue,
+          deal.site_id
+        )
+        if (error) throw new Error(error)
+        companyId = id
+      }
+
       const updates = {
         id: deal.id,
         name: generalForm.name,
         amount: generalForm.amount ? parseFloat(generalForm.amount) : null,
         expected_close_date: generalForm.expected_close_date || null,
-        company_id: generalForm.company_id || null,
+        company_id: companyId,
       }
       const result = await updateDeal(updates)
       if (result.error) {
@@ -443,7 +462,19 @@ export function DealDetail({ deal, onUpdate, tab = "summary", onTabChange }: Dea
               <CompanySelector 
                 selectedCompanyId={generalForm.company_id}
                 initialCompany={deal.company_id && deal.companies ? { id: deal.company_id, name: deal.companies.name } : null}
-                onCompanyChange={(c) => setGeneralForm({ ...generalForm, company_id: c ? c.id : "" })}
+                onCompanyChange={(c) =>
+                  setGeneralForm({
+                    ...generalForm,
+                    company_id: c?.id || "",
+                  })
+                }
+                onCompanyValueChange={(value) =>
+                  setGeneralForm({
+                    ...generalForm,
+                    companyValue: value,
+                    company_id: value?.mode === "existing" ? value.id : "",
+                  })
+                }
                 isEditing={true}
                 hideLabel={true}
               />

@@ -28,7 +28,7 @@ interface PaymentConfirmationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   totalAmount: number
-  onConfirm: (payments: PaymentEntry[]) => void
+  onConfirm: (payments: PaymentEntry[], promotionCode?: string, intent?: 'complete' | 'pay') => void
   isLoading?: boolean
 }
 
@@ -44,6 +44,7 @@ export function PaymentConfirmationDialog({
   const [payments, setPayments] = useState<PaymentEntry[]>([])
   const [selectedMethod, setSelectedMethod] = useState("cash")
   const [currentAmount, setCurrentAmount] = useState("")
+  const [promoCode, setPromoCode] = useState("")
 
   const remainingAmount = Math.max(0, totalAmount - payments.reduce((sum, p) => sum + p.amount, 0))
   const totalChange = payments.reduce((sum, p) => sum + p.change, 0)
@@ -54,6 +55,7 @@ export function PaymentConfirmationDialog({
       setPayments([])
       setSelectedMethod("cash")
       setCurrentAmount(totalAmount.toString())
+      setPromoCode("")
     }
   }, [open, totalAmount])
 
@@ -65,11 +67,11 @@ export function PaymentConfirmationDialog({
   }, [remainingAmount, open, payments.length])
 
   const paymentMethods = [
-    { value: "cash", label: "Cash", icon: Banknote },
-    { value: "credit_card", label: "Credit Card", icon: CreditCard },
-    { value: "debit_card", label: "Debit Card", icon: CreditCard },
-    { value: "transfer", label: "Bank Transfer", icon: Banknote },
-    { value: "other", label: "Other", icon: HelpCircle },
+    { value: "cash", label: t('pos.payment.methods.cash') || "Cash", icon: Banknote },
+    { value: "credit_card", label: t('pos.payment.methods.creditCard') || "Credit Card", icon: CreditCard },
+    { value: "debit_card", label: t('pos.payment.methods.debitCard') || "Debit Card", icon: CreditCard },
+    { value: "transfer", label: t('pos.payment.methods.transfer') || "Bank Transfer", icon: Banknote },
+    { value: "other", label: t('pos.payment.methods.other') || "Other", icon: HelpCircle },
   ]
 
   const handleAddPayment = () => {
@@ -103,138 +105,253 @@ export function PaymentConfirmationDialog({
     setPayments(newPayments)
   }
 
-  const handleConfirm = () => {
-    if (remainingAmount > 0) return
-    onConfirm(payments)
+  const handleConfirmPay = () => {
+    onConfirm(payments, promoCode || undefined, 'pay')
+  }
+
+  const handleConfirmComplete = () => {
+    onConfirm(payments, promoCode || undefined, 'complete')
+  }
+
+  const handleClear = () => setCurrentAmount("")
+
+  const handleBackspace = () => setCurrentAmount((prev) => prev.slice(0, -1))
+
+  const handleDigit = (d: string) => {
+    if (d === "." && currentAmount.includes(".")) return
+    setCurrentAmount((prev) => {
+      // If we are starting fresh and hit dot, prepend 0
+      if (prev === "" && d === ".") return "0."
+      // If we just have 0 and hit a number, replace 0
+      if (prev === "0" && d !== ".") return d
+      return prev + d
+    })
   }
 
   const getMethodLabel = (val: string) => paymentMethods.find(m => m.value === val)?.label || val
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Complete Payment</DialogTitle>
-          <DialogDescription>
-            Select a payment method and confirm the transaction.
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[900px] overflow-hidden">
+        <DialogHeader className="relative pb-6 border-b">
+          <div className="flex justify-between items-center w-full pr-6">
+            <div className="flex flex-col gap-1">
+              <DialogTitle className="text-2xl font-bold">{t('pos.payment.title') || 'Complete Payment'}</DialogTitle>
+              <DialogDescription>
+                {t('pos.payment.desc') || 'Select a payment method and confirm the transaction.'}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="flex flex-col items-center justify-center p-4 bg-muted/30 rounded-lg border">
-            <span className="text-sm text-muted-foreground mb-1">Total to Pay</span>
-            <span className="text-3xl font-bold text-foreground">
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalAmount)}
-            </span>
-          </div>
-
-          {payments.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-foreground">Applied Payments</h4>
-              <div className="space-y-2">
-                {payments.map((p, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-card border rounded-md shadow-sm">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">{getMethodLabel(p.method)}</span>
-                      {p.method === 'cash' && p.change > 0 && (
-                        <span className="text-xs text-muted-foreground">
-                          Tendered: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.tendered)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-green-600">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.amount)}
-                      </span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemovePayment(idx)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {remainingAmount > 0 ? (
-            <div className="space-y-4 p-4 border rounded-lg bg-card">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-foreground">Remaining Balance</span>
-                <span className="text-lg font-bold text-blue-600">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(remainingAmount)}
-                </span>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="payment-method">Payment Method</Label>
-                  <Select value={selectedMethod} onValueChange={setSelectedMethod}>
-                    <SelectTrigger id="payment-method">
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-4">
+          {/* Column 1: Payment Input */}
+          <div className="flex flex-col gap-6">
+            {remainingAmount > 0 ? (
+              <div className="flex flex-col h-full justify-between">
+                <div className="space-y-8">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t('pos.payment.method') || 'Payment Method'}</Label>
+                    <div className="grid grid-cols-3 gap-3">
                       {paymentMethods.map(method => {
                         const Icon = method.icon
+                        const isSelected = selectedMethod === method.value
                         return (
-                          <SelectItem key={method.value} value={method.value}>
-                            <div className="flex items-center">
-                              <Icon className="w-4 h-4 mr-2 text-muted-foreground" />
-                              {method.label}
-                            </div>
-                          </SelectItem>
+                          <button
+                            key={method.value}
+                            type="button"
+                            onClick={() => setSelectedMethod(method.value)}
+                            className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl transition-all ${
+                              isSelected 
+                                ? 'bg-primary/10 text-primary ring-1 ring-primary/30 shadow-sm' 
+                                : 'bg-muted/20 hover:bg-muted/50 text-muted-foreground'
+                            }`}
+                          >
+                            <Icon className="w-6 h-6" />
+                            <span className="text-xs font-medium text-center leading-tight">{method.label}</span>
+                          </button>
                         )
                       })}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    </div>
+                  </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="amount-tendered">
-                    {selectedMethod === 'cash' ? 'Amount Tendered' : 'Amount to Charge'}
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      id="amount-tendered"
-                      type="number"
-                      step="0.01"
-                      className="pl-7"
-                      value={currentAmount}
-                      onChange={(e) => setCurrentAmount(e.target.value)}
-                    />
+                  <div className="space-y-3">
+                    <Label htmlFor="amount-tendered" className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                      {selectedMethod === 'cash' ? (t('pos.payment.amountTendered') || 'Amount Tendered') : (t('pos.payment.amountToCharge') || 'Amount to Charge')}
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-xl">$</span>
+                      <Input
+                        id="amount-tendered"
+                        type="number"
+                        step="0.01"
+                        className="pl-9 text-2xl font-bold h-14 bg-muted/10 border-muted-foreground/20 rounded-xl"
+                        value={currentAmount}
+                        onChange={(e) => setCurrentAmount(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <Button className="w-full" variant="secondary" onClick={handleAddPayment} disabled={!currentAmount || parseFloat(currentAmount) <= 0}>
-                  Add Payment
+                <div className="mt-8">
+                  <Button className="w-full h-12 text-base rounded-xl" onClick={handleAddPayment} disabled={!currentAmount || parseFloat(currentAmount) <= 0}>
+                    {t('pos.payment.addPayment') || 'Add Payment'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 bg-green-50/50 rounded-xl border border-green-100 flex flex-col gap-4">
+                <div className="flex items-center justify-between text-green-800">
+                  <span className="font-semibold">{t('pos.payment.status') || 'Status'}</span>
+                  <span className="font-bold text-lg bg-green-200/50 px-3 py-1 rounded-full">{t('pos.payment.fullyPaid') || 'Fully Paid'}</span>
+                </div>
+                {totalChange > 0 && (
+                  <div className="flex items-center justify-between text-green-800 pt-4 border-t border-green-200/50">
+                    <span className="font-semibold">{t('pos.payment.changeToReturn') || 'Change to Return'}</span>
+                    <span className="text-2xl font-bold">
+                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalChange)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Column 2: Numpad */}
+          <div className="flex flex-col gap-3 mt-4 md:mt-0 justify-center h-full px-2">
+            <div className="grid grid-cols-4 gap-3">
+              <div className="col-span-3 grid grid-cols-3 gap-3">
+                {["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "C"].map((d) => (
+                  <Button
+                    key={d}
+                    type="button"
+                    variant="ghost"
+                    className={`aspect-square !p-0 h-auto !min-w-0 !rounded-full text-2xl font-medium transition-colors ${
+                      d === "C"
+                        ? "bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
+                        : "bg-muted/30 hover:bg-muted/50 text-foreground"
+                    }`}
+                    onClick={() => (d === "C" ? handleClear() : handleDigit(d))}
+                    disabled={remainingAmount <= 0}
+                  >
+                    {d}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-muted/30 hover:bg-muted/50 text-foreground"
+                  onClick={handleBackspace}
+                  disabled={remainingAmount <= 0 || !currentAmount}
+                >
+                  ⌫
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-muted/30 hover:bg-muted/50 text-foreground text-sm font-semibold tracking-tight"
+                  onClick={() => setCurrentAmount(Math.ceil(remainingAmount).toString())}
+                  disabled={remainingAmount <= 0}
+                >
+                  Exact
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-muted/30 hover:bg-muted/50 text-foreground text-sm font-semibold tracking-tight"
+                  onClick={() => setCurrentAmount(Math.ceil(remainingAmount / 10) * 10 + "")}
+                  disabled={remainingAmount <= 0}
+                >
+                  +10
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-muted/30 hover:bg-muted/50 text-foreground text-sm font-semibold tracking-tight"
+                  onClick={() => setCurrentAmount(Math.ceil(remainingAmount / 50) * 50 + "")}
+                  disabled={remainingAmount <= 0}
+                >
+                  +50
                 </Button>
               </div>
             </div>
-          ) : (
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200 space-y-2">
-              <div className="flex items-center justify-between text-green-800">
-                <span className="font-medium">Status</span>
-                <span className="font-bold">Fully Paid</span>
-              </div>
-              {totalChange > 0 && (
-                <div className="flex items-center justify-between text-green-800 pt-2 border-t border-green-200">
-                  <span className="font-medium">Change to Return</span>
-                  <span className="text-xl font-bold">
-                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalChange)}
-                  </span>
+          </div>
+
+          {/* Column 3: Summary (Total to Pay & Applied Payments) */}
+          <div className="flex flex-col mt-4 md:mt-0 justify-between bg-slate-50 dark:bg-muted/10 rounded-2xl overflow-hidden h-full">
+            <div className="flex flex-col items-center justify-center py-8 px-4 border-b border-border/40 bg-white/50 dark:bg-background/20">
+              <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('pos.payment.totalToPay') || 'Total to Pay'}</span>
+              <span className="text-5xl font-bold text-foreground">
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalAmount)}
+              </span>
+            </div>
+
+            <div className="flex-1 flex flex-col min-h-0">
+              {payments.length > 0 ? (
+                <div className="flex-1 p-6 overflow-y-auto">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">{t('pos.payment.appliedPayments') || 'Applied Payments'}</h4>
+                  <div className="space-y-1">
+                    {payments.map((p, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-3 border-b border-border/40 last:border-0">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">{getMethodLabel(p.method)}</span>
+                          {p.method === 'cash' && p.change > 0 && (
+                            <span className="text-[11px] text-muted-foreground mt-0.5">
+                              {t('pos.payment.tendered') || 'Tendered'}: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.tendered)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-green-600">
+                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.amount)}
+                          </span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemovePayment(idx)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center p-6 text-muted-foreground/50 text-sm italic">
+                  {t('pos.payment.noPayments') || 'No payments applied yet.'}
                 </div>
               )}
             </div>
-          )}
+
+            {remainingAmount > 0 && (
+              <div className="flex flex-col items-center justify-center py-6 px-4 bg-blue-50/50 dark:bg-blue-950/20 border-t border-blue-100 dark:border-blue-900/50 mt-auto">
+                <span className="text-sm font-semibold text-blue-800/70 dark:text-blue-300/70 uppercase tracking-wider mb-2">{t('pos.payment.remainingBalance') || 'Remaining Balance'}</span>
+                <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(remainingAmount)}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-            Cancel
+            {t('common.cancel') || 'Cancel'}
           </Button>
-          <Button onClick={handleConfirm} disabled={remainingAmount > 0 || isLoading}>
-            {isLoading ? "Processing..." : "Complete Order"}
-          </Button>
+          
+          {remainingAmount > 0 && totalAmount > 0 ? (
+            <>
+              <Button variant="secondary" onClick={handleConfirmComplete} disabled={isLoading}>
+                {isLoading ? (t('pos.payment.processing') || "Processing...") : (t('pos.payment.completeOrderOnly') || "Complete (Unpaid)")}
+              </Button>
+              <Button onClick={handleConfirmPay} disabled={remainingAmount > 0 || isLoading}>
+                {isLoading ? (t('pos.payment.processing') || "Processing...") : (t('pos.payment.payOrder') || "Pay")}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={handleConfirmPay} disabled={remainingAmount > 0 || isLoading}>
+              {isLoading ? (t('pos.payment.processing') || "Processing...") : (t('pos.payment.completeOrder') || "Complete Order")}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

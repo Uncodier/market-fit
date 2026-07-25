@@ -1444,7 +1444,7 @@ export default function LeadsPage() {
               </div>
             ) : (
               <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-8">
+                <div className="flex items-center gap-4">
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full hidden lg:flex">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.all') || 'All Companies'}>
                     <LayoutGrid size={13} className="md:!hidden" />
@@ -1479,7 +1479,6 @@ export default function LeadsPage() {
                     <span className="tab-label">{t('leads.tabs.notQualified') || 'Not Qualified'}</span>
                   </TabsTrigger>
                 </TabsList>
-                <div className="flex items-center gap-2">
                   <SearchInput
                     placeholder="Search leads..."
                     value={searchQuery}
@@ -1487,7 +1486,16 @@ export default function LeadsPage() {
                     className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                     alwaysExpanded={false}
                   />
-
+                </div>
+                <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                  {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
+                    <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                      <Badge variant="outline" className="rounded-full px-2 py-0">
+                        {filters.status.length + filters.segments.length + filters.origin.length}
+                      </Badge>
+                      <span className="ml-2">{t('leads.filters.clear') || 'Clear'}</span>
+                    </Button>
+                  )}
                   <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
                     <Filter className="h-4 w-4" />
                   </Button>
@@ -1539,20 +1547,10 @@ export default function LeadsPage() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+
+                  <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
               </div>
-              <div className="ml-auto flex items-center gap-4">
-                {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
-                  <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                    <Badge variant="outline" className="rounded-full px-2 py-0">
-                      {filters.status.length + filters.segments.length + filters.origin.length}
-                    </Badge>
-                    <span className="ml-2">{t('leads.filters.clear') || 'Clear'}</span>
-                  </Button>
-                )}
-                <ViewSelector currentView={viewType} onViewChange={setViewType} />
-              </div>
-            </div>
             )}
           </div>
         </StickyHeader>

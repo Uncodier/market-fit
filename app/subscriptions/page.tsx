@@ -72,7 +72,7 @@ export default function SubscriptionsPage() {
               </Tabs>
             </div>
             
-            <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <div className="w-full md:w-auto">
                 <SearchInput 
                   placeholder="Search subscriptions..." 
@@ -87,7 +87,7 @@ export default function SubscriptionsPage() {
       </StickyHeader>
 
       <div className="p-4 md:p-6 lg:p-8 flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="space-y-6">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <p className="text-muted-foreground">Loading subscriptions...</p>

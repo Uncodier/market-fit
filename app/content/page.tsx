@@ -80,6 +80,8 @@ import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { isSocialMediaEntryConnected } from "@/app/components/settings/data-adapter"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 const CONTENT_STATUSES = [
   { id: 'draft' },
@@ -137,11 +139,22 @@ function ContentDetail({ content, onClose, segments, onRatingChange, onPublish }
     title: content.title,
     description: content.description || '',
     type: content.type,
-    segment_id: content.segment_id || 'none',
+    segment_id: content.segment_id || '',
+    segmentValue: content.segment_id ? { mode: "existing", id: content.segment_id, label: "Loading..." } : null as RelationSelectValue,
     tags: content.tags || [],
     performance_rating: content.performance_rating
   })
   const [tagInput, setTagInput] = useState('')
+
+  // Need to sync segment label after segments load
+  useEffect(() => {
+    if (content.segment_id) {
+      const match = segments.find(s => s.id === content.segment_id)
+      if (match) {
+        setEditForm(prev => ({...prev, segmentValue: { mode: "existing", id: match.id, label: match.name }}))
+      }
+    }
+  }, [content.segment_id, segments])
 
   const handleRatingChange = (rating: number) => {
     // Update local state
@@ -186,12 +199,15 @@ function ContentDetail({ content, onClose, segments, onRatingChange, onPublish }
     
     setIsSaving(true)
     try {
+      const { id: resolvedSegmentId, error: segError } = await resolveRelationId("segment", editForm.segmentValue, content.site_id)
+      if (segError) throw new Error(segError)
+
       const result = await updateContent({
         contentId: content.id,
         title: editForm.title,
         description: editForm.description || undefined,
         type: editForm.type,
-        segment_id: editForm.segment_id === 'none' ? null : editForm.segment_id,
+        segment_id: resolvedSegmentId || null,
         tags: editForm.tags.length > 0 ? editForm.tags : null,
         performance_rating: editForm.performance_rating
       })
@@ -327,19 +343,14 @@ function ContentDetail({ content, onClose, segments, onRatingChange, onPublish }
               <div className="flex-1">
                 <p className="text-xs text-muted-foreground mb-[5px]">{t('content.detail.segment')}</p>
                 {isEditing ? (
-                  <Select value={editForm.segment_id} onValueChange={(value) => setEditForm({...editForm, segment_id: value})}>
-                    <SelectTrigger className="h-12 text-sm">
-                      <SelectValue placeholder={t('content.detail.selectSegment')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">{t('content.detail.noSegment')}</SelectItem>
-                      {segments.map((segment) => (
-                        <SelectItem key={segment.id} value={segment.id}>
-                          {segment.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <RelationSelect 
+                    options={segments.map((segment) => ({ id: segment.id, label: segment.name }))}
+                    value={editForm.segmentValue}
+                    onValueChange={(val) => setEditForm({...editForm, segmentValue: val, segment_id: val?.mode === "existing" ? val.id : ""})}
+                    placeholder={t('content.detail.selectSegment')}
+                    emptyMessage="No segment found"
+                    className="h-12"
+                  />
                 ) : (
                   <p className="text-sm font-medium">{getSegmentName(content.segment_id, segments)}</p>
                 )}

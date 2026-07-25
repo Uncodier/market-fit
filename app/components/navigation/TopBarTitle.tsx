@@ -87,7 +87,9 @@ export function TopBarTitle({
       'shipments': t('layout.sidebar.shipments') || 'Shipments',
       'promotions': t('layout.sidebar.promotions') || 'Promotions',
       'subscriptions': t('layout.sidebar.subscriptions') || 'Subscriptions',
-      'reservations': t('layout.sidebar.reservations') || 'Reservations'
+      'reservations': t('layout.sidebar.reservations') || 'Reservations',
+      'purchases': t('layout.category.buying') || 'Purchases',
+      'transactions': t('layout.sidebar.transactions') || 'Transactions'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)

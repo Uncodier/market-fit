@@ -50,6 +50,9 @@ import { cn } from "@/lib/utils"
 import { createConversation } from "@/app/services/chat-service"
 import { createClient } from "@/utils/supabase/client"
 
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { RelationSelectValue } from "@/app/components/ui/relation-select"
+
 // Type for active site members with guaranteed user_id
 type ActiveSiteMember = SiteMember & { user_id: string }
 import { 
@@ -136,12 +139,21 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     return option.name.toLowerCase().includes(assigneeSearch.toLowerCase())
   })
 
-  const [editForm, setEditForm] = useState<Omit<Lead, "id" | "created_at">>({
+  type LeadEditForm = Omit<Lead, "id" | "created_at"> & {
+    segmentValue?: RelationSelectValue
+    campaignValue?: RelationSelectValue
+    companyValue?: RelationSelectValue
+  }
+
+  const [editForm, setEditForm] = useState<LeadEditForm>({
     name: lead.name,
     email: lead.email,
     personal_email: lead.personal_email,
     phone: lead.phone,
     company_id: lead.company_id,
+    companyValue: lead.company_id
+      ? { mode: "existing", id: lead.company_id, label: lead.company?.name || "Unknown" }
+      : null,
     company: lead.company || { 
       name: "", 
       website: "", 
@@ -178,7 +190,9 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
     address: lead.address || { street: "", city: "", state: "", zipcode: "", country: "" },
     notes: lead.notes || null,
     attribution: lead.attribution || null,
-    assignee_id: lead.assignee_id || null
+    assignee_id: lead.assignee_id || null,
+    updated_at: lead.updated_at,
+    last_contact: lead.last_contact,
   })
 
   // Sync editForm with lead prop when lead changes, but only when NOT editing
@@ -191,6 +205,9 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
         personal_email: lead.personal_email,
         phone: lead.phone,
         company_id: lead.company_id,
+        companyValue: lead.company_id
+          ? { mode: "existing", id: lead.company_id, label: lead.company?.name || "Unknown" }
+          : null,
         company: lead.company || { 
           name: "", 
           website: "", 
@@ -227,7 +244,9 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
         address: lead.address || { street: "", city: "", state: "", zipcode: "", country: "" },
         notes: lead.notes || null,
         attribution: lead.attribution || null,
-        assignee_id: lead.assignee_id || null
+        assignee_id: lead.assignee_id || null,
+        updated_at: lead.updated_at,
+        last_contact: lead.last_contact,
       })
     }
   }, [lead, isEditing])
@@ -538,13 +557,45 @@ export function LeadDetail({ lead, segments, campaigns, onUpdateLead, onClose, o
   const handleSaveChanges = async () => {
     setIsSaving(true)
     try {
+      if (!currentSite) throw new Error("No site selected")
+
+      // Resolve relations if their value is set
+      let finalSegmentId = editForm.segment_id
+      if (editForm.segmentValue !== undefined) {
+        const { id, error } = await resolveRelationId("segment", editForm.segmentValue, currentSite.id)
+        if (error) throw new Error(error)
+        finalSegmentId = id || null
+      }
+
+      let finalCampaignId = editForm.campaign_id
+      if (editForm.campaignValue !== undefined) {
+        const { id, error } = await resolveRelationId("campaign", editForm.campaignValue, currentSite.id)
+        if (error) throw new Error(error)
+        finalCampaignId = id || null
+      }
+
+      let finalCompanyId = editForm.company_id
+      if (editForm.companyValue !== undefined) {
+        const { id, error } = await resolveRelationId("company", editForm.companyValue, currentSite.id)
+        if (error) throw new Error(error)
+        finalCompanyId = id || null
+      }
+
       // Only send fields that actually changed
       const changedFields: any = {}
       
+      const formToCompare = {
+        ...editForm,
+        segment_id: finalSegmentId,
+        campaign_id: finalCampaignId,
+        company_id: finalCompanyId,
+      }
+
       // Check each field for changes
-      Object.keys(editForm).forEach((key) => {
+      Object.keys(formToCompare).forEach((key) => {
+        if (key === 'segmentValue' || key === 'campaignValue' || key === 'companyValue') return
         const oldValue = lead[key as keyof Lead]
-        const newValue = editForm[key as keyof typeof editForm]
+        const newValue = formToCompare[key as keyof typeof formToCompare]
         
         if (isValueChanged(oldValue, newValue)) {
           // For object fields, clean them before including

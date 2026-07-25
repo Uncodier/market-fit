@@ -13,7 +13,7 @@ import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Badge } from "@/app/components/ui/badge"
-import { Combobox } from "@/app/components/ui/combobox"
+import { RelationSelect } from "@/app/components/ui/relation-select"
 import { 
   Filter, 
   Tag, 
@@ -357,13 +357,19 @@ export function TaskFilterModal({
                       </div>
                     )
                   })}
-                  <Combobox
-                    options={leads.map(lead => ({ value: lead.id, label: lead.name }))}
-                    value=""
-                    onValueChange={handleLeadChange}
+                  <RelationSelect
+                    options={leads.map(lead => ({ id: lead.id, label: lead.name }))}
+                    value={null}
+                    allowCreate={false}
+                    clearAfterSelect
+                    clearable={false}
+                    onValueChange={(value) => {
+                      if (value && value.mode === "existing") {
+                        handleLeadChange(value.id);
+                      }
+                    }}
                     placeholder={t('controlCenter.filter.searchLeads') || "Search leads..."}
                     emptyMessage={t('controlCenter.filter.noLeads') || "No leads found"}
-                    icon={<User className="h-4 w-4" />}
                   />
                 </div>
               </div>
@@ -414,13 +420,19 @@ export function TaskFilterModal({
                       </div>
                     )
                   })}
-                  <Combobox
-                    options={users.map(user => ({ value: user.id, label: user.name }))}
-                    value=""
-                    onValueChange={handleAssigneeChange}
+                  <RelationSelect
+                    options={users.map(user => ({ id: user.id, label: user.name }))}
+                    value={null}
+                    allowCreate={false}
+                    clearAfterSelect
+                    clearable={false}
+                    onValueChange={(value) => {
+                      if (value && value.mode === "existing") {
+                        handleAssigneeChange(value.id);
+                      }
+                    }}
                     placeholder={t('controlCenter.filter.searchUsers') || "Search users..."}
                     emptyMessage={t('controlCenter.filter.noUsers') || "No users found"}
-                    icon={<Users className="h-4 w-4" />}
                   />
                 </div>
               </div>

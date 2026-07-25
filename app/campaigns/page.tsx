@@ -714,13 +714,14 @@ export default function CampaignsPage() {
                 className="w-64"
                 alwaysExpanded={false}
               />
+            <div className="flex items-center gap-2 md:ml-auto">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">
                     <Filter className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[200px]">
+                <DropdownMenuContent align="end" className="w-[200px]">
                   <DropdownMenuCheckboxItem
                     checked={selectedPriorities.length === 3}
                     onCheckedChange={(checked) => {
@@ -793,7 +794,7 @@ export default function CampaignsPage() {
                     <ChevronDown className="h-3 w-3 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuContent align="end" className="w-52">
                   <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("due_date")}>
                     <Check className={cn("mr-2 h-4 w-4", sortBy === "due_date" ? "opacity-100" : "opacity-0")} />
                     Due date
@@ -816,6 +817,7 @@ export default function CampaignsPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
             </div>
             <CalendarDateRangePicker />
           </div>

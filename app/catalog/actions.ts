@@ -288,3 +288,105 @@ export async function assertCanSell(siteId: string, catalogItemId: string, quant
   }
   return result;
 }
+
+export async function getSubscriptionPlanItems(planCatalogItemId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('subscription_plan_items')
+    .select('*, digital_catalog_item:catalog_items!digital_catalog_item_id(id, name, kind, digital_subtype)')
+    .eq('plan_catalog_item_id', planCatalogItemId)
+  return { data, error: error?.message }
+}
+
+export async function addSubscriptionPlanItem(siteId: string, planCatalogItemId: string, digitalCatalogItemId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('subscription_plan_items')
+    .insert({ site_id: siteId, plan_catalog_item_id: planCatalogItemId, digital_catalog_item_id: digitalCatalogItemId })
+    .select()
+    .single()
+  return { data, error: error?.message }
+}
+
+export async function removeSubscriptionPlanItem(id: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('subscription_plan_items')
+    .delete()
+    .eq('id', id)
+  return { error: error?.message }
+}
+
+export async function findOrCreateCatalogCategory(site_id: string, name: string) {
+  try {
+    if (!name || !name.trim()) return { category: null, error: "Name is required" }
+    const trimmed = name.trim()
+
+    const supabase = await createClient()
+    const { data: existing, error: searchError } = await supabase
+      .from("catalog_categories")
+      .select("*")
+      .eq("site_id", site_id)
+      .ilike("name", trimmed)
+      .limit(1)
+      .single()
+
+    if (existing) return { category: existing, error: null }
+    if (searchError && searchError.code !== "PGRST116") {
+      return { category: null, error: searchError.message }
+    }
+
+    const { data: category, error } = await supabase
+      .from("catalog_categories")
+      .insert({
+        site_id,
+        name: trimmed
+      })
+      .select()
+      .single()
+
+    return { category, error: error?.message || null }
+  } catch (error: any) {
+    return { category: null, error: error.message }
+  }
+}
+
+export async function findOrCreateCatalogItem(site_id: string, name: string, defaults?: Record<string, any>) {
+  try {
+    if (!name || !name.trim()) return { item: null, error: "Name is required" }
+    const trimmed = name.trim()
+
+    const supabase = await createClient()
+    const { data: existing, error: searchError } = await supabase
+      .from("catalog_items")
+      .select("*")
+      .eq("site_id", site_id)
+      .ilike("name", trimmed)
+      .limit(1)
+      .single()
+
+    if (existing) return { item: existing, error: null }
+    if (searchError && searchError.code !== "PGRST116") {
+      return { item: null, error: searchError.message }
+    }
+
+    const kind = defaults?.kind || "product"
+
+    const { data: item, error } = await supabase
+      .from("catalog_items")
+      .insert({
+        site_id,
+        name: trimmed,
+        kind,
+        status: "active",
+        ...defaults
+      })
+      .select()
+      .single()
+
+    return { item, error: error?.message || null }
+  } catch (error: any) {
+    return { item: null, error: error.message }
+  }
+}
+

@@ -47,6 +47,9 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { useRouter } from "next/navigation"
 
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
+
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Copywriting types
@@ -169,9 +172,12 @@ function CreateCopywritingDialog({
     type: 'tweet' as CopywritingType,
     content: '',
     segment_id: '',
-    campaign_id: ''
+    campaign_id: '',
+    segmentValue: null as RelationSelectValue,
+    campaignValue: null as RelationSelectValue
   })
 
+  const { currentSite } = useSite()
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.title.trim()) {
@@ -179,16 +185,45 @@ function CreateCopywritingDialog({
       return
     }
     
-    await onSubmit(formData)
-    setFormData({
-      title: '',
-      description: '',
-      type: 'tweet',
-      content: '',
-      segment_id: '',
-      campaign_id: ''
-    })
-    onClose()
+    if (!currentSite) {
+      toast.error('Site is required')
+      return
+    }
+
+    try {
+      let resolvedSegmentId = null;
+      if (formData.segmentValue) {
+        const { id, error } = await resolveRelationId("segment", formData.segmentValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedSegmentId = id;
+      }
+
+      let resolvedCampaignId = null;
+      if (formData.campaignValue) {
+        const { id, error } = await resolveRelationId("campaign", formData.campaignValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedCampaignId = id;
+      }
+
+      await onSubmit({
+        ...formData,
+        segment_id: resolvedSegmentId || '',
+        campaign_id: resolvedCampaignId || ''
+      })
+      setFormData({
+        title: '',
+        description: '',
+        type: 'tweet',
+        content: '',
+        segment_id: '',
+        campaign_id: '',
+        segmentValue: null,
+        campaignValue: null
+      })
+      onClose()
+    } catch (err: any) {
+      toast.error(err.message || 'Error resolving relations')
+    }
   }
 
   return (
@@ -248,41 +283,23 @@ function CreateCopywritingDialog({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="segment">Segment (Optional)</Label>
-              <Select 
-                value={formData.segment_id} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, segment_id: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select segment..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">No segment</SelectItem>
-                  {segments.map(segment => (
-                    <SelectItem key={segment.id} value={segment.id}>
-                      {segment.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <RelationSelect 
+                options={segments.map(s => ({ id: s.id, label: s.name }))}
+                value={formData.segmentValue} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, segmentValue: value }))}
+                placeholder="Select a segment..."
+                emptyMessage="No segment found"
+              />
             </div>
             <div>
               <Label htmlFor="campaign">Campaign (Optional)</Label>
-              <Select 
-                value={formData.campaign_id} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, campaign_id: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select campaign..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">No campaign</SelectItem>
-                  {campaigns.map(campaign => (
-                    <SelectItem key={campaign.id} value={campaign.id}>
-                      {campaign.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <RelationSelect 
+                options={campaigns.map(c => ({ id: c.id, label: c.title }))}
+                value={formData.campaignValue} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, campaignValue: value }))}
+                placeholder="Select a campaign..."
+                emptyMessage="No campaign found"
+              />
             </div>
           </div>
 

@@ -46,6 +46,7 @@ export interface Deal {
   qualification_score: number | null
   qualification_criteria: Record<string, any>
   sales_order_id: string | null
+  accepted_quotation_id: string | null
   created_at: string
   updated_at: string
   

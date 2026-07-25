@@ -200,8 +200,8 @@ export function ConfigurationSection({
     >
       <div
         className={cn(
-          "flex flex-shrink-0 items-center justify-center safari-icon-fix",
-          isCollapsed ? "h-full w-full" : "h-[24px] w-[24px]"
+          "flex flex-shrink-0 items-center justify-center",
+          isCollapsed ? "h-full w-full" : "h-[24px] w-[24px] safari-icon-fix"
         )}
       >
         <Settings 

@@ -121,7 +121,7 @@ export default function CatalogPage() {
                 </Tabs>
               </div>
 
-              <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto">
+              <div className="flex items-center gap-2 w-full md:w-auto">
                 <form onSubmit={handleSearch} className="w-full md:w-auto">
                   <SearchInput 
                     placeholder={t('catalog.search') || "Search catalog..."} 
@@ -130,6 +130,9 @@ export default function CatalogPage() {
                     alwaysExpanded={false}
                   />
                 </form>
+              </div>
+              
+              <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto">
                 <div className="hidden md:flex ml-2">
                   <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
@@ -144,7 +147,7 @@ export default function CatalogPage() {
       </StickyHeader>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
-        <div className="mx-auto w-full max-w-[1200px] flex flex-col gap-6">
+        <div className="flex flex-col gap-6">
           <div className={cn(viewType === 'table' ? "bg-card rounded-xl shadow-sm border border-border overflow-hidden" : "")}>
             {isLoading ? (
               <div className="p-6 space-y-4">
@@ -156,16 +159,18 @@ export default function CatalogPage() {
               <div className="p-6 text-center text-red-500">
                 Failed to load catalog. {error.message}
               </div>
-            ) : data?.data && data.data.length > 0 ? (
+            ) : (
               <>
                 {viewType === 'table' ? (
                   <>
                     <CatalogTable 
-                      items={data.data} 
+                      items={data?.data || []} 
                       onUpdate={() => mutate()} 
+                      searchQuery={searchQuery}
+                      onCreateOpen={() => setIsCreateOpen(true)}
                     />
                     
-                    {data.count > pageSize && (
+                    {(data?.count ?? 0) > pageSize && (
                       <div className="p-4 border-t flex justify-center bg-muted/30">
                         <Pagination 
                           currentPage={page}
@@ -178,26 +183,30 @@ export default function CatalogPage() {
                 ) : (
                   <div className={viewType === 'kanban' ? "overflow-x-auto -mx-4 md:-mx-6" : ""}>
                     <div className={viewType === 'kanban' ? "px-4 md:px-6" : ""}>
-                      <KanbanView 
-                        items={data.data} 
-                        onUpdateKind={handleUpdateKind} 
-                      />
+                      {data?.data && data.data.length > 0 ? (
+                        <KanbanView 
+                          items={data.data} 
+                          onUpdateKind={handleUpdateKind} 
+                        />
+                      ) : (
+                        <div className="pt-4">
+                          <EmptyCard
+                            icon={<Archive className="h-6 w-6" />}
+                            title={t('catalog.empty.title') || "No items found"}
+                            description={t('catalog.empty.description') || (searchQuery ? "No items match your search criteria." : "Start by adding products or services to your catalog.")}
+                            actionButton={
+                              <Button onClick={() => setIsCreateOpen(true)} variant="outline">
+                                <Plus className="mr-2 h-4 w-4" />
+                                {t('catalog.addItem') || 'Add Item'}
+                              </Button>
+                            }
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </>
-            ) : (
-                <EmptyCard
-                  icon={<Archive className="h-6 w-6" />}
-                  title={t('catalog.empty.title') || "No items found"}
-                  description={t('catalog.empty.description') || (searchQuery ? "No items match your search criteria." : "Start by adding products or services to your catalog.")}
-                  actionButton={
-                    <Button onClick={() => setIsCreateOpen(true)} variant="outline">
-                      <Plus className="mr-2 h-4 w-4" />
-                      {t('catalog.addItem') || 'Add Item'}
-                    </Button>
-                  }
-                />
             )}
           </div>
         </div>

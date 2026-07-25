@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { CatalogItem } from "@/app/types"
 import { checkoutCart, CheckoutLine } from "@/app/commerce/checkout"
+import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
+import { DestinationSelector } from "@/app/components/commerce/DestinationSelector"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -14,6 +16,7 @@ import {
   Moon, Sun
 } from "@/app/components/ui/icons"
 import { useTheme } from "@/app/context/ThemeContext"
+import { resolveItemImage } from "@/app/lib/image-utils"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/app/components/ui/sheet"
 
 interface CartItem extends CatalogItem {
@@ -76,6 +79,31 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
   }
 
   const [promotionCode, setPromotionCode] = useState("")
+  const [ownerSiteId, setOwnerSiteId] = useState<string | null>(null)
+  const { user } = useAuth()
+  const session = user ? { user } : null
+  
+  // Set customer details if logged in
+  useEffect(() => {
+    if (session?.user && !customerEmail) {
+      setCustomerEmail(session.user.email || "")
+      setCustomerName(session.user.user_metadata?.name || "")
+    }
+  }, [session])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      if (url.searchParams.get('success') === 'true') {
+        setOrderSuccess(true)
+        setCart([])
+        // Clean up URL
+        url.searchParams.delete('success')
+        url.searchParams.delete('order_id')
+        window.history.replaceState({}, '', url.toString())
+      }
+    }
+  }, [])
 
   const updateQty = (id: string, delta: number) => {
     setCart(cart.map(c => {
@@ -121,6 +149,8 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
       lines,
       customerName,
       customerEmail,
+      buyerUserId: session?.user?.id,
+      ownerSiteId: ownerSiteId,
       fulfillment,
       originLocationId: originLocationId,
       shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
@@ -132,10 +162,36 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
       toast.error(res.error)
       setCheckoutLoading(false)
     } else {
-      setOrderSuccess(true)
-      setCart([])
-      setCheckoutLoading(false)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (subtotal > 0) {
+        // Redirect to Stripe
+        try {
+          const stripeRes = await fetch('/api/stripe/checkout/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: res.orderId,
+              siteId: site.id,
+              returnUrl: window.location.origin + '/shop/' + site.slug
+            })
+          })
+          const stripeData = await stripeRes.json()
+          if (stripeData.url) {
+            window.location.href = stripeData.url
+            return // don't set loading to false so it feels continuous
+          } else {
+            toast.error(stripeData.error || "Failed to initiate payment")
+            setCheckoutLoading(false)
+          }
+        } catch (e) {
+          toast.error("Failed to connect to payment gateway")
+          setCheckoutLoading(false)
+        }
+      } else {
+        setOrderSuccess(true)
+        setCart([])
+        setCheckoutLoading(false)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
     }
   }
 
@@ -221,6 +277,8 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
                     setPromotionCode={setPromotionCode}
                     shippingAddress={shippingAddress}
                     setShippingAddress={setShippingAddress}
+                    ownerSiteId={ownerSiteId}
+                    setOwnerSiteId={setOwnerSiteId}
                     handleCheckout={handleCheckout}
                     checkoutLoading={checkoutLoading}
                     closeCart={() => setIsCartOpen(false)}
@@ -338,11 +396,7 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
                 {/* Image / Placeholder */}
                 <div className="aspect-[4/5] bg-gray-100 rounded-2xl overflow-hidden mb-4 relative">
                   <div className="absolute inset-0 flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
-                    {item.image_url ? (
-                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                    ) : (
-                      item.kind === 'product' ? <Archive className="h-24 w-24 text-gray-300" /> : <DatabaseIcon className="h-24 w-24 text-gray-300" />
-                    )}
+                    <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
                   </div>
                 </div>
 
@@ -436,6 +490,7 @@ export function CartSidebar({
   originLocationId, setOriginLocationId,
   promotionCode, setPromotionCode,
   shippingAddress, setShippingAddress,
+  ownerSiteId, setOwnerSiteId,
   handleCheckout, checkoutLoading, closeCart, site
 }: any) {
   return (
@@ -464,11 +519,7 @@ export function CartSidebar({
               {cart.map((item: CartItem) => (
                 <div key={item.id} className="flex gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
                   <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">
-                     {item.image_url ? (
-                       <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                     ) : (
-                       item.kind === 'product' ? <Archive className="h-8 w-8 text-gray-300" /> : <DatabaseIcon className="h-8 w-8 text-gray-300" />
-                     )}
+                     <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
@@ -501,6 +552,11 @@ export function CartSidebar({
               <h3 className="font-bold text-lg border-b dark:border-gray-800 pb-3">Contact & Shipping</h3>
               
               <div className="space-y-4 pt-2">
+                <DestinationSelector 
+                  value={ownerSiteId} 
+                  onChange={setOwnerSiteId} 
+                />
+
                 <div>
                   <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 block">Full Name</Label>
                   <Input required placeholder="Jane Doe" value={customerName} onChange={e => setCustomerName(e.target.value)} className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />

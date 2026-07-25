@@ -77,19 +77,46 @@ export async function createSite(
     if (error) throw new SiteServiceError(`Error al crear el sitio: ${error.message}`)
     if (!data) throw new SiteServiceError('No se pudo crear el sitio')
 
-    // Commerce seeding: create default location and price list
+    // Commerce seeding: default location + price list
+    // Prefer locations passed via settings JSON when present (onboarding parity).
     try {
-      await supabase.from("locations").insert({
-        site_id: data.id,
-        name: "Main",
-        is_default: true,
-        is_active: true
-      });
+      const settingsLocations = (site as any)?.settings?.locations;
+      const namedLocations = Array.isArray(settingsLocations)
+        ? settingsLocations.filter((loc: any) => loc?.name && String(loc.name).trim())
+        : [];
+
+      if (namedLocations.length > 0) {
+        for (let i = 0; i < namedLocations.length; i++) {
+          const loc = namedLocations[i];
+          await supabase.from("locations").upsert(
+            {
+              site_id: data.id,
+              name: String(loc.name).trim(),
+              address: loc.address || null,
+              city: loc.city || null,
+              state: loc.state || null,
+              zip: loc.zip || null,
+              country: loc.country || null,
+              is_default: i === 0,
+              is_active: true,
+            },
+            { onConflict: "site_id,name" }
+          );
+        }
+      } else {
+        await supabase.from("locations").insert({
+          site_id: data.id,
+          name: "Main",
+          is_default: true,
+          is_active: true,
+        });
+      }
+
       await supabase.from("price_lists").insert({
         site_id: data.id,
         name: "Standard",
         is_default: true,
-        is_active: true
+        is_active: true,
       });
     } catch (e) {
       console.warn("Error seeding commerce defaults for new site", e);

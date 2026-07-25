@@ -242,6 +242,96 @@ export async function POST(request: NextRequest) {
           throw error // Re-throw to be caught by main error handler
         }
       }
+      // Check if this is a marketplace/shop sale order
+      else if (session.metadata?.type === 'sale_order') {
+        console.log('🛍️ Processing sale order payment')
+        try {
+          const siteId = session.metadata.site_id
+          const orderId = session.metadata.order_id
+          const saleId = session.metadata.sale_id
+          
+          if (!orderId || !saleId) {
+            console.error('❌ Missing order_id or sale_id in metadata', session.metadata)
+            break
+          }
+          
+          // Update sale order status
+          const { error: orderError } = await supabase
+            .from('sale_orders')
+            .update({ status: 'completed' })
+            .eq('id', orderId)
+            
+          if (orderError) throw new Error(`Failed to update order status: ${orderError.message}`)
+            
+          // Update sale status
+          const { error: saleError } = await supabase
+            .from('sales')
+            .update({ status: 'completed', amount_due: 0 })
+            .eq('id', saleId)
+            
+          if (saleError) throw new Error(`Failed to update sale status: ${saleError.message}`)
+            
+          // Process fulfillment and inventory if applicable
+          const { data: orderDetails } = await supabase
+            .from('sale_orders')
+            .select('user_id, site_id')
+            .eq('id', orderId)
+            .single()
+            
+          if (orderDetails) {
+             const { processPostPaymentFulfillment } = await import('@/app/commerce/post-payment')
+             await processPostPaymentFulfillment(orderId, orderDetails.site_id, saleId, session.metadata.lead_id, orderDetails.user_id)
+          }
+
+          // Grant entitlements (using our service)
+          console.log(`🎁 Granting entitlements for order ${orderId}`)
+          const { grantFromOrder, syncSubscriptionEntitlements } = await import('@/app/commerce/entitlements')
+          await grantFromOrder(orderId, true) // forceServiceRole = true
+          
+          // Activate pending subscriptions created during checkout
+          const { data: order } = await supabase.from('sale_orders').select('sale_id, buyer_user_id').eq('id', orderId).single()
+          if (order) {
+            // Find pending subscriptions related to this order's buyer or lead and matching the items
+            const { data: sale } = await supabase.from('sales').select('lead_id').eq('id', order.sale_id).single()
+            
+            if (sale?.lead_id || order.buyer_user_id) {
+               const { data: orderItems } = await supabase.from('sale_order_items').select('catalog_item_id').eq('sale_order_id', orderId)
+               const catalogItemIds = orderItems?.map((oi: any) => oi.catalog_item_id) || []
+               
+               if (catalogItemIds.length > 0) {
+                 let subQuery = supabase.from('subscriptions').select('id').eq('status', 'pending').in('catalog_item_id', catalogItemIds)
+                 
+                 if (order.buyer_user_id) {
+                   subQuery = subQuery.eq('buyer_user_id', order.buyer_user_id)
+                 } else if (sale?.lead_id) {
+                   subQuery = subQuery.eq('lead_id', sale.lead_id)
+                 }
+                 
+                 const { data: subsToActivate } = await subQuery
+                 
+                 if (subsToActivate && subsToActivate.length > 0) {
+                   await supabase
+                     .from('subscriptions')
+                     .update({ status: 'active' })
+                     .in('id', subsToActivate.map((s: any) => s.id))
+                     
+                   // Sync entitlements for activated subscriptions
+                   for (const sub of subsToActivate) {
+                     await syncSubscriptionEntitlements(sub.id, true)
+                   }
+                 }
+               }
+            }
+          }
+          
+          // Note: we don't have a direct payment record table linked to sale without schema changes
+          
+          console.log(`✅ Successfully processed sale order: ${orderId}`)
+        } catch (error) {
+          console.error('❌ Error processing sale order:', error)
+          throw error
+        }
+      }
       // Check if this is a subscription signup
       else if (session.metadata?.type === 'subscription') {
         console.log('📋 Processing subscription signup')

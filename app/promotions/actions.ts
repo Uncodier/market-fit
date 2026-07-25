@@ -197,8 +197,12 @@ export async function applyPromotionToOrder(siteId: string, saleOrderId: string,
     // Cap discount to total
     discount = Math.min(discount, orderSubtotal);
 
+    // Fetch existing order to get tax_total
+    const { data: order } = await supabase.from("sale_orders").select("sale_id, tax_total").eq("id", saleOrderId).single();
+    const taxTotal = Number(order?.tax_total) || 0;
+
     // 6. Update order
-    const total = orderSubtotal - discount;
+    const total = Math.max(0, orderSubtotal - discount + taxTotal);
     const { error: updateError } = await supabase
       .from("sale_orders")
       .update({
@@ -211,7 +215,6 @@ export async function applyPromotionToOrder(siteId: string, saleOrderId: string,
     if (updateError) throw new Error(updateError.message);
     
     // 6b. Update sale amount
-    const { data: order } = await supabase.from("sale_orders").select("sale_id").eq("id", saleOrderId).single();
     if (order?.sale_id) {
       await supabase.from("sales").update({ amount: total, amount_due: total }).eq("id", order.sale_id);
     }

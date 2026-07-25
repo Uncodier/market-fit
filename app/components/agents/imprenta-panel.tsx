@@ -48,6 +48,7 @@ import { MediaParametersToolbar } from "../simple-messages-view/components/Media
 import { ImageParameters, VideoParameters, AudioParameters } from "../simple-messages-view/types"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { copyToClipboard } from "@/app/utils/clipboard"
 import { markdownComponents } from '../simple-messages-view/utils/markdownComponents'
 
 import { ImprentaSkeleton } from "@/app/components/skeletons/imprenta-skeleton"
@@ -1668,8 +1669,12 @@ const ImprentaNodeCardInner = memo(({
                                       else textToCopy = JSON.stringify(res, null, 2);
                                       
                                       try {
-                                        await navigator.clipboard.writeText(textToCopy);
-                                        toast.success("Copied to clipboard");
+                                        const success = await copyToClipboard(textToCopy);
+                                        if (success) {
+                                          toast.success("Copied to clipboard");
+                                        } else {
+                                          toast.error("Failed to copy");
+                                        }
                                       } catch (err) {
                                         toast.error("Failed to copy");
                                       }

@@ -15,14 +15,15 @@ import {
 import { CalendarDays } from "./custom-icons"
 import { Lead, Segment } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 
 interface DetailsTabProps {
   lead: Lead
   segments: Segment[]
   campaigns: Campaign[]
   isEditing: boolean
-  editForm: Omit<Lead, "id" | "created_at">
-  setEditForm: React.Dispatch<React.SetStateAction<Omit<Lead, "id" | "created_at">>>
+  editForm: Omit<Lead, "id" | "created_at"> & { segmentValue?: RelationSelectValue, campaignValue?: RelationSelectValue }
+  setEditForm: React.Dispatch<React.SetStateAction<any>>
   getSegmentName: (segmentId: string | null) => string
   getCampaignName: (campaignId: string | null) => string
   getLanguageName: (languageCode: string | null) => string | null
@@ -251,22 +252,14 @@ export function DetailsTab({
         <div className="flex-1 min-w-0">
           <p className="text-xs text-muted-foreground mb-[5px] truncate">Segment</p>
           {isEditing ? (
-            <Select 
-              value={editForm.segment_id || "none"}
-              onValueChange={(value) => setEditForm({...editForm, segment_id: value === "none" ? null : value})}
-            >
-              <SelectTrigger className="h-12 text-sm">
-                <SelectValue placeholder="Select segment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Not specified</SelectItem>
-                {segments.map((segment) => (
-                  <SelectItem key={segment.id} value={segment.id}>
-                    {segment.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RelationSelect
+              options={segments.map(s => ({ id: s.id, label: s.name }))}
+              value={editForm.segmentValue !== undefined ? editForm.segmentValue : (editForm.segment_id ? { mode: "existing", id: editForm.segment_id, label: getSegmentName(editForm.segment_id) } : null)}
+              onValueChange={(val) => setEditForm({ ...editForm, segmentValue: val, segment_id: val?.mode === "existing" ? val.id : undefined })}
+              placeholder="Select segment"
+              emptyMessage="No segments found"
+              className="h-12"
+            />
           ) : (
             <p className="text-sm font-medium truncate" title={getSegmentName(lead.segment_id)}>{getSegmentName(lead.segment_id)}</p>
           )}
@@ -280,22 +273,14 @@ export function DetailsTab({
         <div className="flex-1 min-w-0">
           <p className="text-xs text-muted-foreground mb-[5px] truncate">Campaign</p>
           {isEditing ? (
-            <Select 
-              value={editForm.campaign_id || "none"}
-              onValueChange={(value) => setEditForm({...editForm, campaign_id: value === "none" ? null : value})}
-            >
-              <SelectTrigger className="h-12 text-sm">
-                <SelectValue placeholder="Select campaign" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Not specified</SelectItem>
-                {campaigns.map((campaign) => (
-                  <SelectItem key={campaign.id} value={campaign.id}>
-                    {campaign.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RelationSelect
+              options={campaigns.map(c => ({ id: c.id, label: c.title }))}
+              value={editForm.campaignValue !== undefined ? editForm.campaignValue : (editForm.campaign_id ? { mode: "existing", id: editForm.campaign_id, label: getCampaignName(editForm.campaign_id) } : null)}
+              onValueChange={(val) => setEditForm({ ...editForm, campaignValue: val, campaign_id: val?.mode === "existing" ? val.id : undefined })}
+              placeholder="Select campaign"
+              emptyMessage="No campaigns found"
+              className="h-12"
+            />
           ) : (
             <p className="text-sm font-medium truncate" title={getCampaignName(lead.campaign_id)}>{getCampaignName(lead.campaign_id)}</p>
           )}

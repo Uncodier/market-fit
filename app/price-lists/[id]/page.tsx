@@ -2,23 +2,29 @@
 
 import React, { useState, useEffect } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
 import { getPriceList, listPriceListItems, setPriceListItem, removePriceListItem, upsertPriceList } from "../actions"
 import { listCatalogItems } from "@/app/catalog/actions"
 import { PriceList, CatalogItem } from "@/app/types"
 import { PriceListItemWithCatalog } from "../types"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
+import { SearchInput } from "@/app/components/ui/search-input"
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Archive, DatabaseIcon } from "lucide-react"
+import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
 import { toast } from "sonner"
-import { ChevronLeft, Save, Trash2, Plus, Tag } from "@/app/components/ui/icons"
+import { ChevronLeft, Save, Trash2, Plus, Tag, Edit, MoreHorizontal } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 
 export default function PriceListDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -33,9 +39,16 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
   
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [selectedCatalogId, setSelectedCatalogId] = useState<string>('')
+  const [catalogValue, setCatalogValue] = useState<RelationSelectValue>(null)
   const [newPrice, setNewPrice] = useState<string>('')
   const [adding, setAdding] = useState(false)
+  const [kindFilter, setKindFilter] = useState<'all' | 'product' | 'service'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editItem, setEditItem] = useState<PriceListItemWithCatalog | null>(null)
+  const [editPrice, setEditPrice] = useState<string>('')
+  const [editing, setEditing] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -67,24 +80,38 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
   }, [params.id, currentSite])
 
   const handleAddPrice = async () => {
-    if (!currentSite || !selectedCatalogId || !newPrice) return
+    if (!currentSite || !catalogValue || !newPrice) return
     setAdding(true)
     
-    const priceNum = parseFloat(newPrice)
-    const { error } = await setPriceListItem(currentSite.id, params.id, selectedCatalogId, priceNum)
-    
-    if (error) {
-      toast.error(error)
-    } else {
-      toast.success("Price added")
-      // Reload items
-      const itemsRes = await listPriceListItems(params.id, currentSite.id)
-      if (itemsRes.data) setItems(itemsRes.data)
-      setIsAddOpen(false)
-      setSelectedCatalogId('')
-      setNewPrice('')
+    try {
+      const { id: resolvedCatalogId, error: catError } = await resolveRelationId(
+        "catalog_item", 
+        catalogValue, 
+        currentSite.id, 
+        { kind: "product" }
+      )
+      if (catError) throw new Error(`Catalog item error: ${catError}`)
+      if (!resolvedCatalogId) throw new Error("Catalog item is required")
+
+      const priceNum = parseFloat(newPrice)
+      const { error } = await setPriceListItem(currentSite.id, params.id, resolvedCatalogId, priceNum)
+      
+      if (error) {
+        toast.error(error)
+      } else {
+        toast.success("Price added")
+        // Reload items
+        const itemsRes = await listPriceListItems(params.id, currentSite.id)
+        if (itemsRes.data) setItems(itemsRes.data)
+        setIsAddOpen(false)
+        setCatalogValue(null)
+        setNewPrice('')
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add price")
+    } finally {
+      setAdding(false)
     }
-    setAdding(false)
   }
 
   const handleRemoveItem = async (itemId: string) => {
@@ -97,6 +124,32 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
       toast.success("Price removed")
     }
   }
+
+  const handleEditPrice = async () => {
+    if (!currentSite || !editItem || !editPrice) return
+    setEditing(true)
+    
+    try {
+      const priceNum = parseFloat(editPrice)
+      const { error } = await setPriceListItem(currentSite.id, params.id, editItem.catalog_item_id, priceNum)
+      
+      if (error) {
+        toast.error(error)
+      } else {
+        toast.success("Price updated")
+        // Reload items
+        const itemsRes = await listPriceListItems(params.id, currentSite.id)
+        if (itemsRes.data) setItems(itemsRes.data)
+        setIsEditOpen(false)
+        setEditItem(null)
+        setEditPrice('')
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update price")
+    } finally {
+      setEditing(false)
+    }
+  }
   
   const handleToggleActive = async () => {
     if (!list || !currentSite) return
@@ -104,6 +157,20 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
     if (data) setList(data)
     if (error) toast.error(error)
   }
+
+  // Listen to topbar events
+  useEffect(() => {
+    const handleAddPrice = () => setIsAddOpen(true);
+    const handleToggleActiveEvent = () => handleToggleActive();
+
+    window.addEventListener('price-list:add-price', handleAddPrice);
+    window.addEventListener('price-list:toggle-active', handleToggleActiveEvent);
+
+    return () => {
+      window.removeEventListener('price-list:add-price', handleAddPrice);
+      window.removeEventListener('price-list:toggle-active', handleToggleActiveEvent);
+    };
+  }, [list, currentSite]);
 
   // Trigger breadcrumb update
   useEffect(() => {
@@ -114,6 +181,10 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
           parent: {
             title: t('layout.sidebar.priceLists') || 'Price Lists',
             path: '/price-lists'
+          },
+          priceListData: {
+            id: list.id,
+            is_active: list.is_active
           }
         }
       });
@@ -130,23 +201,54 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
     ci => !items.some(pli => pli.catalog_item_id === ci.id)
   )
 
+  const filteredItems = items.filter(item => {
+    if (kindFilter !== 'all' && item.catalog_item?.kind !== kindFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!item.catalog_item?.name?.toLowerCase().includes(q) && !item.catalog_item?.sku?.toLowerCase().includes(q)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
-        <div className="w-full pt-0 flex justify-end">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleToggleActive}>
-              {list?.is_active ? 'Deactivate List' : 'Activate List'}
-            </Button>
-            <Button onClick={() => setIsAddOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Add Price
-            </Button>
+        <div className="w-full pt-0">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                <Tabs 
+                  value={kindFilter} 
+                  onValueChange={(val) => setKindFilter(val as any)}
+                  className="flex-shrink-0"
+                >
+                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+                    <TabsTrigger value="all" className="text-xs rounded-full">{t('catalog.kind.all') || 'All Items'}</TabsTrigger>
+                    <TabsTrigger value="product" className="gap-2 text-xs rounded-full"><Archive className="h-4 w-4"/> {t('catalog.kind.product') || 'Products'}</TabsTrigger>
+                    <TabsTrigger value="service" className="gap-2 text-xs rounded-full"><DatabaseIcon className="h-4 w-4"/> {t('catalog.kind.service') || 'Services'}</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <div className="w-full md:w-auto">
+                  <SearchInput 
+                    placeholder={t('catalog.search') || "Search catalog..."} 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    alwaysExpanded={false}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </StickyHeader>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
-        <div className="mx-auto max-w-[1000px]">
+        <div className="w-full">
           <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
             <Table>
               <TableHeader>
@@ -158,7 +260,7 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.length === 0 ? (
+                {filteredItems.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-48 p-0">
                       <EmptyCard
@@ -176,7 +278,7 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  items.map(item => (
+                  filteredItems.map(item => (
                     <TableRow key={item.id}>
                       <TableCell>
                         <div className="font-medium text-foreground">{item.catalog_item?.name}</div>
@@ -191,9 +293,28 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
                         {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.unit_price)}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => {
+                              setEditItem(item)
+                              setEditPrice(item.unit_price.toString())
+                              setIsEditOpen(true)
+                            }}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              <span>Edit Price</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => handleRemoveItem(item.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -213,22 +334,16 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Catalog Item</Label>
-              <Select value={selectedCatalogId} onValueChange={setSelectedCatalogId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select item..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {unmappedCatalogItems.length === 0 ? (
-                    <SelectItem value="empty" disabled>All items mapped</SelectItem>
-                  ) : (
-                    unmappedCatalogItems.map(ci => (
-                      <SelectItem key={ci.id} value={ci.id}>
-                        {ci.name} {ci.sku ? `(${ci.sku})` : ''} - Default: {ci.target_sale_price || 0}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              <RelationSelect 
+                options={unmappedCatalogItems.map(ci => ({ 
+                  id: ci.id, 
+                  label: `${ci.name} ${ci.sku ? `(${ci.sku})` : ''} - Default: ${ci.target_sale_price || 0}`
+                }))}
+                value={catalogValue} 
+                onValueChange={setCatalogValue}
+                placeholder="Select item..."
+                emptyMessage="All items mapped or no items found"
+              />
             </div>
             <div className="space-y-2">
               <Label>List Price</Label>
@@ -244,8 +359,36 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddPrice} disabled={!selectedCatalogId || !newPrice || adding || selectedCatalogId === 'empty'}>
+            <Button onClick={handleAddPrice} disabled={!catalogValue || !newPrice || adding}>
               {adding ? "Saving..." : "Add Price"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Item Price</DialogTitle>
+            <DialogDescription>Update the price for {editItem?.catalog_item?.name}.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>List Price</Label>
+              <Input 
+                type="number" 
+                step="0.01" 
+                min="0"
+                value={editPrice} 
+                onChange={e => setEditPrice(e.target.value)} 
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditPrice} disabled={!editPrice || editing}>
+              {editing ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

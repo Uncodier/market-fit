@@ -13,6 +13,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
   }
 
+  // Handle demo sites to prevent invalid UUID database errors
+  if (siteId.startsWith("demo-")) {
+    return NextResponse.json({
+      actual: 0,
+      percentChange: 0,
+      periodType: "monthly",
+      noData: true,
+      metadata: { warning: "Demo site detected" }
+    });
+  }
+
   const supabase = await createServiceClient(); // Use service client to bypass RLS for analytics data
 
   try {

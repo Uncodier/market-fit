@@ -19,6 +19,8 @@ import { SIDEBAR_AUTOMATION_AREA_ORDER } from "@/app/config/navigation-areas"
 import { OnboardingProgressWidget } from "./OnboardingProgressWidget"
 import { CreditsWidget } from "./CreditsWidget"
 
+import NavigationPage from "@/app/navigation/page"
+
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean
   onCollapse: () => void
@@ -108,8 +110,34 @@ export function Sidebar({
     handleSectionNavigation(e, href, "profile")
   }
 
+  const [isAppsLauncherOpen, setIsAppsLauncherOpen] = useState(false)
+
+  useEffect(() => {
+    setIsAppsLauncherOpen(false)
+  }, [pathname])
+
+  const handleAppsClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsAppsLauncherOpen(true)
+  }
+
   return (
     <>
+      {isAppsLauncherOpen && (
+        <div 
+          className="fixed inset-0 z-[300] bg-background/60 backdrop-blur-md flex flex-col animate-in fade-in duration-200"
+          onClick={() => setIsAppsLauncherOpen(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="w-full h-full flex flex-col transition-[padding] duration-300"
+            style={{ paddingLeft: isMobileOpen ? 0 : renderCollapsed ? 64 : 256 }}
+          >
+            <NavigationPage isOverlay onClose={() => setIsAppsLauncherOpen(false)} />
+          </div>
+        </div>
+      )}
       {isMobileOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-[190] md:hidden backdrop-blur-sm transition-opacity"
@@ -209,8 +237,9 @@ export function Sidebar({
                 href="/navigation"
                 icon={LayoutGrid}
                 title={t("layout.sidebar.apps") === "layout.sidebar.apps" ? "Apps" : t("layout.sidebar.apps")}
-                isActive={pathname.startsWith("/navigation")}
+                isActive={pathname.startsWith("/navigation") || isAppsLauncherOpen}
                 isCollapsed={renderCollapsed}
+                onClick={handleAppsClick}
               />
             </div>
 

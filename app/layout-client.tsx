@@ -21,9 +21,12 @@ const pathToNavKey: Record<string, string> = {
     "/catalog": "catalog",
     "/price-lists": "priceLists",
     "/inventory": "inventory",
+    "/orders": "orders",
     "/shipments": "shipments",
-    "/promotions": "promotions",
+    "/reservations": "reservations",
+    "/chat": "chat",
 
+  "/promotions": "promotions",
   "/segments": "segments",
   "/people": "people",
   "/content": "content",

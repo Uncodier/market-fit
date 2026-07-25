@@ -73,6 +73,11 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
+
+  // Handle demo sites to prevent invalid UUID database errors
+  if (siteId.startsWith("demo-")) {
+    return NextResponse.json({ salesCohorts: [], usageCohorts: [] });
+  }
   
   try {
     console.log(`[Cohorts API] Received request for site: ${siteId}, segment: ${segmentId || 'all'}`);

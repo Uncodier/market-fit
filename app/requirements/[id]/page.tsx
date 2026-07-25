@@ -148,6 +148,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
@@ -482,6 +484,7 @@ function RequirementDetailContent() {
     segments: [] as string[],
     campaigns: [] as string[],
     campaign_id: '',
+    campaignValue: null as RelationSelectValue,
     segmentNames: [] as string[],
     campaignNames: [] as string[],
     outsourceInstructions: '',
@@ -759,6 +762,7 @@ function RequirementDetailContent() {
         campaigns: campaignIds,
         campaignNames: campaignNames,
         campaign_id: campaign_id, // Use the first campaign_id (if it exists)
+        campaignValue: campaign_id ? { mode: "existing", id: campaign_id, label: campaigns.find(c => c.id === campaign_id)?.title || "Unknown" } : null,
         outsourceInstructions: requirement.instructions || "", // Initialize with instructions since it is the same field
         campaignOutsourced: campaignOutsourced,
         metadata: requirement.metadata || {}
@@ -1024,6 +1028,15 @@ function RequirementDetailContent() {
         workflow_connections: connections
       };
 
+      if (!currentSite) throw new Error("Site not found");
+
+      let resolvedCampaignId = editForm.campaign_id;
+      if (editForm.campaignValue !== undefined) {
+        const { id, error } = await resolveRelationId("campaign", editForm.campaignValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedCampaignId = id || "";
+      }
+
       const { error } = await updateRequirement({
         id: requirement.id,
         title: editForm.title,
@@ -1035,8 +1048,8 @@ function RequirementDetailContent() {
         source: editForm.source,
         budget: editForm.budget,
         segments: editForm.segments,
-        campaigns: editForm.campaigns,
-        campaign_id: editForm.campaign_id,
+        campaigns: resolvedCampaignId ? [resolvedCampaignId] : [],
+        campaign_id: resolvedCampaignId,
         outsourceInstructions: markdownInstructions,
         metadata: updatedMetadata
       })
@@ -1803,12 +1816,18 @@ function RequirementDetailContent() {
                     <Target className="h-4 w-4 text-muted-foreground" />
                     Campaigns
                   </Label>
-                  <Select
-                    value={editForm.campaign_id || "none"}
-                    onValueChange={(value) => {
-                      if (value !== "none") {
-                        const selectedCampaign = campaigns.find(c => c.id === value);
-                        if (selectedCampaign) {
+                  <RelationSelect
+                    options={campaigns.map(c => ({ id: c.id, label: c.title }))}
+                    value={editForm.campaignValue}
+                    onValueChange={(val) => {
+                      if (val) {
+                        const isExisting = val.mode === "existing";
+                        const campaignId = isExisting ? val.id : "";
+                        const campaignTitle = val.label;
+                        
+                        setEditForm(prev => ({ ...prev, campaignValue: val }));
+                        
+                        if (isExisting) {
                           // Load the selected campaign segments
                           const loadCampaignSegments = async () => {
                             try {
@@ -1818,7 +1837,7 @@ function RequirementDetailContent() {
                               const { data: campaignSegments, error } = await supabase
                                 .from("campaign_segments")
                                 .select("segment_id")
-                                .eq("campaign_id", value);
+                                .eq("campaign_id", campaignId);
                                 
                               if (error) {
                                 console.error("Error loading campaign segments:", error);
@@ -1837,14 +1856,14 @@ function RequirementDetailContent() {
                               // Update the form with the new campaign and its segments
                               setEditForm(prev => ({ 
                                 ...prev, 
-                                campaign_id: value,
-                                campaigns: [value], // Set campaigns as array with only the selected ID
-                                campaignNames: [selectedCampaign.title],
+                                campaign_id: campaignId,
+                                campaigns: [campaignId],
+                                campaignNames: [campaignTitle],
                                 segments: segmentIds,
                                 segmentNames: segmentNames
                               }));
                               
-                              toast.success(`Campaign "${selectedCampaign.title}" assigned. Segments updated to match campaign.`);
+                              toast.success(`Campaign "${campaignTitle}" assigned. Segments updated to match campaign.`);
                             } catch (err) {
                               console.error("Error in loadCampaignSegments:", err);
                               toast.error("Failed to load campaign segments");
@@ -1852,11 +1871,22 @@ function RequirementDetailContent() {
                           };
                           
                           loadCampaignSegments();
+                        } else {
+                           // For pending create, we just update the form's display state
+                           setEditForm(prev => ({ 
+                              ...prev, 
+                              campaign_id: "",
+                              campaigns: [],
+                              campaignNames: [campaignTitle],
+                              segments: [],
+                              segmentNames: []
+                            }));
                         }
                       } else {
-                        // If "none" is selected, clear campaign data
+                        // If null is selected, clear campaign data
                         setEditForm(prev => ({ 
                           ...prev, 
+                          campaignValue: null,
                           campaign_id: "",
                           campaigns: [],
                           campaignNames: [],
@@ -1868,25 +1898,10 @@ function RequirementDetailContent() {
                         toast.info("Campaign unassigned");
                       }
                     }}
-                  >
-                    <SelectTrigger className={`h-11 ${editForm.campaign_id ? 'bg-blue-100/20 text-blue-700 dark:text-blue-300 border-blue-300/30' : ''}`}>
-                      <SelectValue placeholder="Select a campaign">
-                        <span className="truncate block max-w-[180px]">
-                          {editForm.campaign_id ? campaigns.find(c => c.id === editForm.campaign_id)?.title || "Selected campaign" : "Select a campaign"}
-                        </span>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No campaign</SelectItem>
-                      {campaigns.map(campaign => (
-                        <SelectItem key={campaign.id} value={campaign.id}>
-                          <span className="truncate block w-full overflow-hidden">
-                            {campaign.title}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select a campaign"
+                    emptyMessage="No campaigns found"
+                    className={`h-11 ${editForm.campaign_id ? 'bg-blue-100/20 text-blue-700 dark:text-blue-300 border-blue-300/30' : ''}`}
+                  />
                 </div>
               </div>
             </div>

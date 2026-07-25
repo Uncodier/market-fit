@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import {
   getAudienceLeadsByAudienceIdPage,
@@ -139,6 +139,14 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
   }, [audienceId, page, embeddedSorted, loadRemote])
 
   useEffect(() => {
+    // Demo/embedded mode support: If the lead object is already provided
+    if (row && (row as any).lead) {
+      setLeadDetail((row as any).lead as Lead)
+      setLeadErr(null)
+      setLeadLoading(false)
+      return
+    }
+
     const leadId = row?.lead_id?.trim()
     if (!leadId || !siteId.trim() || !inViewport) {
       if (!leadId || !siteId.trim()) {

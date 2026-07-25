@@ -282,6 +282,27 @@ export async function GET(request: NextRequest) {
   if (!siteId) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
+
+  // Handle demo sites to prevent invalid UUID database errors
+  if (siteId.startsWith("demo-")) {
+    return NextResponse.json({
+      actual: 0,
+      unit: "%",
+      percentChange: 0,
+      periodType: "monthly",
+      noData: true,
+      metadata: { warning: "Demo site detected" },
+      details: {
+        campaignCount: 0,
+        campaignBudget: 0,
+        convertedLeadsCount: 0,
+        totalRevenue: 0,
+        alternativeRoi: null,
+        transactionsCount: 0,
+        totalTransactions: 0
+      }
+    });
+  }
   
   console.log('[ROI API] Request parameters:', { 
     siteId, 

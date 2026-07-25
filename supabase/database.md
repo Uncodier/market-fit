@@ -2141,6 +2141,11 @@ CREATE TABLE IF NOT EXISTS public.locations (
   site_id uuid NOT NULL,
   name text NOT NULL,
   code text,
+  address text,
+  city text,
+  state text,
+  zip text,
+  country text,
   is_default boolean DEFAULT false,
   is_active boolean DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -2212,12 +2217,17 @@ CREATE TABLE IF NOT EXISTS public.sale_order_items (
   quantity numeric NOT NULL DEFAULT 1,
   unit_price numeric NOT NULL DEFAULT 0,
   subtotal numeric NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'draft' CHECK (status = ANY (ARRAY['draft', 'new', 'preparing', 'completed'])),
+  sent_at timestamp with time zone,
+  shipment_id uuid,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT sale_order_items_pkey PRIMARY KEY (id),
   CONSTRAINT sale_order_items_sale_order_id_fkey FOREIGN KEY (sale_order_id) REFERENCES public.sale_orders(id) ON DELETE CASCADE,
   CONSTRAINT sale_order_items_site_id_fkey FOREIGN KEY (site_id) REFERENCES public.sites(id) ON DELETE CASCADE,
   CONSTRAINT sale_order_items_catalog_item_id_fkey FOREIGN KEY (catalog_item_id) REFERENCES public.catalog_items(id) ON DELETE SET NULL,
-  CONSTRAINT sale_order_items_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id) ON DELETE SET NULL
+  CONSTRAINT sale_order_items_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id) ON DELETE SET NULL,
+  CONSTRAINT sale_order_items_shipment_id_fkey FOREIGN KEY (shipment_id) REFERENCES public.shipments(id) ON DELETE SET NULL
 );
 
 -- 8. shipments
@@ -2448,3 +2458,69 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+-- NEW SCHEMA ADDITIONS (Commercial Platform Completion)
+
+-- 1. Extend catalog_items
+-- ALTER TABLE public.catalog_items ADD CONSTRAINT catalog_items_kind_check CHECK (kind = ANY (ARRAY['product'::text, 'service'::text, 'digital_asset'::text]));
+-- ALTER TABLE public.catalog_items ADD COLUMN digital_subtype text CHECK (digital_subtype = ANY (ARRAY['ticket'::text, 'course'::text, 'file'::text, 'pass'::text, 'license'::text]));
+-- ALTER TABLE public.catalog_items ADD COLUMN is_marketplace_listed boolean DEFAULT true;
+
+-- 2. Quotations
+CREATE TABLE public.quotations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  site_id uuid NOT NULL,
+  deal_id uuid,
+  lead_id uuid NOT NULL,
+  buyer_user_id uuid,
+  price_list_id uuid,
+  status text NOT NULL DEFAULT 'draft'::text,
+  valid_until timestamp with time zone,
+  currency text NOT NULL DEFAULT 'USD',
+  notes text,
+  subtotal numeric NOT NULL DEFAULT 0,
+  discount_total numeric NOT NULL DEFAULT 0,
+  total numeric NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT quotations_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE public.quotation_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  quotation_id uuid NOT NULL,
+  catalog_item_id uuid NOT NULL,
+  name text NOT NULL,
+  quantity integer NOT NULL DEFAULT 1,
+  unit_price numeric NOT NULL DEFAULT 0,
+  subtotal numeric NOT NULL DEFAULT 0,
+  metadata jsonb,
+  CONSTRAINT quotation_items_pkey PRIMARY KEY (id)
+);
+
+-- 3. Entitlements & Subscription Plan Items
+CREATE TABLE public.subscription_plan_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  site_id uuid NOT NULL,
+  plan_catalog_item_id uuid NOT NULL,
+  digital_catalog_item_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT subscription_plan_items_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE public.entitlements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  site_id uuid NOT NULL,
+  buyer_user_id uuid NOT NULL,
+  owner_site_id uuid,
+  catalog_item_id uuid NOT NULL,
+  source_type text NOT NULL,
+  source_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'active'::text,
+  granted_at timestamp with time zone NOT NULL DEFAULT now(),
+  expires_at timestamp with time zone,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT entitlements_pkey PRIMARY KEY (id)
+);

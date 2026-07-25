@@ -12,6 +12,11 @@ import { createSale } from "@/app/sales/actions"
 import { useSite } from "@/app/context/SiteContext"
 import { getLeads } from "@/app/leads/actions"
 import { getSegments } from "@/app/segments/actions"
+import { listLocations } from "@/app/inventory/actions"
+import { Location } from "@/app/types"
+
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 interface CreateSaleDialogProps {
   open: boolean
@@ -27,10 +32,11 @@ interface FormData {
   amount_due: number
   status: 'pending' | 'completed' | 'cancelled' | 'refunded'
   source: 'retail' | 'online'
-  leadId: string
-  segmentId: string
+  leadValue: RelationSelectValue
+  segmentValue: RelationSelectValue
   saleDate: Date
   paymentMethod: string
+  locationId: string | null
 }
 
 interface Lead {
@@ -49,6 +55,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
   const [loading, setLoading] = useState(false)
   const [leads, setLeads] = useState<Lead[]>([])
   const [segments, setSegments] = useState<Segment[]>([])
+  const [locations, setLocations] = useState<Location[]>([])
   const [loadingData, setLoadingData] = useState(false)
   const [formData, setFormData] = useState<FormData>({
     title: "",
@@ -58,10 +65,11 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
     amount_due: 0,
     status: "pending",
     source: "retail",
-    leadId: "none",
-    segmentId: "none",
+    leadValue: null,
+    segmentValue: null,
     saleDate: new Date(),
-    paymentMethod: "cash"
+    paymentMethod: "cash",
+    locationId: null
   })
 
   // Load leads and segments when dialog opens
@@ -70,24 +78,6 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
       loadLeadsAndSegments()
     }
   }, [open, currentSite?.id])
-
-  // Remove the automatic amount_due manipulation - let user control it completely
-  // useEffect(() => {
-  //   if (formData.status === "pending") {
-  //     setFormData(prev => ({
-  //       ...prev,
-  //       amount_due: 0
-  //     }))
-  //   } else {
-  //     // For other statuses, set amount_due to the full amount if it's currently 0
-  //     if (formData.amount_due === 0) {
-  //       setFormData(prev => ({
-  //         ...prev,
-  //         amount_due: prev.amount
-  //       }))
-  //     }
-  //   }
-  // }, [formData.status, formData.amount])
 
   const loadLeadsAndSegments = async () => {
     if (!currentSite?.id) return
@@ -101,7 +91,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
       } else {
         setLeads(leadsResult.leads?.map(lead => ({
           id: lead.id,
-          name: lead.name,
+          name: lead.name || lead.email,
           email: lead.email
         })) || [])
       }
@@ -115,6 +105,19 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
           id: segment.id,
           name: segment.name
         })) || [])
+      }
+      // Load locations
+      const locationsResult = await listLocations(currentSite.id)
+      if (locationsResult.error) {
+        console.error("Error loading locations:", locationsResult.error)
+      } else {
+        const loadedLocations = locationsResult.data || []
+        setLocations(loadedLocations)
+        
+        // Auto-select location if only one exists
+        if (loadedLocations.length === 1) {
+          setFormData(prev => ({ ...prev, locationId: loadedLocations[0].id }))
+        }
       }
     } catch (error) {
       console.error("Error loading data:", error)
@@ -144,11 +147,17 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
 
     setLoading(true)
     try {
+      const { id: resolvedLeadId, error: leadError } = await resolveRelationId("lead", formData.leadValue, currentSite.id)
+      if (leadError) throw new Error(`Lead error: ${leadError}`)
+
+      const { id: resolvedSegmentId, error: segmentError } = await resolveRelationId("segment", formData.segmentValue, currentSite.id)
+      if (segmentError) throw new Error(`Segment error: ${segmentError}`)
+
       const result = await createSale({
         ...formData,
         saleDate: formData.saleDate.toISOString(),
-        leadId: formData.leadId === "none" ? undefined : formData.leadId,
-        segmentId: formData.segmentId === "none" ? undefined : formData.segmentId,
+        leadId: resolvedLeadId || undefined,
+        segmentId: resolvedSegmentId || undefined,
         siteId: currentSite.id,
         campaignId: null // No campaign selected by default
       })
@@ -170,16 +179,17 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
         amount_due: 0,
         status: "pending",
         source: "retail",
-        leadId: "none",
-        segmentId: "none",
+        leadValue: null,
+        segmentValue: null,
         saleDate: new Date(),
-        paymentMethod: "cash"
+        paymentMethod: "cash",
+        locationId: locations.length === 1 ? locations[0].id : null
       })
       
       onSuccess?.()
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating sale:", error)
-      toast.error("Error creating sale")
+      toast.error(error.message || "Error creating sale")
     } finally {
       setLoading(false)
     }
@@ -321,60 +331,34 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="leadId" className="text-right">
+              <Label htmlFor="leadValue" className="text-right">
                 Lead
               </Label>
-              <Select
-                name="leadId"
-                value={formData.leadId}
-                onValueChange={(value) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    leadId: value
-                  }))
-                }}
-                disabled={loadingData}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder={loadingData ? "Loading leads..." : "Select lead (optional)"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No Lead</SelectItem>
-                  {leads.map((lead) => (
-                    <SelectItem key={lead.id} value={lead.id}>
-                      {lead.name} ({lead.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="col-span-3">
+                <RelationSelect
+                  options={leads.map(l => ({ id: l.id, label: l.name || l.email }))}
+                  value={formData.leadValue}
+                  onValueChange={(val) => setFormData(prev => ({ ...prev, leadValue: val }))}
+                  placeholder={loadingData ? "Loading leads..." : "Select lead (optional)"}
+                  emptyMessage="No leads found"
+                  disabled={loadingData}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="segmentId" className="text-right">
+              <Label htmlFor="segmentValue" className="text-right">
                 Segment
               </Label>
-              <Select
-                name="segmentId"
-                value={formData.segmentId}
-                onValueChange={(value) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    segmentId: value
-                  }))
-                }}
-                disabled={loadingData}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder={loadingData ? "Loading segments..." : "Select segment (optional)"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No Segment</SelectItem>
-                  {segments.map((segment) => (
-                    <SelectItem key={segment.id} value={segment.id}>
-                      {segment.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="col-span-3">
+                <RelationSelect
+                  options={segments.map(s => ({ id: s.id, label: s.name }))}
+                  value={formData.segmentValue}
+                  onValueChange={(val) => setFormData(prev => ({ ...prev, segmentValue: val }))}
+                  placeholder={loadingData ? "Loading segments..." : "Select segment (optional)"}
+                  emptyMessage="No segments found"
+                  disabled={loadingData}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="source" className="text-right">
@@ -438,6 +422,35 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                 />
               </div>
             </div>
+            {locations.length > 1 && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="location" className="text-right">
+                  Location
+                </Label>
+                <div className="col-span-3">
+                  <Select
+                    name="locationId"
+                    value={formData.locationId || "none"}
+                    onValueChange={(value) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        locationId: value === "none" ? null : value
+                      }))
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {locations.map(loc => (
+                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={loading || loadingData}>

@@ -254,7 +254,7 @@ export function RecentActivity({
     return () => {
       isMounted = false;
     };
-  }, [currentSite?.id, limit, startDate, endDate, fetch, getSignalForEndpoint]);
+  }, [currentSite?.id, limit, startDate, endDate]);
 
   if (isLoading) {
     return (

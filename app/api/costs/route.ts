@@ -78,6 +78,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Handle demo sites to prevent invalid UUID database errors
+    if (siteId.startsWith("demo-")) {
+      return NextResponse.json({
+        totalCosts: {
+          actual: 0,
+          previous: 0,
+          percentChange: 0,
+          formattedActual: "0",
+          formattedPrevious: "0"
+        },
+        costCategories: [],
+        monthlyData: [],
+        costDistribution: [],
+        periodType: "custom",
+        noData: true,
+        metadata: {
+          warning: "Demo site detected"
+        }
+      });
+    }
+
     // Inicializar cliente Supabase
     const supabase = await createClient();
     

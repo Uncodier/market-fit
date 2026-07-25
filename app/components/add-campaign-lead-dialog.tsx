@@ -34,6 +34,9 @@ import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
 import { createClient } from "@/utils/supabase/client"
 
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
+
 interface AddCampaignLeadDialogProps {
   campaignId: string
   segments?: Array<{
@@ -53,7 +56,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
   const [phone, setPhone] = useState("")
   const [company, setCompany] = useState("")
   const [position, setPosition] = useState("")
-  const [segmentId, setSegmentId] = useState("")
+  const [segmentValue, setSegmentValue] = useState<RelationSelectValue>(null)
   const [status, setStatus] = useState<"new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified">("new")
   const [notes, setNotes] = useState("")
   const [origin, setOrigin] = useState("Campaign")
@@ -77,6 +80,9 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
     setError(null)
 
     try {
+      const { id: resolvedSegmentId, error: segError } = await resolveRelationId("segment", segmentValue, currentSite.id)
+      if (segError) throw new Error(`Segment error: ${segError}`)
+
       // Create Supabase client
       const supabase = await createClient()
       
@@ -88,7 +94,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
         phone: phone || undefined,
         company: company ? { name: company } : null,
         position: position || undefined,
-        segment_id: segmentId || undefined,
+        segment_id: resolvedSegmentId || undefined,
         status,
         notes: notes || undefined,
         origin: origin || undefined,
@@ -129,7 +135,7 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
       setPhone("")
       setCompany("")
       setPosition("")
-      setSegmentId("")
+      setSegmentValue(null)
       setStatus("new")
       setNotes("")
       setOrigin("Campaign")
@@ -314,26 +320,14 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
               <label htmlFor="segment" className="text-sm font-medium">
                 Segment
               </label>
-              <div className="relative">
-                <Select value={segmentId} onValueChange={setSegmentId}>
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Select segment" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {segments.length > 0 ? (
-                      segments.map((segment) => (
-                        <SelectItem key={segment.id} value={segment.id} className="py-2 px-1">
-                          <div className="font-medium">{segment.name}</div>
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="py-2 px-4 text-sm text-muted-foreground">
-                        No segments available
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+              <RelationSelect
+                options={segments.map(s => ({ id: s.id, label: s.name }))}
+                value={segmentValue}
+                onValueChange={setSegmentValue}
+                placeholder="Select segment"
+                emptyMessage="No segments available"
+                className="h-12"
+              />
             </div>
           </div>
           

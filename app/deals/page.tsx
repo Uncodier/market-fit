@@ -251,7 +251,9 @@ export default function DealsPage() {
                     className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                     alwaysExpanded={false}
                   />
-
+                </div>
+              </div>
+              <div className="ml-auto flex items-center gap-4">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('deals.sortBy') === 'deals.sortBy' ? 'Sort by' : t('deals.sortBy')}>
@@ -268,7 +270,7 @@ export default function DealsPage() {
                         <ChevronDown className="h-3 w-3 opacity-50" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-40">
+                    <DropdownMenuContent align="end" className="w-40">
                       <DropdownMenuItem 
                         className="cursor-pointer"
                         onClick={() => setSortBy("newest")}
@@ -299,9 +301,6 @@ export default function DealsPage() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
-              </div>
-              <div className="ml-auto flex items-center gap-4">
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
             </div>

@@ -251,6 +251,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Site ID is required' }, { status: 400 });
   }
   
+  // Handle demo sites to prevent invalid UUID database errors
+  if (siteId.startsWith("demo-")) {
+    return NextResponse.json({
+      actual: 0,
+      currency: "USD",
+      percentChange: 0,
+      periodType: "monthly",
+      noData: true,
+      details: { warning: "Demo site detected" }
+    });
+  }
+  
   console.log('[CAC API] Request for site ID:', siteId, segmentId ? `and segment ID: ${segmentId}` : '');
   
   try {

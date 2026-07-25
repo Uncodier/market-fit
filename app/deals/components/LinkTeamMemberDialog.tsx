@@ -5,9 +5,7 @@ import { addDealOwner, getDealById } from "@/app/deals/actions"
 import { Deal } from "@/app/deals/types"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList, CommandInput } from "@/app/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
-import { Check, ChevronDown } from "@/app/components/ui/icons"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { siteMembersService, SiteMember } from "@/app/services/site-members-service"
 
 interface LinkTeamMemberDialogProps {
@@ -19,20 +17,16 @@ interface LinkTeamMemberDialogProps {
 
 export function LinkTeamMemberDialog({ deal, isOpen, onOpenChange, onLinked }: LinkTeamMemberDialogProps) {
   const { currentSite } = useSite()
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [userValue, setUserValue] = useState<RelationSelectValue>(null)
   const [isLinking, setIsLinking] = useState(false)
 
-  // Search state
-  const [openCombobox, setOpenCombobox] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
   const [members, setMembers] = useState<SiteMember[]>([])
   const [loading, setLoading] = useState(false)
 
   // Reset form when opened
   useEffect(() => {
     if (isOpen) {
-      setSelectedUserId(null)
-      setSearchTerm("")
+      setUserValue(null)
     }
   }, [isOpen])
 
@@ -60,24 +54,16 @@ export function LinkTeamMemberDialog({ deal, isOpen, onOpenChange, onLinked }: L
     fetchMembers()
   }, [currentSite?.id, isOpen, deal.owners])
 
-  const filteredMembers = members.filter(m => {
-    if (!searchTerm) return true
-    const term = searchTerm.toLowerCase()
-    return (
-      (m.name && m.name.toLowerCase().includes(term)) ||
-      (m.email && m.email.toLowerCase().includes(term))
-    )
-  })
 
   const handleLink = async () => {
-    if (!selectedUserId) {
+    if (!userValue || userValue.mode !== "existing") {
       toast.error("Please select a team member")
       return
     }
 
     setIsLinking(true)
     try {
-      const result = await addDealOwner(deal.id, selectedUserId)
+      const result = await addDealOwner(deal.id, userValue.id)
 
       if (result.error) {
         toast.error(result.error)
@@ -100,21 +86,11 @@ export function LinkTeamMemberDialog({ deal, isOpen, onOpenChange, onLinked }: L
     }
   }
 
-  const selectedMember = members.find(m => m.user_id === selectedUserId)
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        setSearchTerm("")
-        setOpenCombobox(false)
-      }
       onOpenChange(open)
     }}>
-      <DialogContent className="sm:max-w-[500px]" onInteractOutside={(e) => {
-        if (openCombobox) {
-          e.preventDefault()
-        }
-      }}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Assign Team Member</DialogTitle>
           <DialogDescription>
@@ -125,77 +101,20 @@ export function LinkTeamMemberDialog({ deal, isOpen, onOpenChange, onLinked }: L
         <div className="py-4 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Team Member</label>
-              <Popover open={openCombobox} onOpenChange={setOpenCombobox} modal={true}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openCombobox}
-                  className="w-full justify-between h-12 text-base px-4 bg-background"
-                >
-                  {selectedUserId
-                    ? selectedMember?.name || selectedMember?.email || "Unknown Member"
-                    : "Select a team member..."}
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent 
-                className="w-[460px] p-0 z-[100000]" 
-                align="start"
-              >
-                <Command className="w-full" shouldFilter={false}>
-                  <CommandInput
-                    placeholder="Search members by name or email..."
-                    value={searchTerm}
-                    onValueChange={setSearchTerm}
-                  />
-                  <CommandList className="max-h-[200px] overflow-y-auto">
-                    {filteredMembers.length === 0 && !loading && (
-                      <CommandEmpty>No team members found.</CommandEmpty>
-                    )}
-                    {loading && (
-                      <CommandEmpty>Searching...</CommandEmpty>
-                    )}
-                    {filteredMembers.length > 0 && (
-                      <CommandGroup>
-                      {filteredMembers.map((member) => (
-                        <div
-                          key={member.id}
-                          className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                          onClick={() => {
-                            if (member.user_id) {
-                              setSelectedUserId(member.user_id)
-                              setOpenCombobox(false)
-                            }
-                          }}
-                        >
-                          <Check
-                            className={`mr-2 h-4 w-4 ${
-                              selectedUserId === member.user_id ? "opacity-100" : "opacity-0"
-                            }`}
-                          />
-                          <div className="flex flex-col gap-1 py-1">
-                            <span className="font-medium text-sm">{member.name || member.email}</span>
-                            {member.name && member.email && (
-                              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                {member.email}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      </CommandGroup>
-                    )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <RelationSelect
+              options={members.map((m) => ({ id: m.user_id!, label: m.name || m.email || "Unknown" }))}
+              value={userValue}
+              onValueChange={setUserValue}
+              allowCreate={false}
+              placeholder="Select a team member..."
+              emptyMessage="No team members found"
+            />
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleLink} disabled={isLinking || !selectedUserId}>
+          <Button onClick={handleLink} disabled={isLinking || !userValue}>
             {isLinking ? "Assigning..." : "Assign"}
           </Button>
         </DialogFooter>

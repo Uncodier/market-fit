@@ -8,6 +8,8 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { EmptyState } from "@/app/components/ui/empty-state"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -541,7 +543,7 @@ export default function PeopleSearchPage() {
   const [isEditIcpModalOpen, setIsEditIcpModalOpen] = useState(false)
   const [editingIcp, setEditingIcp] = useState<{ id: string; name: string | null; role_query_id: string } | null>(null)
   const [editingIcpName, setEditingIcpName] = useState<string>("")
-  const [editingIcpSegmentId, setEditingIcpSegmentId] = useState<string | 'none'>('none')
+  const [editingIcpSegmentValue, setEditingIcpSegmentValue] = useState<RelationSelectValue>(null)
   const [editingIcpSegmentsLoading, setEditingIcpSegmentsLoading] = useState(false)
   const [sectionOpenDefaults, setSectionOpenDefaults] = useState({
     name: false,
@@ -754,8 +756,16 @@ export default function PeopleSearchPage() {
       toast.error('Please enter a name')
       return
     }
+    if (!currentSite) return
     try {
       const supabase = createClient()
+      
+      let resolvedSegmentId = null;
+      if (editingIcpSegmentValue) {
+        const { id, error } = await resolveRelationId("segment", editingIcpSegmentValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedSegmentId = id;
+      }
       
       // Update ICP name
       const { error: updateError } = await supabase
@@ -766,7 +776,7 @@ export default function PeopleSearchPage() {
       if (updateError) throw updateError
       
       // Update segment association if changed
-      if (editingIcpSegmentId !== 'none') {
+      if (resolvedSegmentId) {
         // Get current segment associations
         const { data: currentSegments, error: segError } = await supabase
           .from('role_query_segments')
@@ -778,7 +788,7 @@ export default function PeopleSearchPage() {
         const currentSegmentIds = (currentSegments || []).map((s: any) => s.segment_id)
         
         // If the selected segment is not in the current associations, add it
-        if (!currentSegmentIds.includes(editingIcpSegmentId)) {
+        if (!currentSegmentIds.includes(resolvedSegmentId)) {
           // Remove all existing associations
           const { error: deleteError } = await supabase
             .from('role_query_segments')
@@ -792,7 +802,7 @@ export default function PeopleSearchPage() {
             .from('role_query_segments')
             .insert({
               role_query_id: editingIcp.role_query_id,
-              segment_id: editingIcpSegmentId
+              segment_id: resolvedSegmentId
             })
           
           if (insertError) throw insertError
@@ -807,7 +817,7 @@ export default function PeopleSearchPage() {
       setIsEditIcpModalOpen(false)
       setEditingIcp(null)
       setEditingIcpName("")
-      setEditingIcpSegmentId('none')
+      setEditingIcpSegmentValue(null)
       toast.success('Saved list updated')
     } catch (e) {
       console.error('[People] Edit saved list error:', e)
@@ -839,8 +849,8 @@ export default function PeopleSearchPage() {
         
         if (segError) throw segError
         
-        const segmentIds = segmentsData?.map(s => s.id) || []
-        const segmentMap = new Map(segmentsData?.map(s => [s.id, s.name]) || [])
+        const segmentIds = (segmentsData || []).map((s: { id: string; name: string }) => s.id)
+        const segmentMap = new Map((segmentsData || []).map((s: { id: string; name: string }) => [s.id, s.name]))
         
         // 2) Fetch ICPs directly associated with the site
         const { data, error } = await supabase
@@ -1751,13 +1761,19 @@ export default function PeopleSearchPage() {
                                   if (segErr) throw segErr
                                   
                                   if (segs && segs.length > 0) {
-                                    setEditingIcpSegmentId(segs[0].segment_id)
+                                    const segmentId = segs[0].segment_id
+                                    const segment = availableSegments.find((s) => s.id === segmentId)
+                                    setEditingIcpSegmentValue({
+                                      mode: "existing",
+                                      id: segmentId,
+                                      label: segment?.name || "Unknown",
+                                    })
                                   } else {
-                                    setEditingIcpSegmentId('none')
+                                    setEditingIcpSegmentValue(null)
                                   }
                                 } catch (err) {
                                   console.error('[People] Load segment error:', err)
-                                  setEditingIcpSegmentId('none')
+                                  setEditingIcpSegmentValue(null)
                                 } finally {
                                   setEditingIcpSegmentsLoading(false)
                                 }
@@ -3295,17 +3311,13 @@ export default function PeopleSearchPage() {
                   <p className="text-xs text-muted-foreground">Loading segments…</p>
                 </div>
               ) : (
-                <Select value={editingIcpSegmentId} onValueChange={(v) => setEditingIcpSegmentId(v)}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Select segment" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No segment</SelectItem>
-                    {availableSegments.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <RelationSelect
+                  options={availableSegments.map((s) => ({ id: s.id, label: s.name }))}
+                  value={editingIcpSegmentValue}
+                  onValueChange={setEditingIcpSegmentValue}
+                  placeholder="Select segment"
+                  emptyMessage="No segments found"
+                />
               )}
             </div>
           </div>
@@ -3314,7 +3326,7 @@ export default function PeopleSearchPage() {
               setIsEditIcpModalOpen(false)
               setEditingIcp(null)
               setEditingIcpName("")
-              setEditingIcpSegmentId('none')
+              setEditingIcpSegmentValue(null)
             }}>
               Cancel
             </Button>

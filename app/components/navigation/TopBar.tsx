@@ -84,6 +84,11 @@ export function TopBar({
 
   const [contentData, setContentData] = useState<any>(null);
 
+  const [priceListData, setPriceListData] = useState<{
+    id: string;
+    is_active: boolean;
+  } | null>(null);
+
   // Reset states when pathname changes
   useEffect(() => {
     setIsProcessing(false);
@@ -97,6 +102,9 @@ export function TopBar({
     }
     if (!pathname.startsWith('/content/')) {
       setContentData(null);
+    }
+    if (!pathname.startsWith('/price-lists/')) {
+      setPriceListData(null);
     }
   }, [pathname]);
 
@@ -114,6 +122,9 @@ export function TopBar({
         if (event.detail.contentData) {
           console.log('TopBar updating contentData state:', event.detail.contentData.title);
           setContentData(event.detail.contentData);
+        }
+        if (event.detail.priceListData) {
+          setPriceListData(event.detail.priceListData);
         }
       }
     };
@@ -287,6 +298,7 @@ export function TopBar({
           <TopBarActions
             isProcessing={isProcessing}
             setIsProcessing={setIsProcessing}
+            isPosPage={pathname === "/pos"}
             isDashboardPage={pathname === "/dashboard"}
             isSegmentsPage={pathname === "/segments"}
             isExperimentsPage={pathname === "/experiments"}
@@ -304,11 +316,13 @@ export function TopBar({
             segmentData={segmentData}
             requirementData={requirementData}
             contentData={contentData}
+            priceListData={priceListData}
             segments={segments}
             propSegments={propSegments}
             requirements={requirements}
             campaigns={campaigns}
             isDealsPage={pathname === "/deals"}
+            isQuotationsPage={pathname.startsWith("/quotations")}
             onCreateSale={onCreateSale}
             onCreateDeal={onCreateDeal}
             viewMode={viewMode}

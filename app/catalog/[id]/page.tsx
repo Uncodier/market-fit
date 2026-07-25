@@ -21,6 +21,10 @@ import { ChevronLeft, Save, Trash2, Activity } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Textarea } from "@/app/components/ui/textarea"
 import { ImageUpload } from "@/app/components/ui/image-upload"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { PlanItemsTab } from "../components/PlanItemsTab"
+import { ProductTaxesCard } from "../components/ProductTaxesCard"
 
 export default function CatalogItemDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -31,6 +35,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [categoryValue, setCategoryValue] = useState<RelationSelectValue>(null)
   const [formData, setFormData] = useState<Partial<CatalogItem>>({
     is_pos_available: true,
     is_recurring: false,
@@ -55,33 +60,53 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
       } else if (data) {
         setItem(data)
         setFormData(data)
+        if (data.category_id) {
+          setCategoryValue({ mode: "existing", id: data.category_id, label: data.category?.name || "Unknown Category" })
+        }
       }
       setLoading(false)
     }
     load()
   }, [params.id, currentSite])
 
+  useEffect(() => {
+    if (categoryValue?.mode === "existing" && categoryValue.label === "Unknown Category") {
+      const match = categories.find(c => c.id === categoryValue.id)
+      if (match) setCategoryValue({ ...categoryValue, label: match.name })
+    }
+  }, [categories, categoryValue])
+
   const handleSave = async () => {
     if (!currentSite) return
     setSaving(true)
-    const { data, error } = await upsertCatalogItem({
-      ...formData,
-      site_id: currentSite.id,
-      id: item?.id
-    })
-    
-    if (error) {
-      toast.error(error)
-    } else {
-      toast.success("Saved successfully")
-      if (!item && data) {
-        router.replace(`/catalog/${data.id}`)
-      } else if (data) {
-        setItem(data)
-        setFormData(data)
+
+    try {
+      const { id: resolvedCategoryId, error: catError } = await resolveRelationId("catalog_category", categoryValue, currentSite.id)
+      if (catError) throw new Error(`Category error: ${catError}`)
+
+      const { data, error } = await upsertCatalogItem({
+        ...formData,
+        category_id: resolvedCategoryId || undefined,
+        site_id: currentSite.id,
+        id: item?.id
+      })
+      
+      if (error) {
+        toast.error(error)
+      } else {
+        toast.success("Saved successfully")
+        if (!item && data) {
+          router.replace(`/catalog/${data.id}`)
+        } else if (data) {
+          setItem(data)
+          setFormData(data)
+        }
       }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save")
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   const handleDelete = async () => {
@@ -126,6 +151,9 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="inventory">Inventory Movements</TabsTrigger>
               <TabsTrigger value="sales">Sales</TabsTrigger>
+              {formData.is_recurring && (
+                <TabsTrigger value="plan_items">Plan Items</TabsTrigger>
+              )}
             </TabsList>
           </div>
         </StickyHeader>
@@ -155,21 +183,51 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   />
                 </div>
                 <div className="space-y-2 col-span-2 md:col-span-1">
-                  <Label>Category</Label>
+                  <Label>Type</Label>
                   <Select 
-                    value={formData.category_id || ''} 
-                    onValueChange={(val: any) => setFormData({...formData, category_id: val === 'none' ? undefined : val})}
+                    value={formData.kind || 'product'} 
+                    onValueChange={(val: any) => setFormData({...formData, kind: val, digital_subtype: val !== 'digital_asset' ? null : formData.digital_subtype})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category..." />
+                      <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {categories.map(cat => (
-                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                      ))}
+                      <SelectItem value="product">Product</SelectItem>
+                      <SelectItem value="service">Service</SelectItem>
+                      <SelectItem value="digital_asset">Digital Asset</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                {formData.kind === 'digital_asset' && (
+                  <div className="space-y-2 col-span-2 md:col-span-1">
+                    <Label>Subtype</Label>
+                    <Select 
+                      value={formData.digital_subtype || 'none'} 
+                      onValueChange={(val: any) => setFormData({...formData, digital_subtype: val === 'none' ? null : val})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select subtype" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="ticket">Ticket</SelectItem>
+                        <SelectItem value="course">Course</SelectItem>
+                        <SelectItem value="file">File</SelectItem>
+                        <SelectItem value="pass">Pass</SelectItem>
+                        <SelectItem value="license">License</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-2 col-span-2 md:col-span-1">
+                  <Label>Category</Label>
+                  <RelationSelect 
+                    options={categories.map(cat => ({ id: cat.id, label: cat.name }))}
+                    value={categoryValue} 
+                    onValueChange={(val) => setCategoryValue(val)}
+                    placeholder="Select category..."
+                    emptyMessage="No categories found"
+                  />
                 </div>
                 <div className="space-y-2 col-span-2 md:col-span-1">
                   <Label>SKU / Code</Label>
@@ -194,6 +252,9 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                     value={formData.target_sale_price || ''} 
                     onChange={e => setFormData({...formData, target_sale_price: parseFloat(e.target.value) || 0})} 
                   />
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("catalog.item.priceHint")}
+              </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Unit Cost</Label>
@@ -266,14 +327,14 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
 
               <div className="space-y-4 pt-4 border-t">
                 <h4 className="text-sm font-medium">Features</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="flex items-center space-x-2 border p-3 rounded-md">
                     <Checkbox 
                       id="is_pos_available" 
                       checked={formData.is_pos_available ?? true}
                       onCheckedChange={(checked) => setFormData({...formData, is_pos_available: checked as boolean})}
                     />
-                    <Label htmlFor="is_pos_available" className="cursor-pointer">Available in POS</Label>
+                    <Label htmlFor="is_pos_available" className="cursor-pointer text-xs">Available in POS</Label>
                   </div>
                   <div className="flex items-center space-x-2 border p-3 rounded-md">
                     <Checkbox 
@@ -281,7 +342,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                       checked={formData.is_recurring ?? false}
                       onCheckedChange={(checked) => setFormData({...formData, is_recurring: checked as boolean})}
                     />
-                    <Label htmlFor="is_recurring" className="cursor-pointer">Recurring (Subscription)</Label>
+                    <Label htmlFor="is_recurring" className="cursor-pointer text-xs">Recurring</Label>
                   </div>
                   <div className="flex items-center space-x-2 border p-3 rounded-md">
                     <Checkbox 
@@ -289,7 +350,15 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                       checked={formData.is_reservation ?? false}
                       onCheckedChange={(checked) => setFormData({...formData, is_reservation: checked as boolean})}
                     />
-                    <Label htmlFor="is_reservation" className="cursor-pointer">Reservable (Booking)</Label>
+                    <Label htmlFor="is_reservation" className="cursor-pointer text-xs">Reservable</Label>
+                  </div>
+                  <div className="flex items-center space-x-2 border p-3 rounded-md">
+                    <Checkbox 
+                      id="is_marketplace_listed" 
+                      checked={formData.is_marketplace_listed ?? false}
+                      onCheckedChange={(checked) => setFormData({...formData, is_marketplace_listed: checked as boolean})}
+                    />
+                    <Label htmlFor="is_marketplace_listed" className="cursor-pointer text-xs">Marketplace</Label>
                   </div>
                 </div>
               </div>
@@ -300,6 +369,8 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               </Button>
             </ActionFooter>
           </Card>
+
+          {item && <ProductTaxesCard catalogItemId={item.id} />}
 
           {item && (
             <div className="rounded-lg border-destructive/50 border bg-destructive/5 p-6">
@@ -353,6 +424,12 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
             />
           </div>
         </TabsContent>
+
+        {formData.is_recurring && item && (
+          <TabsContent value="plan_items" className="m-0 border-0 p-0 h-full flex flex-col">
+            <PlanItemsTab planItemId={item.id} />
+          </TabsContent>
+        )}
       </div>
       </Tabs>
     </div>

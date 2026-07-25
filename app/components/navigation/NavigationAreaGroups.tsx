@@ -28,91 +28,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { requestNavigationHistoryReset } from "@/app/hooks/use-navigation-history"
 
-import {
-  Megaphone,
-  Briefcase,
-  Zap,
-  Smartphone,
-  BarChart,
-  Home,
-  Target,
-  Tag,
-  FileText,
-  Printer,
-  Folder,
-  Building,
-  Cpu,
-  DatabaseIcon,
-  Archive,
-  DollarSign,
-  ActivitySquare,
-  CreditCard,
-  Users,
-  MessageCircle,
-  Search,
-  Rocket,
-  CheckSquare,
-  NetworkTree,
-  Activity,
-  Workflow,
-  TrendingUp,
-  PieChart,
-  Globe,
-  Store,
-  Send,
-  Ticket,
-  Repeat,
-  CalendarDays,
-  ListOrdered,
-} from "@/app/components/ui/icons"
-
-const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
-  marketing: Megaphone,
-  sales: Briefcase,
-  automation: Zap,
-  applications: Smartphone,
-  reports: BarChart,
-}
-
-/** Legacy sidebar: icon via MenuItem */
-const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
-  salesHome: Home,
-    pos: Store,
-    catalog: Archive,
-    priceLists: Tag,
-    inventory: DatabaseIcon,
-    orders: ListOrdered,
-    shipments: Send,
-    promotions: Ticket,
-    subscriptions: Repeat,
-    reservations: CalendarDays,
-
-  campaigns: Target,
-  segments: Tag,
-  content: FileText,
-  contentCreator: Printer,
-  assets: Folder,
-  context: Building,
-    agentsConfiguration: Cpu,
-  applicationsDatabase: DatabaseIcon,
-  applicationsRepositories: Archive,
-  sales: DollarSign,
-  leads: Users,
-  deals: Briefcase,
-  chat: MessageCircle,
-  people: Search,
-  controlCenter: Rocket,
-  requirements: CheckSquare,
-  channels: NetworkTree,
-  activities: Activity,
-  skills: Workflow,
-  reportPerformance: TrendingUp,
-  reportOverview: PieChart,
-  reportAnalytics: BarChart,
-  reportTraffic: Globe,
-    reportCosts: CreditCard,
-    reportSales: ActivitySquare,
-}
+import { AREA_ICON, NAV_ITEM_ICON } from "@/app/config/module-visuals"
 
 function reportItemTitle(item: AreaNavItem, t: (k: string) => string): string {
   if (item.dashboardTab) {
@@ -297,8 +213,8 @@ export function NavigationAreaGroups({
             >
               <div
                 className={cn(
-                  "flex flex-shrink-0 items-center justify-center safari-icon-fix",
-                  renderCollapsed ? "h-full w-full" : "h-[24px] w-[24px]"
+                  "flex flex-shrink-0 items-center justify-center",
+                  renderCollapsed ? "h-full w-full" : "h-[24px] w-[24px] safari-icon-fix"
                 )}
               >
                 {(() => {

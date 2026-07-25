@@ -7,9 +7,8 @@ import { Deal } from "@/app/deals/types"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList, CommandInput } from "@/app/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
-import { Check, ChevronDown, User as UserIcon, Search } from "@/app/components/ui/icons"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 interface LinkContactDialogProps {
   deal: Deal
@@ -20,13 +19,11 @@ interface LinkContactDialogProps {
 
 export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: LinkContactDialogProps) {
   const { currentSite } = useSite()
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
+  const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
   const [role, setRole] = useState("")
   const [isPrimary, setIsPrimary] = useState(false)
   const [isLinking, setIsLinking] = useState(false)
 
-  // Search state
-  const [openCombobox, setOpenCombobox] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -34,10 +31,9 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
   // Reset form when opened
   useEffect(() => {
     if (isOpen) {
-      setSelectedLeadId(null)
+      setLeadValue(null)
       setRole("")
       setIsPrimary(deal.contacts?.length === 0)
-      setSearchTerm("")
     }
   }, [isOpen, deal.contacts])
 
@@ -84,14 +80,19 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
   }, [currentSite?.id, searchTerm, isOpen, deal.company_id])
 
   const handleLink = async () => {
-    if (!selectedLeadId) {
+    if (!leadValue || !currentSite) {
       toast.error("Please select a contact")
       return
     }
 
     setIsLinking(true)
     try {
-      const result = await addDealContact(deal.id, selectedLeadId, role, isPrimary)
+      const { id: resolvedLeadId, error: resolveError } = await resolveRelationId("lead", leadValue, currentSite.id);
+      if (resolveError || !resolvedLeadId) {
+        throw new Error(resolveError || "Could not resolve lead");
+      }
+
+      const result = await addDealContact(deal.id, resolvedLeadId, role, isPrimary)
 
       if (result.error) {
         toast.error(result.error)
@@ -114,22 +115,14 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
     }
   }
 
-  const selectedLead = leads.find(l => l.id === selectedLeadId)
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
         setSearchTerm("")
-        setOpenCombobox(false)
       }
       onOpenChange(open)
     }}>
-      <DialogContent className="sm:max-w-[500px]" onInteractOutside={(e) => {
-        // Prevenir que el dialog se cierre si el popover está abierto
-        if (openCombobox) {
-          e.preventDefault()
-        }
-      }}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Add Contact</DialogTitle>
           <DialogDescription>
@@ -140,71 +133,13 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
         <div className="py-4 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Contact</label>
-              <Popover open={openCombobox} onOpenChange={setOpenCombobox} modal={true}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openCombobox}
-                  className="w-full justify-between h-12 text-base px-4 bg-background"
-                >
-                  {selectedLeadId
-                    ? selectedLead?.name || "Unknown Contact"
-                    : "Select a contact..."}
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent 
-                className="w-[460px] p-0 z-[100000]" 
-                align="start"
-              >
-                <Command className="w-full" shouldFilter={false}>
-                  <CommandInput
-                    placeholder="Search contacts by name or email..."
-                    value={searchTerm}
-                    onValueChange={setSearchTerm}
-                  />
-                  <CommandList className="max-h-[200px] overflow-y-auto">
-                    {leads.length === 0 && !loading && (
-                      <CommandEmpty>No contacts found.</CommandEmpty>
-                    )}
-                    {loading && (
-                      <CommandEmpty>Searching...</CommandEmpty>
-                    )}
-                    {leads.length > 0 && (
-                      <CommandGroup>
-                      {leads.map((lead) => (
-                        <div
-                          key={lead.id}
-                          className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                          onClick={() => {
-                            setSelectedLeadId(lead.id)
-                            setOpenCombobox(false)
-                          }}
-                        >
-                          <Check
-                            className={`mr-2 h-4 w-4 ${
-                              selectedLeadId === lead.id ? "opacity-100" : "opacity-0"
-                            }`}
-                          />
-                          <div className="flex flex-col gap-1 py-1">
-                            <span className="font-medium text-sm">{lead.name}</span>
-                            {(lead.email || lead.position) && (
-                              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                {lead.position ? <span>{lead.position}</span> : null}
-                                {lead.position && lead.email ? <span>•</span> : null}
-                                {lead.email ? <span>{lead.email}</span> : null}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      </CommandGroup>
-                    )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <RelationSelect
+              options={leads.map((l) => ({ id: l.id, label: l.name + (l.email ? ` (${l.email})` : "") }))}
+              value={leadValue}
+              onValueChange={setLeadValue}
+              placeholder="Select a contact..."
+              emptyMessage="No contacts found"
+            />
           </div>
 
           <div className="space-y-2 mt-4">
@@ -235,7 +170,7 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLinking}>
             Cancel
           </Button>
-          <Button onClick={handleLink} disabled={isLinking || !selectedLeadId}>
+          <Button onClick={handleLink} disabled={isLinking || !leadValue}>
             {isLinking ? "Adding..." : "Add Contact"}
           </Button>
         </DialogFooter>

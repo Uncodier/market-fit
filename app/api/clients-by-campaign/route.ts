@@ -51,6 +51,14 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
+
+  // Handle demo sites to prevent invalid UUID database errors
+  if (siteId.startsWith("demo-")) {
+    return NextResponse.json({
+      campaigns: [],
+      debug: { message: "Demo site detected, returning empty data" }
+    });
+  }
   
   try {
     const supabase = createServiceApiClient();

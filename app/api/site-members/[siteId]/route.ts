@@ -10,6 +10,14 @@ export async function GET(
   try {
     const { siteId } = await params
 
+    // Handle demo sites to prevent invalid UUID database errors
+    if (siteId && siteId.startsWith("demo-")) {
+      return NextResponse.json({
+        success: true,
+        members: []
+      })
+    }
+
     // Create client for user authentication using SSR
     const cookieStore = await cookies()
     const supabase = createServerClient(

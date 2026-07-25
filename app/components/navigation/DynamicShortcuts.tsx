@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
-import { NAVIGATION_AREAS, isNavItemActive, buildNavItemHref, AreaNavItem } from "@/app/config/navigation-areas"
+import { NAVIGATION_AREAS, isNavItemActive, buildNavItemHref, AreaNavItem, WorkspaceArea } from "@/app/config/navigation-areas"
 import { MenuItem } from "./MenuItem"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useAuth } from "@/app/hooks/use-auth"
@@ -34,82 +34,12 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { cn } from "@/lib/utils"
 
-import {
-  Megaphone,
-  Briefcase,
-  Zap,
-  Smartphone,
-  BarChart,
-  Home,
-  Target,
-  Tag,
-  FileText,
-  Printer,
-  Folder,
-  Building,
-  Cpu,
-  DatabaseIcon,
-  Archive,
-  DollarSign,
-  ActivitySquare,
-  CreditCard,
-  Users,
-  MessageCircle,
-  Search,
-  Rocket,
-  CheckSquare,
-  NetworkTree,
-  Activity,
-  Workflow,
-  TrendingUp,
-  PieChart,
-  Globe,
-  Star,
-  Store,
-  Send,
-  Ticket,
-  Repeat,
-  CalendarDays,
-  ListOrdered,
-} from "@/app/components/ui/icons"
+import { Star } from "@/app/components/ui/icons"
 
-const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
-  salesHome: Home,
-  pos: Store,
-  catalog: Archive,
-  priceLists: Tag,
-  inventory: DatabaseIcon,
-  orders: ListOrdered,
-  shipments: Send,
-  promotions: Ticket,
-  subscriptions: Repeat,
-  reservations: CalendarDays,
-  campaigns: Target,
-  segments: Tag,
-  content: FileText,
-  contentCreator: Printer,
-  assets: Folder,
-  context: Building,
-    agentsConfiguration: Cpu,
-  applicationsDatabase: DatabaseIcon,
-  applicationsRepositories: Archive,
-  sales: DollarSign,
-  leads: Users,
-  deals: Briefcase,
-  chat: MessageCircle,
-  people: Search,
-  controlCenter: Rocket,
-  requirements: CheckSquare,
-  channels: NetworkTree,
-  activities: Activity,
-  skills: Workflow,
-  reportPerformance: TrendingUp,
-  reportOverview: PieChart,
-  reportAnalytics: BarChart,
-  reportTraffic: Globe,
-    reportCosts: CreditCard,
-    reportSales: ActivitySquare,
-}
+import { ShortcutRecord } from "./shortcut-types"
+import { loadShortcuts, saveShortcuts, loadShortcutsFromLocalStorage } from "./shortcut-storage"
+import { useShortcutSlotCount } from "./use-shortcut-slot-count"
+import { NAV_ITEM_ICON, getModuleVisual, ModuleVariant } from "@/app/config/module-visuals"
 
 function reportItemTitle(item: AreaNavItem, t: (k: string) => string): string {
   if (item.dashboardTab) {
@@ -139,12 +69,13 @@ interface DynamicShortcutsProps {
 
 interface SortableShortcutItemProps {
   id: string
-  item: AreaNavItem
+  item: AreaNavItem | undefined
   icon: React.ComponentType<any> | null
   linkHref: string
   isActive: boolean
   isCollapsed: boolean
   title: string
+  visual?: ModuleVariant
   onRemove: (key: string) => void
   t: (k: string) => string
 }
@@ -157,6 +88,7 @@ function SortableShortcutItem({
   isActive,
   isCollapsed,
   title,
+  visual,
   onRemove,
   t
 }: SortableShortcutItemProps) {
@@ -228,6 +160,7 @@ function SortableShortcutItem({
                 title={title}
                 isActive={isActive}
                 isCollapsed={isCollapsed}
+                visual={visual}
               />
             </div>
           </div>
@@ -252,12 +185,13 @@ function SortableShortcutItem({
 }
 
 // Get all possible items except contentCreator (which is statically shown)
-const ALL_ITEMS: AreaNavItem[] = []
-Object.values(NAVIGATION_AREAS).forEach((area: any) => {
+type AreaNavItemWithArea = AreaNavItem & { area: WorkspaceArea }
+const ALL_ITEMS: AreaNavItemWithArea[] = []
+Object.entries(NAVIGATION_AREAS).forEach(([areaKey, area]: [string, any]) => {
   if (area && area.items) {
     area.items.forEach((item: AreaNavItem) => {
       if (item.key !== "contentCreator") {
-        ALL_ITEMS.push(item)
+        ALL_ITEMS.push({ ...item, area: areaKey as WorkspaceArea })
       }
     })
   }
@@ -277,6 +211,9 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const navSearchParams = useMemo(() => new URLSearchParams(searchParams.toString()), [searchParams])
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const slots = useShortcutSlotCount(containerRef)
 
   const { user, isLoading: isAuthLoading } = useAuth()
   const [shortcuts, setShortcuts] = useState<ShortcutEntry[]>([])
@@ -378,7 +315,17 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
           return s.id === activeItem.key;
         });
         if (!exists) {
-          return [...prev, activeItem.key]
+          return [activeItem.key, ...prev]
+        } else {
+          const index = prev.findIndex(s => {
+            if (typeof s === 'string') return s === activeItem.key;
+            return s.id === activeItem.key;
+          });
+          if (index >= slots) {
+            const next = [...prev];
+            const item = next.splice(index, 1)[0];
+            return [item, ...next];
+          }
         }
         return prev
       })
@@ -416,18 +363,28 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
               title = title.charAt(0).toUpperCase() + title.slice(1).replace(/-/g, ' ');
             }
             
-            return [...prev, {
+            return [{
               id: customId,
               title,
               href: fullHref,
               isCustom: true
-            }];
+            }, ...prev];
+          } else {
+            const index = prev.findIndex(s => {
+              if (typeof s === 'string') return false;
+              return s.id === customId || s.href === pathname || s.href === fullHref;
+            });
+            if (index >= slots) {
+              const next = [...prev];
+              const item = next.splice(index, 1)[0];
+              return [item, ...next];
+            }
           }
           return prev;
         });
       }
     }
-  }, [pathname, navSearchParams, searchParams, isLoaded])
+  }, [pathname, navSearchParams, searchParams, isLoaded, slots])
 
   const handleRemove = (idToRemove: string) => {
     setShortcuts(prev => prev.filter(k => {
@@ -469,12 +426,14 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
 
   if (shortcuts.length === 0) return null
 
+  const visibleShortcuts = shortcuts.slice(0, slots)
   const shortcutIds = shortcuts.map(s => typeof s === 'string' ? s : s.id)
+  const visibleShortcutIds = shortcutIds.slice(0, slots)
 
   let bestMatchId: string | null = null;
   let maxMatchLength = -1;
 
-  shortcuts.forEach((entry) => {
+  visibleShortcuts.forEach((entry) => {
     const isCustom = typeof entry !== 'string'
     const id = isCustom ? entry.id : entry
 
@@ -504,57 +463,64 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   return (
     <>
       <div className="w-full h-[1px] bg-black/5 dark:bg-white/5 my-2" />
-      <DndContext 
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext 
-          items={shortcutIds}
-          strategy={verticalListSortingStrategy}
+      <div ref={containerRef} className="flex-1 w-full min-h-0 flex flex-col">
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
         >
-          {shortcuts.map((entry) => {
-            const isCustom = typeof entry !== 'string'
-            const id = isCustom ? entry.id : entry
-            
-            let item: AreaNavItem | undefined;
-            let icon: React.ComponentType<any> | null = Star
-            let linkHref = ""
-            let isActive = false
-            let title = ""
+          <SortableContext 
+            items={visibleShortcutIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {visibleShortcuts.map((entry) => {
+              const isCustom = typeof entry !== 'string'
+              const id = isCustom ? entry.id : entry
+              
+              let item: AreaNavItem | undefined;
+              let icon: React.ComponentType<any> | null = Star
+              let linkHref = ""
+              let isActive = false
+              let title = ""
+              let visual: ModuleVariant | undefined;
 
-            if (isCustom) {
-              item = { key: entry.id, href: entry.href }
-              icon = Star
-              linkHref = entry.href
-              isActive = id === bestMatchId
-              title = entry.title
-            } else {
-              item = ALL_ITEMS.find(i => i.key === id)
-              if (!item) return null
-              icon = NAV_ITEM_ICON[item.key] || Star
-              linkHref = buildNavItemHref(item, navSearchParams)
-              isActive = id === bestMatchId
-              title = reportItemTitle(item, t)
-            }
+              if (isCustom) {
+                item = { key: entry.id, href: entry.href }
+                icon = Star
+                linkHref = entry.href
+                isActive = id === bestMatchId
+                title = entry.title
+              } else {
+                item = ALL_ITEMS.find(i => i.key === id)
+                if (!item) return null
+                icon = NAV_ITEM_ICON[item.key] || Star
+                linkHref = buildNavItemHref(item, navSearchParams)
+                isActive = id === bestMatchId
+                title = reportItemTitle(item, t)
+                if ((item as AreaNavItemWithArea).area) {
+                  visual = getModuleVisual((item as AreaNavItemWithArea).area, item.key)
+                }
+              }
 
-            return (
-              <SortableShortcutItem
-                key={id}
-                id={id}
-                item={item}
-                icon={icon}
-                linkHref={linkHref}
-                isActive={isActive}
-                isCollapsed={isCollapsed}
-                title={title}
-                onRemove={handleRemove}
-                t={t}
-              />
-            )
-          })}
-        </SortableContext>
-      </DndContext>
+              return (
+                <SortableShortcutItem
+                  key={id}
+                  id={id}
+                  item={item}
+                  icon={icon}
+                  linkHref={linkHref}
+                  isActive={isActive}
+                  isCollapsed={isCollapsed}
+                  title={title}
+                  visual={visual}
+                  onRemove={handleRemove}
+                  t={t}
+                />
+              )
+            })}
+          </SortableContext>
+        </DndContext>
+      </div>
     </>
   )
 }

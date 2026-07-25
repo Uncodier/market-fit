@@ -1,433 +1,698 @@
-"use client"
+"use client";
 
-import { useState, useMemo, useEffect } from "react"
-import useSWR from "swr"
-import { useSite } from "@/app/context/SiteContext"
-import { useLocalization } from "@/app/context/LocalizationContext"
-import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
-import { listCatalogItems } from "@/app/catalog/actions"
-import { resolveUnitPrice } from "@/app/price-lists/actions"
-import { checkoutCart, CheckoutLine } from "@/app/commerce/checkout"
-import { CatalogItem } from "@/app/types"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Button } from "@/app/components/ui/button"
-import { SearchInput } from "@/app/components/ui/search-input"
-import { Card, CardContent } from "@/app/components/ui/card"
-import { Badge } from "@/app/components/ui/badge"
-import { Input } from "@/app/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/app/components/ui/sheet"
-import { toast } from "sonner"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Archive, Store, Search, X, Plus, Minus, ChevronDown, CreditCard, DatabaseIcon, ShoppingCart, SearchIcon } from "@/app/components/ui/icons"
-import { SimpleSearchSelect } from "@/app/components/ui/simple-search-select"
-import { listLocations } from "@/app/inventory/actions"
-import { getLeads } from "@/app/leads/actions"
-import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialog"
-import { useRouter } from "next/navigation"
-
-interface CartItem extends CatalogItem {
-  cartQty: number;
-  cartPrice: number; // resolved price
-}
+import React, { useState, useMemo, useEffect } from "react";
+import useSWR from "swr";
+import { useSite } from "@/app/context/SiteContext";
+import { useLocalization } from "@/app/context/LocalizationContext";
+import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider";
+import { listCatalogItems, listCatalogCategories } from "@/app/catalog/actions";
+import { listOrders, getOrder } from "@/app/orders/actions";
+import { resolveUnitPrice, listPriceLists } from "@/app/price-lists/actions";
+import { checkoutCart, CheckoutLine } from "@/app/commerce/checkout";
+import { calculateOrderTaxTotal, roundMoney } from "@/app/commerce/taxes";
+import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
+import { StickyHeader } from "@/app/components/ui/sticky-header";
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
+import { Button } from "@/app/components/ui/button";
+import { SearchInput } from "@/app/components/ui/search-input";
+import {
+  RelationSelect,
+  RelationSelectValue,
+} from "@/app/components/ui/relation-select";
+import { resolveRelationId } from "@/app/commerce/resolve-relation";
+import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
+import { toast } from "sonner";
+import { ShoppingCart } from "@/app/components/ui/icons";
+import { listLocations } from "@/app/inventory/actions";
+import { getLeads } from "@/app/leads/actions";
+import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialog";
+import { CartPanel, PosCartItem } from "./components/CartPanel";
+import { PosCatalogGrid } from "./components/PosCatalogGrid";
+import { useRouter } from "next/navigation";
+import { CatalogItem } from "@/app/types";
 
 export default function POSPage() {
-  const { currentSite } = useSite()
-  const { t } = useLocalization()
-  const { user } = useAuth()
-  const router = useRouter()
-  
-  const [searchQuery, setSearchQuery] = useState("")
-  const [cart, setCart] = useState<CartItem[]>([])
-  
+  const { currentSite } = useSite();
+  const { t } = useLocalization();
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [cart, setCart] = useState<PosCartItem[]>([]);
+
   // Checkout states
-  const [leadId, setLeadId] = useState<string | undefined>(undefined)
-  const [fulfillment, setFulfillment] = useState<'pickup' | 'ship' | 'dine_in' | 'none'>('none')
-  const [originLocationId, setOriginLocationId] = useState<string>("")
-  const [promotionCode, setPromotionCode] = useState("")
-  const [checkoutLoading, setCheckoutLoading] = useState(false)
-  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
+  const [leadValue, setLeadValue] = useState<RelationSelectValue>(null);
+  const [fulfillment, setFulfillment] = useState<
+    "pickup" | "ship" | "dine_in" | "none"
+  >("none");
+  const [originLocationId, setOriginLocationId] = useState<string>("");
+  const [priceListId, setPriceListId] = useState<string>("none");
+  const [promoCode, setPromoCode] = useState("");
+  const [selectedCartItemId, setSelectedCartItemId] = useState<string | null>(
+    null,
+  );
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState<string>("new");
+  const creatingOrderRef = React.useRef<boolean>(false);
 
   // Fetch sellable catalog items (can be optimized to only show active)
   const { data: catalogData, isLoading: catalogLoading } = useSWR(
-    currentSite?.id ? ['pos_catalog', currentSite.id, searchQuery] : null,
-    () => listCatalogItems({ siteId: currentSite!.id, status: 'active', isPosAvailable: true, q: searchQuery, pageSize: 100 })
-  )
+    currentSite?.id ? ["pos_catalog", currentSite.id, searchQuery] : null,
+    () =>
+      listCatalogItems({
+        siteId: currentSite!.id,
+        status: "active",
+        isPosAvailable: true,
+        q: searchQuery,
+        pageSize: 100,
+      }),
+  );
 
-  const { data: locationsData } = useSWR(currentSite?.id ? ['locations', currentSite.id] : null, () => listLocations(currentSite!.id))
-  const { data: leadsData } = useSWR(currentSite?.id ? ['leads', currentSite.id] : null, () => getLeads(currentSite!.id))
+  const { data: locationsData } = useSWR(
+    currentSite?.id ? ["locations", currentSite.id] : null,
+    () => listLocations(currentSite!.id),
+  );
+  const { data: leadsData } = useSWR(
+    currentSite?.id ? ["leads", currentSite.id] : null,
+    () => getLeads(currentSite!.id),
+  );
+  const { data: categoriesData } = useSWR(
+    currentSite?.id ? ["categories", currentSite.id] : null,
+    () => listCatalogCategories(currentSite!.id),
+  );
+  const { data: pendingOrdersData, mutate } = useSWR(
+    currentSite?.id ? ["pending_orders", currentSite.id] : null,
+    () =>
+      listOrders({ siteId: currentSite!.id, status: "pending", pageSize: 50 }),
+  );
+  const { data: priceListsData } = useSWR(
+    currentSite?.id ? ["price_lists", currentSite.id] : null,
+    () => listPriceLists({ siteId: currentSite!.id, pageSize: 100 }),
+  );
 
-  const items = catalogData?.data || []
-  const locations = locationsData?.data || []
-  
+  const allItems = catalogData?.data || [];
+  const locations = locationsData?.data || [];
+  const categories = categoriesData?.data || [];
+  const pendingOrders = pendingOrdersData?.data || [];
+  const priceLists = (priceListsData?.data || []).filter(
+    (pl: any) => pl.is_active,
+  );
+
+  const items = useMemo(() => {
+    if (selectedCategory === "all") return allItems;
+    if (selectedCategory === "kind_product")
+      return allItems.filter((i: any) => i.kind === "product");
+    if (selectedCategory === "kind_service")
+      return allItems.filter((i: any) => i.kind === "service");
+    if (selectedCategory === "kind_digital_asset")
+      return allItems.filter((i: any) => i.kind === "digital_asset");
+    return allItems.filter((i: any) => i.category_id === selectedCategory);
+  }, [allItems, selectedCategory]);
+
   // Set default location if empty
   useEffect(() => {
     if (locations.length > 0 && !originLocationId) {
-      const def = locations.find((l: any) => l.is_default) || locations[0]
-      if (def) setOriginLocationId(def.id)
+      const def = locations.find((l: any) => l.is_default) || locations[0];
+      if (def) setOriginLocationId(def.id);
     }
-  }, [locations, originLocationId])
+  }, [locations, originLocationId]);
+
+  const handlePriceListChange = async (newId: string) => {
+    setPriceListId(newId);
+    if (!currentSite || cart.length === 0) return;
+
+    const actualId = newId === "none" ? undefined : newId;
+
+    // re-resolve prices
+    const newCart = await Promise.all(
+      cart.map(async (c) => {
+        const res = await resolveUnitPrice(currentSite.id, c.id, actualId);
+        return { ...c, cartPrice: res.price || c.target_sale_price || 0 };
+      }),
+    );
+
+    setCart(newCart);
+  };
 
   const addToCart = async (item: CatalogItem) => {
-    if (!currentSite) return
-    
+    if (!currentSite || !user) return;
+
     // Check if unavailable
-    if (item.availability_mode === 'manual' && item.availability_status !== 'available') {
-      toast.error("Item is not available")
-      return
+    if (
+      item.availability_mode === "manual" &&
+      item.availability_status !== "available"
+    ) {
+      toast.error(t("pos.errorItemNotAvailable") || "Item is not available");
+      return;
     }
 
-    const existing = cart.find(c => c.id === item.id)
+    const existing = cart.find((c) => c.id === item.id);
+    let newCart = [...cart];
+
     if (existing) {
-      setCart(cart.map(c => c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c))
+      newCart = cart.map((c) =>
+        c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c,
+      );
+      setCart(newCart);
     } else {
       // Fetch resolved price (using resolveUnitPrice server action)
-      const res = await resolveUnitPrice(currentSite.id, item.id);
-      const price = res.price || item.target_sale_price || 0
-      setCart([...cart, { ...item, cartQty: 1, cartPrice: price }])
+      const res = await resolveUnitPrice(
+        currentSite.id,
+        item.id,
+        priceListId && priceListId !== "none" ? priceListId : undefined,
+      );
+      const price = res.price || item.target_sale_price || 0;
+      newCart = [{ ...item, cartQty: 1, cartPrice: price }, ...cart];
+      setCart(newCart);
     }
-  }
+
+    setSelectedCartItemId(item.id);
+
+    if (activeOrderId === "new" && !creatingOrderRef.current) {
+      creatingOrderRef.current = true;
+      try {
+        const lines: CheckoutLine[] = newCart
+          .filter((c) => c.cartQty > 0)
+          .map((c) => ({
+            catalogItemId: c.id,
+            quantity: c.cartQty,
+          }));
+
+        const res = await checkoutCart({
+          siteId: currentSite.id,
+          userId: user.id,
+          lines,
+          fulfillment,
+          originLocationId: originLocationId,
+          source: "pos",
+          payments: [],
+          existingOrderId: activeOrderId !== "new" ? activeOrderId : undefined,
+          intent: 'draft'
+        });
+
+        if (res.orderId) {
+          setActiveOrderId(res.orderId);
+          mutate(["pending_orders", currentSite.id]);
+        }
+      } catch (err) {
+        console.error("Failed to auto-create order", err);
+      } finally {
+        creatingOrderRef.current = false;
+      }
+    }
+  };
 
   const updateQty = (id: string, delta: number) => {
-    setCart(cart.map(c => {
-      if (c.id === id) {
-        const newQty = Math.max(0, c.cartQty + delta)
-        return { ...c, cartQty: newQty }
-      }
-      return c
-    }).filter(c => c.cartQty > 0))
-  }
+    setCart(
+      cart
+        .map((c) => {
+          if (c.id === id) {
+            const newQty = Math.max(0, c.cartQty + delta);
+            return { ...c, cartQty: newQty };
+          }
+          return c;
+        })
+        .filter((c) => c.cartQty > 0),
+    );
+  };
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0)
+  const setItemQty = (id: string, qty: number) => {
+    setCart((prev) =>
+      prev.map((c) => {
+        if (c.id === id) {
+          return { ...c, cartQty: Math.max(0, qty) };
+        }
+        return c;
+      })
+    );
+  };
+
+  const setItemPrice = (id: string, price: number) => {
+    setCart(
+      cart.map((c) => {
+        if (c.id === id) {
+          return { ...c, cartPrice: Math.max(0, price) };
+        }
+        return c;
+      }),
+    );
+  };
+
+  const subtotal = cart.reduce(
+    (sum, item) => sum + item.cartPrice * item.cartQty,
+    0,
+  );
+
+  const cartTaxKey = useMemo(
+    () =>
+      cart
+        .map((c) => c.id)
+        .sort()
+        .join(","),
+    [cart],
+  );
+
+  const { data: taxesByItem } = useSWR(
+    currentSite?.id && cart.length > 0
+      ? ["pos_cart_taxes", currentSite.id, cartTaxKey]
+      : null,
+    () =>
+      getTaxesByCatalogItemIds(
+        currentSite!.id,
+        cart.map((c) => c.id),
+      ).then((res) => res.data || {}),
+  );
+
+  const taxTotal = useMemo(
+    () =>
+      calculateOrderTaxTotal(
+        cart
+          .filter((c) => c.cartQty > 0)
+          .map((c) => ({
+            catalogItemId: c.id,
+            subtotal: c.cartPrice * c.cartQty,
+          })),
+        taxesByItem || {},
+      ),
+    [cart, taxesByItem],
+  );
+
+  const total = roundMoney(subtotal + taxTotal);
+  const activeCartItems = cart.filter((c) => c.cartQty > 0);
 
   const initiateCheckout = () => {
-    if (cart.length === 0) return
+    if (activeCartItems.length === 0) return;
     if (!originLocationId) {
-      toast.error("Select an origin location")
-      return
+      toast.error(t("pos.errorSelectOrigin") || "Select an origin location");
+      return;
     }
-    if (fulfillment === 'ship' && (!leadId || leadId === 'none')) {
-      toast.error("Select a customer for shipping")
-      return
+    if (fulfillment === "ship" && !leadValue) {
+      toast.error(
+        t("pos.errorSelectCustomerShipping") ||
+          "Select a customer for shipping",
+      );
+      return;
     }
-    setIsPaymentDialogOpen(true)
-  }
+    setIsPaymentDialogOpen(true);
+  };
 
-  const handleCheckout = async (payments: { method: string; amount: number; tendered: number; change: number }[]) => {
-    if (!currentSite || !user) return
-    
-    setCheckoutLoading(true)
-    
-    const lines: CheckoutLine[] = cart.map(c => ({
-      catalogItemId: c.id,
-      quantity: c.cartQty
-    }))
+  const handleCheckout = async (
+    payments: {
+      method: string;
+      amount: number;
+      tendered: number;
+      change: number;
+    }[],
+    checkoutPromoCode?: string,
+    intent?: 'complete' | 'pay'
+  ) => {
+    if (!currentSite || !user) return;
 
-    const res = await checkoutCart({
-      siteId: currentSite.id,
-      userId: user.id,
-      lines,
-      leadId: leadId === 'none' ? undefined : leadId,
-      fulfillment,
-      originLocationId: originLocationId,
-      promotionCode: promotionCode || undefined,
-      source: 'pos',
-      payments
-    })
+    setCheckoutLoading(true);
 
-    if (res.error) {
-      toast.error(res.error)
-      setCheckoutLoading(false)
-      setIsPaymentDialogOpen(false)
-      return
+    try {
+      const { id: resolvedLeadId, error: leadError } = await resolveRelationId(
+        "lead",
+        leadValue,
+        currentSite.id,
+      );
+      if (leadError) throw new Error(`Lead error: ${leadError}`);
+
+      const lines: CheckoutLine[] = cart
+        .filter((c) => c.cartQty > 0)
+        .map((c) => ({
+          catalogItemId: c.id,
+          quantity: c.cartQty,
+          unitPriceOverride: c.cartPrice,
+        }));
+
+      const finalPromoCode = checkoutPromoCode || promoCode || undefined;
+
+      const res = await checkoutCart({
+        siteId: currentSite.id,
+        userId: user.id,
+        lines,
+        priceListId:
+          priceListId && priceListId !== "none" ? priceListId : undefined,
+        leadId: resolvedLeadId || undefined,
+        fulfillment,
+        originLocationId: originLocationId,
+        promotionCode: finalPromoCode,
+        source: "pos",
+        payments,
+        existingOrderId: activeOrderId !== "new" ? activeOrderId : undefined,
+        intent: intent || 'pay'
+      });
+
+      if (res.error) {
+        toast.error(res.error);
+        setCheckoutLoading(false);
+        setIsPaymentDialogOpen(false);
+        return;
+      }
+
+      toast.success(t("pos.checkoutComplete") || "Checkout complete!");
+      setCart([]);
+      setLeadValue(null);
+      setActiveOrderId("new");
+      setIsPaymentDialogOpen(false);
+      if (res.saleId) {
+        router.push(`/sales/${res.saleId}`);
+      }
+    } catch (err: any) {
+      toast.error(
+        err.message || t("pos.errorCheckingOut") || "Error checking out",
+      );
+    } finally {
+      setCheckoutLoading(false);
     }
-
-    toast.success("Checkout complete!")
-    setCart([])
-    setLeadId(undefined)
-    setPromotionCode("")
-    setIsPaymentDialogOpen(false)
-    if (res.saleId) {
-      router.push(`/sales/${res.saleId}`)
-    }
-    
-    setCheckoutLoading(false)
-  }
+  };
 
   useEffect(() => {
     // Si queremos un titulo especial
-    const event = new CustomEvent('breadcrumb:update', {
+    const event = new CustomEvent("breadcrumb:update", {
       detail: {
-        title: t('layout.sidebar.pos') || 'Point of Sale'
-      }
+        title: t("layout.sidebar.pos") || "Point of Sale",
+      },
     });
     window.dispatchEvent(event);
   }, [t]);
 
+  useEffect(() => {
+    const handleSendOrder = async () => {
+      const activeItems = cart.filter((c) => c.cartQty > 0);
+      if (activeItems.length === 0) {
+        toast.error(t("pos.errorCartEmpty") || "Cart is empty");
+        return;
+      }
+      if (!originLocationId) {
+        toast.error(t("pos.errorSelectOrigin") || "Select an origin location");
+        return;
+      }
+      if (fulfillment === "ship" && !leadValue) {
+        toast.error(
+          t("pos.errorSelectCustomerShipping") ||
+            "Select a customer for shipping",
+        );
+        return;
+      }
+      if (!currentSite || !user) return;
+
+      setCheckoutLoading(true);
+
+      try {
+        const { id: resolvedLeadId, error: leadError } =
+          await resolveRelationId("lead", leadValue, currentSite.id);
+        if (leadError) throw new Error(`Lead error: ${leadError}`);
+
+        const lines: CheckoutLine[] = cart
+          .filter((c) => c.cartQty > 0)
+          .map((c) => ({
+            catalogItemId: c.id,
+            quantity: c.cartQty,
+            unitPriceOverride: c.cartPrice,
+          }));
+
+        const res = await checkoutCart({
+          siteId: currentSite.id,
+          userId: user.id,
+          lines,
+          priceListId:
+            priceListId && priceListId !== "none" ? priceListId : undefined,
+          leadId: resolvedLeadId || undefined,
+          fulfillment,
+          originLocationId: originLocationId,
+        source: "pos",
+        payments: [], // Sending empty payments so it becomes a pending order (or completed if rules apply, but no payment collected here)
+        existingOrderId: activeOrderId !== "new" ? activeOrderId : undefined,
+        intent: 'send'
+      });
+
+        if (res.error) {
+          toast.error(res.error);
+          setCheckoutLoading(false);
+          return;
+        }
+
+        toast.success(t("pos.orderSent") || "Order sent to orders panel!");
+        setCart([]);
+        setLeadValue(null);
+        setActiveOrderId("new");
+        if (res.orderId) {
+          router.push(`/orders/${res.orderId}`);
+        }
+      } catch (err: any) {
+        toast.error(
+          err.message || t("pos.errorSendingOrder") || "Error sending order",
+        );
+      } finally {
+        setCheckoutLoading(false);
+      }
+    };
+
+    window.addEventListener("pos:send-order", handleSendOrder);
+    return () => window.removeEventListener("pos:send-order", handleSendOrder);
+  }, [
+    cart,
+    originLocationId,
+    leadValue,
+    fulfillment,
+    priceListId,
+    currentSite,
+    user,
+    router,
+  ]);
+
+  const handleOrderSelect = async (val: string) => {
+    if (!val || val === "new") {
+      setActiveOrderId("new");
+      setCart([]);
+      setLeadValue(null);
+      setPriceListId("none");
+      return;
+    }
+
+    const orderId = val;
+    setActiveOrderId(orderId);
+
+    try {
+      setCheckoutLoading(true);
+      const res = await getOrder(orderId);
+      if (res.error) throw new Error(res.error);
+      const order = res.data;
+
+      // Populate lead if available
+      if (order.leads) {
+        setLeadValue({
+          id: order.leads.id,
+          label: order.leads.name || order.leads.email,
+        });
+      } else {
+        setLeadValue(null);
+      }
+
+      // Populate price list if available
+      if (order.price_list_id) {
+        setPriceListId(order.price_list_id);
+      } else {
+        setPriceListId("none");
+      }
+
+      // Populate cart from order items
+      if (order?.sale_order_items && allItems.length > 0) {
+        const loadedCart: PosCartItem[] = order.sale_order_items.map((oi: any) => {
+          const catalogItem = allItems.find(
+            (c: any) => c.id === oi.catalog_item_id,
+          );
+          return {
+            ...catalogItem,
+            id: oi.catalog_item_id, // ensure ID is set for missing items
+            name: oi.name,
+            cartQty: oi.quantity,
+            cartPrice: oi.unit_price,
+          } as PosCartItem;
+        });
+        setCart(loadedCart);
+      }
+    } catch (err: any) {
+      toast.error(
+        err.message || t("pos.errorLoadingOrder") || "Failed to load order",
+      );
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
-      <StickyHeader>
-        <div className="w-full pt-0 flex items-center gap-2 justify-between">
-          <div className="flex-1 max-w-md">
-            <SearchInput 
-              placeholder="Search catalog..." 
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="flex justify-end md:hidden flex-shrink-0">
-            <Sheet open={isMobileCartOpen} onOpenChange={setIsMobileCartOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="relative h-9 w-9">
-                  <ShoppingCart className="h-4 w-4" />
-                  {cart.length > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-                      {cart.reduce((s, c) => s + c.cartQty, 0)}
-                    </span>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-full sm:max-w-md p-0 flex flex-col z-[100]">
-                <CartPanel 
-                  cart={cart}
-                  subtotal={subtotal}
-                  updateQty={updateQty}
-                  leadId={leadId}
-                  setLeadId={setLeadId}
-                  fulfillment={fulfillment}
-                  setFulfillment={setFulfillment}
-                  originLocationId={originLocationId}
-                  setOriginLocationId={setOriginLocationId}
-                  promotionCode={promotionCode}
-                  setPromotionCode={setPromotionCode}
-                  handleCheckout={initiateCheckout}
-                  checkoutLoading={checkoutLoading}
-                  leads={leadsData?.leads || []}
-                  locations={locations}
-                  isMobile={true}
-                  closeCart={() => setIsMobileCartOpen(false)}
-                />
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </StickyHeader>
-
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Left: Catalog Grid */}
-        <div className="flex-1 flex flex-col overflow-hidden border-r bg-muted/30">
-          <div className="flex-1 overflow-auto p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {catalogLoading ? (
-                Array.from({ length: 10 }).map((_, i) => (
-                  <Card key={i} className="animate-pulse h-32"></Card>
-                ))
-              ) : items.length === 0 ? (
-                <div className="col-span-full py-8">
-                  <EmptyCard
-                    variant="fancy"
-                    icon={<Search className="w-8 h-8 text-muted-foreground" />}
-                    title="No items found"
-                    description="No products or services found for your current search."
-                  />
-                </div>
-              ) : (
-                items.map(item => {
-                  const isAvailable = item.availability_mode !== 'manual' || item.availability_status === 'available'
-                  return (
-                    <Card 
-                      key={item.id} 
-                      className={`cursor-pointer transition-shadow hover:shadow-md overflow-hidden flex flex-col h-full ${!isAvailable ? 'opacity-50 grayscale' : ''}`}
-                      onClick={() => isAvailable && addToCart(item)}
+    <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] overflow-hidden bg-muted/30">
+      <Tabs
+        value={selectedCategory}
+        onValueChange={setSelectedCategory}
+        className="flex-1 flex flex-col min-h-0"
+      >
+        <StickyHeader className="!top-0">
+          <div className="w-full pt-0">
+            <div className="flex items-center gap-8">
+              <div>
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
+                  <TabsTrigger
+                    value="all"
+                    className="rounded-full text-xs px-3"
+                  >
+                    {t("pos.filters.all") || "All"}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="kind_product"
+                    className="rounded-full text-xs px-3"
+                  >
+                    {t("pos.filters.products") || "Products"}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="kind_service"
+                    className="rounded-full text-xs px-3"
+                  >
+                    {t("pos.filters.services") || "Services"}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="kind_digital_asset"
+                    className="rounded-full text-xs px-3"
+                  >
+                    {t("pos.filters.digitalAssets") || "Digital"}
+                  </TabsTrigger>
+                  {categories.map((cat: any) => (
+                    <TabsTrigger
+                      key={cat.id}
+                      value={cat.id}
+                      className="rounded-full text-xs px-3"
                     >
-                      <div className="p-4 flex-1 flex flex-col">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                            {item.kind === 'product' ? <Archive className="h-4 w-4" /> : <DatabaseIcon className="h-4 w-4" />}
-                          </div>
-                          <h3 className="font-medium text-sm text-foreground line-clamp-2 leading-snug">{item.name}</h3>
-                          {item.sku && <p className="text-xs text-muted-foreground font-mono mt-1">{item.sku}</p>}
-                        </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="font-bold text-foreground">
-                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.cartPrice || item.target_sale_price || 0)}
-                  </span>
-                  {!isAvailable && (
-                            <Badge variant="outline" className="text-[10px] text-red-500 border-red-200">Sold Out</Badge>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  )
-                })
-              )}
+                      {cat.name}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+
+              <SearchInput
+                placeholder={t("pos.searchCatalog") || "Search catalog..."}
+                className="w-64 flex-shrink-0"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                type="text"
+              />
+              <div className="flex-1"></div>
+
+              <div className="flex justify-end md:hidden flex-shrink-0">
+                <Sheet
+                  open={isMobileCartOpen}
+                  onOpenChange={setIsMobileCartOpen}
+                >
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="relative h-9 w-9"
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      {cart.length > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                          {cart.reduce((s, c) => s + c.cartQty, 0)}
+                        </span>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="w-full sm:max-w-md p-0 flex flex-col z-[100]">
+                    <CartPanel
+                      cart={cart}
+                      subtotal={subtotal}
+                      taxTotal={taxTotal}
+                      total={total}
+                      updateQty={updateQty}
+                      setItemQty={setItemQty}
+                      setItemPrice={setItemPrice}
+                      selectedCartItemId={selectedCartItemId}
+                      setSelectedCartItemId={setSelectedCartItemId}
+                      leadValue={leadValue}
+                      setLeadValue={setLeadValue}
+                      fulfillment={fulfillment}
+                      setFulfillment={setFulfillment}
+                      originLocationId={originLocationId}
+                      setOriginLocationId={setOriginLocationId}
+                      priceListId={priceListId}
+                      handlePriceListChange={handlePriceListChange}
+                      promoCode={promoCode}
+                      setPromoCode={setPromoCode}
+                      priceLists={priceLists}
+                      handleCheckout={initiateCheckout}
+                      checkoutLoading={checkoutLoading}
+                      leads={leadsData?.leads || []}
+                      locations={locations}
+                      isMobile={true}
+                      closeCart={() => setIsMobileCartOpen(false)}
+                      activeOrderId={activeOrderId}
+                      pendingOrders={pendingOrders}
+                      handleOrderSelect={handleOrderSelect}
+                      t={t}
+                    />
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
           </div>
-        </div>
+        </StickyHeader>
 
-        {/* Right: Cart (Desktop) */}
-        <div className="hidden md:flex w-96 flex-col bg-card">
-          <CartPanel 
-            cart={cart}
-            subtotal={subtotal}
-            updateQty={updateQty}
-            leadId={leadId}
-            setLeadId={setLeadId}
-            fulfillment={fulfillment}
-            setFulfillment={setFulfillment}
-            originLocationId={originLocationId}
-            setOriginLocationId={setOriginLocationId}
-            promotionCode={promotionCode}
-            setPromotionCode={setPromotionCode}
-            handleCheckout={initiateCheckout}
-            checkoutLoading={checkoutLoading}
-            leads={leadsData?.leads || []}
-            locations={locations}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+          <PosCatalogGrid
+            items={items as CatalogItem[]}
+            loading={catalogLoading}
+            onAdd={addToCart}
+            t={t}
           />
-        </div>
-      </div>
 
-      <PaymentConfirmationDialog 
+          {/* Right: Cart (Desktop) */}
+          <div className="hidden md:flex w-96 flex-col bg-card overflow-hidden min-h-0">
+            <CartPanel
+              cart={cart}
+              subtotal={subtotal}
+              taxTotal={taxTotal}
+              total={total}
+              updateQty={updateQty}
+              setItemQty={setItemQty}
+              setItemPrice={setItemPrice}
+              selectedCartItemId={selectedCartItemId}
+              setSelectedCartItemId={setSelectedCartItemId}
+              leadValue={leadValue}
+              setLeadValue={setLeadValue}
+              fulfillment={fulfillment}
+              setFulfillment={setFulfillment}
+              originLocationId={originLocationId}
+              setOriginLocationId={setOriginLocationId}
+              priceListId={priceListId}
+              handlePriceListChange={handlePriceListChange}
+              promoCode={promoCode}
+              setPromoCode={setPromoCode}
+              priceLists={priceLists}
+              handleCheckout={initiateCheckout}
+              checkoutLoading={checkoutLoading}
+              leads={leadsData?.leads || []}
+              locations={locations}
+              activeOrderId={activeOrderId}
+              pendingOrders={pendingOrders}
+              handleOrderSelect={handleOrderSelect}
+              t={t}
+            />
+          </div>
+        </div>
+      </Tabs>
+
+      <PaymentConfirmationDialog
         open={isPaymentDialogOpen}
         onOpenChange={setIsPaymentDialogOpen}
-        totalAmount={subtotal}
+        totalAmount={total}
         onConfirm={handleCheckout}
         isLoading={checkoutLoading}
       />
     </div>
-  )
-}
-
-function CartPanel({ 
-  cart, subtotal, updateQty,
-  leadId, setLeadId,
-  fulfillment, setFulfillment,
-  originLocationId, setOriginLocationId,
-  promotionCode, setPromotionCode,
-  handleCheckout, checkoutLoading,
-  leads, locations,
-  isMobile, closeCart
-}: any) {
-  return (
-    <>
-      {isMobile && (
-        <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
-          <h2 className="font-semibold text-lg flex items-center gap-2">
-            <Store className="h-5 w-5 text-muted-foreground" /> Current Order
-          </h2>
-          {closeCart && (
-            <Button variant="ghost" size="icon" onClick={closeCart} className="md:hidden">
-              <X className="h-5 w-5" />
-            </Button>
-          )}
-        </div>
-      )}
-      
-      {/* Cart Items */}
-      <div className="flex-1 overflow-auto p-4 space-y-4">
-        {cart.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
-            <EmptyCard
-              variant="fancy"
-              icon={<ShoppingCart className="w-8 h-8 text-muted-foreground" />}
-              title="Current Order is empty"
-              description="Add items from the catalog to start a new order."
-            />
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {cart.map((item: CartItem) => (
-              <div key={item.id} className="flex items-center gap-3 bg-card p-3 rounded-lg border shadow-sm">
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm text-foreground truncate">{item.name}</h4>
-                  <div className="text-muted-foreground text-xs mt-0.5">
-                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.cartPrice)}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={() => updateQty(item.id, -1)}>
-                    <Minus className="h-3 w-3" />
-                  </Button>
-                  <span className="w-4 text-center text-sm font-medium">{item.cartQty}</span>
-                  <Button variant="outline" size="icon" className="h-6 w-6 rounded-full" onClick={() => updateQty(item.id, 1)}>
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Checkout Controls */}
-      <div className="p-4 bg-muted/30 border-t space-y-4">
-        <div className="space-y-3">
-          <Select value={leadId || 'none'} onValueChange={setLeadId}>
-            <SelectTrigger className="bg-card">
-              <SelectValue placeholder="Walk-in Customer" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none" className="text-muted-foreground italic">Walk-in Customer</SelectItem>
-              {leads.map((l: any) => (
-                <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={fulfillment} onValueChange={setFulfillment}>
-            <SelectTrigger className="bg-card">
-              <SelectValue placeholder="Fulfillment" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Carry Out / Walk-in</SelectItem>
-              <SelectItem value="pickup">Store Pickup</SelectItem>
-              <SelectItem value="dine_in">Dine In</SelectItem>
-              <SelectItem value="ship">Ship to Customer</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          {fulfillment !== 'none' && (
-            <Select value={originLocationId} onValueChange={setOriginLocationId}>
-              <SelectTrigger className="bg-card">
-                <SelectValue placeholder={fulfillment === 'ship' ? "Ship From Location" : "Origin Location"} />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((l: any) => (
-                  <SelectItem key={l.id} value={l.id}>From: {l.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          <div className="flex gap-2">
-            <Input 
-              placeholder="Promo code..." 
-              value={promotionCode} 
-              onChange={e => setPromotionCode(e.target.value)}
-              className="bg-card uppercase"
-            />
-          </div>
-        </div>
-
-        <div className="pt-4 border-t border-border">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="text-xl font-bold text-foreground">
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(subtotal)}
-            </span>
-          </div>
-          <Button 
-            className="w-full h-12 text-lg" 
-            disabled={cart.length === 0 || checkoutLoading}
-            onClick={handleCheckout}
-          >
-            <CreditCard className="h-5 w-5 mr-2" />
-            {checkoutLoading ? "Processing..." : "Charge"}
-          </Button>
-        </div>
-      </div>
-    </>
-  )
+  );
 }

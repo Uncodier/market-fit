@@ -177,10 +177,12 @@ export function InstanceBrowserModal({
     let result = instances
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
+      const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+      const query = normalize(searchQuery)
+      
       result = instances.filter(inst => {
         const displayName = inst.requirement_title ? inst.requirement_title : (inst.name || `mk-${inst.id.slice(-4)}`)
-        const name = displayName.toLowerCase()
+        const name = normalize(displayName)
         return name.includes(query) || inst.id.toLowerCase().includes(query)
       })
     }

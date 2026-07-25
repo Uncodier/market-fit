@@ -26,7 +26,8 @@ import { createClient } from "@/lib/supabase/client"
 import { type ExperimentFormValues } from "@/app/experiments/actions"
 import { experimentFormSchema } from "@/app/experiments/schema"
 import * as z from "zod"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 // Marca para React DevTools
 if (typeof window !== "undefined") {
@@ -162,9 +163,18 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
       values.site_id = currentSite.id
       values.preview_url = currentSite.url || values.preview_url
 
+      let resolvedCampaignId = null;
+      if (campaignValue) {
+        const { id, error } = await resolveRelationId("campaign", campaignValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedCampaignId = id;
+      }
+      
+      values.campaign_id = resolvedCampaignId;
+
       console.log("Submitting experiment with data:", {
         ...values,
-        campaign: values.campaign_id ? campaigns.find(c => c.id === values.campaign_id)?.title : null
+        campaign: resolvedCampaignId ? campaigns.find(c => c.id === resolvedCampaignId)?.title : null
       });
 
       const { data, error } = await onCreateExperiment(values)
@@ -335,34 +345,23 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
             </div>
 
             {/* Campaign Selector */}
-            {campaigns.length > 0 && (
-              <div className="grid gap-2">
-                <div className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-muted-foreground" />
-                  <Label>Associated Campaign</Label>
-                </div>
-                <Select
-                  onValueChange={(value) => {
-                    form.setValue("campaign_id", value === "none" ? null : value);
-                  }}
-                >
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Select a campaign (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {campaigns.map((campaign) => (
-                      <SelectItem key={campaign.id} value={campaign.id}>
-                        {campaign.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Link this experiment to a marketing campaign to track performance
-                </p>
+            <div className="grid gap-2">
+              <div className="flex items-center gap-2">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                <Label>Associated Campaign</Label>
               </div>
-            )}
+              <RelationSelect
+                options={campaigns.map((c) => ({ id: c.id, label: c.title }))}
+                value={campaignValue}
+                onValueChange={setCampaignValue}
+                placeholder="Select a campaign (optional)"
+                emptyMessage="No campaigns found"
+                className="h-12"
+              />
+              <p className="text-xs text-muted-foreground">
+                Link this experiment to a marketing campaign to track performance
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button

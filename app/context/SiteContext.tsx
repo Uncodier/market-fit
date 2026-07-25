@@ -856,11 +856,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
   useEffect(() => {
     if (!isInitialized || !isMounted || !supabaseRef.current) return
 
+    let sitesSubscription: any = null;
+
     // Only subscribe after a delay to avoid immediate triggers during initialization
     const subscriptionTimer = setTimeout(() => {
+      // Usar un nombre de canal único para evitar colisiones si se reutiliza el cliente
+      const channelName = `sites-db-changes-${Date.now()}`;
+      
       // Suscribirse a cambios en la tabla sites
-      const sitesSubscription = supabaseRef.current
-        .channel('sites-db-changes')
+      sitesSubscription = supabaseRef.current
+        .channel(channelName)
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
@@ -900,24 +905,19 @@ export function SiteProvider({ children }: SiteProviderProps) {
           }
         })
         .subscribe()
-      
-      // Remove the settings subscription entirely to prevent constant reloading
-      // Settings changes will be handled through the manual save process
-      
-      return () => {
-        try {
-          supabaseRef.current?.removeChannel(sitesSubscription)
-          if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
-        } catch (error) {
-          console.error("Error unsubscribing from sites channel:", error)
-        }
-      }
     }, 2000); // Delay subscription by 2 seconds to avoid initialization conflicts
     
     return () => {
       clearTimeout(subscriptionTimer);
+      if (sitesSubscription && supabaseRef.current) {
+        try {
+          supabaseRef.current.removeChannel(sitesSubscription);
+        } catch (error) {
+          console.error("Error unsubscribing from sites channel:", error);
+        }
+      }
     }
-  }, [isInitialized, isMounted]) // Removed currentSite?.id dependency to prevent re-subscriptions
+  }, [isInitialized, isMounted, currentSite?.id || null]) // currentSite?.id needed for closure in UPDATE handling
 
   // Redirect to /create-site if user has no sites.
   // If user has sites but none selected, redirect to /projects to choose.
@@ -932,7 +932,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // 5. No sites available
       // 6. Not already on create-site page or auth pages
       // 7. Not trying to redirect FROM create-site (this was the bug!)
-      // Case A: No sites at all -> go to create-site
+      const isBuyerOrMarketplace = pathname.startsWith('/buyer') || pathname.startsWith('/marketplace');
+
+      // Case A: No sites at all -> go to buyer/orders instead of create-site
       if (
         isMounted && 
         isInitialized && 
@@ -942,9 +944,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
         sites.length === 0 && 
         !pathname.startsWith('/create-site') && 
         !pathname.startsWith('/auth/') &&
+        !isBuyerOrMarketplace &&
         supabaseRef.current
       ) {
-        router.push('/create-site')
+        router.push('/buyer')
       }
       // Case B: There are sites but no selection -> go to projects
       else if (
@@ -959,6 +962,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         !pathname.startsWith('/auth/') &&
         !pathname.startsWith('/create-site') &&
         !pathname.startsWith('/demo') &&
+        !isBuyerOrMarketplace &&
         supabaseRef.current
       ) {
         router.push('/projects')
@@ -1307,6 +1311,70 @@ export function SiteProvider({ children }: SiteProviderProps) {
         } catch (settingsError) {
           console.error("CREATE SITE: Error creating initial settings:", settingsError);
           // Continue even if settings fail - the site was created successfully
+        }
+
+        // Sync office locations into SQL locations table (used by inventory/shipments/POS)
+        try {
+          const jsonLocations = Array.isArray(settingsToSave.locations)
+            ? settingsToSave.locations
+            : [];
+          const namedLocations = jsonLocations.filter(
+            (loc: any) => loc?.name && String(loc.name).trim()
+          );
+
+          if (namedLocations.length > 0) {
+            for (let i = 0; i < namedLocations.length; i++) {
+              const loc = namedLocations[i] as any;
+              const { error: locError } = await supabaseRef.current
+                .from("locations")
+                .upsert(
+                  {
+                    site_id: createdSite.id,
+                    name: String(loc.name).trim(),
+                    address: loc.address || null,
+                    city: loc.city || null,
+                    state: loc.state || null,
+                    zip: loc.zip || null,
+                    country: loc.country || null,
+                    is_default: i === 0,
+                    is_active: true,
+                    updated_at: new Date().toISOString(),
+                  },
+                  { onConflict: "site_id,name" }
+                );
+              if (locError) {
+                console.warn("CREATE SITE: location upsert warning:", locError);
+              }
+            }
+          } else {
+            await supabaseRef.current.from("locations").insert({
+              site_id: createdSite.id,
+              name: "Main",
+              is_default: true,
+              is_active: true,
+            });
+          }
+
+          // Seed default price list if missing
+          const { data: existingPriceList } = await supabaseRef.current
+            .from("price_lists")
+            .select("id")
+            .eq("site_id", createdSite.id)
+            .eq("is_default", true)
+            .maybeSingle();
+          if (!existingPriceList) {
+            await supabaseRef.current.from("price_lists").insert({
+              site_id: createdSite.id,
+              name: "Standard",
+              is_default: true,
+              is_active: true,
+            });
+          }
+        } catch (commerceSeedError) {
+          console.warn(
+            "CREATE SITE: Error seeding commerce defaults:",
+            commerceSeedError
+          );
         }
       }
       

@@ -973,6 +973,8 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
     text: '',
     instructions: '',
     type: '',
+    segmentValue: null as RelationSelectValue,
+    campaignValue: null as RelationSelectValue,
     segment_id: '',
     campaign_id: '',
     tags: [] as string[],
@@ -1241,7 +1243,9 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
         word_count: wordCount,
         char_count: charCount,
         performance_rating: contentData.performance_rating,
-        status: contentData.status || 'draft' // Load status from content or default to draft
+        status: contentData.status || 'draft', // Load status from content or default to draft
+        segmentValue: contentData.segment_id ? { mode: "existing", id: contentData.segment_id, label: "Loading..." } : null,
+        campaignValue: contentData.campaign_id ? { mode: "existing", id: contentData.campaign_id, label: "Loading..." } : null
       })
       
       if (editor) {
@@ -1274,6 +1278,12 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
             console.log("Campaigns loaded:", campaignsData.length)
             console.log("First campaign:", campaignsData[0]?.title || "No campaigns found")
             setCampaigns(campaignsData)
+            if (contentData.campaign_id) {
+              const matched = campaignsData.find(c => c.id === contentData.campaign_id);
+              if (matched) {
+                setEditForm(prev => ({...prev, campaignValue: { mode: "existing", id: matched.id, label: matched.title }}));
+              }
+            }
           }
         } catch (campaignError) {
           console.error("Error loading campaigns:", campaignError)
@@ -1295,6 +1305,12 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
           } else if (segmentsData) {
             console.log("Segments loaded:", segmentsData.length)
             setSegments(segmentsData)
+            if (contentData.segment_id) {
+              const matched = segmentsData.find(s => s.id === contentData.segment_id);
+              if (matched) {
+                setEditForm(prev => ({...prev, segmentValue: { mode: "existing", id: matched.id, label: matched.name }}));
+              }
+            }
           }
         } catch (segmentError) {
           console.error("Error loading segments:", segmentError)
@@ -1402,11 +1418,26 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
 
   const handleSaveChanges = async () => {
     if (!content) return
+    if (!currentSite) return
     
     console.log("Saving with campaign_id:", editForm.campaign_id)
     
     setIsSaving(true)
     try {
+      let resolvedSegmentId = editForm.segment_id;
+      if (editForm.segmentValue !== undefined) {
+        const { id, error } = await resolveRelationId("segment", editForm.segmentValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedSegmentId = id || "";
+      }
+
+      let resolvedCampaignId = editForm.campaign_id;
+      if (editForm.campaignValue !== undefined) {
+        const { id, error } = await resolveRelationId("campaign", editForm.campaignValue, currentSite.id);
+        if (error) throw new Error(error);
+        resolvedCampaignId = id || "";
+      }
+
       // Convert HTML content back to markdown for storage
       const markdownContent = htmlToMarkdown(editForm.content);
       const markdownInstructions = htmlToMarkdown(editForm.instructions);
@@ -1417,8 +1448,8 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
         title: editForm.title,
         description: editForm.description || undefined,
         type: content.type,
-        segment_id: editForm.segment_id === '' ? null : editForm.segment_id,
-        campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
+        segment_id: resolvedSegmentId === '' ? null : resolvedSegmentId,
+        campaign_id: resolvedCampaignId === '' ? null : resolvedCampaignId,
         tags: editForm.tags.length > 0 ? editForm.tags : null,
         content: markdownContent || undefined,
         text: markdownContent || undefined,
@@ -2367,8 +2398,8 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
                                   title: editForm.title,
                                   description: editForm.description || undefined,
                                   type: content.type,
-                                  segment_id: editForm.segment_id === '' ? null : editForm.segment_id,
-                                  campaign_id: editForm.campaign_id === '' ? null : editForm.campaign_id,
+                                  segment_id: (editForm.segmentValue?.mode === "existing" ? editForm.segmentValue.id : editForm.segment_id) || null,
+                                  campaign_id: (editForm.campaignValue?.mode === "existing" ? editForm.campaignValue.id : editForm.campaign_id) || null,
                                   tags: editForm.tags.length > 0 ? editForm.tags : null,
                                   text: editForm.text || undefined,
                                   performance_rating: rating,
@@ -2478,52 +2509,36 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
                             <Users className="h-4 w-4 text-muted-foreground" />
                             Segment
                           </Label>
-                          <Select
-                            value={editForm.segment_id || "none"}
-                            onValueChange={(value) => setEditForm(prev => ({ 
+                          <RelationSelect
+                            options={segments.map(s => ({ id: s.id, label: s.name }))}
+                            value={editForm.segmentValue}
+                            onValueChange={(val) => setEditForm(prev => ({ 
                               ...prev, 
-                              segment_id: value === "none" ? "" : value 
+                              segmentValue: val,
+                              segment_id: val?.mode === "existing" ? val.id : "" 
                             }))}
-                          >
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select a segment" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No segment</SelectItem>
-                              {segments.map(segment => (
-                                <SelectItem key={segment.id} value={segment.id}>
-                                  {segment.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            placeholder="Select a segment"
+                            emptyMessage="No segments found"
+                            className="h-11"
+                          />
                         </div>
                         <div className="space-y-2.5">
                           <Label className="flex items-center gap-2">
                             <Target className="h-4 w-4 text-muted-foreground" />
                             Campaign
                           </Label>
-                          <Select
-                            value={editForm.campaign_id || "none"}
-                            onValueChange={(value) => setEditForm(prev => ({ 
+                          <RelationSelect
+                            options={campaigns.map(c => ({ id: c.id, label: c.title }))}
+                            value={editForm.campaignValue}
+                            onValueChange={(val) => setEditForm(prev => ({ 
                               ...prev, 
-                              campaign_id: value === "none" ? "" : value 
+                              campaignValue: val,
+                              campaign_id: val?.mode === "existing" ? val.id : "" 
                             }))}
-                          >
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select a campaign" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No campaign</SelectItem>
-                              {campaigns.map(campaign => (
-                                <SelectItem key={campaign.id} value={campaign.id}>
-                                  <div className="truncate max-w-[200px]" title={campaign.title}>
-                                    {campaign.title}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            placeholder="Select a campaign"
+                            emptyMessage="No campaigns found"
+                            className="h-11"
+                          />
                         </div>
                         <div className="space-y-2.5">
                           <Label className="flex items-center gap-2">
