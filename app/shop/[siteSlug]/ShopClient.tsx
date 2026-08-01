@@ -340,11 +340,6 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
       <div className="h-4 w-full shrink-0" />
       {/* Sticky Header */}
       <CommerceShellHeader
-        mobileLeading={
-          <button className={`md:hidden ${shellClasses.iconButton}`} onClick={() => setIsMobileMenuOpen(true)}>
-            <Menu className="h-6 w-6" />
-          </button>
-        }
         brand={
           <Link href={`/shop/${siteSlug}`} className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
             {site.logo_url ? (
@@ -360,7 +355,7 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
           <div className="w-full max-w-xl relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input 
-              type="search" 
+              type="text" 
               placeholder={t("shop.searchPlaceholder") || "Search products..."} 
               className="w-full pl-9 h-9 text-sm bg-muted/50 focus:bg-white dark:focus:bg-gray-950 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-full transition-all outline-none shadow-sm"
               value={searchQuery}
@@ -451,7 +446,7 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           <Input 
-            type="search" 
+            type="text" 
             placeholder={t("shop.searchPlaceholder") || "Search products..."} 
             className="w-full pl-10 h-12 bg-gray-50 dark:bg-gray-900 border-transparent rounded-full"
             value={searchQuery}

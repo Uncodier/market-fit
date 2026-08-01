@@ -7,6 +7,7 @@ import { BookingExperience } from "@/app/components/commerce/booking/BookingExpe
 import { usePdpCart } from "@/app/components/commerce/pdp/usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { ExitDemoMode } from "@/app/components/commerce/ExitDemoMode"
 
 export default function MarketplaceBookingPage(props: { params: Promise<{ itemId: string }> }) {
   const params = use(props.params)
@@ -37,11 +38,14 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
   }
 
   return (
-    <BookingExperience
-      mode="cart"
-      item={item}
-      backUrl={`/marketplace/${item.id}`}
-      onCartAdd={handleCartAdd}
-    />
+    <>
+      <ExitDemoMode />
+      <BookingExperience
+        mode="cart"
+        item={item}
+        backUrl={`/marketplace/${item.id}`}
+        onCartAdd={handleCartAdd}
+      />
+    </>
   )
 }

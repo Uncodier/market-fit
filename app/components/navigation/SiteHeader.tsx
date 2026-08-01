@@ -99,7 +99,7 @@ export function SiteHeader() {
   
   return (
     <>
-      <header className="w-full self-start py-4 px-6 lg:px-12 border-b dark:border-white/5 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#030303]/60 sticky top-0 z-[70] transform-gpu" style={{ WebkitTransform: 'translate3d(0,0,0)', willChange: 'transform' }}>
+      <header className="w-full self-start py-4 px-6 lg:px-12 border-b dark:border-white/5 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#030303]/60 sticky top-0 z-[70]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
         <Link href="/" className="inline-flex items-center gap-2 z-50">
           <Image 

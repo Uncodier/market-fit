@@ -17,7 +17,9 @@ import { useEffect } from "react"
  */
 
 const RELOAD_FLAG = "__chunk_reload_attempt"
-const RELOAD_TTL_MS = 30_000
+// Longer TTL in dev: Turbopack HMR can emit transient ChunkLoadErrors that
+// would otherwise thrash-reload the page (seen as GET loops in the terminal).
+const RELOAD_TTL_MS = process.env.NODE_ENV === "development" ? 120_000 : 30_000
 
 const CHUNK_ERROR_SIGNATURES = [
   "ChunkLoadError",
@@ -37,6 +39,15 @@ function isChunkLoadError(value: unknown): boolean {
     typeof error === "string"
       ? error
       : (error as { message?: string }).message ?? ""
+
+  // Turbopack HMR client chunks flake during local edits; reloading on those
+  // creates GET loops without fixing anything.
+  if (
+    message.includes("[turbopack]_browser_dev_hmr-client") ||
+    message.includes("hmr-client")
+  ) {
+    return false
+  }
 
   if (name === "ChunkLoadError") return true
 

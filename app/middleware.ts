@@ -244,7 +244,27 @@ export async function middleware(request: NextRequest) {
   
   // Si es una ruta pública conocida, permitir
   if (ALLOWED_PUBLIC_PATHS.some(path => pathname.startsWith(path))) {
-    return getCorsHeaders(NextResponse.next(), isPublicBooking);
+    const res = NextResponse.next()
+
+    // Commerce / buyer surfaces must never run in demo mode.
+    // Clear the demo cookie on the response so the browser drops it before
+    // client JS bootstraps (avoids a demo supabase singleton + reload loops).
+    const isCommerceSurface =
+      pathname.startsWith('/shop') ||
+      pathname.startsWith('/marketplace') ||
+      pathname.startsWith('/buyer') ||
+      pathname.startsWith('/cart') ||
+      pathname.startsWith('/book')
+
+    if (isCommerceSurface && request.cookies.has('market_fit_demo_site_id')) {
+      res.cookies.set('market_fit_demo_site_id', '', {
+        path: '/',
+        maxAge: 0,
+        expires: new Date(0),
+      })
+    }
+
+    return getCorsHeaders(res, isPublicBooking);
   }
   
   try {

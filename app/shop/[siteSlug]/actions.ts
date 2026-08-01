@@ -110,7 +110,9 @@ export type ShopOwnedAccess = {
 
 export async function getShopUserOwnedItems(siteId: string): Promise<ShopOwnedAccess[]> {
   const { createClient } = await import("@/lib/supabase/server");
-  const supabase = await createClient();
+  // Always skip demo: shop is a real commerce surface and the demo mock
+  // client breaks / loops when mixed with live site IDs.
+  const supabase = await createClient(true);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 

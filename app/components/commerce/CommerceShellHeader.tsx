@@ -1,4 +1,5 @@
 import React from "react"
+import { ExitDemoMode } from "./ExitDemoMode"
 
 type Props = {
   brand: React.ReactNode
@@ -10,7 +11,8 @@ type Props = {
 
 export function CommerceShellHeader({ brand, center, actions, mobileLeading, hideCenterOnMobile = true }: Props) {
   return (
-    <div className="sticky top-4 z-40 w-full mb-8 shrink-0 transform-gpu" style={{ WebkitTransform: 'translate3d(0,0,0)', willChange: 'transform' }}>
+    <div className="sticky top-4 z-40 w-full mb-8 shrink-0">
+      <ExitDemoMode />
       <div className="px-4 w-full max-w-7xl mx-auto pointer-events-none">
         <header className="pointer-events-auto relative rounded-full border dark:border-white/10 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#030303]/60 shadow-sm flex items-center justify-between px-3 md:px-6 py-2 w-full gap-2 md:gap-4 transition-all min-h-[56px]">
           <div className="flex items-center gap-2 md:gap-4 relative z-10 flex-1 min-w-0">
@@ -35,9 +37,9 @@ export function CommerceShellHeader({ brand, center, actions, mobileLeading, hid
 
 // Utility classes for children of CommerceShellHeader to match the pill style
 export const shellClasses = {
-  navItem: "inline-flex items-center gap-2 h-9 px-4 rounded-full font-inter text-sm font-medium leading-none transition-all",
+  navItem: "inline-flex items-center gap-2 h-9 px-4 rounded-full font-inter text-sm font-medium leading-none transition-all whitespace-nowrap",
   navItemActive: "bg-black/5 dark:bg-white/10 text-slate-900 dark:text-white",
   navItemInactive: "text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5",
   iconButton: "p-2 rounded-full font-inter flex items-center justify-center transition-all text-slate-600 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5",
-  primaryCta: "text-sm font-medium bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-full font-inter font-bold hover:opacity-90 transition-opacity shadow-sm flex items-center",
+  primaryCta: "text-sm font-medium bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-full font-inter font-bold hover:opacity-90 transition-opacity shadow-sm flex items-center whitespace-nowrap",
 }

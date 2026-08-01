@@ -8,6 +8,7 @@ import { BookingExperience } from "@/app/components/commerce/booking/BookingExpe
 import { usePdpCart } from "@/app/components/commerce/pdp/usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { ExitDemoMode } from "@/app/components/commerce/ExitDemoMode"
 
 export default function ShopBookingPage(props: { params: Promise<{ siteSlug: string; itemId: string }> }) {
   const params = use(props.params)
@@ -41,11 +42,14 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
   }
 
   return (
-    <BookingExperience
-      mode="cart"
-      item={item}
-      backUrl={`/shop/${params.siteSlug}/${item.id}`}
-      onCartAdd={handleCartAdd}
-    />
+    <>
+      <ExitDemoMode />
+      <BookingExperience
+        mode="cart"
+        item={item}
+        backUrl={`/shop/${params.siteSlug}/${item.id}`}
+        onCartAdd={handleCartAdd}
+      />
+    </>
   )
 }
