@@ -295,7 +295,15 @@ class RedditTrendsService implements TrendService {
       })
 
       if (!response.ok) {
-        throw new Error(`Reddit Trends API error: ${response.status}`)
+        console.error(`Reddit Trends API error: ${response.status}`);
+        return {
+          success: false,
+          error: `Reddit Trends API error: ${response.status}`,
+          data: [],
+          platform: 'reddit',
+          timestamp: new Date().toISOString(),
+          region: 'Global'
+        };
       }
 
       const data = await response.json()

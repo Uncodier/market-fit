@@ -144,7 +144,19 @@ export async function POST(request: NextRequest) {
     const response = await fetch(redditUrl, { headers })
 
     if (!response.ok) {
-      throw new Error(`Reddit API error: ${response.status}`)
+      console.warn(`Reddit API error: ${response.status}. Returning empty fallback to avoid crashing.`);
+      return NextResponse.json({
+        success: true, // We act as if successful but empty so UI doesn't break
+        trends: [],
+        metadata: {
+          subreddit,
+          sortBy,
+          timeframe,
+          timestamp: new Date().toISOString(),
+          source: 'reddit-api-fallback',
+          total: 0
+        }
+      });
     }
 
     const data: RedditApiResponse = await response.json()

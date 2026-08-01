@@ -39,7 +39,7 @@ export function getSegmentName(
   segments: Array<{ id: string, name: string }> = []
 ): string {
   if (!segmentId) return "No Segment";
-  if (!segments || segments.length === 0) return "Unknown Segment";
+  if (!Array.isArray(segments) || segments.length === 0) return "Unknown Segment";
   
   const segment = segments.find(s => s.id === segmentId);
   return segment ? segment.name : "Unknown Segment";
@@ -51,7 +51,7 @@ export function getCampaignName(
   campaigns: Array<{ id: string, title: string }> = []
 ): string {
   if (!campaignId) return "No Campaign";
-  if (!campaigns || campaigns.length === 0) return "Unknown Campaign";
+  if (!Array.isArray(campaigns) || campaigns.length === 0) return "Unknown Campaign";
   
   const campaign = campaigns.find(c => c.id === campaignId);
   return campaign ? campaign.title : "Unknown Campaign";

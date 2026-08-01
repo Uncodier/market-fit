@@ -140,7 +140,7 @@ function ContentDetail({ content, onClose, segments, onRatingChange, onPublish }
     description: content.description || '',
     type: content.type,
     segment_id: content.segment_id || '',
-    segmentValue: content.segment_id ? { mode: "existing", id: content.segment_id, label: "Loading..." } : null as RelationSelectValue,
+    segmentValue: (content.segment_id ? { mode: "existing", id: content.segment_id, label: "Loading..." } : null) as RelationSelectValue,
     tags: content.tags || [],
     performance_rating: content.performance_rating
   })
@@ -560,7 +560,8 @@ function ContentDetail({ content, onClose, segments, onRatingChange, onPublish }
                 title: content.title,
                 description: content.description || '',
                 type: content.type,
-                segment_id: content.segment_id || 'none',
+                segment_id: content.segment_id || '',
+                segmentValue: (content.segment_id ? { mode: "existing", id: content.segment_id, label: "Loading..." } : null) as RelationSelectValue,
                 tags: content.tags || [],
                 performance_rating: content.performance_rating
               })
@@ -1960,7 +1961,6 @@ export default function ContentPage() {
   })
   const [isFiltersDialogOpen, setIsFiltersDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filteredContent, setFilteredContent] = useState<ContentItem[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
@@ -2047,31 +2047,26 @@ export default function ContentPage() {
 
   const refreshContentList = mutateContent;
 
-  const updateFilteredContent = useCallback((
-    search: string, 
-    currentFilters: ContentFilters,
-    itemsToFilter: ContentItem[] = combinedContentItems,
-    currentSort: typeof sortBy = sortBy
-  ) => {
-    const searchLower = search.toLowerCase()
+  const filteredContent = React.useMemo(() => {
+    const searchLower = searchTerm.toLowerCase()
     
-    let filtered = itemsToFilter.filter(item => {
+    let filtered = combinedContentItems.filter(item => {
       // Filtrar por término de búsqueda
-      const matchesSearch = search === '' || 
+      const matchesSearch = searchTerm === '' || 
         item.title.toLowerCase().includes(searchLower) ||
         (item.description && item.description.toLowerCase().includes(searchLower))
       
       // Filtrar por estado
-      const matchesStatus = currentFilters.status.length === 0 || 
-        currentFilters.status.includes(item.status)
+      const matchesStatus = filters.status.length === 0 || 
+        filters.status.includes(item.status)
       
       // Filtrar por tipo de contenido
-      const matchesType = currentFilters.type.length === 0 || 
-        currentFilters.type.includes(item.type)
+      const matchesType = filters.type.length === 0 || 
+        filters.type.includes(item.type)
       
       // Filtrar por segmento
-      const matchesSegment = currentFilters.segments.length === 0 || 
-        (item.segment_id && currentFilters.segments.includes(item.segment_id))
+      const matchesSegment = filters.segments.length === 0 || 
+        (item.segment_id && filters.segments.includes(item.segment_id))
       
       return matchesSearch && matchesStatus && matchesType && matchesSegment
     })
@@ -2083,25 +2078,21 @@ export default function ContentPage() {
       const rateA = a.performance_rating ?? 0
       const rateB = b.performance_rating ?? 0
       
-      if (currentSort === 'newest') return dateB - dateA
-      if (currentSort === 'oldest') return dateA - dateB
-      if (currentSort === 'rate_desc') {
+      if (sortBy === 'newest') return dateB - dateA
+      if (sortBy === 'oldest') return dateA - dateB
+      if (sortBy === 'rate_desc') {
         if (rateB !== rateA) return rateB - rateA
         return dateB - dateA
       }
-      if (currentSort === 'rate_asc') {
+      if (sortBy === 'rate_asc') {
         if (rateA !== rateB) return rateA - rateB
         return dateB - dateA
       }
       return 0
     })
     
-    setFilteredContent(filtered)
-  }, [combinedContentItems, sortBy])
-
-  useEffect(() => {
-    updateFilteredContent(searchTerm, filters, combinedContentItems, sortBy)
-  }, [combinedContentItems, searchTerm, filters, sortBy, updateFilteredContent])
+    return filtered
+  }, [combinedContentItems, sortBy, searchTerm, filters])
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSearchTerm = e.target.value
@@ -2131,21 +2122,22 @@ export default function ContentPage() {
       }
 
       // Update local state
-      const updatedItems = contentItems.map(item => 
-        item.id === contentId 
-          ? { 
-              ...item, 
-              status: newStatus as any,
-              updated_at: new Date().toISOString(),
-              ...(newStatus === 'published' ? { published_at: new Date().toISOString() } : {})
-            } 
-          : item
-      )
-      
-      setContentItems(updatedItems)
-      
-      // Update filtered content as well to maintain consistency
-      updateFilteredContent(searchTerm, filters, updatedItems)
+      mutateContent((data: any) => {
+        if (!data) return data;
+        return {
+          ...data,
+          content: data.content.map((item: ContentItem) => 
+            item.id === contentId 
+              ? { 
+                  ...item, 
+                  status: newStatus as any,
+                  updated_at: new Date().toISOString(),
+                  ...(newStatus === 'published' ? { published_at: new Date().toISOString() } : {})
+                } 
+              : item
+          )
+        };
+      }, false);
 
       toast.success(`Content status updated to ${newStatus}`)
     } catch (error) {
@@ -2356,7 +2348,7 @@ export default function ContentPage() {
         await handleUpdateContentStatus(publishingContent.id, 'published')
         
         // Refresh the posts list
-        loadOutstandPosts()
+        mutateOutstand()
       } else {
         throw new Error(error || "Failed to publish")
       }
@@ -2380,17 +2372,20 @@ export default function ContentPage() {
 
   // Handle content rating changes
   const handleContentRatingChange = (contentId: string, rating: number) => {
-    // Update the content items array
-    const updatedItems = contentItems.map(item => 
-      item.id === contentId 
-        ? { ...item, performance_rating: rating } 
-        : item
-    );
-    
-    setContentItems(updatedItems);
-    
-    // Update filtered content to maintain consistency
-    updateFilteredContent(searchTerm, filters, updatedItems);
+      mutateContent((data: any) => {
+        if (!data) return data;
+        return {
+          ...data,
+          content: data.content.map((item: ContentItem) => 
+            item.id === contentId 
+              ? { 
+                  ...item, 
+                  performance_rating: rating
+                } 
+              : item
+          )
+        };
+      }, false);
   };
 
   if (error) {
@@ -2548,7 +2543,7 @@ export default function ContentPage() {
           {/* Trends Section - Only for Table View */}
           {viewType === 'table' && (
             <div className="px-8">
-              <TrendsSection segments={segments} currentSiteId={currentSite?.id} displayMode="table" />
+              <TrendsSection segments={segments as any} currentSiteId={currentSite?.id} displayMode="table" />
             </div>
           )}
           
@@ -2560,7 +2555,7 @@ export default function ContentPage() {
                 <div className="flex-shrink-0 pt-0 mt-0 flex flex-col justify-start self-stretch min-h-0">
                   <TrendsColumn
                     className="self-stretch"
-                    segments={segments}
+                    segments={segments as any}
                     currentSiteId={currentSite?.id}
                   />
                 </div>
@@ -2575,7 +2570,7 @@ export default function ContentPage() {
                 <ContentKanban 
                   contentItems={filteredContent}
                   onUpdateContentStatus={handleUpdateContentStatus}
-                  segments={segments}
+                  segments={segments as any}
                   campaigns={campaigns}
                   onContentClick={handleContentClick}
                   onRatingChange={handleContentRatingChange}
@@ -2593,7 +2588,7 @@ export default function ContentPage() {
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onContentClick={handleContentClick}
-                  segments={segments}
+                  segments={segments as any}
                   campaigns={campaigns}
                   onRatingChange={handleContentRatingChange}
                   assetsByContentId={assetsByContentId}
@@ -2911,7 +2906,7 @@ export default function ContentPage() {
       />
       
       <CreateContentDialog 
-        segments={segments}
+        segments={segments as any}
         campaigns={campaigns}
         onSuccess={refreshContentList}
       />

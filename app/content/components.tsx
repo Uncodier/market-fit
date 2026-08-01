@@ -5,6 +5,7 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
@@ -151,10 +152,6 @@ export function CreateContentDialog({
 
 
 
-  // Function to toggle campaign selection
-  const toggleCampaign = (campaignId: string) => {
-    setSelectedCampaign(prevSelected => prevSelected === campaignId ? null : campaignId);
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -236,7 +233,7 @@ export function CreateContentDialog({
                 Segment
               </Label>
               <RelationSelect
-                options={segments.map(s => ({ id: s.id, label: s.name }))}
+                options={(Array.isArray(segments) ? segments : []).map(s => ({ id: s.id, label: s.name }))}
                 value={segmentValue}
                 onValueChange={setSegmentValue}
                 placeholder="Select a segment (optional)"
@@ -251,7 +248,7 @@ export function CreateContentDialog({
                 <Label htmlFor="campaign">Campaign</Label>
               </div>
               <RelationSelect
-                options={campaigns.map(c => ({ id: c.id, label: c.title }))}
+                options={(Array.isArray(campaigns) ? campaigns : []).map(c => ({ id: c.id, label: c.title }))}
                 value={campaignValue}
                 onValueChange={setCampaignValue}
                 placeholder="Select a campaign (optional)"
