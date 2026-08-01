@@ -255,29 +255,81 @@ export async function POST(request: NextRequest) {
             break
           }
           
+          // Fetch order details first to determine fulfillment method
+          const { data: orderDetails } = await supabase
+            .from('sale_orders')
+            .select('user_id, site_id, fulfillment_method')
+            .eq('id', orderId)
+            .single()
+
+          const orderNewStatus = orderDetails?.fulfillment_method === 'none' ? 'completed' : 'in_progress'
+
           // Update sale order status
           const { error: orderError } = await supabase
             .from('sale_orders')
-            .update({ status: 'completed' })
+            .update({ status: orderNewStatus })
             .eq('id', orderId)
             
           if (orderError) throw new Error(`Failed to update order status: ${orderError.message}`)
             
-          // Update sale status
+          // Fetch existing sale to append payments safely
+          const { data: currentSale } = await supabase
+            .from('sales')
+            .select('payments, payment_details')
+            .eq('id', saleId)
+            .single()
+
+          const paymentIntentId = typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : session.payment_intent?.id ?? null;
+
+          const paymentDetails = {
+            ...(currentSale?.payment_details || {}),
+            processor: 'stripe',
+            stripe_checkout_session_id: session.id,
+            ...(paymentIntentId && { stripe_payment_intent_id: paymentIntentId }),
+            amount_total: session.amount_total,
+            currency: session.currency,
+          }
+
+          const existingPayments = currentSale?.payments || [];
+          
+          // Zero-decimal currency check for stripe amount parsing
+          const zeroDecimalCurrencies = ['jpy', 'bif', 'clp', 'djf', 'gnf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf'];
+          const isZeroDecimal = zeroDecimalCurrencies.includes((session.currency || 'usd').toLowerCase());
+          const paidAmount = isZeroDecimal ? (session.amount_total || 0) : (session.amount_total || 0) / 100;
+
+          const updatedPayments = [
+            ...existingPayments,
+            {
+              method: 'stripe',
+              amount: paidAmount,
+              tendered: paidAmount,
+              change: 0,
+              date: new Date().toISOString(),
+              status: 'completed',
+              stripe_session_id: session.id,
+              ...(paymentIntentId && { stripe_payment_intent_id: paymentIntentId })
+            }
+          ];
+
+          // Update sale status and stripe linkage
           const { error: saleError } = await supabase
             .from('sales')
-            .update({ status: 'completed', amount_due: 0 })
+            .update({ 
+              status: 'completed', 
+              amount_due: 0,
+              payment_method: 'stripe',
+              stripe_checkout_session_id: session.id,
+              stripe_payment_intent_id: paymentIntentId,
+              payment_details: paymentDetails,
+              payments: updatedPayments
+            })
             .eq('id', saleId)
             
           if (saleError) throw new Error(`Failed to update sale status: ${saleError.message}`)
             
           // Process fulfillment and inventory if applicable
-          const { data: orderDetails } = await supabase
-            .from('sale_orders')
-            .select('user_id, site_id')
-            .eq('id', orderId)
-            .single()
-            
           if (orderDetails) {
              const { processPostPaymentFulfillment } = await import('@/app/commerce/post-payment')
              await processPostPaymentFulfillment(orderId, orderDetails.site_id, saleId, session.metadata.lead_id, orderDetails.user_id)
@@ -324,7 +376,6 @@ export async function POST(request: NextRequest) {
             }
           }
           
-          // Note: we don't have a direct payment record table linked to sale without schema changes
           
           console.log(`✅ Successfully processed sale order: ${orderId}`)
         } catch (error) {

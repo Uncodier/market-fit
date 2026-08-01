@@ -17,7 +17,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { Button } from "@/app/components/ui/button"
 import { Send, Search, Eye, ExternalLink, LayoutGrid, Clock, Package, Truck, CheckCircle2, Ban, XCircle, ListOrdered, Check, ChevronDown, Filter } from "@/app/components/ui/icons"
 import Link from "next/link"
-import { format } from "date-fns"
+import { format, formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
@@ -25,6 +25,8 @@ import { KanbanView } from "./components/KanbanView"
 import { updateShipmentStatus } from "./actions"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+
+import { CreateShipmentDialog } from "./components/CreateShipmentDialog"
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-muted text-foreground hover:bg-muted/50 border-none",
@@ -66,14 +68,6 @@ export default function ShipmentsPage() {
     window.dispatchEvent(event);
   }, [t]);
 
-  useEffect(() => {
-    const handleCreate = () => {
-      toast.info(t('shipments.create_info') || 'Shipments are created automatically when orders are processed.')
-    }
-    window.addEventListener('shipments:create', handleCreate)
-    return () => window.removeEventListener('shipments:create', handleCreate)
-  }, [t]);
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(1)
@@ -98,6 +92,7 @@ export default function ShipmentsPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
+      <CreateShipmentDialog />
       <Tabs value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">
@@ -178,6 +173,7 @@ export default function ShipmentsPage() {
                             <TableHead>Order</TableHead>
                             <TableHead>Customer</TableHead>
                             <TableHead>Tracking</TableHead>
+                            <TableHead>Courier</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Created</TableHead>
                             <TableHead className="w-16"></TableHead>
@@ -218,6 +214,20 @@ export default function ShipmentsPage() {
                                   )}
                                 </TableCell>
                                 <TableCell>
+                                  {shipment.assignee_profile ? (
+                                    <div className="text-sm flex flex-col">
+                                      <span className="font-medium">{shipment.assignee_profile.name}</span>
+                                      {shipment.last_located_at && (
+                                        <span className="text-[10px] text-muted-foreground">
+                                          Seen {formatDistanceToNow(new Date(shipment.last_located_at), { addSuffix: true })}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm text-center">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
                                   <Badge className={STATUS_STYLES[shipment.status] || ''}>
                                     {shipment.status.replace('_', ' ').toUpperCase()}
                                   </Badge>
@@ -242,7 +252,7 @@ export default function ShipmentsPage() {
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={6} className="h-24 text-center">
+                                <TableCell colSpan={7} className="h-24 text-center">
                                 <EmptyCard
                                   icon={<Send className="h-6 w-6 text-muted-foreground" />}
                                   title={t('shipments.empty.title') || "No shipments found"}

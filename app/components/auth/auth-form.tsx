@@ -71,7 +71,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
   const [mfaVerifying, setMfaVerifying] = useState(false)
   
   // Get returnTo from URL or default to AI Agents (robots)
-  const [finalReturnTo, setFinalReturnTo] = useState<string>('/robots')
+  const [finalReturnTo, setFinalReturnTo] = useState<string>('/buyer')
   
   const isDark = theme === 'dark'
   
@@ -108,9 +108,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     if (!returnTo && typeof window !== 'undefined') {
       const url = new URL(window.location.href)
       const urlReturnTo = url.searchParams.get('returnTo')
-      setFinalReturnTo(urlReturnTo || '/robots')
+      setFinalReturnTo(urlReturnTo || '/buyer')
     } else {
-      setFinalReturnTo(returnTo || '/robots')
+      setFinalReturnTo(returnTo || '/buyer')
     }
 
     // If signup data is provided, validate referral code immediately
@@ -309,7 +309,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     
     try {
       if (authMode === 'sign_up') {
-        if (!values.phone || values.phone.length < 8) {
+        if (values.phone && values.phone.trim() !== '' && values.phone.length < 8) {
           throw new Error(t('auth.invalidPhone') || 'Please enter a valid phone number')
         }
         
@@ -653,7 +653,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-foreground">{t('auth.phone') || 'Phone number'}</FormLabel>
+                    <FormLabel className="text-sm font-medium text-foreground">
+                      {t('auth.phone') || 'Phone number'} <span className="text-muted-foreground font-normal">(optional)</span>
+                    </FormLabel>
                     <FormControl>
                       <InputWithIcon
                         leftIcon={<Phone className="h-4 w-4 text-muted-foreground" />}

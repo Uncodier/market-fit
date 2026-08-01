@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   try {
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
-    const returnTo = requestUrl.searchParams.get('returnTo') || '/robots'
+    const returnTo = requestUrl.searchParams.get('returnTo') || '/buyer'
 
     console.log("Auth callback: Processing code=", !!code, "returnTo=", returnTo);
 

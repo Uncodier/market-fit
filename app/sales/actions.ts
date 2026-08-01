@@ -47,6 +47,8 @@ export async function getSales(siteId: string) {
       invoiceNumber: sale.invoice_number || undefined,
       referenceCode: sale.reference_code || undefined,
       externalId: sale.external_id || undefined,
+      stripeCheckoutSessionId: sale.stripe_checkout_session_id || undefined,
+      stripePaymentIntentId: sale.stripe_payment_intent_id || undefined,
       source: sale.source,
       channel: sale.channel || undefined,
       notes: sale.notes || undefined,
@@ -76,6 +78,7 @@ export async function createSale(data: {
   amount_due?: number;
   status: 'pending' | 'completed' | 'cancelled' | 'refunded';
   leadId?: string;
+  buyerUserId?: string;
   campaignId?: string | null;
   segmentId?: string;
   locationId?: string | null;
@@ -95,6 +98,16 @@ export async function createSale(data: {
       return { error: "Unauthorized: User not authenticated" };
     }
     
+    let buyerUserId = data.buyerUserId || null
+    if (!buyerUserId && data.leadId) {
+      const { data: lead } = await supabase
+        .from("leads")
+        .select("buyer_user_id")
+        .eq("id", data.leadId)
+        .maybeSingle()
+      buyerUserId = lead?.buyer_user_id || null
+    }
+
     const saleData: Partial<SaleData> = {
       title: data.title,
       product_name: data.productName || null,
@@ -104,6 +117,7 @@ export async function createSale(data: {
       status: data.status,
       location_id: data.locationId || null,
       lead_id: data.leadId || null,
+      buyer_user_id: buyerUserId,
       campaign_id: data.campaignId || null,
       segment_id: data.segmentId || null,
       sale_date: data.saleDate,
@@ -250,6 +264,8 @@ export async function getSaleById(siteId: string, saleId: string) {
       invoiceNumber: saleData.invoice_number || undefined,
       referenceCode: saleData.reference_code || undefined,
       externalId: saleData.external_id || undefined,
+      stripeCheckoutSessionId: saleData.stripe_checkout_session_id || undefined,
+      stripePaymentIntentId: saleData.stripe_payment_intent_id || undefined,
       source: saleData.source,
       channel: saleData.channel || undefined,
       notes: saleData.notes || undefined,
@@ -347,6 +363,9 @@ export async function createSaleOrder(data: {
       return { error: "Unauthorized" };
     }
     
+    // Copy buyer_user_id from parent sale
+    const { data: parentSale } = await supabase.from('sales').select('buyer_user_id').eq('id', data.saleId).single()
+
     const saleOrderData = {
       sale_id: data.saleId,
       order_number: data.orderNumber,
@@ -358,6 +377,7 @@ export async function createSaleOrder(data: {
       notes: data.notes || null,
       site_id: data.siteId,
       user_id: session.user.id,
+      buyer_user_id: parentSale?.buyer_user_id || null
     };
 
     const { data: saleOrder, error } = await supabase

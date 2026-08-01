@@ -11,20 +11,39 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Checkbox } from "@/app/components/ui/checkbox"
+import { Switch } from "@/app/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/app/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { ChevronLeft, Save, Trash2, Activity } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Textarea } from "@/app/components/ui/textarea"
 import { ImageUpload } from "@/app/components/ui/image-upload"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { COMMON_CURRENCIES } from "@/app/lib/currencies"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { PlanItemsTab } from "../components/PlanItemsTab"
+import { PassRedeemableItemsTab } from "../components/PassRedeemableItemsTab"
 import { ProductTaxesCard } from "../components/ProductTaxesCard"
+import { ProductDeliveryOptionsCard } from "../components/ProductDeliveryOptionsCard"
+import { ProductPaymentOptionsCard } from "../components/ProductPaymentOptionsCard"
+import { ProductDownloadableFilesCard } from "../components/ProductDownloadableFilesCard"
+import { ReservationScheduleCard } from "../components/ReservationScheduleCard"
+import { CatalogItemDetailsMarketingCard } from "../components/CatalogItemDetailsMarketingCard"
+import { VariantsCard } from "../components/VariantsCard"
+import { ItemSpecsEditor } from "../components/ItemSpecsEditor"
 
 export default function CatalogItemDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -35,6 +54,8 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false)
+  const [archiving, setArchiving] = useState(false)
   const [categoryValue, setCategoryValue] = useState<RelationSelectValue>(null)
   const [formData, setFormData] = useState<Partial<CatalogItem>>({
     is_pos_available: true,
@@ -111,13 +132,14 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
 
   const handleDelete = async () => {
     if (!currentSite || !item) return
-    if (!confirm("Are you sure you want to archive this item?")) return
-    
+    setArchiving(true)
     const { error } = await deleteCatalogItem(currentSite.id, item.id)
     if (error) {
       toast.error(error)
+      setArchiving(false)
     } else {
       toast.success("Item archived")
+      setShowArchiveDialog(false)
       router.push("/catalog")
     }
   }
@@ -148,18 +170,24 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
         <StickyHeader>
           <div className="w-full pt-0 flex justify-between items-center">
             <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="inventory">Inventory Movements</TabsTrigger>
-              <TabsTrigger value="sales">Sales</TabsTrigger>
+              <TabsTrigger value="details">{t('catalog.tabs.details') || 'Details'}</TabsTrigger>
+              <TabsTrigger value="variants">{t('catalog.tabs.variants') || 'Variants'}</TabsTrigger>
+              <TabsTrigger value="delivery">{t('catalog.tabs.delivery') || 'Delivery'}</TabsTrigger>
+              <TabsTrigger value="marketplace">{t('catalog.tabs.marketplace') || 'Marketplace'}</TabsTrigger>
+              <TabsTrigger value="inventory">{t('catalog.tabs.inventory') || 'Inventory'}</TabsTrigger>
+              <TabsTrigger value="sales">{t('catalog.tabs.sales') || 'Sales'}</TabsTrigger>
               {formData.is_recurring && (
-                <TabsTrigger value="plan_items">Plan Items</TabsTrigger>
+                <TabsTrigger value="plan_items">{t('catalog.tabs.planItems') || 'Plan Items'}</TabsTrigger>
+              )}
+              {formData.kind === 'digital_asset' && formData.digital_subtype === 'pass' && (
+                <TabsTrigger value="pass_items">{t('catalog.tabs.passItems') || 'Pass Services'}</TabsTrigger>
               )}
             </TabsList>
           </div>
         </StickyHeader>
 
-        <div className="flex-1 p-4 md:p-6 overflow-auto">
-          <TabsContent value="details" className="m-0 border-0 p-0">
+        <div className="flex-1 overflow-auto">
+          <TabsContent value="details" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
             <div className="mx-auto max-w-[800px] space-y-6">
               <Card>
                 <CardHeader>
@@ -188,250 +216,430 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                     value={formData.kind || 'product'} 
                     onValueChange={(val: any) => setFormData({...formData, kind: val, digital_subtype: val !== 'digital_asset' ? null : formData.digital_subtype})}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue/></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="product">Product</SelectItem>
+                      <SelectItem value="product">Product (Physical)</SelectItem>
                       <SelectItem value="service">Service</SelectItem>
                       <SelectItem value="digital_asset">Digital Asset</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
                 {formData.kind === 'digital_asset' && (
                   <div className="space-y-2 col-span-2 md:col-span-1">
                     <Label>Subtype</Label>
                     <Select 
-                      value={formData.digital_subtype || 'none'} 
-                      onValueChange={(val: any) => setFormData({...formData, digital_subtype: val === 'none' ? null : val})}
+                      value={formData.digital_subtype || 'file'} 
+                      onValueChange={(val: any) => setFormData({...formData, digital_subtype: val})}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select subtype" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue/></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="ticket">Ticket</SelectItem>
+                        <SelectItem value="file">Digital File</SelectItem>
+                        <SelectItem value="ticket">Ticket / Event</SelectItem>
                         <SelectItem value="course">Course</SelectItem>
-                        <SelectItem value="file">File</SelectItem>
-                        <SelectItem value="pass">Pass</SelectItem>
+                        <SelectItem value="pass">Redeemable Pass</SelectItem>
                         <SelectItem value="license">License</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 )}
+
                 <div className="space-y-2 col-span-2 md:col-span-1">
                   <Label>Category</Label>
-                  <RelationSelect 
-                    options={categories.map(cat => ({ id: cat.id, label: cat.name }))}
-                    value={categoryValue} 
-                    onValueChange={(val) => setCategoryValue(val)}
-                    placeholder="Select category..."
-                    emptyMessage="No categories found"
-                  />
-                </div>
-                <div className="space-y-2 col-span-2 md:col-span-1">
-                  <Label>SKU / Code</Label>
-                  <Input 
-                    value={formData.sku || ''} 
-                    onChange={e => setFormData({...formData, sku: e.target.value})} 
+                  <RelationSelect
+                    value={categoryValue}
+                    onValueChange={setCategoryValue}
+                    options={categories.map(c => ({ id: c.id, label: c.name }))}
+                    placeholder="Select or create category..."
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea 
                   value={formData.description || ''} 
-                  onChange={e => setFormData({...formData, description: e.target.value})} 
+                  onChange={e => setFormData({...formData, description: e.target.value})}
+                  rows={4} 
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Target Sale Price</Label>
-                  <Input 
-                    type="number"
-                    value={formData.target_sale_price || ''} 
-                    onChange={e => setFormData({...formData, target_sale_price: parseFloat(e.target.value) || 0})} 
-                  />
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("catalog.item.priceHint")}
-              </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Unit Cost</Label>
-                  <Input 
-                    type="number"
-                    value={formData.cost || ''} 
-                    onChange={e => setFormData({...formData, cost: parseFloat(e.target.value) || 0})} 
-                  />
-                </div>
+              
+              <div className="space-y-2">
+                <Label>SKU</Label>
+                <Input 
+                  value={formData.sku || ''} 
+                  onChange={e => setFormData({...formData, sku: e.target.value})} 
+                  className="font-mono"
+                  placeholder="Optional unique identifier"
+                />
               </div>
-            </CardContent>
-            <ActionFooter>
-              <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving..." : "Save Changes"}
-              </Button>
-            </ActionFooter>
-          </Card>
+                </CardContent>
+                <ActionFooter>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => router.push('/catalog')}>
+                      Cancel
+                    </Button>
+                    <Button type="button" onClick={handleSave} disabled={saving} className="gap-2">
+                      <Save size={16} /> Save Changes
+                    </Button>
+                  </div>
+                </ActionFooter>
+              </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Availability & Rules</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Availability Mode</Label>
-                  <Select 
-                    value={formData.availability_mode || 'manual'} 
-                    onValueChange={(val: any) => setFormData({...formData, availability_mode: val})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Manual (Toggle)</SelectItem>
-                      <SelectItem value="inventory">Inventory (Stock based)</SelectItem>
-                      <SelectItem value="always">Always Sellable</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {formData.availability_mode === 'manual' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pricing</CardTitle>
+                  <CardDescription>Default pricing (can be overridden by Price Lists)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Sale Price</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        value={formData.target_sale_price || ''} 
+                        onChange={e => setFormData({...formData, target_sale_price: parseFloat(e.target.value) || undefined})} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cost</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        value={formData.cost || ''} 
+                        onChange={e => setFormData({...formData, cost: parseFloat(e.target.value) || undefined})} 
+                      />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>Currency</Label>
+                      <Select
+                        value={formData.currency || 'USD'}
+                        onValueChange={(val) => setFormData({...formData, currency: val})}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {COMMON_CURRENCIES.map(c => (
+                            <SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+                <ActionFooter>
+                  <Button variant="outline" onClick={handleSave} disabled={saving}>Save Pricing</Button>
+                </ActionFooter>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Availability & Inventory</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
                   <div className="space-y-2">
-                    <Label>Current Status</Label>
+                    <Label>Availability Mode</Label>
                     <Select 
-                      value={formData.availability_status || 'available'} 
-                      onValueChange={(val: any) => setFormData({...formData, availability_status: val})}
+                      value={formData.availability_mode || 'always'} 
+                      onValueChange={(val: any) => setFormData({...formData, availability_mode: val})}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue/></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="available">Available</SelectItem>
-                        <SelectItem value="sold_out">Sold Out</SelectItem>
-                        <SelectItem value="unavailable">Unavailable</SelectItem>
+                        <SelectItem value="always">Always Available</SelectItem>
+                        <SelectItem value="inventory">Based on Inventory</SelectItem>
+                        <SelectItem value="manual">Manual Status</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-              </div>
 
-              <div className="flex items-center space-x-3">
-                <Checkbox 
-                  id="track"
-                  checked={formData.track_inventory || false}
-                  onCheckedChange={(checked) => setFormData({...formData, track_inventory: checked as boolean})}
+                  {formData.availability_mode === 'manual' && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <Label>Manual Status</Label>
+                      <Select 
+                        value={formData.availability_status || 'available'} 
+                        onValueChange={(val: any) => setFormData({...formData, availability_status: val})}
+                      >
+                        <SelectTrigger><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="available">Available</SelectItem>
+                          <SelectItem value="unavailable">Unavailable</SelectItem>
+                          <SelectItem value="sold_out">Sold Out</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="space-y-4 pt-2 border-t">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="track_inventory" className="text-base cursor-pointer">Track inventory levels</Label>
+                        <p className="text-sm text-muted-foreground">Keep counts per location</p>
+                      </div>
+                      <Switch 
+                        id="track_inventory" 
+                        checked={formData.track_inventory || false}
+                        onCheckedChange={(checked) => setFormData({...formData, track_inventory: checked as boolean})}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+                <ActionFooter>
+                  <Button variant="outline" onClick={handleSave} disabled={saving}>Save Settings</Button>
+                </ActionFooter>
+              </Card>
+
+              {item && <ProductTaxesCard catalogItemId={item.id} />}
+              {item && (
+                <CatalogItemDetailsMarketingCard
+                  formData={formData}
+                  setFormData={setFormData}
+                  handleSave={handleSave}
+                  saving={saving}
                 />
-                <Label htmlFor="track">Track Inventory Levels</Label>
-              </div>
+              )}
+            </div>
+          </TabsContent>
 
-              <div className="space-y-4 pt-4 border-t">
-                <h4 className="text-sm font-medium">Features</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="flex items-center space-x-2 border p-3 rounded-md">
-                    <Checkbox 
+          <TabsContent value="variants" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+            <div className="mx-auto max-w-[800px]">
+              {item && (
+                <VariantsCard 
+                  item={item} 
+                  onUpdate={(updated) => {
+                    setItem({ ...item, ...updated });
+                    setFormData({ ...formData, ...updated });
+                  }} 
+                />
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="delivery" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+            <div className="mx-auto max-w-[800px] space-y-6">
+              {item && (
+                <ProductDeliveryOptionsCard
+                  formData={formData}
+                  setFormData={setFormData}
+                  handleSave={handleSave}
+                  saving={saving}
+                />
+              )}
+              {item && (
+                <ProductDownloadableFilesCard item={item} />
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="marketplace" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+            <div className="mx-auto max-w-[800px] space-y-6">
+              {item && (
+                <ProductPaymentOptionsCard
+                  formData={formData}
+                  setFormData={setFormData}
+                />
+              )}
+
+              {item && (
+                <ItemSpecsEditor
+                  catalogItemId={item.id}
+                  item={item}
+                  handleSave={handleSave}
+                  saving={saving}
+                />
+              )}
+
+              {item && (
+                <Card className="border-destructive/20 bg-destructive/5">
+                  <CardHeader>
+                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                    <CardDescription className="text-destructive/80">
+                      Irreversible actions for this product.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowArchiveDialog(true)}
+                      className="gap-2"
+                    >
+                      <Trash2 size={16} /> Archive Product
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Marketplace Listing</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="is_marketplace_listed" className="text-base cursor-pointer">List in Marketplace</Label>
+                      <p className="text-sm text-muted-foreground">Make visible on the public marketplace</p>
+                    </div>
+                    <Switch 
+                      id="is_marketplace_listed" 
+                      checked={formData.is_marketplace_listed ?? true}
+                      onCheckedChange={(checked) => setFormData({...formData, is_marketplace_listed: checked as boolean})}
+                    />
+                  </div>
+                </CardContent>
+                <ActionFooter>
+                  <Button variant="outline" onClick={handleSave} disabled={saving}>Save Listing</Button>
+                </ActionFooter>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Channels & Behavior</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="is_pos_available" className="text-base cursor-pointer">Available in POS</Label>
+                      <p className="text-sm text-muted-foreground">Show in Point of Sale screens</p>
+                    </div>
+                    <Switch 
                       id="is_pos_available" 
                       checked={formData.is_pos_available ?? true}
                       onCheckedChange={(checked) => setFormData({...formData, is_pos_available: checked as boolean})}
                     />
-                    <Label htmlFor="is_pos_available" className="cursor-pointer text-xs">Available in POS</Label>
                   </div>
-                  <div className="flex items-center space-x-2 border p-3 rounded-md">
-                    <Checkbox 
+                  
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div>
+                      <Label htmlFor="is_recurring" className="text-base cursor-pointer">Recurring Subscription</Label>
+                      <p className="text-sm text-muted-foreground">Billed on a schedule instead of one-time</p>
+                    </div>
+                    <Switch 
                       id="is_recurring" 
-                      checked={formData.is_recurring ?? false}
+                      checked={formData.is_recurring || false}
                       onCheckedChange={(checked) => setFormData({...formData, is_recurring: checked as boolean})}
                     />
-                    <Label htmlFor="is_recurring" className="cursor-pointer text-xs">Recurring</Label>
                   </div>
-                  <div className="flex items-center space-x-2 border p-3 rounded-md">
-                    <Checkbox 
+                  
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div>
+                      <Label htmlFor="is_reservation" className="text-base cursor-pointer">Requires Reservation</Label>
+                      <p className="text-sm text-muted-foreground">Customer must book a time slot</p>
+                    </div>
+                    <Switch 
                       id="is_reservation" 
-                      checked={formData.is_reservation ?? false}
+                      checked={formData.is_reservation || false}
                       onCheckedChange={(checked) => setFormData({...formData, is_reservation: checked as boolean})}
                     />
-                    <Label htmlFor="is_reservation" className="cursor-pointer text-xs">Reservable</Label>
                   </div>
-                  <div className="flex items-center space-x-2 border p-3 rounded-md">
-                    <Checkbox 
-                      id="is_marketplace_listed" 
-                      checked={formData.is_marketplace_listed ?? false}
-                      onCheckedChange={(checked) => setFormData({...formData, is_marketplace_listed: checked as boolean})}
-                    />
-                    <Label htmlFor="is_marketplace_listed" className="cursor-pointer text-xs">Marketplace</Label>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-            <ActionFooter>
-              <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving..." : "Save Changes"}
-              </Button>
-            </ActionFooter>
-          </Card>
 
-          {item && <ProductTaxesCard catalogItemId={item.id} />}
+                  {formData.kind === 'digital_asset' && formData.digital_subtype === 'pass' && (
+                    <div className="pt-4 border-t space-y-4">
+                      <div className="space-y-2">
+                        <Label>Total Uses (Empty = Unlimited)</Label>
+                        <Input 
+                          type="number" 
+                          value={formData.pass_uses || ''} 
+                          onChange={e => setFormData({...formData, pass_uses: e.target.value ? parseInt(e.target.value) : null})} 
+                          placeholder="e.g. 10 sessions"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Validity Days (Empty = Never expires)</Label>
+                        <Input 
+                          type="number" 
+                          value={formData.pass_validity_days || ''} 
+                          onChange={e => setFormData({...formData, pass_validity_days: e.target.value ? parseInt(e.target.value) : null})} 
+                          placeholder="e.g. 30 days"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+                <ActionFooter>
+                  <Button variant="outline" onClick={handleSave} disabled={saving}>Save Behaviors</Button>
+                </ActionFooter>
+              </Card>
 
-          {item && (
-            <div className="rounded-lg border-destructive/50 border bg-destructive/5 p-6">
-              <div className="flex flex-col gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-destructive mb-1">Danger Zone</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Actions in this section cannot be undone
-                  </p>
+              {formData.is_reservation && item && (
+                <div className="space-y-4">
+                  {(formData.is_recurring || (formData.kind === 'digital_asset' && formData.digital_subtype === 'pass')) && (
+                    <div className="p-4 bg-muted/30 rounded-xl border text-sm text-muted-foreground flex gap-3">
+                      <div className="mt-0.5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                      </div>
+                      <div>
+                        <span className="font-medium text-foreground block mb-1">Plan as calendar</span>
+                        This item will act as the master calendar. Members book against this schedule after purchase. You don't need a separate reservable service unless you want to share this capacity with drop-in sales.
+                      </div>
+                    </div>
+                  )}
+                  <ReservationScheduleCard catalogItemId={item.id} />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium mb-1">Archive Item</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Remove this catalog item from active lists
-                    </p>
-                  </div>
-                  <Button
-                    variant="destructive"
-                    type="button"
-                    onClick={handleDelete}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Archive Item
-                  </Button>
-                </div>
-              </div>
+              )}
             </div>
-          )}
-        </div>
-        </TabsContent>
-
-        <TabsContent value="inventory" className="m-0 border-0 p-0 h-full flex flex-col">
-          <div className="flex-1 flex items-center justify-center p-6">
-            <EmptyCard 
-              icon={<Activity className="h-10 w-10" />}
-              title="Inventory Movements"
-              description="Inventory history and movements for this catalog item will appear here."
-              variant="fancy"
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="sales" className="m-0 border-0 p-0 h-full flex flex-col">
-          <div className="flex-1 flex items-center justify-center p-6">
-            <EmptyCard 
-              icon={<Activity className="h-10 w-10" />}
-              title="Sales History"
-              description="Sales history for this catalog item will appear here."
-              variant="fancy"
-            />
-          </div>
-        </TabsContent>
-
-        {formData.is_recurring && item && (
-          <TabsContent value="plan_items" className="m-0 border-0 p-0 h-full flex flex-col">
-            <PlanItemsTab planItemId={item.id} />
           </TabsContent>
-        )}
-      </div>
+
+          {formData.is_recurring && (
+            <TabsContent value="plan_items" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+              <div className="mx-auto max-w-[800px]">
+                <PlanItemsTab planItemId={item?.id || ''} isReservation={formData.is_reservation} />
+              </div>
+            </TabsContent>
+          )}
+
+          {formData.kind === 'digital_asset' && formData.digital_subtype === 'pass' && (
+            <TabsContent value="pass_items" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+              <div className="mx-auto max-w-[800px]">
+                <PassRedeemableItemsTab passCatalogItemId={item?.id || ''} />
+              </div>
+            </TabsContent>
+          )}
+
+          <TabsContent value="inventory" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+            <div className="mx-auto max-w-[800px]">
+              <EmptyCard
+                icon={<Activity className="h-12 w-12 text-muted-foreground/50" />}
+                title="Inventory Tracking (Coming Soon)"
+                description="View stock levels and movement history across locations."
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="sales" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+            <div className="mx-auto max-w-[800px]">
+              <EmptyCard
+                icon={<Activity className="h-12 w-12 text-muted-foreground/50" />}
+                title="Sales History (Coming Soon)"
+                description="Track revenue and units sold over time for this item."
+              />
+            </div>
+          </TabsContent>
+        </div>
       </Tabs>
+
+      <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive "{item?.name}"? This will hide it from the active catalog.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={archiving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleDelete()
+              }}
+              disabled={archiving}
+              className="!bg-destructive !text-destructive-foreground hover:!bg-destructive/90"
+            >
+              {archiving ? "Archiving..." : "Archive Product"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

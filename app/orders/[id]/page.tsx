@@ -375,10 +375,10 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
                             </TableCell>
                             <TableCell className="text-right">{item.quantity}</TableCell>
                             <TableCell className="text-right">
-                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.unit_price || item.unitPrice || 0)}
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(item.unit_price || item.unitPrice || 0)}
                             </TableCell>
                             <TableCell className="text-right font-medium">
-                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.subtotal || 0)}
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(item.subtotal || 0)}
                             </TableCell>
                             <TableCell>
                               {item.shipment_id ? (
@@ -399,23 +399,23 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
                     <div className="border-t p-6 bg-muted/30 flex flex-col items-end space-y-2">
                       <div className="flex justify-between w-full max-w-xs text-sm">
                         <span className="text-muted-foreground">Subtotal:</span>
-                        <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(order.subtotal)}</span>
+                        <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(order.subtotal)}</span>
                       </div>
                       {order.discount_total > 0 && (
                         <div className="flex justify-between w-full max-w-xs text-sm text-green-600">
                           <span>Discount:</span>
-                          <span>-{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(order.discount_total)}</span>
+                          <span>-{new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(order.discount_total)}</span>
                         </div>
                       )}
                       {order.tax_total > 0 && (
                         <div className="flex justify-between w-full max-w-xs text-sm">
                           <span className="text-muted-foreground">Tax:</span>
-                          <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(order.tax_total)}</span>
+                          <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(order.tax_total)}</span>
                         </div>
                       )}
                       <div className="flex justify-between w-full max-w-xs pt-2 border-t font-bold text-base">
                         <span>Total:</span>
-                        <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(order.total)}</span>
+                        <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(order.total)}</span>
                       </div>
                     </div>
                   </CardContent>

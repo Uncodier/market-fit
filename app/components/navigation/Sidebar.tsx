@@ -131,8 +131,7 @@ export function Sidebar({
         >
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="w-full h-full flex flex-col transition-[padding] duration-300"
-            style={{ paddingLeft: isMobileOpen ? 0 : renderCollapsed ? 64 : 256 }}
+            className="w-full h-full flex flex-col"
           >
             <NavigationPage isOverlay onClose={() => setIsAppsLauncherOpen(false)} />
           </div>

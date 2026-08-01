@@ -907,30 +907,26 @@
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3) !important;
 }
 
-/* Mejoras para los botones - avoid transition-all to prevent hover jumps */
-button.rounded-full, button.rounded-xl {
+/* Soft hover for non-primary rounded buttons — keep primary skeuomorphic intact */
+button.rounded-full:not(.bg-primary), button.rounded-xl:not(.bg-primary) {
   transition: background-color 0.2s ease;
 }
 
-button.rounded-full:hover, button.rounded-xl:hover {
+button.rounded-full:not(.bg-primary):hover, button.rounded-xl:not(.bg-primary):hover {
   transform: none;
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-button.rounded-full:active, button.rounded-xl:active {
+button.rounded-full:not(.bg-primary):active, button.rounded-xl:not(.bg-primary):active {
   transform: none;
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-/* Estilos para el tema oscuro */
-.dark button.rounded-full, .dark button.rounded-xl {
-}
-
-.dark button.rounded-full:hover, .dark button.rounded-xl:hover {
+.dark button.rounded-full:not(.bg-primary):hover, .dark button.rounded-xl:not(.bg-primary):hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.dark button.rounded-full:active, .dark button.rounded-xl:active {
+.dark button.rounded-full:not(.bg-primary):active, .dark button.rounded-xl:not(.bg-primary):active {
   background-color: rgba(255, 255, 255, 0.15);
 }
 
@@ -1454,7 +1450,7 @@ html.safari [class*="select-trigger"] svg {
 
 /* Navigation menu item active state gradient */
 .bg-primary {
-  background: hsl(var(--primary)) !important;
+  background-color: hsl(var(--primary)) !important;
 } 
 
 .badge-gradient-green {

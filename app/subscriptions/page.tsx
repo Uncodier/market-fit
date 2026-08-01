@@ -87,29 +87,34 @@ export default function SubscriptionsPage() {
       </StickyHeader>
 
       <div className="p-4 md:p-6 lg:p-8 flex-1 overflow-auto">
-        <div className="space-y-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <p className="text-muted-foreground">Loading subscriptions...</p>
-            </div>
-          ) : subscriptions.length === 0 ? (
-            <EmptyCard 
-              icon={<Repeat size={40} className="text-muted-foreground" />}
-              title="No subscriptions yet"
-              description="When customers purchase recurring plans, they will appear here grouped by customer."
-              variant="fancy"
-            />
-          ) : filteredSubscriptions.length === 0 ? (
-            <div className="flex items-center justify-center h-64 text-muted-foreground">
-              No subscriptions match the selected filter.
-            </div>
-          ) : (
-            <SubscriptionsList 
-              subscriptions={filteredSubscriptions} 
-              siteId={currentSite!.id} 
-              onUpdate={mutate} 
-            />
-          )}
+        <div className="flex flex-col gap-6">
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+            {!currentSite || isLoading ? (
+              <div className="p-6 space-y-4">
+                <div className="h-10 bg-muted/50 rounded-md w-full animate-pulse" />
+                <div className="h-10 bg-muted/50 rounded-md w-full animate-pulse" />
+                <div className="h-10 bg-muted/50 rounded-md w-full animate-pulse" />
+              </div>
+            ) : subscriptions.length === 0 ? (
+              <SubscriptionsList 
+                subscriptions={[]} 
+                siteId={currentSite!.id} 
+                onUpdate={mutate} 
+              />
+            ) : filteredSubscriptions.length === 0 ? (
+              <SubscriptionsList 
+                subscriptions={[]} 
+                siteId={currentSite!.id} 
+                onUpdate={mutate} 
+              />
+            ) : (
+              <SubscriptionsList 
+                subscriptions={filteredSubscriptions} 
+                siteId={currentSite!.id} 
+                onUpdate={mutate} 
+              />
+            )}
+          </div>
         </div>
       </div>
       <CreateSubscriptionDialog 

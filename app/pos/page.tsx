@@ -22,13 +22,25 @@ import {
 import { resolveRelationId } from "@/app/commerce/resolve-relation";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import { toast } from "sonner";
-import { ShoppingCart } from "@/app/components/ui/icons";
+import { ShoppingCart, Ticket } from "@/app/components/ui/icons";
 import { listLocations } from "@/app/inventory/actions";
 import { getLeads } from "@/app/leads/actions";
 import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialog";
+import { PosVariantPickerDialog } from "./components/PosVariantPickerDialog"
 import { CartPanel, PosCartItem } from "./components/CartPanel";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"
+import {
+  getActivePosOrderId,
+  setActivePosOrderId,
+  clearActivePosOrderId,
+} from "./active-order-storage";
+import { isAccessOnlyItem } from "@/app/catalog/product-details";
+import {
+  getItemDeliveryOptions,
+  intersectDeliveryOptions,
+  CheckoutFulfillmentMethod
+} from "@/app/commerce/delivery-options";
 import { CatalogItem } from "@/app/types";
 
 export default function POSPage() {
@@ -55,11 +67,47 @@ export default function POSPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [variantParentItem, setVariantParentItem] = useState<CatalogItem | null>(null);
   const [activeOrderId, setActiveOrderId] = useState<string>("new");
+  const [buyerUserId, setBuyerUserId] = useState<string | null>(null);
   const creatingOrderRef = React.useRef<boolean>(false);
+  const restoredOrderRef = React.useRef<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const leadIdParam = params.get("leadId");
+      const buyerUserParam = params.get("buyerUserId");
+      
+      if (leadIdParam) {
+        setLeadValue(leadIdParam);
+      }
+      if (buyerUserParam) {
+        setBuyerUserId(buyerUserParam);
+      }
+      
+      // Optionally clean up the URL without reloading
+      if (leadIdParam || buyerUserParam) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, []);
+
+  const allowedFulfillments = useMemo(() => {
+    return intersectDeliveryOptions(cart.map((i: any) => ({
+      allowed: getItemDeliveryOptions(i, currentSite?.settings?.shop?.default_delivery_options)
+    })))
+  }, [cart, currentSite]);
+
+  useEffect(() => {
+    if (allowedFulfillments.length > 0 && !allowedFulfillments.includes(fulfillment)) {
+      setFulfillment(allowedFulfillments[0]);
+    }
+  }, [allowedFulfillments, fulfillment]);
 
   // Fetch sellable catalog items (can be optimized to only show active)
-  const { data: catalogData, isLoading: catalogLoading } = useSWR(
+  const { data: catalogData, isLoading: catalogLoading, isValidating: catalogValidating } = useSWR(
     currentSite?.id ? ["pos_catalog", currentSite.id, searchQuery] : null,
     () =>
       listCatalogItems({
@@ -101,6 +149,24 @@ export default function POSPage() {
     (pl: any) => pl.is_active,
   );
 
+  const availableItems = useMemo(() => {
+    return allItems.filter(
+      (item: any) =>
+        item.availability_mode !== "manual" ||
+        item.availability_status === "available"
+    );
+  }, [allItems]);
+
+  const hasProducts = useMemo(() => availableItems.some((i: any) => i.kind === "product"), [availableItems]);
+  const hasServices = useMemo(() => availableItems.some((i: any) => i.kind === "service"), [availableItems]);
+  const hasDigital = useMemo(() => availableItems.some((i: any) => i.kind === "digital_asset"), [availableItems]);
+
+  const nonEmptyCategories = useMemo(() => {
+    return categories.filter((cat: any) =>
+      availableItems.some((i: any) => i.category_id === cat.id)
+    );
+  }, [categories, availableItems]);
+
   const items = useMemo(() => {
     if (selectedCategory === "all") return allItems;
     if (selectedCategory === "kind_product")
@@ -119,6 +185,36 @@ export default function POSPage() {
       if (def) setOriginLocationId(def.id);
     }
   }, [locations, originLocationId]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && currentSite && user) {
+      const pendingStr = sessionStorage.getItem("pos-pending-reservation");
+      if (pendingStr) {
+        try {
+          const pending = JSON.parse(pendingStr);
+          const item = allItems.find((i: any) => i.id === pending.itemId);
+          if (item) {
+            sessionStorage.removeItem("pos-pending-reservation");
+            // Need to wrap in an async IIFE to call resolveUnitPrice
+            (async () => {
+              const res = await resolveUnitPrice(
+                currentSite.id,
+                item.id,
+                priceListId && priceListId !== "none" ? priceListId : undefined,
+              );
+              const price = res.price || item.target_sale_price || 0;
+              setCart(prev => [
+                { ...item, cartQty: 1, cartPrice: price, reservationStart: pending.startIso, reservationEnd: pending.endIso },
+                ...prev
+              ]);
+            })();
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, [allItems, currentSite, user, priceListId]);
 
   const handlePriceListChange = async (newId: string) => {
     setPriceListId(newId);
@@ -140,12 +236,23 @@ export default function POSPage() {
   const addToCart = async (item: CatalogItem) => {
     if (!currentSite || !user) return;
 
+    // Check if it's a parent item with variants
+    if (item.metadata?.variant_axes && item.metadata.variant_axes.length > 0 && !item.is_purchasable) {
+      setVariantParentItem(item);
+      return;
+    }
+
     // Check if unavailable
     if (
       item.availability_mode === "manual" &&
       item.availability_status !== "available"
     ) {
       toast.error(t("pos.errorItemNotAvailable") || "Item is not available");
+      return;
+    }
+
+    if (item.is_reservation && !isAccessOnlyItem(item)) {
+      router.push(`/pos/book/${item.id}`)
       return;
     }
 
@@ -195,6 +302,7 @@ export default function POSPage() {
 
         if (res.orderId) {
           setActiveOrderId(res.orderId);
+          setActivePosOrderId(currentSite.id, res.orderId);
           mutate(["pending_orders", currentSite.id]);
         }
       } catch (err) {
@@ -307,9 +415,29 @@ export default function POSPage() {
       change: number;
     }[],
     checkoutPromoCode?: string,
-    intent?: 'complete' | 'pay'
+    intent?: 'complete' | 'pay' | 'send'
   ) => {
     if (!currentSite || !user) return;
+
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const remainingAmount = roundMoney(total - totalPaid);
+    const requiresCustomer = intent === 'complete' && remainingAmount > 0;
+
+    if (intent === 'send' && payments.length === 0) {
+      toast.error(
+        t("pos.errorAddPaymentFirst") || "Add at least one payment first",
+      );
+      return;
+    }
+
+    if (requiresCustomer && !leadValue) {
+      toast.error(
+        t("pos.errorSelectCustomerUnpaid") ||
+          "Select a customer to leave payment pending",
+      );
+      setIsPaymentDialogOpen(false);
+      return;
+    }
 
     setCheckoutLoading(true);
 
@@ -320,6 +448,16 @@ export default function POSPage() {
         currentSite.id,
       );
       if (leadError) throw new Error(`Lead error: ${leadError}`);
+
+      if (requiresCustomer && !resolvedLeadId) {
+        toast.error(
+          t("pos.errorSelectCustomerUnpaid") ||
+            "Select a customer to leave payment pending",
+        );
+        setCheckoutLoading(false);
+        setIsPaymentDialogOpen(false);
+        return;
+      }
 
       const lines: CheckoutLine[] = cart
         .filter((c) => c.cartQty > 0)
@@ -338,6 +476,7 @@ export default function POSPage() {
         priceListId:
           priceListId && priceListId !== "none" ? priceListId : undefined,
         leadId: resolvedLeadId || undefined,
+        buyerUserId: buyerUserId || undefined,
         fulfillment,
         originLocationId: originLocationId,
         promotionCode: finalPromoCode,
@@ -354,12 +493,19 @@ export default function POSPage() {
         return;
       }
 
-      toast.success(t("pos.checkoutComplete") || "Checkout complete!");
+      toast.success(
+        intent === "send"
+          ? (t("pos.paymentRegistered") || "Payment registered. Order kept pending.")
+          : (t("pos.checkoutComplete") || "Checkout complete!"),
+      );
       setCart([]);
       setLeadValue(null);
       setActiveOrderId("new");
+      clearActivePosOrderId(currentSite.id);
       setIsPaymentDialogOpen(false);
-      if (res.saleId) {
+      if (intent === "send" && res.orderId) {
+        router.push(`/orders/${res.orderId}`);
+      } else if (res.saleId) {
         router.push(`/sales/${res.saleId}`);
       }
     } catch (err: any) {
@@ -423,6 +569,7 @@ export default function POSPage() {
           priceListId:
             priceListId && priceListId !== "none" ? priceListId : undefined,
           leadId: resolvedLeadId || undefined,
+          buyerUserId: buyerUserId || undefined,
           fulfillment,
           originLocationId: originLocationId,
         source: "pos",
@@ -441,6 +588,7 @@ export default function POSPage() {
         setCart([]);
         setLeadValue(null);
         setActiveOrderId("new");
+        clearActivePosOrderId(currentSite.id);
         if (res.orderId) {
           router.push(`/orders/${res.orderId}`);
         }
@@ -466,17 +614,23 @@ export default function POSPage() {
     router,
   ]);
 
+  const resetToNewOrder = () => {
+    setActiveOrderId("new");
+    if (currentSite) clearActivePosOrderId(currentSite.id);
+    setCart([]);
+    setLeadValue(null);
+    setPriceListId("none");
+  };
+
   const handleOrderSelect = async (val: string) => {
     if (!val || val === "new") {
-      setActiveOrderId("new");
-      setCart([]);
-      setLeadValue(null);
-      setPriceListId("none");
+      resetToNewOrder();
       return;
     }
 
     const orderId = val;
     setActiveOrderId(orderId);
+    if (currentSite) setActivePosOrderId(currentSite.id, orderId);
 
     try {
       setCheckoutLoading(true);
@@ -484,9 +638,15 @@ export default function POSPage() {
       if (res.error) throw new Error(res.error);
       const order = res.data;
 
+      if (!order || order.status !== "pending") {
+        resetToNewOrder();
+        return;
+      }
+
       // Populate lead if available
       if (order.leads) {
         setLeadValue({
+          mode: "existing",
           id: order.leads.id,
           label: order.leads.name || order.leads.email,
         });
@@ -518,6 +678,7 @@ export default function POSPage() {
         setCart(loadedCart);
       }
     } catch (err: any) {
+      resetToNewOrder();
       toast.error(
         err.message || t("pos.errorLoadingOrder") || "Failed to load order",
       );
@@ -525,6 +686,28 @@ export default function POSPage() {
       setCheckoutLoading(false);
     }
   };
+
+  // Allow restore again when switching sites
+  useEffect(() => {
+    restoredOrderRef.current = false;
+  }, [currentSite?.id]);
+
+  // Restore last open order on mount / site change
+  useEffect(() => {
+    if (!currentSite || !user || allItems.length === 0 || restoredOrderRef.current) {
+      return;
+    }
+
+    const savedOrderId = getActivePosOrderId(currentSite.id);
+    restoredOrderRef.current = true;
+
+    if (savedOrderId && activeOrderId === "new") {
+      handleOrderSelect(savedOrderId).catch((err) => {
+        console.error("Failed to restore POS order", err);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSite, user, allItems]);
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] overflow-hidden bg-muted/30">
@@ -544,25 +727,31 @@ export default function POSPage() {
                   >
                     {t("pos.filters.all") || "All"}
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="kind_product"
-                    className="rounded-full text-xs px-3"
-                  >
-                    {t("pos.filters.products") || "Products"}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="kind_service"
-                    className="rounded-full text-xs px-3"
-                  >
-                    {t("pos.filters.services") || "Services"}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="kind_digital_asset"
-                    className="rounded-full text-xs px-3"
-                  >
-                    {t("pos.filters.digitalAssets") || "Digital"}
-                  </TabsTrigger>
-                  {categories.map((cat: any) => (
+                  {hasProducts && (
+                    <TabsTrigger
+                      value="kind_product"
+                      className="rounded-full text-xs px-3"
+                    >
+                      {t("pos.filters.products") || "Products"}
+                    </TabsTrigger>
+                  )}
+                  {hasServices && (
+                    <TabsTrigger
+                      value="kind_service"
+                      className="rounded-full text-xs px-3"
+                    >
+                      {t("pos.filters.services") || "Services"}
+                    </TabsTrigger>
+                  )}
+                  {hasDigital && (
+                    <TabsTrigger
+                      value="kind_digital_asset"
+                      className="rounded-full text-xs px-3"
+                    >
+                      {t("pos.filters.digitalAssets") || "Digital"}
+                    </TabsTrigger>
+                  )}
+                  {nonEmptyCategories.map((cat: any) => (
                     <TabsTrigger
                       key={cat.id}
                       value={cat.id}
@@ -581,9 +770,10 @@ export default function POSPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 type="text"
               />
-              <div className="flex-1"></div>
+              <div className="flex-1 hidden sm:flex justify-end pr-4">
+              </div>
 
-              <div className="flex justify-end md:hidden flex-shrink-0">
+              <div className="flex justify-end md:hidden flex-shrink-0 gap-2">
                 <Sheet
                   open={isMobileCartOpen}
                   onOpenChange={setIsMobileCartOpen}
@@ -632,9 +822,10 @@ export default function POSPage() {
                       closeCart={() => setIsMobileCartOpen(false)}
                       activeOrderId={activeOrderId}
                       pendingOrders={pendingOrders}
-                      handleOrderSelect={handleOrderSelect}
-                      t={t}
-                    />
+              handleOrderSelect={handleOrderSelect}
+              allowedFulfillments={allowedFulfillments}
+              t={t}
+            />
                   </SheetContent>
                 </Sheet>
               </div>
@@ -645,7 +836,7 @@ export default function POSPage() {
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
           <PosCatalogGrid
             items={items as CatalogItem[]}
-            loading={catalogLoading}
+            loading={!currentSite || catalogLoading || (!catalogData && catalogValidating)}
             onAdd={addToCart}
             t={t}
           />
@@ -680,6 +871,7 @@ export default function POSPage() {
               activeOrderId={activeOrderId}
               pendingOrders={pendingOrders}
               handleOrderSelect={handleOrderSelect}
+              allowedFulfillments={allowedFulfillments}
               t={t}
             />
           </div>
@@ -692,6 +884,17 @@ export default function POSPage() {
         totalAmount={total}
         onConfirm={handleCheckout}
         isLoading={checkoutLoading}
+        hasCustomer={!!leadValue}
+      />
+
+      <PosVariantPickerDialog
+        item={variantParentItem}
+        open={!!variantParentItem}
+        onOpenChange={(o) => !o && setVariantParentItem(null)}
+        onConfirm={(childItem) => {
+          setVariantParentItem(null);
+          addToCart(childItem);
+        }}
       />
     </div>
   );

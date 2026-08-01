@@ -463,7 +463,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   return (
     <>
       <div className="w-full h-[1px] bg-black/5 dark:bg-white/5 my-2" />
-      <div ref={containerRef} className="flex-1 w-full min-h-0 flex flex-col">
+      <div ref={containerRef} className="flex-1 w-full min-h-0 flex flex-col space-y-1">
         <DndContext 
           sensors={sensors}
           collisionDetection={closestCenter}

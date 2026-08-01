@@ -98,6 +98,32 @@ export async function listPromotionItems(promotionId: string, siteId: string) {
   }
 }
 
+export async function listPromotionCategories(promotionId: string, siteId: string) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("promotion_catalog_categories")
+      .select(`
+        id, catalog_category_id,
+        catalog_categories(name)
+      `)
+      .eq("promotion_id", promotionId)
+      .eq("site_id", siteId);
+
+    if (error) throw new Error(error.message);
+    
+    return { 
+      data: data.map((d: any) => ({
+        id: d.id,
+        catalog_category_id: d.catalog_category_id,
+        catalog_category: Array.isArray(d.catalog_categories) ? d.catalog_categories[0] : d.catalog_categories
+      }))
+    };
+  } catch (error: any) {
+    return { error: error.message, data: [] };
+  }
+}
+
 export async function setPromotionItems(promotionId: string, siteId: string, catalogItemIds: string[]) {
   try {
     const supabase = await createClient();
@@ -114,6 +140,32 @@ export async function setPromotionItems(promotionId: string, siteId: string, cat
       }));
       
       const { error } = await supabase.from("promotion_catalog_items").insert(inserts);
+      if (error) throw new Error(error.message);
+    }
+    
+    revalidatePath(`/promotions/${promotionId}`);
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function setPromotionCategories(promotionId: string, siteId: string, catalogCategoryIds: string[]) {
+  try {
+    const supabase = await createClient();
+    
+    // Clear old
+    await supabase.from("promotion_catalog_categories").delete().eq("promotion_id", promotionId);
+    
+    // Insert new
+    if (catalogCategoryIds.length > 0) {
+      const inserts = catalogCategoryIds.map(id => ({
+        site_id: siteId,
+        promotion_id: promotionId,
+        catalog_category_id: id
+      }));
+      
+      const { error } = await supabase.from("promotion_catalog_categories").insert(inserts);
       if (error) throw new Error(error.message);
     }
     
@@ -174,6 +226,30 @@ export async function applyPromotionToOrder(siteId: string, saleOrderId: string,
       throw new Error(`Order must be at least ${promo.min_order_amount}`);
     }
 
+    // 4b. Load order & check per-user limit
+    const { data: order } = await supabase.from("sale_orders").select("id, sale_id, tax_total, buyer_user_id, lead_id").eq("id", saleOrderId).single();
+    if (!order) throw new Error("Order not found");
+
+    if (promo.usage_limit_per_user) {
+      const identityField = order.buyer_user_id ? 'buyer_user_id' : (order.lead_id ? 'lead_id' : null);
+      if (!identityField) {
+        throw new Error("Promotion requires an identifiable buyer");
+      }
+      const identityValue = order.buyer_user_id || order.lead_id;
+
+      const { count: priorUses } = await supabase
+        .from("sale_orders")
+        .select("id", { count: "exact", head: true })
+        .eq("promotion_id", promo.id)
+        .eq(identityField, identityValue)
+        .neq("id", saleOrderId)
+        .not("status", "in", "(cancelled,canceled)");
+
+      if ((priorUses ?? 0) >= promo.usage_limit_per_user) {
+        throw new Error("You have already used this promotion the maximum number of times");
+      }
+    }
+
     // 5. Calculate discount
     let discount = 0;
     if (promo.applies_to === 'all') {
@@ -181,24 +257,40 @@ export async function applyPromotionToOrder(siteId: string, saleOrderId: string,
         ? promo.discount_value 
         : orderSubtotal * (promo.discount_value / 100);
     } else {
-      // selected_items
+      // selected_items: products and/or categories
       const { data: pItems } = await supabase.from("promotion_catalog_items").select("catalog_item_id").eq("promotion_id", promo.id);
-      const eligibleIds = pItems?.map((p: any) => p.catalog_item_id) || [];
+      const eligibleItemIds = new Set(pItems?.map((p: any) => p.catalog_item_id) || []);
       
-      const eligibleSubtotal = items
-        .filter((item: any) => eligibleIds.includes(item.catalog_item_id))
-        .reduce((sum: number, item: any) => sum + Number(item.subtotal), 0);
-        
+      const { data: pCats } = await supabase.from("promotion_catalog_categories").select("catalog_category_id").eq("promotion_id", promo.id);
+      const eligibleCategoryIds = new Set(pCats?.map((p: any) => p.catalog_category_id) || []);
+
+      if (eligibleItemIds.size === 0 && eligibleCategoryIds.size === 0) {
+        throw new Error("Promotion has no eligible products or categories configured");
+      }
+
+      const itemIds = items.map((i: any) => i.catalog_item_id);
+      const { data: catalogItems } = await supabase.from("catalog_items").select("id, category_id").in("id", itemIds);
+      const itemCatMap = new Map(catalogItems?.map((ci: any) => [ci.id, ci.category_id]));
+
+      let eligibleSubtotal = 0;
+      for (const item of items) {
+        const catId = itemCatMap.get(item.catalog_item_id);
+        const isEligible = eligibleItemIds.has(item.catalog_item_id) || (catId && eligibleCategoryIds.has(catId));
+        if (isEligible) eligibleSubtotal += Number(item.subtotal);
+      }
+
+      if (eligibleSubtotal <= 0) {
+        throw new Error("No eligible items for this promotion");
+      }
+
       discount = promo.discount_type === 'fixed'
-        ? Math.min(promo.discount_value, eligibleSubtotal) // limit to eligible subtotal
+        ? Math.min(promo.discount_value, eligibleSubtotal)
         : eligibleSubtotal * (promo.discount_value / 100);
     }
 
     // Cap discount to total
     discount = Math.min(discount, orderSubtotal);
 
-    // Fetch existing order to get tax_total
-    const { data: order } = await supabase.from("sale_orders").select("sale_id, tax_total").eq("id", saleOrderId).single();
     const taxTotal = Number(order?.tax_total) || 0;
 
     // 6. Update order

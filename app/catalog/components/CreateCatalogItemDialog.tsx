@@ -7,12 +7,14 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Checkbox } from "@/app/components/ui/checkbox"
+import { Switch } from "@/app/components/ui/switch"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { upsertCatalogItem, listCatalogCategories } from "../actions"
 import { CatalogCategory } from "@/app/types"
 import { ImageUpload } from "@/app/components/ui/image-upload"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { COMMON_CURRENCIES } from "@/app/lib/currencies"
 
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
@@ -30,6 +32,7 @@ type FormData = {
   is_marketplace_listed: boolean
   sku: string
   target_sale_price: string
+  currency: string
   cost: string
   availability_mode: 'manual' | 'inventory' | 'always'
   track_inventory: boolean
@@ -42,6 +45,7 @@ type FormData = {
 
 export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: CreateCatalogItemDialogProps) {
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [image, setImage] = useState<string>('')
@@ -55,6 +59,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
       track_inventory: false,
       sku: '',
       target_sale_price: '',
+      currency: 'USD',
       cost: '',
       is_pos_available: true,
       is_recurring: false,
@@ -64,11 +69,14 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
 
   useEffect(() => {
     if (open && currentSite) {
+      if (currentSite.settings?.currency) {
+        setValue('currency', currentSite.settings.currency);
+      }
       listCatalogCategories(currentSite.id).then(res => {
         if (res.data) setCategories(res.data as CatalogCategory[])
       })
     }
-  }, [open, currentSite])
+  }, [open, currentSite, setValue])
 
   const kind = watch('kind')
   const mode = watch('availability_mode')
@@ -94,6 +102,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
         is_marketplace_listed: data.is_marketplace_listed,
         sku: data.sku || undefined,
         target_sale_price: data.target_sale_price ? parseFloat(data.target_sale_price) : undefined,
+        currency: data.currency || 'USD',
         cost: data.cost ? parseFloat(data.cost) : undefined,
         availability_mode: data.availability_mode,
         track_inventory: data.track_inventory,
@@ -103,7 +112,10 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
         is_pos_available: data.is_pos_available,
         is_recurring: data.is_recurring,
         is_reservation: data.is_reservation,
-        image_url: image || undefined
+        image_url: image || undefined,
+        metadata: {
+          delivery_options: data.kind === 'product' ? ['pickup', 'ship'] : ['none']
+        }
       })
 
       if (res.error) throw new Error(res.error)
@@ -124,7 +136,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add to Catalog</DialogTitle>
+          <DialogTitle>{t("catalog.create.title") || "Add to Catalog"}</DialogTitle>
           <DialogDescription>
             Create a new product or service for your catalog.
           </DialogDescription>
@@ -132,7 +144,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label>Image</Label>
+            <Label>{t("catalog.create.image") || "Image"}</Label>
             <ImageUpload 
               value={image} 
               onChange={setImage} 
@@ -142,7 +154,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2 md:col-span-1">
-              <Label htmlFor="kind">Type</Label>
+              <Label htmlFor="kind">{t("catalog.create.type") || "Type"}</Label>
               <Select 
                 value={kind} 
                 onValueChange={(val: any) => setValue('kind', val)}
@@ -151,16 +163,16 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="product">Physical Product</SelectItem>
-                  <SelectItem value="service">Service</SelectItem>
-                  <SelectItem value="digital_asset">Digital Asset</SelectItem>
+                  <SelectItem value="product">{t("catalog.create.product") || "Physical Product"}</SelectItem>
+                  <SelectItem value="service">{t("catalog.create.service") || "Service"}</SelectItem>
+                  <SelectItem value="digital_asset">{t("catalog.create.digitalAsset") || "Digital Asset"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             {kind === 'digital_asset' && (
               <div className="space-y-2 col-span-2 md:col-span-1">
-                <Label htmlFor="digital_subtype">Digital Subtype</Label>
+                <Label htmlFor="digital_subtype">{t("catalog.create.digitalSubtype") || "Digital Subtype"}</Label>
                 <Select 
                   value={watch('digital_subtype')} 
                   onValueChange={(val: any) => setValue('digital_subtype', val)}
@@ -169,19 +181,19 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                     <SelectValue placeholder="Select type..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="ticket">Ticket</SelectItem>
-                    <SelectItem value="course">Course</SelectItem>
-                    <SelectItem value="file">File</SelectItem>
-                    <SelectItem value="pass">Pass</SelectItem>
-                    <SelectItem value="license">License</SelectItem>
+                    <SelectItem value="none">{t("common.none") || "None"}</SelectItem>
+                    <SelectItem value="ticket">{t("catalog.create.ticket") || "Ticket"}</SelectItem>
+                    <SelectItem value="course">{t("catalog.create.course") || "Course"}</SelectItem>
+                    <SelectItem value="file">{t("catalog.create.file") || "File"}</SelectItem>
+                    <SelectItem value="pass">{t("catalog.create.pass") || "Pass"}</SelectItem>
+                    <SelectItem value="license">{t("catalog.create.license") || "License"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             )}
             
             <div className={`space-y-2 col-span-2 ${kind === 'digital_asset' ? 'md:col-span-2' : 'md:col-span-1'}`}>
-              <Label htmlFor="category_value">Category</Label>
+              <Label htmlFor="category_value">{t("catalog.create.category") || "Category"}</Label>
               <RelationSelect 
                 options={categories.map(cat => ({ id: cat.id, label: cat.name }))}
                 value={categoryValue} 
@@ -194,7 +206,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2 md:col-span-1">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t("catalog.create.name") || "Name"}</Label>
               <Input 
                 id="name" 
                 placeholder={kind === 'product' ? "e.g. Classic T-Shirt" : "e.g. 1hr Consultation"} 
@@ -203,14 +215,14 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
               {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
             </div>
             <div className="space-y-2 col-span-2 md:col-span-1">
-              <Label htmlFor="sku">SKU / Code (Optional)</Label>
+              <Label htmlFor="sku">{t("catalog.create.sku") || "SKU / Code (Optional)"}</Label>
               <Input id="sku" placeholder="e.g. TSHIRT-01" {...register("sku")} />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="target_sale_price">Default Sale Price</Label>
+              <Label htmlFor="target_sale_price">{t("catalog.create.defaultSalePrice") || "Default Sale Price"}</Label>
               <Input 
                 id="target_sale_price" 
                 type="number" 
@@ -224,7 +236,25 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cost">Unit Cost</Label>
+              <Label htmlFor="currency">{t("catalog.create.currency") || "Currency"}</Label>
+              <Select 
+                value={watch('currency')} 
+                onValueChange={(val: string) => setValue('currency', val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {COMMON_CURRENCIES.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cost">{t("catalog.create.unitCost") || "Unit Cost"}</Label>
               <Input 
                 id="cost" 
                 type="number" 
@@ -237,48 +267,68 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
           </div>
 
           <div className="space-y-4 pt-4 border-t">
-            <h4 className="text-sm font-medium">Features</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="flex items-center space-x-2 border p-3 rounded-md">
-                <Checkbox 
+            <h4 className="text-sm font-medium">{t("catalog.create.features") || "Features"}</h4>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_pos_available" className="text-base cursor-pointer">{t("catalog.create.availableInPos") || "Available in POS"}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Allow this item to be sold through the Point of Sale interface.
+                  </p>
+                </div>
+                <Switch 
                   id="is_pos_available" 
                   checked={isPos}
                   onCheckedChange={(checked) => setValue('is_pos_available', checked as boolean)}
                 />
-                <Label htmlFor="is_pos_available" className="cursor-pointer text-xs">Available in POS</Label>
               </div>
-              <div className="flex items-center space-x-2 border p-3 rounded-md">
-                <Checkbox 
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_recurring" className="text-base cursor-pointer">{t("catalog.create.recurring") || "Recurring"}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Set up this item as a subscription or recurring payment plan.
+                  </p>
+                </div>
+                <Switch 
                   id="is_recurring" 
                   checked={isRecurring}
                   onCheckedChange={(checked) => setValue('is_recurring', checked as boolean)}
                 />
-                <Label htmlFor="is_recurring" className="cursor-pointer text-xs">Recurring</Label>
               </div>
-              <div className="flex items-center space-x-2 border p-3 rounded-md">
-                <Checkbox 
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_reservation" className="text-base cursor-pointer">{t("catalog.create.reservable") || "Reservable"}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Enable scheduling and bookings for this item.
+                  </p>
+                </div>
+                <Switch 
                   id="is_reservation" 
                   checked={isReservation}
                   onCheckedChange={(checked) => setValue('is_reservation', checked as boolean)}
                 />
-                <Label htmlFor="is_reservation" className="cursor-pointer text-xs">Reservable</Label>
               </div>
-              <div className="flex items-center space-x-2 border p-3 rounded-md">
-                <Checkbox 
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_marketplace_listed" className="text-base cursor-pointer">{t("catalog.create.marketplace") || "Marketplace"}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    List this item on the public marketplace for customers to purchase.
+                  </p>
+                </div>
+                <Switch 
                   id="is_marketplace_listed" 
-                  checked={watch('is_marketplace_listed') ?? false}
+                  checked={watch('is_marketplace_listed') ?? true}
                   onCheckedChange={(checked) => setValue('is_marketplace_listed', checked as boolean)}
                 />
-                <Label htmlFor="is_marketplace_listed" className="cursor-pointer text-xs">Marketplace</Label>
               </div>
             </div>
           </div>
 
           <div className="space-y-4 pt-4 border-t">
-            <h4 className="text-sm font-medium">Availability & Inventory</h4>
+            <h4 className="text-sm font-medium">{t("catalog.create.availabilityAndInventory") || "Availability & Inventory"}</h4>
             
             <div className="space-y-2">
-              <Label htmlFor="availability_mode">How is availability determined?</Label>
+              <Label htmlFor="availability_mode">{t("catalog.create.availabilityMode") || "How is availability determined?"}</Label>
               <Select 
                 value={mode} 
                 onValueChange={(val: any) => setValue('availability_mode', val)}
@@ -294,18 +344,18 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
               </Select>
             </div>
 
-            <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-              <Checkbox 
-                id="track_inventory" 
-                checked={trackInventory}
-                onCheckedChange={(checked) => setValue('track_inventory', checked as boolean)}
-              />
-              <div className="space-y-1 leading-none">
-                <Label htmlFor="track_inventory">Track inventory levels</Label>
+            <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="track_inventory" className="text-base cursor-pointer">{t("catalog.create.trackInventory") || "Track inventory levels"}</Label>
                 <p className="text-sm text-muted-foreground">
                   Keep a count of how many items are in stock at each location.
                 </p>
               </div>
+              <Switch 
+                id="track_inventory" 
+                checked={trackInventory}
+                onCheckedChange={(checked) => setValue('track_inventory', checked as boolean)}
+              />
             </div>
           </div>
 
@@ -314,7 +364,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Item"}
+              {isSubmitting ? (t("common.creating") || "Creating...") : (t("catalog.create.submit") || "Create Item")}
             </Button>
           </DialogFooter>
         </form>

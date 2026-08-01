@@ -364,6 +364,7 @@ const CreateLeadSchema = z.object({
     country: z.string().optional(),
   }).optional(),
   assignee_id: z.string().optional().nullable(),
+  buyer_user_id: z.string().optional().nullable(),
 })
 
 export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
@@ -433,6 +434,7 @@ const UpdateLeadSchema = z.object({
     notes: z.string().optional(),
   }).optional().nullable(),
   assignee_id: z.string().optional().nullable(),
+  buyer_user_id: z.string().optional().nullable(),
 })
 
 export type UpdateLeadInput = z.infer<typeof UpdateLeadSchema>
@@ -518,6 +520,7 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
         last_contact,
         site_id,
         user_id,
+        buyer_user_id,
         birthday,
         language,
         social_networks,

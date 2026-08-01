@@ -14,8 +14,9 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { X } from "@/app/components/ui/icons"
-import { CreditCard, Banknote, HelpCircle } from "@/app/components/ui/icons"
+import { CreditCard, Banknote, HelpCircle, User } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useSite } from "@/app/context/SiteContext"
 
 interface PaymentEntry {
   method: string
@@ -28,8 +29,9 @@ interface PaymentConfirmationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   totalAmount: number
-  onConfirm: (payments: PaymentEntry[], promotionCode?: string, intent?: 'complete' | 'pay') => void
+  onConfirm: (payments: PaymentEntry[], promotionCode?: string, intent?: 'complete' | 'pay' | 'send') => void
   isLoading?: boolean
+  hasCustomer?: boolean
 }
 
 export function PaymentConfirmationDialog({
@@ -37,9 +39,11 @@ export function PaymentConfirmationDialog({
   onOpenChange,
   totalAmount,
   onConfirm,
-  isLoading = false
+  isLoading = false,
+  hasCustomer = false
 }: PaymentConfirmationDialogProps) {
   const { t } = useLocalization()
+  const { currentSite } = useSite()
   
   const [payments, setPayments] = useState<PaymentEntry[]>([])
   const [selectedMethod, setSelectedMethod] = useState("cash")
@@ -71,6 +75,7 @@ export function PaymentConfirmationDialog({
     { value: "credit_card", label: t('pos.payment.methods.creditCard') || "Credit Card", icon: CreditCard },
     { value: "debit_card", label: t('pos.payment.methods.debitCard') || "Debit Card", icon: CreditCard },
     { value: "transfer", label: t('pos.payment.methods.transfer') || "Bank Transfer", icon: Banknote },
+    { value: "on_account", label: t('pos.payment.methods.onAccount') || "On Account", icon: User },
     { value: "other", label: t('pos.payment.methods.other') || "Other", icon: HelpCircle },
   ]
 
@@ -105,11 +110,15 @@ export function PaymentConfirmationDialog({
     setPayments(newPayments)
   }
 
-  const handleConfirmPay = () => {
+  const handlePayAndComplete = () => {
     onConfirm(payments, promoCode || undefined, 'pay')
   }
 
-  const handleConfirmComplete = () => {
+  const handleRegisterPaymentOnly = () => {
+    onConfirm(payments, promoCode || undefined, 'send')
+  }
+
+  const handleCompleteOnAccount = () => {
     onConfirm(payments, promoCode || undefined, 'complete')
   }
 
@@ -175,28 +184,70 @@ export function PaymentConfirmationDialog({
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <Label htmlFor="amount-tendered" className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                      {selectedMethod === 'cash' ? (t('pos.payment.amountTendered') || 'Amount Tendered') : (t('pos.payment.amountToCharge') || 'Amount to Charge')}
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-xl">$</span>
-                      <Input
-                        id="amount-tendered"
-                        type="number"
-                        step="0.01"
-                        className="pl-9 text-2xl font-bold h-14 bg-muted/10 border-muted-foreground/20 rounded-xl"
-                        value={currentAmount}
-                        onChange={(e) => setCurrentAmount(e.target.value)}
-                      />
+                  {selectedMethod !== "on_account" && (
+                    <div className="space-y-3">
+                      <Label htmlFor="amount-tendered" className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                        {selectedMethod === 'cash' ? (t('pos.payment.amountTendered') || 'Amount Tendered') : (t('pos.payment.amountToCharge') || 'Amount to Charge')}
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-xl">$</span>
+                        <Input
+                          id="amount-tendered"
+                          type="number"
+                          step="0.01"
+                          className="pl-9 text-2xl font-bold h-14 bg-muted/10 border-muted-foreground/20 rounded-xl"
+                          value={currentAmount}
+                          onChange={(e) => setCurrentAmount(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="mt-8">
-                  <Button className="w-full h-12 text-base rounded-xl" onClick={handleAddPayment} disabled={!currentAmount || parseFloat(currentAmount) <= 0}>
-                    {t('pos.payment.addPayment') || 'Add Payment'}
-                  </Button>
+                  {selectedMethod === "on_account" ? (
+                    <div className="mb-6 p-4 bg-muted/30 border rounded-xl text-sm">
+                      <h5 className="font-bold mb-2">{t('pos.payment.onAccountDesc') || 'Charge to Customer Account'}</h5>
+                      <p className="text-muted-foreground">
+                        {t('pos.payment.onAccountInstruction') || 'The remaining balance will be left pending on the customer\'s account.'}
+                      </p>
+                      {!hasCustomer && (
+                        <p className="mt-2 text-destructive font-medium">
+                          {t('pos.errorSelectCustomerUnpaid') || 'Select a customer to leave payment pending'}
+                        </p>
+                      )}
+                    </div>
+                  ) : selectedMethod === "transfer" && currentSite?.settings?.shop?.bank_transfer?.account_number && (
+                    <div className="mb-6 p-4 bg-muted/30 border rounded-xl text-sm">
+                      <h5 className="font-bold mb-2">{t('pos.payment.accountDetails') || 'Account Details for Transfer'}</h5>
+                      <div className="space-y-1 text-muted-foreground">
+                        {currentSite.settings.shop.bank_transfer.bank_name && (
+                          <div className="flex justify-between"><span>{t('pos.payment.bank') || 'Bank'}:</span> <span className="font-medium text-foreground">{currentSite.settings.shop.bank_transfer.bank_name}</span></div>
+                        )}
+                        {currentSite.settings.shop.bank_transfer.account_holder && (
+                          <div className="flex justify-between"><span>{t('pos.payment.name') || 'Name'}:</span> <span className="font-medium text-foreground">{currentSite.settings.shop.bank_transfer.account_holder}</span></div>
+                        )}
+                        <div className="flex justify-between"><span>{t('pos.payment.accountIban') || 'Account/IBAN'}:</span> <span className="font-medium font-mono text-foreground">{currentSite.settings.shop.bank_transfer.account_number}</span></div>
+                        {currentSite.settings.shop.bank_transfer.routing_number && (
+                          <div className="flex justify-between"><span>{t('pos.payment.routingSwift') || 'Routing/SWIFT'}:</span> <span className="font-medium text-foreground">{currentSite.settings.shop.bank_transfer.routing_number}</span></div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {selectedMethod === "on_account" ? (
+                    <Button 
+                      className="w-full h-12 text-base rounded-xl" 
+                      onClick={handleCompleteOnAccount} 
+                      disabled={isLoading || !hasCustomer}
+                      variant="secondary"
+                    >
+                      {isLoading ? (t('pos.payment.processing') || "Processing...") : (t('pos.payment.completeOnAccount') || "Complete on Account")}
+                    </Button>
+                  ) : (
+                    <Button className="w-full h-12 text-base rounded-xl" onClick={handleAddPayment} disabled={!currentAmount || parseFloat(currentAmount) <= 0}>
+                      {t('pos.payment.addPayment') || 'Add Payment'}
+                    </Button>
+                  )}
                 </div>
               </div>
             ) : (
@@ -232,7 +283,7 @@ export function PaymentConfirmationDialog({
                         : "bg-muted/30 hover:bg-muted/50 text-foreground"
                     }`}
                     onClick={() => (d === "C" ? handleClear() : handleDigit(d))}
-                    disabled={remainingAmount <= 0}
+                    disabled={remainingAmount <= 0 || selectedMethod === "on_account"}
                   >
                     {d}
                   </Button>
@@ -244,7 +295,7 @@ export function PaymentConfirmationDialog({
                   variant="ghost"
                   className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-muted/30 hover:bg-muted/50 text-foreground"
                   onClick={handleBackspace}
-                  disabled={remainingAmount <= 0 || !currentAmount}
+                  disabled={remainingAmount <= 0 || !currentAmount || selectedMethod === "on_account"}
                 >
                   ⌫
                 </Button>
@@ -253,7 +304,7 @@ export function PaymentConfirmationDialog({
                   variant="ghost"
                   className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-muted/30 hover:bg-muted/50 text-foreground text-sm font-semibold tracking-tight"
                   onClick={() => setCurrentAmount(Math.ceil(remainingAmount).toString())}
-                  disabled={remainingAmount <= 0}
+                  disabled={remainingAmount <= 0 || selectedMethod === "on_account"}
                 >
                   Exact
                 </Button>
@@ -262,7 +313,7 @@ export function PaymentConfirmationDialog({
                   variant="ghost"
                   className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-muted/30 hover:bg-muted/50 text-foreground text-sm font-semibold tracking-tight"
                   onClick={() => setCurrentAmount(Math.ceil(remainingAmount / 10) * 10 + "")}
-                  disabled={remainingAmount <= 0}
+                  disabled={remainingAmount <= 0 || selectedMethod === "on_account"}
                 >
                   +10
                 </Button>
@@ -271,7 +322,7 @@ export function PaymentConfirmationDialog({
                   variant="ghost"
                   className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-muted/30 hover:bg-muted/50 text-foreground text-sm font-semibold tracking-tight"
                   onClick={() => setCurrentAmount(Math.ceil(remainingAmount / 50) * 50 + "")}
-                  disabled={remainingAmount <= 0}
+                  disabled={remainingAmount <= 0 || selectedMethod === "on_account"}
                 >
                   +50
                 </Button>
@@ -337,21 +388,27 @@ export function PaymentConfirmationDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             {t('common.cancel') || 'Cancel'}
           </Button>
-          
-          {remainingAmount > 0 && totalAmount > 0 ? (
-            <>
-              <Button variant="secondary" onClick={handleConfirmComplete} disabled={isLoading}>
-                {isLoading ? (t('pos.payment.processing') || "Processing...") : (t('pos.payment.completeOrderOnly') || "Complete (Unpaid)")}
-              </Button>
-              <Button onClick={handleConfirmPay} disabled={remainingAmount > 0 || isLoading}>
-                {isLoading ? (t('pos.payment.processing') || "Processing...") : (t('pos.payment.payOrder') || "Pay")}
-              </Button>
-            </>
-          ) : (
-            <Button onClick={handleConfirmPay} disabled={remainingAmount > 0 || isLoading}>
-              {isLoading ? (t('pos.payment.processing') || "Processing...") : (t('pos.payment.completeOrder') || "Complete Order")}
+
+          {selectedMethod !== "on_account" && (
+            <Button
+              variant="secondary"
+              onClick={handleRegisterPaymentOnly}
+              disabled={payments.length === 0 || isLoading}
+            >
+              {isLoading
+                ? (t('pos.payment.processing') || "Processing...")
+                : (t('pos.payment.registerPaymentOnly') || "Register Payment Only")}
             </Button>
           )}
+
+          <Button
+            onClick={handlePayAndComplete}
+            disabled={remainingAmount > 0 || isLoading || selectedMethod === "on_account"}
+          >
+            {isLoading
+              ? (t('pos.payment.processing') || "Processing...")
+              : (t('pos.payment.payAndComplete') || "Pay & Complete")}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

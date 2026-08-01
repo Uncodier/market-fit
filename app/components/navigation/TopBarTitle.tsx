@@ -60,6 +60,10 @@ export function TopBarTitle({
       return "Checkout"
     }
     
+    if (pathSegments[0] === 'accounting' && pathSegments[1] === 'entries') {
+      return t('layout.sidebar.journalEntries') || "Journal Entries"
+    }
+    
     const firstSegment = pathSegments[0]
     const routeTitles: Record<string, string> = {
       'dashboard': t('layout.sidebar.dashboard') || 'Dashboard',
@@ -88,6 +92,8 @@ export function TopBarTitle({
       'promotions': t('layout.sidebar.promotions') || 'Promotions',
       'subscriptions': t('layout.sidebar.subscriptions') || 'Subscriptions',
       'reservations': t('layout.sidebar.reservations') || 'Reservations',
+      'accounting': t('layout.sidebar.chartOfAccounts') || 'Chart of Accounts',
+      'finance': t('layout.sidebar.financeReports') || 'Finance Reports',
       'purchases': t('layout.category.buying') || 'Purchases',
       'transactions': t('layout.sidebar.transactions') || 'Transactions'
     }

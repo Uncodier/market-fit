@@ -21,7 +21,8 @@ const SUPABASE_COOKIES = [
   'next-auth.callback-url',
   'next-auth.csrf-token',
   '__Secure-next-auth.session-token',
-  '__Host-next-auth.csrf-token'
+  '__Host-next-auth.csrf-token',
+  'market_fit_demo_site_id'
 ]
 
 export async function GET(request: Request) {

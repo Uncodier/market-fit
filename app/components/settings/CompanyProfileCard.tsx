@@ -10,6 +10,7 @@ import { Button } from "../ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { useState } from "react"
 import { type SiteFormValues } from "./form-schema"
+import { COMMON_CURRENCIES } from "@/app/lib/currencies"
 
 interface CompanyProfileCardProps {
   onSave?: (data: SiteFormValues) => void
@@ -139,6 +140,37 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
                     ))}
                   </SelectContent>
                 </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="currency"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Default Currency</FormLabel>
+                <Select
+                  value={field.value || "USD"}
+                  onValueChange={field.onChange}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {COMMON_CURRENCIES.map((currency) => (
+                      <SelectItem key={currency.code} value={currency.code}>
+                        {currency.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  The default currency for products and transactions.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

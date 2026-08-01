@@ -27,7 +27,7 @@ function ResetPasswordContent() {
           
           // If session exists, it might be from a recovery flow
           // Check if we have returnTo to determine if this is a recovery redirect
-          const returnTo = searchParams.get('returnTo') || '/robots'
+          const returnTo = searchParams.get('returnTo') || '/buyer'
           
           // Redirect directly to set-password if session exists
           // This handles the case where Supabase's /verify already established the session
@@ -35,7 +35,7 @@ function ResetPasswordContent() {
           const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
           
           // Clear any hash/query params from URL
-          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/robots' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
+          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/buyer' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
           
           // Set processing to false before redirect
           setIsProcessing(false)
@@ -85,10 +85,10 @@ function ResetPasswordContent() {
           console.log('[Reset Password] OTP verified, session established for:', data.session.user.email)
           
           // Get returnTo parameter if it exists
-          const returnTo = searchParams.get('returnTo') || '/robots'
+          const returnTo = searchParams.get('returnTo') || '/buyer'
           
           // Clear query params from URL
-          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/robots' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
+          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/buyer' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
           
           // Set processing to false before redirect
           setIsProcessing(false)
@@ -125,13 +125,13 @@ function ResetPasswordContent() {
           console.log('[Reset Password] Session established successfully for:', session.user.email)
 
           // Get returnTo parameter if it exists
-          const returnTo = searchParams.get('returnTo') || '/robots'
+          const returnTo = searchParams.get('returnTo') || '/buyer'
           
           // Clear the URL fragments and redirect to set-password
           const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
           
           // Use replace to avoid having the token-containing URL in history
-          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/robots' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
+          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/buyer' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
           
           // Set processing to false before redirect
           setIsProcessing(false)

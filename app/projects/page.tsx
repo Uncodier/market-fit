@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "../context/SiteContext"
 import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
@@ -43,6 +43,8 @@ function clearCookieEverywhere(name: string) {
 export default function ProjectsPage() {
   const { sites, currentSite, isLoading, setCurrentSite } = useSite()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isManageMode = searchParams?.get('manage') === '1' || searchParams?.get('from') === 'buyer'
 
   const hasSites = (sites?.length || 0) > 0
 
@@ -62,16 +64,17 @@ export default function ProjectsPage() {
 
   // If a current site is selected, go to AI Agents (robots)
   useEffect(() => {
-    if (!isLoading && currentSite?.id) {
+    if (!isLoading && currentSite?.id && !isManageMode) {
       router.push("/robots")
     }
-  }, [isLoading, currentSite?.id, router])
+  }, [isLoading, currentSite?.id, router, isManageMode])
 
   // If demo mode is active but no current site is selected, auto-select the demo site.
   useEffect(() => {
     if (isLoading) return
     if (currentSite?.id) return
     if (!isDemoMode) return
+    if (isManageMode) return
 
     const targetDemo =
       (demoSiteIdFromCookie ? sites.find((s) => s.id === demoSiteIdFromCookie) : null) ??
@@ -83,7 +86,7 @@ export default function ProjectsPage() {
     Promise.resolve(setCurrentSite(targetDemo)).finally(() => {
       router.push("/robots")
     })
-  }, [isLoading, currentSite?.id, isDemoMode, demoSiteIdFromCookie, sites, setCurrentSite, router])
+  }, [isLoading, currentSite?.id, isDemoMode, demoSiteIdFromCookie, sites, setCurrentSite, router, isManageMode])
 
   const handleSelectSite = async (siteId: string) => {
     const site = sites.find(s => s.id === siteId)

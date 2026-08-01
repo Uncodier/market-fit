@@ -1,0 +1,191 @@
+import React, { useMemo, useEffect } from "react"
+import { ShoppingCart, ShieldCheck } from "@/app/components/ui/icons"
+import { Button } from "@/app/components/ui/button"
+import { CartCheckoutFields } from "@/app/components/commerce/CartCheckoutFields"
+import { CartItem } from "@/app/components/commerce/CartItem"
+import { 
+  getItemDeliveryOptions, 
+  intersectDeliveryOptions, 
+  defaultFulfillment,
+  intersectPickupLocationIds,
+} from "@/app/commerce/delivery-options"
+import { 
+  getItemPaymentOptions, 
+  intersectPaymentOptions, 
+  getAvailablePaymentMethods,
+  PaymentMethodType
+} from "@/app/commerce/payment-options"
+import { CheckoutIdentityPicker } from "@/app/components/commerce/CheckoutIdentityPicker"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
+
+export function CartSidebar({
+  cart, subtotal, updateQty,
+  session,
+  customerName, setCustomerName,
+  customerEmail, setCustomerEmail,
+  fulfillment, setFulfillment,
+  originLocationId, setOriginLocationId,
+  locations = [],
+  promotionCode, setPromotionCode,
+  shippingAddress, setShippingAddress,
+  ownerSiteId, setOwnerSiteId,
+  paymentMethod, setPaymentMethod,
+  handleCheckout,   checkoutLoading, closeCart, site
+}: any) {
+  
+  const { t } = useLocalization()
+  const { formatPrice } = useDisplayCurrency()
+  
+  const allowedOptions = useMemo(() => {
+    return intersectDeliveryOptions(cart.map((i: any) => ({
+      allowed: getItemDeliveryOptions(i, site?.settings?.shop?.default_delivery_options)
+    })))
+  }, [cart, site]);
+
+  const allowedPaymentOptions = useMemo(() => {
+    return intersectPaymentOptions(cart.map((i: any) => ({
+      allowed: getItemPaymentOptions(i, site?.settings?.shop?.payment_methods)
+    })))
+  }, [cart, site])
+
+  const availablePaymentMethods = useMemo(() => {
+    return getAvailablePaymentMethods(fulfillment, allowedPaymentOptions)
+  }, [fulfillment, allowedPaymentOptions])
+
+  const pickupLocations = useMemo(() => {
+    const restriction = intersectPickupLocationIds(cart);
+    const active = (locations || []).filter((l: any) => l.is_active !== false);
+    if (restriction === null) return active;
+    return active.filter((l: any) => restriction.includes(l.id));
+  }, [cart, locations]);
+
+  const requiresAuth = cart.some((c: any) => c.kind === 'digital_asset' || c.is_recurring)
+
+  useEffect(() => {
+    if (allowedOptions.length > 0 && !allowedOptions.includes(fulfillment)) {
+      setFulfillment(defaultFulfillment(allowedOptions) || 'none');
+    }
+  }, [allowedOptions, fulfillment, setFulfillment]);
+
+  useEffect(() => {
+    if (availablePaymentMethods.length > 0 && (!paymentMethod || !availablePaymentMethods.includes(paymentMethod as PaymentMethodType))) {
+      setPaymentMethod(availablePaymentMethods[0]);
+    } else if (availablePaymentMethods.length === 0) {
+      setPaymentMethod('');
+    }
+  }, [availablePaymentMethods, paymentMethod, setPaymentMethod]);
+
+  useEffect(() => {
+    if (fulfillment !== 'pickup') return;
+    if (pickupLocations.length === 0) return;
+    if (!pickupLocations.some((l: any) => l.id === originLocationId)) {
+      setOriginLocationId(pickupLocations[0].id);
+    }
+  }, [fulfillment, pickupLocations, originLocationId, setOriginLocationId]);
+
+  return (
+    <div className="flex flex-col h-full bg-gray-50/30 dark:bg-gray-950">
+      <div className="px-6 py-5 flex items-center gap-3 border-b dark:border-gray-800 bg-white dark:bg-gray-950 pr-12">
+        <h2 className="font-bold text-xl text-gray-900 dark:text-gray-100 tracking-tight">{t('shop.cart.title') || 'Your Cart'}</h2>
+        <span className="text-gray-500 text-sm font-medium bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 rounded-full">{cart.length} {t('shop.cart.items') || 'items'}</span>
+      </div>
+      
+      <div className="flex-1 overflow-auto p-6 space-y-6">
+        {cart.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-6">
+            <ShoppingCart className="h-16 w-16 opacity-20" />
+            <div className="text-center">
+              <p className="text-xl font-semibold text-gray-900 mb-2">{t('shop.cart.emptyTitle') || 'Your cart is empty'}</p>
+              <p className="text-sm">{t('shop.cart.emptyDesc') || "Looks like you haven't added anything yet."}</p>
+            </div>
+            <Button variant="outline" className="mt-4 rounded-xl hover:text-black dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white dark:border-gray-700" onClick={closeCart}>
+              {t('shop.cart.continueShopping') || 'Continue Shopping'}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Items */}
+            <div className="space-y-4">
+              {cart.map((item: any) => (
+                <CartItem 
+                  key={item.id} 
+                  item={item} 
+                  updateQty={updateQty} 
+                  showSeller={false} 
+                />
+              ))}
+            </div>
+            
+            {/* Checkout Form */}
+            <form id="checkout-form" onSubmit={handleCheckout} className="space-y-5 bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+              <h3 className="font-bold text-lg border-b dark:border-gray-800 pb-3">{t('shop.cart.contactShipping') || 'Contact & Shipping'}</h3>
+              
+              <div className="space-y-4 pt-2">
+                <CheckoutIdentityPicker
+                  session={session}
+                  requiresAuth={requiresAuth}
+                  customerName={customerName}
+                  setCustomerName={setCustomerName}
+                  customerEmail={customerEmail}
+                  setCustomerEmail={setCustomerEmail}
+                  ownerSiteId={ownerSiteId}
+                  setOwnerSiteId={setOwnerSiteId}
+                />
+
+                <CartCheckoutFields 
+                  allowedOptions={allowedOptions}
+                  fulfillment={fulfillment}
+                  setFulfillment={setFulfillment}
+                  pickupLocations={pickupLocations}
+                  originLocationId={originLocationId}
+                  setOriginLocationId={setOriginLocationId}
+                  shippingAddress={shippingAddress}
+                  setShippingAddress={setShippingAddress}
+                  availablePaymentMethods={availablePaymentMethods}
+                  paymentMethod={paymentMethod}
+                  setPaymentMethod={setPaymentMethod}
+                  t={t}
+                />
+              </div>
+            </form>
+
+            <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-3">
+              <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
+                <span>{t('shop.cart.subtotal') || 'Subtotal'}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{formatPrice(subtotal, cart[0]?.currency || 'USD')}</span>
+              </div>
+              <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
+                <span>{t('shop.cart.shipping') || 'Shipping'}</span>
+                {site?.settings?.shop?.free_shipping_threshold && subtotal >= site.settings.shop.free_shipping_threshold ? (
+                  <span className="font-medium text-green-600 dark:text-green-400">{t('shop.cart.free') || 'Free'}</span>
+                ) : (
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{t('shop.cart.calculatedNextStep') || 'Calculated at next step'}</span>
+                )}
+              </div>
+              <div className="pt-3 border-t dark:border-gray-800 flex justify-between items-center">
+                <span className="font-bold text-lg">{t('shop.cart.total') || 'Total'}</span>
+                <span className="font-black text-2xl text-gray-900 dark:text-gray-100">{formatPrice(subtotal, cart[0]?.currency || 'USD')}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="p-6 bg-white dark:bg-gray-950 border-t dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-none">
+        <Button 
+          type="submit"
+          form="checkout-form"
+          className="w-full h-14 text-lg font-bold rounded-xl shadow-md transition-all active:scale-[0.98] bg-gray-900 text-white hover:bg-gray-100 hover:text-black dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white" 
+          disabled={cart.length === 0 || checkoutLoading || allowedOptions.length === 0 || (fulfillment === 'pickup' && pickupLocations.length === 0) || !paymentMethod}
+        >
+          {checkoutLoading ? (t('shop.cart.processing') || "Processing securely...") : `${t('shop.cart.checkoutBtn') || 'Checkout'} • ${formatPrice(subtotal, cart[0]?.currency || 'USD')}`}
+        </Button>
+        <div className="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400 font-medium">
+          <ShieldCheck className="h-4 w-4" />
+          {t('shop.cart.secureCheckout') || 'Secure checkout powered by Stripe'}
+        </div>
+      </div>
+    </div>
+  )
+}

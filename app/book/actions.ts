@@ -61,51 +61,10 @@ export async function getProfileBySlug(
   return null;
 }
 
-export async function getSiteInfoBySlug(
-  siteSlug: string,
-): Promise<{ id: string; name: string; logo_url: string | null; settings?: any } | null> {
-  const supabase = await createServiceClient(true);
+import { resolveSiteInfoBySlug } from "./site-by-slug";
 
-  // Try to find by ID if it's a valid UUID
-  const isUUID =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      siteSlug,
-    );
-
-  if (isUUID) {
-    const { data: site } = await supabase
-      .from("sites")
-      .select("id, name, logo_url, settings")
-      .eq("id", siteSlug)
-      .single();
-    if (site) return site;
-  }
-
-  // Fallback to searching by name
-  // To ensure we don't miss any sites, we fetch a good amount
-  const { data: sites, error } = await supabase
-    .from("sites")
-    .select("id, name, logo_url")
-    .limit(1000);
-
-  if (error) {
-    console.error("[getSiteInfoBySlug] DB Error:", error);
-  }
-
-  const exactMatch = sites?.find(
-    (s) => s.name.toLowerCase().replace(/[^a-z0-9-]/g, "-") === siteSlug,
-  );
-
-  console.log("[getSiteInfoBySlug] requested siteSlug:", siteSlug);
-  console.log("[getSiteInfoBySlug] total sites loaded:", sites?.length);
-  if (sites && sites.length > 0) {
-    console.log("[getSiteInfoBySlug] some available sites:", sites.slice(0, 5).map(s => s.name));
-  }
-  console.log("[getSiteInfoBySlug] exactMatch found:", !!exactMatch);
-
-  return exactMatch || null;
-
-  return exactMatch || null;
+export async function getSiteInfoBySlug(siteSlug: string) {
+  return resolveSiteInfoBySlug(siteSlug);
 }
 
 export async function getRRCalendarBySlug(

@@ -1,6 +1,9 @@
-import { getShopSite, getShopCatalog, getShopLocations } from "./actions"
+import { getShopSite, getShopCatalog, getShopLocations, getShopUserOwnedItems } from "./actions"
 import { notFound } from "next/navigation"
 import ShopClient from "./ShopClient"
+
+export const revalidate = 0;
+export const dynamic = 'force-dynamic';
 
 export default async function ShopPage({ params }: { params: Promise<{ siteSlug: string }> }) {
   const { siteSlug } = await params
@@ -10,9 +13,10 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
     notFound()
   }
 
-  const [{ data: catalogItems }, { data: locations }] = await Promise.all([
+  const [{ data: catalogItems }, { data: locations }, ownedItemIds] = await Promise.all([
     getShopCatalog(site.id),
-    getShopLocations(site.id)
+    getShopLocations(site.id),
+    getShopUserOwnedItems(site.id)
   ])
 
   return (
@@ -21,6 +25,7 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
         site={site} 
         initialCatalog={catalogItems as any[]} 
         locations={locations as any[]} 
+        ownedItemIds={ownedItemIds}
       />
     </div>
   )

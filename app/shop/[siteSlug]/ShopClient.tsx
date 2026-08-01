@@ -8,29 +8,50 @@ import { DestinationSelector } from "@/app/components/commerce/DestinationSelect
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { toast } from "sonner"
 import { 
-  ShoppingCart, Archive, DatabaseIcon, ChevronDown, Plus, 
+  ShoppingCart, Archive, DatabaseIcon,
   ShieldCheck, Truck, RotateCcw, Star, Search, Menu, CreditCard, CheckCircle,
-  Moon, Sun
+  Moon, Sun, User
 } from "@/app/components/ui/icons"
 import { useTheme } from "@/app/context/ThemeContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
+import { CartButton } from "@/app/components/commerce/CartButton"
+import { LocaleSelector } from "@/app/components/commerce/LocaleSelector"
+import { CurrencySelector } from "@/app/components/commerce/CurrencySelector"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/app/components/ui/sheet"
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
+import { CatalogListingCard } from "@/app/components/commerce/CatalogListingCard"
+import { CartSidebar } from "./CartSidebar"
+import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import Link from "next/link"
+import { useParams, useRouter } from "next/navigation"
+
+import { ShopOwnedAccess } from "./actions"
+import { isAccessOnlyItem } from "@/app/catalog/product-details"
 
 interface CartItem extends CatalogItem {
   cartQty: number;
   cartPrice: number;
+  reservationStart?: string;
+  reservationEnd?: string;
 }
 
-export default function ShopClient({ site, initialCatalog, locations }: { site: any, initialCatalog: CatalogItem[], locations: any[] }) {
+export default function ShopClient({ site, initialCatalog, locations, ownedItemIds = [] }: { site: any, initialCatalog: CatalogItem[], locations: any[], ownedItemIds?: ShopOwnedAccess[] }) {
   const { theme, toggleTheme } = useTheme()
+  const { t } = useLocalization()
+  const { formatPrice } = useDisplayCurrency()
+  const params = useParams()
+  const siteSlug = params?.siteSlug || site?.slug || 'unknown'
   const [cart, setCart] = useState<CartItem[]>([])
+  const [isCartLoaded, setIsCartLoaded] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   
-  const [fulfillment, setFulfillment] = useState<'pickup' | 'ship' | 'none'>('ship')
+  const [fulfillment, setFulfillment] = useState<'pickup' | 'ship' | 'none' | 'dine_in'>('ship')
   const [originLocationId, setOriginLocationId] = useState<string>(locations[0]?.id || '')
   
   const [shippingAddress, setShippingAddress] = useState({
@@ -44,11 +65,13 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
 
   const [customerName, setCustomerName] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
+  const [paymentMethod, setPaymentMethod] = useState<string>("")
   
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [orderSuccess, setOrderSuccess] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const router = useRouter()
 
   // Extract unique categories from items
   const categories = useMemo(() => {
@@ -61,13 +84,28 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
     return Array.from(cats).sort();
   }, [initialCatalog]);
 
-  const items = initialCatalog.filter((i: any) => 
+  const allFilteredItems = initialCatalog.filter((i: any) => 
     i._shop?.sellable !== false && // Hide if explicitly not sellable
     (searchQuery ? i.name.toLowerCase().includes(searchQuery.toLowerCase()) : true) &&
     (selectedCategory === "all" || i._shop?.categoryName === selectedCategory)
   )
 
+  const ownedAccessMap = new Map(ownedItemIds?.map(o => [o.catalogItemId, o.canBook]) || [])
+
+  const ownedItems = allFilteredItems.filter(i => ownedAccessMap.has(i.id))
+  const catalogItems = allFilteredItems.filter(i => !ownedAccessMap.has(i.id))
+
   const addToCart = (item: CatalogItem) => {
+    if (ownedAccessMap.has(item.id)) {
+      window.location.href = `/shop/${siteSlug}/${item.id}`
+      return
+    }
+
+    if (item.is_reservation && !isAccessOnlyItem(item)) {
+      router.push(`/shop/${siteSlug}/${item.id}/book`)
+      return
+    }
+
     const existing = cart.find(c => c.id === item.id)
     if (existing) {
       setCart(cart.map(c => c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c))
@@ -97,13 +135,31 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
       if (url.searchParams.get('success') === 'true') {
         setOrderSuccess(true)
         setCart([])
+        localStorage.removeItem(`market-cart-${site.id}`)
         // Clean up URL
         url.searchParams.delete('success')
         url.searchParams.delete('order_id')
         window.history.replaceState({}, '', url.toString())
+      } else {
+        const storedCart = localStorage.getItem(`market-cart-${site.id}`)
+        if (storedCart) {
+          try {
+            setCart(JSON.parse(storedCart))
+          } catch (e) {}
+        }
+        if (url.searchParams.get('cart') === '1') {
+           setIsCartOpen(true)
+        }
+        setIsCartLoaded(true)
       }
     }
-  }, [])
+  }, [site.id])
+
+  // Sync cart changes to localStorage
+  useEffect(() => {
+    if (orderSuccess || !isCartLoaded) return;
+    localStorage.setItem(`market-cart-${site.id}`, JSON.stringify(cart));
+  }, [cart, site.id, orderSuccess, isCartLoaded])
 
   const updateQty = (id: string, delta: number) => {
     setCart(cart.map(c => {
@@ -122,7 +178,21 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
     e.preventDefault()
     if (cart.length === 0) return
     
-    if (!customerName || !customerEmail) {
+    const requiresAuth = cart.some((c: any) => c.kind === "digital_asset" || c.is_recurring)
+    if (requiresAuth && !session?.user) {
+      toast.error(t("checkout.identity.signInToAccess") || "Please sign in to purchase digital items or subscriptions.")
+      return
+    }
+
+    const resolvedName =
+      customerName ||
+      session?.user?.user_metadata?.name ||
+      session?.user?.user_metadata?.full_name ||
+      session?.user?.email ||
+      ""
+    const resolvedEmail = customerEmail || session?.user?.email || ""
+
+    if (!resolvedName || !resolvedEmail) {
       toast.error("Please enter your name and email")
       return
     }
@@ -137,32 +207,41 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
       return
     }
 
+    if (!paymentMethod) {
+      toast.error("Please select a payment method")
+      return
+    }
+
     setCheckoutLoading(true)
     
     const lines: CheckoutLine[] = cart.map(c => ({
       catalogItemId: c.id,
-      quantity: c.cartQty
+      quantity: c.cartQty,
+      reservationStart: c.reservationStart,
+      reservationEnd: c.reservationEnd
     }))
 
     const res = await checkoutCart({
       siteId: site.id,
       lines,
-      customerName,
-      customerEmail,
+      customerName: resolvedName,
+      customerEmail: resolvedEmail,
       buyerUserId: session?.user?.id,
       ownerSiteId: ownerSiteId,
       fulfillment,
       originLocationId: originLocationId,
       shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
       promotionCode: promotionCode || undefined,
-      source: 'shop'
+      source: 'shop',
+      paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
+      intent: subtotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
     })
 
     if (res.error) {
       toast.error(res.error)
       setCheckoutLoading(false)
     } else {
-      if (subtotal > 0) {
+      if (subtotal > 0 && paymentMethod === 'card') {
         // Redirect to Stripe
         try {
           const stripeRes = await fetch('/api/stripe/checkout/order', {
@@ -171,7 +250,7 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
             body: JSON.stringify({
               orderId: res.orderId,
               siteId: site.id,
-              returnUrl: window.location.origin + '/shop/' + site.slug
+              returnUrl: window.location.origin + '/shop/' + siteSlug
             })
           })
           const stripeData = await stripeRes.json()
@@ -202,12 +281,53 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
           <div className="mx-auto mb-6 bg-green-100 dark:bg-green-900/30 w-20 h-20 rounded-full flex items-center justify-center">
             <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">Order Confirmed</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-8 text-lg">
-            Thank you for your purchase. We've sent a confirmation email with your order details.
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">{t('shop.success.title') || 'Order Confirmed'}</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6 text-lg">
+            {t('shop.success.desc') || "Thank you for your purchase. We've sent a confirmation email with your order details."}
           </p>
-          <Button onClick={() => setOrderSuccess(false)} className="w-full h-14 text-lg rounded-xl hover:text-black dark:text-white dark:hover:bg-gray-700 dark:hover:text-white dark:bg-gray-800">
-            Continue Shopping
+
+          {paymentMethod === 'bank_transfer' && site?.settings?.shop?.bank_transfer?.account_number && (
+            <div className="text-left mb-8 p-4 bg-muted/30 border rounded-xl text-sm">
+              <h4 className="font-bold text-base mb-2">{t('shop.bankTransfer.completePayment') || 'Complete your payment'}</h4>
+              <p className="text-muted-foreground mb-4">{t('shop.bankTransfer.instruction') || 'Please transfer the total amount to the following account to process your order.'}</p>
+              
+              <div className="space-y-2">
+                {site.settings.shop.bank_transfer.bank_name && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('shop.bankTransfer.bank') || 'Bank:'}</span>
+                    <span className="font-medium">{site.settings.shop.bank_transfer.bank_name}</span>
+                  </div>
+                )}
+                {site.settings.shop.bank_transfer.account_holder && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('shop.bankTransfer.accountName') || 'Account Name:'}</span>
+                    <span className="font-medium">{site.settings.shop.bank_transfer.account_holder}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t('shop.bankTransfer.accountIban') || 'Account / IBAN:'}</span>
+                  <span className="font-medium font-mono">{site.settings.shop.bank_transfer.account_number}</span>
+                </div>
+                {site.settings.shop.bank_transfer.routing_number && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('shop.bankTransfer.routingSwift') || 'Routing / SWIFT:'}</span>
+                    <span className="font-medium">{site.settings.shop.bank_transfer.routing_number}</span>
+                  </div>
+                )}
+                {site.settings.shop.bank_transfer.instructions && (
+                  <div className="pt-2 mt-2 border-t text-muted-foreground">
+                    {site.settings.shop.bank_transfer.instructions}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <Button onClick={() => {
+            setOrderSuccess(false)
+            setPaymentMethod('')
+          }} className="w-full h-14 text-lg rounded-xl dark:text-white dark:hover:bg-gray-700 dark:hover:text-white dark:bg-gray-800">
+            {t('shop.success.continueShopping') || 'Continue Shopping'}
           </Button>
         </div>
       </div>
@@ -216,127 +336,164 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+      {/* Top Spacer for floating header */}
+      <div className="h-4 w-full shrink-0" />
       {/* Sticky Header */}
-      <header className="sticky top-0 z-40 w-full bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800 shadow-sm transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Logo area */}
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileMenuOpen(true)}>
-                <Menu className="h-6 w-6" />
-              </Button>
-              {site.logo_url ? (
-                <img src={site.logo_url} alt={site.name} className="h-8 max-w-[200px] object-contain" />
-              ) : (
-                <span className="text-2xl font-black tracking-tight text-gray-900 truncate max-w-[200px] md:max-w-none">
-                  {site.name}
-                </span>
-              )}
-            </div>
+      <CommerceShellHeader
+        mobileLeading={
+          <button className={`md:hidden ${shellClasses.iconButton}`} onClick={() => setIsMobileMenuOpen(true)}>
+            <Menu className="h-6 w-6" />
+          </button>
+        }
+        brand={
+          <Link href={`/shop/${siteSlug}`} className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
+            {site.logo_url ? (
+              <img src={site.logo_url} alt={site.name} className="h-6 object-contain" />
+            ) : (
+              <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate max-w-[150px] md:max-w-none">
+                {site.name}
+              </span>
+            )}
+          </Link>
+        }
+        center={
+          <div className="w-full max-w-xl relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input 
+              type="search" 
+              placeholder={t("shop.searchPlaceholder") || "Search products..."} 
+              className="w-full pl-9 h-9 text-sm bg-muted/50 focus:bg-white dark:focus:bg-gray-950 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-full transition-all outline-none shadow-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        }
+        actions={
+          <>
+            <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
+              <SheetTrigger asChild>
+                <CartButton 
+                  cartCount={cartCount}
+                  subtotal={subtotal}
+                  currency={cart[0]?.currency}
+                  variant="shell"
+                  className={`relative ${shellClasses.iconButton} h-9 px-3 gap-1.5 border-0 hover:bg-black/5 dark:hover:bg-white/5 !min-w-0`}
+                  iconClassName="h-4 w-4"
+                />
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-white border-l-0 shadow-2xl">
+                <SheetTitle className="sr-only">Shopping Cart</SheetTitle>
+                <CartSidebar
+                  cart={cart}
+                  session={session}
+                  subtotal={subtotal}
+                  updateQty={updateQty}
+                  customerName={customerName}
+                  setCustomerName={setCustomerName}
+                  customerEmail={customerEmail}
+                  setCustomerEmail={setCustomerEmail}
+                  fulfillment={fulfillment}
+                  setFulfillment={setFulfillment}
+                  originLocationId={originLocationId}
+                  setOriginLocationId={setOriginLocationId}
+                  locations={locations}
+                  promotionCode={promotionCode}
+                  setPromotionCode={setPromotionCode}
+                  shippingAddress={shippingAddress}
+                  setShippingAddress={setShippingAddress}
+                  ownerSiteId={ownerSiteId}
+                  setOwnerSiteId={setOwnerSiteId}
+                  handleCheckout={handleCheckout}
+                  checkoutLoading={checkoutLoading}
+                  closeCart={() => setIsCartOpen(false)}
+                  site={site}
+                  paymentMethod={paymentMethod}
+                  setPaymentMethod={setPaymentMethod}
+                />
+              </SheetContent>
+            </Sheet>
 
-            {/* Search - Desktop */}
-            <div className="hidden md:flex flex-1 max-w-md mx-8 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input 
-                type="search" 
-                placeholder="Search products..." 
-                className="w-full pl-10 h-12 bg-gray-50 dark:bg-gray-900 border-transparent focus:bg-white dark:focus:bg-gray-950 focus:border-black dark:focus:border-white rounded-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <LocaleSelector className={`${shellClasses.iconButton} h-9 w-9`} />
+            <button className={`${shellClasses.iconButton} h-9 w-9 relative`} onClick={toggleTheme}>
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <span className="sr-only">{t("buyer.layout.footer.toggleTheme") || "Toggle theme"}</span>
+            </button>
 
-            {/* Cart trigger */}
-            <div className="flex items-center">
-              <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" className="relative p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full h-12 w-12 hover:text-black dark:hover:text-white">
-                    <ShoppingCart className="h-6 w-6" />
-                    {cartCount > 0 && (
-                      <span className="absolute top-1 right-1 bg-black text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
-                        {cartCount}
-                      </span>
-                    )}
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-white border-l-0 shadow-2xl">
-                  <SheetTitle className="sr-only">Shopping Cart</SheetTitle>
-                  <CartSidebar 
-                    cart={cart}
-                    subtotal={subtotal}
-                    updateQty={updateQty}
-                    customerName={customerName}
-                    setCustomerName={setCustomerName}
-                    customerEmail={customerEmail}
-                    setCustomerEmail={setCustomerEmail}
-                    fulfillment={fulfillment}
-                    setFulfillment={setFulfillment}
-                    originLocationId={originLocationId}
-                    setOriginLocationId={setOriginLocationId}
-                    promotionCode={promotionCode}
-                    setPromotionCode={setPromotionCode}
-                    shippingAddress={shippingAddress}
-                    setShippingAddress={setShippingAddress}
-                    ownerSiteId={ownerSiteId}
-                    setOwnerSiteId={setOwnerSiteId}
-                    handleCheckout={handleCheckout}
-                    checkoutLoading={checkoutLoading}
-                    closeCart={() => setIsCartOpen(false)}
-                    site={site}
+            {session ? (
+              <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-1 shrink-0">
+                {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
+                  <img 
+                    src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture} 
+                    alt="Avatar" 
+                    className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
                   />
-                </SheetContent>
-              </Sheet>
-            </div>
-          </div>
-          
-          {/* Mobile Search - Visible only on small screens */}
-          <div className="md:hidden pb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input 
-                type="search" 
-                placeholder="Search products..." 
-                className="w-full pl-10 h-12 bg-gray-50 dark:bg-gray-900 border-transparent rounded-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
+                ) : (
+                  <div className="w-8 h-8 min-w-8 rounded-full bg-muted flex items-center justify-center border border-border shadow-sm shrink-0">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                )}
+              </Link>
+            ) : (
+              <Link
+                href={`/auth?returnTo=${encodeURIComponent(`/shop/${siteSlug}`)}`}
+                className={`${shellClasses.primaryCta} ml-1`}
+              >
+                {t('shop.signIn') || 'Sign In'}
+              </Link>
+            )}
+          </>
+        }
+      />
+      
+      {/* Mobile Search - Visible only on small screens */}
+      <div className="md:hidden px-4 mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Input 
+            type="search" 
+            placeholder={t("shop.searchPlaceholder") || "Search products..."} 
+            className="w-full pl-10 h-12 bg-gray-50 dark:bg-gray-900 border-transparent rounded-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-      </header>
+      </div>
 
       {/* Hero Section */}
-      {!searchQuery && site.settings?.shop?.hero_title && (
-        <div className="bg-gray-900 text-white py-20 px-4 relative overflow-hidden">
-          {site.settings?.shop?.hero_image_url && (
-            <div className="absolute inset-0 z-0">
-              <img src={site.settings.shop.hero_image_url} alt="Hero" className="w-full h-full object-cover opacity-40" />
-            </div>
-          )}
-          <div className="max-w-7xl mx-auto relative z-10 text-center md:text-left flex flex-col items-center md:items-start">
-            <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight max-w-3xl">
-              {site.settings.shop.hero_title}
-            </h1>
+      {!searchQuery && (site.settings?.shop?.hero_title || site.settings?.shop?.hero_image_url) && (
+        <div className={`text-white h-[350px] md:h-[450px] px-4 md:px-8 relative overflow-hidden flex items-center bg-gray-100 dark:bg-gray-900`}>
+          <div className="absolute inset-0 z-0">
+            <img 
+              src={site.settings?.shop?.hero_image_url || resolveItemImage({ name: site.settings?.shop?.hero_title || site.name, description: site.settings?.shop?.hero_subtitle || 'store hero' })} 
+              alt="Hero" 
+              className="w-full h-full object-cover" 
+            />
+            {/* Gradient for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent md:bg-gradient-to-r md:from-black/80 md:via-black/50 md:to-transparent" />
+          </div>
+          <div className="max-w-7xl mx-auto relative z-10 text-center md:text-left flex flex-col items-center md:items-start w-full">
+            {site.settings?.shop?.hero_title && (
+              <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight max-w-3xl drop-shadow-md">
+                {site.settings.shop.hero_title}
+              </h1>
+            )}
             {site.settings?.shop?.hero_subtitle && (
-              <p className="text-xl text-gray-300 max-w-xl mb-10">
+              <p className="text-xl text-gray-300 max-w-xl mb-10 drop-shadow-md">
                 {site.settings.shop.hero_subtitle}
               </p>
             )}
-            <Button className="h-14 px-8 text-lg rounded-full bg-white text-black hover:bg-gray-100 font-semibold" onClick={() => window.scrollBy({top: window.innerHeight * 0.7, behavior: 'smooth'})}>
-              {site.settings?.shop?.hero_cta_label || "Shop Now"}
+            <Button className="h-14 px-8 text-lg rounded-full bg-white text-black hover:bg-gray-100 font-semibold shadow-lg" onClick={() => window.scrollBy({top: window.innerHeight * 0.7, behavior: 'smooth'})}>
+              {site.settings?.shop?.hero_cta_label || t("shop.shopNow") || "Shop Now"}
             </Button>
           </div>
-          {/* Decorative background shape */}
-          {!site.settings?.shop?.hero_image_url && (
-            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/10 to-transparent transform skew-x-12 translate-x-32 hidden md:block" />
-          )}
         </div>
       )}
 
       {/* Trust Bar */}
       {!searchQuery && site.settings?.shop?.trust_badges && site.settings.shop.trust_badges.length > 0 && (
         <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-          <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
               {site.settings.shop.trust_badges.map((badge: any, i: number) => {
                 const IconComponent = badge.icon === 'Truck' ? Truck : badge.icon === 'RotateCcw' ? RotateCcw : ShieldCheck
@@ -358,104 +515,144 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
       )}
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            {searchQuery || selectedCategory !== 'all' ? 'Results' : 'Trending Now'}
-          </h2>
-          
-          <div className="flex items-center gap-4">
-            {categories.length > 0 && (
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-[180px] h-10 rounded-full bg-gray-50 dark:bg-gray-900 border-transparent">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <span className="text-gray-500 font-medium whitespace-nowrap">{items.length} products</span>
+      <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
+        {/* Category Navigation */}
+        {categories.length > 0 && (
+          <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center mb-8 pb-2">
+            <button
+              onClick={() => setSelectedCategory("all")}
+              className={`flex-shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
+                selectedCategory === "all"
+                  ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
+                  : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 dark:bg-transparent dark:text-gray-300 dark:border-gray-800 dark:hover:border-gray-700"
+              }`}
+            >
+              {t('shop.allCategories') || 'All Categories'}
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`flex-shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
+                  selectedCategory === cat
+                    ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 dark:bg-transparent dark:text-gray-300 dark:border-gray-800 dark:hover:border-gray-700"
+                }`}
+            >
+                {cat}
+              </button>
+            ))}
           </div>
-        </div>
+        )}
 
-        {/* Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-12">
-          {items.length === 0 ? (
-            <div className="col-span-full py-24 text-center">
-              <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">No products found</h3>
-              <p className="text-gray-500">Try adjusting your search query.</p>
+        <div className={`flex flex-col sm:flex-row sm:items-center gap-4 mb-6 ${ownedItems.length > 0 ? 'justify-end' : 'justify-between'}`}>
+          {ownedItems.length === 0 && (
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+              {searchQuery || selectedCategory !== 'all' ? (t('shop.results') || 'Results') : (t('shop.trendingNow') || 'Trending Now')}
+            </h2>
+          )}
+          
+          {ownedItems.length === 0 && (
+            <div className="flex items-center gap-4">
+              <span className="text-gray-500 font-medium whitespace-nowrap">
+                {allFilteredItems.length} {allFilteredItems.length === 1 ? (t('shop.product') || 'product') : (t('shop.products') || 'products')}
+              </span>
             </div>
-          ) : (
-            items.map(item => (
-              <div key={item.id} className="group flex flex-col relative">
-                {/* Image / Placeholder */}
-                <div className="aspect-[4/5] bg-gray-100 rounded-2xl overflow-hidden mb-4 relative">
-                  <div className="absolute inset-0 flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
-                    <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
-                  </div>
-                </div>
-
-                {/* Details */}
-                <div className="flex-1 flex flex-col">
-                  {(item as any)._shop?.categoryName && (
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
-                      {(item as any)._shop.categoryName}
-                    </span>
-                  )}
-                  <h3 className="font-semibold text-lg text-gray-900 leading-tight mb-1">{item.name}</h3>
-                  {item.description && (
-                    <p className="text-sm text-gray-500 line-clamp-1 mb-3">
-                      {item.description}
-                    </p>
-                  )}
-                  <div className="mt-auto pt-2 flex items-center justify-between">
-                    <span className="font-bold text-xl text-gray-900">
-                      {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.target_sale_price || 0)}
-                    </span>
-                    {(item as any)._shop?.availableQty !== undefined && (item as any)._shop.availableQty <= 5 && (item as any)._shop.availableQty > 0 && (
-                      <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-md">
-                        Only {(item as any)._shop.availableQty} left
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* CTA - Full width on mobile, prominent on desktop */}
-                {!(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0 ? (
-                  <Button 
-                    disabled
-                    className="w-full mt-4 h-12 rounded-xl bg-gray-100 text-gray-400 font-semibold shadow-none cursor-not-allowed"
-                  >
-                    Sold Out
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={() => addToCart(item)} 
-                    className="w-full mt-4 h-12 rounded-xl bg-gray-900 text-white hover:bg-gray-100 hover:text-black dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white font-semibold shadow-sm transition-all active:scale-[0.98]"
-                  >
-                    Add to Cart
-                  </Button>
-                )}
-              </div>
-            ))
           )}
         </div>
+
+        {/* Owned Items Section */}
+        {ownedItems.length > 0 && (
+          <div className="mb-16">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+                  {t('shop.yourAccess') || 'Your access'}
+                </h2>
+                <p className="text-muted-foreground mt-1 text-sm md:text-base">
+                  {t('shop.yourAccessHint') || 'Book with your active plans'}
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-gray-500 font-medium whitespace-nowrap">
+                  {ownedItems.length} {ownedItems.length === 1 ? (t('shop.product') || 'product') : (t('shop.products') || 'products')}
+                </span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+              {ownedItems.map(item => (
+                <CatalogListingCard
+                  key={item.id}
+                  item={item}
+                  href={`/shop/${siteSlug}/${item.id}`}
+                  onPrimaryAction={addToCart}
+                  showSeller={false}
+                  descriptionLineClamp="line-clamp-1"
+                  primaryDisabled={!(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0}
+                  disabledLabel={t('shop.soldOut') || "Sold Out"}
+                  isOwned={true}
+                  canBook={ownedAccessMap.get(item.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Regular Catalog Section */}
+        {(catalogItems.length > 0 || ownedItems.length === 0) && (
+          <div>
+            {ownedItems.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+                  {searchQuery || selectedCategory !== 'all' ? (t('shop.results') || 'Results') : (t('shop.trendingNow') || 'Trending Now')}
+                </h2>
+                <div className="flex items-center gap-4">
+                  <span className="text-gray-500 font-medium whitespace-nowrap">
+                    {catalogItems.length} {catalogItems.length === 1 ? (t('shop.product') || 'product') : (t('shop.products') || 'products')}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+              {catalogItems.length === 0 ? (
+                <div className="col-span-full py-24 text-center">
+                  <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900">{t('shop.noProductsFound') || 'No products found'}</h3>
+                  <p className="text-gray-500">{t('shop.tryAdjustingSearch') || 'Try adjusting your search query.'}</p>
+                </div>
+              ) : (
+                catalogItems.map(item => (
+                  <CatalogListingCard
+                    key={item.id}
+                    item={item}
+                    href={`/shop/${siteSlug}/${item.id}`}
+                    onPrimaryAction={addToCart}
+                    showSeller={false}
+                    descriptionLineClamp="line-clamp-1"
+                    primaryDisabled={!(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0}
+                    disabledLabel={t('shop.soldOut') || "Sold Out"}
+                    isOwned={false}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </main>
       
       {/* Footer */}
       <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-12 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-2xl font-black tracking-tight text-gray-400 dark:text-gray-600">{site.name}</div>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            &copy; {new Date().getFullYear()} {site.name}. All rights reserved. Powered by Uncodie.
+            &copy; {new Date().getFullYear()} {site.name}. {t('shop.allRightsReserved') || 'All rights reserved.'} {t('shop.poweredBy') || 'Powered by Uncodie.'}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <CreditCard className="h-8 w-8 text-gray-300 dark:text-gray-700" />
+            <CurrencySelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
+            <LocaleSelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
             <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800">
               {theme === "dark" ? <Sun className="h-5 w-5 text-gray-400 hover:text-black dark:hover:text-white" /> : <Moon className="h-5 w-5 text-gray-500 hover:text-black dark:hover:text-white" />}
             </Button>
@@ -472,9 +669,9 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
           >
             <div className="flex items-center gap-2">
               <span className="bg-white/20 px-2 py-0.5 rounded-md text-sm">{cartCount}</span>
-              <span>Checkout</span>
+              <span>{t('shop.checkout') || 'Checkout'}</span>
             </div>
-            <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(subtotal)}</span>
+            <span>{formatPrice(subtotal, cart[0]?.currency || 'USD')}</span>
           </Button>
         </div>
       )}
@@ -482,156 +679,3 @@ export default function ShopClient({ site, initialCatalog, locations }: { site: 
   )
 }
 
-export function CartSidebar({
-  cart, subtotal, updateQty,
-  customerName, setCustomerName,
-  customerEmail, setCustomerEmail,
-  fulfillment, setFulfillment,
-  originLocationId, setOriginLocationId,
-  promotionCode, setPromotionCode,
-  shippingAddress, setShippingAddress,
-  ownerSiteId, setOwnerSiteId,
-  handleCheckout, checkoutLoading, closeCart, site
-}: any) {
-  return (
-    <div className="flex flex-col h-full bg-gray-50/30 dark:bg-gray-950">
-      <div className="px-6 py-5 flex items-center justify-between border-b dark:border-gray-800 bg-white dark:bg-gray-950">
-        <h2 className="font-bold text-xl text-gray-900 dark:text-gray-100 tracking-tight">Your Cart</h2>
-        <span className="text-gray-500 text-sm font-medium">{cart.length} items</span>
-      </div>
-      
-      <div className="flex-1 overflow-auto p-6 space-y-6">
-        {cart.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-6">
-            <ShoppingCart className="h-16 w-16 opacity-20" />
-            <div className="text-center">
-              <p className="text-xl font-semibold text-gray-900 mb-2">Your cart is empty</p>
-              <p className="text-sm">Looks like you haven't added anything yet.</p>
-            </div>
-            <Button variant="outline" className="mt-4 rounded-xl hover:text-black dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white dark:border-gray-700" onClick={closeCart}>
-              Continue Shopping
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Items */}
-            <div className="space-y-4">
-              {cart.map((item: CartItem) => (
-                <div key={item.id} className="flex gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-                  <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">
-                     <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <div>
-                      <h4 className="font-bold text-gray-900 dark:text-gray-100 leading-tight truncate">{item.name}</h4>
-                      <div className="text-gray-500 dark:text-gray-400 text-sm mt-1 font-medium">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.cartPrice)}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" onClick={() => updateQty(item.id, -1)}>
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                        <span className="w-6 text-center text-sm font-bold dark:text-white">{item.cartQty}</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md bg-white dark:bg-gray-700 shadow-sm" onClick={() => updateQty(item.id, 1)}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <span className="font-bold text-gray-900 dark:text-gray-100">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.cartPrice * item.cartQty)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Checkout Form */}
-            <form id="checkout-form" onSubmit={handleCheckout} className="space-y-5 bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              <h3 className="font-bold text-lg border-b dark:border-gray-800 pb-3">Contact & Shipping</h3>
-              
-              <div className="space-y-4 pt-2">
-                <DestinationSelector 
-                  value={ownerSiteId} 
-                  onChange={setOwnerSiteId} 
-                />
-
-                <div>
-                  <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 block">Full Name</Label>
-                  <Input required placeholder="Jane Doe" value={customerName} onChange={e => setCustomerName(e.target.value)} className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
-                </div>
-                <div>
-                  <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 block">Email Address</Label>
-                  <Input required type="email" placeholder="jane@example.com" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
-                </div>
-                <div>
-                  <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5 block">Delivery Method</Label>
-                  <Select value={fulfillment} onValueChange={setFulfillment}>
-                    <SelectTrigger className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pickup">Store Pickup</SelectItem>
-                      <SelectItem value="ship">Ship to Me</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {fulfillment === 'ship' && (
-                  <div className="space-y-3 pt-3 border-t border-gray-100">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 block">Shipping Address</Label>
-                    <Input placeholder="Street Address" value={shippingAddress?.line1} onChange={e => setShippingAddress({...shippingAddress, line1: e.target.value})} required className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
-                    <Input placeholder="Apt, Suite, etc. (optional)" value={shippingAddress?.line2} onChange={e => setShippingAddress({...shippingAddress, line2: e.target.value})} className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input placeholder="City" value={shippingAddress?.city} onChange={e => setShippingAddress({...shippingAddress, city: e.target.value})} required className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
-                      <Input placeholder="State" value={shippingAddress?.state} onChange={e => setShippingAddress({...shippingAddress, state: e.target.value})} className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Input placeholder="ZIP Code" value={shippingAddress?.zip} onChange={e => setShippingAddress({...shippingAddress, zip: e.target.value})} required className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
-                      <Input placeholder="Country" value={shippingAddress?.country} onChange={e => setShippingAddress({...shippingAddress, country: e.target.value})} className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </form>
-
-            <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-3">
-              <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
-                <span>Subtotal</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(subtotal)}</span>
-              </div>
-              <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
-                <span>Shipping</span>
-                {site?.settings?.shop?.free_shipping_threshold && subtotal >= site.settings.shop.free_shipping_threshold ? (
-                  <span className="font-medium text-green-600 dark:text-green-400">Free</span>
-                ) : (
-                  <span className="font-medium text-gray-900 dark:text-gray-100">Calculated at next step</span>
-                )}
-              </div>
-              <div className="pt-3 border-t dark:border-gray-800 flex justify-between items-center">
-                <span className="font-bold text-lg">Total</span>
-                <span className="font-black text-2xl text-gray-900 dark:text-gray-100">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(subtotal)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="p-6 bg-white dark:bg-gray-950 border-t dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-none">
-        <Button 
-          type="submit"
-          form="checkout-form"
-          className="w-full h-14 text-lg font-bold rounded-xl shadow-md transition-all active:scale-[0.98] bg-gray-900 text-white hover:bg-gray-100 hover:text-black dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white" 
-          disabled={cart.length === 0 || checkoutLoading}
-        >
-          {checkoutLoading ? "Processing securely..." : `Checkout • ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(subtotal)}`}
-        </Button>
-        <div className="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400 font-medium">
-          <ShieldCheck className="h-4 w-4" />
-          Secure checkout powered by Stripe
-        </div>
-      </div>
-    </div>
-  )
-}

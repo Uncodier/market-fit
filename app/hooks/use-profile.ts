@@ -6,6 +6,9 @@ import { profileService, ProfileData, ProfileUpdateData } from '@/app/services/p
 import { requestEmailChange, getEmailChangeStatus, EmailChangeStatus } from '@/lib/services/email-change.service'
 import { toast } from 'sonner'
 
+const DEFAULT_NOTIFICATIONS = { email: true, push: true }
+const DEFAULT_SETTINGS = {}
+
 export function useProfile() {
   const { user, isAuthenticated } = useAuth()
   const [profile, setProfile] = useState<ProfileData | null>(null)
@@ -232,7 +235,7 @@ export function useProfile() {
     language: getProfileValue('language', 'es'),
     timezone: getProfileValue('timezone', 'America/Mexico_City'),
     avatarUrl: getProfileValue('avatar_url', ''),
-    notifications: getProfileValue('notifications', { email: true, push: true }),
-    settings: getProfileValue('settings', {})
+    notifications: getProfileValue('notifications', DEFAULT_NOTIFICATIONS),
+    settings: getProfileValue('settings', DEFAULT_SETTINGS)
   }
 } 

@@ -11,6 +11,19 @@ export interface ShipmentParams {
 
 export interface ShipmentWithRelations extends Shipment {
   leads?: { name: string; email?: string; phone?: string };
-  sale_orders?: { order_number: string; total: number };
-  locations?: { name: string }; // origin_location
+  sale_orders?: {
+    order_number: string;
+    total: number;
+    status?: string;
+    sale_order_items?: Array<{
+      id: string;
+      catalog_item_id?: string;
+      name: string;
+      quantity: number;
+      status?: string;
+      shipment_id?: string | null;
+    }>;
+  };
+  locations?: { name: string };
+  assignee_profile?: { name: string } | null;
 }

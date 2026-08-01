@@ -17,14 +17,18 @@ import { useLocalization } from "./context/LocalizationContext"
 const pathToNavKey: Record<string, string> = {
   "/dashboard": "dashboard",
   "/control-center": "controlCenter",
+    "/pos/check-in": "checkIn",
     "/pos": "pos",
     "/catalog": "catalog",
     "/price-lists": "priceLists",
     "/inventory": "inventory",
     "/orders": "orders",
     "/shipments": "shipments",
-    "/reservations": "reservations",
-    "/chat": "chat",
+  "/reservations": "reservations",
+  "/accounting/entries": "journalEntries",
+  "/accounting": "chartOfAccounts",
+  "/finance": "financeReports",
+  "/chat": "chat",
 
   "/promotions": "promotions",
   "/segments": "segments",
@@ -41,6 +45,7 @@ const pathToNavKey: Record<string, string> = {
   "/agents": "agents",
   "/profile": "profile",
   "/settings": "settings",
+  "/skills": "skills",
   "/create-site": "createSite",
   "/projects": "projects",
   "/context": "context",
@@ -205,6 +210,9 @@ function LayoutClientInner({
   // Fix: Intercept router methods and update DOM links to maintain artifact=true
   useEffect(() => {
     if (typeof window === 'undefined') return
+
+    // Ensure we don't try to patch if router is not fully initialized
+    if (!router || !router.push) return
 
     const currentParams = new URLSearchParams(window.location.search)
     const isArtifactInUrl = currentParams.get('artifact') === 'true'

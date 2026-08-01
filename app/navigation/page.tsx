@@ -6,7 +6,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { ArrowLeft, Star } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { useRouter } from "next/navigation"
-import { NAVIGATION_AREAS, WorkspaceArea, AreaNavItem } from "@/app/config/navigation-areas"
+import { NAVIGATION_AREAS, WorkspaceArea, AreaNavItem, buildNavItemHref } from "@/app/config/navigation-areas"
 import { AREA_ICON, NAV_ITEM_ICON, getAreaFamilyAccent } from "@/app/config/module-visuals"
 import { ModuleTile } from "@/app/components/navigation/ModuleTile"
 import { cn } from "@/lib/utils"
@@ -29,10 +29,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
   }, [])
 
   const buildHref = (item: AreaNavItem) => {
-    if (item.dashboardTab) return `/dashboard?tab=${item.dashboardTab}`
-    if (item.settingsTab) return `/settings?tab=${item.settingsTab}`
-    if (item.robotsMode) return `/robots?mode=${item.robotsMode}`
-    return item.href
+    return buildNavItemHref(item);
   }
 
   const getTitle = (item: AreaNavItem) => {
@@ -83,9 +80,16 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
   }
 
   return (
-    <div className={cn("flex-1 min-w-0 w-full flex flex-col min-h-[100dvh]", isOverlay ? "bg-transparent" : "bg-muted/30")}>
+    <div className={cn(
+      "flex-1 min-w-0 w-full flex flex-col min-h-[100dvh]", 
+      isOverlay ? "bg-transparent overflow-y-auto h-full" : "bg-muted/30"
+    )}>
       <div className={cn(
-        "flex-none flex flex-col justify-center border-b dark:border-white/5 border-black/5 h-[64px] bg-background/95 backdrop-blur-sm sticky top-0 z-[200]"
+        "flex-none flex flex-col justify-center h-[64px] sticky top-0 z-[200]",
+        "border-b dark:border-white/5 border-black/5",
+        isOverlay 
+          ? "bg-background/80 backdrop-blur-3xl" 
+          : "bg-background/95 backdrop-blur-sm"
       )}>
         <div className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">
           <div className="flex items-center flex-1 min-w-0">
@@ -107,7 +111,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
               placeholder={t("common.search") === "common.search" ? "Search..." : t("common.search")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="rounded-full pr-10 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+              className="rounded-full pr-14 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
               containerClassName="w-[280px] lg:w-[400px]"
               alwaysExpanded={true}
             />
@@ -117,7 +121,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
           </div>
         </div>
       </div>
-      <div className={cn("flex-1 px-4 lg:px-8 py-8 flex flex-col items-center w-full", isOverlay ? "overflow-y-auto" : "")}>
+      <div className={cn("flex-1 px-4 lg:px-8 py-8 flex flex-col items-center w-full")}>
         <div className="flex flex-col gap-12 max-w-[1200px] w-full pb-12">
           {sectionsOrder.map((areaKey) => {
             const area = NAVIGATION_AREAS[areaKey]

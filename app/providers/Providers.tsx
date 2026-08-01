@@ -9,6 +9,7 @@ import { RobotsProvider } from '../context/RobotsContext';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { AuthProvider } from '../components/auth/auth-provider';
 import { LocalizationProvider } from '../context/LocalizationContext';
+import { DisplayCurrencyProvider } from '../context/DisplayCurrencyContext';
 import { SWRProvider } from './swr-provider';
 
 interface ProvidersProps {
@@ -22,17 +23,19 @@ export default function Providers({ children, country }: ProvidersProps) {
     <AuthProvider>
       <ThemeProvider>
         <LocalizationProvider initialCountry={country}>
-          <LayoutProvider>
-            <SiteProvider>
-              <RobotsProvider>
-                <WidgetProvider>
-                  <TooltipProvider>
-                    {children}
-                  </TooltipProvider>
-                </WidgetProvider>
-              </RobotsProvider>
-            </SiteProvider>
-          </LayoutProvider>
+          <DisplayCurrencyProvider initialCountry={country}>
+            <LayoutProvider>
+              <SiteProvider>
+                <RobotsProvider>
+                  <WidgetProvider>
+                    <TooltipProvider>
+                      {children}
+                    </TooltipProvider>
+                  </WidgetProvider>
+                </RobotsProvider>
+              </SiteProvider>
+            </LayoutProvider>
+          </DisplayCurrencyProvider>
         </LocalizationProvider>
       </ThemeProvider>
     </AuthProvider>

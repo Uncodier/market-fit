@@ -87,7 +87,7 @@ function ConfirmContent() {
           } else {
             setState('success')
             setMessage('Invitation confirmed successfully!')
-            setRedirectUrl('/robots')
+            setRedirectUrl('/buyer')
           }
         } else {
           // Handle other confirmation types (signup, recovery, etc.)
@@ -179,8 +179,8 @@ function ConfirmContent() {
             
             // Give the auth state time to update before redirecting
             setTimeout(() => {
-              console.log('🔄 Redirecting to Makinas')
-              window.location.href = '/robots'
+              console.log('🔄 Redirecting to Buyer')
+              window.location.href = '/buyer'
             }, 2000)
           }
         }

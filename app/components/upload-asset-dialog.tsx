@@ -30,6 +30,50 @@ import { createAsset, uploadAssetFile, attachAssetToContent } from "@/app/assets
 import { useToast } from "@/app/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 
+const compressImage = (file: File, maxWidth = 1920, maxHeight = 1920, quality = 0.8): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    // Si no es imagen, no la comprimimos
+    if (!file.type.startsWith('image/') || file.type.includes('svg')) {
+      return resolve(file);
+    }
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = width * ratio;
+          height = height * ratio;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(file);
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 interface UploadAssetDialogProps {
   onUploadAsset: (data: { 
     name: string
@@ -181,8 +225,11 @@ export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: c
     setError(null)
 
     try {
+      // Comprimimos la imagen antes de subirla si es posible
+      const fileToUpload = await compressImage(file);
+
       // Primero subimos el archivo a Supabase Storage
-      const { path, error: uploadError } = await uploadAssetFile(file)
+      const { path, error: uploadError } = await uploadAssetFile(fileToUpload)
       
       if (uploadError) {
         // Verificar si el error es sobre el bucket no encontrado
@@ -200,8 +247,8 @@ export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: c
         name,
         description: description || undefined,
         file_path: path,
-        file_type: file.type || getFileType(),
-        file_size: file.size,
+        file_type: fileToUpload.type || getFileType(),
+        file_size: fileToUpload.size,
         tags,
         site_id: effectiveSiteId
       }

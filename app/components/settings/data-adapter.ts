@@ -260,6 +260,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       return businessModel;
     })(),
     // Add company info
+    currency: site.settings?.currency || "USD",
     about: site.settings?.about || "",
     company_size: site.settings?.company_size || "",
     industry: site.settings?.industry || "",
@@ -513,7 +514,19 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     },
     
     // Copywriting data - will be loaded separately in CopywritingSection
-    copywriting: []
+    copywriting: [],
+    shop: {
+      hero_title: site.settings?.shop?.hero_title || "",
+      hero_subtitle: site.settings?.shop?.hero_subtitle || "",
+      hero_cta_label: site.settings?.shop?.hero_cta_label || "Shop Now",
+      hero_image_url: site.settings?.shop?.hero_image_url || "",
+      free_shipping_threshold: site.settings?.shop?.free_shipping_threshold || null,
+      return_policy_summary: site.settings?.shop?.return_policy_summary || "30-Day Returns",
+      trust_badges: site.settings?.shop?.trust_badges || [],
+      payment_methods: site.settings?.shop?.payment_methods || ['card', 'cash_on_pickup'],
+      default_delivery_options: site.settings?.shop?.default_delivery_options || ['pickup', 'ship'],
+      bank_transfer: site.settings?.shop?.bank_transfer || {}
+    }
   }
   
   console.log("🔍 ADAPT: Final adapted data:", result);

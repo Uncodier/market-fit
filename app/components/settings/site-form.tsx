@@ -69,6 +69,7 @@ interface SiteFormProps {
   onSaveSocial?: (data: SiteFormValues) => void
   onSaveChannels?: (data: SiteFormValues) => void
   onSaveActivities?: (data: SiteFormValues) => void
+  onSaveShop?: (data: SiteFormValues) => void
   onDeleteSite?: () => void
   activeSegment: string
   siteId?: string
@@ -85,6 +86,7 @@ export function SiteForm({
   onSaveSocial,
   onSaveChannels,
   onSaveActivities,
+  onSaveShop,
   onDeleteSite,
   activeSegment,
   siteId 
@@ -238,6 +240,18 @@ export function SiteForm({
         assign_leads_to_team: { status: "inactive" },
         notify_team_on_inbound_conversations: { status: "default" },
         supervise_conversations: { status: "inactive" }
+      },
+      shop: initialData?.shop || {
+        hero_title: "",
+        hero_subtitle: "",
+        hero_cta_label: "Shop Now",
+        hero_image_url: "",
+        free_shipping_threshold: null,
+        return_policy_summary: "30-Day Returns",
+        trust_badges: [],
+        payment_methods: ['card', 'cash_on_pickup'],
+        default_delivery_options: ['pickup', 'ship'],
+        bank_transfer: {}
       }
     }
   })
@@ -464,6 +478,10 @@ export function SiteForm({
 
           {renderCard("company",
             <CompanySection active={true} onSave={onSaveCompany} />
+          )}
+
+          {renderCard("marketplace",
+            <ShopSection active={true} onSave={onSaveShop} />
           )}
 
           {renderCard("branding",

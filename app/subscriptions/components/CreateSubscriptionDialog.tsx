@@ -14,6 +14,8 @@ import { getLeads } from "@/app/leads/actions"
 import { listCatalogItems } from "@/app/catalog/actions"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { BuyerUserEmailField, BuyerUser } from "@/app/components/commerce/BuyerUserEmailField"
+import { findOrCreateLeadForBuyer } from "@/app/commerce/resolve-buyer-lead"
 
 interface CreateSubscriptionDialogProps {
   open: boolean
@@ -26,11 +28,13 @@ type FormData = {
   lead_value: RelationSelectValue
   amount: string
   start_date: string
+  end_date?: string
 }
 
 export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: CreateSubscriptionDialogProps) {
   const { currentSite } = useSite()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [buyerUser, setBuyerUser] = useState<BuyerUser | null>(null)
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>()
 
@@ -55,8 +59,36 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
     setIsSubmitting(true)
 
     try {
-      const { id: resolvedLeadId, error: leadError } = await resolveRelationId("lead", data.lead_value, currentSite.id)
-      if (leadError) throw new Error(`Lead error: ${leadError}`)
+      let finalLeadId: string | null = null
+      let finalBuyerUserId: string | null = null
+
+      if (buyerUser) {
+        // If a buyer user was selected, resolve/create their lead
+        const res = await findOrCreateLeadForBuyer({
+          siteId: currentSite.id,
+          email: buyerUser.email,
+          name: buyerUser.name,
+          buyerUserId: buyerUser.buyerUserId
+        })
+        if (res.error) throw new Error(`Buyer lead error: ${res.error}`)
+        finalLeadId = res.lead?.id || null
+        finalBuyerUserId = res.lead?.buyer_user_id || null
+      }
+
+      if (!finalLeadId) {
+        // Fallback to the regular relation select
+        const { id: resolvedLeadId, error: leadError } = await resolveRelationId("lead", data.lead_value, currentSite.id)
+        if (leadError) throw new Error(`Lead error: ${leadError}`)
+        finalLeadId = resolvedLeadId
+
+        // See if this lead has a buyer_user_id we can copy
+        if (finalLeadId) {
+          const matchingLead = leads.find((l: any) => l.id === finalLeadId)
+          if (matchingLead?.buyer_user_id) {
+            finalBuyerUserId = matchingLead.buyer_user_id
+          }
+        }
+      }
 
       const { id: resolvedCatalogItemId, error: catalogError } = await resolveRelationId(
         "catalog_item", 
@@ -66,15 +98,17 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
       )
       if (catalogError) throw new Error(`Catalog error: ${catalogError}`)
 
-      if (!resolvedCatalogItemId || !resolvedLeadId) {
+      if (!resolvedCatalogItemId || !finalLeadId) {
         throw new Error("Lead and Service/Product are required")
       }
 
       const res = await upsertSubscription({
         site_id: currentSite.id,
         catalog_item_id: resolvedCatalogItemId,
-        lead_id: resolvedLeadId,
+        lead_id: finalLeadId,
+        buyer_user_id: finalBuyerUserId || undefined,
         start_date: new Date(data.start_date).toISOString(),
+        end_date: data.end_date ? new Date(data.end_date).toISOString() : null,
         amount: parseFloat(data.amount),
         status: 'active'
       })
@@ -83,6 +117,7 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
 
       toast.success('Subscription created successfully')
       reset()
+      setBuyerUser(null)
       onSuccess()
       onOpenChange(false)
     } catch (error: any) {
@@ -114,13 +149,21 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
             />
           </div>
           <div className="space-y-2">
+            <BuyerUserEmailField 
+              value={buyerUser}
+              onChange={setBuyerUser}
+              disabled={isSubmitting}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="lead_value">Customer</Label>
             <RelationSelect 
               options={leads.map((l: any) => ({ id: l.id, label: l.name || l.email }))}
               value={leadValue} 
               onValueChange={(val) => setValue('lead_value', val, { shouldValidate: true })}
-              placeholder="Select customer..."
+              placeholder={buyerUser ? "Optional: Customer will be auto-created" : "Select customer..."}
               emptyMessage="No customers found"
+              disabled={!!buyerUser}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -129,6 +172,10 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
               <Input type="date" id="start_date" {...register("start_date", { required: true })} />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="end_date">End Date</Label>
+              <Input type="date" id="end_date" {...register("end_date")} />
+            </div>
+            <div className="space-y-2 col-span-2 sm:col-span-1">
               <Label htmlFor="amount">Billing Amount</Label>
               <Input type="number" step="0.01" id="amount" {...register("amount", { required: true })} />
             </div>

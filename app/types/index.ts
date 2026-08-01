@@ -58,6 +58,18 @@ export interface Revenue {
   currency: string;
 }
 
+export interface CatalogItemFile {
+  id: string;
+  site_id: string;
+  catalog_item_id: string;
+  file_name: string;
+  storage_path: string;
+  mime_type?: string;
+  size_bytes?: number;
+  sort_order?: number;
+  created_at: string;
+}
+
 export interface Budget {
   allocated: number;
   remaining: number;
@@ -111,6 +123,8 @@ export interface Sale {
   invoiceNumber?: string;
   referenceCode?: string;
   externalId?: string;
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
   source: 'retail' | 'online' | 'quote' | 'marketplace';
   channel?: string;
   notes?: string;
@@ -144,6 +158,7 @@ export interface SaleOrder {
   taxTotal: number;
   discountTotal: number;
   total: number;
+  currency?: string;
   notes?: string;
   status: string;
   siteId: string;
@@ -164,6 +179,7 @@ export interface SaleOrderData {
   tax_total: number;
   discount_total: number;
   total: number;
+  currency?: string;
   notes?: string;
   status: string;
   site_id: string;
@@ -256,6 +272,48 @@ export interface TransactionData {
   updated_at: string;
 }
 
+export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
+
+export interface AccountingAccount {
+  id: string;
+  siteId: string;
+  code: string;
+  key: string | null;
+  type: AccountType;
+  label: string;
+  system: boolean;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type JournalSourceType = 'sale' | 'expense' | 'opening' | 'manual';
+
+export interface JournalEntry {
+  id: string;
+  siteId: string;
+  entryDate: string;
+  memo: string | null;
+  status: string;
+  sourceType: JournalSourceType;
+  sourceId: string | null;
+  idempotencyKey: string;
+  sourceHash: string | null;
+  currency: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JournalLine {
+  id: string;
+  entryId: string;
+  accountCode: string;
+  debit: number;
+  credit: number;
+  locationId: string | null;
+  createdAt: string;
+}
+
 export interface SaleData {
   id: string;
   title: string;
@@ -263,6 +321,7 @@ export interface SaleData {
   product_type: string | null;
   amount: number;
   amount_due: number;
+  currency?: string;
   status: 'pending' | 'completed' | 'cancelled' | 'refunded';
   lead_id: string | null;
   lead_name?: string | null; // Para cuando se carga con joins
@@ -270,6 +329,10 @@ export interface SaleData {
   segment_id: string | null;
   sale_date: string;
   payment_method: string | null;
+  payment_details?: any;
+  stripe_checkout_session_id?: string | null;
+  stripe_payment_intent_id?: string | null;
+  external_id?: string | null;
   payments?: Payment[];
   source: 'retail' | 'online' | 'quote' | 'marketplace';
   notes: string | null;
@@ -404,6 +467,118 @@ export interface CatalogItemTax {
   tax?: Tax;
 }
 
+export interface CatalogItemAttributes {
+  // People / place (service, course, ticket, reservation)
+  /** @deprecated use item_specs with category 'instructor' */
+  instructor?: string;   // maestro / teacher / host
+  /** @deprecated use item_specs with category 'venue' */
+  venue?: string;        // place name
+  /** @deprecated move to venue item_spec */
+  address?: string;
+  /** @deprecated move to venue item_spec */
+  city?: string;
+
+  // Timing / level (course, service, ticket)
+  duration?: string;     // e.g. "60 min", "8 weeks"
+  level?: string;        // beginner / intermediate / ...
+  language?: string;
+  event_date?: string;   // ISO or display string for tickets/events
+
+  // Physical product
+  /** @deprecated use item_specs with category 'brand' */
+  brand?: string;
+  material?: string;
+  dimensions?: string;
+  weight?: string;
+  warranty?: string;
+
+  // Digital file / license
+  format?: string;       // PDF, ZIP, MP4...
+  file_size?: string;
+  license_type?: string;
+  seats?: string;
+}
+
+export type VariantAxisKind =
+  | 'size'        // S/M/L, EU 42, etc.
+  | 'color'       // swatches
+  | 'brand'       // when brand changes SKU/price (not marketing-only)
+  | 'condition'   // new / used / refurbished ("estado")
+  | 'material'
+  | 'style'       // cut, model, flavor
+  | 'pack'        // single / pack of 3
+  | 'duration'     // 60min / 90min (services)
+  | 'capacity'    // individual / duo / group
+  | 'format'      // physical vs digital edition, PDF vs EPUB
+  | 'custom';     // escape hatch: free label + values
+
+export interface VariantAxisValue {
+  id: string;                 // "m", "red"
+  label: string;              // "M", "Red"
+  hex?: string;               // color swatches
+  sort_order?: number;
+}
+
+export interface VariantAxis {
+  id: string;                 // stable key, e.g. "size"
+  kind: VariantAxisKind;
+  label?: string;             // override; default from i18n by kind
+  values: VariantAxisValue[];
+}
+
+export interface ItemSpecCategory {
+  id: string;
+  site_id: string;
+  slug: string;
+  name: string;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ItemSpec {
+  id: string;
+  site_id: string;
+  category_id: string;
+  name: string;
+  image_url?: string | null;
+  video_url?: string | null;
+  address?: string | null;
+  city?: string | null;
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  category?: ItemSpecCategory;
+}
+
+export interface CatalogItemSpec {
+  catalog_item_id: string;
+  item_spec_id: string;
+  sort_order: number;
+  item_spec?: ItemSpec;
+}
+
+export interface CatalogItemMetadata {
+  gallery?: string[];                    // extra images beyond image_url
+  videos?: { url: string; title?: string }[];  // YouTube/Vimeo/external links
+  hashtags?: string[];                   // normalized without leading # preferred
+  specs?: { label: string; value: string }[];  // freeform key/value
+  attributes?: CatalogItemAttributes;    // typed fields by product kind
+  delivery_options?: Array<'pickup' | 'ship' | 'none' | 'dine_in'>;
+  /** Location IDs where store pickup is available for this item. Empty = all active site locations. */
+  pickup_location_ids?: string[];
+  variant_axes?: VariantAxis[];          // For parent items: defined variant axes
+  option_values?: Record<string, string>; // For child items: selected axis value ID by axis ID
+}
+
+/** Lightweight catalog link for list/table relation chips */
+export interface CatalogRelatedItem {
+  id: string;
+  name: string;
+  kind?: 'product' | 'service' | 'digital_asset';
+  digital_subtype?: 'ticket' | 'course' | 'file' | 'pass' | 'license' | null;
+}
+
 export interface CatalogItem {
   id: string;
   site_id: string;
@@ -418,6 +593,7 @@ export interface CatalogItem {
   cost?: number;
   lowest_sale_price?: number;
   target_sale_price?: number;
+  currency?: string;
   track_inventory: boolean;
   availability_mode: 'manual' | 'inventory' | 'always';
   availability_status: 'available' | 'unavailable' | 'sold_out';
@@ -425,7 +601,16 @@ export interface CatalogItem {
   is_pos_available: boolean;
   is_recurring: boolean;
   is_reservation: boolean;
-  metadata?: any;
+  pass_uses?: number | null;
+  pass_validity_days?: number | null;
+  metadata?: CatalogItemMetadata;
+  item_specs?: ItemSpec[];
+  parent_id?: string | null;
+  is_purchasable?: boolean;
+  /** Digital assets included when this recurring plan is purchased */
+  plan_includes?: CatalogRelatedItem[];
+  /** Reservable services/plans this pass can redeem against */
+  pass_redeems?: CatalogRelatedItem[];
   created_at: string;
   updated_at: string;
 }
@@ -439,6 +624,7 @@ export interface Subscription {
   catalog_item_id: string;
   status: 'active' | 'paused' | 'cancelled' | 'expired';
   start_date: string;
+  end_date?: string | null;
   next_billing_date?: string;
   amount: number;
   created_at: string;
@@ -458,10 +644,33 @@ export interface Reservation {
   start_time: string;
   end_time: string;
   notes?: string;
+  quantity?: number;
+  sale_order_item_id?: string | null;
+  entitlement_id?: string | null;
   created_at: string;
   updated_at: string;
   catalog_item?: Partial<CatalogItem>;
   lead?: { name: string; email?: string };
+}
+
+export interface ReservationSchedule {
+  id: string;
+  name?: string;
+  site_id: string;
+  catalog_item_id: string;
+  duration_minutes: number;
+  capacity: number;
+  timezone: string;
+  days: {
+    [day: string]: {
+      enabled: boolean;
+      start?: string;
+      end?: string;
+      timeBlocks?: { start: string; end: string }[];
+    };
+  };
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Quotation {
@@ -505,6 +714,8 @@ export interface Entitlement {
   status: 'active' | 'revoked' | 'expired' | 'used';
   granted_at: string;
   expires_at?: string | null;
+  uses_total?: number | null;
+  uses_remaining?: number | null;
   metadata?: any;
   created_at: string;
   updated_at: string;
@@ -516,6 +727,15 @@ export interface SubscriptionPlanItem {
   plan_catalog_item_id: string;
   digital_catalog_item_id: string;
   created_at: string;
+}
+
+export interface PassRedeemableItem {
+  id: string;
+  site_id: string;
+  pass_catalog_item_id: string;
+  reservable_catalog_item_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Location {
@@ -583,6 +803,21 @@ export interface Shipment {
   user_id: string;
   created_at: string;
   updated_at: string;
+  assigned_to?: string;
+  last_lat?: number;
+  last_lng?: number;
+  last_located_at?: string;
+}
+
+export interface ShipmentLocationPing {
+  id: string;
+  site_id: string;
+  shipment_id: string;
+  user_id: string;
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  recorded_at: string;
 }
 
 export interface Promotion {
@@ -597,6 +832,7 @@ export interface Promotion {
   applies_to: 'all' | 'selected_items';
   min_order_amount?: number;
   usage_limit?: number;
+  usage_limit_per_user?: number;
   usage_count: number;
   status: 'draft' | 'active' | 'paused' | 'expired';
   starts_at?: string;
@@ -610,5 +846,12 @@ export interface PromotionCatalogItem {
   id: string;
   promotion_id: string;
   catalog_item_id: string;
+  site_id: string;
+}
+
+export interface PromotionCatalogCategory {
+  id: string;
+  promotion_id: string;
+  catalog_category_id: string;
   site_id: string;
 }

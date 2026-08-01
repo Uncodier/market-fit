@@ -6,6 +6,7 @@ import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
 import { resolveUnitPrice } from "@/app/price-lists/actions";
 import { applyPromotionToOrder } from "@/app/promotions/actions";
 import { createShipment } from "@/app/shipments/actions";
+import { assertReservationSlot } from "@/app/reservations/availability";
 import { grantFromOrder, syncSubscriptionEntitlements } from "./entitlements";
 import { calculateOrderTaxTotal, roundMoney } from "./taxes";
 
@@ -13,6 +14,8 @@ export interface CheckoutLine {
   catalogItemId: string;
   quantity: number;
   unitPriceOverride?: number; // Used for quotes to honor the quoted price
+  reservationStart?: string; // ISO
+  reservationEnd?: string;   // ISO
 }
 
 export interface CheckoutCartParams {
@@ -33,6 +36,7 @@ export interface CheckoutCartParams {
   payments?: { method: string; amount: number; tendered?: number; change?: number }[];
   existingOrderId?: string;
   intent?: 'draft' | 'send' | 'complete' | 'pay';
+  paymentMethod?: string; // legacy/passthrough
 }
 
 export async function checkoutCart({
@@ -71,14 +75,61 @@ export async function checkoutCart({
 
     // Check if there are any digital or recurring items, which require a buyerUserId
     const lineCatalogItemIds = lines.map(l => l.catalogItemId);
-    const { data: catItemsForCheck } = await (isAdmin ? supabaseAdmin : supabase)
+    const { data: catItemsForCheck, error: itemsError } = await (isAdmin ? supabaseAdmin : supabase)
       .from("catalog_items")
-      .select("id, kind, is_recurring")
+      .select("id, kind, is_recurring, metadata")
       .in("id", lineCatalogItemIds);
       
-    const hasDigitalOrRecurring = catItemsForCheck?.some((c: any) => c.kind === 'digital_asset' || c.is_recurring);
+    if (itemsError) throw new Error(itemsError.message);
+    if (!catItemsForCheck || catItemsForCheck.length === 0) throw new Error("No items found");
+
+    const hasDigitalOrRecurring = catItemsForCheck.some((c: any) => c.kind === 'digital_asset' || c.is_recurring);
     if (hasDigitalOrRecurring && !buyerUserId && (source === 'shop' || source === 'marketplace' || source === 'quote')) {
       throw new Error("You must be logged in to purchase digital assets or subscriptions.");
+    }
+
+    // Validate fulfillment against allowed options
+    const {
+      getItemDeliveryOptions,
+      isFulfillmentAllowed,
+      intersectPickupLocationIds,
+    } = await import('./delivery-options');
+    const itemsWithOptions = catItemsForCheck.map((item: any) => ({ allowed: getItemDeliveryOptions(item) }));
+    if (!isFulfillmentAllowed(fulfillment as any, itemsWithOptions)) {
+      throw new Error(`Fulfillment method '${fulfillment}' is not allowed for the items in this cart.`);
+    }
+
+    const pickupLocationRestriction = fulfillment === 'pickup'
+      ? intersectPickupLocationIds(catItemsForCheck)
+      : null;
+    if (fulfillment === 'pickup' && pickupLocationRestriction && pickupLocationRestriction.length === 0) {
+      throw new Error('No compatible pickup locations for the items in this cart.');
+    }
+    if (
+      fulfillment === 'pickup' &&
+      originLocationId &&
+      pickupLocationRestriction &&
+      !pickupLocationRestriction.includes(originLocationId)
+    ) {
+      throw new Error('Selected pickup location is not available for the items in this cart.');
+    }
+
+    // Auto-resolve originLocationId if missing but needed (e.g., from online checkout)
+    let finalOriginLocationId = originLocationId;
+    if (!finalOriginLocationId && ['ship', 'pickup', 'dine_in'].includes(fulfillment)) {
+      let locQuery = (isAdmin ? supabaseAdmin : supabase)
+        .from("locations")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("is_active", true)
+        .limit(1);
+      if (fulfillment === 'pickup' && pickupLocationRestriction && pickupLocationRestriction.length > 0) {
+        locQuery = locQuery.in("id", pickupLocationRestriction);
+      }
+      const { data: locs } = await locQuery;
+      if (locs && locs.length > 0) {
+        finalOriginLocationId = locs[0].id;
+      }
     }
 
     // 1. Resolve Lead (Create if shop and no leadId but has email)
@@ -130,6 +181,31 @@ export async function checkoutCart({
     for (const line of lines) {
       // Assert can sell
       await assertCanSell(siteId, line.catalogItemId, line.quantity, originLocationId, isAdmin);
+
+      const { data: catalogItem } = await (isAdmin ? supabaseAdmin : supabase)
+        .from("catalog_items")
+        .select("name, description, is_recurring, kind, digital_subtype, is_reservation, currency")
+        .eq("id", line.catalogItemId)
+        .single();
+        
+      const isAccessOnly = catalogItem?.is_recurring || (catalogItem?.kind === 'digital_asset' && catalogItem?.digital_subtype === 'pass');
+
+      if (catalogItem?.is_reservation && !isAccessOnly) {
+        if (!line.reservationStart || !line.reservationEnd) {
+          throw new Error("Reservation dates are required for drop-in reservable items.");
+        }
+        if (!finalLeadId && !isAdmin) {
+          throw new Error("Reservable items require a customer.");
+        }
+        await assertReservationSlot(
+          siteId,
+          line.catalogItemId,
+          line.reservationStart,
+          line.reservationEnd,
+          line.quantity,
+          isAdmin
+        );
+      }
       
       // Resolve price
       let price = line.unitPriceOverride;
@@ -137,8 +213,6 @@ export async function checkoutCart({
         const { price: resolvedPrice } = await resolveUnitPrice(siteId, line.catalogItemId, finalPriceListId, isAdmin);
         price = resolvedPrice || 0;
       }
-      
-      const { data: catalogItem } = await (isAdmin ? supabaseAdmin : supabase).from("catalog_items").select("name, description, is_recurring, kind, digital_subtype").eq("id", line.catalogItemId).single();
       
       const subtotal = price * line.quantity;
       orderSubtotal += subtotal;
@@ -148,9 +222,13 @@ export async function checkoutCart({
         catalog_item_id: line.catalogItemId,
         name: catalogItem?.name || "Unknown Item",
         description: catalogItem?.description,
+        currency: catalogItem?.currency || "USD",
         quantity: line.quantity,
         unit_price: price,
-        subtotal: subtotal
+        subtotal: subtotal,
+        is_reservation_dropin: catalogItem?.is_reservation && !isAccessOnly,
+        reservationStart: line.reservationStart,
+        reservationEnd: line.reservationEnd
       });
     }
 
@@ -163,6 +241,13 @@ export async function checkoutCart({
       taxesByItem || {}
     );
     const orderTotal = roundMoney(orderSubtotal + orderTaxTotal);
+
+    // Verify all items have the same currency
+    const uniqueCurrencies = Array.from(new Set(processedLines.map(pl => pl.currency)));
+    if (uniqueCurrencies.length > 1) {
+      throw new Error("All items in the cart must use the same currency.");
+    }
+    const orderCurrency = uniqueCurrencies[0] || 'USD';
 
     // Calculate total paid if payments are provided
     const totalPaid = payments ? payments.reduce((sum, p) => sum + p.amount, 0) : 0;
@@ -189,7 +274,7 @@ export async function checkoutCart({
 
     const paymentMethodToStore = payments && payments.length > 0 
       ? (payments.length === 1 ? payments[0].method : 'multiple')
-      : undefined;
+      : paymentMethod || undefined;
 
     let sale: any;
     let order: any;
@@ -242,10 +327,12 @@ export async function checkoutCart({
         lead_id: finalLeadId,
         buyer_user_id: buyerUserId || null,
         owner_site_id: ownerSiteId || null,
+        location_id: finalOriginLocationId || null,
         title: `Order - ${new Date().toLocaleDateString()}`,
         status: saleInitialStatus,
         amount: orderTotal,
         amount_due: payments ? Math.max(0, orderTotal - totalPaid) : orderTotal,
+        currency: orderCurrency,
         user_id: resolvedUserId,
         sale_date: new Date().toISOString().split('T')[0],
         source: source,
@@ -279,9 +366,13 @@ export async function checkoutCart({
         price_list_id: finalPriceListId,
         buyer_user_id: buyerUserId || null,
         owner_site_id: ownerSiteId || null,
+        fulfillment_method: fulfillment,
+        origin_location_id: finalOriginLocationId || null,
+        shipping_address: shippingAddress || null,
         subtotal: orderSubtotal,
         tax_total: orderTaxTotal,
         total: orderTotal,
+        currency: orderCurrency,
         status: orderInitialStatus,
         user_id: resolvedUserId,
         items: processedLines.map(pl => ({
@@ -310,10 +401,12 @@ export async function checkoutCart({
         lead_id: finalLeadId,
         buyer_user_id: buyerUserId || null,
         owner_site_id: ownerSiteId || null,
+        location_id: finalOriginLocationId || null,
         title: `Order - ${new Date().toLocaleDateString()}`,
         status: saleInitialStatus,
         amount: orderTotal,
         amount_due: payments ? Math.max(0, orderTotal - totalPaid) : orderTotal,
+        currency: orderCurrency,
         user_id: resolvedUserId,
         sale_date: new Date().toISOString().split('T')[0],
         source: source,
@@ -344,9 +437,13 @@ export async function checkoutCart({
         price_list_id: finalPriceListId,
         buyer_user_id: buyerUserId || null,
         owner_site_id: ownerSiteId || null,
+        fulfillment_method: fulfillment,
+        origin_location_id: finalOriginLocationId || null,
+        shipping_address: shippingAddress || null,
         subtotal: orderSubtotal,
         tax_total: orderTaxTotal,
         total: orderTotal,
+        currency: orderCurrency,
         discount_total: 0,
         status: orderInitialStatus,
         order_number: `ORD-${Date.now().toString().slice(-6)}`,
@@ -381,6 +478,7 @@ export async function checkoutCart({
         if (!processedCatalogItemIds.has(ei.catalog_item_id)) {
           if (ei.status === 'draft') {
             await (isAdmin ? supabaseAdmin : supabase).from("sale_order_items").delete().eq("id", ei.id);
+            await supabaseAdmin.from("reservations").delete().eq("sale_order_item_id", ei.id);
           } else {
             // Re-add to processedLines since it's completed/preparing and shouldn't be deleted from cart logic?
             // Actually, if it's removed from cart but was already sent/completed, maybe we just ignore and keep it in DB.
@@ -425,17 +523,77 @@ export async function checkoutCart({
         subtotal: pl.subtotal,
         status: newStatus,
         sent_at: sentAt,
-        metadata: { is_new: newStatus === 'new' }
+        metadata: { is_new: newStatus === 'new' },
+        _is_reservation_dropin: pl.is_reservation_dropin,
+        _reservationStart: pl.reservationStart,
+        _reservationEnd: pl.reservationEnd
       });
     }
 
+    const upsertedItems = [];
+
     for (const item of itemsToUpsert) {
-       if (item.id) {
-         await (isAdmin ? supabaseAdmin : supabase).from("sale_order_items").update(item).eq("id", item.id);
+       let dbItem;
+       const { _is_reservation_dropin, _reservationStart, _reservationEnd, ...dbPayload } = item;
+       if (dbPayload.id) {
+         const { data, error } = await (isAdmin ? supabaseAdmin : supabase)
+           .from("sale_order_items")
+           .update(dbPayload)
+           .eq("id", dbPayload.id)
+           .select()
+           .single();
+         if (error) throw new Error(`Sale order item update error: ${error.message}`);
+         dbItem = data;
        } else {
-         delete item.id; // Remove undefined id
-         await (isAdmin ? supabaseAdmin : supabase).from("sale_order_items").insert(item);
+         delete dbPayload.id; // Remove undefined id
+         const { data, error } = await (isAdmin ? supabaseAdmin : supabase)
+           .from("sale_order_items")
+           .insert(dbPayload)
+           .select()
+           .single();
+         if (error) throw new Error(`Sale order item insert error: ${error.message}`);
+         dbItem = data;
        }
+       upsertedItems.push({ ...dbItem, _is_reservation_dropin, _reservationStart, _reservationEnd });
+    }
+
+    // 6.a Handle reservations
+    for (const item of upsertedItems) {
+      if (item._is_reservation_dropin && item._reservationStart && item._reservationEnd) {
+        // Check if reservation already exists for this order item
+        const { data: existingRes } = await supabaseAdmin
+          .from("reservations")
+          .select("id")
+          .eq("sale_order_item_id", item.id)
+          .single();
+
+        const resStatus = ['completed', 'pay'].includes(intent || '') && isFullyPaid ? 'confirmed' : 'pending';
+
+        if (existingRes) {
+           await supabaseAdmin.from("reservations").update({
+             status: resStatus,
+             quantity: item.quantity,
+             start_time: item._reservationStart,
+             end_time: item._reservationEnd
+           }).eq("id", existingRes.id);
+        } else {
+           if (!finalLeadId && !isAdmin) {
+             throw new Error("Reservations require a valid customer/lead.");
+           }
+           await supabaseAdmin.from("reservations").insert({
+             site_id: siteId,
+             catalog_item_id: item.catalog_item_id,
+             sale_order_item_id: item.id,
+             lead_id: finalLeadId,
+             buyer_user_id: buyerUserId || null,
+             owner_site_id: ownerSiteId || null,
+             start_time: item._reservationStart,
+             end_time: item._reservationEnd,
+             quantity: item.quantity,
+             status: resStatus
+           });
+        }
+      }
     }
 
     // 6.b Update order JSONB items for backwards compatibility is already handled above in the update/insert.
@@ -453,19 +611,19 @@ export async function checkoutCart({
     }
 
     // 8. Create Shipment (if ship)
-    if (fulfillment === 'ship' && originLocationId && resolvedUserId && orderInitialStatus === 'completed') {
+    if (fulfillment === 'ship' && finalOriginLocationId && resolvedUserId && orderInitialStatus === 'completed') {
       const shipResult = await createShipment({
         siteId,
         saleOrderId: order.id,
         saleId: sale.id,
         leadId: finalLeadId,
-        originLocationId,
+        originLocationId: finalOriginLocationId,
         shippingAddress,
         userId: resolvedUserId,
         forceServiceRole: isAdmin
       });
       if (shipResult.error) throw new Error(`Shipment error: ${shipResult.error}`);
-    } else if (originLocationId && orderInitialStatus === 'completed') {
+    } else if (finalOriginLocationId && orderInitialStatus === 'completed') {
       // Non-ship fulfillments (pickup, dine_in, none) are marked completed immediately if paid.
       // Therefore, if policy is NOT 'never', we should decrement stock now since the order is finalized.
       const { data: settings } = await (isAdmin ? supabaseAdmin : supabase).from("settings").select("commerce").eq("site_id", siteId).single();
@@ -478,7 +636,7 @@ export async function checkoutCart({
             const { data: level } = await (isAdmin ? supabaseAdmin : supabase).from("inventory_levels")
               .select("id, quantity")
               .eq("catalog_item_id", line.catalogItemId)
-              .eq("location_id", originLocationId)
+              .eq("location_id", finalOriginLocationId)
               .single();
             if (level) {
               const newQty = Math.max(0, level.quantity - line.quantity);
@@ -486,7 +644,7 @@ export async function checkoutCart({
             } else {
               await (isAdmin ? supabaseAdmin : supabase).from("inventory_levels").insert({
                 site_id: siteId,
-                location_id: originLocationId,
+                location_id: finalOriginLocationId,
                 catalog_item_id: line.catalogItemId,
                 quantity: Math.max(0, -line.quantity) // floor at 0
               });

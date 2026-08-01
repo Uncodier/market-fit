@@ -29,12 +29,14 @@ export const routes: RouteConfig[] = [
   { path: "/notifications", hasLayout: true },
   { path: "/billing", hasLayout: true },
   { path: "/settings", hasLayout: true },
+  { path: "/skills", hasLayout: true },
   { path: "/security", hasLayout: true },
   { path: "/help", hasLayout: true },
   { path: "/profile", hasLayout: true },
   { path: "/context", hasLayout: true },
   
   // Commerce routes
+  { path: "/pos/check-in", hasLayout: true },
   { path: "/pos", hasLayout: true },
   { path: "/catalog", hasLayout: true },
   { path: "/price-lists", hasLayout: true },
@@ -46,11 +48,14 @@ export const routes: RouteConfig[] = [
   { path: "/reservations", hasLayout: true },
   { path: "/purchases", hasLayout: true },
   { path: "/transactions", hasLayout: true },
+  { path: "/finance", hasLayout: true },
+  { path: "/accounting", hasLayout: true },
 
   { path: "/create-site", hasLayout: false },
   { path: "/buyer", hasLayout: false },
   
   // Routes without layout (default)
+  { path: "/cart", hasLayout: false },
   { path: "/login", hasLayout: false },
   { path: "/register", hasLayout: false },
   { path: "/forgot-password", hasLayout: false },

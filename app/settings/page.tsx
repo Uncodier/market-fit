@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { SiteForm } from "@/app/components/settings/site-form"
 import { type SiteFormValues } from "@/app/components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "@/app/components/settings/data-adapter"
-import { handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities } from "@/app/components/settings/save-handlers"
+import { handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities, handleSaveShop } from "@/app/components/settings/save-handlers"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -163,7 +163,11 @@ function SettingsFormSkeleton() {
 const getGeneralSections = (t: (key: string) => string): QuickNavSection[] => [
   { id: "site-information", title: t('settings.nav.siteInfo') || "Site Information" },
   { id: "web-resources", title: t('settings.nav.webResources') || "Web Resources" },
-  { id: "shop-storefront", title: "Shop Storefront" },
+]
+
+const getMarketplaceSections = (t: (key: string) => string): QuickNavSection[] => [
+  { id: "shop-hero", title: t('settings.nav.shopHero') || "Storefront Hero" },
+  { id: "shop-trust", title: t('settings.nav.shopTrust') || "Trust & Policies" },
 ]
 
 const getChannelsSections = (t: (key: string) => string): QuickNavSection[] => [
@@ -215,7 +219,7 @@ const getActivitiesSections = (t: (key: string) => string): QuickNavSection[] =>
 ]
 
 const getCalendarSections = (t: (key: string) => string): QuickNavSection[] => [
-  { id: "calendars", title: "Calendars" },
+  { id: "calendars", title: t('settings.nav.calendars') || "Calendars" },
 ]
 
 export default function SettingsPage() {
@@ -417,6 +421,11 @@ export default function SettingsPage() {
     await handleSaveActivities(data, saveOptions)
   }
 
+  const onSaveShop = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSaveShop(data, saveOptions)
+  }
+
   // Simple approach - just track when data changes
   const adaptedSiteData = useMemo(() => {
     if (!currentSite) return null;
@@ -432,9 +441,11 @@ export default function SettingsPage() {
         return getChannelsSections(t)
       case "team":
         return teamSections
-      case "activities":
-        return getActivitiesSections(t)
-      case "social":
+    case "activities":
+      return getActivitiesSections(t)
+    case "marketplace":
+      return getMarketplaceSections(t)
+    case "social":
         return socialSections
       case "calendar":
         return getCalendarSections(t)
@@ -454,7 +465,7 @@ export default function SettingsPage() {
                 <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
                 <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
-                <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>
+                <TabsTrigger value="calendar" className="text-xs rounded-full px-4">{t('settings.tabs.calendar') || 'Calendar'}</TabsTrigger>
                 <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -491,9 +502,10 @@ export default function SettingsPage() {
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                 <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
                 <TabsTrigger value="company" className="text-xs rounded-full px-4">{t('context.tabs.company') || 'Company'}</TabsTrigger>
+                <TabsTrigger value="marketplace" className="text-xs rounded-full px-4">{t('settings.tabs.marketplace') || 'Marketplace'}</TabsTrigger>
                 <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
-                <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>
+                <TabsTrigger value="calendar" className="text-xs rounded-full px-4">{t('settings.tabs.calendar') || 'Calendar'}</TabsTrigger>
                 <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -515,6 +527,7 @@ export default function SettingsPage() {
             onSaveSocial={onSaveSocial}
             onSaveChannels={onSaveChannels}
             onSaveActivities={onSaveActivities}
+            onSaveShop={onSaveShop}
             activeSegment={activeSegment}
             siteId={currentSite.id}
           />

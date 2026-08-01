@@ -134,6 +134,20 @@ export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreateP
               <Input id="discount_value" type="number" step="0.01" min="0.01" {...register("discount_value", { required: "Value is required" })} />
             </div>
           </div>
+          
+          <div className="space-y-2">
+            <Label>Applies To</Label>
+            <Select value={watch('applies_to')} onValueChange={v => setValue('applies_to', v as 'all'|'selected_items')}>
+              <SelectTrigger><SelectValue/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Entire Order</SelectItem>
+                <SelectItem value="selected_items">Specific products or categories</SelectItem>
+              </SelectContent>
+            </Select>
+            {watch('applies_to') === 'selected_items' && (
+              <p className="text-xs text-muted-foreground mt-1">You can select products and categories after creating the promotion.</p>
+            )}
+          </div>
 
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

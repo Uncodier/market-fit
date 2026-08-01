@@ -83,17 +83,17 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       setFormData({
-        name: name || "",
+        name: profile.name || "",
         phone: profile.phone || "",
-        bio: bio || "",
-        role: (role as UserRole) || "Product Manager",
-        language: language || "es",
-        timezone: timezone || "America/Mexico_City"
+        bio: profile.bio || "",
+        role: (profile.role as UserRole) || "Product Manager",
+        language: profile.language || "es",
+        timezone: profile.timezone || "America/Mexico_City"
       })
-      setNotificationSettings(notifications || { email: true, push: true })
-      setImageUrl(avatarUrl || null)
+      setNotificationSettings(profile.notifications || { email: true, push: true })
+      setImageUrl(profile.avatar_url || null)
     }
-  }, [profile, name, bio, role, language, timezone, avatarUrl, notifications])
+  }, [profile])
 
   // Manejador de cambios en el formulario
   const handleInputChange = (field: string, value: string) => {

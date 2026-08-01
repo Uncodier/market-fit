@@ -74,6 +74,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "shipments", href: "/shipments" },
       { key: "controlCenter", href: "/control-center" },
       { key: "reservations", href: "/reservations" },
+      { key: "checkIn", href: "/pos/check-in" },
       { key: "inventory", href: "/inventory" },
     ],
   },
@@ -114,6 +115,9 @@ export const NAVIGATION_AREAS: Record<
       { key: "reportTraffic", href: "/dashboard", dashboardTab: "traffic" },
       { key: "reportCosts", href: "/costs" },
       { key: "reportSales", href: "/dashboard", dashboardTab: "sales" },
+      { key: "financeReports", href: "/finance" },
+      { key: "journalEntries", href: "/accounting/entries" },
+      { key: "chartOfAccounts", href: "/accounting" },
     ],
   },
 }

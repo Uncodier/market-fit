@@ -31,16 +31,38 @@ export async function getSubscriptions(siteId: string) {
 export async function upsertSubscription(subscription: Partial<Subscription>) {
   try {
     const supabase = await createClient();
+
+    let buyerUserId = subscription.buyer_user_id ?? null
+    if (!buyerUserId && subscription.lead_id) {
+      const { data: lead } = await supabase
+        .from("leads")
+        .select("buyer_user_id")
+        .eq("id", subscription.lead_id)
+        .maybeSingle()
+      buyerUserId = lead?.buyer_user_id || null
+    }
+
     const { data, error } = await supabase
       .from("subscriptions")
       .upsert({
         ...subscription,
+        buyer_user_id: buyerUserId,
         updated_at: new Date().toISOString(),
       })
       .select()
       .single();
 
     if (error) return { error: error.message };
+
+    // Sync or revoke entitlements based on the final status
+    const finalStatus = data.status;
+    if (finalStatus === 'active') {
+      const { syncSubscriptionEntitlements } = await import('@/app/commerce/entitlements');
+      await syncSubscriptionEntitlements(data.id, true);
+    } else if (['cancelled', 'expired', 'paused'].includes(finalStatus)) {
+      const { revokeForSubscription } = await import('@/app/commerce/entitlements');
+      await revokeForSubscription(data.id, true);
+    }
     
     revalidatePath("/subscriptions");
     return { data: data as Subscription };

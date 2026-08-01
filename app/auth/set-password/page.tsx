@@ -222,7 +222,7 @@ function SetPasswordContent() {
       console.log('[Set Password] Session verified, user:', refreshedSession?.user?.email || 'verified')
 
       // Redirect to the original destination or dashboard
-      const targetUrl = redirectTo ? decodeURIComponent(redirectTo) : '/robots'
+      const targetUrl = redirectTo ? decodeURIComponent(redirectTo) : '/buyer'
       console.log('🔄 Redirecting to:', targetUrl)
       
       await new Promise(resolve => setTimeout(resolve, 500))

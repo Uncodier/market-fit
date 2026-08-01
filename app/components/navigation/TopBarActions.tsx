@@ -57,6 +57,9 @@ import {
   Folder,
   Eye,
   ShoppingCart,
+  Settings,
+  Ticket,
+  Repeat,
 } from "@/app/components/ui/icons";
 
 import { subMonths, format } from "date-fns";
@@ -813,6 +816,9 @@ interface TopBarActionsProps {
   isSalesPage: boolean;
   isRobotsPage: boolean;
   isSecurityPage: boolean;
+  isAccountingPage?: boolean;
+  isFinancePage?: boolean;
+  isJournalEntriesPage?: boolean;
   isExperimentDetailPage?: boolean;
   dashboardActiveTab?: string;
   segmentData: {
@@ -864,6 +870,9 @@ export function TopBarActions({
   isSalesPage,
   isRobotsPage,
   isSecurityPage,
+  isAccountingPage,
+  isFinancePage,
+  isJournalEntriesPage,
   isExperimentDetailPage = false,
   dashboardActiveTab,
   segmentData,
@@ -2264,6 +2273,18 @@ The success of this experiment will be measured by:
             variant="secondary"
             size="default"
             className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() => { window.location.href = '/pos/check-in' }}
+            title={t("pos.checkIn.title") || "Ticket Check-in"}
+          >
+            <Ticket className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline font-inter font-medium text-sm">
+              {t("pos.checkIn.title") || "Ticket Check-in"}
+            </span>
+          </Button>
+          <Button
+            variant="secondary"
+            size="default"
+            className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("pos:send-order"))
             }
@@ -2423,9 +2444,7 @@ The success of this experiment will be measured by:
       {pathname === "/reservations" && currentSite && (
         <Button
           className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-          onClick={() =>
-            window.dispatchEvent(new CustomEvent("reservations:create"))
-          }
+          onClick={() => router.push('/reservations/new')}
           title="Create Reservation"
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
@@ -2530,6 +2549,69 @@ The success of this experiment will be measured by:
             {t("expenses.create.button") || "Add Expense"}
           </span>
         </Button>
+      )}
+
+      {/* Accounting Actions */}
+      {isAccountingPage && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() => window.dispatchEvent(new CustomEvent('accounting:openingBalances'))}
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">Opening Balances</span>
+          </Button>
+          <Button
+            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => window.dispatchEvent(new CustomEvent('accounting:create'))}
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">Add Account</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Finance Actions */}
+      {isFinancePage && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() => window.dispatchEvent(new CustomEvent('finance:exportReport'))}
+          >
+            <Download className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">Export</span>
+          </Button>
+          <Button
+            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => window.dispatchEvent(new CustomEvent('finance:loadReport'))}
+          >
+            <FileText className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">Load Report</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Journal Entries Actions */}
+      {isJournalEntriesPage && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() => window.dispatchEvent(new CustomEvent('journal:load'))}
+          >
+            <Repeat className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">{t('common.sync') || "Sync"}</span>
+          </Button>
+          <Button
+            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => window.dispatchEvent(new CustomEvent('journal:create'))}
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">{t('accounting.newEntry') || "New Entry"}</span>
+          </Button>
+        </div>
       )}
 
       {/* Logout button in toolbar - only visible on profile page */}

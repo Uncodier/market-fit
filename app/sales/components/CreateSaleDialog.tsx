@@ -17,6 +17,8 @@ import { Location } from "@/app/types"
 
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { findOrCreateLeadForBuyer } from "@/app/commerce/resolve-buyer-lead"
+import { BuyerUserEmailField, BuyerUser } from "@/app/components/commerce/BuyerUserEmailField"
 
 interface CreateSaleDialogProps {
   open: boolean
@@ -43,6 +45,7 @@ interface Lead {
   id: string
   name: string
   email: string
+  buyer_user_id?: string | null
 }
 
 interface Segment {
@@ -57,6 +60,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
   const [segments, setSegments] = useState<Segment[]>([])
   const [locations, setLocations] = useState<Location[]>([])
   const [loadingData, setLoadingData] = useState(false)
+  const [buyerUser, setBuyerUser] = useState<BuyerUser | null>(null)
   const [formData, setFormData] = useState<FormData>({
     title: "",
     productName: "",
@@ -92,7 +96,8 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
         setLeads(leadsResult.leads?.map(lead => ({
           id: lead.id,
           name: lead.name || lead.email,
-          email: lead.email
+          email: lead.email,
+          buyer_user_id: (lead as any).buyer_user_id || null
         })) || [])
       }
 
@@ -147,8 +152,33 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
 
     setLoading(true)
     try {
-      const { id: resolvedLeadId, error: leadError } = await resolveRelationId("lead", formData.leadValue, currentSite.id)
-      if (leadError) throw new Error(`Lead error: ${leadError}`)
+      let finalLeadId: string | null = null
+      let finalBuyerUserId: string | null = null
+
+      if (buyerUser) {
+        const res = await findOrCreateLeadForBuyer({
+          siteId: currentSite.id,
+          email: buyerUser.email,
+          name: buyerUser.name,
+          buyerUserId: buyerUser.buyerUserId
+        })
+        if (res.error) throw new Error(`Buyer lead error: ${res.error}`)
+        finalLeadId = res.lead?.id || null
+        finalBuyerUserId = res.lead?.buyer_user_id || null
+      }
+
+      if (!finalLeadId) {
+        const { id: resolvedLeadId, error: leadError } = await resolveRelationId("lead", formData.leadValue, currentSite.id)
+        if (leadError) throw new Error(`Lead error: ${leadError}`)
+        finalLeadId = resolvedLeadId
+
+        if (finalLeadId) {
+          const matchingLead = leads.find(l => l.id === finalLeadId)
+          if (matchingLead?.buyer_user_id) {
+            finalBuyerUserId = matchingLead.buyer_user_id
+          }
+        }
+      }
 
       const { id: resolvedSegmentId, error: segmentError } = await resolveRelationId("segment", formData.segmentValue, currentSite.id)
       if (segmentError) throw new Error(`Segment error: ${segmentError}`)
@@ -156,7 +186,8 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
       const result = await createSale({
         ...formData,
         saleDate: formData.saleDate.toISOString(),
-        leadId: resolvedLeadId || undefined,
+        leadId: finalLeadId || undefined,
+        buyerUserId: finalBuyerUserId || undefined,
         segmentId: resolvedSegmentId || undefined,
         siteId: currentSite.id,
         campaignId: null // No campaign selected by default
@@ -171,6 +202,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
       onOpenChange(false)
       
       // Reset form
+      setBuyerUser(null)
       setFormData({
         title: "",
         productName: "",
@@ -331,6 +363,16 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Buyer</Label>
+              <div className="col-span-3">
+                <BuyerUserEmailField 
+                  value={buyerUser}
+                  onChange={setBuyerUser}
+                  disabled={loadingData}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="leadValue" className="text-right">
                 Lead
               </Label>
@@ -339,9 +381,9 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                   options={leads.map(l => ({ id: l.id, label: l.name || l.email }))}
                   value={formData.leadValue}
                   onValueChange={(val) => setFormData(prev => ({ ...prev, leadValue: val }))}
-                  placeholder={loadingData ? "Loading leads..." : "Select lead (optional)"}
+                  placeholder={loadingData ? "Loading leads..." : (buyerUser ? "Optional: Lead will be auto-created" : "Select lead (optional)")}
                   emptyMessage="No leads found"
-                  disabled={loadingData}
+                  disabled={loadingData || !!buyerUser}
                 />
               </div>
             </div>

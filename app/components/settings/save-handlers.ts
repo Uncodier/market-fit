@@ -59,7 +59,8 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
     const settingsData = {
       about, company_size, industry, products, services, locations,
       business_hours, goals: rawGoals, swot: rawSwot, marketing_budget, marketing_channels,
-      social_media, company, customer_journey, copywriting, activities
+      social_media, company, customer_journey, copywriting, activities,
+      shop: data.shop || currentSite.settings?.shop
     };
     
     console.log("SAVE 3: Datos extraídos del formulario:", {
@@ -537,23 +538,27 @@ export const handleSave = async (data: SiteFormValues, options: SaveOptions) => 
         ...siteUpdate,
         settings: {
           ...currentSite.settings,
-          ...settings,
+          ...settingsData,
+          shop: {
+            ...currentSite.settings?.shop,
+            ...settingsData.shop
+          },
           // Preserve nested objects that might get overwritten
           channels: {
             ...currentSite.settings?.channels,
-            ...settings.channels,
+            ...settingsData.channels,
             // Deep merge for email, whatsapp, and website to preserve all fields
             email: {
               ...currentSite.settings?.channels?.email,
-              ...settings.channels?.email
+              ...settingsData.channels?.email
             },
             whatsapp: {
               ...currentSite.settings?.channels?.whatsapp,
-              ...settings.channels?.whatsapp
+              ...settingsData.channels?.whatsapp
             },
             website: {
               ...currentSite.settings?.channels?.website,
-              ...settings.channels?.website
+              ...settingsData.channels?.website
             }
           }
         }
@@ -719,6 +724,10 @@ const updateSiteLocally = (currentSite: Site, siteUpdate: any, settingsUpdate: a
     settings: {
       ...currentSite.settings,
       ...settingsUpdate,
+      shop: {
+        ...currentSite.settings?.shop,
+        ...settingsUpdate.shop
+      },
       channels: {
         ...currentSite.settings?.channels,
         ...settingsUpdate.channels,
@@ -845,6 +854,57 @@ export const handleSaveGeneral = async (data: SiteFormValues, options: SaveOptio
 }
 
 // Partial save handler for Company section
+export const handleSaveShop = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+
+    const shop = data.shop || {
+      hero_title: "",
+      hero_subtitle: "",
+      hero_cta_label: "Shop Now",
+      hero_image_url: "",
+      free_shipping_threshold: null,
+      return_policy_summary: "30-Day Returns",
+      trust_badges: [],
+      payment_methods: ['card', 'cash_on_pickup'],
+      default_delivery_options: ['pickup', 'ship'],
+      bank_transfer: {}
+    }
+
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      shop
+    }
+
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+
+    await updateSettings(currentSite.id, settingsUpdate)
+
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+
+    toast.success("Marketplace settings saved successfully")
+  } catch (error) {
+    console.error("Error saving marketplace settings:", error)
+    if (error instanceof Error) {
+      toast.error(`Error: ${error.message}`)
+    } else {
+      toast.error("Error saving marketplace settings")
+    }
+  } finally {
+    setIsSaving(false)
+  }
+}
+
 export const handleSaveCompany = async (data: SiteFormValues, options: SaveOptions) => {
   const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
 
@@ -853,7 +913,7 @@ export const handleSaveCompany = async (data: SiteFormValues, options: SaveOptio
   try {
     setIsSaving(true)
 
-    const { about, company_size, industry, products, services, locations, business_hours, goals: rawGoals, swot: rawSwot } = data
+    const { about, company_size, industry, products, services, locations, business_hours, goals: rawGoals, swot: rawSwot, currency } = data
 
     // Ensure SWOT and goals have the correct structure
     const swot = {
@@ -875,6 +935,7 @@ export const handleSaveCompany = async (data: SiteFormValues, options: SaveOptio
       about: about || "",
       company_size: company_size || "",
       industry: industry || "",
+      currency: currency || "USD",
       products: Array.isArray(products) ? products : [],
       services: Array.isArray(services) ? services : [],
       swot,

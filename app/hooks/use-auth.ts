@@ -94,6 +94,20 @@ const identifyUserInChat = async (user: User | null, supabaseClient: any, retryC
   }
 }
 
+// Función para limpiar el modo demo
+const clearDemoMode = () => {
+  if (typeof document !== 'undefined') {
+    document.cookie = `market_fit_demo_site_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  }
+  if (typeof localStorage !== 'undefined') {
+    const currentSiteId = localStorage.getItem('currentSiteId');
+    if (currentSiteId && currentSiteId.startsWith('demo-')) {
+      localStorage.removeItem('currentSiteId');
+    }
+    localStorage.removeItem('market_fit_manual_demo');
+  }
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -139,7 +153,7 @@ export function useAuth() {
           
           if (!isPasswordResetFlow) {
             const url = new URL(window.location.href)
-            const returnTo = url.searchParams.get('returnTo') || '/robots'
+            const returnTo = url.searchParams.get('returnTo') || '/buyer'
             
             console.log('[useAuth] checkAuth: Found session, redirecting to:', returnTo, 'from path:', currentPath)
             router.push(returnTo)
@@ -172,6 +186,9 @@ export function useAuth() {
         
         // Manejar eventos específicos de autenticación
         if (event === 'SIGNED_IN') {
+          // Limpiar modo demo al iniciar sesión
+          clearDemoMode()
+          
           // Identificar usuario en MarketFit chat
           identifyUserInChat(session?.user || null, supabase)
           
@@ -190,7 +207,7 @@ export function useAuth() {
           if (currentPath.startsWith('/auth') && !isPasswordResetFlow) {
             // Obtener el returnTo desde la URL
             const url = new URL(window.location.href)
-            const returnTo = url.searchParams.get('returnTo') || '/robots'
+            const returnTo = url.searchParams.get('returnTo') || '/buyer'
             
             console.log('[useAuth] SIGNED_IN event detected, redirecting to:', returnTo, 'from path:', currentPath)
             
@@ -200,6 +217,9 @@ export function useAuth() {
             console.log('[useAuth] SIGNED_IN event detected but ignoring redirect - user is in password reset flow:', currentPath)
           }
         } else if (event === 'SIGNED_OUT') {
+          // Limpiar modo demo al cerrar sesión
+          clearDemoMode()
+          
           // Don't redirect to /auth when on OAuth callback page: after Facebook/LinkedIn
           // redirect we can get a spurious SIGNED_OUT before the session is rehydrated,
           // which would wrongly send the user to /auth and lose their session.
@@ -252,6 +272,9 @@ export function useAuth() {
   // Función para iniciar sesión con email/password
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     
+    // Limpiar modo demo antes de iniciar sesión
+    clearDemoMode()
+    
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -267,6 +290,8 @@ export function useAuth() {
   // Función para iniciar sesión con OAuth
   const signInWithOAuth = useCallback(async (provider: Provider) => {
     
+    // Limpiar modo demo antes de iniciar sesión
+    clearDemoMode()
     
     try {
       // Clear any existing auth state to prevent PKCE conflicts
@@ -321,6 +346,9 @@ export function useAuth() {
   // Función para registrar usuario con email/password
   const signUpWithEmail = useCallback(async (email: string, password: string) => {
     
+    // Limpiar modo demo antes de registrar
+    clearDemoMode()
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -346,6 +374,9 @@ export function useAuth() {
       
       // Limpiar cualquier estado local relacionado con la autenticación
       setUser(null)
+      
+      // Limpiar modo demo
+      clearDemoMode()
       
       // Limpiar cookies del navegador relacionadas con Supabase
       const cookiesToClear = [

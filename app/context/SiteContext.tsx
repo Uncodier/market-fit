@@ -93,10 +93,22 @@ export interface SiteSettings {
   team_members?: TeamMember[] | null
   team_roles?: { name: string; permissions: string[]; description?: string }[] | null
   org_structure?: Record<string, any> | null
+  currency?: string
   created_at?: string
   updated_at?: string
   competitors?: CompetitorUrl[] | null
   focus_mode?: number
+  shop?: {
+    hero_title?: string
+    hero_subtitle?: string
+    hero_cta_label?: string
+    hero_image_url?: string
+    free_shipping_threshold?: number | null
+    return_policy_summary?: string
+    trust_badges?: any[]
+    payment_methods?: string[]
+    default_delivery_options?: string[]
+  } | null
   business_model?: {
     b2b?: boolean
     b2c?: boolean
@@ -193,6 +205,28 @@ export interface SiteSettings {
     }
   } | null
   calendars?: RoundRobinCalendar[] | null
+  shop?: {
+    hero_title?: string
+    hero_subtitle?: string
+    hero_cta_label?: string
+    hero_image_url?: string
+    free_shipping_threshold?: number | null
+    return_policy_summary?: string
+    trust_badges?: Array<{
+      title: string
+      subtitle: string
+      icon: string
+    }>
+    payment_methods?: Array<'card' | 'cash_on_pickup' | 'bank_transfer'>
+    default_delivery_options?: Array<'pickup' | 'ship' | 'none' | 'dine_in'>
+    bank_transfer?: {
+      bank_name?: string
+      account_holder?: string
+      account_number?: string
+      routing_number?: string
+      instructions?: string
+    }
+  } | null
   branding?: {
     brand_essence?: string
     brand_personality?: string
@@ -932,7 +966,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // 5. No sites available
       // 6. Not already on create-site page or auth pages
       // 7. Not trying to redirect FROM create-site (this was the bug!)
-      const isBuyerOrMarketplace = pathname.startsWith('/buyer') || pathname.startsWith('/marketplace');
+      const isCommerceSurface = 
+        pathname.startsWith('/buyer') || 
+        pathname.startsWith('/marketplace') ||
+        pathname.startsWith('/shop') ||
+        pathname.startsWith('/book') ||
+        pathname.startsWith('/cart');
 
       // Case A: No sites at all -> go to buyer/orders instead of create-site
       if (
@@ -944,7 +983,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         sites.length === 0 && 
         !pathname.startsWith('/create-site') && 
         !pathname.startsWith('/auth/') &&
-        !isBuyerOrMarketplace &&
+        !isCommerceSurface &&
         supabaseRef.current
       ) {
         router.push('/buyer')
@@ -962,7 +1001,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         !pathname.startsWith('/auth/') &&
         !pathname.startsWith('/create-site') &&
         !pathname.startsWith('/demo') &&
-        !isBuyerOrMarketplace &&
+        !isCommerceSurface &&
         supabaseRef.current
       ) {
         router.push('/projects')
@@ -1078,6 +1117,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                 team_members: parseJsonField(settingsData.team_members, []),
                 team_roles: parseJsonField(settingsData.team_roles, []),
                 org_structure: parseJsonField(settingsData.org_structure, {}),
+                calendars: parseJsonField(settingsData.calendars, []),
                 activities: parseJsonField(settingsData.activities, {
                   daily_resume_and_stand_up: { status: 'default' },
                   local_lead_generation: { status: 'default' },
@@ -1151,6 +1191,18 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   retention: { metrics: [], actions: [], tactics: [] },
                   referral: { metrics: [], actions: [], tactics: [] }
                 }),
+                shop: parseJsonField(settingsData.shop, {
+                  hero_title: "",
+                  hero_subtitle: "",
+                  hero_cta_label: "Shop Now",
+                  hero_image_url: "",
+                  free_shipping_threshold: null,
+                  return_policy_summary: "30-Day Returns",
+                  trust_badges: [],
+                  payment_methods: ['card', 'cash_on_pickup'],
+                  default_delivery_options: ['pickup', 'ship']
+                }),
+                currency: settingsData.currency || "USD",
                 business_model: (() => {
                   const parsed = parseJsonField(settingsData.business_model, { b2b: false, b2c: false, b2b2c: false });
                   return parsed;
@@ -1480,12 +1532,14 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Parse JSON fields similar to what we do in handleSetCurrentSite
       if (data) {
         data.social_media = parseJsonField(data.social_media, []);
+        data.calendars = parseJsonField(data.calendars, []);
         data.goals = parseJsonField(data.goals, {
           quarterly: '',
           yearly: '',
           fiveYear: '',
           tenYear: ''
         });
+        data.shop = parseJsonField(data.shop, null);
         // Add other fields as needed based on where it's used
       }
       
@@ -1558,6 +1612,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
         formattedSettings.team_roles = Array.isArray(settings.team_roles) ? settings.team_roles : [];
       }
       
+      if (settings.calendars !== undefined) {
+        formattedSettings.calendars = Array.isArray(settings.calendars) ? settings.calendars : [];
+      }
+      
       // Nuevos campos migrados de site a settings
       if (settings.competitors !== undefined) {
         formattedSettings.competitors = Array.isArray(settings.competitors) ? settings.competitors : [];
@@ -1565,6 +1623,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       if (settings.focus_mode !== undefined) {
         formattedSettings.focus_mode = typeof settings.focus_mode === 'number' ? settings.focus_mode : 50;
+      }
+      
+      if (settings.shop !== undefined) {
+        formattedSettings.shop = typeof settings.shop === 'object' ? settings.shop : null;
       }
       
       // Handle channels field

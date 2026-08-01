@@ -1,12 +1,16 @@
 /**
  * Format a numeric value to a currency string
  */
-export function formatCurrency(value: number): string {
+export function formatCurrency(value: number, currency = 'USD'): string {
+  // ISO 4217 zero-decimal currencies
+  const zeroDecimalCurrencies = ['JPY', 'BIF', 'CLP', 'DJF', 'GNF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'];
+  const isZeroDecimal = zeroDecimalCurrencies.includes(currency.toUpperCase());
+
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    currency: currency,
+    minimumFractionDigits: isZeroDecimal ? 0 : 2,
+    maximumFractionDigits: isZeroDecimal ? 0 : 2,
   }).format(value);
 }
 

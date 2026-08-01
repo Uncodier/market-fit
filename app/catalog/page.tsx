@@ -149,7 +149,7 @@ export default function CatalogPage() {
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="flex flex-col gap-6">
           <div className={cn(viewType === 'table' ? "bg-card rounded-xl shadow-sm border border-border overflow-hidden" : "")}>
-            {isLoading ? (
+            {!currentSite || isLoading ? (
               <div className="p-6 space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-12 w-full" />

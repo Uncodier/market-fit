@@ -119,8 +119,26 @@ export interface Database {
           delivered_at: string | null
           notes: string | null
           user_id: string
+          assigned_to: string | null
+          last_lat: number | null
+          last_lng: number | null
+          last_located_at: string | null
           created_at: string
           updated_at: string
+        }
+        Insert: any
+        Update: any
+      }
+      shipment_location_pings: {
+        Row: {
+          id: string
+          site_id: string
+          shipment_id: string
+          user_id: string
+          lat: number
+          lng: number
+          accuracy: number | null
+          recorded_at: string
         }
         Insert: any
         Update: any
@@ -138,6 +156,7 @@ export interface Database {
           applies_to: 'all' | 'selected_items'
           min_order_amount: number | null
           usage_limit: number | null
+          usage_limit_per_user: number | null
           usage_count: number
           status: 'draft' | 'active' | 'paused' | 'expired'
           starts_at: string | null
@@ -154,6 +173,16 @@ export interface Database {
           id: string
           promotion_id: string
           catalog_item_id: string
+          site_id: string
+        }
+        Insert: any
+        Update: any
+      }
+      promotion_catalog_categories: {
+        Row: {
+          id: string
+          promotion_id: string
+          catalog_category_id: string
           site_id: string
         }
         Insert: any

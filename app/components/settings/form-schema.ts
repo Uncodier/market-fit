@@ -73,6 +73,7 @@ export const siteFormSchema = z.object({
     b2c: z.boolean().optional().default(false),
     b2b2c: z.boolean().optional().default(false)
   }).optional().default({ b2b: false, b2c: false, b2b2c: false }),
+  currency: z.string().optional(),
   about: z.string().optional(),
   company_size: z.string().optional(),
   products: z.array(z.object({
@@ -509,7 +510,16 @@ export const siteFormSchema = z.object({
       title: z.string(),
       subtitle: z.string(),
       icon: z.string()
-    })).max(3).optional().default([])
+    })).max(3).optional().default([]),
+    payment_methods: z.array(z.enum(['card', 'cash_on_pickup', 'bank_transfer'])).optional().default(['card', 'cash_on_pickup']),
+    default_delivery_options: z.array(z.enum(['pickup', 'ship', 'none', 'dine_in'])).optional().default(['pickup', 'ship']),
+    bank_transfer: z.object({
+      bank_name: z.string().optional(),
+      account_holder: z.string().optional(),
+      account_number: z.string().optional(),
+      routing_number: z.string().optional(),
+      instructions: z.string().optional()
+    }).optional()
   }).optional().default({
     hero_title: "",
     hero_subtitle: "",
@@ -517,7 +527,10 @@ export const siteFormSchema = z.object({
     hero_image_url: "",
     free_shipping_threshold: null,
     return_policy_summary: "30-Day Returns",
-    trust_badges: []
+    trust_badges: [],
+    payment_methods: ['card', 'cash_on_pickup'],
+    default_delivery_options: ['pickup', 'ship'],
+    bank_transfer: {}
   }),
   
   // Customer Journey Configuration

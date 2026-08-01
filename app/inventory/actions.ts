@@ -5,6 +5,35 @@ import { createClient } from "@/lib/supabase/server";
 import { Location, InventoryLevel } from "@/app/types";
 import { InventoryLevelWithCatalog, InventoryParams } from "./types";
 
+export async function findOrCreateLocation(siteId: string, name: string) {
+  try {
+    const supabase = await createClient();
+    const { data: existing } = await supabase
+      .from("locations")
+      .select("*")
+      .eq("site_id", siteId)
+      .ilike("name", name)
+      .limit(1)
+      .single();
+
+    if (existing) {
+      return { location: existing as Location };
+    }
+
+    const { data: newLocation, error: createError } = await supabase
+      .from("locations")
+      .insert({ site_id: siteId, name, is_default: false, is_active: true })
+      .select()
+      .single();
+
+    if (createError) throw new Error(createError.message);
+    revalidatePath(`/inventory`);
+    return { location: newLocation as Location };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
 // Locations
 export async function listLocations(siteId: string) {
   try {
@@ -34,6 +63,24 @@ export async function upsertLocation(location: Partial<Location>) {
     if (error) throw new Error(error.message);
     revalidatePath(`/inventory`);
     return { data: data as Location };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function deleteLocation(locationId: string, siteId: string) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("locations")
+      .delete()
+      .eq("id", locationId)
+      .eq("site_id", siteId);
+
+    if (error) throw new Error(error.message);
+    revalidatePath(`/inventory`);
+    revalidatePath(`/settings`);
+    return { success: true };
   } catch (error: any) {
     return { error: error.message };
   }

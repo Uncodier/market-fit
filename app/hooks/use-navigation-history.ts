@@ -47,7 +47,8 @@ const routeTitles: Record<string, string> = {
   'people': 'People',
   'integrations': 'Integrations',
   'context': 'Context',
-  'applications': 'Applications'
+  'applications': 'Applications',
+  'pos': 'POS'
 }
 
 /**

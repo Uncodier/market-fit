@@ -10,7 +10,7 @@ import { PlusCircle, Trash2, ChevronDown, ChevronRight, Home } from "../ui/icons
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { ActionFooter } from "../ui/card-footer"
 import { type SiteFormValues as SiteFormValuesType } from "./form-schema"
-import { listLocations, upsertLocation } from "@/app/inventory/actions"
+import { listLocations, upsertLocation, deleteLocation } from "@/app/inventory/actions"
 import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
 import {
@@ -99,7 +99,19 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
   }, [locationsList, expandedLocations])
 
   // Remove location
-  const removeLocation = useCallback((index: number) => {
+  const removeLocation = useCallback(async (index: number) => {
+    const locationToRemove = locationsList[index];
+    
+    // If it has an ID, it's saved in the database
+    if (locationToRemove?.id && currentSite?.id) {
+      const res = await deleteLocation(locationToRemove.id, currentSite.id);
+      if (res.error) {
+        toast.error(res.error);
+        return; // Don't remove from UI if db deletion failed
+      }
+      toast.success("Location removed");
+    }
+
     const newLocations = locationsList.filter((_, i) => i !== index)
     setLocationsList(newLocations)
     
@@ -113,7 +125,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
       }
     })
     setExpandedLocations(newExpanded)
-  }, [locationsList, expandedLocations])
+  }, [locationsList, expandedLocations, currentSite?.id])
   
   // Handle location field update
   const handleLocationUpdate = useCallback((index: number, field: string, value: string) => {

@@ -6,7 +6,7 @@ import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
+import { format, formatDistanceToNow } from "date-fns"
 import { Send, ExternalLink } from "@/app/components/ui/icons"
 import Link from "next/link"
 
@@ -142,9 +142,21 @@ export function KanbanView({
                                     </div>
                                   </div>
 
-                                  <div className="text-xs text-muted-foreground mb-2 truncate">
-                                    Tracking: {shipment.tracking_number || 'Not assigned'}
+                                  <div className="text-xs text-muted-foreground mb-2 truncate flex flex-col gap-1">
+                                    <span>Carrier: {shipment.carrier || 'Not assigned'}</span>
+                                    <span>Tracking: {shipment.tracking_number || 'Not assigned'}</span>
                                   </div>
+                                  
+                                  {shipment.assignee_profile && (
+                                    <div className="text-xs mb-2 pt-2 border-t flex justify-between items-center text-muted-foreground">
+                                      <span className="font-medium text-foreground truncate">{shipment.assignee_profile.name}</span>
+                                      {shipment.last_located_at && (
+                                        <span className="text-[10px] shrink-0">
+                                          {formatDistanceToNow(new Date(shipment.last_located_at), { addSuffix: true })}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
 
                                   <div className="flex items-center justify-between pt-2 border-t border-border">
                                     <div className="text-xs text-muted-foreground flex items-center">

@@ -156,7 +156,7 @@ export function CalendarSection() {
             Create shared booking pages that assign meetings to team members.
           </p>
         </div>
-        {!editingCalendar && (
+        {!(editingCalendar && !calendars.some(c => c.id === editingCalendar.id)) && (
           <Button onClick={handleAddCalendar} size="sm" variant="outline" className="gap-2">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Calendar

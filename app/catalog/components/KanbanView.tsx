@@ -7,14 +7,12 @@ import { Badge } from "@/app/components/ui/badge"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { CatalogItem } from "@/app/types"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Archive, DatabaseIcon, Edit } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import Link from "next/link"
 
-const KIND_COLUMNS = [
-  { id: 'product', name: 'Products', icon: Archive },
-  { id: 'service', name: 'Services', icon: DatabaseIcon }
-]
+
 
 interface KanbanViewProps {
   items: CatalogItem[]
@@ -25,6 +23,12 @@ export function KanbanView({
   items, 
   onUpdateKind
 }: KanbanViewProps) {
+  const { t } = useLocalization()
+  const KIND_COLUMNS = [
+    { id: 'product', name: t('catalog.kind.products') || 'Products', icon: Archive },
+    { id: 'service', name: t('catalog.kind.services') || 'Services', icon: DatabaseIcon }
+  ]
+
   // Group items by kind
   const itemsByKind = React.useMemo(() => {
     const grouped: Record<string, CatalogItem[]> = {}
@@ -117,7 +121,7 @@ export function KanbanView({
                                     <div className="flex items-center justify-between pt-2 border-t border-border">
                                       <div className="font-semibold text-foreground">
                                         {item.target_sale_price != null 
-                                          ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.target_sale_price)
+                                          ? new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(item.target_sale_price)
                                           : <span className="text-muted-foreground">-</span>
                                         }
                                       </div>

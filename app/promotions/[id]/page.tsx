@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
-import { getPromotion, upsertPromotion, listPromotionItems, setPromotionItems, deletePromotion } from "../actions"
-import { listCatalogItems } from "@/app/catalog/actions"
+import { getPromotion, upsertPromotion, listPromotionItems, setPromotionItems, deletePromotion, listPromotionCategories, setPromotionCategories } from "../actions"
+import { listCatalogItems, listCatalogCategories } from "@/app/catalog/actions"
 import { PromotionWithCampaign } from "../types"
 import { CatalogItem } from "@/app/types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -33,14 +34,19 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
   
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
+  
+  const [catalogCategories, setCatalogCategories] = useState<any[]>([])
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
 
   useEffect(() => {
     async function load() {
       if (!currentSite) return
-      const [{ data, error }, catalogRes, itemsRes] = await Promise.all([
+      const [{ data, error }, catalogRes, itemsRes, catsListRes, promoCatsRes] = await Promise.all([
         getPromotion(params.id),
         listCatalogItems({ siteId: currentSite.id, pageSize: 1000 }),
-        listPromotionItems(params.id, currentSite.id)
+        listPromotionItems(params.id, currentSite.id),
+        listCatalogCategories(currentSite.id),
+        listPromotionCategories(params.id, currentSite.id)
       ])
       
       if (error) {
@@ -50,6 +56,10 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
       }
       if (catalogRes.data) setCatalogItems(catalogRes.data)
       if (itemsRes.data) setSelectedItemIds(itemsRes.data.map((i: any) => i.catalog_item_id))
+      
+      if (catsListRes.data) setCatalogCategories(catsListRes.data)
+      if (promoCatsRes.data) setSelectedCategoryIds(promoCatsRes.data.map((c: any) => c.catalog_category_id))
+        
       setLoading(false)
     }
     load()
@@ -79,10 +89,18 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
     const { error: promoError } = await upsertPromotion(promo)
     if (promoError) toast.error(promoError)
     
-    // Save items if applicable
+    // Save items/categories if applicable
     if (promo.applies_to === 'selected_items') {
+      if (selectedItemIds.length === 0 && selectedCategoryIds.length === 0) {
+        toast.error("Select at least one product or category")
+        setSaving(false)
+        return
+      }
       const { error: itemsError } = await setPromotionItems(promo.id, currentSite.id, selectedItemIds)
       if (itemsError) toast.error(itemsError)
+      
+      const { error: catsError } = await setPromotionCategories(promo.id, currentSite.id, selectedCategoryIds)
+      if (catsError) toast.error(catsError)
     }
     
     if (!promoError) toast.success("Saved successfully")
@@ -179,38 +197,67 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Entire Order</SelectItem>
-                    <SelectItem value="selected_items">Specific Catalog Items</SelectItem>
+                    <SelectItem value="selected_items">Specific products or categories</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {promo.applies_to === 'selected_items' && (
-                <div className="border rounded-md p-4 max-h-[300px] overflow-y-auto space-y-2">
-                  <Label>Select items</Label>
-                  {catalogItems.map(item => (
-                    <div key={item.id} className="flex items-center space-x-2 py-1">
-                      <Checkbox 
-                        id={`item-${item.id}`}
-                        checked={selectedItemIds.includes(item.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) setSelectedItemIds([...selectedItemIds, item.id])
-                          else setSelectedItemIds(selectedItemIds.filter(id => id !== item.id))
-                        }}
-                      />
-                      <label htmlFor={`item-${item.id}`} className="text-sm cursor-pointer">{item.name}</label>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="border rounded-md p-4 max-h-[300px] overflow-y-auto space-y-2 bg-muted/20">
+                    <Label className="block mb-2">Select Categories</Label>
+                    {catalogCategories.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">No categories found</p>
+                    )}
+                    {catalogCategories.map(cat => (
+                      <div key={cat.id} className="flex items-center space-x-2 py-1">
+                        <Checkbox 
+                          id={`cat-${cat.id}`}
+                          checked={selectedCategoryIds.includes(cat.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedCategoryIds([...selectedCategoryIds, cat.id])
+                            else setSelectedCategoryIds(selectedCategoryIds.filter(id => id !== cat.id))
+                          }}
+                        />
+                        <label htmlFor={`cat-${cat.id}`} className="text-sm cursor-pointer">{cat.name}</label>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="border rounded-md p-4 max-h-[300px] overflow-y-auto space-y-2 bg-muted/20">
+                    <Label className="block mb-2">Select Products</Label>
+                    {catalogItems.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">No products found</p>
+                    )}
+                    {catalogItems.map(item => (
+                      <div key={item.id} className="flex items-center space-x-2 py-1">
+                        <Checkbox 
+                          id={`item-${item.id}`}
+                          checked={selectedItemIds.includes(item.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedItemIds([...selectedItemIds, item.id])
+                            else setSelectedItemIds(selectedItemIds.filter(id => id !== item.id))
+                          }}
+                        />
+                        <label htmlFor={`item-${item.id}`} className="text-sm cursor-pointer">{item.name}</label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4 pt-4 border-t">
                 <div className="space-y-2">
-                  <Label>Minimum Order Amount (Subtotal)</Label>
+                  <Label>Minimum Order Amount</Label>
                   <Input type="number" value={promo.min_order_amount || ''} onChange={e => setPromo({...promo, min_order_amount: e.target.value ? parseFloat(e.target.value) : undefined})} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Usage Limit (Max total uses)</Label>
-                  <Input type="number" value={promo.usage_limit || ''} onChange={e => setPromo({...promo, usage_limit: e.target.value ? parseInt(e.target.value) : undefined})} />
+                  <Label>Global Usage Limit</Label>
+                  <Input type="number" placeholder="Unlimited" value={promo.usage_limit || ''} onChange={e => setPromo({...promo, usage_limit: e.target.value ? parseInt(e.target.value) : undefined})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Usage Limit Per User</Label>
+                  <Input type="number" placeholder="Unlimited" value={promo.usage_limit_per_user || ''} onChange={e => setPromo({...promo, usage_limit_per_user: e.target.value ? parseInt(e.target.value) : undefined})} />
                 </div>
               </div>
             </CardContent>

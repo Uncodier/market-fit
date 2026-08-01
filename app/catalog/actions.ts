@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { CatalogItem } from "@/app/types";
 import { CatalogListParams, CatalogListResponse, CatalogAvailabilityResult } from "./types";
+import { attachCatalogRelationSummaries } from "./relation-summaries";
 
 export async function listCatalogCategories(siteId: string) {
   try {
@@ -63,6 +64,7 @@ export async function listCatalogItems({
       .from("catalog_items")
       .select("*", { count: "exact" })
       .eq("site_id", siteId)
+      .is("parent_id", null)
       .order("created_at", { ascending: false });
 
     if (kind !== 'all') {
@@ -98,9 +100,13 @@ export async function listCatalogItems({
       return { data: [], count: 0, error: error.message };
     }
 
-    return { 
-      data: data as CatalogItem[], 
-      count: count || 0 
+    const withRelations = await attachCatalogRelationSummaries(
+      (data || []) as CatalogItem[]
+    );
+
+    return {
+      data: withRelations,
+      count: count || 0,
     };
   } catch (error: any) {
     return { data: [], count: 0, error: error.message };
@@ -122,6 +128,28 @@ export async function getCatalogItem(id: string) {
   return { data: data as CatalogItem };
 }
 
+async function ensurePassRedeemsCatalogItem(
+  siteId: string,
+  passCatalogItemId: string,
+  reservableCatalogItemId: string
+) {
+  const supabase = await createClient()
+  const { data: existing } = await supabase
+    .from('pass_redeemable_items')
+    .select('id')
+    .eq('pass_catalog_item_id', passCatalogItemId)
+    .eq('reservable_catalog_item_id', reservableCatalogItemId)
+    .maybeSingle()
+
+  if (existing) return
+
+  await supabase.from('pass_redeemable_items').insert({
+    site_id: siteId,
+    pass_catalog_item_id: passCatalogItemId,
+    reservable_catalog_item_id: reservableCatalogItemId,
+  })
+}
+
 export async function upsertCatalogItem(item: Partial<CatalogItem>) {
   try {
     const supabase = await createClient();
@@ -137,6 +165,21 @@ export async function upsertCatalogItem(item: Partial<CatalogItem>) {
 
     if (error) {
       return { error: error.message };
+    }
+
+    // Plan-as-calendar: when a recurring plan becomes reservable, link existing passes to it
+    if (data?.id && data.site_id && data.is_recurring && data.is_reservation) {
+      const { data: planItems } = await supabase
+        .from('subscription_plan_items')
+        .select('digital_catalog_item_id, digital_catalog_item:catalog_items!digital_catalog_item_id(digital_subtype)')
+        .eq('plan_catalog_item_id', data.id)
+
+      for (const pi of planItems || []) {
+        const subtype = (pi as any).digital_catalog_item?.digital_subtype
+        if (subtype === 'pass' && pi.digital_catalog_item_id) {
+          await ensurePassRedeemsCatalogItem(data.site_id, pi.digital_catalog_item_id, data.id)
+        }
+      }
     }
 
     revalidatePath(`/catalog`);
@@ -232,6 +275,11 @@ export async function getCatalogAvailability(
   const commerceSettings = settingsRes.data?.commerce as any || { stock_shortage_policy: 'allow' };
   const policy = commerceSettings.stock_shortage_policy || 'allow';
 
+  // 0. Check purchasable flag (parents with variants are not purchasable directly)
+  if (item.is_purchasable === false) {
+    return { sellable: false, reason: "Item requires variant selection", policy: 'block' };
+  }
+
   // 1. Check status
   if (item.status !== 'active') {
     return { sellable: false, reason: "Item is archived", policy };
@@ -305,6 +353,20 @@ export async function addSubscriptionPlanItem(siteId: string, planCatalogItemId:
     .insert({ site_id: siteId, plan_catalog_item_id: planCatalogItemId, digital_catalog_item_id: digitalCatalogItemId })
     .select()
     .single()
+    
+  if (!error) {
+    // Auto-link: if plan is reservable, make the pass redeemable against the plan itself
+    const { data: plan } = await supabase
+      .from('catalog_items')
+      .select('is_reservation')
+      .eq('id', planCatalogItemId)
+      .single()
+      
+    if (plan?.is_reservation) {
+      await ensurePassRedeemsCatalogItem(siteId, digitalCatalogItemId, planCatalogItemId)
+    }
+  }
+
   return { data, error: error?.message }
 }
 

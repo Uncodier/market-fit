@@ -158,7 +158,7 @@ export default function OrdersPage() {
         <div className="p-8 space-y-4 bg-muted/30 flex-1">
           <div className="flex flex-col gap-6">
             <div className={viewType === "kanban" ? "" : "bg-card rounded-xl shadow-sm border border-border overflow-hidden"}>
-              {isLoading ? (
+              {!currentSite || isLoading ? (
                 <div className="p-6 space-y-4">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton key={i} className="h-12 w-full" />
@@ -220,7 +220,7 @@ export default function OrdersPage() {
                               </TableCell>
                               <TableCell>
                                 <div className="font-medium">
-                                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(order.total)}
+                                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(order.total)}
                                 </div>
                               </TableCell>
                               <TableCell>

@@ -1,3 +1,5 @@
+"use server"
+
 import { getSiteInfoBySlug } from "@/app/book/actions";
 import { createServiceClient } from "@/lib/supabase/server";
 
@@ -10,15 +12,18 @@ export async function getShopSite(slug: string) {
 export async function getShopCatalog(siteId: string) {
   const supabase = await createServiceClient(true);
   
-  // 1. Get active items with their categories
+  // 1. Get active items with their categories (only parents or items without variants)
   const { data: items, error } = await supabase
     .from("catalog_items")
     .select(`
       *,
-      category:catalog_categories(name)
+      category:catalog_categories(name),
+      raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
     `)
     .eq("site_id", siteId)
     .eq("status", "active")
+    .eq("is_marketplace_listed", true)
+    .is("parent_id", null)
     .order("name");
     
   if (error || !items) return { data: [], error: error?.message };
@@ -85,9 +90,10 @@ export async function getShopCatalog(siteId: string) {
 
     return {
       ...item,
+      item_specs: ((item as any).raw_specs || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((cis: any) => cis.item_spec).filter(Boolean),
       target_sale_price: finalPrice,
       _shop: {
-        categoryName: item.category?.[0]?.name || null,
+        categoryName: (Array.isArray(item.category) ? item.category[0]?.name : item.category?.name) || null,
         sellable,
         availableQty
       }
@@ -95,6 +101,92 @@ export async function getShopCatalog(siteId: string) {
   });
     
   return { data: enrichedItems };
+}
+
+export type ShopOwnedAccess = {
+  catalogItemId: string;
+  canBook: boolean;
+};
+
+export async function getShopUserOwnedItems(siteId: string): Promise<ShopOwnedAccess[]> {
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const now = new Date().toISOString();
+  
+  // 1. Get active entitlements
+  const { data: entitlements } = await supabase
+    .from('entitlements')
+    .select('catalog_item_id')
+    .eq('site_id', siteId)
+    .eq('buyer_user_id', user.id)
+    .eq('status', 'active')
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
+    .or(`uses_remaining.is.null,uses_remaining.gt.0`);
+    
+  // 2. Get active subscriptions
+  const { data: subscriptions } = await supabase
+    .from('subscriptions')
+    .select('catalog_item_id')
+    .eq('site_id', siteId)
+    .eq('buyer_user_id', user.id)
+    .eq('status', 'active');
+    
+  const ownedIds = new Set<string>();
+  entitlements?.forEach((e: any) => ownedIds.add(e.catalog_item_id!));
+  subscriptions?.forEach((s: any) => ownedIds.add(s.catalog_item_id!));
+  
+  const ownedArray = Array.from(ownedIds);
+  if (ownedArray.length === 0) return [];
+
+  // Direct: owned catalog items that are themselves reservable (plan-as-calendar / owned service)
+  const { data: ownedCatalog } = await supabase
+    .from('catalog_items')
+    .select('id, is_reservation')
+    .in('id', ownedArray);
+
+  const reservableOwned = new Set(
+    (ownedCatalog || []).filter((c: any) => c.is_reservation).map((c: any) => c.id)
+  );
+
+  // Plans → passes they grant (pass may or may not already be in ownedArray)
+  const { data: planItems } = await supabase
+    .from('subscription_plan_items')
+    .select('plan_catalog_item_id, digital_catalog_item_id')
+    .in('plan_catalog_item_id', ownedArray);
+
+  const planPassIds = (planItems || [])
+    .map((pi: any) => pi.digital_catalog_item_id)
+    .filter(Boolean);
+
+  const passIdsToCheck = Array.from(new Set([...ownedArray, ...planPassIds]));
+
+  // Indirect: passes with at least one redeemable (calendar on plan or another service)
+  const { data: passRedeemables } = await supabase
+    .from('pass_redeemable_items')
+    .select('pass_catalog_item_id')
+    .in('pass_catalog_item_id', passIdsToCheck);
+
+  const passesWithRedeemables = new Set(
+    (passRedeemables || []).map((r: any) => r.pass_catalog_item_id)
+  );
+
+  const plansWithBookablePasses = new Set<string>();
+  (planItems || []).forEach((pi: any) => {
+    if (passesWithRedeemables.has(pi.digital_catalog_item_id)) {
+      plansWithBookablePasses.add(pi.plan_catalog_item_id);
+    }
+  });
+
+  return ownedArray.map(id => ({
+    catalogItemId: id,
+    canBook:
+      reservableOwned.has(id) ||
+      passesWithRedeemables.has(id) ||
+      plansWithBookablePasses.has(id),
+  }));
 }
 
 export async function getShopLocations(siteId: string) {
