@@ -50,7 +50,6 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
   const router = useRouter()
   const session = user ? { user } : null
   const [items, setItems] = useState<MarketplaceItem[]>(initialItems)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>([])
   const [isCartLoaded, setIsCartLoaded] = useState(false)
@@ -378,11 +377,6 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
       {/* Top Spacer for floating header */}
       <div className="h-4 w-full shrink-0" />
       <CommerceShellHeader
-        mobileLeading={
-          <button className={`md:hidden ${shellClasses.iconButton}`} onClick={() => setIsMobileMenuOpen(true)}>
-            <Menu className="h-6 w-6" />
-          </button>
-        }
         brand={
           <Link href="/marketplace" className="text-xl font-black tracking-tight text-primary hover:opacity-80 transition-opacity">
             MARKETPLACE
@@ -392,7 +386,7 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
           <div className="w-full max-w-xl relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input 
-              type="search" 
+              type="text" 
               placeholder={t('marketplace.searchPlaceholder') || "Search everything..."} 
               className="w-full pl-9 h-9 text-sm bg-muted/50 focus:bg-white dark:focus:bg-gray-950 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-full transition-all outline-none shadow-sm"
               value={searchQuery}
