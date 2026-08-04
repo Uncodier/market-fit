@@ -6,8 +6,14 @@ import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
-export default async function ShopItemPage({ params }: { params: Promise<{ siteSlug: string, itemId: string }> }) {
-  const { siteSlug, itemId } = await params
+export default async function ShopItemPage({ params }: { params: Promise<{ siteSlug: string, itemId: string }> | { siteSlug: string, itemId: string } }) {
+  const resolvedParams = await params;
+  const siteSlug = 'siteSlug' in resolvedParams ? resolvedParams.siteSlug : undefined;
+  const itemId = 'itemId' in resolvedParams ? resolvedParams.itemId : undefined;
+  
+  if (!siteSlug || !itemId) {
+    notFound();
+  }
 
   // Prefer resolving via catalog item (includes site join) so a flaky slug scan
   // does not block the PDP when we already have a stable item id.

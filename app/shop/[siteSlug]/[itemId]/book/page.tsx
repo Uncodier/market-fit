@@ -10,8 +10,8 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { ExitDemoMode } from "@/app/components/commerce/ExitDemoMode"
 
-export default function ShopBookingPage(props: { params: Promise<{ siteSlug: string; itemId: string }> }) {
-  const params = use(props.params)
+export default function ShopBookingPage(props: { params: Promise<{ siteSlug: string; itemId: string }> | { siteSlug: string; itemId: string } }) {
+  const params = use(props.params as any) as { siteSlug: string; itemId: string };
   const router = useRouter()
 
   const { data: site, isLoading: siteLoading } = useSWR(

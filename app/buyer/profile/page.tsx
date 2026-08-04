@@ -26,6 +26,8 @@ export default function BuyerProfilePage() {
     ? `${user.user_metadata.first_name} ${user.user_metadata?.last_name || ''}`.trim()
     : t('buyer.profile.myAccount') || 'My Account'
   const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture
+  // Workspace (profile/projects) lives on app; buyer commerce is proxied under www.
+  const workspaceUrl = 'https://app.makinari.com'
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-2xl mx-auto w-full space-y-8">
@@ -50,7 +52,7 @@ export default function BuyerProfilePage() {
         <Card className="overflow-hidden border-border shadow-sm">
           <CardContent className="p-0">
             <div className="divide-y divide-border">
-              <Link href="/profile?artifact=true" className="block">
+              <Link href={`${workspaceUrl}/profile?artifact=true`} className="block">
                 <div className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3 text-foreground">
                     <User className="w-5 h-5" />

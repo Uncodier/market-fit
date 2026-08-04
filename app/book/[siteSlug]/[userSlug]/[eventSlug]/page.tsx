@@ -65,11 +65,11 @@ import {
 } from "@/app/context/LocalizationContext";
 
 export default function UserBookingPage(props: {
-  params: Promise<{ siteSlug: string; userSlug: string; eventSlug: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  params: Promise<{ siteSlug: string; userSlug: string; eventSlug: string }> | { siteSlug: string; userSlug: string; eventSlug: string };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> | { [key: string]: string | string[] | undefined };
 }) {
-  const params = use(props.params);
-  const searchParamsPromise = use(props.searchParams); // unwrap to prevent Next.js 15 warning
+  const params = use(props.params as any) as { siteSlug: string; userSlug: string; eventSlug: string };
+  const searchParamsPromise = use(props.searchParams as any) as { [key: string]: string | string[] | undefined }; // unwrap to prevent Next.js 15 warning
   // We keep useSearchParams hook for easier client-side query param access
   const searchParams = useSearchParams();
   const siteSlug = params.siteSlug;

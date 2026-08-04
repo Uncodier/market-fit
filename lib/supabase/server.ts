@@ -22,10 +22,18 @@ export async function createClient(skipDemo: boolean = false) {
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: any) {
-          cookieStore.set(name, value, options)
+          try {
+            cookieStore.set(name, value, options)
+          } catch (error) {
+            // Ignore in server components
+          }
         },
         remove(name: string, options: any) {
-          cookieStore.set(name, '', { ...options, maxAge: 0 })
+          try {
+            cookieStore.set(name, '', { ...options, maxAge: 0 })
+          } catch (error) {
+            // Ignore in server components
+          }
         },
       },
     }

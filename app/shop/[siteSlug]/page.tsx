@@ -5,9 +5,15 @@ import ShopClient from "./ShopClient"
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
-export default async function ShopPage({ params }: { params: Promise<{ siteSlug: string }> }) {
-  const { siteSlug } = await params
-  const site = await getShopSite(siteSlug)
+export default async function ShopPage({ params }: { params: Promise<{ siteSlug: string }> | { siteSlug: string } }) {
+  const resolvedParams = await params;
+  const siteSlug = 'siteSlug' in resolvedParams ? resolvedParams.siteSlug : undefined;
+  
+  if (!siteSlug) {
+    notFound();
+  }
+
+  const site = await getShopSite(siteSlug);
   
   if (!site) {
     notFound()

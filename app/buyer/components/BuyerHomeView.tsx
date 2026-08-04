@@ -37,6 +37,8 @@ export function BuyerHomeView({
 }) {
   const { t } = useLocalization()
   const { sites } = useSite()
+  // Workspace (projects/create-site) lives on app; buyer commerce is proxied under www.
+  const workspaceUrl = 'https://app.makinari.com'
   
   const { data, error, isLoading } = useSWR(
     { key: "buyer-portal-summary", scope, ownerSiteId },
@@ -64,7 +66,7 @@ export function BuyerHomeView({
         ? (t("buyer.home.cards.businesses.desc") || "Switch businesses or create a new one.")
         : (t("buyer.home.cards.startSelling.desc") || "Create your business and start selling on Makinari."),
       icon: <Store className="w-6 h-6 text-foreground/70" />,
-      href: sites?.length > 0 ? `/projects?manage=1` : `/create-site`,
+      href: sites?.length > 0 ? `${workspaceUrl}/projects?manage=1` : `${workspaceUrl}/create-site`,
       isPrimary: true,
       count: sites?.length > 0 ? sites.length : undefined
     }] : []),
@@ -300,7 +302,7 @@ export function BuyerHomeView({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {settingsCards.map((card, i) => (
           <Link key={i} href={card.href} className="block group" onClick={() => {
-            if (card.href === '/create-site') {
+            if (card.href.endsWith('/create-site')) {
               if (typeof window !== 'undefined') {
                 sessionStorage.setItem('intentional_create_site_access', 'true')
               }
