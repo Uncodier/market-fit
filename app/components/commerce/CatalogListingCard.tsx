@@ -58,6 +58,9 @@ export function CatalogListingCard({
           <img 
             src={resolveItemImage(item)} 
             alt={item.name} 
+            onError={(e) => {
+              e.currentTarget.style.opacity = '0';
+            }}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
           />
           <span className="absolute top-3 left-3 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-md shadow-sm">

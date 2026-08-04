@@ -42,8 +42,20 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
     }
 
     // 3. Fetch FX rates
-    fetch('/api/fx/rates')
-      .then(res => res.json())
+    const isWww = typeof window !== 'undefined' && window.location.hostname === 'www.makinari.com';
+    const fxUrl = isWww ? 'https://app.makinari.com/api/fx/rates' : '/api/fx/rates';
+
+    fetch(fxUrl)
+      .then(async res => {
+        if (!res.ok) {
+          throw new Error(`FX rates request failed with status: ${res.status}`);
+        }
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('FX rates request returned non-JSON response');
+        }
+        return res.json();
+      })
       .then(data => {
         if (data && data.rates) {
           setRates(data.rates);

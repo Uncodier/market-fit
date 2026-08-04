@@ -470,6 +470,9 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
             <img 
               src={site.settings?.shop?.hero_image_url || resolveItemImage({ name: site.settings?.shop?.hero_title || site.name, description: site.settings?.shop?.hero_subtitle || 'store hero' })} 
               alt="Hero" 
+              onError={(e) => {
+                e.currentTarget.style.opacity = '0';
+              }}
               className="w-full h-full object-cover" 
             />
             {/* Gradient for text readability */}
