@@ -9,6 +9,7 @@ import { usePdpCart } from "@/app/components/commerce/pdp/usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { ExitDemoMode } from "@/app/components/commerce/ExitDemoMode"
+import { useEffect } from "react"
 
 export default function ShopBookingPage(props: { params: Promise<{ siteSlug: string; itemId: string }> | { siteSlug: string; itemId: string } }) {
   const params = use(props.params as any) as { siteSlug: string; itemId: string };
@@ -26,6 +27,12 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
 
   const item = itemData?.data
   const { addToCartStorage } = usePdpCart(site?.id || "")
+
+  useEffect(() => {
+    if (item && site) {
+      document.title = `Book ${item.name} | ${site.name}`
+    }
+  }, [item, site])
 
   if (siteLoading || itemLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-muted/20">Loading...</div>

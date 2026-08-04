@@ -2192,3 +2192,11 @@ export const QrCode = ({ className = "", size = 18, ...props }: IconProps) => (
     </svg>
   </IconWrapper>
 )
+
+export const Share = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor">
+      <path d="M13 5L20 12L13 19V14.5C7.5 14.5 4 16 2 20C3 14 7 9.5 13 9V5Z" />
+    </svg>
+  </IconWrapper>
+)

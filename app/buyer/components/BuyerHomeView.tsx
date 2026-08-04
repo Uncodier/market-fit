@@ -153,23 +153,28 @@ export function BuyerHomeView({
           )}
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {isLoading ? <Skeleton className="h-8 w-48" /> : userName}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {isLoading ? <Skeleton className="h-4 w-32" /> : userEmail}
-          </p>
+          {isLoading ? (
+            <>
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-32 mt-1" />
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold tracking-tight">{userName}</h1>
+              <p className="text-muted-foreground text-sm mt-1">{userEmail}</p>
+            </>
+          )}
         </div>
         {/* Digital Wallet Pass Modal */}
         {!isLoading && scope === "personal" && data?.user?.id && (
-          <div className="ml-auto flex items-stretch shrink-0">
+          <div className="ml-auto flex items-center shrink-0">
             <Dialog>
               <DialogTrigger asChild>
-                <button className="group relative flex items-center gap-3 bg-white dark:bg-zinc-900 border shadow-sm hover:shadow-md pl-2 pr-4 h-16 rounded-2xl transition-all hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1">
+                <button className="group relative flex items-center gap-3 bg-white dark:bg-zinc-900 border shadow-sm hover:shadow-md pl-2 pr-4 h-16 rounded-2xl transition-all hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 shrink-0">
                   <div className="bg-white border rounded-md p-1 shadow-sm overflow-hidden flex-shrink-0 group-hover:scale-[1.02] transition-transform">
                     <QRCode value={`mf:user:${data.user.id}`} size={36} className="rounded-sm" />
                   </div>
-                  <div className="flex flex-col text-left justify-center pr-1">
+                  <div className="flex flex-col text-left justify-center pr-1 whitespace-nowrap min-w-0">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors leading-none mb-0.5">
                       {t("buyer.home.memberPass") || "Member Pass"}
                     </span>

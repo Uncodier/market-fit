@@ -56,6 +56,20 @@ function isChunkLoadError(value: unknown): boolean {
 
 function shouldReload(): boolean {
   try {
+    // URL fallback check in case sessionStorage is disabled/throws (e.g. Safari Private Mode)
+    const url = new URL(window.location.href)
+    const v = url.searchParams.get("_v")
+    if (v) {
+      const ts = Number.parseInt(v, 36)
+      if (!Number.isNaN(ts) && Date.now() - ts < RELOAD_TTL_MS) {
+        return false
+      }
+    }
+  } catch {
+    // Ignore URL parsing errors
+  }
+
+  try {
     const raw = sessionStorage.getItem(RELOAD_FLAG)
     if (!raw) return true
 
@@ -64,6 +78,9 @@ function shouldReload(): boolean {
 
     return Date.now() - ts > RELOAD_TTL_MS
   } catch {
+    // If sessionStorage is disabled and we didn't have a recent _v param,
+    // we default to true to at least try recovering once, but the _v check 
+    // above will prevent the infinite loop on the next iteration.
     return true
   }
 }
@@ -77,6 +94,13 @@ function markReload(): void {
 }
 
 function reloadForNewBuild(): void {
+  // Turbopack HMR emits fake/transient chunk load errors that cause brutal reload loops in dev.
+  // We only need this guard in production for stale deployment chunks.
+  if (process.env.NODE_ENV === "development") {
+    console.error("[ChunkErrorGuard] Ignored chunk load error in development mode.");
+    return;
+  }
+
   if (!shouldReload()) {
     console.error(
       "[ChunkErrorGuard] Chunk load failure persists after a recent reload; aborting auto-reload to avoid a loop."

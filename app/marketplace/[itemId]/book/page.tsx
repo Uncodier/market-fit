@@ -8,6 +8,7 @@ import { usePdpCart } from "@/app/components/commerce/pdp/usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { ExitDemoMode } from "@/app/components/commerce/ExitDemoMode"
+import { useEffect } from "react"
 
 export default function MarketplaceBookingPage(props: { params: Promise<{ itemId: string }> }) {
   const params = use(props.params)
@@ -22,6 +23,15 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
   // Provide marketplace "site_id" which is handled dynamically or we can just pass empty string.
   // Actually, usePdpCart will handle marketplace items correctly if siteId is empty or matches.
   const { addToCartStorage } = usePdpCart(item?.site_id || "")
+
+  useEffect(() => {
+    if (item) {
+      // In marketplace booking, we might not have the site name loaded with the item,
+      // fallback to Marketplace if not available on the item.
+      const siteName = (item as any).site?.name || "Marketplace"
+      document.title = `Book ${item.name} | ${siteName}`
+    }
+  }, [item])
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-muted/20">Loading...</div>

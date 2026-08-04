@@ -34,47 +34,63 @@ export const CartButton = React.forwardRef<HTMLButtonElement, CartButtonProps>(
     if (hideIfEmpty && cartCount === 0) return null
 
     const isShell = variant === "shell"
-    
-    // Default styling applied if it's not the new shell variant
-    const buttonClass = isShell 
-      ? className 
-      : cn("relative rounded-full shadow-sm hover:shadow transition-all", className)
 
-    const content = (
-      <div className="relative inline-flex">
-        <Button 
-          ref={ref}
-          variant={isShell ? "ghost" : variant}
-          className={buttonClass}
-          {...props}
-        >
+    const inner = (
+      <>
         <ShoppingCart className={cn("h-5 w-5", iconClassName)} />
         {subtotal !== undefined && subtotal > 0 && (
           <span className="font-bold ml-2">
             {formatPrice(subtotal, currency)}
           </span>
         )}
-      </Button>
-      {cartCount > 0 && (
-        <span 
-          className={cn(
-            isShell 
-              ? "absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full shadow-sm pointer-events-none z-10"
-              : "absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[11px] font-bold h-6 w-6 flex items-center justify-center rounded-full border-2 border-background shadow-sm pointer-events-none z-10",
-            badgeClassName
-          )}
+      </>
+    )
+
+    const badge = cartCount > 0 ? (
+      <span
+        className={cn(
+          isShell
+            ? "absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full shadow-sm pointer-events-none z-10"
+            : "absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[11px] font-bold h-6 w-6 flex items-center justify-center rounded-full border-2 border-background shadow-sm pointer-events-none z-10",
+          badgeClassName
+        )}
+      >
+        {cartCount}
+      </span>
+    ) : null
+
+    const content = isShell ? (
+      <div className="relative inline-flex shrink-0">
+        <button
+          ref={ref}
+          type="button"
+          className={cn(className)}
+          {...props}
         >
-          {cartCount}
-        </span>
-      )}
-    </div>
-  )
+          {inner}
+        </button>
+        {badge}
+      </div>
+    ) : (
+      <div className="relative inline-flex shrink-0">
+        <Button
+          ref={ref}
+          variant={variant === "shell" ? "ghost" : variant}
+          className={cn("relative rounded-full shadow-sm hover:shadow transition-all", className)}
+          {...props}
+        >
+          {inner}
+        </Button>
+        {badge}
+      </div>
+    )
 
-  if (href) {
-    return <Link href={href} className="inline-flex">{content}</Link>
+    if (href) {
+      return <Link href={href} className="inline-flex">{content}</Link>
+    }
+
+    return content
   }
-
-  return content
-})
+)
 
 CartButton.displayName = "CartButton"

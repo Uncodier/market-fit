@@ -18,6 +18,7 @@ import { resolveItemImage } from "@/app/lib/image-utils"
 import { CartButton } from "../CartButton"
 import { LocaleSelector } from "../LocaleSelector"
 import { CurrencySelector } from "../CurrencySelector"
+import { CommerceShareControl } from "../CommerceShareControl"
 
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { PdpExperience } from "./pdp-experience"
@@ -108,6 +109,12 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
         }
         actions={
           <>
+            <CommerceShareControl 
+              className={`relative ${shellClasses.iconButton} h-9 px-3 gap-1.5 border-0 hover:bg-black/5 dark:hover:bg-white/5 !min-w-0`}
+              iconClassName="h-4 w-4"
+              title={item.name}
+            />
+            
             <CartButton 
               href={`${backUrl}?cart=1`} 
               cartCount={cartCount} 

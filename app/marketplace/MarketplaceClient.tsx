@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useMemo, useEffect } from "react"
-import { ShoppingCart, Search, Menu, X, ArrowRight, CheckCircle, ShieldCheck, Sun, Moon, User } from "@/app/components/ui/icons"
+import { ShoppingCart, Search, Menu, X, ArrowRight, CheckCircle, ShieldCheck, Sun, Moon, User, Globe } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -20,6 +20,12 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu"
 import { hasProductDetails, isAccessOnlyItem } from "@/app/catalog/product-details"
 import { CatalogListingCard } from "@/app/components/commerce/CatalogListingCard"
 import { getSiteInfoBySlug } from "@/app/book/actions"
@@ -43,7 +49,7 @@ interface CartItem extends MarketplaceItem {
 }
 
 export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceItem[] }) {
-  const { t } = useLocalization()
+  const { t, locale, setLocale } = useLocalization()
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const searchParams = useSearchParams()
@@ -59,6 +65,17 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedKind, setSelectedKind] = useState<string>(filterParam === "recurring" ? "recurring" : "all")
   const [selectedSubtype, setSelectedSubtype] = useState<string>("all")
+  
+  useEffect(() => {
+    let title = "Marketplace | Makinari"
+    if (selectedKind !== "all" || selectedSubtype !== "all") {
+      const activeFilter = selectedSubtype !== "all" ? selectedSubtype : selectedKind;
+      const filterLabel = activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1).replace(/_/g, " ");
+      title = `${filterLabel} | Marketplace`
+    }
+    document.title = title
+  }, [selectedKind, selectedSubtype])
+
   const [showOnlyRecurring, setShowOnlyRecurring] = useState(filterParam === "recurring")
 
   // Checkout states
@@ -383,7 +400,7 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
           </Link>
         }
         center={
-          <div className="w-full max-w-xl relative">
+          <div className="w-full relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input 
               type="text" 
@@ -395,30 +412,46 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
           </div>
         }
         actions={
-          <>
-            <CartButton 
-              cartCount={cartCount} 
-              subtotal={subtotal} 
+          <div className="flex items-center gap-1 md:gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className={shellClasses.iconButton}>
+                  <Globe className="h-5 w-5" />
+                  <span className="sr-only">Change language</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setLocale("en")}
+                  className={locale === "en" ? "font-semibold" : undefined}
+                >
+                  English
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setLocale("es")}
+                  className={locale === "es" ? "font-semibold" : undefined}
+                >
+                  Español
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <CartButton
+              cartCount={cartCount}
+              subtotal={subtotal}
               currency={cart[0]?.currency}
               onClick={() => setIsCartOpen(true)}
               variant="shell"
               className={`relative ${shellClasses.iconButton} h-9 px-3 gap-1.5 border-0 hover:bg-black/5 dark:hover:bg-white/5 !min-w-0`}
               iconClassName="h-4 w-4"
             />
-            
-            <LocaleSelector className={`${shellClasses.iconButton} h-9 w-9`} />
-            <button className={`${shellClasses.iconButton} h-9 w-9 relative`} onClick={toggleTheme}>
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">{t("buyer.layout.footer.toggleTheme") || "Toggle theme"}</span>
-            </button>
 
             {session ? (
               <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-1 shrink-0">
                 {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
-                  <img 
-                    src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture} 
-                    alt="Avatar" 
+                  <img
+                    src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture}
+                    alt="Avatar"
                     className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
                   />
                 ) : (
@@ -432,12 +465,26 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
                 href={`/auth?returnTo=${encodeURIComponent("/marketplace")}`}
                 className={`${shellClasses.primaryCta} ml-1`}
               >
-                {t('marketplace.signIn') || 'Sign In'}
+                {t("marketplace.signIn") || "Sign In"}
               </Link>
             )}
-          </>
+          </div>
         }
       />
+      
+      {/* Mobile Search - Visible only on small screens */}
+      <div className="md:hidden px-4 mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Input 
+            type="text" 
+            placeholder={t('marketplace.searchPlaceholder') || "Search everything..."} 
+            className="w-full pl-10 h-12 bg-gray-50 dark:bg-gray-900 border-transparent rounded-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 md:px-8 py-8 md:py-12">
         <div className="flex flex-col md:flex-row gap-8 items-start">

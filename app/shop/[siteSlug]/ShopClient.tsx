@@ -19,6 +19,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { CartButton } from "@/app/components/commerce/CartButton"
+import { CommerceShareControl } from "@/app/components/commerce/CommerceShareControl"
 import { LocaleSelector } from "@/app/components/commerce/LocaleSelector"
 import { CurrencySelector } from "@/app/components/commerce/CurrencySelector"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/app/components/ui/sheet"
@@ -71,6 +72,15 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
   const [orderSuccess, setOrderSuccess] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  
+  useEffect(() => {
+    if (selectedCategory && selectedCategory !== "all") {
+      document.title = `${selectedCategory} | ${site?.name || "Shop"}`
+    } else {
+      document.title = `${site?.name || "Shop"} | Shop`
+    }
+  }, [selectedCategory, site?.name])
+
   const router = useRouter()
 
   // Extract unique categories from items
@@ -352,7 +362,7 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
           </Link>
         }
         center={
-          <div className="w-full max-w-xl relative">
+          <div className="w-full relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input 
               type="text" 
@@ -365,6 +375,11 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
         }
         actions={
           <>
+            <CommerceShareControl 
+              className={`relative ${shellClasses.iconButton} h-9 px-3 gap-1.5 border-0 hover:bg-black/5 dark:hover:bg-white/5 !min-w-0`}
+              iconClassName="h-4 w-4"
+              title={site.name}
+            />
             <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
               <SheetTrigger asChild>
                 <CartButton 
@@ -407,13 +422,6 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
                 />
               </SheetContent>
             </Sheet>
-
-            <LocaleSelector className={`${shellClasses.iconButton} h-9 w-9`} />
-            <button className={`${shellClasses.iconButton} h-9 w-9 relative`} onClick={toggleTheme}>
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">{t("buyer.layout.footer.toggleTheme") || "Toggle theme"}</span>
-            </button>
 
             {session ? (
               <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-1 shrink-0">

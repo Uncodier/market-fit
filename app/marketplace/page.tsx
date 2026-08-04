@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { MarketplaceClient } from "./MarketplaceClient"
 
 export const metadata = {
-  title: 'Marketplace | Makinri',
+  title: 'Marketplace | Makinari',
   description: 'Discover and purchase products, services, and digital assets.',
 }
 

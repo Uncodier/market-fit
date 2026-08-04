@@ -3,8 +3,22 @@ import { getShopSite } from "../actions"
 import { notFound } from "next/navigation"
 import { ProductDetailPage } from "@/app/components/commerce/pdp/ProductDetailPage"
 import { createClient } from "@/lib/supabase/server"
+import { Metadata } from "next"
 
 export const dynamic = "force-dynamic"
+
+export async function generateMetadata({ params }: { params: Promise<{ siteSlug: string, itemId: string }> | { siteSlug: string, itemId: string } }): Promise<Metadata> {
+  const resolvedParams = await params;
+  const itemId = 'itemId' in resolvedParams ? resolvedParams.itemId : undefined;
+  
+  if (!itemId) return { title: 'Shop Item | Makinari' };
+  
+  const item = await getPdpCatalogItem(itemId);
+  if (!item) return { title: 'Shop Item | Makinari' };
+  
+  const siteName = (item as any).site?.name || 'Shop';
+  return { title: `${item.name} | ${siteName}` };
+}
 
 export default async function ShopItemPage({ params }: { params: Promise<{ siteSlug: string, itemId: string }> | { siteSlug: string, itemId: string } }) {
   const resolvedParams = await params;

@@ -11,22 +11,29 @@ type Props = {
 
 export function CommerceShellHeader({ brand, center, actions, mobileLeading, hideCenterOnMobile = true }: Props) {
   return (
-    <div className="sticky top-4 z-40 w-full mb-8 shrink-0">
+    <div className="sticky top-4 z-40 w-full mb-4 md:mb-8 shrink-0">
       <ExitDemoMode />
       <div className="px-4 w-full max-w-7xl mx-auto pointer-events-none">
-        <header className="pointer-events-auto relative rounded-full border dark:border-white/10 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#030303]/60 shadow-sm flex items-center justify-between px-3 md:px-6 py-2 w-full gap-2 md:gap-4 transition-all min-h-[56px]">
-          <div className="flex items-center gap-2 md:gap-4 relative z-10 flex-1 min-w-0">
+        <header className="pointer-events-auto relative rounded-full border dark:border-white/10 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#030303]/60 shadow-sm flex items-center px-3 md:px-6 py-2 w-full gap-2 md:gap-4 transition-all min-h-[56px]">
+          <div className="flex items-center gap-2 md:gap-4 relative z-10 shrink-0">
             {mobileLeading}
             {brand}
           </div>
-          
-          {center && (
-            <div className={`${hideCenterOnMobile ? 'hidden md:flex' : 'flex'} flex-[1_1_auto] md:flex-[2_1_auto] justify-center relative z-0 min-w-0 px-2 md:px-4`}>
-              {center}
-            </div>
-          )}
 
-          <div className="flex items-center justify-end gap-1 md:gap-3 relative z-10 flex-1 min-w-0 ml-auto">
+          {/* flex-1 spacer always present so actions stay right on mobile when search is hidden */}
+          <div className="flex-1 min-w-0 flex justify-center px-2 md:px-4">
+            {center ? (
+              <div
+                className={`${
+                  hideCenterOnMobile ? "hidden md:block" : "block"
+                } w-full max-w-2xl`}
+              >
+                {center}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex items-center justify-end gap-1 md:gap-3 relative z-10 shrink-0">
             {actions}
           </div>
         </header>
