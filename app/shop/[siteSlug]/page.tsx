@@ -1,4 +1,4 @@
-import { getShopSite, getShopCatalog, getShopLocations, getShopUserOwnedItems } from "./actions"
+import { getShopSite, getShopCatalog, getShopCategories, getShopLocations, getShopUserOwnedItems, getShopItemsByIds } from "./actions"
 import { notFound } from "next/navigation"
 import ShopClient from "./ShopClient"
 import { Metadata } from "next"
@@ -31,19 +31,27 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
     notFound()
   }
 
-  const [{ data: catalogItems }, { data: locations }, ownedItemIds] = await Promise.all([
-    getShopCatalog(site.id),
+  const [{ data: catalogItems, count, totalPages }, categories, { data: locations }, ownedItemIds] = await Promise.all([
+    getShopCatalog(site.id, { page: 1, pageSize: 20 }),
+    getShopCategories(site.id),
     getShopLocations(site.id),
     getShopUserOwnedItems(site.id)
   ])
+
+  const ownedIds = ownedItemIds.map(o => o.catalogItemId)
+  const { data: ownedItemsData } = await getShopItemsByIds(site.id, ownedIds)
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
       <ShopClient 
         site={site} 
         initialCatalog={catalogItems as any[]} 
+        initialCategories={categories}
+        initialCount={count || 0}
+        initialTotalPages={totalPages || 0}
         locations={locations as any[]} 
         ownedItemIds={ownedItemIds}
+        ownedItemsData={ownedItemsData as any[]}
       />
     </div>
   )

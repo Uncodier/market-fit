@@ -275,14 +275,9 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               </div>
                 </CardContent>
                 <ActionFooter>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => router.push('/catalog')}>
-                      Cancel
-                    </Button>
-                    <Button type="button" onClick={handleSave} disabled={saving} className="gap-2">
-                      <Save size={16} /> Save Changes
-                    </Button>
-                  </div>
+                  <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
+                    Save Changes
+                  </Button>
                 </ActionFooter>
               </Card>
 

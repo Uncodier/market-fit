@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { CatalogItem } from "@/app/types"
 import { checkoutCart, CheckoutLine } from "@/app/commerce/checkout"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
@@ -25,13 +25,16 @@ import { CurrencySelector } from "@/app/components/commerce/CurrencySelector"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/app/components/ui/sheet"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
+import { Pagination } from "@/app/components/ui/pagination"
 import { CatalogListingCard } from "@/app/components/commerce/CatalogListingCard"
+import { CatalogListingCardSkeleton } from "@/app/components/commerce/CatalogListingCardSkeleton"
 import { CartSidebar } from "./CartSidebar"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
 import { ShopOwnedAccess } from "./actions"
+import { useShopCatalog } from "./useShopCatalog"
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 
 interface CartItem extends CatalogItem {
@@ -41,7 +44,25 @@ interface CartItem extends CatalogItem {
   reservationEnd?: string;
 }
 
-export default function ShopClient({ site, initialCatalog, locations, ownedItemIds = [] }: { site: any, initialCatalog: CatalogItem[], locations: any[], ownedItemIds?: ShopOwnedAccess[] }) {
+export default function ShopClient({ 
+  site, 
+  initialCatalog,
+  initialCategories,
+  initialCount,
+  initialTotalPages,
+  locations, 
+  ownedItemIds = [],
+  ownedItemsData = []
+}: { 
+  site: any, 
+  initialCatalog: CatalogItem[], 
+  initialCategories: string[],
+  initialCount: number,
+  initialTotalPages: number,
+  locations: any[], 
+  ownedItemIds?: ShopOwnedAccess[],
+  ownedItemsData?: CatalogItem[]
+}) {
   const { theme, toggleTheme } = useTheme()
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
@@ -73,6 +94,14 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   
+  const { catalogItems, page, setPage, totalPages, isLoading } = useShopCatalog(
+    site.id,
+    initialCatalog,
+    initialTotalPages,
+    searchQuery,
+    selectedCategory
+  )
+  
   useEffect(() => {
     if (selectedCategory && selectedCategory !== "all") {
       document.title = `${selectedCategory} | ${site?.name || "Shop"}`
@@ -83,27 +112,10 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
 
   const router = useRouter()
 
-  // Extract unique categories from items
-  const categories = useMemo(() => {
-    const cats = new Set<string>();
-    initialCatalog.forEach((item: any) => {
-      if (item._shop?.categoryName) {
-        cats.add(item._shop.categoryName);
-      }
-    });
-    return Array.from(cats).sort();
-  }, [initialCatalog]);
-
-  const allFilteredItems = initialCatalog.filter((i: any) => 
-    i._shop?.sellable !== false && // Hide if explicitly not sellable
-    (searchQuery ? i.name.toLowerCase().includes(searchQuery.toLowerCase()) : true) &&
-    (selectedCategory === "all" || i._shop?.categoryName === selectedCategory)
-  )
-
+  const categories = initialCategories || [];
   const ownedAccessMap = new Map(ownedItemIds?.map(o => [o.catalogItemId, o.canBook]) || [])
-
-  const ownedItems = allFilteredItems.filter(i => ownedAccessMap.has(i.id))
-  const catalogItems = allFilteredItems.filter(i => !ownedAccessMap.has(i.id))
+  const ownedItems = ownedItemsData || []
+  const sellableCatalogItems = catalogItems.filter((i: any) => i._shop?.sellable !== false)
 
   const addToCart = (item: CatalogItem) => {
     if (ownedAccessMap.has(item.id)) {
@@ -560,9 +572,7 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
           
           {ownedItems.length === 0 && (
             <div className="flex items-center gap-4">
-              <span className="text-gray-500 font-medium whitespace-nowrap">
-                {allFilteredItems.length} {allFilteredItems.length === 1 ? (t('shop.product') || 'product') : (t('shop.products') || 'products')}
-              </span>
+              {/* Note: In paginated view, this shows items on current page */}
             </div>
           )}
         </div>
@@ -606,7 +616,7 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
         )}
 
         {/* Regular Catalog Section */}
-        {(catalogItems.length > 0 || ownedItems.length === 0) && (
+        {(sellableCatalogItems.length > 0 || ownedItems.length === 0) && (
           <div>
             {ownedItems.length > 0 && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -615,21 +625,25 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
                 </h2>
                 <div className="flex items-center gap-4">
                   <span className="text-gray-500 font-medium whitespace-nowrap">
-                    {catalogItems.length} {catalogItems.length === 1 ? (t('shop.product') || 'product') : (t('shop.products') || 'products')}
+                    {sellableCatalogItems.length} {sellableCatalogItems.length === 1 ? (t('shop.product') || 'product') : (t('shop.products') || 'products')}
                   </span>
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-              {catalogItems.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <CatalogListingCardSkeleton key={i} />
+                ))
+              ) : sellableCatalogItems.length === 0 ? (
                 <div className="col-span-full py-24 text-center">
                   <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900">{t('shop.noProductsFound') || 'No products found'}</h3>
                   <p className="text-gray-500">{t('shop.tryAdjustingSearch') || 'Try adjusting your search query.'}</p>
                 </div>
               ) : (
-                catalogItems.map(item => (
+                sellableCatalogItems.map(item => (
                   <CatalogListingCard
                     key={item.id}
                     item={item}
@@ -644,6 +658,16 @@ export default function ShopClient({ site, initialCatalog, locations, ownedItemI
                 ))
               )}
             </div>
+
+            {totalPages > 1 && (
+              <div className="mt-12 flex justify-center border-t border-gray-200 dark:border-gray-800 pt-8">
+                <Pagination 
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                />
+              </div>
+            )}
           </div>
         )}
       </main>

@@ -9,24 +9,74 @@ export async function getShopSite(slug: string) {
   return site;
 }
 
-export async function getShopCatalog(siteId: string) {
+export async function getShopCategories(siteId: string) {
+  const supabase = await createServiceClient(true);
+  const { data, error } = await supabase
+    .from("catalog_items")
+    .select('category:catalog_categories(name)')
+    .eq("site_id", siteId)
+    .eq("status", "active")
+    .eq("is_marketplace_listed", true)
+    .is("parent_id", null);
+    
+  if (error || !data) return [];
+  
+  const cats = new Set<string>();
+  data.forEach((item: any) => {
+    const catName = Array.isArray(item.category) ? item.category[0]?.name : item.category?.name;
+    if (catName) cats.add(catName);
+  });
+  
+  return Array.from(cats).sort();
+}
+
+export async function getShopCatalog(
+  siteId: string, 
+  options: { page?: number, pageSize?: number, search?: string, category?: string } = {}
+) {
+  const { page = 1, pageSize = 20, search = '', category = 'all' } = options;
   const supabase = await createServiceClient(true);
   
   // 1. Get active items with their categories (only parents or items without variants)
-  const { data: items, error } = await supabase
+  let query = supabase
     .from("catalog_items")
     .select(`
       *,
       category:catalog_categories(name),
       raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
-    `)
+    `, { count: 'exact' })
     .eq("site_id", siteId)
     .eq("status", "active")
     .eq("is_marketplace_listed", true)
-    .is("parent_id", null)
-    .order("name");
+    .is("parent_id", null);
+
+  if (search) {
+    query = query.ilike('name', `%${search}%`);
+  }
+
+  // Category is applied after fetch enrichment when filtering by name on the join
+  // is unreliable; for category filter we resolve matching category IDs first.
+  if (category !== 'all') {
+    const { data: cats } = await supabase
+      .from("catalog_categories")
+      .select("id")
+      .eq("site_id", siteId)
+      .eq("name", category);
+    const catIds = (cats || []).map((c) => c.id);
+    if (catIds.length === 0) {
+      return { data: [], count: 0, totalPages: 0, page, pageSize };
+    }
+    query = query.in("category_id", catIds);
+  }
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  query = query.range(from, to).order("name");
+
+  const { data: items, count, error } = await query;
     
-  if (error || !items) return { data: [], error: error?.message };
+  if (error || !items) return { data: [], count: 0, totalPages: 0, page, pageSize, error: error?.message };
   
   // 2. Get default price list to override target_sale_price
   const { data: defaultList } = await supabase
@@ -100,7 +150,82 @@ export async function getShopCatalog(siteId: string) {
     };
   });
     
-  return { data: enrichedItems };
+  return { 
+    data: enrichedItems, 
+    count: count || 0,
+    totalPages: count ? Math.ceil(count / pageSize) : 0,
+    page,
+    pageSize
+  };
+}
+
+export async function getShopItemsByIds(siteId: string, ids: string[]) {
+  if (!ids || ids.length === 0) return { data: [] };
+  const supabase = await createServiceClient(true);
+
+  const { data: items, error } = await supabase
+    .from("catalog_items")
+    .select(`
+      *,
+      category:catalog_categories(name),
+      raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
+    `)
+    .eq("site_id", siteId)
+    .in("id", ids);
+
+  if (error || !items) return { data: [], error: error?.message };
+
+  const [levelsRes, settingsRes, defaultList] = await Promise.all([
+    supabase.from("inventory_levels").select("catalog_item_id, quantity").eq("site_id", siteId),
+    supabase.from("settings").select("commerce").eq("site_id", siteId).single(),
+    supabase.from("price_lists").select("id").eq("site_id", siteId).eq("is_default", true).maybeSingle(),
+  ]);
+
+  let priceMap = new Map();
+  if (defaultList.data) {
+    const { data: prices } = await supabase
+      .from("price_list_items")
+      .select("catalog_item_id, unit_price")
+      .eq("price_list_id", defaultList.data.id);
+    if (prices?.length) priceMap = new Map(prices.map((p) => [p.catalog_item_id, p.unit_price]));
+  }
+
+  const inventoryMap = new Map<string, number>();
+  for (const level of levelsRes.data || []) {
+    inventoryMap.set(level.catalog_item_id, (inventoryMap.get(level.catalog_item_id) || 0) + Number(level.quantity));
+  }
+  const policy = (settingsRes.data?.commerce as any)?.stock_shortage_policy || "allow";
+
+  const byId = new Map(
+    items.map((item) => {
+      let sellable = true;
+      let availableQty: number | undefined;
+      if (item.availability_mode === "manual") {
+        sellable = item.availability_status === "available";
+      } else if (item.availability_mode === "inventory") {
+        availableQty = inventoryMap.get(item.id) || 0;
+        sellable = availableQty > 0 || policy !== "block";
+      }
+      return [
+        item.id,
+        {
+          ...item,
+          item_specs: ((item as any).raw_specs || [])
+            .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+            .map((cis: any) => cis.item_spec)
+            .filter(Boolean),
+          target_sale_price: priceMap.get(item.id) ?? item.target_sale_price,
+          _shop: {
+            categoryName: (Array.isArray(item.category) ? item.category[0]?.name : item.category?.name) || null,
+            sellable,
+            availableQty,
+          },
+        },
+      ];
+    })
+  );
+
+  return { data: ids.map((id) => byId.get(id)).filter(Boolean) };
 }
 
 export type ShopOwnedAccess = {

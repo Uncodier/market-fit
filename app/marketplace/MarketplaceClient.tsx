@@ -20,6 +20,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
+import { Pagination } from "@/app/components/ui/pagination"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,10 +29,12 @@ import {
 } from "@/app/components/ui/dropdown-menu"
 import { hasProductDetails, isAccessOnlyItem } from "@/app/catalog/product-details"
 import { CatalogListingCard } from "@/app/components/commerce/CatalogListingCard"
+import { CatalogListingCardSkeleton } from "@/app/components/commerce/CatalogListingCardSkeleton"
 import { getSiteInfoBySlug } from "@/app/book/actions"
 import { listLocations } from "@/app/inventory/actions"
 import { MarketplaceCartPanel } from "./MarketplaceCartPanel"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { useMarketplaceProducts } from "./useMarketplaceProducts"
 
 interface MarketplaceItem extends CatalogItem {
   site: {
@@ -48,14 +51,21 @@ interface CartItem extends MarketplaceItem {
   reservationEnd?: string
 }
 
-export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceItem[] }) {
+export function MarketplaceClient({ 
+  initialItems, 
+  initialCount,
+  initialTotalPages 
+}: { 
+  initialItems: MarketplaceItem[],
+  initialCount: number,
+  initialTotalPages: number
+}) {
   const { t, locale, setLocale } = useLocalization()
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const searchParams = useSearchParams()
   const router = useRouter()
   const session = user ? { user } : null
-  const [items, setItems] = useState<MarketplaceItem[]>(initialItems)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>([])
   const [isCartLoaded, setIsCartLoaded] = useState(false)
@@ -65,7 +75,21 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedKind, setSelectedKind] = useState<string>(filterParam === "recurring" ? "recurring" : "all")
   const [selectedSubtype, setSelectedSubtype] = useState<string>("all")
+  const [showOnlyRecurring, setShowOnlyRecurring] = useState(filterParam === "recurring")
   
+  const { items: rawItems, page, setPage, totalPages, isLoading } = useMarketplaceProducts(
+    initialItems,
+    initialTotalPages,
+    searchQuery,
+    selectedKind,
+    selectedSubtype,
+    showOnlyRecurring,
+    filterParam
+  )
+  const items = rawItems as MarketplaceItem[];
+
+  const effectiveKind = selectedKind === 'recurring' ? 'all' : selectedKind;
+
   useEffect(() => {
     let title = "Marketplace | Makinari"
     if (selectedKind !== "all" || selectedSubtype !== "all") {
@@ -75,8 +99,6 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
     }
     document.title = title
   }, [selectedKind, selectedSubtype])
-
-  const [showOnlyRecurring, setShowOnlyRecurring] = useState(filterParam === "recurring")
 
   // Checkout states
   const [checkoutLoading, setCheckoutLoading] = useState(false)
@@ -165,18 +187,6 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
     if (orderSuccess || !isCartLoaded) return;
     localStorage.setItem('market-cart-marketplace', JSON.stringify(cart));
   }, [cart, orderSuccess, isCartLoaded])
-
-  // Handle 'recurring' as a special pseudo-kind for UI
-  const effectiveKind = selectedKind === 'recurring' ? 'all' : selectedKind;
-  const showOnlyRecurringFilter = showOnlyRecurring || selectedKind === 'recurring';
-
-  const filteredItems = items.filter(i => {
-    if (searchQuery && !i.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
-    if (effectiveKind !== 'all' && i.kind !== effectiveKind) return false
-    if (effectiveKind === 'digital_asset' && selectedSubtype !== 'all' && i.digital_subtype !== selectedSubtype) return false
-    if (showOnlyRecurringFilter && !i.is_recurring) return false
-    return true
-  })
 
   const addToCart = (item: MarketplaceItem) => {
     if (item.is_reservation && !isAccessOnlyItem(item)) {
@@ -517,7 +527,11 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
 
           <div className="flex-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredItems.map(item => (
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <CatalogListingCardSkeleton key={i} showSeller={true} />
+                ))
+              ) : items.map(item => (
                 <CatalogListingCard 
                   key={item.id}
                   item={item}
@@ -529,19 +543,31 @@ export function MarketplaceClient({ initialItems }: { initialItems: MarketplaceI
               ))}
             </div>
             
-            {filteredItems.length === 0 && (
+            {items.length === 0 && !isLoading && (
               <div className="text-center py-20 px-4">
                 <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                   <Search className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <h3 className="text-xl font-bold mb-2">
-                  {items.length === 0 ? (t('marketplace.empty.title') || "No marketplace listings yet") : (t('marketplace.noResults') || "No results found")}
+                  {initialCount === 0
+                    ? (t('marketplace.empty.title') || "No marketplace listings yet")
+                    : (t('marketplace.noResults') || "No results found")}
                 </h3>
                 <p className="text-muted-foreground max-w-md mx-auto">
-                  {items.length === 0
+                  {initialCount === 0
                     ? (t('marketplace.empty.desc') || "Sellers can list catalog items on the marketplace by enabling the Marketplace toggle on each item.")
                     : (t('marketplace.noResultsDesc') || "Try adjusting your search or filters to find what you're looking for.")}
                 </p>
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="mt-12 flex justify-center border-t border-gray-200 dark:border-gray-800 pt-8">
+                <Pagination 
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                />
               </div>
             )}
           </div>

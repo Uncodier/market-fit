@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const digitalSubtype = searchParams.get('digitalSubtype')
     const siteId = searchParams.get('siteId')
     const search = searchParams.get('search')
+    const isRecurring = searchParams.get('is_recurring') === 'true'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
@@ -36,6 +37,10 @@ export async function GET(request: Request) {
 
     if (search) {
       query = query.ilike('name', `%${search}%`)
+    }
+
+    if (isRecurring) {
+      query = query.eq('is_recurring', true)
     }
 
     const from = (page - 1) * limit
