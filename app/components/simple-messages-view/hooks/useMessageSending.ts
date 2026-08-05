@@ -316,6 +316,10 @@ export const useMessageSending = ({
           
           // Notify parent component about the new instance with no-navigation flag
           onNewInstanceCreated?.(response.data.instance_id, false)
+
+          // Poll until running/failed — same path as resume; don't rely only on Realtime
+          console.log('🔄 Starting polling for new robot instance:', response.data.instance_id)
+          startInstancePolling?.('robot', response.data.instance_id, false)
         }
       } else {
         console.error('Robot workflow API error:', response.error)

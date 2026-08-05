@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, type ReactNode } from "react"
+import { useState, useEffect, useCallback, type ReactNode } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { Button } from "@/app/components/ui/button"
@@ -25,33 +25,38 @@ export function InstanceNodeChildren({
 }) {
   const [nodes, setNodes] = useState<InstanceNode[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const supabase = createClient()
   const router = useRouter()
   const { setRobotsViewMode } = useLayout()
 
+  const fetchNodes = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('instance_nodes')
+      .select('*')
+      .eq('parent_instance_log_id', parentLogId)
+
+    if (data) setNodes(data as InstanceNode[])
+  }, [parentLogId])
+
   useEffect(() => {
-    const fetchNodes = async () => {
-      const { data } = await supabase
-        .from('instance_nodes')
-        .select('*')
-        .eq('parent_instance_log_id', parentLogId)
-      
-      if (data) setNodes(data as InstanceNode[])
-    }
+    const supabase = createClient()
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let visibilityTimeout: NodeJS.Timeout | null = null
+
     fetchNodes()
 
-    const subscription = supabase
+    channel = supabase
       .channel(`nodes_log_${parentLogId}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
         table: 'instance_nodes',
         filter: `parent_instance_log_id=eq.${parentLogId}`
-      }, (payload) => {
+      }, (payload: any) => {
         if (payload.eventType === 'INSERT') {
           setNodes(prev => {
-            if (prev.some(n => n.id === payload.new.id)) return prev;
-            return [...prev, payload.new as InstanceNode];
+            if (prev.some(n => n.id === payload.new.id)) return prev
+            return [...prev, payload.new as InstanceNode]
           })
         } else if (payload.eventType === 'UPDATE') {
           setNodes(prev => prev.map(n => n.id === payload.new.id ? payload.new as InstanceNode : n))
@@ -61,13 +66,29 @@ export function InstanceNodeChildren({
       })
       .subscribe()
 
-    return () => {
-      subscription.unsubscribe()
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        if (visibilityTimeout) clearTimeout(visibilityTimeout)
+        visibilityTimeout = setTimeout(() => {
+          fetchNodes()
+        }, 1000)
+      }
     }
-  }, [parentLogId, supabase])
+
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      if (visibilityTimeout) clearTimeout(visibilityTimeout)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      if (channel) {
+        try { supabase.removeChannel(channel) } catch { /* ignore */ }
+      }
+    }
+  }, [parentLogId, fetchNodes])
 
   const handleCreateNode = async () => {
     setIsLoading(true)
+    const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     
     // Get instance for site_id

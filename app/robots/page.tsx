@@ -78,7 +78,7 @@ export default function RobotsPage() {
 function RobotsPageContent() {
   const { isLayoutCollapsed, robotsViewMode, setRobotsViewMode } = useLayout()
   const { currentSite, refreshSites } = useSite()
-  const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount, setAutoRefreshEnabled } = useRobots()
+  const { getAllInstances, getInstanceById, refreshRobots, isLoading: isLoadingRobots, refreshCount } = useRobots()
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -453,14 +453,11 @@ function RobotsPageContent() {
         setPendingInstanceId(null)
         setShouldAutoConvertTab(false)
         
-        // Re-enable auto-refresh after conversion
-        setAutoRefreshEnabled(true)
-        
         // Don't update URL immediately - let the local state handle the selection
         // The URL will be updated when the user manually navigates or when the component unmounts
       }
     }
-  }, [pendingInstanceId, shouldAutoConvertTab, allInstances, setAutoRefreshEnabled])
+  }, [pendingInstanceId, shouldAutoConvertTab, allInstances])
 
   // Derive instance status flags
   const isInstanceStarting = !!(activeRobotInstance && ['starting','pending','initializing'].includes((activeRobotInstance as any).status))
@@ -690,12 +687,10 @@ function RobotsPageContent() {
     // Still, try to clear the old name
     currentParams.delete('name')
     router.replace(`/robots?${currentParams.toString()}`)
-    // Disable auto-refresh to prevent subscription from interfering
-    setAutoRefreshEnabled(false)
-    // Set the pending instance ID for tab conversion
+    // Keep Realtime enabled so INSERT/UPDATE events can populate the new instance
     setPendingInstanceId(instanceId)
     setShouldAutoConvertTab(true)
-  }, [setAutoRefreshEnabled, searchParams, router])
+  }, [searchParams, router])
 
   // Calculate how many tabs can fit based on available width
   // Always calculates - no early returns, uses defaults if measurements aren't ready

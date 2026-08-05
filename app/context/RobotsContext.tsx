@@ -53,22 +53,64 @@ interface RobotsProviderProps {
   children: ReactNode;
 }
 
+function extractRequirementId(name?: string): string | null {
+  if (!name) return null
+  if (name.startsWith('req-runner-')) return name.replace('req-runner-', '')
+  if (name.startsWith('req-maint-')) return name.replace('req-maint-', '')
+  return null
+}
+
+function applyRequirementTitles(robots: Robot[], requirements: Array<{ id: string; title: string; backlog: any }>): Robot[] {
+  if (!requirements.length) return robots
+
+  const reqMap = Object.fromEntries(
+    requirements.map((req) => [req.id, { title: req.title, backlog: req.backlog }])
+  )
+
+  return robots.map((r) => {
+    if (r.name?.startsWith('req-runner-')) {
+      const reqId = r.name.replace('req-runner-', '')
+      const req = reqMap[reqId]
+      if (!req) return r
+      return { ...r, requirement_title: req.title, requirement_backlog: req.backlog }
+    }
+    if (r.name?.startsWith('req-maint-')) {
+      const reqId = r.name.replace('req-maint-', '')
+      const req = reqMap[reqId]
+      if (!req) return r
+      return { ...r, requirement_title: `QA | ${req.title}`, requirement_backlog: req.backlog }
+    }
+    return r
+  })
+}
+
+async function fetchRequirementTitles(requirementIds: string[]) {
+  if (requirementIds.length === 0) return []
+  const supabase = createClient()
+  const { data: requirements } = await supabase
+    .from('requirements')
+    .select('id, title, backlog')
+    .in('id', requirementIds)
+  return requirements || []
+}
+
 export function RobotsProvider({ children }: RobotsProviderProps) {
   const { currentSite } = useSite()
   const [error, setError] = useState<string | null>(null)
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null)
   const [refreshCount, setRefreshCount] = useState(0)
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true)
+  // Kept for API compatibility; Realtime always mutates (never gated).
+  const [, setAutoRefreshEnabled] = useState(true)
   const robotsSubscriptionRef = useRef<any>(null)
   const robotsSubscriptionStatusRef = useRef<string>('INIT')
   const isResubscribingRef = useRef(false)
+  const enrichingRef = useRef(false)
   
   const [isSiteContextReady, setIsSiteContextReady] = useState(false)
   
   useEffect(() => {
     if (currentSite?.id) {
-      // 🆕 Eliminado delay artificial para mayor velocidad
       setIsSiteContextReady(true)
     } else {
       setIsSiteContextReady(false)
@@ -91,43 +133,49 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         throw robotsError
       }
       setError(null)
-      
-      if (robots && robots.length > 0) {
-        const requirementIds = robots.map((r: any) => {
-          if (r.name?.startsWith('req-runner-')) return r.name.replace('req-runner-', '');
-          if (r.name?.startsWith('req-maint-')) return r.name.replace('req-maint-', '');
-          return null;
-        }).filter(Boolean);
 
-        if (requirementIds.length > 0) {
-          const { data: requirements } = await supabase
-            .from('requirements')
-            .select('id, title, backlog')
-            .in('id', requirementIds);
-
-          if (requirements && requirements.length > 0) {
-            const reqMap = Object.fromEntries(requirements.map((req: any) => [req.id, { title: req.title, backlog: req.backlog }]));
-            robots.forEach((r: any) => {
-              if (r.name?.startsWith('req-runner-')) {
-                const reqId = r.name.replace('req-runner-', '');
-                if (reqMap[reqId]) {
-                  r.requirement_title = reqMap[reqId].title;
-                  r.requirement_backlog = reqMap[reqId].backlog;
-                }
-              } else if (r.name?.startsWith('req-maint-')) {
-                const reqId = r.name.replace('req-maint-', '');
-                if (reqMap[reqId]) {
-                  r.requirement_title = `QA | ${reqMap[reqId].title}`;
-                  r.requirement_backlog = reqMap[reqId].backlog;
-                }
-              }
-            });
-          }
-        }
-      }
-      return robots || []
+      // Return instances immediately; requirement titles enrich in a follow-up effect
+      return (robots || []) as Robot[]
     }
   )
+
+  // Non-blocking enrichment of requirement titles after instances paint
+  useEffect(() => {
+    if (!robotsData?.length || enrichingRef.current) return
+
+    const needsEnrichment = robotsData.some(
+      (r) => extractRequirementId(r.name) && !r.requirement_title
+    )
+    if (!needsEnrichment) return
+
+    const requirementIds = Array.from(
+      new Set(robotsData.map((r) => extractRequirementId(r.name)).filter(Boolean) as string[])
+    )
+    if (requirementIds.length === 0) return
+
+    let cancelled = false
+    enrichingRef.current = true
+
+    fetchRequirementTitles(requirementIds)
+      .then((requirements) => {
+        if (cancelled || !requirements.length) return
+        mutate((current) => {
+          if (!current?.length) return current
+          return applyRequirementTitles(current, requirements)
+        }, false)
+      })
+      .catch((err) => {
+        console.warn('[RobotsContext] Failed to enrich requirement titles:', err)
+      })
+      .finally(() => {
+        enrichingRef.current = false
+      })
+
+    return () => {
+      cancelled = true
+      enrichingRef.current = false
+    }
+  }, [robotsData, mutate])
 
   const { robotsByActivity, totalRunningRobots } = useMemo(() => {
     const organized: RobotsByActivity = {}
@@ -252,7 +300,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
           filter: `site_id=eq.${currentSite.id}`
         },
         (payload: any) => {
-          if (!autoRefreshEnabled) return
+          // Always apply Realtime updates — never gate on autoRefreshEnabled
           if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
           
           const delay = payload.eventType === 'INSERT' ? 300 : 500
@@ -263,8 +311,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       )
       .subscribe((status: string, err?: any) => {
         robotsSubscriptionStatusRef.current = status
-        if (status === 'SUBSCRIBED') {
-        } else if (status === 'CHANNEL_ERROR') {
+        if (status === 'CHANNEL_ERROR') {
           console.warn('🔄 [RobotsContext] Temporary subscription error (auto-reconnecting...)', err || '')
         } else if (status === 'TIMED_OUT') {
           console.warn('🔄 [RobotsContext] Subscription timed out (auto-reconnecting...)')
@@ -272,7 +319,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       })
 
     robotsSubscriptionRef.current = channel
-  }, [autoRefreshEnabled, currentSite?.id, isSiteContextReady, teardownRealtimeSubscription, mutate])
+  }, [currentSite?.id, isSiteContextReady, teardownRealtimeSubscription, mutate])
 
   const ensureRealtimeHealthy = useCallback(() => {
     if (!currentSite?.id || !isSiteContextReady) return
@@ -312,6 +359,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         clearTimeout(debounceTimer)
         debounceTimer = setTimeout(() => {
           if (currentSite?.id && isSiteContextReady) {
+            ensureRealtimeHealthy()
             mutate()
           }
         }, 1000)
@@ -322,7 +370,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       document.removeEventListener('visibilitychange', handleVisibility)
       clearTimeout(debounceTimer)
     }
-  }, [currentSite?.id, isSiteContextReady, mutate])
+  }, [currentSite?.id, isSiteContextReady, mutate, ensureRealtimeHealthy])
 
   useEffect(() => {
     return () => {

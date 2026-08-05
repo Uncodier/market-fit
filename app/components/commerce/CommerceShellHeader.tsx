@@ -14,14 +14,13 @@ export function CommerceShellHeader({ brand, center, actions, mobileLeading, hid
     <div className="sticky top-4 z-40 w-full mb-4 md:mb-8 shrink-0">
       <ExitDemoMode />
       <div className="px-4 w-full max-w-7xl mx-auto pointer-events-none">
-        <header className="pointer-events-auto relative rounded-full border dark:border-white/10 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#030303]/60 shadow-sm flex items-center px-3 md:px-6 py-2 w-full gap-2 md:gap-4 transition-all min-h-[56px]">
-          <div className="flex items-center gap-2 md:gap-4 relative z-10 shrink-0">
+        <header className="pointer-events-auto relative rounded-full border dark:border-white/10 border-black/5 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#030303]/60 shadow-sm flex items-center px-3 md:px-6 py-2 w-full transition-all min-h-[56px] justify-between">
+          <div className="flex flex-1 items-center gap-2 md:gap-4 relative z-10 shrink-0 min-w-0">
             {mobileLeading}
             {brand}
           </div>
 
-          {/* flex-1 spacer always present so actions stay right on mobile when search is hidden */}
-          <div className="flex-1 min-w-0 flex justify-center px-2 md:px-4">
+          <div className="flex shrink-1 justify-center px-2 md:px-4 w-full max-w-[50%]">
             {center ? (
               <div
                 className={`${
@@ -33,7 +32,7 @@ export function CommerceShellHeader({ brand, center, actions, mobileLeading, hid
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end gap-1 md:gap-3 relative z-10 shrink-0">
+          <div className="flex flex-1 items-center justify-end gap-1 md:gap-3 relative z-10 shrink-0 min-w-0">
             {actions}
           </div>
         </header>

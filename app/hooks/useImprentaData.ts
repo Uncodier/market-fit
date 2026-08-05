@@ -112,8 +112,8 @@ export function useImprentaData(instanceId?: string, siteId?: string) {
 
   const isLoading = Boolean(isSwrLoading && !data && instanceId)
 
-  const refreshImprentaData = useCallback(async () => {
-    await mutate()
+  const refreshImprentaData = useCallback(async (): Promise<ImprentaData | undefined> => {
+    return mutate()
   }, [mutate])
 
   const updateImprentaCache = useCallback(

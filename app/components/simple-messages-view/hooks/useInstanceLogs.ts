@@ -29,7 +29,17 @@ export const useInstanceLogs = ({
   const [debugInfo, setDebugInfo] = useState<any>(null)
   const currentRobotInstanceIdRef = useRef<string | null>(null)
   const prevSiteIdRef = useRef<string | null>(null)
-  const isResubscribingRef = useRef(false)
+  const waitingForMessageIdRef = useRef<string | null | undefined>(waitingForMessageId)
+  const onResponseReceivedRef = useRef(onResponseReceived)
+  const loadInstanceLogsRef = useRef<() => Promise<void>>(async () => {})
+
+  useEffect(() => {
+    waitingForMessageIdRef.current = waitingForMessageId
+  }, [waitingForMessageId])
+
+  useEffect(() => {
+    onResponseReceivedRef.current = onResponseReceived
+  }, [onResponseReceived])
 
   // SWR for logs
   const { data: logsData, isLoading: isLoadingLogs, mutate } = useSWR(
@@ -94,9 +104,9 @@ export const useInstanceLogs = ({
 
       // If we just fetched logs and the latest one is a response, clear thinking state
       if (fetchedLogs.length > 0) {
-        const latestLog = fetchedLogs[0] as InstanceLog
+        const latestLog = fetchedLogs[fetchedLogs.length - 1] as InstanceLog
         if (latestLog.log_type !== 'user_action' && (latestLog.message?.length || 0) > 5) {
-          onResponseReceived?.()
+          onResponseReceivedRef.current?.()
         }
       }
 
@@ -157,6 +167,10 @@ export const useInstanceLogs = ({
     }
   }, [activeRobotInstance?.id, mutate, onScrollToBottomImmediate, onScrollToBottom])
 
+  useEffect(() => {
+    loadInstanceLogsRef.current = loadInstanceLogs
+  }, [loadInstanceLogs])
+
   // Load older logs on demand
   const loadMoreLogs = useCallback(async () => {
     if (!activeRobotInstance?.id || isLoadingMoreRef.current || !hasMoreLogs || logs.length === 0) {
@@ -196,7 +210,7 @@ export const useInstanceLogs = ({
             .map((log: InstanceLog) => log.id)
           
           if (longSystemMessages.length > 0) {
-            setCollapsedSystemMessages(prev => new Set([...Array.from(prev), ...longSystemMessages]))
+            setCollapsedSystemMessages((prev: Set<string>) => new Set([...Array.from(prev), ...longSystemMessages]))
           }
 
           const logsWithToolDetails = fetchedLogs
@@ -211,7 +225,7 @@ export const useInstanceLogs = ({
             .map((log: InstanceLog) => log.id)
           
           if (logsWithToolDetails.length > 0) {
-            setCollapsedToolDetails(prev => new Set([...Array.from(prev), ...logsWithToolDetails]))
+            setCollapsedToolDetails((prev: Set<string>) => new Set([...Array.from(prev), ...logsWithToolDetails]))
           }
         }
       }
@@ -241,7 +255,7 @@ export const useInstanceLogs = ({
 
   // Collapsing toggles
   const toggleSystemMessageCollapse = (logId: string) => {
-    setCollapsedSystemMessages(prev => {
+    setCollapsedSystemMessages((prev: Set<string>) => {
       const newSet = new Set(prev)
       if (newSet.has(logId)) newSet.delete(logId)
       else newSet.add(logId)
@@ -250,15 +264,15 @@ export const useInstanceLogs = ({
   }
 
   const toggleAllSystemMessages = () => {
-    const systemMessages = logs.filter(log => log.log_type === 'system')
-    const allCollapsed = systemMessages.every(log => collapsedSystemMessages.has(log.id))
+    const systemMessages = logs.filter((log: InstanceLog) => log.log_type === 'system')
+    const allCollapsed = systemMessages.every((log: InstanceLog) => collapsedSystemMessages.has(log.id))
     
     if (allCollapsed) setCollapsedSystemMessages(new Set())
-    else setCollapsedSystemMessages(new Set(systemMessages.map(log => log.id)))
+    else setCollapsedSystemMessages(new Set(systemMessages.map((log: InstanceLog) => log.id)))
   }
 
   const toggleToolDetails = (logId: string) => {
-    setCollapsedToolDetails(prev => {
+    setCollapsedToolDetails((prev: Set<string>) => {
       const newSet = new Set(prev)
       if (newSet.has(logId)) newSet.delete(logId)
       else newSet.add(logId)
@@ -267,7 +281,7 @@ export const useInstanceLogs = ({
   }
 
   const toggleToolGroup = (groupId: string) => {
-    setExpandedToolGroups(prev => {
+    setExpandedToolGroups((prev: Set<string>) => {
       const newSet = new Set(prev)
       if (newSet.has(groupId)) newSet.delete(groupId)
       else newSet.add(groupId)
@@ -276,157 +290,174 @@ export const useInstanceLogs = ({
   }
 
   const toggleAllToolDetails = () => {
-    const logsWithTools = logs.filter(log => 
+    const logsWithTools = logs.filter((log: InstanceLog) => 
       log.tool_name && ((log.tool_result && Object.keys(log.tool_result).length > 0) || 
                        (log.details && Object.keys(log.details).length > 0))
     )
-    const allCollapsed = logsWithTools.every(log => collapsedToolDetails.has(log.id))
+    const allCollapsed = logsWithTools.every((log: InstanceLog) => collapsedToolDetails.has(log.id))
     
     if (allCollapsed) setCollapsedToolDetails(new Set())
-    else setCollapsedToolDetails(new Set(logsWithTools.map(log => log.id)))
+    else setCollapsedToolDetails(new Set(logsWithTools.map((log: InstanceLog) => log.id)))
   }
 
-  // Real-time subscriptions
+  // Real-time subscriptions — keyed only by instance id to avoid resubscribe churn
   useEffect(() => {
-    if (activeRobotInstance?.id) {
-      loadInstanceLogs()
+    if (!activeRobotInstance?.id) return
 
-      const supabase = createClient()
-      const instanceId = activeRobotInstance.id
-      let currentChannel: ReturnType<typeof supabase.channel> | null = null
-      let visibilityTimeout: NodeJS.Timeout | null = null
+    loadInstanceLogsRef.current()
 
-      const onRealtimePayload = (payload: any) => {
-        if (payload.eventType === 'INSERT') {
-          const newLog = payload.new as InstanceLog
+    const supabase = createClient()
+    const instanceId = activeRobotInstance.id
+    let currentChannel: ReturnType<typeof supabase.channel> | null = null
+    let visibilityTimeout: NodeJS.Timeout | null = null
 
-          setLogs(prevLogs => {
-            if (newLog.log_type === 'user_action') {
-              const tempMessageIndex = prevLogs.findIndex(log =>
-                log.details?.temp_message &&
-                log.message === newLog.message &&
-                log.log_type === 'user_action'
-              )
+    const onRealtimePayload = (payload: any) => {
+      if (payload.eventType === 'INSERT') {
+        const newLog = payload.new as InstanceLog
 
-              if (tempMessageIndex !== -1) {
-                const updatedLogs = [...prevLogs]
-                updatedLogs[tempMessageIndex] = newLog
-                return updatedLogs
-              }
-            }
-
-            const isDuplicate = prevLogs.some(log => log.id === newLog.id)
-            if (isDuplicate) return prevLogs
-
-            return [...prevLogs, newLog]
-          })
-
-          if (waitingForMessageId) {
-            const isResponseToOurMessage = (
-              (newLog.log_type === 'agent_action') ||
-              (newLog.log_type === 'tool_result') ||
-              (newLog.log_type === 'system' && (
-                (newLog.message || '').toLowerCase().includes('processing') ||
-                (newLog.message || '').toLowerCase().includes('received') ||
-                (newLog.message || '').toLowerCase().includes('completed') ||
-                (newLog.message || '').toLowerCase().includes('response') ||
-                (newLog.message || '').toLowerCase().includes('answer')
-              )) ||
-              (newLog.log_type === 'system' && (newLog.message?.length || 0) > 10) ||
-              (newLog.log_type !== 'user_action' && (newLog.message?.length || 0) > 5)
+        setLogs((prevLogs: InstanceLog[]) => {
+          if (newLog.log_type === 'user_action') {
+            const tempMessageIndex = prevLogs.findIndex((log: InstanceLog) =>
+              log.details?.temp_message &&
+              log.message === newLog.message &&
+              log.log_type === 'user_action'
             )
 
-            if (isResponseToOurMessage) {
-              const timeDiff = new Date(newLog.created_at).getTime() - new Date().getTime()
-              if (Math.abs(timeDiff) < 60000) onResponseReceived?.()
-            }
-          } else {
-            if (newLog.log_type !== 'user_action' && (newLog.message?.length || 0) > 5) {
-              onResponseReceived?.()
+            if (tempMessageIndex !== -1) {
+              const updatedLogs = [...prevLogs]
+              updatedLogs[tempMessageIndex] = newLog
+              return updatedLogs
             }
           }
 
-          if (newLog.log_type === 'system' && (newLog.message?.length || 0) > 200) {
-            setCollapsedSystemMessages(prev => new Set(prev).add(newLog.id))
-          }
+          const isDuplicate = prevLogs.some((log: InstanceLog) => log.id === newLog.id)
+          if (isDuplicate) return prevLogs
 
-          const hasToolName = newLog.tool_name || newLog.toolName
-          const isToolCall = newLog.log_type === 'tool_call' || newLog.log_type === 'tool_result'
-          const hasToolResult = newLog.tool_result && Object.keys(newLog.tool_result).length > 0
-          const hasDetails = newLog.details && Object.keys(newLog.details).length > 0
-          const hasScreenshot = newLog.screenshot_base64
+          return [...prevLogs, newLog]
+        })
 
-          if ((hasToolName || isToolCall) && (hasToolResult || hasDetails || hasScreenshot)) {
-            setCollapsedToolDetails(prev => new Set(prev).add(newLog.id))
-          }
-        } else if (payload.eventType === 'UPDATE') {
-          setLogs(prevLogs => prevLogs.map(log => log.id === payload.new.id ? payload.new as InstanceLog : log))
-        } else if (payload.eventType === 'DELETE') {
-          setLogs(prevLogs => prevLogs.filter(log => log.id !== payload.old.id))
-        }
-      }
-
-      let retryCount = 0
-      let retryTimeout: NodeJS.Timeout | null = null
-
-      const subscribe = () => {
-        if (currentChannel) {
-          try { supabase.removeChannel(currentChannel) } catch (err) { }
-        }
-
-        currentChannel = supabase
-          .channel(`instance_logs_${instanceId}_${Date.now()}`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'instance_logs',
-              filter: `instance_id=eq.${instanceId}`
-            },
-            onRealtimePayload
+        const waitingId = waitingForMessageIdRef.current
+        if (waitingId) {
+          const isResponseToOurMessage = (
+            (newLog.log_type === 'agent_action') ||
+            (newLog.log_type === 'tool_result') ||
+            (newLog.log_type === 'system' && (
+              (newLog.message || '').toLowerCase().includes('processing') ||
+              (newLog.message || '').toLowerCase().includes('received') ||
+              (newLog.message || '').toLowerCase().includes('completed') ||
+              (newLog.message || '').toLowerCase().includes('response') ||
+              (newLog.message || '').toLowerCase().includes('answer')
+            )) ||
+            (newLog.log_type === 'system' && (newLog.message?.length || 0) > 10) ||
+            (newLog.log_type !== 'user_action' && (newLog.message?.length || 0) > 5)
           )
-          .subscribe((status: string, err?: any) => {
-            if (status === 'SUBSCRIBED') {
-              retryCount = 0
-            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-              handleRetry()
-            }
-          })
-      }
 
-      const handleRetry = () => {
-        if (retryTimeout) clearTimeout(retryTimeout)
-        const delay = Math.min(1000 * Math.pow(2, retryCount), 30000)
-        retryCount++
-        retryTimeout = setTimeout(() => { subscribe() }, delay)
-      }
-
-      subscribe()
-
-      const handleVisibility = () => {
-        if (document.visibilityState === 'visible') {
-          if (visibilityTimeout) clearTimeout(visibilityTimeout)
-          visibilityTimeout = setTimeout(() => {
-            loadInstanceLogs()
-            retryCount = 0
-            subscribe()
-          }, 1000)
+          if (isResponseToOurMessage) {
+            const timeDiff = new Date(newLog.created_at).getTime() - new Date().getTime()
+            if (Math.abs(timeDiff) < 60000) onResponseReceivedRef.current?.()
+          }
+        } else if (newLog.log_type !== 'user_action' && (newLog.message?.length || 0) > 5) {
+          onResponseReceivedRef.current?.()
         }
-      }
 
-      document.addEventListener('visibilitychange', handleVisibility)
-
-      return () => {
-        if (retryTimeout) clearTimeout(retryTimeout)
-        if (visibilityTimeout) clearTimeout(visibilityTimeout)
-        document.removeEventListener('visibilitychange', handleVisibility)
-        if (currentChannel) {
-          try { supabase.removeChannel(currentChannel) } catch (err) { }
+        if (newLog.log_type === 'system' && (newLog.message?.length || 0) > 200) {
+          setCollapsedSystemMessages((prev: Set<string>) => new Set(prev).add(newLog.id))
         }
+
+        const hasToolName = newLog.tool_name || newLog.toolName
+        const isToolCall = newLog.log_type === 'tool_call' || newLog.log_type === 'tool_result'
+        const hasToolResult = newLog.tool_result && Object.keys(newLog.tool_result).length > 0
+        const hasDetails = newLog.details && Object.keys(newLog.details).length > 0
+        const hasScreenshot = newLog.screenshot_base64
+
+        if ((hasToolName || isToolCall) && (hasToolResult || hasDetails || hasScreenshot)) {
+          setCollapsedToolDetails((prev: Set<string>) => new Set(prev).add(newLog.id))
+        }
+      } else if (payload.eventType === 'UPDATE') {
+        setLogs((prevLogs: InstanceLog[]) => prevLogs.map((log: InstanceLog) => log.id === payload.new.id ? payload.new as InstanceLog : log))
+      } else if (payload.eventType === 'DELETE') {
+        setLogs((prevLogs: InstanceLog[]) => prevLogs.filter((log: InstanceLog) => log.id !== payload.old.id))
       }
     }
-  }, [activeRobotInstance?.id, waitingForMessageId, loadInstanceLogs, onResponseReceived])
+
+    let retryCount = 0
+    let retryTimeout: NodeJS.Timeout | null = null
+
+    const handleRetry = () => {
+      if (retryTimeout) clearTimeout(retryTimeout)
+      const delay = Math.min(1000 * Math.pow(2, retryCount), 30000)
+      retryCount++
+      retryTimeout = setTimeout(() => { subscribe() }, delay)
+    }
+
+    const subscribe = () => {
+      if (currentChannel) {
+        try { supabase.removeChannel(currentChannel) } catch (err) { /* ignore */ }
+      }
+
+      currentChannel = supabase
+        .channel(`instance_logs_${instanceId}_${Date.now()}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'instance_logs',
+            filter: `instance_id=eq.${instanceId}`
+          },
+          onRealtimePayload
+        )
+        .subscribe((status: string) => {
+          if (status === 'SUBSCRIBED') {
+            retryCount = 0
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            handleRetry()
+          }
+        })
+    }
+
+    subscribe()
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        if (visibilityTimeout) clearTimeout(visibilityTimeout)
+        visibilityTimeout = setTimeout(() => {
+          loadInstanceLogsRef.current()
+          retryCount = 0
+          subscribe()
+        }, 1000)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      if (retryTimeout) clearTimeout(retryTimeout)
+      if (visibilityTimeout) clearTimeout(visibilityTimeout)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      if (currentChannel) {
+        try { supabase.removeChannel(currentChannel) } catch (err) { /* ignore */ }
+      }
+    }
+  }, [activeRobotInstance?.id, setLogs])
+
+  // Reconcile logs while waiting for a response (covers missed Realtime events)
+  useEffect(() => {
+    if (!activeRobotInstance?.id || !waitingForMessageId) return
+
+    const instanceStatus = (activeRobotInstance as any)?.status
+    const shouldReconcile =
+      Boolean(waitingForMessageId) ||
+      ['starting', 'pending', 'initializing', 'running', 'active'].includes(instanceStatus)
+
+    if (!shouldReconcile) return
+
+    const interval = setInterval(() => {
+      mutate()
+    }, 4000)
+
+    return () => clearInterval(interval)
+  }, [activeRobotInstance?.id, activeRobotInstance?.status, waitingForMessageId, mutate])
 
   return {
     logs,

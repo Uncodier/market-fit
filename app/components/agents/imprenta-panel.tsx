@@ -1799,7 +1799,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const sidebarWidth = isMobile ? 0 : isLayoutCollapsed ? 64 : 256;
   
   const supabase = createClient()
-  const { imprentaData, isLoading: isImprentaLoading } = useImprentaData(
+  const { imprentaData, isLoading: isImprentaLoading, refreshImprentaData } = useImprentaData(
     activeInstanceId,
     currentSite?.id
   )
@@ -2408,11 +2408,45 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       })
       .subscribe()
 
-    return () => {
-      subscription.unsubscribe()
-      contextSubscription.unsubscribe()
+    let visibilityTimeout: NodeJS.Timeout | null = null
+    const reconcileFromServer = async () => {
+      const data = await refreshImprentaData()
+      if (!data) return
+      setNodes(data.nodes)
+      setContexts(data.contexts)
     }
-  }, [activeInstanceId, supabase])
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        if (visibilityTimeout) clearTimeout(visibilityTimeout)
+        visibilityTimeout = setTimeout(() => {
+          void reconcileFromServer()
+        }, 1000)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    // Fallback reconcile while nodes are in-flight (covers missed Realtime events)
+    const reconcileInterval = setInterval(() => {
+      const hasInFlight = nodesRef.current.some((n) =>
+        ['running', 'pending', 'starting'].includes(n.status)
+      )
+      if (hasInFlight && document.visibilityState === 'visible') {
+        void reconcileFromServer()
+      }
+    }, 5000)
+
+    return () => {
+      if (visibilityTimeout) clearTimeout(visibilityTimeout)
+      clearInterval(reconcileInterval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      if (nodeBatchTimeout) clearTimeout(nodeBatchTimeout)
+      if (contextTimeout) clearTimeout(contextTimeout)
+      try { supabase.removeChannel(subscription) } catch { /* ignore */ }
+      try { supabase.removeChannel(contextSubscription) } catch { /* ignore */ }
+    }
+  }, [activeInstanceId, supabase, refreshImprentaData])
 
   const handleExecuteNode = async (node: InstanceNode) => {
     if (node.type === "publish") {
