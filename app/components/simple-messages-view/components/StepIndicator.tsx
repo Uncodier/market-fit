@@ -255,9 +255,27 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
               className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer hover:bg-muted/50 rounded transition-colors"
               onClick={() => onToggleExpanded()}
             >
-              <Folder className="h-4 w-4" />
-              <span className="font-medium">Files ({assets.length})</span>
-              <span className="text-xs">- Click to view uploaded files</span>
+              <div className="flex items-center -space-x-2">
+                {assets.slice(0, 4).map((asset, i) => {
+                  const isImage = asset.file_type.startsWith('image/')
+                  return (
+                    <div key={asset.id} className="w-6 h-6 rounded-full ring-2 ring-background bg-muted flex items-center justify-center overflow-hidden shrink-0" style={{ zIndex: 10 - i }}>
+                      {isImage ? (
+                        <img src={asset.file_path} alt={asset.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <File className="w-3 h-3 text-muted-foreground" />
+                      )}
+                    </div>
+                  )
+                })}
+                {assets.length > 4 && (
+                  <div className="w-6 h-6 rounded-full ring-2 ring-background bg-muted text-muted-foreground flex items-center justify-center text-[10px] font-medium shrink-0" style={{ zIndex: 0 }}>
+                    +{assets.length - 4}
+                  </div>
+                )}
+              </div>
+              <span className="font-medium ml-1">Files ({assets.length})</span>
+              <span className="text-xs">- Click to view</span>
               <ChevronDown className="h-3 w-3 ml-auto" />
             </div>
           ) : steps.length > 0 ? (
@@ -326,8 +344,27 @@ export const StepIndicator: React.FC<StepIndicatorProps> = ({
             >
               {assets.length > 0 ? (
                 <>
-                  <span className="font-medium">Files ({assets.length})</span>
-                  <span className="text-xs">- Click to view uploaded files</span>
+                  <div className="flex items-center -space-x-2">
+                    {assets.slice(0, 4).map((asset, i) => {
+                      const isImage = asset.file_type.startsWith('image/')
+                      return (
+                        <div key={asset.id} className="w-6 h-6 rounded-full ring-2 ring-background bg-muted flex items-center justify-center overflow-hidden shrink-0" style={{ zIndex: 10 - i }}>
+                          {isImage ? (
+                            <img src={asset.file_path} alt={asset.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <File className="w-3 h-3 text-muted-foreground" />
+                          )}
+                        </div>
+                      )
+                    })}
+                    {assets.length > 4 && (
+                      <div className="w-6 h-6 rounded-full ring-2 ring-background bg-muted text-muted-foreground flex items-center justify-center text-[10px] font-medium shrink-0" style={{ zIndex: 0 }}>
+                        +{assets.length - 4}
+                      </div>
+                    )}
+                  </div>
+                  <span className="font-medium ml-1">Files ({assets.length})</span>
+                  <span className="text-xs">- Click to view</span>
                   <ChevronDown className="h-3 w-3 ml-auto" />
                 </>
               ) : (
