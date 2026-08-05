@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { geocodeVenueLocation } from "@/app/commerce/geocode-venue"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface VenueMapProps {
@@ -11,6 +10,19 @@ interface VenueMapProps {
   className?: string
   /** section = full-bleed location block (Airbnb-style); card = nested in a card */
   variant?: "section" | "card"
+}
+
+function resolveGeocodeUrl(params: { name?: string | null; address?: string | null; city?: string | null }) {
+  const search = new URLSearchParams()
+  if (params.address) search.set("address", params.address)
+  if (params.city) search.set("city", params.city)
+  if (params.name) search.set("name", params.name)
+
+  const path = `/api/geocode?${search.toString()}`
+  const isWww =
+    typeof window !== "undefined" && window.location.hostname === "www.makinari.com"
+  // Fallback while commercial-site rewrite for /api/geocode rolls out
+  return isWww ? `https://app.makinari.com${path}` : path
 }
 
 export function VenueMap({
@@ -33,10 +45,15 @@ export function VenueMap({
 
       setLoading(true)
       try {
-        const result = await geocodeVenueLocation({ name, address, city })
-        setCoords(result)
+        const response = await fetch(resolveGeocodeUrl({ name, address, city }))
+        if (!response.ok) {
+          throw new Error(`Geocode request failed with status: ${response.status}`)
+        }
+        const data = await response.json()
+        setCoords(data?.coords ?? null)
       } catch (error) {
         console.error("Failed to load map coords", error)
+        setCoords(null)
       } finally {
         setLoading(false)
       }

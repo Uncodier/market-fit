@@ -94,12 +94,12 @@ function isApiLikeRequest(request: NextRequest): boolean {
 }
 
 // Create a standard 403 Forbidden response with proper headers
-function forbiddenResponse(): NextResponse {
+function forbiddenResponse(request?: NextRequest): NextResponse {
   const response = new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
     status: 403,
     headers: { 'content-type': 'application/json' }
   })
-  return getCorsHeaders(response)
+  return getCorsHeaders(response, request)
 }
 
 // Rutas que deben ser excluidas del middleware completamente
@@ -127,16 +127,55 @@ const ALIAS_MAP: Record<string, string> = {
   'asset': 'assets'
 }
 
+function isAllowedCorsOrigin(origin: string | null): origin is string {
+  if (!origin) return false
+  if (
+    origin === 'https://www.makinari.com' ||
+    origin === 'https://makinari.com' ||
+    origin === 'https://app.makinari.com' ||
+    origin === 'https://demo.makinari.com'
+  ) {
+    return true
+  }
+  if (origin.endsWith('.makinari.com') || origin.endsWith('.uncodie.com') || origin.endsWith('.aimarket.fit')) {
+    return true
+  }
+  if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    return true
+  }
+  // Local LAN dev hosts
+  if (/^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin)) {
+    return true
+  }
+  return false
+}
+
 // CORS headers configuration
-const getCorsHeaders = (response: NextResponse, isPublicBooking = false) => {
-  response.headers.set('Access-Control-Allow-Origin', '*');
+const getCorsHeaders = (
+  response: NextResponse,
+  request?: NextRequest,
+  isPublicBooking = false
+) => {
+  const origin = request?.headers.get('origin') ?? null
+
+  // Never combine Access-Control-Allow-Origin: * with Allow-Credentials: true (Safari rejects it).
+  if (isAllowedCorsOrigin(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin)
+    response.headers.set('Access-Control-Allow-Credentials', 'true')
+    response.headers.append('Vary', 'Origin')
+  } else if (!origin) {
+    // Same-origin navigations / server-to-server: no ACAO needed
+  } else {
+    // Unknown cross-origin callers: allow non-credentialed reads for public APIs
+    response.headers.set('Access-Control-Allow-Origin', '*')
+  }
+
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-api-secret, x-client-info, apikey, x-supabase-api-version');
   response.headers.set('Access-Control-Max-Age', '86400'); // 24 horas
-  response.headers.set('Access-Control-Allow-Credentials', 'true');
   
   // Include https://app.makinari.com so commerce pages proxied under www can load assetPrefix chunks.
-  let csp = "default-src 'self'; connect-src 'self' https://app.makinari.com https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.0.38:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.246:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* http://192.168.87.174:* http://192.168.87.174 https://192.168.87.174:* http://192.168.87.180:* http://192.168.87.180 https://192.168.87.180:* https://tu-api-real.com https://api.market-fit.ai https://backend.aimarket.fit https://backend.uncodie.com https://api.uncodie.com https://backend.makinari.com https://db.makinari.com wss://db.makinari.com https://ipapi.co https://nominatim.openstreetmap.org; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://files.uncodie.com https://backend.uncodie.com https://app.makinari.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://app.makinari.com; img-src 'self' data: blob: https: http://localhost:3001; font-src 'self' data: https://fonts.gstatic.com https://app.makinari.com; media-src 'self' blob: https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://db.makinari.com; frame-src 'self' https://*.vercel.app https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://docs.google.com https://js.stripe.com https://hooks.stripe.com https://*.scrapybara.com https://*.makinari.com https://*.preview.makinari.com https://www.openstreetmap.org;";
+  let csp = "default-src 'self'; connect-src 'self' https://app.makinari.com https://www.makinari.com https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.0.38:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.246:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* http://192.168.87.174:* http://192.168.87.174 https://192.168.87.174:* http://192.168.87.180:* http://192.168.87.180 https://192.168.87.180:* https://tu-api-real.com https://api.market-fit.ai https://backend.aimarket.fit https://backend.uncodie.com https://api.uncodie.com https://backend.makinari.com https://db.makinari.com wss://db.makinari.com https://ipapi.co https://nominatim.openstreetmap.org https://api.stripe.com https://*.stripe.com; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://files.uncodie.com https://backend.uncodie.com https://app.makinari.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://app.makinari.com; img-src 'self' data: blob: https: http://localhost:3001; font-src 'self' data: https://fonts.gstatic.com https://app.makinari.com; media-src 'self' blob: https://files.uncodie.com https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://db.makinari.com; frame-src 'self' https://*.vercel.app https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://docs.google.com https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://*.scrapybara.com https://*.makinari.com https://*.preview.makinari.com https://www.openstreetmap.org;";
   
   if (isPublicBooking) {
     csp += " frame-ancestors *;";
@@ -213,7 +252,7 @@ export async function middleware(request: NextRequest) {
   
   // Handle OPTIONS request for preflight checks (CORS)
   if (request.method === 'OPTIONS') {
-    return getCorsHeaders(new NextResponse(null, { status: 204 }), isPublicBooking);
+    return getCorsHeaders(new NextResponse(null, { status: 204 }), request, isPublicBooking);
   }
   
   // NUNCA procesar recursos estáticos - siempre permitir acceso
@@ -232,7 +271,7 @@ export async function middleware(request: NextRequest) {
   // pool gets exhausted and connections go stale.
   if (pathname.startsWith('/api/')) {
     const res = NextResponse.next()
-    return getCorsHeaders(res, isPublicBooking)
+    return getCorsHeaders(res, request, isPublicBooking)
   }
   
   // Redirigir /auth/login a /auth para mantener una única ruta de autenticación
@@ -265,7 +304,7 @@ export async function middleware(request: NextRequest) {
       })
     }
 
-    return getCorsHeaders(res, isPublicBooking);
+    return getCorsHeaders(res, request, isPublicBooking);
   }
   
   try {
@@ -273,7 +312,7 @@ export async function middleware(request: NextRequest) {
     const res = NextResponse.next()
     
     // Add CORS headers
-    getCorsHeaders(res, isPublicBooking);
+    getCorsHeaders(res, request, isPublicBooking);
     
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -302,7 +341,7 @@ export async function middleware(request: NextRequest) {
     if (!session && !isDemoMode) {
       // API-like requests get 403 to avoid client-side errors
       if (isApiLikeRequest(request)) {
-        return forbiddenResponse()
+        return forbiddenResponse(request)
       }
       // Si no hay sesión en rutas de páginas, redirigir a login
       const url = request.nextUrl.clone()
@@ -316,7 +355,7 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     // Avoid console.error noise; respond appropriately
     if (isApiLikeRequest(request)) {
-      return forbiddenResponse()
+      return forbiddenResponse(request)
     }
     // En caso de error en rutas de páginas, redirigir a login
     const url = request.nextUrl.clone()

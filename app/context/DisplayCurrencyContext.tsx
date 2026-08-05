@@ -41,27 +41,31 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
       setModeState(savedMode);
     }
 
-    // 3. Fetch FX rates
+    // 3. Fetch FX rates.
+    // On www, try same-origin rewrite first, then app.makinari.com.
     const isWww = typeof window !== 'undefined' && window.location.hostname === 'www.makinari.com';
-    const fxUrl = isWww ? 'https://app.makinari.com/api/fx/rates' : '/api/fx/rates';
+    const fxUrls = isWww
+      ? ['/api/fx/rates', 'https://app.makinari.com/api/fx/rates']
+      : ['/api/fx/rates'];
 
-    fetch(fxUrl)
-      .then(async res => {
-        if (!res.ok) {
-          throw new Error(`FX rates request failed with status: ${res.status}`);
+    ;(async () => {
+      for (const fxUrl of fxUrls) {
+        try {
+          const res = await fetch(fxUrl, { credentials: 'omit' });
+          if (!res.ok) continue;
+          const contentType = res.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) continue;
+          const data = await res.json();
+          if (data?.rates) {
+            setRates(data.rates);
+            return;
+          }
+        } catch {
+          // try next URL
         }
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('FX rates request returned non-JSON response');
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (data && data.rates) {
-          setRates(data.rates);
-        }
-      })
-      .catch(err => console.error('Failed to load FX rates', err));
+      }
+      console.error('Failed to load FX rates');
+    })();
 
     setMounted(true);
   }, [initialCountry, locale]);
