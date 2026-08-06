@@ -23,7 +23,7 @@ export default function PdpLoading() {
         }
         actions={
           <>
-            <button className={`relative ${shellClasses.iconButton}`} disabled
+            <button className={`relative ${shellClasses.iconButton}`} disabled>
               <ShoppingCart className="h-4 w-4" />
               <Skeleton className="w-3 h-3 rounded-full" />
             </button>
