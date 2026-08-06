@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { ChevronDown, ChevronRight, Plus, Trash2, Save, CheckCircle } from "@/app/components/ui/icons"
+import { Plus, Trash2 } from "@/app/components/ui/icons"
 import { ImageUpload } from "@/app/components/ui/image-upload"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { CatalogItem, ItemSpec, ItemSpecCategory } from "@/app/types"
@@ -40,7 +40,6 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
   const [categories, setCategories] = useState<ItemSpecCategory[]>([])
   const [allSpecs, setAllSpecs] = useState<ItemSpec[]>([])
   const [itemSpecs, setItemSpecs] = useState<ItemSpec[]>([])
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
 
   const defaultSlugs = getDefaultSpecCategorySlugsForItem(item)
@@ -124,13 +123,6 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
     migrate();
   }, [loading, currentSite, item.metadata?.attributes, categories, catalogItemId]);
 
-  const toggleSection = (catId: string) => {
-    const next = new Set(expandedSections)
-    if (next.has(catId)) next.delete(catId)
-    else next.add(catId)
-    setExpandedSections(next)
-  }
-
   const handleAddCustomCategory = async () => {
     if (!currentSite) return
     const name = window.prompt("Enter new category name (e.g. Writer, Team):")
@@ -139,7 +131,6 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
     if (res.error) toast.error(res.error)
     else if (res.data) {
       setCategories([...categories, res.data])
-      toggleSection(res.data.id)
     }
   }
 
@@ -229,9 +220,8 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {categoriesToShow.map(cat => {
-          const isExpanded = expandedSections.has(cat.id)
+      <CardContent>
+        {categoriesToShow.map((cat, index) => {
           const isMulti = cat.slug === 'artist' || !cat.is_system
           const selectedForCat = itemSpecs.filter(s => s.category_id === cat.id)
 
@@ -240,105 +230,98 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
             .map(s => ({ id: s.id, label: s.name }))
 
           return (
-            <div key={cat.id} className="border rounded-md overflow-hidden">
-              <button 
-                type="button"
-                className="w-full flex items-center justify-between p-3 bg-muted/20 hover:bg-muted/40 transition-colors"
-                onClick={() => toggleSection(cat.id)}
-              >
-                <div className="flex items-center gap-2">
-                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  <span className="font-medium capitalize">{cat.name}</span>
+            <div key={cat.id} className={index > 0 ? "pt-8 border-t mt-8" : ""}>
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h3 className="font-semibold text-lg capitalize">{cat.name}</h3>
+                  {selectedForCat.length > 0 && (
+                    <span className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                      {selectedForCat.length}
+                    </span>
+                  )}
                 </div>
-                {!isExpanded && selectedForCat.length > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {selectedForCat.map(s => s.name).join(', ')}
+              </div>
+
+              <div className="space-y-6">
+                {(!isMulti && selectedForCat.length > 0) ? null : (
+                  <div className="w-full md:w-1/2">
+                    <RelationSelect
+                      options={options}
+                      value={null}
+                      onValueChange={(val) => handleSpecSelect(cat, val)}
+                      placeholder={`Select or create ${cat.name.toLowerCase()}...`}
+                      clearAfterSelect={true}
+                    />
                   </div>
                 )}
-              </button>
 
-              {isExpanded && (
-                <div className="p-4 space-y-6 bg-background border-t">
-                  {(!isMulti && selectedForCat.length > 0) ? null : (
-                    <div className="w-full md:w-1/2">
-                      <RelationSelect
-                        options={options}
-                        value={null}
-                        onValueChange={(val) => handleSpecSelect(cat, val)}
-                        placeholder={`Select or create ${cat.name.toLowerCase()}...`}
-                        clearAfterSelect={true}
-                      />
-                    </div>
-                  )}
+                {selectedForCat.length > 0 && (
+                  <div className="space-y-6">
+                    {selectedForCat.map((spec, specIndex) => (
+                      <div key={spec.id} className={`relative ${isMulti && specIndex > 0 ? 'pt-6 border-t mt-6' : ''}`}>
+                        <div className="flex items-start gap-4">
+                          <div className="flex-1 space-y-4">
+                            <div className="space-y-2">
+                              <Label>Name</Label>
+                              <Input 
+                                value={spec.name || ''} 
+                                onChange={e => handleUpdateSpecMedia(spec, 'name' as any, e.target.value)}
+                                placeholder={`e.g. ${cat.name}`}
+                              />
+                            </div>
 
-                  {selectedForCat.length > 0 && (
-                    <div className="space-y-6">
-                      {selectedForCat.map((spec, index) => (
-                        <div key={spec.id} className={`relative ${isMulti && index > 0 ? 'pt-6 border-t mt-6' : ''}`}>
-                          <div className="flex items-start gap-4">
-                            <div className="flex-1 space-y-4">
-                              <div className="space-y-2">
-                                <Label>Name</Label>
-                                <Input 
-                                  value={spec.name || ''} 
-                                  onChange={e => handleUpdateSpecMedia(spec, 'name' as any, e.target.value)}
-                                  placeholder={`e.g. ${cat.name}`}
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label>Image</Label>
-                                <ImageUpload 
-                                  value={spec.image_url || ''} 
-                                  onChange={val => handleUpdateSpecMedia(spec, 'image_url', val)} 
-                                  onRemove={() => handleUpdateSpecMedia(spec, 'image_url', '')} 
-                                />
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <Label>Video URL</Label>
-                                <Input 
-                                  value={spec.video_url || ''} 
-                                  onChange={e => handleUpdateSpecMedia(spec, 'video_url', e.target.value)}
-                                  placeholder="https://..."
-                                />
-                              </div>
-                              
-                              {cat.slug === 'venue' && (
-                                <>
-                                  <div className="space-y-2">
-                                    <Label>Address</Label>
-                                    <Input 
-                                      value={spec.address || ''} 
-                                      onChange={e => handleUpdateSpecMedia(spec, 'address', e.target.value)}
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>City</Label>
-                                    <Input 
-                                      value={spec.city || ''} 
-                                      onChange={e => handleUpdateSpecMedia(spec, 'city', e.target.value)}
-                                    />
-                                  </div>
-                                </>
-                              )}
+                            <div className="space-y-2">
+                              <Label>Image</Label>
+                              <ImageUpload 
+                                value={spec.image_url || ''} 
+                                onChange={val => handleUpdateSpecMedia(spec, 'image_url', val)} 
+                                onRemove={() => handleUpdateSpecMedia(spec, 'image_url', '')} 
+                              />
                             </div>
                             
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-destructive mt-8 shrink-0"
-                              onClick={() => handleRemoveSpec(spec.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="space-y-2">
+                              <Label>Video URL</Label>
+                              <Input 
+                                value={spec.video_url || ''} 
+                                onChange={e => handleUpdateSpecMedia(spec, 'video_url', e.target.value)}
+                                placeholder="https://..."
+                              />
+                            </div>
+                            
+                            {cat.slug === 'venue' && (
+                              <>
+                                <div className="space-y-2">
+                                  <Label>Address</Label>
+                                  <Input 
+                                    value={spec.address || ''} 
+                                    onChange={e => handleUpdateSpecMedia(spec, 'address', e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>City</Label>
+                                  <Input 
+                                    value={spec.city || ''} 
+                                    onChange={e => handleUpdateSpecMedia(spec, 'city', e.target.value)}
+                                  />
+                                </div>
+                              </>
+                            )}
                           </div>
+                          
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-destructive mt-8 shrink-0"
+                            onClick={() => handleRemoveSpec(spec.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )
         })}

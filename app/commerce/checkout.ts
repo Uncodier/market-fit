@@ -5,6 +5,7 @@ import { assertCanSell } from "@/app/catalog/actions";
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
 import { resolveUnitPrice } from "@/app/price-lists/actions";
 import { applyPromotionToOrder } from "@/app/promotions/actions";
+import { resolvePromotionDiscount } from "@/app/promotions/resolve-promotion";
 import { createShipment } from "@/app/shipments/actions";
 import { assertReservationSlot } from "@/app/reservations/availability";
 import { grantFromOrder, syncSubscriptionEntitlements } from "./entitlements";
@@ -240,7 +241,7 @@ export async function checkoutCart({
       processedLines.map((pl) => ({ catalogItemId: pl.catalog_item_id, subtotal: pl.subtotal })),
       taxesByItem || {}
     );
-    const orderTotal = roundMoney(orderSubtotal + orderTaxTotal);
+    let orderTotal = roundMoney(orderSubtotal + orderTaxTotal);
 
     // Verify all items have the same currency
     const uniqueCurrencies = Array.from(new Set(processedLines.map(pl => pl.currency)));
@@ -248,6 +249,30 @@ export async function checkoutCart({
       throw new Error("All items in the cart must use the same currency.");
     }
     const orderCurrency = uniqueCurrencies[0] || 'USD';
+
+    // Fail-fast: validate promotion before creating sale/order (avoids orphan orders)
+    let normalizedPromotionCode: string | undefined;
+    if (promotionCode?.trim()) {
+      normalizedPromotionCode = promotionCode.trim().toUpperCase();
+      const promoPreview = await resolvePromotionDiscount({
+        siteId,
+        code: normalizedPromotionCode,
+        lines: processedLines.map((pl) => ({
+          catalogItemId: pl.catalog_item_id,
+          subtotal: pl.subtotal,
+        })),
+        buyerUserId,
+        leadId: finalLeadId,
+        excludeOrderId: existingOrderId || null,
+        forceServiceRole: isAdmin,
+      });
+      if ("error" in promoPreview) {
+        throw new Error(`Promotion failed: ${promoPreview.error}`);
+      }
+      orderTotal = roundMoney(
+        Math.max(0, orderSubtotal - promoPreview.data.discount + orderTaxTotal)
+      );
+    }
 
     // Calculate total paid if payments are provided
     const totalPaid = payments ? payments.reduce((sum, p) => sum + p.amount, 0) : 0;
@@ -598,12 +623,12 @@ export async function checkoutCart({
 
     // 6.b Update order JSONB items for backwards compatibility is already handled above in the update/insert.
 
-    // 7. Apply Promotion (if provided)
-    if (promotionCode) {
+    // 7. Apply Promotion (if provided) — already validated above; persist discount + usage
+    if (normalizedPromotionCode) {
       const { data: orderWithPromo } = await (isAdmin ? supabaseAdmin : supabase).from("sale_orders").select("promotion_id").eq("id", order.id).single();
       
       if (!orderWithPromo?.promotion_id) {
-        const promoResult = await applyPromotionToOrder(siteId, order.id, promotionCode, isAdmin);
+        const promoResult = await applyPromotionToOrder(siteId, order.id, normalizedPromotionCode, isAdmin);
         if (promoResult.error) {
           throw new Error(`Promotion failed: ${promoResult.error}`);
         }

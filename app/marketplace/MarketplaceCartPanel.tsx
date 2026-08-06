@@ -1,9 +1,10 @@
-import React, { useMemo, useEffect } from "react"
+import React, { useMemo, useEffect, useState, useCallback } from "react"
 import { ShoppingCart, ShieldCheck, X } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { CheckoutIdentityPicker } from "@/app/components/commerce/CheckoutIdentityPicker"
 import { CartCheckoutFields } from "@/app/components/commerce/CartCheckoutFields"
 import { CartItem } from "@/app/components/commerce/CartItem"
+import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCodeField"
 import { 
   getItemDeliveryOptions, 
   intersectDeliveryOptions, 
@@ -39,6 +40,10 @@ export function MarketplaceCartPanel({
   setShippingAddress,
   paymentMethod,
   setPaymentMethod,
+  promotionCode,
+  setPromotionCode,
+  promoDiscount = 0,
+  setPromoDiscount,
   siteSettings,
   handleCheckout,
   checkoutLoading,
@@ -46,6 +51,7 @@ export function MarketplaceCartPanel({
   t
 }: any) {
   const { formatPrice } = useDisplayCurrency()
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
   
   const allowedOptions = useMemo(() => {
     return intersectDeliveryOptions(cart.map((i: any) => ({
@@ -71,6 +77,30 @@ export function MarketplaceCartPanel({
     if (restriction === null) return active;
     return active.filter((l: any) => restriction.includes(l.id));
   }, [cart, locations]);
+
+  const promoSiteId = cart[0]?.site_id || ""
+
+  const promoCartLines = useMemo(() => {
+    return cart.map((item: any) => ({
+      catalogItemId: item.id,
+      subtotal: (item.cartPrice ?? item.target_sale_price ?? 0) * (item.cartQty || 1),
+    }))
+  }, [cart])
+
+  const discount = appliedPromo?.discount ?? promoDiscount ?? 0
+  const payableTotal = Math.max(0, subtotal - discount)
+  const currency = cart[0]?.currency || 'USD'
+
+  const handleApplied = useCallback((promo: AppliedPromo) => {
+    setAppliedPromo(promo)
+    setPromotionCode(promo.code)
+    setPromoDiscount?.(promo.discount)
+  }, [setPromotionCode, setPromoDiscount])
+
+  const handleCleared = useCallback(() => {
+    setAppliedPromo(null)
+    setPromoDiscount?.(0)
+  }, [setPromoDiscount])
 
   useEffect(() => {
     if (allowedOptions.length > 0 && !allowedOptions.includes(fulfillment)) {
@@ -161,10 +191,33 @@ export function MarketplaceCartPanel({
         </div>
 
         {cart.length > 0 && (
-          <div className="p-6 border-t bg-card">
-            <div className="flex justify-between items-center mb-6">
-              <span className="font-bold text-lg">{t('marketplace.cart.total') || 'Total'}</span>
-              <span className="font-black text-2xl">{formatPrice(subtotal, cart[0]?.currency || 'USD')}</span>
+          <div className="p-6 border-t bg-card space-y-4">
+            <PromoCodeField
+              siteId={promoSiteId}
+              code={promotionCode}
+              setCode={setPromotionCode}
+              cartLines={promoCartLines}
+              buyerUserId={session?.user?.id}
+              applied={appliedPromo}
+              onApplied={handleApplied}
+              onCleared={handleCleared}
+            />
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-muted-foreground text-sm">
+                <span>{t('marketplace.cart.subtotal') || t('shop.cart.subtotal') || 'Subtotal'}</span>
+                <span className="font-medium text-foreground">{formatPrice(subtotal, currency)}</span>
+              </div>
+              {discount > 0 && (
+                <div className="flex justify-between items-center text-green-600 dark:text-green-400 text-sm">
+                  <span>{t('checkout.discount') || 'Discount'}</span>
+                  <span className="font-medium">-{formatPrice(discount, currency)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-lg">{t('marketplace.cart.total') || 'Total'}</span>
+                <span className="font-black text-2xl">{formatPrice(payableTotal, currency)}</span>
+              </div>
             </div>
             <Button 
               type="submit"
@@ -172,9 +225,9 @@ export function MarketplaceCartPanel({
               className="w-full h-14 text-lg font-bold rounded-xl" 
               disabled={checkoutLoading || allowedOptions.length === 0 || (fulfillment === 'pickup' && pickupLocations.length === 0) || !paymentMethod}
             >
-              {checkoutLoading ? (t('marketplace.checkout.processing') || "Processing securely...") : `${t('marketplace.checkout.btn') || 'Checkout'} • ${formatPrice(subtotal, cart[0]?.currency || 'USD')}`}
+              {checkoutLoading ? (t('marketplace.checkout.processing') || "Processing securely...") : `${t('marketplace.checkout.btn') || 'Checkout'} • ${formatPrice(payableTotal, currency)}`}
             </Button>
-            <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground font-medium">
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground font-medium">
               <ShieldCheck className="h-4 w-4" />
               {t('marketplace.checkout.secure') || 'Secure checkout powered by Stripe'}
             </div>

@@ -1,9 +1,11 @@
 "use client"
 
+import { useState, useCallback, useMemo } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { ShieldCheck } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
+import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCodeField"
 
 interface OrderSummaryProps {
   items: any[]
@@ -12,10 +14,54 @@ interface OrderSummaryProps {
   disabledReason?: string
   fulfillment?: string
   paymentMethod?: string
+  siteId?: string
+  buyerUserId?: string | null
+  promotionCode: string
+  setPromotionCode: (val: string) => void
+  promoDiscount: number
+  setPromoDiscount: (val: number) => void
 }
 
-export function OrderSummary({ items, subtotal, checkoutLoading, disabledReason, fulfillment, paymentMethod }: OrderSummaryProps) {
+export function OrderSummary({
+  items,
+  subtotal,
+  checkoutLoading,
+  disabledReason,
+  fulfillment,
+  paymentMethod,
+  siteId,
+  buyerUserId,
+  promotionCode,
+  setPromotionCode,
+  promoDiscount,
+  setPromoDiscount,
+}: OrderSummaryProps) {
   const { t } = useLocalization()
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
+  const currency = items[0]?.currency || 'USD'
+  const discount = appliedPromo?.discount ?? promoDiscount ?? 0
+  const payableTotal = Math.max(0, subtotal - discount)
+
+  const promoCartLines = useMemo(() => {
+    return items.map((item: any) => ({
+      catalogItemId: item.id,
+      subtotal: (item.cartPrice ?? item.target_sale_price ?? 0) * (item.cartQty || 1),
+    }))
+  }, [items])
+
+  const handleApplied = useCallback((promo: AppliedPromo) => {
+    setAppliedPromo(promo)
+    setPromotionCode(promo.code)
+    setPromoDiscount(promo.discount)
+  }, [setPromotionCode, setPromoDiscount])
+
+  const handleCleared = useCallback(() => {
+    setAppliedPromo(null)
+    setPromoDiscount(0)
+  }, [setPromoDiscount])
+
+  const formatMoney = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
 
   return (
     <div className="bg-card border border-border/50 rounded-3xl p-6 lg:p-8 shadow-sm lg:sticky lg:top-32 relative overflow-hidden">
@@ -32,17 +78,38 @@ export function OrderSummary({ items, subtotal, checkoutLoading, disabledReason,
               <div className="text-xs text-muted-foreground mt-1 font-medium tracking-wide">{t('qty') || 'QTY:'} {item.cartQty}</div>
             </div>
             <div className="font-black text-sm flex items-center shrink-0">
-              {new Intl.NumberFormat('en-US', { style: 'currency', currency: items[0]?.currency || 'USD' }).format(item.cartPrice * item.cartQty)}
+              {formatMoney(item.cartPrice * item.cartQty)}
             </div>
           </div>
         ))}
       </div>
 
+      {siteId && (
+        <div className="mb-6">
+          <PromoCodeField
+            siteId={siteId}
+            code={promotionCode}
+            setCode={setPromotionCode}
+            cartLines={promoCartLines}
+            buyerUserId={buyerUserId}
+            applied={appliedPromo}
+            onApplied={handleApplied}
+            onCleared={handleCleared}
+          />
+        </div>
+      )}
+
       <div className="space-y-3 pt-6 border-t mb-8">
         <div className="flex justify-between items-center text-sm font-medium">
           <span className="text-muted-foreground">{t('subtotal') || 'Subtotal'}</span>
-          <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: items[0]?.currency || 'USD' }).format(subtotal)}</span>
+          <span>{formatMoney(subtotal)}</span>
         </div>
+        {discount > 0 && (
+          <div className="flex justify-between items-center text-sm font-medium text-green-600 dark:text-green-400">
+            <span>{t('checkout.discount') || 'Discount'}</span>
+            <span>-{formatMoney(discount)}</span>
+          </div>
+        )}
         <div className="flex justify-between items-center text-sm font-medium">
           <span className="text-muted-foreground">{t('taxes') || 'Taxes'}</span>
           <span className="text-muted-foreground text-xs font-semibold">{t('checkout.calculatedAtNextStep') || 'Calculated at next step'}</span>
@@ -63,7 +130,7 @@ export function OrderSummary({ items, subtotal, checkoutLoading, disabledReason,
 
         <div className="flex justify-between items-center pt-4 mt-2 border-t">
           <span className="font-bold text-lg">{t('total') || 'Total'}</span>
-          <span className="font-black text-2xl tracking-tight">{new Intl.NumberFormat('en-US', { style: 'currency', currency: items[0]?.currency || 'USD' }).format(subtotal)}</span>
+          <span className="font-black text-2xl tracking-tight">{formatMoney(payableTotal)}</span>
         </div>
       </div>
 
@@ -81,7 +148,7 @@ export function OrderSummary({ items, subtotal, checkoutLoading, disabledReason,
               ? `${t('checkout.placeOrderCash') || 'Place order • Pay at store'}`
               : paymentMethod === 'bank_transfer'
               ? `${t('checkout.placeOrderTransfer') || 'Place order • Pay by transfer'}`
-              : `${t('checkout.paySecurely') || 'Pay securely'} • ${new Intl.NumberFormat('en-US', { style: 'currency', currency: items[0]?.currency || 'USD' }).format(subtotal)}`
+              : `${t('checkout.paySecurely') || 'Pay securely'} • ${formatMoney(payableTotal)}`
         }
       </Button>
       

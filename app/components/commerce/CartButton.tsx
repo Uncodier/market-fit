@@ -59,12 +59,17 @@ export const CartButton = React.forwardRef<HTMLButtonElement, CartButtonProps>(
       </span>
     ) : null
 
+    const showPrice = subtotal !== undefined && subtotal > 0
+
     const content = isShell ? (
       <div className="relative inline-flex shrink-0">
         <button
           ref={ref}
           type="button"
-          className={cn(className)}
+          className={cn(
+            className,
+            showPrice && "w-auto min-w-9 px-3 gap-1.5"
+          )}
           {...props}
         >
           {inner}

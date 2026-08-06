@@ -22,7 +22,7 @@ export default function ShopPdpLoading() {
         }
         actions={
           <>
-            <button className={`relative ${shellClasses.iconButton} h-9 px-3 gap-1.5`} disabled>
+            <button className={`relative ${shellClasses.iconButton}`} disabled>
               <ShoppingCart className="h-4 w-4" />
               <Skeleton className="w-3 h-3 rounded-full" />
             </button>

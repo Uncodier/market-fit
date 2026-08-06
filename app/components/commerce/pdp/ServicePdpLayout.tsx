@@ -23,6 +23,12 @@ import { usePathname, useRouter } from "next/navigation"
 import { PdpExperience } from "./pdp-experience"
 import { ReservationManagePanel } from "./ReservationManagePanel"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
+import { DynamicQuotePdpProvider } from "./DynamicQuotePdpPanel"
+import { ServiceDynamicQuoteLayout } from "./ServiceDynamicQuoteLayout"
+import {
+  getDynamicPricingConfig,
+  isDynamicPricedItem,
+} from "@/app/catalog/dynamic-pricing"
 
 export function ServicePdpLayout({
   item,
@@ -66,7 +72,11 @@ export function ServicePdpLayout({
 
   const activeItem = resolvedChild || item
   const isSelectionComplete = !hasVariants || !!resolvedChild
-  const displayPrice = activeItem.target_sale_price || item.target_sale_price || 0
+  const isDynamic = isDynamicPricedItem(item)
+  const dynamicConfig = isDynamic ? getDynamicPricingConfig(item) : null
+  const displayPrice = isDynamic
+    ? (dynamicConfig?.min_price ?? item.lowest_sale_price ?? 0)
+    : (activeItem.target_sale_price || item.target_sale_price || 0)
 
   useEffect(() => {
     if (isReservationExperience) return
@@ -129,7 +139,18 @@ export function ServicePdpLayout({
     ? `${new Date(reservation.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${new Date(reservation.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : null
 
+  if (isDynamic && !isReservationExperience) {
+    return (
+      <ServiceDynamicQuoteLayout
+        item={item}
+        backUrl={backUrl}
+        experience={experience}
+      />
+    )
+  }
+
   return (
+    <DynamicQuotePdpProvider item={item} backUrl={backUrl}>
     <div className={isReservationExperience ? "pb-8" : "pb-32 lg:pb-0"}>
       <div className="w-full px-4 md:px-8">
         <div className="w-full h-[28vh] min-h-[200px] sm:h-[36vh] md:h-[42vh] bg-muted relative rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden">
@@ -201,8 +222,8 @@ export function ServicePdpLayout({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-          {/* Manage / purchase panel — first on mobile when managing a reservation */}
-          <div className={`lg:col-span-1 lg:order-last ${isReservationExperience ? "order-first" : ""}`}>
+          {/* Submit / price card — below form on mobile, right column on desktop */}
+          <div className={`lg:col-span-1 order-2 lg:order-2 ${isReservationExperience ? "order-1 lg:order-2" : ""}`}>
             {isReservationExperience ? (
               <ReservationManagePanel
                 reservation={reservation}
@@ -214,6 +235,7 @@ export function ServicePdpLayout({
                   <PdpPriceBlock price={displayPrice} currency={item.currency || "USD"} />
                 </div>
 
+                <>
                 {hasVariants && (
                   <VariantPicker
                     axes={axes}
@@ -276,11 +298,12 @@ export function ServicePdpLayout({
                     </PdpCtaButton>
                   </div>
                 )}
+                </>
               </div>
             )}
           </div>
 
-          <div className="lg:col-span-2 space-y-8">
+          <div className={`lg:col-span-2 space-y-8 ${isReservationExperience ? "order-2 lg:order-1" : "order-1 lg:order-1"}`}>
             {isReservationExperience && (
               <div className="rounded-3xl border border-border/50 bg-card shadow-sm shadow-black/5 p-6 sm:p-8 space-y-6">
                 <h3 className="font-bold text-xl">
@@ -362,12 +385,13 @@ export function ServicePdpLayout({
                 />
               </div>
             )}
-            
+
             {experience?.kind === 'subscription' && experience.subscription && (
               <div className="pt-4 lg:pt-8 mt-8 border-t">
                 <SubscriptionManagePanel subscription={experience.subscription} />
               </div>
             )}
+
           </div>
         </div>
       </div>
@@ -394,5 +418,6 @@ export function ServicePdpLayout({
         </PdpMobileBuyBar>
       )}
     </div>
+    </DynamicQuotePdpProvider>
   )
 }

@@ -1,6 +1,5 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { createClient as createClientAdmin } from "@supabase/supabase-js"
 import { unstable_noStore as noStore } from "next/cache"
 
@@ -88,6 +87,9 @@ export async function findOrCreateLeadForBuyer({
   try {
     const supabaseAdmin = adminClient()
     const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail || !normalizedEmail.includes("@")) {
+      return { lead: null, error: "Please enter a valid email address" }
+    }
 
     const { data: existing, error: searchError } = await supabaseAdmin
       .from("leads")
@@ -120,13 +122,15 @@ export async function findOrCreateLeadForBuyer({
       return { lead: existing, error: null }
     }
 
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    // leads.user_id is the site owner (seller), not the buyer
+    const { data: site, error: siteError } = await supabaseAdmin
+      .from("sites")
+      .select("user_id")
+      .eq("id", siteId)
+      .single()
 
-    if (!user) {
-      return { lead: null, error: "Not authenticated" }
+    if (siteError || !site?.user_id) {
+      return { lead: null, error: siteError?.message || "Site owner not found" }
     }
 
     const { data: lead, error } = await supabaseAdmin
@@ -139,7 +143,7 @@ export async function findOrCreateLeadForBuyer({
           status: "new",
           origin: "inbound",
           buyer_user_id: buyerUserId || null,
-          user_id: user.id,
+          user_id: site.user_id,
         },
       ])
       .select()

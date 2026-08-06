@@ -44,6 +44,7 @@ import { ReservationScheduleCard } from "../components/ReservationScheduleCard"
 import { CatalogItemDetailsMarketingCard } from "../components/CatalogItemDetailsMarketingCard"
 import { VariantsCard } from "../components/VariantsCard"
 import { ItemSpecsEditor } from "../components/ItemSpecsEditor"
+import { DynamicPricingCard } from "../components/DynamicPricingCard"
 
 export default function CatalogItemDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -60,7 +61,8 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
   const [formData, setFormData] = useState<Partial<CatalogItem>>({
     is_pos_available: true,
     is_recurring: false,
-    is_reservation: false
+    is_reservation: false,
+    is_dynamic_price: false,
   })
 
   useEffect(() => {
@@ -392,6 +394,27 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   saving={saving}
                 />
               )}
+
+              {item && (
+                <Card className="border-destructive/20 bg-destructive/5">
+                  <CardHeader>
+                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                    <CardDescription className="text-destructive/80">
+                      Irreversible actions for this product.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowArchiveDialog(true)}
+                      className="gap-2"
+                    >
+                      <Trash2 size={16} /> Archive Product
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
 
@@ -441,27 +464,6 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   handleSave={handleSave}
                   saving={saving}
                 />
-              )}
-
-              {item && (
-                <Card className="border-destructive/20 bg-destructive/5">
-                  <CardHeader>
-                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                    <CardDescription className="text-destructive/80">
-                      Irreversible actions for this product.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setShowArchiveDialog(true)}
-                      className="gap-2"
-                    >
-                      <Trash2 size={16} /> Archive Product
-                    </Button>
-                  </CardContent>
-                </Card>
               )}
 
               <Card>
@@ -527,6 +529,18 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                     />
                   </div>
 
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div>
+                      <Label htmlFor="is_dynamic_price" className="text-base cursor-pointer">Dynamic pricing</Label>
+                      <p className="text-sm text-muted-foreground">Buyers request a quote instead of paying a fixed price</p>
+                    </div>
+                    <Switch
+                      id="is_dynamic_price"
+                      checked={formData.is_dynamic_price || false}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_dynamic_price: checked as boolean })}
+                    />
+                  </div>
+
                   {formData.kind === 'digital_asset' && formData.digital_subtype === 'pass' && (
                     <div className="pt-4 border-t space-y-4">
                       <div className="space-y-2">
@@ -570,6 +584,16 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   )}
                   <ReservationScheduleCard catalogItemId={item.id} />
                 </div>
+              )}
+
+              {(formData.is_dynamic_price || item?.is_dynamic_price) && (
+                <DynamicPricingCard
+                  item={item}
+                  formData={formData}
+                  onChange={setFormData}
+                  onSave={handleSave}
+                  saving={saving}
+                />
               )}
             </div>
           </TabsContent>

@@ -17,6 +17,8 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_SERVER_URL=http://localhost:3001
 # Alternative fallback (same value as above)
 API_SERVER_URL=http://localhost:3001
+# Server-to-server auth for robots/assistant (shop buyers may be anonymous)
+SERVICE_API_KEY=your-service-api-key
 ```
 
 ### Supabase Configuration

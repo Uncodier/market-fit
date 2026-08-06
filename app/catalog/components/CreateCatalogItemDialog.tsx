@@ -40,6 +40,7 @@ type FormData = {
   is_pos_available: boolean
   is_recurring: boolean
   is_reservation: boolean
+  is_dynamic_price: boolean
   image_url?: string
 }
 
@@ -63,7 +64,8 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
       cost: '',
       is_pos_available: true,
       is_recurring: false,
-      is_reservation: false
+      is_reservation: false,
+      is_dynamic_price: false,
     }
   })
 
@@ -85,6 +87,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
   const isPos = watch('is_pos_available')
   const isRecurring = watch('is_recurring')
   const isReservation = watch('is_reservation')
+  const isDynamicPrice = watch('is_dynamic_price')
 
   const onSubmit = async (data: FormData) => {
     if (!currentSite) return
@@ -112,9 +115,22 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
         is_pos_available: data.is_pos_available,
         is_recurring: data.is_recurring,
         is_reservation: data.is_reservation,
+        is_dynamic_price: data.is_dynamic_price,
         image_url: image || undefined,
         metadata: {
-          delivery_options: data.kind === 'product' ? ['pickup', 'ship'] : ['none']
+          delivery_options: data.kind === 'product' ? ['pickup', 'ship'] : ['none'],
+          ...(data.is_dynamic_price
+            ? {
+                dynamic_pricing: {
+                  agent_prompt: '',
+                  revision_count: 1,
+                  requires_advanced_compute: false,
+                  requires_authorization: false,
+                  quote_expiration: { value: 30, unit: 'days' as const },
+                  fields: [],
+                },
+              }
+            : {}),
         }
       })
 
@@ -306,6 +322,19 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                   id="is_reservation" 
                   checked={isReservation}
                   onCheckedChange={(checked) => setValue('is_reservation', checked as boolean)}
+                />
+              </div>
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_dynamic_price" className="text-base cursor-pointer">{t("catalog.create.dynamicPricing") || "Dynamic pricing"}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t("catalog.create.dynamicPricingHelp") || "Buyers request a quote instead of paying a fixed price. Configure prompt and fields on the item detail page."}
+                  </p>
+                </div>
+                <Switch
+                  id="is_dynamic_price"
+                  checked={isDynamicPrice}
+                  onCheckedChange={(checked) => setValue('is_dynamic_price', checked as boolean)}
                 />
               </div>
               <div className="flex flex-row items-center justify-between rounded-lg border p-4">

@@ -1,8 +1,9 @@
-import React, { useMemo, useEffect } from "react"
+import React, { useMemo, useEffect, useState, useCallback } from "react"
 import { ShoppingCart, ShieldCheck } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { CartCheckoutFields } from "@/app/components/commerce/CartCheckoutFields"
 import { CartItem } from "@/app/components/commerce/CartItem"
+import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCodeField"
 import { 
   getItemDeliveryOptions, 
   intersectDeliveryOptions, 
@@ -28,15 +29,18 @@ export function CartSidebar({
   originLocationId, setOriginLocationId,
   locations = [],
   promotionCode, setPromotionCode,
+  promoDiscount = 0,
+  setPromoDiscount,
   shippingAddress, setShippingAddress,
   ownerSiteId, setOwnerSiteId,
   paymentMethod, setPaymentMethod,
-  handleCheckout,   checkoutLoading, closeCart, site
+  handleCheckout, checkoutLoading, closeCart, site
 }: any) {
   
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
-  
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
+
   const allowedOptions = useMemo(() => {
     return intersectDeliveryOptions(cart.map((i: any) => ({
       allowed: getItemDeliveryOptions(i, site?.settings?.shop?.default_delivery_options)
@@ -61,6 +65,28 @@ export function CartSidebar({
   }, [cart, locations]);
 
   const requiresAuth = cart.some((c: any) => c.kind === 'digital_asset' || c.is_recurring)
+
+  const promoCartLines = useMemo(() => {
+    return cart.map((item: any) => ({
+      catalogItemId: item.id,
+      subtotal: (item.cartPrice ?? item.target_sale_price ?? 0) * (item.cartQty || 1),
+    }))
+  }, [cart])
+
+  const discount = appliedPromo?.discount ?? promoDiscount ?? 0
+  const payableTotal = Math.max(0, subtotal - discount)
+  const currency = cart[0]?.currency || 'USD'
+
+  const handleApplied = useCallback((promo: AppliedPromo) => {
+    setAppliedPromo(promo)
+    setPromotionCode(promo.code)
+    setPromoDiscount?.(promo.discount)
+  }, [setPromotionCode, setPromoDiscount])
+
+  const handleCleared = useCallback(() => {
+    setAppliedPromo(null)
+    setPromoDiscount?.(0)
+  }, [setPromoDiscount])
 
   useEffect(() => {
     if (allowedOptions.length > 0 && !allowedOptions.includes(fulfillment)) {
@@ -105,7 +131,6 @@ export function CartSidebar({
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Items */}
             <div className="space-y-4">
               {cart.map((item: any) => (
                 <CartItem 
@@ -117,7 +142,6 @@ export function CartSidebar({
               ))}
             </div>
             
-            {/* Checkout Form */}
             <form id="checkout-form" onSubmit={handleCheckout} className="space-y-5 bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
               <h3 className="font-bold text-lg border-b dark:border-gray-800 pb-3">{t('shop.cart.contactShipping') || 'Contact & Shipping'}</h3>
               
@@ -151,10 +175,27 @@ export function CartSidebar({
             </form>
 
             <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-3">
-              <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
+              <PromoCodeField
+                siteId={site.id}
+                code={promotionCode}
+                setCode={setPromotionCode}
+                cartLines={promoCartLines}
+                buyerUserId={session?.user?.id}
+                applied={appliedPromo}
+                onApplied={handleApplied}
+                onCleared={handleCleared}
+              />
+
+              <div className="flex justify-between items-center text-gray-500 dark:text-gray-400 pt-2">
                 <span>{t('shop.cart.subtotal') || 'Subtotal'}</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{formatPrice(subtotal, cart[0]?.currency || 'USD')}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{formatPrice(subtotal, currency)}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between items-center text-green-600 dark:text-green-400">
+                  <span>{t('checkout.discount') || 'Discount'}</span>
+                  <span className="font-medium">-{formatPrice(discount, currency)}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
                 <span>{t('shop.cart.shipping') || 'Shipping'}</span>
                 {site?.settings?.shop?.free_shipping_threshold && subtotal >= site.settings.shop.free_shipping_threshold ? (
@@ -165,7 +206,7 @@ export function CartSidebar({
               </div>
               <div className="pt-3 border-t dark:border-gray-800 flex justify-between items-center">
                 <span className="font-bold text-lg">{t('shop.cart.total') || 'Total'}</span>
-                <span className="font-black text-2xl text-gray-900 dark:text-gray-100">{formatPrice(subtotal, cart[0]?.currency || 'USD')}</span>
+                <span className="font-black text-2xl text-gray-900 dark:text-gray-100">{formatPrice(payableTotal, currency)}</span>
               </div>
             </div>
           </div>
@@ -179,7 +220,7 @@ export function CartSidebar({
           className="w-full h-14 text-lg font-bold rounded-xl shadow-md transition-all active:scale-[0.98] bg-gray-900 text-white hover:bg-gray-100 hover:text-black dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white" 
           disabled={cart.length === 0 || checkoutLoading || allowedOptions.length === 0 || (fulfillment === 'pickup' && pickupLocations.length === 0) || !paymentMethod}
         >
-          {checkoutLoading ? (t('shop.cart.processing') || "Processing securely...") : `${t('shop.cart.checkoutBtn') || 'Checkout'} • ${formatPrice(subtotal, cart[0]?.currency || 'USD')}`}
+          {checkoutLoading ? (t('shop.cart.processing') || "Processing securely...") : `${t('shop.cart.checkoutBtn') || 'Checkout'} • ${formatPrice(payableTotal, currency)}`}
         </Button>
         <div className="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400 font-medium">
           <ShieldCheck className="h-4 w-4" />

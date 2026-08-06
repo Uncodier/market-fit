@@ -558,6 +558,76 @@ export interface CatalogItemSpec {
   item_spec?: ItemSpec;
 }
 
+export type DynamicQuoteFieldType =
+  | 'text'
+  | 'number'
+  | 'phone'
+  | 'address'
+  | 'email'
+  | 'distance'
+  | 'location'
+  | 'date'
+  | 'select'
+  | 'boolean';
+
+export interface DynamicQuoteField {
+  key: string;
+  label: string;
+  /** Controls input UX across shop, marketplace, POS, and quotations */
+  type: DynamicQuoteFieldType;
+  required?: boolean;
+  options?: string[];
+  placeholder?: string;
+}
+
+export interface QuoteExpiration {
+  value: number;
+  unit: 'minutes' | 'hours' | 'days';
+}
+
+export interface DynamicPricingConfig {
+  agent_prompt: string;
+  min_price?: number;
+  revision_count: number;
+  requires_advanced_compute: boolean;
+  requires_authorization: boolean;
+  quote_expiration?: QuoteExpiration;
+  fields: DynamicQuoteField[];
+}
+
+export type DynamicQuoteStatus =
+  | 'pending'
+  | 'processing'
+  | 'priced'
+  | 'failed'
+  | 'awaiting_authorization';
+
+export interface DynamicQuoteMetadata {
+  field_values?: Record<string, unknown>;
+  status?: DynamicQuoteStatus;
+  min_price?: number;
+  revision_count?: number;
+  requires_authorization?: boolean;
+  requires_advanced_compute?: boolean;
+  quote_expiration?: QuoteExpiration;
+  priced_at?: string;
+  catalog_item_requirement_id?: string;
+  assistant_instance_id?: string;
+  assistant_log_ids?: string[];
+  error?: string;
+  rationale?: string;
+}
+
+export interface CatalogItemRequirement {
+  id: string;
+  site_id: string;
+  catalog_item_id: string;
+  requirement_id: string;
+  instance_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CatalogItemMetadata {
   gallery?: string[];                    // extra images beyond image_url
   videos?: { url: string; title?: string }[];  // YouTube/Vimeo/external links
@@ -569,6 +639,7 @@ export interface CatalogItemMetadata {
   pickup_location_ids?: string[];
   variant_axes?: VariantAxis[];          // For parent items: defined variant axes
   option_values?: Record<string, string>; // For child items: selected axis value ID by axis ID
+  dynamic_pricing?: DynamicPricingConfig;
 }
 
 /** Lightweight catalog link for list/table relation chips */
@@ -601,6 +672,7 @@ export interface CatalogItem {
   is_pos_available: boolean;
   is_recurring: boolean;
   is_reservation: boolean;
+  is_dynamic_price?: boolean;
   pass_uses?: number | null;
   pass_validity_days?: number | null;
   metadata?: CatalogItemMetadata;

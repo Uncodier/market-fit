@@ -157,7 +157,13 @@ export function CatalogTable({ items, onUpdate, searchQuery, onCreateOpen }: Cat
                 </TableCell>
                 <TableCell>
                   <div className="text-foreground">
-                    {item.target_sale_price != null 
+                    {item.is_dynamic_price ? (
+                      <span className="text-sm">
+                        {item.lowest_sale_price != null || item.metadata?.dynamic_pricing?.min_price != null
+                          ? `From ${new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price))}`
+                          : (t('catalog.dynamicPricing.quote') || 'Quote')}
+                      </span>
+                    ) : item.target_sale_price != null 
                       ? new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(item.target_sale_price)
                       : <span className="text-muted-foreground">-</span>
                     }

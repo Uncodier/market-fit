@@ -10,10 +10,14 @@ import { Label } from "@/app/components/ui/label"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { addQuotationItem } from "../actions"
+import { addQuotationItem, getQuotation } from "../actions"
 import { listCatalogItems } from "@/app/catalog/actions"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { CatalogItem } from "@/app/types"
+import { hasDynamicQuoteFields, isDynamicPricedItem } from "@/app/catalog/dynamic-pricing"
+import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal"
+import { requestDynamicQuote } from "../dynamic-quote-actions"
 
 interface AddQuotationItemDialogProps {
   open: boolean
@@ -32,6 +36,8 @@ export function AddQuotationItemDialog({ open, onOpenChange, quotationId, onSucc
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [dynamicItem, setDynamicItem] = useState<CatalogItem | null>(null)
+  const [dynamicLoading, setDynamicLoading] = useState(false)
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: {
@@ -48,16 +54,18 @@ export function AddQuotationItemDialog({ open, onOpenChange, quotationId, onSucc
     () => listCatalogItems({ siteId: currentSite!.id, pageSize: 100 })
   )
 
-  const items = catalogData?.data || []
+  const items = (catalogData?.data || []) as CatalogItem[]
 
-  // Update default price when item selected (if it's an existing item and has a price in our catalog, though our items might not have a simple base_price in all cases, we try)
-  // Actually catalog items have base_price or we can leave it to user
   const handleItemSelect = (val: RelationSelectValue) => {
     setValue('catalog_item_value', val, { shouldValidate: true })
     if (val?.mode === 'existing') {
-      const selected = items.find((i: any) => i.id === val.id)
-      if (selected && selected.base_price !== undefined) {
-        setValue('unitPrice', selected.base_price.toString())
+      const selected = items.find((i) => i.id === val.id)
+      if (selected && hasDynamicQuoteFields(selected)) {
+        setDynamicItem(selected)
+        return
+      }
+      if (selected && selected.target_sale_price !== undefined && selected.target_sale_price !== null) {
+        setValue('unitPrice', selected.target_sale_price.toString())
       }
     }
   }
@@ -75,6 +83,34 @@ export function AddQuotationItemDialog({ open, onOpenChange, quotationId, onSucc
       
       if (catalogError || !resolvedCatalogItemId) {
         throw new Error(`Catalog error: ${catalogError || 'Failed to select or create item'}`)
+      }
+
+      const selected = items.find((i) => i.id === resolvedCatalogItemId)
+      if (selected && hasDynamicQuoteFields(selected)) {
+        setDynamicItem(selected)
+        setIsSubmitting(false)
+        return
+      }
+
+      if (selected && isDynamicPricedItem(selected)) {
+        const qRes = await getQuotation(quotationId)
+        const leadId = qRes.data?.lead_id
+        if (!leadId) throw new Error("Quotation lead missing")
+        const res = await requestDynamicQuote({
+          siteId: currentSite.id,
+          catalogItemId: resolvedCatalogItemId,
+          leadId,
+          quantity: parseInt(data.quantity) || 1,
+          fieldValues: {},
+          quotationId,
+          dealId: qRes.data?.deal_id || undefined,
+        })
+        if (res.error && !res.data?.quotationId) throw new Error(res.error)
+        toast.success(t('quotations.dynamicQuote.requested') || 'Dynamic quote requested')
+        reset()
+        onSuccess?.()
+        onOpenChange(false)
+        return
       }
 
       const res = await addQuotationItem({
@@ -99,7 +135,8 @@ export function AddQuotationItemDialog({ open, onOpenChange, quotationId, onSucc
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={open && !dynamicItem} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{t('quotations.detail.addItem') || 'Add Item'}</DialogTitle>
@@ -112,7 +149,7 @@ export function AddQuotationItemDialog({ open, onOpenChange, quotationId, onSucc
           <div className="space-y-2">
             <Label htmlFor="catalog_item_value">{t('quotations.detail.table.item') || 'Item'}</Label>
             <RelationSelect 
-              options={items.map((i: any) => ({ id: i.id, label: i.name }))}
+              options={items.map((i) => ({ id: i.id, label: i.name }))}
               value={catalogItemValue} 
               onValueChange={handleItemSelect}
               placeholder={t('quotations.detail.selectItem') || 'Select or create item...'}
@@ -153,5 +190,45 @@ export function AddQuotationItemDialog({ open, onOpenChange, quotationId, onSucc
         </form>
       </DialogContent>
     </Dialog>
+
+    <DynamicQuoteFieldsModal
+      item={dynamicItem}
+      open={!!dynamicItem}
+      onOpenChange={(o) => {
+        if (!o) setDynamicItem(null)
+      }}
+      confirming={dynamicLoading}
+      onConfirm={async ({ fieldValues, quantity }) => {
+        if (!currentSite || !dynamicItem) return
+        setDynamicLoading(true)
+        try {
+          const qRes = await getQuotation(quotationId)
+          const leadId = qRes.data?.lead_id
+          if (!leadId) throw new Error("Quotation lead missing")
+
+          const res = await requestDynamicQuote({
+            siteId: currentSite.id,
+            catalogItemId: dynamicItem.id,
+            leadId,
+            quantity,
+            fieldValues,
+            quotationId,
+            dealId: qRes.data?.deal_id || undefined,
+          })
+          if (res.error && !res.data?.quotationId) throw new Error(res.error)
+
+          toast.success(t('quotations.dynamicQuote.requested') || 'Dynamic quote requested')
+          setDynamicItem(null)
+          reset()
+          onSuccess?.()
+          onOpenChange(false)
+        } catch (err: any) {
+          toast.error(err?.message || 'Failed to request quote')
+        } finally {
+          setDynamicLoading(false)
+        }
+      }}
+    />
+    </>
   )
 }

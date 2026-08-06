@@ -55,6 +55,8 @@ export default function CheckoutClient() {
   const [locations, setLocations] = useState<any[]>([])
   const [pickupLocationId, setPickupLocationId] = useState<string>("")
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType | ''>('')
+  const [promotionCode, setPromotionCode] = useState("")
+  const [promoDiscount, setPromoDiscount] = useState(0)
 
   const allowedOptions = React.useMemo(() => {
     return intersectDeliveryOptions(items.map((i: any) => ({
@@ -139,8 +141,16 @@ export default function CheckoutClient() {
   }, [mode, source, siteId])
 
   const subtotal = items.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0)
+  const payableTotal = Math.max(0, subtotal - promoDiscount)
 
   const requiresAuth = items.some(item => item.kind === 'digital_asset' || item.is_recurring)
+
+  const resolvedCheckoutSiteId = (() => {
+    if (source === 'marketplace' && items.length > 0) {
+      return items[0]?.site_id || siteId || undefined
+    }
+    return siteId || undefined
+  })()
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -220,16 +230,17 @@ export default function CheckoutClient() {
       fulfillment,
       originLocationId: fulfillment === 'pickup' ? pickupLocationId : undefined,
       shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
+      promotionCode: promotionCode || undefined,
       source: source as 'shop' | 'marketplace',
       paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
-      intent: subtotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
+      intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
     })
 
     if (res.error) {
       toast.error(res.error)
       setCheckoutLoading(false)
     } else {
-      if (subtotal > 0 && paymentMethod === 'card') {
+      if (payableTotal > 0 && paymentMethod === 'card') {
         // Redirect to Stripe
         try {
           const stripeRes = await fetch('/api/stripe/checkout/order', {
@@ -390,6 +401,12 @@ export default function CheckoutClient() {
               }
               fulfillment={fulfillment}
               paymentMethod={paymentMethod}
+              siteId={resolvedCheckoutSiteId}
+              buyerUserId={session?.user?.id}
+              promotionCode={promotionCode}
+              setPromotionCode={setPromotionCode}
+              promoDiscount={promoDiscount}
+              setPromoDiscount={setPromoDiscount}
             />
           </div>
           

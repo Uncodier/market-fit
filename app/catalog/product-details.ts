@@ -216,12 +216,18 @@ export function getListingMetaChips(item: CatalogItem): { labelKey?: string, val
 export function getListingCtaLabel(item: CatalogItem, options?: { isOwned?: boolean, canBook?: boolean }): string {
   const isOwned = options?.isOwned || false;
   const canBook = options?.canBook || false;
-  
+
   if (isOwned) {
     if (canBook) return 'marketplace.listing.cta.book';
     return 'marketplace.listing.cta.viewDetails';
   }
-  
+
+  if (item.is_dynamic_price) {
+    const advanced = Boolean(item.metadata?.dynamic_pricing?.requires_advanced_compute)
+    return advanced
+      ? 'marketplace.listing.cta.requestQuote'
+      : 'marketplace.listing.cta.getInstantAiQuote'
+  }
   if (item.is_recurring) return 'marketplace.listing.cta.subscribe';
   if (item.kind === 'digital_asset') {
     switch (item.digital_subtype) {

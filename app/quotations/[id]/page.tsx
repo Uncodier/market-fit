@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
 import { getQuotation, updateQuotationStatus, removeQuotationItem } from "../actions"
+import { authorizeDynamicQuote, retryDynamicQuoteItem } from "../dynamic-quote-actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
@@ -80,6 +81,35 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
     setUpdating(false)
   }
 
+  const awaitingAuthorization = (quotation?.items || []).some(
+    (item: any) => item.metadata?.dynamic_quote?.status === 'awaiting_authorization'
+  )
+  const hasProcessing = (quotation?.items || []).some(
+    (item: any) => item.metadata?.dynamic_quote?.status === 'processing'
+  )
+
+  const handleAuthorize = async () => {
+    setUpdating(true)
+    const res = await authorizeDynamicQuote(quotation.id)
+    if (res.error) toast.error(res.error)
+    else {
+      toast.success(t('quotations.dynamicQuote.authorized') || 'Quote authorized — you can send it now')
+      loadQuotation()
+    }
+    setUpdating(false)
+  }
+
+  const handleRetry = async (itemId: string) => {
+    setUpdating(true)
+    const res = await retryDynamicQuoteItem(itemId)
+    if (res.error && !res.data?.quotationId) toast.error(res.error)
+    else {
+      toast.success(t('quotations.dynamicQuote.retrying') || 'Retrying quote calculation')
+      loadQuotation()
+    }
+    setUpdating(false)
+  }
+
   if (loading) {
     return <div className="p-8 space-y-4"><Skeleton className="h-10 w-1/3"/><Skeleton className="h-64 w-full"/></div>
   }
@@ -95,8 +125,17 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
             <Badge variant="outline" className="uppercase">{quotation.status ? (t(`status.${quotation.status.toLowerCase()}`) || quotation.status) : ''}</Badge>
           </div>
           <div className="flex gap-2">
+            {quotation.status === 'draft' && awaitingAuthorization && (
+              <Button variant="secondary" onClick={handleAuthorize} disabled={updating || hasProcessing}>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                {t('quotations.dynamicQuote.authorize') || 'Authorize'}
+              </Button>
+            )}
             {quotation.status === 'draft' && (
-              <Button onClick={() => handleUpdateStatus('sent')} disabled={updating}>
+              <Button
+                onClick={() => handleUpdateStatus('sent')}
+                disabled={updating || hasProcessing || awaitingAuthorization}
+              >
                 <Send className="w-4 h-4 mr-2" /> {t('quotations.detail.markAsSent') || 'Mark as Sent'}
               </Button>
             )}
@@ -186,21 +225,57 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {quotation.items?.map((item: any) => (
+                  {quotation.items?.map((item: any) => {
+                    const dq = item.metadata?.dynamic_quote
+                    const dqStatus = dq?.status as string | undefined
+                    return (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="space-y-1">
+                          <div>{item.name}</div>
+                          {dqStatus && (
+                            <Badge variant="secondary" className="text-[10px] uppercase">
+                              {dqStatus.replace(/_/g, ' ')}
+                            </Badge>
+                          )}
+                          {dq?.field_values && Object.keys(dq.field_values).length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              {Object.entries(dq.field_values).map(([k, v]) => `${k}: ${String(v)}`).join(' · ')}
+                            </div>
+                          )}
+                          {dq?.rationale && (
+                            <div className="text-xs text-muted-foreground">{dq.rationale}</div>
+                          )}
+                          {dq?.error && (
+                            <div className="text-xs text-destructive">{dq.error}</div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency }).format(item.unit_price)}</TableCell>
                       <TableCell className="text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency }).format(item.subtotal)}</TableCell>
                       <TableCell>
-                        {quotation.status === 'draft' && (
-                          <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleRemoveItem(item.id)} disabled={updating}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1 justify-end">
+                          {quotation.status === 'draft' && (dqStatus === 'failed' || dqStatus === 'processing') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRetry(item.id)}
+                              disabled={updating}
+                            >
+                              Retry
+                            </Button>
+                          )}
+                          {quotation.status === 'draft' && (
+                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleRemoveItem(item.id)} disabled={updating}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    )
+                  })}
                   {(!quotation.items || quotation.items.length === 0) && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">

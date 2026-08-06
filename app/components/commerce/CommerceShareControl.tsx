@@ -123,7 +123,7 @@ export function CommerceShareControl({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button 
-          className={className || `${shellClasses.iconButton} hover:bg-black/5 dark:hover:bg-white/5 !min-w-0 h-9 px-3 gap-1.5`}
+          className={className || shellClasses.iconButton}
           aria-label={t("commerce.share.trigger") || "Share"}
         >
           <Share className={iconClassName || "w-4 h-4"} />

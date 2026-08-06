@@ -2,11 +2,12 @@
 
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { ArrowLeft, ShoppingCart, User } from "@/app/components/ui/icons"
+import { ArrowLeft, Moon, ShoppingCart, Sun, User } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
+import { useTheme } from "@/app/context/ThemeContext"
 import { useState, useEffect } from "react"
 import { ProductPdpLayout } from "./ProductPdpLayout"
 import { ServicePdpLayout } from "./ServicePdpLayout"
@@ -35,6 +36,7 @@ interface ProductDetailPageProps {
 
 export function ProductDetailPage({ item, site, backUrl, experience }: ProductDetailPageProps) {
   const { t } = useLocalization()
+  const { theme, toggleTheme } = useTheme()
   const { user } = useAuth()
   const session = user ? { user } : null
   const pathname = usePathname()
@@ -92,7 +94,7 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
       <CommerceShellHeader
         brand={
           <div className="flex items-center">
-            <Link href={backUrl} className={`${shellClasses.iconButton} hover:bg-black/5 dark:hover:bg-white/5 md:mr-2`}>
+            <Link href={backUrl} className={`${shellClasses.iconButton}  md:mr-2`}>
               <ArrowLeft className="w-5 h-5" />
             </Link>
             {siteName && (
@@ -110,7 +112,7 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
         actions={
           <>
             <CommerceShareControl 
-              className={`relative ${shellClasses.iconButton} h-9 px-3 gap-1.5 border-0 hover:bg-black/5 dark:hover:bg-white/5 !min-w-0`}
+              className={`relative ${shellClasses.iconButton}`}
               iconClassName="h-4 w-4"
               title={item.name}
             />
@@ -122,7 +124,7 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
               currency={item?.currency}
               hideIfEmpty={false}
               variant="shell"
-              className={`relative ${shellClasses.iconButton} h-9 px-3 gap-1.5 border-0 hover:bg-black/5 dark:hover:bg-white/5 !min-w-0`}
+              className={`relative ${shellClasses.iconButton}`}
               iconClassName="h-4 w-4"
             />
 
@@ -164,6 +166,9 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
             <div className="flex items-center gap-2">
               <CurrencySelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
               <LocaleSelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
+              <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800">
+                {theme === "dark" ? <Sun className="h-5 w-5 text-gray-400 hover:text-black dark:hover:text-white" /> : <Moon className="h-5 w-5 text-gray-500 hover:text-black dark:hover:text-white" />}
+              </Button>
             </div>
           </div>
         </footer>
@@ -177,6 +182,9 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
             <div className="flex items-center gap-2">
               <CurrencySelector className="rounded-full" />
               <LocaleSelector className="rounded-full" />
+              <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
+                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
             </div>
           </div>
         </footer>

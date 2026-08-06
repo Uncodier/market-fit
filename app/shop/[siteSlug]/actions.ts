@@ -11,22 +11,48 @@ export async function getShopSite(slug: string) {
 
 export async function getShopCategories(siteId: string) {
   const supabase = await createServiceClient(true);
+
+  // Only return categories that currently have at least one shop-visible product.
   const { data, error } = await supabase
+    .from("catalog_categories")
+    .select(`
+      name,
+      catalog_items!inner (
+        id
+      )
+    `)
+    .eq("site_id", siteId)
+    .eq("catalog_items.status", "active")
+    .eq("catalog_items.is_marketplace_listed", true)
+    .is("catalog_items.parent_id", null);
+
+  if (!error && data) {
+    const cats = new Set<string>();
+    for (const row of data as Array<{ name?: string | null }>) {
+      if (row.name) cats.add(row.name);
+    }
+    return Array.from(cats).sort();
+  }
+
+  // Fallback: derive non-empty categories from listed catalog items
+  const { data: items } = await supabase
     .from("catalog_items")
-    .select('category:catalog_categories(name)')
+    .select("category:catalog_categories(name)")
     .eq("site_id", siteId)
     .eq("status", "active")
     .eq("is_marketplace_listed", true)
-    .is("parent_id", null);
-    
-  if (error || !data) return [];
-  
+    .is("parent_id", null)
+    .not("category_id", "is", null);
+
+  if (!items) return [];
+
   const cats = new Set<string>();
-  data.forEach((item: any) => {
-    const catName = Array.isArray(item.category) ? item.category[0]?.name : item.category?.name;
+  for (const item of items as any[]) {
+    const catName = Array.isArray(item.category)
+      ? item.category[0]?.name
+      : item.category?.name;
     if (catName) cats.add(catName);
-  });
-  
+  }
   return Array.from(cats).sort();
 }
 
@@ -243,13 +269,14 @@ export async function getShopUserOwnedItems(siteId: string): Promise<ShopOwnedAc
 
   const now = new Date().toISOString();
   
-  // 1. Get active entitlements
+  // 1. Get active entitlements (excluding those granted by subscriptions since the subscription itself is shown)
   const { data: entitlements } = await supabase
     .from('entitlements')
     .select('catalog_item_id')
     .eq('site_id', siteId)
     .eq('buyer_user_id', user.id)
     .eq('status', 'active')
+    .neq('source_type', 'subscription')
     .or(`expires_at.is.null,expires_at.gt.${now}`)
     .or(`uses_remaining.is.null,uses_remaining.gt.0`);
     

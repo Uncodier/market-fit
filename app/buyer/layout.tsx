@@ -167,7 +167,7 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
                 cartCount={cartCount}
                 hideIfEmpty={true}
                 variant="shell"
-                className={`relative ${shellClasses.iconButton} h-9 px-3 gap-1.5 border-0 hover:bg-black/5 dark:hover:bg-white/5 !min-w-0`}
+                className={`relative ${shellClasses.iconButton}`}
                 iconClassName="h-4 w-4"
               />
             </div>

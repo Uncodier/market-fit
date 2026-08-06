@@ -27,6 +27,9 @@ import { listLocations } from "@/app/inventory/actions";
 import { getLeads } from "@/app/leads/actions";
 import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialog";
 import { PosVariantPickerDialog } from "./components/PosVariantPickerDialog"
+import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal"
+import { requestDynamicQuote } from "@/app/quotations/dynamic-quote-actions"
+import { hasDynamicQuoteFields, isDynamicPricedItem } from "@/app/catalog/dynamic-pricing"
 import { CartPanel, PosCartItem } from "./components/CartPanel";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
 import { useRouter } from "next/navigation"
@@ -68,6 +71,8 @@ export default function POSPage() {
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [variantParentItem, setVariantParentItem] = useState<CatalogItem | null>(null);
+  const [dynamicQuoteItem, setDynamicQuoteItem] = useState<CatalogItem | null>(null);
+  const [dynamicQuoteLoading, setDynamicQuoteLoading] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string>("new");
   const [buyerUserId, setBuyerUserId] = useState<string | null>(null);
   const creatingOrderRef = React.useRef<boolean>(false);
@@ -235,6 +240,52 @@ export default function POSPage() {
 
   const addToCart = async (item: CatalogItem) => {
     if (!currentSite || !user) return;
+
+    if (isDynamicPricedItem(item)) {
+      if (!leadValue) {
+        toast.error(t("pos.selectClientFirst") || "Select a client before requesting a quote");
+        return;
+      }
+      if (hasDynamicQuoteFields(item)) {
+        setDynamicQuoteItem(item);
+        return;
+      }
+
+      // Dynamic price with no custom fields — request quote immediately
+      const { id: leadId, error: leadError } = await resolveRelationId(
+        "lead",
+        leadValue,
+        currentSite.id,
+      );
+      if (leadError || !leadId) {
+        toast.error(leadError || "Select a client before requesting a quote");
+        return;
+      }
+      setDynamicQuoteLoading(true);
+      try {
+        const res = await requestDynamicQuote({
+          siteId: currentSite.id,
+          catalogItemId: item.id,
+          leadId,
+          quantity: 1,
+          fieldValues: {},
+        });
+        if (res.error && !res.data?.quotationId) {
+          throw new Error(res.error);
+        }
+        toast.success(
+          t("quotations.dynamicQuote.created") || "Quote request created",
+        );
+        if (res.data?.quotationId) {
+          router.push(`/quotations/${res.data.quotationId}`);
+        }
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to request quote");
+      } finally {
+        setDynamicQuoteLoading(false);
+      }
+      return;
+    }
 
     // Check if it's a parent item with variants
     if (item.metadata?.variant_axes && item.metadata.variant_axes.length > 0 && !item.is_purchasable) {
@@ -894,6 +945,49 @@ export default function POSPage() {
         onConfirm={(childItem) => {
           setVariantParentItem(null);
           addToCart(childItem);
+        }}
+      />
+
+      <DynamicQuoteFieldsModal
+        item={dynamicQuoteItem}
+        open={!!dynamicQuoteItem}
+        onOpenChange={(o) => !o && setDynamicQuoteItem(null)}
+        confirming={dynamicQuoteLoading}
+        onConfirm={async ({ fieldValues, quantity }) => {
+          if (!currentSite || !dynamicQuoteItem) return;
+          const { id: leadId, error: leadError } = await resolveRelationId(
+            "lead",
+            leadValue,
+            currentSite.id,
+          );
+          if (leadError || !leadId) {
+            toast.error(leadError || "Select a client before requesting a quote");
+            return;
+          }
+          setDynamicQuoteLoading(true);
+          try {
+            const res = await requestDynamicQuote({
+              siteId: currentSite.id,
+              catalogItemId: dynamicQuoteItem.id,
+              leadId,
+              quantity,
+              fieldValues,
+            });
+            if (res.error && !res.data?.quotationId) {
+              throw new Error(res.error);
+            }
+            toast.success(
+              t("quotations.dynamicQuote.created") || "Quote request created",
+            );
+            setDynamicQuoteItem(null);
+            if (res.data?.quotationId) {
+              router.push(`/quotations/${res.data.quotationId}`);
+            }
+          } catch (err: any) {
+            toast.error(err?.message || "Failed to request quote");
+          } finally {
+            setDynamicQuoteLoading(false);
+          }
         }}
       />
     </div>
