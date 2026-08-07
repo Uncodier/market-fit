@@ -91,7 +91,7 @@ export function FeaturedListingPoster({
           onError={(e) => {
             e.currentTarget.style.opacity = "0"
           }}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+          className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
         />
         {/* Readability scrim — bottom-heavy so text never sits on busy mid-image */}
         <div
@@ -118,7 +118,7 @@ export function FeaturedListingPoster({
                 <img
                   src={item.site.logo_url}
                   alt=""
-                  className="h-5 w-5 shrink-0 rounded-full object-contain bg-white/10"
+                  className="h-5 w-5 shrink-0 rounded-full object-cover object-center bg-white/10"
                 />
               ) : null}
               <span className="truncate text-xs font-medium text-white/80">{item.site.name}</span>

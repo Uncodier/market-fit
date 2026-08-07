@@ -119,6 +119,9 @@ export function DigitalPdpLayout({ item, backUrl, experience }: { item: CatalogI
             ]}
           />
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 sm:mb-6 leading-tight">{item.name}</h1>
+          <div className="lg:hidden mb-8">
+            <PdpPriceBlock price={item.target_sale_price || 0} currency={item.currency || 'USD'} />
+          </div>
           <div className="prose prose-base sm:prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed mb-8 sm:mb-10">
             <p>{item.description}</p>
           </div>
@@ -170,10 +173,10 @@ export function DigitalPdpLayout({ item, backUrl, experience }: { item: CatalogI
                 {t('buyer.library.actions.file') || 'Open Downloads'}
               </PdpCtaButton>
             </div>
-          ) : (
+            ) : (
             <div className="hidden sm:flex items-center gap-6 p-6 bg-card border border-border/50 rounded-3xl shadow-lg relative">
               <PdpPriceBlock price={item.target_sale_price || 0} currency={item.currency || 'USD'} className="pl-2" />
-              <div className="flex-1 flex gap-3">
+              <div className="hidden sm:flex flex-1 gap-3">
                 <PdpCtaButton 
                   variant="outline"
                   onClick={handleAdd}
@@ -195,7 +198,7 @@ export function DigitalPdpLayout({ item, backUrl, experience }: { item: CatalogI
         
         <div className="order-1 lg:order-2">
           <div className="aspect-[4/5] bg-muted rounded-[2rem] sm:rounded-[3rem] overflow-hidden shadow-2xl relative max-sm:rotate-0 rotate-3 hover:rotate-0 transition-transform duration-500 mx-auto max-w-md">
-            <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
+            <img src={resolveItemImage(item)} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
             <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-[2rem] sm:rounded-[3rem]" />
           </div>
         </div>
@@ -208,7 +211,7 @@ export function DigitalPdpLayout({ item, backUrl, experience }: { item: CatalogI
       )}
 
       {!ownedEntitlement && !experience && (
-        <PdpMobileBuyBar price={item.target_sale_price || 0}>
+        <PdpMobileBuyBar price={item.target_sale_price || 0} fullWidthCta={true}>
           <div className="flex gap-2 w-full">
             <PdpCtaButton 
               variant="outline"

@@ -70,8 +70,8 @@ export function OrderSummary({
       <div className="space-y-4 mb-8 max-h-[40vh] overflow-y-auto pr-2 no-scrollbar">
         {items.map((item, idx) => (
           <div key={item.id + idx} className="flex gap-4 p-3 bg-muted/30 rounded-2xl border border-border/40">
-            <div className="w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0 shadow-sm border border-border/50">
-              <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
+            <div className="relative w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0 shadow-sm border border-border/50">
+              <img src={resolveItemImage(item)} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <h4 className="font-bold truncate text-sm">{item.name}</h4>

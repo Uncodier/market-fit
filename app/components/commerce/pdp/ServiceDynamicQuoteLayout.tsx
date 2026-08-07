@@ -37,7 +37,7 @@ export function ServiceDynamicQuoteLayout({
       <div className="pb-28 lg:pb-0">
         <div className="w-full px-4 md:px-8">
           <div className="w-full h-36 sm:h-44 md:h-52 bg-muted relative rounded-2xl sm:rounded-[1.5rem] overflow-hidden">
-            <img src={heroImageUrl} alt={item.name} className="w-full h-full object-cover" />
+            <img src={heroImageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
           </div>
         </div>
 
@@ -115,7 +115,7 @@ export function ServiceDynamicQuoteLayout({
               )}
             </div>
 
-            <div className="lg:col-span-5 xl:col-span-4 order-2 hidden lg:block">
+            <div className="lg:col-span-5 xl:col-span-4 order-2">
               <div className="lg:sticky lg:top-28 bg-card border border-border/50 rounded-3xl p-6 lg:p-8 shadow-2xl shadow-black/5">
                 <DynamicQuotePdpRail />
               </div>

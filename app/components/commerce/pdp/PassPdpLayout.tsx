@@ -106,84 +106,11 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 lg:py-12 pb-32 lg:pb-12">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-16">
         
-        {/* Mobile: Buy Card goes first, Desktop: Buy Card is right column */}
-        <div className="lg:col-span-1 lg:order-last">
-          <div className="lg:sticky lg:top-32 bg-card border border-border/50 rounded-3xl p-6 lg:p-8 shadow-2xl shadow-black/5 relative">
-            
-            {!ownedEntitlement ? (
-              <div className="mb-8">
-                <PdpPriceBlock 
-                  price={item.target_sale_price || 0}
-                  currency={item.currency || 'USD'}
-                  isRecurring={isRecurring}
-                  validityDays={item.pass_validity_days}
-                />
-              </div>
-            ) : (
-              <div className="mb-8 overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-b from-primary/5 to-transparent text-center relative">
-                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary/0 via-primary/50 to-primary/0" />
-                <div className="p-8">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-6 shadow-xl shadow-primary/20 ring-8 ring-primary/5">
-                    <CheckCircle className="w-8 h-8 text-primary-foreground" />
-                  </div>
-                  <h3 className="text-2xl font-black text-foreground tracking-tight mb-2">
-                    {t('pdp.youOwnThisPass') || 'You own this pass'}
-                  </h3>
-                  {ownedEntitlement.uses_remaining !== null ? (
-                    <div className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-background border shadow-sm text-foreground rounded-full text-sm font-semibold mt-2">
-                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                      {ownedEntitlement.uses_remaining} {t('buyer.library.usesRemaining') || 'uses remaining'}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground font-medium mt-2">
-                      {t('pdp.activeSubscription') || 'Active and ready to use'}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Hidden on mobile if bottom bar is shown, but for simplicity let's keep it here 
-                and just hide the sticky card's CTA on mobile if we use the bottom bar.
-                Actually, simpler to show it on both so users don't have to scroll to bottom. */}
-            <div className="hidden lg:block">
-              {ownedEntitlement ? (
-                canBook ? (
-                  <PdpCtaButton onClick={() => router.push(`/buyer/book/${ownedEntitlement.id}`)}>
-                    {t('buyer.library.actions.book') || 'Book'}
-                  </PdpCtaButton>
-                ) : null
-              ) : (
-                <div className="space-y-3">
-                  <PdpCtaButton 
-                    onClick={handleBuyNow}
-                    disabled={item._shop?.sellable === false || loadingOwned}
-                  >
-                    {item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : (isRecurring ? (t('pdp.subscribe') || 'Subscribe Now') : (t('pdp.payNow') || 'Buy Now'))}
-                  </PdpCtaButton>
-                  <PdpCtaButton 
-                    variant="outline"
-                    onClick={handleAdd}
-                    disabled={item._shop?.sellable === false || loadingOwned}
-                  >
-                    {t('marketplace.add') || 'Add to Cart'}
-                  </PdpCtaButton>
-                </div>
-              )}
-              <div className="mt-6 text-center text-xs text-muted-foreground font-medium flex items-center justify-center gap-2">
-                <span>{t('pdp.secureCheckout') || 'Secure checkout'}</span>
-                <span>•</span>
-                <span>{t('pdp.instantAccess') || 'Instant access'}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Details & Benefits */}
         <div className="lg:col-span-2 space-y-8 lg:space-y-10">
           <div className="aspect-[16/10] sm:aspect-[21/9] rounded-[2rem] overflow-hidden shadow-sm bg-muted relative">
             {imageUrl ? (
-              <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" />
+              <img src={imageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
             ) : (
               <div className="w-full h-full bg-secondary/50" />
             )}
@@ -194,6 +121,15 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
               </div>
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight drop-shadow-sm leading-tight">{item.name}</h1>
             </div>
+          </div>
+
+          <div className="lg:hidden">
+            <PdpPriceBlock 
+              price={item.target_sale_price || 0}
+              currency={item.currency || 'USD'}
+              isRecurring={isRecurring}
+              validityDays={item.pass_validity_days}
+            />
           </div>
 
           <PdpMetricChips 
@@ -207,6 +143,7 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
           />
 
           <div className="prose prose-base sm:prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed">
+            <h3 className="text-xl font-bold mb-4 text-foreground">{t('marketplace.catalogDetails.about') || 'Acerca de este artículo'}</h3>
             <p className="whitespace-pre-wrap">{item.description || 'Access all benefits and premium services.'}</p>
           </div>
 
@@ -282,6 +219,76 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
             </div>
           )}
         </div>
+
+        {/* Desktop: Buy Card is right column */}
+        <div className="lg:col-span-1 hidden lg:block">
+          <div className="lg:sticky lg:top-32 bg-card border border-border/50 rounded-3xl p-6 lg:p-8 shadow-2xl shadow-black/5 relative">
+            
+            {!ownedEntitlement ? (
+              <div className="mb-8">
+                <PdpPriceBlock 
+                  price={item.target_sale_price || 0}
+                  currency={item.currency || 'USD'}
+                  isRecurring={isRecurring}
+                  validityDays={item.pass_validity_days}
+                />
+              </div>
+            ) : (
+              <div className="mb-8 overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-b from-primary/5 to-transparent text-center relative">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary/0 via-primary/50 to-primary/0" />
+                <div className="p-8">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-6 shadow-xl shadow-primary/20 ring-8 ring-primary/5">
+                    <CheckCircle className="w-8 h-8 text-primary-foreground" />
+                  </div>
+                  <h3 className="text-2xl font-black text-foreground tracking-tight mb-2">
+                    {t('pdp.youOwnThisPass') || 'You own this pass'}
+                  </h3>
+                  {ownedEntitlement.uses_remaining !== null ? (
+                    <div className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-background border shadow-sm text-foreground rounded-full text-sm font-semibold mt-2">
+                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                      {ownedEntitlement.uses_remaining} {t('buyer.library.usesRemaining') || 'uses remaining'}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground font-medium mt-2">
+                      {t('pdp.activeSubscription') || 'Active and ready to use'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="hidden lg:block">
+              {ownedEntitlement ? (
+                canBook ? (
+                  <PdpCtaButton onClick={() => router.push(`/buyer/book/${ownedEntitlement.id}`)}>
+                    {t('buyer.library.actions.book') || 'Book'}
+                  </PdpCtaButton>
+                ) : null
+              ) : (
+                <div className="space-y-3">
+                  <PdpCtaButton 
+                    onClick={handleBuyNow}
+                    disabled={item._shop?.sellable === false || loadingOwned}
+                  >
+                    {item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : (isRecurring ? (t('pdp.subscribe') || 'Subscribe Now') : (t('pdp.payNow') || 'Buy Now'))}
+                  </PdpCtaButton>
+                  <PdpCtaButton 
+                    variant="outline"
+                    onClick={handleAdd}
+                    disabled={item._shop?.sellable === false || loadingOwned}
+                  >
+                    {t('marketplace.add') || 'Add to Cart'}
+                  </PdpCtaButton>
+                </div>
+              )}
+              <div className="mt-6 text-center text-xs text-muted-foreground font-medium flex items-center justify-center gap-2">
+                <span>{t('pdp.secureCheckout') || 'Secure checkout'}</span>
+                <span>•</span>
+                <span>{t('pdp.instantAccess') || 'Instant access'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {!ownedEntitlement && (
@@ -289,6 +296,7 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
           price={item.target_sale_price || 0}
           isRecurring={isRecurring}
           validityDays={item.pass_validity_days}
+          fullWidthCta={true}
         >
           <div className="flex gap-2 w-full min-w-0">
             <PdpCtaButton 

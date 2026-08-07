@@ -42,7 +42,7 @@ export function ShopHeroTrust({
               onError={(e) => {
                 e.currentTarget.style.opacity = "0"
               }}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-center"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent md:bg-gradient-to-r md:from-black/80 md:via-black/50 md:to-transparent" />
           </div>

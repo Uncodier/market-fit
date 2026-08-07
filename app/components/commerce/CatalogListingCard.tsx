@@ -83,12 +83,12 @@ export function CatalogListingCard({
           compactMobile ? "aspect-square md:aspect-[4/3]" : "aspect-[4/3]"
         }`}
       >
-        <Link href={href} className="block w-full h-full">
+        <Link href={href} className="absolute inset-0 z-0" aria-label={item.name}>
           <img
             src={resolveItemImage(item)}
-            alt={item.name}
+            alt=""
             onError={(e) => { e.currentTarget.style.opacity = '0' }}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
           />
         </Link>
 

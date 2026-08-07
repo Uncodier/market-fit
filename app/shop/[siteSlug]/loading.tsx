@@ -1,5 +1,5 @@
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { Menu, Search, ShoppingCart, User, CreditCard, Moon } from "@/app/components/ui/icons"
+import { Search, ShoppingCart, User, CreditCard, Moon } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 import { CatalogListingCardSkeleton } from "@/app/components/commerce/CatalogListingCardSkeleton"
@@ -9,11 +9,6 @@ export default function ShopLoading() {
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <div className="h-4 w-full shrink-0" />
       <CommerceShellHeader
-        mobileLeading={
-          <button className={`md:hidden ${shellClasses.iconButton}`} disabled>
-            <Menu className="h-6 w-6" />
-          </button>
-        }
         hideCenterOnMobile={false}
         brand={<Skeleton className="h-6 w-32 ml-2" />}
         center={

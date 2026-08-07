@@ -148,7 +148,7 @@ export function BookingExperience({
         <div className="mb-8">
         <div className="bg-card border rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-6">
           {imageUrl ? (
-            <img src={imageUrl} alt={item.name} className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-cover bg-muted shrink-0" />
+            <img src={imageUrl} alt={item.name} className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-cover object-center bg-muted shrink-0" />
           ) : (
             <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-muted shrink-0 flex items-center justify-center">
               <span className="text-muted-foreground font-medium text-sm">{t("booking.noImage") || "No Image"}</span>

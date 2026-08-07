@@ -1,5 +1,5 @@
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { Menu, Search, ShoppingCart, User } from "@/app/components/ui/icons"
+import { Search, ShoppingCart, User } from "@/app/components/ui/icons"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 import { CatalogListingCardSkeleton } from "@/app/components/commerce/CatalogListingCardSkeleton"
 
@@ -9,11 +9,6 @@ export default function MarketplaceLoading() {
       <div className="h-4 w-full shrink-0" />
       <CommerceShellHeader
         hideCenterOnMobile={false}
-        mobileLeading={
-          <button className={`md:hidden ${shellClasses.iconButton}`} disabled>
-            <Menu className="h-6 w-6" />
-          </button>
-        }
         brand={
           <>
             <Skeleton className="h-6 w-6 rounded-md md:hidden" />

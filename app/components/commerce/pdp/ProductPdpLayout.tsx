@@ -105,11 +105,11 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   const galleryBlock = (
     <div className="space-y-4">
       {gallery.length > 0 ? (
-        <div className="aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden border shadow-sm">
+        <div className="relative aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden border shadow-sm">
           <img
             src={uniqueGallery[activeImageIdx] || uniqueGallery[0]}
             alt={item.name}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+            className="absolute inset-0 h-full w-full object-cover object-center hover:scale-105 transition-transform duration-700"
           />
         </div>
       ) : (
@@ -127,7 +127,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
               onClick={() => setActiveImageIdx(i)}
               className={`relative aspect-square w-20 sm:w-24 shrink-0 bg-muted rounded-2xl overflow-hidden cursor-pointer shadow-sm snap-start transition-all ${activeImageIdx === i ? "ring-2 ring-primary ring-offset-2" : "border hover:border-primary/50"}`}
             >
-              <img src={url} alt="" className="w-full h-full object-cover" />
+              <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover object-center" />
             </button>
           ))}
         </div>
@@ -212,12 +212,12 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
             <div className="lg:col-span-7 xl:col-span-8 order-1 space-y-8">
               <div className="max-w-md">
-                <div className="h-36 sm:h-44 bg-muted rounded-2xl overflow-hidden border shadow-sm">
+                <div className="relative h-36 sm:h-44 bg-muted rounded-2xl overflow-hidden border shadow-sm">
                   {uniqueGallery[0] ? (
                     <img
                       src={uniqueGallery[activeImageIdx] || uniqueGallery[0]}
                       alt={item.name}
-                      className="w-full h-full object-cover"
+                      className="absolute inset-0 h-full w-full object-cover object-center"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -230,7 +230,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
               <div className="pt-4 border-t">{detailsBelow}</div>
             </div>
 
-            <div className="lg:col-span-5 xl:col-span-4 order-2 hidden lg:block">
+            <div className="lg:col-span-5 xl:col-span-4 order-2">
               <div className="lg:sticky lg:top-28 bg-card border border-border/50 rounded-3xl p-6 lg:p-8 shadow-2xl shadow-black/5">
                 <DynamicQuotePdpRail />
               </div>
@@ -267,7 +267,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
               {item.name}
             </h1>
 
-            <div className="hidden lg:block">
+            <div>
               <PdpPriceBlock price={displayPrice} currency={item.currency || "USD"} />
               {activeItem._shop?.availableQty !== undefined &&
                 activeItem._shop.availableQty <= 5 &&
@@ -319,7 +319,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
         </div>
       </div>
 
-      <PdpMobileBuyBar price={displayPrice}>
+      <PdpMobileBuyBar price={displayPrice} fullWidthCta={true}>
         <div className="flex gap-2 w-full">
           <PdpCtaButton
             variant="outline"

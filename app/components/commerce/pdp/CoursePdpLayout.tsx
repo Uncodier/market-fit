@@ -129,7 +129,7 @@ export function CoursePdpLayout({ item, backUrl, experience }: { item: CatalogIt
       </div>
 
       <div className="aspect-[16/10] sm:aspect-[21/9] bg-muted rounded-[2rem] overflow-hidden shadow-xl mb-10 sm:mb-16 relative">
-        <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
+        <img src={resolveItemImage(item)} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
 
@@ -137,13 +137,13 @@ export function CoursePdpLayout({ item, backUrl, experience }: { item: CatalogIt
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16 max-w-7xl mx-auto">
           {/* Mobile: buy card first */}
           <div className="lg:col-span-1 lg:order-last">
-            <div className="lg:sticky lg:top-32 bg-card border border-border/50 rounded-3xl p-6 lg:p-8 shadow-2xl shadow-black/5 flex flex-col gap-6 lg:gap-8 text-center relative">
+            <div className="lg:sticky lg:top-32 lg:bg-card lg:border lg:border-border/50 lg:rounded-3xl lg:p-8 lg:shadow-2xl lg:shadow-black/5 flex flex-col gap-6 lg:gap-8 text-center relative">
               
               {primaryPerson && (
                 <div className="pb-6 lg:pb-8 border-b">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full mx-auto mb-4 overflow-hidden shadow-sm">
+                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-full mx-auto mb-4 overflow-hidden shadow-sm">
                     {primaryPerson.image_url ? (
-                      <img src={primaryPerson.image_url} alt={primaryPerson.name} className="w-full h-full object-cover" />
+                      <img src={primaryPerson.image_url} alt={primaryPerson.name} className="absolute inset-0 h-full w-full object-cover object-center" />
                     ) : (
                       <div className="w-full h-full bg-primary/10 text-primary flex items-center justify-center text-xl sm:text-2xl font-black">
                         {primaryPerson.name.charAt(0)}
@@ -240,7 +240,7 @@ export function CoursePdpLayout({ item, backUrl, experience }: { item: CatalogIt
       )}
 
       {!ownedEntitlement && (
-        <PdpMobileBuyBar price={item.target_sale_price || 0}>
+        <PdpMobileBuyBar price={item.target_sale_price || 0} fullWidthCta={true}>
           <div className="flex gap-2 w-full">
             <PdpCtaButton 
               variant="outline"

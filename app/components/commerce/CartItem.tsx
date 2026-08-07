@@ -15,8 +15,8 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
 
   return (
     <div className="flex gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-      <div className="w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0">
-         <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
+      <div className="relative w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden flex-shrink-0">
+         <img src={resolveItemImage(item)} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
       </div>
       <div className="flex-1 min-w-0 flex flex-col justify-between">
         <div>

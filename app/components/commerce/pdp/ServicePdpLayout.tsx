@@ -154,7 +154,7 @@ export function ServicePdpLayout({
     <div className={isReservationExperience ? "pb-8" : "pb-32 lg:pb-0"}>
       <div className="w-full px-4 md:px-8">
         <div className="w-full h-[28vh] min-h-[200px] sm:h-[36vh] md:h-[42vh] bg-muted relative rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden">
-          <img src={heroImageUrl} alt={item.name} className="w-full h-full object-cover" />
+          <img src={heroImageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
         </div>
       </div>
 
@@ -193,6 +193,12 @@ export function ServicePdpLayout({
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
             {item.name}
           </h1>
+
+          {!isReservationExperience && (
+            <div className="mt-4 lg:hidden">
+              <PdpPriceBlock price={displayPrice} currency={item.currency || "USD"} />
+            </div>
+          )}
           {(venueLocation.name || venueLocation.address || venueLocation.city || isReservationExperience) && (
             <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1">
               {isReservationExperience && (
@@ -230,8 +236,8 @@ export function ServicePdpLayout({
                 schedules={experience?.extras?.schedules || []}
               />
             ) : (
-              <div className="lg:sticky lg:top-32 bg-card border border-border/50 rounded-3xl p-6 lg:p-8 shadow-2xl shadow-black/5 relative">
-                <div className="mb-6 lg:mb-8">
+              <div className="lg:sticky lg:top-32 lg:bg-card lg:border lg:border-border/50 lg:rounded-3xl lg:p-8 lg:shadow-2xl lg:shadow-black/5 relative">
+                <div className="hidden lg:block mb-6 lg:mb-8">
                   <PdpPriceBlock price={displayPrice} currency={item.currency || "USD"} />
                 </div>
 
@@ -397,7 +403,7 @@ export function ServicePdpLayout({
       </div>
 
       {!isDropIn && !experience && (
-        <PdpMobileBuyBar price={displayPrice}>
+        <PdpMobileBuyBar price={displayPrice} fullWidthCta={true}>
           <div className="flex gap-2 w-full">
             <PdpCtaButton
               variant="outline"
