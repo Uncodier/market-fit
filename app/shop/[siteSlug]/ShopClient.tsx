@@ -7,22 +7,16 @@ import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-stora
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { Button } from "@/app/components/ui/button"
 import { toast } from "sonner"
-import { Search, CreditCard, Moon, Sun, User } from "@/app/components/ui/icons"
+import { CreditCard, Moon, Sun } from "@/app/components/ui/icons"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
-import { CartButton } from "@/app/components/commerce/CartButton"
-import { CommerceShareControl } from "@/app/components/commerce/CommerceShareControl"
 import { LocaleSelector } from "@/app/components/commerce/LocaleSelector"
 import { CurrencySelector } from "@/app/components/commerce/CurrencySelector"
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/app/components/ui/sheet"
 import { CommerceOrderSuccess } from "@/app/components/commerce/CommerceOrderSuccess"
-import { CartSidebar } from "./CartSidebar"
 import { ShopHeroTrust } from "./ShopHeroTrust"
 import { ShopCatalogMain } from "./ShopCatalogMain"
-import { MobileShellSearchExpanded, MobileShellSearchTrigger } from "@/app/components/commerce/MobileShellSearch"
-import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
-import Link from "next/link"
+import { ShopHeader } from "./ShopHeader"
 import { useParams, useRouter } from "next/navigation"
 
 import { ShopOwnedAccess } from "./actions"
@@ -143,7 +137,8 @@ export default function ShopClient({
   const [ownerSiteId, setOwnerSiteId] = useState<string | null>(null)
   const { user } = useAuth()
   const session = user ? { user } : null
-  
+  const searchLabel = t("common.search") || "Search"
+
   // Set customer details if logged in
   useEffect(() => {
     if (session?.user && !customerEmail) {
@@ -312,133 +307,44 @@ export default function ShopClient({
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-      {/* Top Spacer for floating header */}
-      <div className="h-4 w-full shrink-0" />
-      {/* Sticky Header */}
-      <CommerceShellHeader
-        mobileExpanded={
-          mobileSearchOpen ? (
-            <MobileShellSearchExpanded
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder={searchPlaceholder}
-              open={mobileSearchOpen}
-              onOpenChange={setMobileSearchOpen}
-            />
-          ) : undefined
-        }
-        brand={
-          <Link href={`/shop/${siteSlug}`} className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
-            {site.logo_url ? (
-              <img src={site.logo_url} alt={site.name} className="h-6 object-contain" />
-            ) : (
-              <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate max-w-[150px] md:max-w-none">
-                {site.name}
-              </span>
-            )}
-          </Link>
-        }
-        hideCenterOnMobile={false}
-        center={
-          <>
-            <div className="md:hidden flex w-full min-w-0">
-              <MobileShellSearchTrigger
-                value={searchQuery}
-                label={t("common.search") || "Search"}
-                onOpen={() => setMobileSearchOpen(true)}
-              />
-            </div>
-            <div className="hidden md:block w-full relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder={searchPlaceholder}
-                className="w-full pl-9 h-9 text-sm bg-muted/50 focus:bg-white dark:focus:bg-gray-950 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-full transition-all outline-none shadow-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </>
-        }
-        actions={
-          <div
-            data-commerce-shell-actions-core
-            className="flex items-center justify-end gap-1 md:gap-3 min-w-0"
-          >
-            <CommerceShareControl
-              className={`relative ${shellClasses.iconButton}`}
-              iconClassName="h-4 w-4"
-              title={site.name}
-            />
-            <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
-              <SheetTrigger asChild>
-                <CartButton
-                  cartCount={cartCount}
-                  subtotal={subtotal}
-                  currency={cart[0]?.currency}
-                  variant="shell"
-                  className={`relative ${shellClasses.iconButton}`}
-                  iconClassName="h-4 w-4"
-                />
-              </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-white border-l-0 shadow-2xl">
-                <SheetTitle className="sr-only">Shopping Cart</SheetTitle>
-                <CartSidebar
-                  cart={cart}
-                  session={session}
-                  subtotal={subtotal}
-                  updateQty={updateQty}
-                  customerName={customerName}
-                  setCustomerName={setCustomerName}
-                  customerEmail={customerEmail}
-                  setCustomerEmail={setCustomerEmail}
-                  fulfillment={fulfillment}
-                  setFulfillment={setFulfillment}
-                  originLocationId={originLocationId}
-                  setOriginLocationId={setOriginLocationId}
-                  locations={locations}
-                  promotionCode={promotionCode}
-                  setPromotionCode={setPromotionCode}
-                  promoDiscount={promoDiscount}
-                  setPromoDiscount={setPromoDiscount}
-                  shippingAddress={shippingAddress}
-                  setShippingAddress={setShippingAddress}
-                  ownerSiteId={ownerSiteId}
-                  setOwnerSiteId={setOwnerSiteId}
-                  handleCheckout={handleCheckout}
-                  checkoutLoading={checkoutLoading}
-                  closeCart={() => setIsCartOpen(false)}
-                  site={site}
-                  paymentMethod={paymentMethod}
-                  setPaymentMethod={setPaymentMethod}
-                />
-              </SheetContent>
-            </Sheet>
-
-            {session ? (
-              <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-1 shrink-0">
-                {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
-                  <img
-                    src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture}
-                    alt="Avatar"
-                    className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
-                  />
-                ) : (
-                  <div className="w-8 h-8 min-w-8 rounded-full bg-muted flex items-center justify-center border border-border shadow-sm shrink-0">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                )}
-              </Link>
-            ) : (
-              <Link
-                href={`/auth?returnTo=${encodeURIComponent(`/shop/${siteSlug}`)}`}
-                className={`${shellClasses.primaryCta} ml-1`}
-              >
-                {t('shop.signIn') || 'Sign In'}
-              </Link>
-            )}
-          </div>
-        }
+      <ShopHeader
+        site={site}
+        siteSlug={String(siteSlug)}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchPlaceholder={searchPlaceholder}
+        searchLabel={searchLabel}
+        mobileSearchOpen={mobileSearchOpen}
+        setMobileSearchOpen={setMobileSearchOpen}
+        session={session}
+        signInLabel={t("shop.signIn") || "Sign In"}
+        cart={cart}
+        cartCount={cartCount}
+        subtotal={subtotal}
+        isCartOpen={isCartOpen}
+        setIsCartOpen={setIsCartOpen}
+        updateQty={updateQty}
+        customerName={customerName}
+        setCustomerName={setCustomerName}
+        customerEmail={customerEmail}
+        setCustomerEmail={setCustomerEmail}
+        fulfillment={fulfillment}
+        setFulfillment={setFulfillment}
+        originLocationId={originLocationId}
+        setOriginLocationId={setOriginLocationId}
+        locations={locations}
+        promotionCode={promotionCode}
+        setPromotionCode={setPromotionCode}
+        promoDiscount={promoDiscount}
+        setPromoDiscount={setPromoDiscount}
+        shippingAddress={shippingAddress}
+        setShippingAddress={setShippingAddress}
+        ownerSiteId={ownerSiteId}
+        setOwnerSiteId={setOwnerSiteId}
+        handleCheckout={handleCheckout}
+        checkoutLoading={checkoutLoading}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
       />
 
       <ShopHeroTrust site={site} searchQuery={searchQuery} />

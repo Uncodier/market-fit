@@ -24,6 +24,12 @@ function HeaderColumns({
   const [sideWidth, setSideWidth] = useState<number | null>(null)
 
   useEffect(() => {
+    // Only mirror side widths when the center column is visible on mobile.
+    if (hideCenterOnMobile) {
+      setSideWidth(null)
+      return
+    }
+
     const el = actionsRef.current
     if (!el) return
 
@@ -40,12 +46,12 @@ function HeaderColumns({
 
   return (
     <>
-      {/* Mobile: logo rail width mirrors the right actions cluster. Desktop: flex-1 balance. */}
+      {/* Mobile: when center is shown, logo rail mirrors actions width. Desktop: flex-1 balance. */}
       <div
         data-commerce-shell-brand
         className="flex items-center justify-start gap-2 md:gap-4 relative z-10 min-w-0 shrink-0 overflow-hidden md:flex-1 md:basis-0 md:!w-auto md:overflow-visible"
         style={
-          sideWidth != null
+          !hideCenterOnMobile && sideWidth != null
             ? ({ ["--shell-side-width" as string]: `${sideWidth}px`, width: "var(--shell-side-width)" } as React.CSSProperties)
             : undefined
         }

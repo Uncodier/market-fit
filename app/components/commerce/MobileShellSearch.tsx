@@ -1,8 +1,11 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Search, X } from "@/app/components/ui/icons"
 import { shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+
+/** Min center width before the compact bar relocates as an icon on the right. */
+const COMPACT_SEARCH_MIN_PX = 112
 
 type ExpandedProps = {
   value: string
@@ -12,7 +15,73 @@ type ExpandedProps = {
   onOpenChange: (open: boolean) => void
 }
 
-/** Compact control in the header center on mobile. Fills available width; shrinks to icon-only. */
+/**
+ * True when the header center cannot host a usable compact search bar.
+ * Measures: header − brand content − actions-core − gaps.
+ * Pass `initialCollapsed` (e.g. !session) to avoid a flash before the first measure.
+ */
+export function useMobileShellSearchCollapsed(initialCollapsed = false) {
+  const [collapsed, setCollapsed] = useState(initialCollapsed)
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)")
+    let ro: ResizeObserver | null = null
+
+    const measure = () => {
+      if (!mq.matches) {
+        setCollapsed(false)
+        return
+      }
+
+      const header = document.querySelector<HTMLElement>("[data-commerce-shell-header]")
+      if (!header) return
+
+      const brand = header.querySelector<HTMLElement>("[data-commerce-shell-brand]")
+      const actionsCore = header.querySelector<HTMLElement>("[data-commerce-shell-actions-core]")
+      if (!brand || !actionsCore) return
+
+      if (!ro) {
+        ro = new ResizeObserver(measure)
+        ro.observe(header)
+        ro.observe(brand)
+        ro.observe(actionsCore)
+      }
+
+      const headerStyles = window.getComputedStyle(header)
+      const padX =
+        (parseFloat(headerStyles.paddingLeft) || 0) +
+        (parseFloat(headerStyles.paddingRight) || 0)
+      const brandContent = brand.firstElementChild as HTMLElement | null
+      const brandW = Math.ceil(
+        (brandContent ?? brand).getBoundingClientRect().width
+      )
+      const actionsW = Math.ceil(actionsCore.getBoundingClientRect().width)
+      const headerW = Math.ceil(header.getBoundingClientRect().width)
+      // gaps between the three columns + center horizontal padding
+      const gaps = 18
+      const available = headerW - padX - brandW - actionsW - gaps
+
+      setCollapsed((prev) => {
+        const next = available < COMPACT_SEARCH_MIN_PX
+        return prev === next ? prev : next
+      })
+    }
+
+    measure()
+    mq.addEventListener("change", measure)
+    window.addEventListener("resize", measure)
+
+    return () => {
+      ro?.disconnect()
+      mq.removeEventListener("change", measure)
+      window.removeEventListener("resize", measure)
+    }
+  }, [initialCollapsed])
+
+  return collapsed
+}
+
+/** Compact control in the header center on mobile. Fills available width. */
 export function MobileShellSearchTrigger({
   value,
   label,
@@ -36,6 +105,31 @@ export function MobileShellSearchTrigger({
       </span>
       {value ? (
         <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+      ) : null}
+    </button>
+  )
+}
+
+/** Icon-only search for the right actions cluster when the center bar does not fit. */
+export function MobileShellSearchIconButton({
+  value,
+  label,
+  onOpen,
+}: {
+  value: string
+  label: string
+  onOpen: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`md:hidden relative ${shellClasses.iconButton} !bg-muted/50 hover:!bg-muted/80`}
+      aria-label={label}
+    >
+      <Search className="h-4 w-4" />
+      {value ? (
+        <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
       ) : null}
     </button>
   )
