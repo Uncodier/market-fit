@@ -93,33 +93,40 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
       <div className="h-4 w-full shrink-0" />
       <CommerceShellHeader
         brand={
-          <div className="flex items-center">
-            <Link href={backUrl} className={`${shellClasses.iconButton}  md:mr-2`}>
+          <div className="flex items-center min-w-0">
+            <Link href={backUrl} className={`${shellClasses.iconButton} shrink-0 md:mr-2`}>
               <ArrowLeft className="w-5 h-5" />
             </Link>
             {siteName && (
-              <div className="flex items-center gap-2 border-l border-black/10 dark:border-white/10 pl-3 ml-1">
+              <div className="flex items-center gap-2 border-l border-black/10 dark:border-white/10 pl-3 ml-1 min-w-0">
                 {siteLogo ? (
-                  <img src={siteLogo} className="w-6 h-6 object-contain" />
+                  <img src={siteLogo} alt="" className="w-6 h-6 object-contain shrink-0" />
                 ) : (
-                  <div className="w-6 h-6 bg-muted rounded-full" />
+                  <div className="w-6 h-6 bg-muted rounded-full shrink-0" />
                 )}
-                <span className="text-sm font-bold tracking-tight truncate max-w-[120px] md:max-w-none">{siteName}</span>
+                <span className="text-sm font-bold tracking-tight truncate min-w-0">
+                  {siteName}
+                </span>
               </div>
             )}
           </div>
         }
         actions={
-          <>
-            <CommerceShareControl 
-              className={`relative ${shellClasses.iconButton}`}
-              iconClassName="h-4 w-4"
-              title={item.name}
-            />
-            
-            <CartButton 
-              href={`${backUrl}?cart=1`} 
-              cartCount={cartCount} 
+          <div
+            data-commerce-shell-actions-core
+            className="flex items-center justify-end gap-0.5 md:gap-3 min-w-0"
+          >
+            <div className="hidden md:contents">
+              <CommerceShareControl
+                className={`relative ${shellClasses.iconButton}`}
+                iconClassName="h-4 w-4"
+                title={item.name}
+              />
+            </div>
+
+            <CartButton
+              href={`${backUrl}?cart=1`}
+              cartCount={cartCount}
               subtotal={subtotal}
               currency={item?.currency}
               hideIfEmpty={false}
@@ -129,11 +136,14 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
             />
 
             {session ? (
-              <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-1 shrink-0">
+              <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-0.5 shrink-0">
                 {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
-                  <img 
-                    src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture} 
-                    alt="Avatar" 
+                  <img
+                    src={
+                      session.user.user_metadata?.avatar_url ||
+                      session.user.user_metadata?.picture
+                    }
+                    alt="Avatar"
                     className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shrink-0"
                   />
                 ) : (
@@ -143,11 +153,23 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
                 )}
               </Link>
             ) : (
-              <Link href={`/auth?returnTo=${encodeURIComponent(currentUrl)}`} className={`${shellClasses.primaryCta} ml-1`}>
-                {t('marketplace.signIn') || 'Sign In'}
-              </Link>
+              <>
+                <Link
+                  href={`/auth?returnTo=${encodeURIComponent(currentUrl)}`}
+                  className={`md:hidden ${shellClasses.iconButton}`}
+                  aria-label={t("marketplace.signIn") || "Sign In"}
+                >
+                  <User className="h-4 w-4" />
+                </Link>
+                <Link
+                  href={`/auth?returnTo=${encodeURIComponent(currentUrl)}`}
+                  className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}
+                >
+                  {t("marketplace.signIn") || "Sign In"}
+                </Link>
+              </>
             )}
-          </>
+          </div>
         }
       />
 

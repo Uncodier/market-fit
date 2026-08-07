@@ -18,19 +18,31 @@ export function PdpPriceBlock({ price, currency = 'USD', isRecurring, validityDa
   const { formatPrice } = useDisplayCurrency()
   
   return (
-    <div className={cn("flex flex-col", className)}>
-      <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
-        <div className={cn("font-black tracking-tight", small ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl")}>
+    <div className={cn("flex flex-col min-w-0", className)}>
+      <div className={cn(
+        "flex gap-1",
+        small ? "flex-col items-start" : "flex-col sm:flex-row sm:items-baseline sm:gap-2"
+      )}>
+        <div className={cn(
+          "font-black tracking-tight truncate",
+          small ? "text-lg leading-tight" : "text-4xl sm:text-5xl"
+        )}>
           {formatPrice(price || 0, currency)}
         </div>
         {isRecurring && (
-          <div className="text-sm font-bold text-muted-foreground uppercase tracking-widest mt-1 sm:mt-0">
+          <div className={cn(
+            "font-bold text-muted-foreground uppercase tracking-widest",
+            small ? "text-[10px] leading-none" : "text-sm mt-1 sm:mt-0"
+          )}>
             {t('pdp.perMonth') || 'PER MONTH'}
           </div>
         )}
       </div>
       {(!isRecurring && validityDays) && (
-        <div className="mt-2 text-sm font-medium text-muted-foreground">
+        <div className={cn(
+          "font-medium text-muted-foreground",
+          small ? "mt-0.5 text-xs" : "mt-2 text-sm"
+        )}>
           {`${t('pdp.validFor') || 'Valid for'} ${validityDays} ${t('pdp.days') || 'days'}`}
         </div>
       )}

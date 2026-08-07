@@ -290,21 +290,27 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
           isRecurring={isRecurring}
           validityDays={item.pass_validity_days}
         >
-          <div className="flex gap-2 w-full">
+          <div className="flex gap-2 w-full min-w-0">
             <PdpCtaButton 
               variant="outline"
               onClick={handleAdd}
               disabled={item._shop?.sellable === false || loadingOwned}
-              className="px-4 shrink-0 w-auto"
+              className="flex-1 min-w-0 px-3"
             >
-              {t('marketplace.add') || 'Add'}
+              <span className="truncate">{t('common.add') || 'Add'}</span>
             </PdpCtaButton>
             <PdpCtaButton 
               onClick={handleBuyNow}
               disabled={item._shop?.sellable === false || loadingOwned}
-              className="flex-1"
+              className="flex-1 min-w-0 px-3"
             >
-              {item._shop?.sellable === false ? (t('pdp.soldOut') || 'Sold Out') : (isRecurring ? (t('pdp.subscribe') || 'Subscribe Now') : (t('pdp.payNow') || 'Buy Now'))}
+              <span className="truncate">
+                {item._shop?.sellable === false
+                  ? (t('pdp.soldOut') || 'Sold Out')
+                  : (isRecurring
+                    ? (t('marketplace.listing.cta.subscribe') || t('pdp.subscribe') || 'Subscribe')
+                    : (t('pdp.payNow') || 'Buy Now'))}
+              </span>
             </PdpCtaButton>
           </div>
         </PdpMobileBuyBar>

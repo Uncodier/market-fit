@@ -60,7 +60,7 @@ export function MarketplaceHeader({
   session,
   signInLabel,
 }: Props) {
-  const searchCollapsed = useMobileShellSearchCollapsed(!session)
+  const searchCollapsed = useMobileShellSearchCollapsed(false)
 
   return (
     <>
@@ -127,7 +127,7 @@ export function MarketplaceHeader({
             ) : null}
             <div
               data-commerce-shell-actions-core
-              className="flex items-center justify-end gap-1 md:gap-3 min-w-0"
+              className="flex items-center justify-end gap-0.5 md:gap-3 min-w-0"
             >
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -163,7 +163,7 @@ export function MarketplaceHeader({
               />
 
               {session ? (
-                <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-1 shrink-0">
+                <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-0.5 shrink-0">
                   {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
                     <img
                       src={
@@ -180,12 +180,21 @@ export function MarketplaceHeader({
                   )}
                 </Link>
               ) : (
-                <Link
-                  href={`/auth?returnTo=${encodeURIComponent("/marketplace")}`}
-                  className={`${shellClasses.primaryCta} ml-1`}
-                >
-                  {signInLabel}
-                </Link>
+                <>
+                  <Link
+                    href={`/auth?returnTo=${encodeURIComponent("/marketplace")}`}
+                    className={`md:hidden ${shellClasses.iconButton}`}
+                    aria-label={signInLabel}
+                  >
+                    <User className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    href={`/auth?returnTo=${encodeURIComponent("/marketplace")}`}
+                    className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}
+                  >
+                    {signInLabel}
+                  </Link>
+                </>
               )}
             </div>
           </div>

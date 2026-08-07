@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react"
 import { Search, X } from "@/app/components/ui/icons"
 import { shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 
-/** Min center width before the compact bar relocates as an icon on the right. */
-const COMPACT_SEARCH_MIN_PX = 112
+/** Collapse the center bar below this; expand only above EXPAND to avoid threshold thrash. */
+const COLLAPSE_BELOW_PX = 128
+const EXPAND_ABOVE_PX = 176
 
 type ExpandedProps = {
   value: string
@@ -18,7 +19,7 @@ type ExpandedProps = {
 /**
  * True when the header center cannot host a usable compact search bar.
  * Measures: header − brand content − actions-core − gaps.
- * Pass `initialCollapsed` (e.g. !session) to avoid a flash before the first measure.
+ * Pass `initialCollapsed` to avoid a flash before the first measure.
  */
 export function useMobileShellSearchCollapsed(initialCollapsed = false) {
   const [collapsed, setCollapsed] = useState(initialCollapsed)
@@ -61,8 +62,9 @@ export function useMobileShellSearchCollapsed(initialCollapsed = false) {
       const gaps = 18
       const available = headerW - padX - brandW - actionsW - gaps
 
+      // Hysteresis: avoid the awkward mid-width band where the bar keeps pushing.
       setCollapsed((prev) => {
-        const next = available < COMPACT_SEARCH_MIN_PX
+        const next = prev ? available < EXPAND_ABOVE_PX : available < COLLAPSE_BELOW_PX
         return prev === next ? prev : next
       })
     }

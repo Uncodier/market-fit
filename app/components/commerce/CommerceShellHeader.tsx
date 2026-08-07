@@ -46,10 +46,12 @@ function HeaderColumns({
 
   return (
     <>
-      {/* Mobile: when center is shown, logo rail mirrors actions width. Desktop: flex-1 balance. */}
+      {/* Mobile: with center, mirror actions width. Without center, brand yields so actions never clip. */}
       <div
         data-commerce-shell-brand
-        className="flex items-center justify-start gap-2 md:gap-4 relative z-10 min-w-0 shrink-0 overflow-hidden md:flex-1 md:basis-0 md:!w-auto md:overflow-visible"
+        className={`flex items-center justify-start gap-2 md:gap-4 relative z-10 min-w-0 overflow-hidden md:flex-1 md:basis-0 md:!w-auto md:overflow-visible ${
+          hideCenterOnMobile ? "flex-1" : "shrink-0"
+        }`}
         style={
           !hideCenterOnMobile && sideWidth != null
             ? ({ ["--shell-side-width" as string]: `${sideWidth}px`, width: "var(--shell-side-width)" } as React.CSSProperties)
@@ -75,7 +77,7 @@ function HeaderColumns({
       <div
         ref={actionsRef}
         data-commerce-shell-actions
-        className="flex items-center justify-end gap-1 md:gap-3 relative z-10 min-w-0 shrink-0 md:flex-1 md:basis-0 md:w-auto"
+        className="flex items-center justify-end gap-0.5 md:gap-3 relative z-10 min-w-0 shrink-0 md:flex-1 md:basis-0 md:w-auto"
       >
         {actions}
       </div>

@@ -38,21 +38,21 @@ export function PdpMobileBuyBar({
       {fullWidthCta ? (
         <div className="max-w-7xl mx-auto w-full">{children}</div>
       ) : (
-        <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between gap-3 max-w-7xl mx-auto min-w-0">
           {price > 0 || !emptyPriceLabel ? (
             <PdpPriceBlock
               price={price}
               isRecurring={isRecurring}
               validityDays={validityDays}
               small={true}
-              className="shrink-0"
+              className="shrink-0 max-w-[40%]"
             />
           ) : (
             <div className="shrink-0 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
               {emptyPriceLabel}
             </div>
           )}
-          <div className="flex-1 min-w-0 max-w-[200px] sm:max-w-xs">
+          <div className="flex-1 min-w-0 flex justify-end">
             {children}
           </div>
         </div>

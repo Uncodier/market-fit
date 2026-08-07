@@ -118,7 +118,8 @@ export function ShopHeader({
   paymentMethod,
   setPaymentMethod,
 }: Props) {
-  const searchCollapsed = useMobileShellSearchCollapsed(!session)
+  // Prefer center search; Sign In is icon-only on mobile so it rarely needs collapse.
+  const searchCollapsed = useMobileShellSearchCollapsed(false)
 
   return (
     <>
@@ -184,13 +185,15 @@ export function ShopHeader({
             ) : null}
             <div
               data-commerce-shell-actions-core
-              className="flex items-center justify-end gap-1 md:gap-3 min-w-0"
+              className="flex items-center justify-end gap-0.5 md:gap-3 min-w-0"
             >
-              <CommerceShareControl
-                className={`relative ${shellClasses.iconButton}`}
-                iconClassName="h-4 w-4"
-                title={site.name}
-              />
+              <div className="hidden md:contents">
+                <CommerceShareControl
+                  className={`relative ${shellClasses.iconButton}`}
+                  iconClassName="h-4 w-4"
+                  title={site.name}
+                />
+              </div>
               <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
                 <SheetTrigger asChild>
                   <CartButton
@@ -240,7 +243,7 @@ export function ShopHeader({
               </Sheet>
 
               {session ? (
-                <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-1 shrink-0">
+                <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-0.5 shrink-0">
                   {session.user.user_metadata?.avatar_url ||
                   session.user.user_metadata?.picture ? (
                     <img
@@ -258,12 +261,21 @@ export function ShopHeader({
                   )}
                 </Link>
               ) : (
-                <Link
-                  href={`/auth?returnTo=${encodeURIComponent(`/shop/${siteSlug}`)}`}
-                  className={`${shellClasses.primaryCta} ml-1`}
-                >
-                  {signInLabel}
-                </Link>
+                <>
+                  <Link
+                    href={`/auth?returnTo=${encodeURIComponent(`/shop/${siteSlug}`)}`}
+                    className={`md:hidden ${shellClasses.iconButton}`}
+                    aria-label={signInLabel}
+                  >
+                    <User className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    href={`/auth?returnTo=${encodeURIComponent(`/shop/${siteSlug}`)}`}
+                    className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}
+                  >
+                    {signInLabel}
+                  </Link>
+                </>
               )}
             </div>
           </div>
