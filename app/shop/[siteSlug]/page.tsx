@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import ShopClient from "./ShopClient"
 import { Metadata } from "next"
 import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
+import { buildShopShareMetadata } from "@/app/lib/commerce-metadata"
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ siteSlug:
   const site = await getShopSite(siteSlug);
   if (!site) return { title: 'Shop | Makinari' };
 
-  return { title: `${site.name} | Shop` };
+  return buildShopShareMetadata(site, `/shop/${siteSlug}`);
 }
 
 export default async function ShopPage({ params }: { params: Promise<{ siteSlug: string }> | { siteSlug: string } }) {

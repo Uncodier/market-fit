@@ -2,11 +2,15 @@ import { Suspense } from "react"
 import { createServiceClient } from "@/lib/supabase/server"
 import { MarketplaceClient } from "./MarketplaceClient"
 import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
+import { buildShareMetadata } from "@/app/lib/commerce-metadata"
 
-export const metadata = {
-  title: 'Marketplace | Makinari',
-  description: 'Discover and purchase products, services, and digital assets.',
-}
+export const metadata = buildShareMetadata({
+  title: "Marketplace | Makinari",
+  description: "Discover and purchase products, services, and digital assets across Makinari shops.",
+  imageUrl: "/opengraph-image.png",
+  url: "/marketplace",
+  siteName: "Makinari",
+})
 
 export default async function MarketplacePage() {
   // Public marketplace aggregation — same pattern as /shop (service role bypasses RLS)
