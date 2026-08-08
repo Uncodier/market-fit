@@ -70,19 +70,19 @@ export async function checkoutCart({
     
     // For shop, userId is undefined, so we need to get the site's user_id
     let resolvedUserId = userId;
-    let siteSettings: any = null;
-    
+    // Shop/storefront settings live on the `settings` table (not sites.settings).
+    // Must match getShopSite / SiteContext so delivery defaults stay in sync with the cart UI.
+    const { data: settingsRow } = await supabaseAdmin
+      .from("settings")
+      .select("*")
+      .eq("site_id", siteId)
+      .maybeSingle();
+    const siteSettings: any = settingsRow || {};
+
     if (isAdmin) {
-      const { data: site } = await supabaseAdmin.from("sites").select("user_id, settings").eq("id", siteId).single();
+      const { data: site } = await supabaseAdmin.from("sites").select("user_id").eq("id", siteId).single();
       if (site) {
         resolvedUserId = resolvedUserId || site.user_id;
-        siteSettings = site.settings;
-      }
-    } else {
-      // Pos or sales, fetch site anyway to validate locations / business hours
-      const { data: site } = await supabaseAdmin.from("sites").select("settings").eq("id", siteId).single();
-      if (site) {
-        siteSettings = site.settings;
       }
     }
 

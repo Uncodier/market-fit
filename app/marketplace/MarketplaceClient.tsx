@@ -114,7 +114,7 @@ export function MarketplaceClient({
 
   const businessHours = siteSettings?.business_hours || []
   const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
-  const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours) : null
+  const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours, new Date(), locale) : null
 
   const isLocationAvailable = React.useMemo(() => {
     if (!siteSettings?.locations || siteSettings.locations.length === 0) return true;

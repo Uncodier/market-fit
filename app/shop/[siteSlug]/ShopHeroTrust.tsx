@@ -15,12 +15,14 @@ export function ShopHeroTrust({
   site,
   searchQuery,
   isOpen = true,
+  nextOpenSlot = null,
   locationAvailable = true,
   deliveryTimeLabel
 }: {
   site: any
   searchQuery: string
   isOpen?: boolean
+  nextOpenSlot?: { at: Date; label: string } | null
   locationAvailable?: boolean
   deliveryTimeLabel?: string | null
 }) {
@@ -57,7 +59,9 @@ export function ShopHeroTrust({
               <div className="mb-4 flex flex-wrap gap-2 justify-center md:justify-start">
                 {!isOpen && (
                   <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
-                    Closed
+                    {nextOpenSlot
+                      ? (t("shop.closedOpens", { time: nextOpenSlot.label }) || `Closed · Opens ${nextOpenSlot.label}`)
+                      : (t("shop.closed") || "Closed")}
                   </span>
                 )}
                 {!locationAvailable && (

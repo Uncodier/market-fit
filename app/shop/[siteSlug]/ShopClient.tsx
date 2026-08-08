@@ -57,7 +57,7 @@ export default function ShopClient({
   buyerGeo?: BuyerGeo
 }) {
   const { theme, toggleTheme } = useTheme()
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
   const params = useParams()
   const siteSlug = params?.siteSlug || site?.slug || 'unknown'
@@ -99,7 +99,7 @@ export default function ShopClient({
   // Compute business availability
   const businessHours = site?.settings?.business_hours || []
   const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
-  const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours) : null
+  const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours, new Date(), locale) : null
   
   // Compute location availability
   const locationAvailable = (() => {
@@ -379,7 +379,7 @@ export default function ShopClient({
         deliveryTimeLabel={deliveryTimeLabel}
       />
 
-      <ShopHeroTrust site={site} searchQuery={searchQuery} isOpen={isOpen} locationAvailable={locationAvailable} deliveryTimeLabel={deliveryTimeLabel} />
+      <ShopHeroTrust site={site} searchQuery={searchQuery} isOpen={isOpen} nextOpenSlot={nextOpenSlot} locationAvailable={locationAvailable} deliveryTimeLabel={deliveryTimeLabel} />
 
       <ShopCatalogMain
         siteSlug={siteSlug}
@@ -397,6 +397,7 @@ export default function ShopClient({
         setPage={setPage}
         addToCart={addToCart}
         isOpen={isOpen}
+        nextOpenSlot={nextOpenSlot}
         locationAvailable={locationAvailable}
       />
       

@@ -6633,6 +6633,8 @@
   "shop.searchPlaceholder": "Search products...",
   "shop.shopNow": "Shop Now",
   "shop.signIn": "Sign In",
+  "shop.closed": "Closed",
+  "shop.closedOpens": "Closed · Opens {{time}}",
   "shop.soldOut": "Sold Out",
   "shop.success.continueShopping": "Continue Shopping",
   "shop.success.desc": "Thank you for your purchase. We've sent a confirmation email with your order details.",

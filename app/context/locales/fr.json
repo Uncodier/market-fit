@@ -6571,6 +6571,8 @@
   "shop.searchPlaceholder": "Rechercher des produits...",
   "shop.shopNow": "Achetez maintenant",
   "shop.signIn": "Se connecter",
+  "shop.closed": "Fermé",
+  "shop.closedOpens": "Fermé · Ouvre {{time}}",
   "shop.soldOut": "Épuisé",
   "shop.success.continueShopping": "Continuer vos achats",
   "shop.success.desc": "Merci pour votre achat. Nous avons envoyé un e-mail de confirmation avec les détails de votre commande.",

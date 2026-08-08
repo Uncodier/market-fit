@@ -65,4 +65,14 @@ describe('business-hours', () => {
     const next = getNextOpenSlot(mockHours, lateFriday);
     expect(next?.label).toMatch(/Monday at 09:00/i);
   });
+
+  it('getNextOpenSlot localizes labels for Spanish', () => {
+    const earlyDate = new Date('2026-08-03T08:00:00-04:00'); // Monday 8am
+    const today = getNextOpenSlot(mockHours, earlyDate, 'es');
+    expect(today?.label).toBe('hoy a las 09:00');
+
+    const lateFriday = new Date('2026-08-07T18:00:00-04:00'); // Friday 6pm
+    const monday = getNextOpenSlot(mockHours, lateFriday, 'es');
+    expect(monday?.label).toMatch(/el lunes a las 09:00/i);
+  });
 });

@@ -35,7 +35,7 @@ export default function CheckoutClient({
 }: {
   buyerGeo?: BuyerGeo
 } = {}) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -74,7 +74,7 @@ export default function CheckoutClient({
 
   const businessHours = siteSettings?.business_hours || []
   const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
-  const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours) : null
+  const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours, new Date(), locale) : null
 
   const allowedOptions = React.useMemo(() => {
     return intersectDeliveryOptions(items.map((i: any) => ({

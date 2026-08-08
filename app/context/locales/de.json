@@ -6571,6 +6571,8 @@
   "shop.searchPlaceholder": "Produkte suchen...",
   "shop.shopNow": "Jetzt einkaufen",
   "shop.signIn": "Anmelden",
+  "shop.closed": "Geschlossen",
+  "shop.closedOpens": "Geschlossen · Öffnet {{time}}",
   "shop.soldOut": "Ausverkauft",
   "shop.success.continueShopping": "Weiter einkaufen",
   "shop.success.desc": "Vielen Dank für Ihren Einkauf. Wir haben eine Bestätigungs-E-Mail mit Ihren Bestelldaten gesendet.",

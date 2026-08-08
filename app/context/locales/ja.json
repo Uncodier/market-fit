@@ -6571,6 +6571,8 @@
   "shop.searchPlaceholder": "商品を検索...",
   "shop.shopNow": "今すぐ購入",
   "shop.signIn": "サインイン",
+  "shop.closed": "閉店",
+  "shop.closedOpens": "閉店 · {{time}}に開店",
   "shop.soldOut": "完売",
   "shop.success.continueShopping": "買い物を続ける",
   "shop.success.desc": "ご購入いただきありがとうございます。ご注文の詳細を記載した確認メールを送信しました。",

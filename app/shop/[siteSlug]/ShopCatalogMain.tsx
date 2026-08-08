@@ -30,6 +30,7 @@ interface ShopCatalogMainProps {
   setPage: (page: number) => void
   addToCart: (item: CatalogItem) => void
   isOpen?: boolean
+  nextOpenSlot?: { at: Date; label: string } | null
   locationAvailable?: boolean
 }
 
@@ -49,6 +50,7 @@ export function ShopCatalogMain({
   setPage,
   addToCart,
   isOpen = true,
+  nextOpenSlot = null,
   locationAvailable = true,
 }: ShopCatalogMainProps) {
   const { t } = useLocalization()
@@ -196,6 +198,7 @@ export function ShopCatalogMain({
                 !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
               }
               isOpen={isOpen}
+              nextOpenSlot={nextOpenSlot}
               locationAvailable={locationAvailable}
             />
           ) : (

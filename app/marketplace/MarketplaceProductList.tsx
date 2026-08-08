@@ -10,7 +10,7 @@ import {
 } from "@/app/components/commerce/FeaturedListingPoster"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { CatalogItem } from "@/app/types"
-import { isBusinessOpen } from "@/app/commerce/business-hours"
+import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
 import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
 
@@ -37,7 +37,7 @@ export function MarketplaceProductList({
   onPrimaryAction,
   buyerGeo,
 }: MarketplaceProductListProps) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
 
   if (items.length === 0 && !isLoading) {
     return (
@@ -75,6 +75,11 @@ export function MarketplaceProductList({
           getIsOpen={(item) => {
             if (!item.site?.settings?.business_hours) return true;
             return isBusinessOpen(item.site.settings.business_hours);
+          }}
+          getNextOpenSlot={(item) => {
+            const hours = item.site?.settings?.business_hours;
+            if (!hours || isBusinessOpen(hours)) return null;
+            return getNextOpenSlot(hours, new Date(), locale);
           }}
           getLocationAvailable={(item) => {
             if (!item.site?.settings?.locations || !buyerGeo) return true;

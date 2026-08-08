@@ -1,5 +1,5 @@
-import { formatInTimeZone, toDate } from 'date-fns-tz';
-import { addDays, parseISO, startOfDay, isBefore, isAfter, setHours, setMinutes } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+import { addDays } from 'date-fns';
 
 export interface BusinessHours {
   name: string
@@ -19,6 +19,38 @@ export interface BusinessHours {
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
 
+const LOCALE_TAGS: Record<string, string> = {
+  en: 'en-US',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  ja: 'ja-JP',
+};
+
+function formatOpenSlotLabel(date: Date, time: string, isToday: boolean, locale = 'en'): string {
+  const lang = locale.split('-')[0];
+  const tag = LOCALE_TAGS[lang] || locale || 'en-US';
+
+  if (isToday) {
+    switch (lang) {
+      case 'es': return `hoy a las ${time}`;
+      case 'fr': return `aujourd'hui à ${time}`;
+      case 'de': return `heute um ${time}`;
+      case 'ja': return `本日 ${time}`;
+      default: return `today at ${time}`;
+    }
+  }
+
+  const dayName = date.toLocaleDateString(tag, { weekday: 'long' });
+  switch (lang) {
+    case 'es': return `el ${dayName} a las ${time}`;
+    case 'fr': return `${dayName} à ${time}`;
+    case 'de': return `${dayName} um ${time}`;
+    case 'ja': return `${dayName} ${time}`;
+    default: return `${dayName} at ${time}`;
+  }
+}
+
 export function isBusinessOpen(businessHours?: BusinessHours[], now: Date = new Date()): boolean {
   if (!businessHours || businessHours.length === 0) return true;
 
@@ -27,7 +59,7 @@ export function isBusinessOpen(businessHours?: BusinessHours[], now: Date = new 
   if (!bh.timezone) return true;
 
   try {
-    const tzDate = toDate(now, { timeZone: bh.timezone });
+    const tzDate = toZonedTime(now, bh.timezone);
     const dayOfWeek = DAYS[tzDate.getDay()];
     const dayConfig = bh.days[dayOfWeek as keyof BusinessHours['days']];
 
@@ -49,13 +81,17 @@ export function isBusinessOpen(businessHours?: BusinessHours[], now: Date = new 
   }
 }
 
-export function getNextOpenSlot(businessHours?: BusinessHours[], now: Date = new Date()): { at: Date, label: string } | null {
+export function getNextOpenSlot(
+  businessHours?: BusinessHours[],
+  now: Date = new Date(),
+  locale = 'en'
+): { at: Date, label: string } | null {
   if (!businessHours || businessHours.length === 0) return null;
   const bh = businessHours[0];
   if (!bh.timezone) return null;
 
   try {
-    let checkDate = toDate(now, { timeZone: bh.timezone });
+    let checkDate = toZonedTime(now, bh.timezone);
     
     // Look up to 7 days ahead
     for (let i = 0; i < 7; i++) {
@@ -75,7 +111,7 @@ export function getNextOpenSlot(businessHours?: BusinessHours[], now: Date = new
             // Later today
             let slot = new Date(now);
             slot.setHours(startH, startM, 0, 0);
-            return { at: slot, label: `today at ${dayConfig.start}` };
+            return { at: slot, label: formatOpenSlotLabel(slot, dayConfig.start, true, locale) };
           }
           // Already open
           if (!bh.force_closed) return null; 
@@ -87,8 +123,7 @@ export function getNextOpenSlot(businessHours?: BusinessHours[], now: Date = new
           // Future day
           let slot = addDays(now, i);
           slot.setHours(startH, startM, 0, 0);
-          const dayName = checkDate.toLocaleDateString('en-US', { weekday: 'long' });
-          return { at: slot, label: `${dayName} at ${dayConfig.start}` };
+          return { at: slot, label: formatOpenSlotLabel(checkDate, dayConfig.start, false, locale) };
         }
       }
       checkDate = addDays(checkDate, 1);
