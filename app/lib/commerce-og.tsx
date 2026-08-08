@@ -28,14 +28,11 @@ async function resolveImageSrc(source: ShareImageSource): Promise<string | null>
 }
 
 export async function renderCommerceOgImage(opts: {
-  title: string
-  subtitle?: string | null
   source: ShareImageSource
   fit?: "cover" | "contain"
 }): Promise<ImageResponse> {
   const src = await resolveImageSrc(opts.source)
   const fit = opts.fit || "cover"
-  const subtitle = opts.subtitle?.replace(/\s+/g, " ").trim().slice(0, 140)
 
   return new ImageResponse(
     (
@@ -44,7 +41,6 @@ export async function renderCommerceOgImage(opts: {
           width: "100%",
           height: "100%",
           display: "flex",
-          position: "relative",
           background: "#111111",
           alignItems: "center",
           justifyContent: "center",
@@ -62,45 +58,6 @@ export async function renderCommerceOgImage(opts: {
             }}
           />
         ) : null}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
-            padding: 56,
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0) 70%)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              fontSize: 64,
-              fontWeight: 700,
-              color: "#ffffff",
-              lineHeight: 1.1,
-              letterSpacing: -1,
-            }}
-          >
-            {opts.title}
-          </div>
-          {subtitle ? (
-            <div
-              style={{
-                display: "flex",
-                marginTop: 16,
-                fontSize: 28,
-                color: "rgba(255,255,255,0.88)",
-                lineHeight: 1.35,
-                maxWidth: 1000,
-              }}
-            >
-              {subtitle}
-            </div>
-          ) : null}
-        </div>
       </div>
     ),
     { ...OG_SIZE },

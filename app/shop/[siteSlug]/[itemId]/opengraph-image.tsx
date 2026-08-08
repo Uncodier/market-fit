@@ -17,15 +17,12 @@ export default async function Image({
 
   if (!item) {
     return renderCommerceOgImage({
-      title: "Product",
       source: { kind: "url", url: "/images/logo.png" },
       fit: "contain",
     })
   }
 
   return renderCommerceOgImage({
-    title: item.name,
-    subtitle: item.description,
     source: resolveCatalogItemShareImageSource(item as any),
     fit: item.image_url || item.metadata?.gallery?.[0] ? "cover" : "contain",
   })

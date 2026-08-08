@@ -17,7 +17,6 @@ export default async function Image({
 
   if (!site) {
     return renderCommerceOgImage({
-      title: "Shop",
       source: { kind: "url", url: "/images/logo.png" },
       fit: "contain",
     })
@@ -25,8 +24,6 @@ export default async function Image({
 
   const visual = resolveShopShareVisual(site)
   return renderCommerceOgImage({
-    title: visual.title,
-    subtitle: visual.subtitle,
     source: visual.source,
     fit: visual.fit,
   })
