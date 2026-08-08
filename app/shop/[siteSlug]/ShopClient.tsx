@@ -251,63 +251,67 @@ export default function ShopClient({
     }
 
     setCheckoutLoading(true)
-    
-    const lines: CheckoutLine[] = cart.map(c => ({
-      catalogItemId: c.id,
-      quantity: c.cartQty,
-      reservationStart: c.reservationStart,
-      reservationEnd: c.reservationEnd
-    }))
+    let redirectingToStripe = false
 
-    const res = await checkoutCart({
-      siteId: site.id,
-      lines,
-      customerName: resolvedName,
-      customerEmail: resolvedEmail,
-      buyerUserId: session?.user?.id,
-      ownerSiteId: ownerSiteId,
-      fulfillment,
-      originLocationId: originLocationId,
-      shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
-      promotionCode: promotionCode || undefined,
-      source: 'shop',
-      paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
-      intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
-    })
+    try {
+      const lines: CheckoutLine[] = cart.map(c => ({
+        catalogItemId: c.id,
+        quantity: c.cartQty,
+        reservationStart: c.reservationStart,
+        reservationEnd: c.reservationEnd
+      }))
 
-    if (res.error) {
-      toast.error(res.error)
-      setCheckoutLoading(false)
-    } else {
+      const res = await checkoutCart({
+        siteId: site.id,
+        lines,
+        customerName: resolvedName,
+        customerEmail: resolvedEmail,
+        buyerUserId: session?.user?.id,
+        ownerSiteId: ownerSiteId,
+        fulfillment,
+        originLocationId: originLocationId,
+        shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
+        promotionCode: promotionCode || undefined,
+        scheduledFor: orderTiming === 'scheduled' && scheduledFor ? scheduledFor.toISOString() : undefined,
+        source: 'shop',
+        paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
+        intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
+      })
+
+      if (res.error) {
+        toast.error(res.error)
+        return
+      }
+
       if (payableTotal > 0 && paymentMethod === 'card') {
-        // Redirect to Stripe
-        try {
-          const stripeRes = await fetch('/api/stripe/checkout/order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: res.orderId,
-              siteId: site.id,
-              returnUrl: window.location.origin + '/shop/' + siteSlug
-            })
+        const stripeRes = await fetch('/api/stripe/checkout/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: res.orderId,
+            siteId: site.id,
+            returnUrl: window.location.origin + '/shop/' + siteSlug
           })
-          const stripeData = await stripeRes.json()
-          if (stripeData.url) {
-            window.location.href = stripeData.url
-            return // don't set loading to false so it feels continuous
-          } else {
-            toast.error(stripeData.error || "Failed to initiate payment")
-            setCheckoutLoading(false)
-          }
-        } catch (e) {
-          toast.error("Failed to connect to payment gateway")
-          setCheckoutLoading(false)
+        })
+        const stripeData = await stripeRes.json()
+        if (stripeData.url) {
+          redirectingToStripe = true
+          window.location.href = stripeData.url
+          return
         }
-      } else {
-        setOrderSuccess(true)
-        setCart([])
+        toast.error(stripeData.error || "Failed to initiate payment")
+        return
+      }
+
+      setOrderSuccess(true)
+      setCart([])
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (e: any) {
+      console.error('Checkout failed:', e)
+      toast.error(e?.message || "Checkout failed. Please try again.")
+    } finally {
+      if (!redirectingToStripe) {
         setCheckoutLoading(false)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     }
   }
@@ -422,7 +426,7 @@ export default function ShopClient({
       {cart.length > 0 && !isCartOpen && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-950 border-t dark:border-gray-800 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-none z-30 md:hidden animate-in slide-in-from-bottom-full">
           <Button 
-            className="w-full h-14 text-lg rounded-xl shadow-md font-bold flex items-center justify-between px-6 bg-gray-900 text-white hover:bg-gray-100 hover:text-black dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white"
+            className="w-full h-14 text-lg rounded-xl font-bold flex items-center justify-between px-6"
             onClick={() => setIsCartOpen(true)}
           >
             <div className="flex items-center gap-2">

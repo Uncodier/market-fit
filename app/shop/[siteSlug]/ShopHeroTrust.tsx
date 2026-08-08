@@ -112,7 +112,9 @@ export function ShopHeroTrust({
             )}
 
             <Button
-              className="h-14 px-8 text-lg rounded-full bg-white text-black hover:bg-black hover:text-white font-semibold shadow-lg transition-colors"
+              type="button"
+              variant="ghost"
+              className="h-14 px-8 text-lg rounded-full !bg-white !text-black hover:!bg-black hover:!text-white font-semibold !shadow-lg transition-colors"
               onClick={() =>
                 window.scrollBy({ top: window.innerHeight * 0.7, behavior: "smooth" })
               }

@@ -239,7 +239,8 @@ export default function CheckoutClient({
     }
 
     setCheckoutLoading(true)
-    
+    let redirectingToStripe = false
+
     // For marketplace, ensure we only have one seller
     let checkoutSiteId = siteId
     if (source === 'marketplace') {
@@ -272,66 +273,66 @@ export default function CheckoutClient({
       return
     }
 
-    const lines: CheckoutLine[] = items.map(c => ({
-      catalogItemId: c.id,
-      quantity: c.cartQty,
-      reservationStart: c.reservationStart,
-      reservationEnd: c.reservationEnd
-    }))
+    try {
+      const lines: CheckoutLine[] = items.map(c => ({
+        catalogItemId: c.id,
+        quantity: c.cartQty,
+        reservationStart: c.reservationStart,
+        reservationEnd: c.reservationEnd
+      }))
 
-    const res = await checkoutCart({
-      siteId: checkoutSiteId,
-      lines,
-      customerName: resolvedName,
-      customerEmail: resolvedEmail,
-      buyerUserId: session?.user?.id,
-      ownerSiteId,
-      fulfillment,
-      originLocationId: (fulfillment === 'pickup' || fulfillment === 'dine_in') ? pickupLocationId : undefined,
-      shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
-      promotionCode: promotionCode || undefined,
-      scheduledFor: finalScheduledFor,
-      source: source as 'shop' | 'marketplace',
-      paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
-      intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
-    })
+      const res = await checkoutCart({
+        siteId: checkoutSiteId,
+        lines,
+        customerName: resolvedName,
+        customerEmail: resolvedEmail,
+        buyerUserId: session?.user?.id,
+        ownerSiteId,
+        fulfillment,
+        originLocationId: (fulfillment === 'pickup' || fulfillment === 'dine_in') ? pickupLocationId : undefined,
+        shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
+        promotionCode: promotionCode || undefined,
+        scheduledFor: finalScheduledFor,
+        source: source as 'shop' | 'marketplace',
+        paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
+        intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
+      })
 
-    if (res.error) {
-      toast.error(res.error)
-      setCheckoutLoading(false)
-    } else {
+      if (res.error) {
+        toast.error(res.error)
+        return
+      }
+
       if (payableTotal > 0 && paymentMethod === 'card') {
-        // Redirect to Stripe
-        try {
-          const stripeRes = await fetch('/api/stripe/checkout/order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: res.orderId,
-              siteId: checkoutSiteId,
-              returnUrl: window.location.origin + returnTo
-            })
+        const stripeRes = await fetch('/api/stripe/checkout/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: res.orderId,
+            siteId: checkoutSiteId,
+            returnUrl: window.location.origin + returnTo
           })
-          const stripeData = await stripeRes.json()
-          if (stripeData.url) {
-            // Clean up buynow cart before redirecting
-            if (mode === 'buynow') clearCart(mode, source, siteId)
-            window.location.href = stripeData.url
-            return
-          } else {
-            toast.error(stripeData.error || "Failed to initiate payment")
-            setCheckoutLoading(false)
-          }
-        } catch (e) {
-          toast.error("Failed to connect to payment gateway")
-          setCheckoutLoading(false)
+        })
+        const stripeData = await stripeRes.json()
+        if (stripeData.url) {
+          if (mode === 'buynow') clearCart(mode, source, siteId)
+          redirectingToStripe = true
+          window.location.href = stripeData.url
+          return
         }
-      } else {
-        // Free checkout or offline payment
-        clearCart(mode, source, siteId)
+        toast.error(stripeData.error || "Failed to initiate payment")
+        return
+      }
+
+      clearCart(mode, source, siteId)
+      const payParam = paymentMethod === 'bank_transfer' ? '&pay=bank_transfer' : ''
+      router.push(`${returnTo}${returnTo.includes('?') ? '&' : '?'}success=true${payParam}`)
+    } catch (e: any) {
+      console.error('Checkout failed:', e)
+      toast.error(e?.message || "Checkout failed. Please try again.")
+    } finally {
+      if (!redirectingToStripe) {
         setCheckoutLoading(false)
-        const payParam = paymentMethod === 'bank_transfer' ? '&pay=bank_transfer' : ''
-        router.push(`${returnTo}${returnTo.includes('?') ? '&' : '?'}success=true${payParam}`)
       }
     }
   }

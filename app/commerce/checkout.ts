@@ -59,6 +59,7 @@ export async function checkoutCart({
   payments,
   existingOrderId,
   intent,
+  paymentMethod,
   scheduledFor
 }: CheckoutCartParams) {
   try {

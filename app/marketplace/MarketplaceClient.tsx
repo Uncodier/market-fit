@@ -272,7 +272,8 @@ export function MarketplaceClient({
     }
 
     setCheckoutLoading(true)
-    
+    let redirectingToStripe = false
+
     // Group by siteId since checkoutCart currently processes one site at a time.
     const uniqueSiteIds = Array.from(new Set(cart.map(c => c.site_id)))
     
@@ -284,68 +285,69 @@ export function MarketplaceClient({
     
     const siteId = uniqueSiteIds[0]
 
-    const lines: CheckoutLine[] = cart.map(c => ({
-      catalogItemId: c.id,
-      quantity: c.cartQty,
-      reservationStart: c.reservationStart,
-      reservationEnd: c.reservationEnd
-    }))
+    try {
+      const lines: CheckoutLine[] = cart.map(c => ({
+        catalogItemId: c.id,
+        quantity: c.cartQty,
+        reservationStart: c.reservationStart,
+        reservationEnd: c.reservationEnd
+      }))
 
-    const res = await checkoutCart({
-      siteId: siteId,
-      lines,
-      customerName: resolvedName,
-      customerEmail: resolvedEmail,
-      buyerUserId: session?.user?.id,
-      ownerSiteId,
-      fulfillment,
-      originLocationId: originLocationId,
-      shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
-      promotionCode: promotionCode || undefined,
-      scheduledFor: finalScheduledFor,
-      source: 'marketplace',
-      paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
-      intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
-    })
+      const res = await checkoutCart({
+        siteId: siteId,
+        lines,
+        customerName: resolvedName,
+        customerEmail: resolvedEmail,
+        buyerUserId: session?.user?.id,
+        ownerSiteId,
+        fulfillment,
+        originLocationId: originLocationId,
+        shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
+        promotionCode: promotionCode || undefined,
+        scheduledFor: finalScheduledFor,
+        source: 'marketplace',
+        paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
+        intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
+      })
 
-    if (res.error) {
-      toast.error(res.error)
-      setCheckoutLoading(false)
-    } else {
+      if (res.error) {
+        toast.error(res.error)
+        return
+      }
+
       if (payableTotal > 0 && paymentMethod === 'card') {
-        // Redirect to Stripe
-        try {
-          const stripeRes = await fetch('/api/stripe/checkout/order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: res.orderId,
-              siteId: siteId,
-              returnUrl: window.location.origin + (returnTo?.startsWith('/') ? returnTo : '/marketplace')
-            })
+        const stripeRes = await fetch('/api/stripe/checkout/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: res.orderId,
+            siteId: siteId,
+            returnUrl: window.location.origin + (returnTo?.startsWith('/') ? returnTo : '/marketplace')
           })
-          const stripeData = await stripeRes.json()
-          if (stripeData.url) {
-            window.location.href = stripeData.url
-            return // don't set loading to false so it feels continuous
-          } else {
-            toast.error(stripeData.error || "Failed to initiate payment")
-            setCheckoutLoading(false)
-          }
-        } catch (e) {
-          toast.error("Failed to connect to payment gateway")
-          setCheckoutLoading(false)
+        })
+        const stripeData = await stripeRes.json()
+        if (stripeData.url) {
+          redirectingToStripe = true
+          window.location.href = stripeData.url
+          return
         }
-      } else {
-        setOrderSuccess(true)
-        setCart([])
+        toast.error(stripeData.error || "Failed to initiate payment")
+        return
+      }
+
+      setOrderSuccess(true)
+      setCart([])
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+
+      if (returnTo?.startsWith('/')) {
+        router.push(returnTo)
+      }
+    } catch (e: any) {
+      console.error('Checkout failed:', e)
+      toast.error(e?.message || "Checkout failed. Please try again.")
+    } finally {
+      if (!redirectingToStripe) {
         setCheckoutLoading(false)
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-        
-        // If we have a returnTo and total is 0 (no stripe redirect), we can redirect manually or just let the success screen handle it
-        if (returnTo?.startsWith('/')) {
-          router.push(returnTo)
-        }
       }
     }
   }

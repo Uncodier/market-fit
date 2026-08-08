@@ -241,7 +241,7 @@ export function CartSidebar({
         <Button 
           type="submit"
           form="checkout-form"
-          className="w-full h-14 text-lg font-bold rounded-xl shadow-md transition-all active:scale-[0.98] bg-gray-900 text-white hover:bg-gray-100 hover:text-black dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white" 
+          className="w-full h-14 text-lg font-bold rounded-xl" 
           disabled={cart.length === 0 || checkoutLoading || allowedOptions.length === 0 || ((fulfillment === 'pickup' || fulfillment === 'dine_in') && pickupLocations.length === 0) || !paymentMethod || !locationAvailable || (orderTiming === 'scheduled' && !scheduledFor)}
         >
           {checkoutLoading ? (t('shop.cart.processing') || "Processing securely...") : `${t('shop.cart.checkoutBtn') || 'Checkout'} • ${formatPrice(payableTotal, currency)}`}
