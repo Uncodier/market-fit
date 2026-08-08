@@ -7,7 +7,7 @@ import { buildShareMetadata } from "@/app/lib/commerce-metadata"
 export const metadata = buildShareMetadata({
   title: "Marketplace | Makinari",
   description: "Discover and purchase products, services, and digital assets across Makinari shops.",
-  imageUrl: "/opengraph-image.png",
+  imageUrl: "/opengraph-image.jpg",
   url: "/marketplace",
   siteName: "Makinari",
 })
