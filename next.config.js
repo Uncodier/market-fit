@@ -57,8 +57,17 @@ const nextConfig = {
     // Nota: Esto no es recomendable para producción, solo para desarrollo
     ignoreBuildErrors: true,
   },
+  // www proxies shop/commerce to the app deployment; Origin is www while
+  // x-forwarded-host is app. Allow both so Server Actions are not aborted.
   serverActions: {
     bodySizeLimit: '10mb',
+    allowedOrigins: [
+      'www.makinari.com',
+      'makinari.com',
+      'app.makinari.com',
+      'demo.makinari.com',
+      '*.preview.makinari.com',
+    ],
   }
 }
 
