@@ -143,13 +143,6 @@ export function CheckoutForm({
             <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-900/30">
               {t('checkout.incompatibleDelivery') || 'These items cannot be purchased together due to incompatible delivery methods. Please remove some items.'}
             </div>
-          ) : allowedOptions.length === 1 ? (
-            <div className="h-14 px-4 rounded-xl bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 flex items-center text-sm font-medium">
-              {allowedOptions[0] === 'pickup' && <><Store className="w-5 h-5 mr-3 text-purple-500" />{t('checkout.storePickup') || 'Store Pickup'}</>}
-              {allowedOptions[0] === 'ship' && <><Truck className="w-5 h-5 mr-3 text-orange-500" />{t('checkout.shipToMe') || 'Ship to Me'}</>}
-              {allowedOptions[0] === 'dine_in' && <><Store className="w-5 h-5 mr-3 text-blue-500" />{t('checkout.dineIn') || 'Consume Here'}</>}
-              {allowedOptions[0] === 'none' && <><Package className="w-5 h-5 mr-3 text-blue-500" />{t('checkout.digitalService') || 'Digital / Service'}</>}
-            </div>
           ) : (
             <div className="inline-flex flex-col sm:flex-row p-1.5 bg-gray-100 dark:bg-zinc-800/80 rounded-2xl w-full gap-1">
               {allowedOptions.includes('pickup') && (
@@ -314,58 +307,50 @@ export function CheckoutForm({
             <div className="space-y-4 pt-6 border-t mt-6">
               <h3 className="text-xl font-bold">{t('checkout.paymentDetails') || 'Payment Details'}</h3>
               
-              {availablePaymentMethods.length === 1 ? (
-                <div className="h-14 px-4 rounded-xl bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 flex items-center text-sm font-medium">
-                  {availablePaymentMethods[0] === 'card' && <><CreditCard className="w-5 h-5 mr-3 text-blue-500" />{t('checkout.cardStripe') || 'Card (Stripe)'}</>}
-                  {availablePaymentMethods[0] === 'cash_on_pickup' && <><Store className="w-5 h-5 mr-3 text-emerald-500" />{t('checkout.cashOnPickup') || 'Cash (pay at store)'}</>}
-                  {availablePaymentMethods[0] === 'bank_transfer' && <><CreditCard className="w-5 h-5 mr-3 text-indigo-500" />{t('checkout.bankTransfer') || 'Bank Transfer'}</>}
-                </div>
-              ) : (
-                <div className="inline-flex flex-col sm:flex-row p-1.5 bg-gray-100 dark:bg-zinc-800/80 rounded-2xl w-full gap-1">
-                  {availablePaymentMethods.includes('card') && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod?.('card')}
-                      className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
-                        paymentMethod === 'card' 
-                          ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                          : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
-                      }`}
-                    >
-                      <CreditCard className="w-4 h-4 shrink-0" />
-                      <span className="text-sm font-medium whitespace-nowrap">{t('checkout.cardStripe') || 'Card (Stripe)'}</span>
-                    </button>
-                  )}
-                  {availablePaymentMethods.includes('cash_on_pickup') && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod?.('cash_on_pickup')}
-                      className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
-                        paymentMethod === 'cash_on_pickup' 
-                          ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                          : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
-                      }`}
-                    >
-                      <Store className="w-4 h-4 shrink-0" />
-                      <span className="text-sm font-medium whitespace-nowrap">{t('checkout.cashOnPickup') || 'Cash on Pickup'}</span>
-                    </button>
-                  )}
-                  {availablePaymentMethods.includes('bank_transfer') && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod?.('bank_transfer')}
-                      className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
-                        paymentMethod === 'bank_transfer' 
-                          ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                          : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
-                      }`}
-                    >
-                      <CreditCard className="w-4 h-4 shrink-0" />
-                      <span className="text-sm font-medium whitespace-nowrap">{t('checkout.bankTransfer') || 'Bank Transfer'}</span>
-                    </button>
-                  )}
-                </div>
-              )}
+              <div className="inline-flex flex-col sm:flex-row p-1.5 bg-gray-100 dark:bg-zinc-800/80 rounded-2xl w-full gap-1">
+                {availablePaymentMethods.includes('card') && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod?.('card')}
+                    className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
+                      paymentMethod === 'card' 
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">{t('checkout.cardStripe') || 'Card (Stripe)'}</span>
+                  </button>
+                )}
+                {availablePaymentMethods.includes('cash_on_pickup') && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod?.('cash_on_pickup')}
+                    className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
+                      paymentMethod === 'cash_on_pickup' 
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+                    }`}
+                  >
+                    <Store className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">{t('checkout.cashOnPickup') || 'Cash on Pickup'}</span>
+                  </button>
+                )}
+                {availablePaymentMethods.includes('bank_transfer') && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod?.('bank_transfer')}
+                    className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
+                      paymentMethod === 'bank_transfer' 
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">{t('checkout.bankTransfer') || 'Bank Transfer'}</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
       </div>

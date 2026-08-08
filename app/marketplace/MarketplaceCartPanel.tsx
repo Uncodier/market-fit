@@ -260,7 +260,13 @@ export function MarketplaceCartPanel({
               className="w-full h-14 text-lg font-bold rounded-xl" 
               disabled={checkoutLoading || allowedOptions.length === 0 || ((fulfillment === 'pickup' || fulfillment === 'dine_in') && pickupLocations.length === 0) || !paymentMethod || !locationAvailable || (orderTiming === 'scheduled' && !scheduledFor)}
             >
-              {checkoutLoading ? (t('marketplace.checkout.processing') || "Processing securely...") : `${t('marketplace.checkout.btn') || 'Checkout'} • ${formatPrice(payableTotal, currency)}`}
+              {checkoutLoading
+                ? (t('marketplace.checkout.processing') || "Processing securely...")
+                : paymentMethod === 'cash_on_pickup'
+                  ? (t('checkout.placeOrderCash') || 'Place order • Pay at store')
+                  : paymentMethod === 'bank_transfer'
+                    ? (t('checkout.placeOrderTransfer') || 'Place order • Pay by transfer')
+                    : (t('checkout.paySecurely') || 'Pay securely')}
             </Button>
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground font-medium">
               <ShieldCheck className="h-4 w-4" />

@@ -7,9 +7,10 @@ import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, ChevronDown, ChevronRight } from "../ui/icons"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { ActionFooter } from "../ui/card-footer"
 import { type SiteFormValues as SiteFormValuesType } from "./form-schema"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,7 @@ interface FlatExcludedAddress {
 }
 
 export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsAddressesSectionProps) {
+  const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const [expandedAddresses, setExpandedAddresses] = useState<Set<string>>(new Set())
   const [isSavingAddress, setIsSavingAddress] = useState<string | null>(null)
@@ -78,14 +80,14 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
     if (excludedAddresses.length > 0) {
       const addressesData = excludedAddresses.map((item, index) => ({
         id: `service-exclusion-${index}`,
-        title: item.address.name || `${item.locationName} - Exclusion ${index + 1}`,
+        title: item.address.name || `${item.locationName} - ${t("settings.company.exclusions.exclusionN", { n: index + 1 })}`,
       }));
       
       window.dispatchEvent(new CustomEvent('serviceExclusionsAddressesUpdated', { 
         detail: addressesData 
       }));
     }
-  }, [excludedAddresses]);
+  }, [excludedAddresses, t]);
 
   const toggleExpanded = useCallback((key: string) => {
     const newExpanded = new Set(expandedAddresses)
@@ -221,9 +223,9 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Service Exclusions Addresses</h2>
+          <h2 className="text-2xl font-semibold">{t("settings.company.exclusions.title")}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Specify addresses where service is NOT available
+            {t("settings.company.exclusions.description")}
           </p>
         </div>
         <Button
@@ -233,7 +235,7 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
           onClick={addExcludedAddress}
         >
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Exclusion
+          {t("settings.company.exclusions.add")}
         </Button>
       </div>
 
@@ -254,10 +256,10 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
                   <div className="h-2 w-2 bg-muted-foreground rounded-full"></div>
                   <div className="flex-1 min-w-0">
                     <CardTitle className="text-lg font-semibold truncate">
-                      {item.address.name || `Exclusion ${index + 1}`}
+                      {item.address.name || t("settings.company.exclusions.exclusionN", { n: index + 1 })}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground truncate mt-1">
-                      {item.locationName} • {[item.address.city, item.address.state, item.address.country].filter(Boolean).join(', ') || 'No location specified'}
+                      {item.locationName} • {[item.address.city, item.address.state, item.address.country].filter(Boolean).join(', ') || t("settings.company.exclusions.noLocation")}
                     </p>
                   </div>
                 </div>
@@ -282,7 +284,7 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
                     <FormItem>
                       <FormControl>
                         <Input
-                          placeholder="Address name (e.g., Guadalajara)"
+                          placeholder={t("settings.company.exclusions.placeholder.name")}
                           value={item.address.name}
                           onChange={(e) => {
                             field.onChange(e)
@@ -303,7 +305,7 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
                     <FormItem>
                       <FormControl>
                         <Input
-                          placeholder="Street address"
+                          placeholder={t("settings.company.locations.placeholder.address")}
                           value={item.address.address}
                           onChange={(e) => {
                             field.onChange(e)
@@ -325,7 +327,7 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="City"
+                            placeholder={t("settings.company.locations.placeholder.city")}
                             value={item.address.city}
                             onChange={(e) => {
                               field.onChange(e)
@@ -346,7 +348,7 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="State"
+                            placeholder={t("settings.company.locations.placeholder.state")}
                             value={item.address.state}
                             onChange={(e) => {
                               field.onChange(e)
@@ -367,7 +369,7 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="ZIP"
+                            placeholder={t("settings.company.locations.placeholder.zip")}
                             value={item.address.zip}
                             onChange={(e) => {
                               field.onChange(e)
@@ -389,7 +391,7 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
                     <FormItem>
                       <FormControl>
                         <Input
-                          placeholder="Country"
+                          placeholder={t("settings.company.locations.placeholder.country")}
                           value={item.address.country}
                           onChange={(e) => {
                             field.onChange(e)
@@ -415,23 +417,23 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Remove Exclusion
+                        {t("settings.company.exclusions.remove")}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Remove Exclusion</AlertDialogTitle>
+                        <AlertDialogTitle>{t("settings.company.exclusions.remove")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to remove this excluded address? This action cannot be undone.
+                          {t("settings.company.exclusions.removeConfirm")}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t("settings.company.common.cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => removeExcludedAddress(item.locationIndex, item.addressIndex)}
                           className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
                         >
-                          Remove Exclusion
+                          {t("settings.company.exclusions.remove")}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -442,7 +444,9 @@ export function ServiceExclusionsAddressesSection({ onSave }: ServiceExclusionsA
                     onClick={() => handleSaveAddress(item.locationIndex, item.addressIndex)}
                     disabled={isSavingAddress === key}
                   >
-                    {isSavingAddress === key ? "Saving..." : "Save Exclusion"}
+                    {isSavingAddress === key
+                      ? t("settings.company.common.saving")
+                      : t("settings.company.exclusions.save")}
                   </Button>
                 </div>
               </ActionFooter>

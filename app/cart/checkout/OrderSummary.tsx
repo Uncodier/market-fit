@@ -158,7 +158,7 @@ export function OrderSummary({
               ? `${t('checkout.placeOrderCash') || 'Place order • Pay at store'}`
               : paymentMethod === 'bank_transfer'
               ? `${t('checkout.placeOrderTransfer') || 'Place order • Pay by transfer'}`
-              : `${t('checkout.paySecurely') || 'Pay securely'} • ${formatMoney(payableTotal)}`
+              : (t('checkout.paySecurely') || 'Pay securely')
         }
       </Button>
       

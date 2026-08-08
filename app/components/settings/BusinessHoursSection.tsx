@@ -3,15 +3,15 @@
 import { useFormContext } from "react-hook-form"
 import { useState, useCallback, useEffect } from "react"
 import { type SiteFormValues } from "./form-schema"
-import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2 } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Switch } from "../ui/switch"
 import { ChevronDown, ChevronRight } from "../ui/icons"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import { Card, CardContent, CardHeader } from "../ui/card"
 import { ActionFooter } from "../ui/card-footer"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -101,13 +101,13 @@ const TIMEZONES = [
 ]
 
 const DAYS_OF_WEEK = [
-  { key: "monday", label: "Monday" },
-  { key: "tuesday", label: "Tuesday" },
-  { key: "wednesday", label: "Wednesday" },
-  { key: "thursday", label: "Thursday" },
-  { key: "friday", label: "Friday" },
-  { key: "saturday", label: "Saturday" },
-  { key: "sunday", label: "Sunday" }
+  { key: "monday", labelKey: "settings.company.days.monday" },
+  { key: "tuesday", labelKey: "settings.company.days.tuesday" },
+  { key: "wednesday", labelKey: "settings.company.days.wednesday" },
+  { key: "thursday", labelKey: "settings.company.days.thursday" },
+  { key: "friday", labelKey: "settings.company.days.friday" },
+  { key: "saturday", labelKey: "settings.company.days.saturday" },
+  { key: "sunday", labelKey: "settings.company.days.sunday" }
 ] as const
 
 const TIME_OPTIONS = (() => {
@@ -126,6 +126,7 @@ interface BusinessHoursSectionProps {
 }
 
 export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
+  const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const businessHours = form.watch("business_hours") || []
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
@@ -146,14 +147,14 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
     if (businessHours.length > 0) {
       const hoursData = businessHours.map((hours: any, index: number) => ({
         id: `business-hours-${index}`,
-        title: hours.name || `Schedule ${index + 1}`,
+        title: hours.name || t("settings.company.hours.scheduleN", { n: index + 1 }),
       }));
       
       window.dispatchEvent(new CustomEvent('businessHoursUpdated', { 
         detail: hoursData 
       }));
     }
-  }, [businessHours]);
+  }, [businessHours, t]);
 
   const addBusinessHours = useCallback(() => {
     const currentBusinessHours = form.getValues("business_hours") || []
@@ -218,9 +219,9 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Business Hours</h2>
+          <h2 className="text-2xl font-semibold">{t("settings.company.hours.title")}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Define your business hours for different regions and locations
+            {t("settings.company.hours.description")}
           </p>
         </div>
         <Button
@@ -230,7 +231,7 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
           onClick={addBusinessHours}
         >
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Schedule
+          {t("settings.company.hours.add")}
         </Button>
       </div>
 
@@ -249,7 +250,7 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div onClick={(e) => e.stopPropagation()}>
                     <Input
-                      placeholder="e.g., Main Office, Europe Branch"
+                      placeholder={t("settings.company.hours.placeholder.name")}
                       value={hours.name || ""}
                       onChange={(e) => updateBusinessHourField(index, "name", e.target.value)}
                       className="bg-background"
@@ -262,7 +263,7 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                       onValueChange={(value) => updateBusinessHourField(index, "timezone", value)}
                     >
                       <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Select timezone" />
+                        <SelectValue placeholder={t("settings.company.hours.timezonePlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         {TIMEZONES.map((tz) => (
@@ -291,9 +292,9 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
               <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <label className="text-sm font-medium">Respect Holidays</label>
+                    <label className="text-sm font-medium">{t("settings.company.hours.respectHolidays")}</label>
                     <p className="text-xs text-muted-foreground">
-                      Agents will not work on regional holidays when enabled
+                      {t("settings.company.hours.respectHolidaysDescription")}
                     </p>
                   </div>
                   <Switch
@@ -312,7 +313,7 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                             onCheckedChange={(checked) => updateBusinessHourField(index, `days.${day.key}.enabled`, checked)}
                           />
                           <label className="text-sm font-medium">
-                            {day.label}
+                            {t(day.labelKey)}
                           </label>
                         </div>
                       </div>
@@ -324,7 +325,7 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                             onValueChange={(value) => updateBusinessHourField(index, `days.${day.key}.start`, value)}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Start time" />
+                              <SelectValue placeholder={t("settings.company.hours.startTime")} />
                             </SelectTrigger>
                             <SelectContent>
                               {TIME_OPTIONS.map((time) => (
@@ -335,14 +336,14 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                             </SelectContent>
                           </Select>
 
-                          <span className="text-muted-foreground">to</span>
+                          <span className="text-muted-foreground">{t("settings.company.common.to")}</span>
 
                           <Select
                             value={hours.days[day.key]?.end || "18:00"}
                             onValueChange={(value) => updateBusinessHourField(index, `days.${day.key}.end`, value)}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="End time" />
+                              <SelectValue placeholder={t("settings.company.hours.endTime")} />
                             </SelectTrigger>
                             <SelectContent>
                               {TIME_OPTIONS.map((time) => (
@@ -357,7 +358,7 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
 
                       {!hours.days[day.key]?.enabled && (
                         <div className="flex-1 text-sm text-muted-foreground">
-                          Closed
+                          {t("settings.company.common.closed")}
                         </div>
                       )}
                     </div>
@@ -376,23 +377,23 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Remove Schedule
+                        {t("settings.company.hours.remove")}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Remove Schedule</AlertDialogTitle>
+                        <AlertDialogTitle>{t("settings.company.hours.remove")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to remove this business hours schedule? This action cannot be undone.
+                          {t("settings.company.hours.removeConfirm")}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t("settings.company.common.cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => removeBusinessHours(index)}
                           className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
                         >
-                          Remove Schedule
+                          {t("settings.company.hours.remove")}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -403,7 +404,9 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                     onClick={() => handleSaveBusinessHours(index)}
                     disabled={savingSchedule === index}
                   >
-                    {savingSchedule === index ? "Saving..." : "Save Schedule"}
+                    {savingSchedule === index
+                      ? t("settings.company.common.saving")
+                      : t("settings.company.hours.save")}
                   </Button>
                 </div>
               </ActionFooter>

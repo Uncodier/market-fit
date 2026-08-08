@@ -7,11 +7,12 @@ import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, ChevronDown, ChevronRight, Home } from "../ui/icons"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { ActionFooter } from "../ui/card-footer"
 import { type SiteFormValues as SiteFormValuesType } from "./form-schema"
 import { listLocations, upsertLocation, deleteLocation } from "@/app/inventory/actions"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -46,6 +47,7 @@ const normalizeLocation = (location: any) => ({
 })
 
 export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) {
+  const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const { currentSite } = useSite()
   const [locationsList, setLocationsList] = useState<any[]>([])
@@ -69,14 +71,14 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
     if (locationsList.length > 0) {
       const locationsData = locationsList.map((location, index) => ({
         id: `office-location-${index}`,
-        title: location.name || `Location ${index + 1}`,
+        title: location.name || t("settings.company.locations.new"),
       }));
       
       window.dispatchEvent(new CustomEvent('officeLocationsUpdated', { 
         detail: locationsData 
       }));
     }
-  }, [locationsList]);
+  }, [locationsList, t]);
 
   // Toggle location expansion
   const toggleLocationExpansion = useCallback((index: number) => {
@@ -109,7 +111,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
         toast.error(res.error);
         return; // Don't remove from UI if db deletion failed
       }
-      toast.success("Location removed");
+      toast.success(t("settings.company.locations.toast.removed"));
     }
 
     const newLocations = locationsList.filter((_, i) => i !== index)
@@ -125,7 +127,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
       }
     })
     setExpandedLocations(newExpanded)
-  }, [locationsList, expandedLocations, currentSite?.id])
+  }, [locationsList, expandedLocations, currentSite?.id, t])
   
   // Handle location field update
   const handleLocationUpdate = useCallback((index: number, field: string, value: string) => {
@@ -159,7 +161,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
       if (res.error) {
         toast.error(res.error)
       } else {
-        toast.success("Location saved")
+        toast.success(t("settings.company.locations.toast.saved"))
         // Update local state with the returned location (which includes generated IDs)
         const updatedList = [...locationsList]
         updatedList[index] = normalizeLocation(res.data)
@@ -168,7 +170,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
       }
     } catch (error) {
       console.error("Error saving location:", error)
-      toast.error("Error saving location")
+      toast.error(t("settings.company.locations.toast.error"))
     } finally {
       setIsSavingLocation(null)
     }
@@ -179,9 +181,9 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Office Locations</h2>
+          <h2 className="text-2xl font-semibold">{t("settings.company.locations.title")}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Add your company's office locations and addresses
+            {t("settings.company.locations.description")}
           </p>
         </div>
         <Button
@@ -191,7 +193,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
           onClick={addLocation}
         >
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Location
+          {t("settings.company.locations.add")}
         </Button>
       </div>
 
@@ -211,7 +213,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                   <Home className="h-5 w-5 text-muted-foreground" />
                   <div className="flex-1 min-w-0">
                     <CardTitle className="text-lg font-semibold truncate">
-                      {location.name || "New Location"}
+                      {location.name || t("settings.company.locations.new")}
                     </CardTitle>
                     {(location.city || location.state || location.country) && (
                       <p className="text-sm text-muted-foreground truncate mt-1">
@@ -241,7 +243,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                     <FormItem>
                       <FormControl>
                         <Input
-                          placeholder="Office name (e.g., Headquarters)"
+                          placeholder={t("settings.company.locations.placeholder.name")}
                           value={location.name}
                           onChange={(e) => {
                             field.onChange(e)
@@ -262,7 +264,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                     <FormItem>
                       <FormControl>
                         <Input
-                          placeholder="Street address"
+                          placeholder={t("settings.company.locations.placeholder.address")}
                           value={location.address || ""}
                           onChange={(e) => {
                             field.onChange(e)
@@ -284,7 +286,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="City"
+                            placeholder={t("settings.company.locations.placeholder.city")}
                             value={location.city || ""}
                             onChange={(e) => {
                               field.onChange(e)
@@ -305,7 +307,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="State/Province"
+                            placeholder={t("settings.company.locations.placeholder.state")}
                             value={location.state || ""}
                             onChange={(e) => {
                               field.onChange(e)
@@ -326,7 +328,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="ZIP/Postal Code"
+                            placeholder={t("settings.company.locations.placeholder.zip")}
                             value={location.zip || ""}
                             onChange={(e) => {
                               field.onChange(e)
@@ -348,7 +350,7 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                     <FormItem>
                       <FormControl>
                         <Input
-                          placeholder="Country"
+                          placeholder={t("settings.company.locations.placeholder.country")}
                           value={location.country || ""}
                           onChange={(e) => {
                             field.onChange(e)
@@ -374,23 +376,23 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Remove Location
+                        {t("settings.company.locations.remove")}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Remove Location</AlertDialogTitle>
+                        <AlertDialogTitle>{t("settings.company.locations.remove")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to remove this office location? This action cannot be undone.
+                          {t("settings.company.locations.removeConfirm")}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>{t("settings.company.common.cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={() => removeLocation(index)}
                           className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
                         >
-                          Remove Location
+                          {t("settings.company.locations.remove")}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -401,7 +403,9 @@ export function OfficeLocationsSection({ onSave }: OfficeLocationsSectionProps) 
                     onClick={() => handleSaveLocation(index)}
                     disabled={isSavingLocation === index}
                   >
-                    {isSavingLocation === index ? "Saving..." : "Save Location"}
+                    {isSavingLocation === index
+                      ? t("settings.company.common.saving")
+                      : t("settings.company.locations.save")}
                   </Button>
                 </div>
               </ActionFooter>

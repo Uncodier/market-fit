@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { Location, InventoryLevel } from "@/app/types";
 import { InventoryLevelWithCatalog, InventoryParams } from "./types";
 
@@ -48,6 +48,23 @@ export async function listLocations(siteId: string) {
     return { data: data as Location[] };
   } catch (error: any) {
     return { data: [], error: error.message };
+  }
+}
+
+/** Public storefront read — bypasses member-only RLS on locations. */
+export async function listPublicLocations(siteId: string) {
+  try {
+    const supabase = await createServiceClient(true);
+    const { data, error } = await supabase
+      .from("locations")
+      .select("*")
+      .eq("site_id", siteId)
+      .order("name");
+
+    if (error) throw new Error(error.message);
+    return { data: (data || []) as Location[] };
+  } catch (error: any) {
+    return { data: [] as Location[], error: error.message };
   }
 }
 

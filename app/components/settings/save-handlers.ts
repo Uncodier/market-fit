@@ -11,6 +11,7 @@ interface SaveOptions {
   updateSettings: (siteId: string, settings: any) => Promise<void>
   refreshSites: () => Promise<void>
   setIsSaving: (saving: boolean) => void
+  t?: (key: string, params?: Record<string, string | number>) => string
 }
 
 export const handleSave = async (data: SiteFormValues, options: SaveOptions) => {
@@ -909,7 +910,7 @@ export const handleSaveShop = async (data: SiteFormValues, options: SaveOptions)
 }
 
 export const handleSaveCompany = async (data: SiteFormValues, options: SaveOptions) => {
-  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving, t } = options
 
   if (!currentSite) return
 
@@ -960,13 +961,13 @@ export const handleSaveCompany = async (data: SiteFormValues, options: SaveOptio
       await refreshSites()
     }
 
-    toast.success("Company information saved successfully")
+    toast.success(t?.("settings.company.toast.saved") || "Company information saved successfully")
   } catch (error) {
     console.error("Error saving company settings:", error)
     if (error instanceof Error) {
       toast.error(`Error: ${error.message}`)
     } else {
-      toast.error("Error saving company information")
+      toast.error(t?.("settings.company.toast.error") || "Error saving company information")
     }
   } finally {
     setIsSaving(false)

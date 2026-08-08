@@ -1,6 +1,7 @@
 "use server"
 
 import { getSiteInfoBySlug } from "@/app/book/actions";
+import { listPublicLocations } from "@/app/inventory/actions";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export async function getShopSite(slug: string) {
@@ -355,12 +356,5 @@ export async function getShopUserOwnedItems(siteId: string): Promise<ShopOwnedAc
 }
 
 export async function getShopLocations(siteId: string) {
-  const supabase = await createServiceClient(true);
-  const { data } = await supabase
-    .from("locations")
-    .select("*")
-    .eq("site_id", siteId)
-    .order("name");
-    
-  return { data: data || [] };
+  return listPublicLocations(siteId);
 }

@@ -23,7 +23,7 @@ import {
   CheckoutFulfillmentMethod
 } from "@/app/commerce/delivery-options"
 import { getAvailablePaymentMethods, PaymentMethodType, getItemPaymentOptions, intersectPaymentOptions } from "@/app/commerce/payment-options"
-import { listLocations } from "@/app/inventory/actions"
+import { listPublicLocations } from "@/app/inventory/actions"
 import { getSiteInfoBySlug } from "@/app/book/actions"
 import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
 import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
@@ -114,19 +114,18 @@ export default function CheckoutClient({
     }
     
     if (currentSiteId) {
-      // Load locations
-      listLocations(currentSiteId).then(res => {
-        if (res.data) {
-          let availableLocations = res.data.filter(l => l.is_active !== false);
-          if (allowedLocationIds) {
-            availableLocations = availableLocations.filter(l => allowedLocationIds.includes(l.id));
-          }
-          setLocations(availableLocations);
-          // Set default pickup location
-          if (availableLocations.length > 0) {
-            const defaultLoc = availableLocations.find(l => l.is_default) || availableLocations[0];
-            setPickupLocationId(defaultLoc.id);
-          }
+      // Public storefront path (service role) — buyers are not site members, so RLS blocks listLocations
+      listPublicLocations(currentSiteId).then(res => {
+        let availableLocations = (res.data || []).filter((l: any) => l.is_active !== false);
+        if (allowedLocationIds) {
+          availableLocations = availableLocations.filter((l: any) => allowedLocationIds.includes(l.id));
+        }
+        setLocations(availableLocations);
+        if (availableLocations.length > 0) {
+          const defaultLoc = availableLocations.find((l: any) => l.is_default) || availableLocations[0];
+          setPickupLocationId(defaultLoc.id);
+        } else {
+          setPickupLocationId("");
         }
       }).catch(console.error);
 

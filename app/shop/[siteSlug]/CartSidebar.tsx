@@ -244,7 +244,13 @@ export function CartSidebar({
           className="w-full h-14 text-lg font-bold rounded-xl" 
           disabled={cart.length === 0 || checkoutLoading || allowedOptions.length === 0 || ((fulfillment === 'pickup' || fulfillment === 'dine_in') && pickupLocations.length === 0) || !paymentMethod || !locationAvailable || (orderTiming === 'scheduled' && !scheduledFor)}
         >
-          {checkoutLoading ? (t('shop.cart.processing') || "Processing securely...") : `${t('shop.cart.checkoutBtn') || 'Checkout'} • ${formatPrice(payableTotal, currency)}`}
+          {checkoutLoading
+            ? (t('shop.cart.processing') || "Processing securely...")
+            : paymentMethod === 'cash_on_pickup'
+              ? (t('checkout.placeOrderCash') || 'Place order • Pay at store')
+              : paymentMethod === 'bank_transfer'
+                ? (t('checkout.placeOrderTransfer') || 'Place order • Pay by transfer')
+                : (t('checkout.paySecurely') || 'Pay securely')}
         </Button>
         <div className="flex items-center justify-center gap-2 mt-4 text-xs text-gray-400 font-medium">
           <ShieldCheck className="h-4 w-4" />

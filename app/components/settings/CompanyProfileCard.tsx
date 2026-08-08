@@ -3,44 +3,37 @@
 import { useFormContext } from "react-hook-form"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
-import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { useState } from "react"
-import { type SiteFormValues } from "./form-schema"
 import { COMMON_CURRENCIES } from "@/app/lib/currencies"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface CompanyProfileCardProps {
   onSave?: (data: SiteFormValues) => void
 }
 
-const COMPANY_SIZES = [
-  { value: "1-10", label: "1-10 employees" },
-  { value: "11-50", label: "11-50 employees" },
-  { value: "51-200", label: "51-200 employees" },
-  { value: "201-500", label: "201-500 employees" },
-  { value: "501-1000", label: "501-1000 employees" },
-  { value: "1001+", label: "1001+ employees" }
-]
+const COMPANY_SIZE_VALUES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001+"] as const
 
-const INDUSTRIES = [
-  { value: "technology", label: "Technology" },
-  { value: "healthcare", label: "Healthcare" },
-  { value: "finance", label: "Finance" },
-  { value: "education", label: "Education" },
-  { value: "retail", label: "Retail" },
-  { value: "manufacturing", label: "Manufacturing" },
-  { value: "entertainment", label: "Entertainment" },
-  { value: "food", label: "Food & Beverage" },
-  { value: "travel", label: "Travel & Hospitality" },
-  { value: "real_estate", label: "Real Estate" },
-  { value: "professional_services", label: "Professional Services" },
-  { value: "other", label: "Other" }
-]
+const INDUSTRY_VALUES = [
+  "technology",
+  "healthcare",
+  "finance",
+  "education",
+  "retail",
+  "manufacturing",
+  "entertainment",
+  "food",
+  "travel",
+  "real_estate",
+  "professional_services",
+  "other",
+] as const
 
 export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
+  const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const [savingCard, setSavingCard] = useState<string | null>(null)
 
@@ -60,9 +53,11 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
   return (
     <Card id="company-profile" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold">Company Profile</CardTitle>
+        <CardTitle className="text-xl font-semibold">
+          {t("settings.company.profile.title")}
+        </CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Basic information about your company
+          {t("settings.company.profile.description")}
         </p>
       </CardHeader>
       <CardContent className="space-y-6 px-8 pb-8">
@@ -71,17 +66,17 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
           name="about"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>About</FormLabel>
+              <FormLabel>{t("settings.company.profile.about")}</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Tell us about your company..."
+                  placeholder={t("settings.company.profile.aboutPlaceholder")}
                   className="min-h-[100px]"
                   {...field}
                   value={field.value || ""}
                 />
               </FormControl>
               <FormDescription>
-                A brief description of your company, mission, and values.
+                {t("settings.company.profile.aboutDescription")}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -94,20 +89,20 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
             name="company_size"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Company Size</FormLabel>
+                <FormLabel>{t("settings.company.profile.companySize")}</FormLabel>
                 <Select
                   value={field.value || ""}
                   onValueChange={field.onChange}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select company size" />
+                      <SelectValue placeholder={t("settings.company.profile.companySizePlaceholder")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {COMPANY_SIZES.map((size) => (
-                      <SelectItem key={size.value} value={size.value}>
-                        {size.label}
+                    {COMPANY_SIZE_VALUES.map((size) => (
+                      <SelectItem key={size} value={size}>
+                        {t(`settings.company.size.${size}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -122,20 +117,20 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
             name="industry"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Industry</FormLabel>
+                <FormLabel>{t("settings.company.profile.industry")}</FormLabel>
                 <Select
                   value={field.value || ""}
                   onValueChange={field.onChange}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select industry" />
+                      <SelectValue placeholder={t("settings.company.profile.industryPlaceholder")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {INDUSTRIES.map((industry) => (
-                      <SelectItem key={industry.value} value={industry.value}>
-                        {industry.label}
+                    {INDUSTRY_VALUES.map((industry) => (
+                      <SelectItem key={industry} value={industry}>
+                        {t(`settings.company.industry.${industry}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -150,14 +145,14 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
             name="currency"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Default Currency</FormLabel>
+                <FormLabel>{t("settings.company.profile.currency")}</FormLabel>
                 <Select
                   value={field.value || "USD"}
                   onValueChange={field.onChange}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select currency" />
+                      <SelectValue placeholder={t("settings.company.profile.currencyPlaceholder")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -169,7 +164,7 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  The default currency for products and transactions.
+                  {t("settings.company.profile.currencyDescription")}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -183,9 +178,11 @@ export function CompanyProfileCard({ onSave }: CompanyProfileCardProps) {
           onClick={() => handleSave('company-profile')}
           disabled={savingCard === 'company-profile'}
         >
-          {savingCard === 'company-profile' ? "Saving..." : "Save"}
+          {savingCard === 'company-profile'
+            ? t("settings.company.common.saving")
+            : t("settings.company.common.save")}
         </Button>
       </CardFooter>
     </Card>
   )
-} 
+}

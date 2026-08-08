@@ -13,7 +13,7 @@ import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { shouldUseCompactMobileListing } from "@/app/components/commerce/CommerceProductGrid"
 import { CommerceOrderSuccess } from "@/app/components/commerce/CommerceOrderSuccess"
 import { getSiteInfoBySlug } from "@/app/book/actions"
-import { listLocations } from "@/app/inventory/actions"
+import { listPublicLocations } from "@/app/inventory/actions"
 import { MarketplaceCartPanel } from "./MarketplaceCartPanel"
 import { MarketplaceFooter } from "./MarketplaceFooter"
 import {
@@ -140,8 +140,9 @@ export function MarketplaceClient({
     }
     
     if (currentSiteId) {
-      listLocations(currentSiteId).then(res => {
-        if (res.data) setLocations(res.data)
+      // Public storefront path (service role) — buyers are not site members, so RLS blocks listLocations
+      listPublicLocations(currentSiteId).then(res => {
+        setLocations(res.data || [])
       }).catch(console.error);
 
       getSiteInfoBySlug(currentSiteId).then(site => {

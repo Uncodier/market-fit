@@ -166,45 +166,45 @@ const getGeneralSections = (t: (key: string) => string): QuickNavSection[] => [
 ]
 
 const getCompanySections = (t: (key: string) => string): QuickNavSection[] => [
-  { id: "company-profile", title: t('context.nav.companyInformation') || "Company Profile" },
+  { id: "company-profile", title: t('settings.nav.companyProfile') || "Company Profile" },
   {
     id: "goals-quarterly",
-    title: t('context.nav.goals') || "Business Goals",
+    title: t('settings.nav.goals') || "Business Goals",
     children: [
-      { id: "goals-quarterly", title: t('context.nav.goals.quarterly') || "Quarter Goals" },
-      { id: "goals-yearly", title: t('context.nav.goals.yearly') || "Year Goals" },
-      { id: "goals-five-year", title: t('context.nav.goals.fiveYear') || "5 Year Goals" },
-      { id: "goals-ten-year", title: t('context.nav.goals.tenYear') || "10 Year Goals" },
+      { id: "goals-quarterly", title: t('settings.nav.goals.quarterly') || "Quarter Goals" },
+      { id: "goals-yearly", title: t('settings.nav.goals.yearly') || "Year Goals" },
+      { id: "goals-five-year", title: t('settings.nav.goals.fiveYear') || "5 Year Goals" },
+      { id: "goals-ten-year", title: t('settings.nav.goals.tenYear') || "10 Year Goals" },
     ]
   },
   {
     id: "swot-strengths",
-    title: t('context.nav.swot') || "SWOT Analysis",
+    title: t('settings.nav.swot') || "SWOT Analysis",
     children: [
-      { id: "swot-strengths", title: t('context.nav.swot.strengths') || "Strengths" },
-      { id: "swot-weaknesses", title: t('context.nav.swot.weaknesses') || "Weaknesses" },
-      { id: "swot-opportunities", title: t('context.nav.swot.opportunities') || "Opportunities" },
-      { id: "swot-threats", title: t('context.nav.swot.threats') || "Threats" },
+      { id: "swot-strengths", title: t('settings.nav.swot.strengths') || "Strengths" },
+      { id: "swot-weaknesses", title: t('settings.nav.swot.weaknesses') || "Weaknesses" },
+      { id: "swot-opportunities", title: t('settings.nav.swot.opportunities') || "Opportunities" },
+      { id: "swot-threats", title: t('settings.nav.swot.threats') || "Threats" },
     ]
   },
   {
     id: "office-locations",
-    title: t('context.nav.officeLocations') || "Office Locations",
+    title: t('settings.nav.officeLocations') || "Office Locations",
     children: []
   },
   {
     id: "service-available-restrictions",
-    title: t('context.nav.serviceRestrictions') || "Service Available Restrictions",
+    title: t('settings.nav.serviceRestrictions') || "Service Available Restrictions",
     children: []
   },
   {
     id: "service-exclusions-addresses",
-    title: t('context.nav.serviceExclusions') || "Service Exclusions Addresses",
+    title: t('settings.nav.serviceExclusions') || "Service Exclusions Addresses",
     children: []
   },
   {
     id: "business-hours",
-    title: t('context.nav.businessHours') || "Business Hours",
+    title: t('settings.nav.businessHours') || "Business Hours",
     children: []
   },
 ]
@@ -280,6 +280,19 @@ export default function SettingsPage() {
   const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections(t))
   const [socialSections, setSocialSections] = useState<QuickNavSection[]>(getInitialSocialSections(t))
   const [companySectionsState, setCompanySectionsState] = useState<QuickNavSection[]>(getCompanySections(t))
+
+  // Keep company quick-nav labels in sync with locale
+  useEffect(() => {
+    setCompanySectionsState(prev => {
+      const next = getCompanySections(t)
+      return next.map(section => {
+        const existing = prev.find(item => item.id === section.id)
+        return existing?.children?.length
+          ? { ...section, children: existing.children }
+          : section
+      })
+    })
+  }, [t])
 
   // Simple refresh prevention specifically for settings page
   useSimpleRefreshPrevention()
@@ -495,7 +508,8 @@ export default function SettingsPage() {
     updateSite,
     updateSettings,
     refreshSites,
-    setIsSaving
+    setIsSaving,
+    t
   }
 
   const onSaveGeneral = async (data: SiteFormValues) => {
@@ -620,7 +634,7 @@ export default function SettingsPage() {
             <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                 <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
-                <TabsTrigger value="company" className="text-xs rounded-full px-4">{t('context.tabs.company') || 'Company'}</TabsTrigger>
+                <TabsTrigger value="company" className="text-xs rounded-full px-4">{t('settings.tabs.company') || 'Company'}</TabsTrigger>
                 <TabsTrigger value="marketplace" className="text-xs rounded-full px-4">{t('settings.tabs.marketplace') || 'Marketplace'}</TabsTrigger>
                 <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>

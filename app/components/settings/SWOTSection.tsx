@@ -3,17 +3,54 @@
 import { useFormContext } from "react-hook-form"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
+import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { Textarea } from "../ui/textarea"
 import { type SiteFormValues } from "./form-schema"
 import { useState } from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface SWOTSectionProps {
   active: boolean
   onSave?: (data: SiteFormValues) => void
 }
 
+const SWOT_CARDS = [
+  {
+    id: "swot-strengths",
+    cardId: "strengths",
+    field: "swot.strengths" as const,
+    titleKey: "settings.company.swot.strengths.title",
+    descriptionKey: "settings.company.swot.strengths.description",
+    placeholderKey: "settings.company.swot.strengths.placeholder",
+  },
+  {
+    id: "swot-weaknesses",
+    cardId: "weaknesses",
+    field: "swot.weaknesses" as const,
+    titleKey: "settings.company.swot.weaknesses.title",
+    descriptionKey: "settings.company.swot.weaknesses.description",
+    placeholderKey: "settings.company.swot.weaknesses.placeholder",
+  },
+  {
+    id: "swot-opportunities",
+    cardId: "opportunities",
+    field: "swot.opportunities" as const,
+    titleKey: "settings.company.swot.opportunities.title",
+    descriptionKey: "settings.company.swot.opportunities.description",
+    placeholderKey: "settings.company.swot.opportunities.placeholder",
+  },
+  {
+    id: "swot-threats",
+    cardId: "threats",
+    field: "swot.threats" as const,
+    titleKey: "settings.company.swot.threats.title",
+    descriptionKey: "settings.company.swot.threats.description",
+    placeholderKey: "settings.company.swot.threats.placeholder",
+  },
+] as const
+
 export function SWOTSection({ active, onSave }: SWOTSectionProps) {
+  const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const [savingCard, setSavingCard] = useState<string | null>(null)
 
@@ -34,141 +71,50 @@ export function SWOTSection({ active, onSave }: SWOTSectionProps) {
 
   return (
     <div className="space-y-8">
-      {/* Strengths */}
-      <Card id="swot-strengths" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Strengths</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            What are your company's key strengths and competitive advantages?
-          </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
-          <FormField
-            control={form.control}
-            name="swot.strengths"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Textarea
-                    placeholder="List your internal strengths..."
-                    className="min-h-[120px]"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('strengths')} disabled={savingCard === 'strengths'}>
-            {savingCard === 'strengths' ? "Saving..." : "Save"}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Weaknesses */}
-      <Card id="swot-weaknesses" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Weaknesses</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            What internal limitations or challenges does your company face?
-          </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
-          <FormField
-            control={form.control}
-            name="swot.weaknesses"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Textarea
-                    placeholder="Identify areas that need improvement..."
-                    className="min-h-[120px]"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('weaknesses')} disabled={savingCard === 'weaknesses'}>
-            {savingCard === 'weaknesses' ? "Saving..." : "Save"}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Opportunities */}
-      <Card id="swot-opportunities" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Opportunities</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            What external factors could positively impact your business?
-          </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
-          <FormField
-            control={form.control}
-            name="swot.opportunities"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Textarea
-                    placeholder="Explore potential opportunities..."
-                    className="min-h-[120px]"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('opportunities')} disabled={savingCard === 'opportunities'}>
-            {savingCard === 'opportunities' ? "Saving..." : "Save"}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Threats */}
-      <Card id="swot-threats" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Threats</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            What external challenges could negatively impact your business?
-          </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
-          <FormField
-            control={form.control}
-            name="swot.threats"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Textarea
-                    placeholder="Identify potential threats..."
-                    className="min-h-[120px]"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('threats')} disabled={savingCard === 'threats'}>
-            {savingCard === 'threats' ? "Saving..." : "Save"}
-          </Button>
-        </CardFooter>
-      </Card>
+      {SWOT_CARDS.map((card) => (
+        <Card
+          key={card.id}
+          id={card.id}
+          className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200"
+        >
+          <CardHeader className="px-8 py-6">
+            <CardTitle className="text-xl font-semibold">{t(card.titleKey)}</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              {t(card.descriptionKey)}
+            </p>
+          </CardHeader>
+          <CardContent className="px-8 pb-8">
+            <FormField
+              control={form.control}
+              name={card.field}
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Textarea
+                      placeholder={t(card.placeholderKey)}
+                      className="min-h-[120px]"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+            <Button
+              variant="outline"
+              onClick={() => handleSave(card.cardId)}
+              disabled={savingCard === card.cardId}
+            >
+              {savingCard === card.cardId
+                ? t("settings.company.common.saving")
+                : t("settings.company.common.save")}
+            </Button>
+          </CardFooter>
+        </Card>
+      ))}
     </div>
   )
-} 
+}

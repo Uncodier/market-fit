@@ -42,7 +42,7 @@ export function CheckoutIdentityPicker({
   const [mode, setMode] = useState<Mode>(() => {
     if (session) return "signed_in"
     if (requiresAuth) return "otp_email"
-    return "choose"
+    return "guest"
   })
   const [otpEmail, setOtpEmail] = useState("")
   const [otpCode, setOtpCode] = useState("")
@@ -57,7 +57,7 @@ export function CheckoutIdentityPicker({
     }
     setMode((current) => {
       if (current === "signed_in") {
-        return requiresAuth ? "otp_email" : "choose"
+        return requiresAuth ? "otp_email" : "guest"
       }
       if (requiresAuth && (current === "choose" || current === "guest")) {
         return "otp_email"
@@ -178,60 +178,46 @@ export function CheckoutIdentityPicker({
         </div>
       )}
 
-      {mode === "choose" && (
-        <div className="grid sm:grid-cols-2 gap-4">
-          <button
-            type="button"
-            onClick={() => setMode("guest")}
-            className="flex flex-col items-center justify-center gap-2 p-6 rounded-2xl border-2 border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-all text-center"
-          >
-            <User className="w-6 h-6 text-gray-400" />
-            <div className="font-semibold">
-              {t("checkout.identity.continueAsGuest") || "Continue as guest"}
-            </div>
-            <p className="text-xs text-gray-500">
-              {t("checkout.identity.guestHelper") ||
-                "You can shop without an account. Sign in to access purchases in your buyer portal."}
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMode("otp_email")}
-            className="flex flex-col items-center justify-center gap-2 p-6 rounded-2xl border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all text-center"
-          >
-            <ShieldCheck className="w-6 h-6 text-primary" />
-            <div className="font-semibold">
-              {t("checkout.identity.signIn") || "Sign in"}
-            </div>
-            <p className="text-xs text-gray-500">
-              {t("checkout.identity.signInHelper") ||
-                "Access your digital products, manage subscriptions, and save your details."}
-            </p>
-          </button>
-        </div>
-      )}
-
-      {(mode === "guest" || mode === "otp_email" || mode === "otp_code") && (
+      {(mode === "guest" || mode === "otp_email" || mode === "otp_code" || mode === "choose") && (
         <Tabs
-          value={mode === "otp_code" ? "otp_email" : mode}
+          value={mode === "otp_code" ? "otp_email" : mode === "choose" ? "guest" : mode}
           onValueChange={(v) => {
             if (v === "guest" || v === "otp_email") {
               setMode(v as Mode)
               if (v === "otp_email") setOtpCode("")
             }
           }}
-          className="w-full space-y-4 animate-in fade-in slide-in-from-top-2 duration-300"
+          className="w-full space-y-4"
         >
           {!requiresAuth ? (
-            <TabsList className="grid w-full grid-cols-2 h-9 mb-2 bg-muted/30 p-1 rounded-full">
-              <TabsTrigger value="guest" className="rounded-full text-xs">
-                {t("checkout.identity.continueAsGuest") || "Continue as guest"}
-              </TabsTrigger>
-              <TabsTrigger value="otp_email" className="rounded-full text-xs">
-                {t("checkout.identity.signIn") || "Sign in"}
-              </TabsTrigger>
-            </TabsList>
+            <div className="space-y-2 mb-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+                {t("checkout.identity.signInMethod") || "Sign-in method"}
+              </Label>
+              <TabsList className="inline-flex h-auto w-full p-1 bg-gray-100 dark:bg-zinc-800/80 rounded-xl gap-1 text-muted-foreground">
+                <TabsTrigger
+                  value="guest"
+                  className="flex-1 rounded-lg text-xs py-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-black/5 dark:data-[state=active]:ring-white/10"
+                >
+                  <User className="w-3.5 h-3.5 shrink-0" />
+                  {t("checkout.identity.continueAsGuest") || "Continue as guest"}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="otp_email"
+                  className="flex-1 rounded-lg text-xs py-2.5 gap-1.5 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:ring-1 data-[state=active]:ring-black/5 dark:data-[state=active]:ring-white/10"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  {t("checkout.identity.signIn") || "Sign in"}
+                </TabsTrigger>
+              </TabsList>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {(mode === "otp_email" || mode === "otp_code")
+                  ? (t("checkout.identity.signInHelper") ||
+                      "Access your digital products, manage subscriptions, and save your details.")
+                  : (t("checkout.identity.guestHelper") ||
+                      "You can shop without an account. Sign in to access purchases in your buyer portal.")}
+              </p>
+            </div>
           ) : (
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">

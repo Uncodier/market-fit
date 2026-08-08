@@ -3,9 +3,10 @@
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Truck, Store, CreditCard, Package, MapPin, MonitorSmartphone, Banknote } from "@/app/components/ui/icons"
+import { Truck, Store, CreditCard, MapPin, MonitorSmartphone, Banknote } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { DatePicker } from "@/app/components/ui/date-picker"
+import type { ReactNode } from "react"
 
 interface CartCheckoutFieldsProps {
   allowedOptions: Array<'pickup' | 'ship' | 'none' | 'dine_in'>
@@ -27,6 +28,39 @@ interface CartCheckoutFieldsProps {
   nextOpenSlot?: { at: Date, label: string } | null
   deliveryTimeLabel?: string | null
   t?: (key: string) => string | undefined
+}
+
+function SegmentedTabs<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: Array<{ value: T; label: string; icon?: ReactNode }>
+  value: T
+  onChange: (val: T) => void
+}) {
+  return (
+    <div className="inline-flex p-1 bg-gray-100 dark:bg-zinc-800/80 rounded-xl w-full gap-1">
+      {options.map((opt) => {
+        const selected = value === opt.value
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-lg transition-all min-w-0 ${
+              selected
+                ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+            }`}
+          >
+            {opt.icon}
+            <span className="text-xs font-medium whitespace-nowrap truncate">{opt.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 export function CartCheckoutFields({
@@ -53,34 +87,65 @@ export function CartCheckoutFields({
   const { t: contextT } = useLocalization()
   const t = propT || contextT
 
+  const deliveryOptions = (
+    [
+      allowedOptions.includes('pickup') && {
+        value: 'pickup' as const,
+        label: t('checkout.storePickup') || 'Store Pickup',
+        icon: <Store className="w-3.5 h-3.5 text-emerald-500 shrink-0" />,
+      },
+      allowedOptions.includes('ship') && {
+        value: 'ship' as const,
+        label: t('checkout.shipToMe') || 'Ship to Me',
+        icon: <Truck className="w-3.5 h-3.5 text-blue-500 shrink-0" />,
+      },
+      allowedOptions.includes('dine_in') && {
+        value: 'dine_in' as const,
+        label: t('checkout.dineIn') || 'Consume Here',
+        icon: <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />,
+      },
+      allowedOptions.includes('none') && {
+        value: 'none' as const,
+        label: t('checkout.digitalService') || 'Digital / Service',
+        icon: <MonitorSmartphone className="w-3.5 h-3.5 text-purple-500 shrink-0" />,
+      },
+    ] as const
+  ).filter(Boolean) as Array<{ value: typeof fulfillment; label: string; icon: ReactNode }>
+
+  const paymentOptions = (
+    [
+      availablePaymentMethods.includes('card') && {
+        value: 'card',
+        label: t('checkout.cardStripe') || 'Card (Stripe)',
+        icon: <CreditCard className="w-3.5 h-3.5 text-blue-500 shrink-0" />,
+      },
+      availablePaymentMethods.includes('cash_on_pickup') && {
+        value: 'cash_on_pickup',
+        label: t('checkout.cashOnPickup') || 'Cash on Pickup',
+        icon: <Banknote className="w-3.5 h-3.5 text-emerald-500 shrink-0" />,
+      },
+      availablePaymentMethods.includes('bank_transfer') && {
+        value: 'bank_transfer',
+        label: t('checkout.bankTransfer') || 'Bank Transfer',
+        icon: <Banknote className="w-3.5 h-3.5 text-indigo-500 shrink-0" />,
+      },
+    ] as const
+  ).filter(Boolean) as Array<{ value: string; label: string; icon: ReactNode }>
+
   return (
     <>
       {setOrderTiming && (
         <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
           <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 block">{t('checkout.orderTiming') || 'Order Timing'}</Label>
-          <div className="inline-flex p-1 bg-gray-100 dark:bg-zinc-800/80 rounded-xl w-full gap-1 mb-3">
-            <button
-              type="button"
-              onClick={() => setOrderTiming('now')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                orderTiming === 'now' 
-                  ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
-              }`}
-            >
-              <span className="text-xs font-medium whitespace-nowrap">{t('checkout.orderNow') || 'Order Now'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setOrderTiming('scheduled')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                orderTiming === 'scheduled' 
-                  ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
-              }`}
-            >
-              <span className="text-xs font-medium whitespace-nowrap">{t('checkout.scheduleOrder') || 'Schedule Order'}</span>
-            </button>
+          <div className="mb-3">
+            <SegmentedTabs
+              value={orderTiming}
+              onChange={setOrderTiming}
+              options={[
+                { value: 'now' as const, label: t('checkout.orderNow') || 'Order Now' },
+                { value: 'scheduled' as const, label: t('checkout.scheduleOrder') || 'Schedule Order' },
+              ]}
+            />
           </div>
 
           {orderTiming === 'now' && !isOpen && nextOpenSlot && (
@@ -118,45 +183,12 @@ export function CartCheckoutFields({
           <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
             {t('checkout.incompatibleDelivery') || 'These items cannot be purchased together due to incompatible delivery methods. Please remove some items.'}
           </div>
-        ) : allowedOptions.length === 1 ? (
-          <div className="h-12 px-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-            {allowedOptions[0] === 'pickup' && <><Store className="w-4 h-4 mr-2 text-emerald-500" />{t('checkout.storePickup') || 'Store Pickup'}</>}
-            {allowedOptions[0] === 'ship' && <><Truck className="w-4 h-4 mr-2 text-blue-500" />{t('checkout.shipToMe') || 'Ship to Me'}</>}
-            {allowedOptions[0] === 'dine_in' && <><MapPin className="w-4 h-4 mr-2 text-orange-500" />{t('checkout.dineIn') || 'Consume Here'}</>}
-            {allowedOptions[0] === 'none' && <><MonitorSmartphone className="w-4 h-4 mr-2 text-purple-500" />{t('checkout.digitalService') || 'Digital / Service (No shipping)'}</>}
-          </div>
         ) : (
-          <Select value={fulfillment} onValueChange={(val: any) => setFulfillment(val)}>
-            <SelectTrigger className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {allowedOptions.includes('pickup') && (
-                <SelectItem value="pickup">
-                  <Store className="w-4 h-4 text-emerald-500 shrink-0" />
-                  {t('checkout.storePickup') || 'Store Pickup'}
-                </SelectItem>
-              )}
-              {allowedOptions.includes('ship') && (
-                <SelectItem value="ship">
-                  <Truck className="w-4 h-4 text-blue-500 shrink-0" />
-                  {t('checkout.shipToMe') || 'Ship to Me'}
-                </SelectItem>
-              )}
-              {allowedOptions.includes('dine_in') && (
-                <SelectItem value="dine_in">
-                  <MapPin className="w-4 h-4 text-orange-500 shrink-0" />
-                  {t('checkout.dineIn') || 'Consume Here'}
-                </SelectItem>
-              )}
-              {allowedOptions.includes('none') && (
-                <SelectItem value="none">
-                  <MonitorSmartphone className="w-4 h-4 text-purple-500 shrink-0" />
-                  {t('checkout.digitalService') || 'Digital / Service (No shipping)'}
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
+          <SegmentedTabs
+            value={fulfillment}
+            onChange={setFulfillment}
+            options={deliveryOptions}
+          />
         )}
       </div>
 
@@ -206,42 +238,14 @@ export function CartCheckoutFields({
         </div>
       )}
 
-      {availablePaymentMethods.length > 0 && setPaymentMethod && (
+      {paymentOptions.length > 0 && setPaymentMethod && (
         <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800">
           <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 block">{t('checkout.paymentMethod') || 'Payment Method'}</Label>
-          {availablePaymentMethods.length === 1 ? (
-            <div className="h-12 px-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-              {availablePaymentMethods[0] === 'card' && <><CreditCard className="w-4 h-4 mr-2 text-blue-500" />{t('checkout.cardStripe') || 'Card (Stripe)'}</>}
-              {availablePaymentMethods[0] === 'cash_on_pickup' && <><Banknote className="w-4 h-4 mr-2 text-emerald-500" />{t('checkout.cashOnPickup') || 'Cash on Pickup'}</>}
-              {availablePaymentMethods[0] === 'bank_transfer' && <><Banknote className="w-4 h-4 mr-2 text-indigo-500" />{t('checkout.bankTransfer') || 'Bank Transfer'}</>}
-            </div>
-          ) : (
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800">
-                <SelectValue placeholder={t('checkout.selectPayment') || "Select payment method"} />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePaymentMethods.includes('card') && (
-                  <SelectItem value="card">
-                    <CreditCard className="w-4 h-4 text-blue-500 shrink-0" />
-                    {t('checkout.cardStripe') || 'Card (Stripe)'}
-                  </SelectItem>
-                )}
-                {availablePaymentMethods.includes('cash_on_pickup') && (
-                  <SelectItem value="cash_on_pickup">
-                    <Banknote className="w-4 h-4 text-emerald-500 shrink-0" />
-                    {t('checkout.cashOnPickup') || 'Cash on Pickup'}
-                  </SelectItem>
-                )}
-                {availablePaymentMethods.includes('bank_transfer') && (
-                  <SelectItem value="bank_transfer">
-                    <Banknote className="w-4 h-4 text-indigo-500 shrink-0" />
-                    {t('checkout.bankTransfer') || 'Bank Transfer'}
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          )}
+          <SegmentedTabs
+            value={paymentMethod || paymentOptions[0].value}
+            onChange={setPaymentMethod}
+            options={paymentOptions}
+          />
         </div>
       )}
     </>
