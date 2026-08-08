@@ -77,7 +77,7 @@ function HeaderColumns({
       <div
         ref={actionsRef}
         data-commerce-shell-actions
-        className="flex items-center justify-end gap-0.5 md:gap-3 relative z-10 min-w-0 shrink-0 md:flex-1 md:basis-0 md:w-auto"
+        className="flex items-center justify-end gap-2 md:gap-3 relative z-10 min-w-0 shrink-0 md:flex-1 md:basis-0 md:w-auto"
       >
         {actions}
       </div>

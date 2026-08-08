@@ -35,6 +35,8 @@ describe('cart-storage', () => {
         delivery_options: ['ship'],
         pickup_location_ids: ['loc-1'],
         payment_options: ['card'],
+        shipping_cost: 15,
+        shipping_cost_mode: 'extra',
         dynamic_pricing: { agent_prompt: 'x'.repeat(5000), fields: [] },
       },
       site: {
@@ -70,6 +72,8 @@ describe('cart-storage', () => {
         delivery_options: ['ship'],
         pickup_location_ids: ['loc-1'],
         payment_options: ['card'],
+        shipping_cost: 15,
+        shipping_cost_mode: 'extra',
       },
       site: {
         id: 'site-1',

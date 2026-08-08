@@ -35,7 +35,7 @@ async function attachAssigneeProfiles(
   }));
 }
 
-export async function listShipments({ siteId, status, leadId, q, page = 1, pageSize = 50 }: ShipmentParams) {
+export async function listShipments({ siteId, status, leadId, q, locationId, page = 1, pageSize = 50 }: ShipmentParams) {
   try {
     const supabase = await createClient();
 
@@ -52,6 +52,9 @@ export async function listShipments({ siteId, status, leadId, q, page = 1, pageS
 
     if (status && status !== "all") {
       query = query.eq("status", status);
+    }
+    if (locationId && locationId !== "all") {
+      query = query.eq("origin_location_id", locationId);
     }
     if (leadId) {
       query = query.eq("lead_id", leadId);

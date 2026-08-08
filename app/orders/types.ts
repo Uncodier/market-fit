@@ -4,6 +4,7 @@ export interface OrderParams {
   siteId: string;
   status?: string;
   q?: string;
+  locationId?: string;
   page?: number;
   pageSize?: number;
 }

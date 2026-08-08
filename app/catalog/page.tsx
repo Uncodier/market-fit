@@ -4,7 +4,8 @@ import { useState, useCallback, useEffect } from "react"
 import useSWR from "swr"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { listCatalogItems } from "./actions"
+import { listCatalogItems, listCatalogCategories } from "./actions"
+import { reorderCatalogDisplay } from "./reorder-actions"
 import { CatalogListParams } from "./types"
 import { CatalogTable } from "./components/CatalogTable"
 import { CreateCatalogItemDialog } from "./components/CreateCatalogItemDialog"
@@ -28,17 +29,27 @@ export default function CatalogPage() {
   const { t } = useLocalization()
   
   const [page, setPage] = useState(1)
-  const pageSize = 50
   const [searchQuery, setSearchQuery] = useState("")
   const [kindFilter, setKindFilter] = useState<'all' | 'product' | 'service'>('all')
   const [statusFilter, setStatusFilter] = useState<'active' | 'archived'>('active')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [viewType, setViewType] = useMobileView("table")
 
+  const isDragEnabled = kindFilter === 'all' && searchQuery === ''
+  // Use a large page size when drag is enabled to fetch all items for proper sorting
+  const pageSize = isDragEnabled ? 1000 : 50
+
   const fetcher = async (params: CatalogListParams) => {
-    const res = await listCatalogItems(params)
-    if (res.error) throw new Error(res.error)
-    return res
+    const [itemsRes, categoriesRes] = await Promise.all([
+      listCatalogItems(params),
+      listCatalogCategories(params.siteId)
+    ])
+    if (itemsRes.error) throw new Error(itemsRes.error)
+    if (categoriesRes.error) throw new Error(categoriesRes.error)
+    return {
+      items: itemsRes,
+      categories: categoriesRes.data || []
+    }
   }
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -81,6 +92,78 @@ export default function CatalogPage() {
       mutate()
     } catch (error) {
       toast.error("Error updating item")
+    }
+  }
+
+  const handleDragEnd = async (result: any) => {
+    if (!currentSite?.id || !data) return
+    
+    const { destination, source, draggableId, type } = result
+    if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
+      return
+    }
+
+    const { items, categories } = data
+
+    // Deep copy current state to compute new orders
+    let newCategories = [...categories]
+    let newItems = [...(items.data || [])]
+
+    if (type === 'category') {
+      const [moved] = newCategories.splice(source.index, 1)
+      newCategories.splice(destination.index, 0, moved)
+    } else if (type === 'item') {
+      const sourceCatId = source.droppableId
+      const destCatId = destination.droppableId
+
+      const sourceItems = newItems.filter(i => (i.category_id || "uncategorized") === sourceCatId)
+      const destItems = sourceCatId === destCatId ? sourceItems : newItems.filter(i => (i.category_id || "uncategorized") === destCatId)
+
+      const [movedItem] = sourceItems.splice(source.index, 1)
+      
+      if (sourceCatId !== destCatId) {
+        movedItem.category_id = destCatId === "uncategorized" ? undefined : destCatId
+      }
+      
+      destItems.splice(destination.index, 0, movedItem)
+
+      // Reassemble items list to keep track
+      newItems = newItems.filter(i => (i.category_id || "uncategorized") !== sourceCatId && (i.category_id || "uncategorized") !== destCatId)
+      newItems.push(...sourceItems)
+      if (sourceCatId !== destCatId) {
+        newItems.push(...destItems)
+      }
+    }
+
+    // Optimistic UI update
+    mutate({
+      items: { ...items, data: newItems },
+      categories: newCategories
+    }, false)
+
+    // Compute payload
+    const orderedCategoryIds = newCategories.map(c => c.id)
+    const itemIdsByCategory: Record<string, string[]> = {}
+    
+    orderedCategoryIds.forEach(catId => {
+      itemIdsByCategory[catId] = newItems.filter(i => i.category_id === catId).map(i => i.id)
+    })
+    // Add uncategorized items
+    itemIdsByCategory["uncategorized"] = newItems.filter(i => !i.category_id).map(i => i.id)
+    if (!orderedCategoryIds.includes("uncategorized")) {
+      orderedCategoryIds.push("uncategorized")
+    }
+
+    // Persist
+    const res = await reorderCatalogDisplay({
+      siteId: currentSite.id,
+      categoryIds: orderedCategoryIds,
+      itemIdsByCategory
+    })
+
+    if (res.error) {
+      toast.error("Failed to save order")
+      mutate() // rollback
     }
   }
 
@@ -148,7 +231,7 @@ export default function CatalogPage() {
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="flex flex-col gap-6">
-          <div className={cn(viewType === 'table' ? "bg-card rounded-xl shadow-sm border border-border overflow-hidden" : "")}>
+          <div>
             {!currentSite || isLoading ? (
               <div className="p-6 space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -164,17 +247,20 @@ export default function CatalogPage() {
                 {viewType === 'table' ? (
                   <>
                     <CatalogTable 
-                      items={data?.data || []} 
+                      items={data?.items.data || []} 
+                      categories={data?.categories || []}
                       onUpdate={() => mutate()} 
                       searchQuery={searchQuery}
                       onCreateOpen={() => setIsCreateOpen(true)}
+                      onDragEnd={handleDragEnd}
+                      isDragEnabled={isDragEnabled}
                     />
                     
-                    {(data?.count ?? 0) > pageSize && (
-                      <div className="p-4 border-t flex justify-center bg-muted/30">
+                    {!isDragEnabled && (data?.items.count ?? 0) > pageSize && (
+                      <div className="py-4 flex justify-center">
                         <Pagination 
                           currentPage={page}
-                          totalPages={Math.ceil(data.count / pageSize)}
+                          totalPages={Math.ceil(data!.items.count / pageSize)}
                           onPageChange={setPage}
                         />
                       </div>
@@ -183,10 +269,13 @@ export default function CatalogPage() {
                 ) : (
                   <div className={viewType === 'kanban' ? "overflow-x-auto -mx-4 md:-mx-6" : ""}>
                     <div className={viewType === 'kanban' ? "px-4 md:px-6" : ""}>
-                      {data?.data && data.data.length > 0 ? (
+                      {data?.items.data && data.items.data.length > 0 ? (
                         <KanbanView 
-                          items={data.data} 
-                          onUpdateKind={handleUpdateKind} 
+                          items={data.items.data}
+                          categories={data.categories}
+                          onDragEnd={handleDragEnd}
+                          isDragEnabled={isDragEnabled}
+                          searchQuery={searchQuery}
                         />
                       ) : (
                         <div className="pt-4">

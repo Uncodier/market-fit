@@ -6,6 +6,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/ca
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Button } from "@/app/components/ui/button"
+import { Input } from "@/app/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import { ActionFooter } from "@/app/components/ui/card-footer"
@@ -144,6 +146,84 @@ export function ProductDeliveryOptionsCard({ formData, setFormData, handleSave, 
                 onCheckedChange={(checked) => setMethod('ship', !!checked)}
               />
             </div>
+
+            {hasShip && (
+              <div className="space-y-4 rounded-lg border p-4 bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Custom Shipping Cost</Label>
+                    <p className="text-sm text-muted-foreground">Override the global store shipping cost for this product.</p>
+                  </div>
+                  <Switch
+                    checked={metadata.shipping_cost !== undefined}
+                    onCheckedChange={(checked) => {
+                      setFormData({
+                        ...formData,
+                        metadata: {
+                          ...metadata,
+                          shipping_cost: checked ? 0 : undefined,
+                          shipping_cost_mode: checked ? 'extra' : undefined,
+                        }
+                      })
+                    }}
+                  />
+                </div>
+
+                {metadata.shipping_cost !== undefined && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-32">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          className="pl-7"
+                          value={metadata.shipping_cost === null ? "" : metadata.shipping_cost}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? null : parseFloat(e.target.value)
+                            setFormData({
+                              ...formData,
+                              metadata: { ...metadata, shipping_cost: val }
+                            })
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {metadata.shipping_cost === null || metadata.shipping_cost === 0 
+                          ? "Free shipping contribution" 
+                          : "Amount to charge"}
+                      </span>
+                    </div>
+
+                    <RadioGroup 
+                      value={metadata.shipping_cost_mode || 'extra'} 
+                      onValueChange={(val: 'extra' | 'covers_order') => {
+                        setFormData({
+                          ...formData,
+                          metadata: { ...metadata, shipping_cost_mode: val }
+                        })
+                      }}
+                      className="gap-4 pt-2"
+                    >
+                      <div className="flex items-start space-x-3">
+                        <RadioGroupItem value="extra" id="mode-extra" className="mt-1" />
+                        <div className="space-y-1">
+                          <Label htmlFor="mode-extra" className="font-medium cursor-pointer">Extra on global shipping</Label>
+                          <p className="text-sm text-muted-foreground">Adds this amount on top of the store shipping cost.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <RadioGroupItem value="covers_order" id="mode-covers" className="mt-1" />
+                        <div className="space-y-1">
+                          <Label htmlFor="mode-covers" className="font-medium cursor-pointer">Covers entire order</Label>
+                          <p className="text-sm text-muted-foreground">This amount is the shipping for the whole order (ignores store shipping).</p>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">

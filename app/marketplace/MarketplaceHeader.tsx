@@ -127,7 +127,7 @@ export function MarketplaceHeader({
             ) : null}
             <div
               data-commerce-shell-actions-core
-              className="flex items-center justify-end gap-0.5 md:gap-3 min-w-0"
+              className="flex items-center justify-end gap-4 min-w-0"
             >
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -163,7 +163,7 @@ export function MarketplaceHeader({
               />
 
               {session ? (
-                <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-0.5 shrink-0">
+                <Link href="/buyer" className="hover:opacity-80 transition-opacity shrink-0">
                   {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
                     <img
                       src={

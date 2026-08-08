@@ -848,6 +848,7 @@ interface TopBarActionsProps {
   campaigns: Array<{ id: string; title: string; description: string }>;
   isDealsPage?: boolean;
   isQuotationsPage?: boolean;
+  isSettingsPage?: boolean;
   onCreateSale?: () => void;
   onCreateDeal?: () => void;
   viewMode?: string;
@@ -885,6 +886,7 @@ export function TopBarActions({
   campaigns,
   isDealsPage,
   isQuotationsPage,
+  isSettingsPage,
   onCreateSale,
   onCreateDeal,
   viewMode,

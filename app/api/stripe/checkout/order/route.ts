@@ -51,6 +51,38 @@ export async function POST(req: Request) {
       quantity: item.quantity,
     }))
 
+    // Add Shipping Cost as a line item if > 0
+    if (order.shipping_cost && order.shipping_cost > 0) {
+      lineItems.push({
+        price_data: {
+          currency: orderCurrency,
+          product_data: {
+            name: 'Shipping',
+          },
+          unit_amount: isZeroDecimal 
+            ? Math.round(order.shipping_cost)
+            : Math.round(order.shipping_cost * 100),
+        },
+        quantity: 1,
+      })
+    }
+
+    // Add Tax as a line item if > 0 (to ensure total matches order.total)
+    if (order.tax_total && order.tax_total > 0) {
+      lineItems.push({
+        price_data: {
+          currency: orderCurrency,
+          product_data: {
+            name: 'Tax',
+          },
+          unit_amount: isZeroDecimal 
+            ? Math.round(order.tax_total)
+            : Math.round(order.tax_total * 100),
+        },
+        quantity: 1,
+      })
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,

@@ -127,6 +127,7 @@ export const siteFormSchema = z.object({
     name: z.string().min(1, "Name is required"),
     timezone: z.string().min(1, "Timezone is required"),
     respectHolidays: z.boolean().optional().default(true),
+    force_closed: z.boolean().optional().default(false),
     days: z.object({
       monday: z.object({
         enabled: z.boolean(),
@@ -504,7 +505,10 @@ export const siteFormSchema = z.object({
     hero_subtitle: z.string().optional(),
     hero_cta_label: z.string().optional(),
     hero_image_url: z.string().optional(),
+    shipping_cost: z.number().nullable().optional(),
     free_shipping_threshold: z.number().nullable().optional(),
+    delivery_time_min: z.number().nullable().optional(),
+    delivery_time_max: z.number().nullable().optional(),
     return_policy_summary: z.string().optional(),
     trust_badges: z.array(z.object({
       title: z.string(),
@@ -525,7 +529,10 @@ export const siteFormSchema = z.object({
     hero_subtitle: "",
     hero_cta_label: "Shop Now",
     hero_image_url: "",
+    shipping_cost: null,
     free_shipping_threshold: null,
+    delivery_time_min: null,
+    delivery_time_max: null,
     return_policy_summary: "30-Day Returns",
     trust_badges: [],
     payment_methods: ['card', 'cash_on_pickup'],

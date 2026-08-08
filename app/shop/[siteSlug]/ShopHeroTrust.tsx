@@ -14,9 +14,15 @@ function badgeIcon(icon?: string) {
 export function ShopHeroTrust({
   site,
   searchQuery,
+  isOpen = true,
+  locationAvailable = true,
+  deliveryTimeLabel
 }: {
   site: any
   searchQuery: string
+  isOpen?: boolean
+  locationAvailable?: boolean
+  deliveryTimeLabel?: string | null
 }) {
   const { t } = useLocalization()
   const shop = site?.settings?.shop
@@ -47,6 +53,26 @@ export function ShopHeroTrust({
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent md:bg-gradient-to-r md:from-black/80 md:via-black/50 md:to-transparent" />
           </div>
           <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10 text-center md:text-left flex flex-col items-center md:items-start w-full pb-8 md:pb-0 max-md:pt-[88px]">
+            {(!isOpen || !locationAvailable || deliveryTimeLabel) && (
+              <div className="mb-4 flex flex-wrap gap-2 justify-center md:justify-start">
+                {!isOpen && (
+                  <span className="rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
+                    Closed
+                  </span>
+                )}
+                {!locationAvailable && (
+                  <span className="rounded-md bg-white/95 px-3 py-1 text-sm font-bold text-black shadow-sm">
+                    Unavailable in your area
+                  </span>
+                )}
+                {deliveryTimeLabel && isOpen && locationAvailable && (
+                  <span className="flex items-center gap-2 text-lg md:text-xl font-bold text-white drop-shadow-md">
+                    <Truck className="w-5 h-5 md:w-6 md:h-6" />
+                    {deliveryTimeLabel}
+                  </span>
+                )}
+              </div>
+            )}
             {shop?.hero_title && (
               <h1 className="text-4xl md:text-6xl font-black mb-3 md:mb-6 leading-tight max-w-3xl drop-shadow-md">
                 {shop.hero_title}

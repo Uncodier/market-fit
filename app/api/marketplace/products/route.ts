@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('catalog_items')
-      .select('*, site:sites!inner(id, name, logo_url), raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))', { count: 'exact' })
+      .select('*, site:sites!inner(id, name, logo_url, settings), raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))', { count: 'exact' })
       .eq('is_marketplace_listed', true)
       .eq('status', 'active')
       .eq('availability_status', 'available')

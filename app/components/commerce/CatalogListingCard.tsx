@@ -28,6 +28,8 @@ interface CatalogListingCardProps {
   canBook?: boolean
   /** Dense 2-col tile on mobile (square image); slightly taller media from md up */
   compactMobile?: boolean
+  isOpen?: boolean
+  locationAvailable?: boolean
 }
 
 function formatListingPrice(
@@ -56,6 +58,8 @@ export function CatalogListingCard({
   isOwned = false,
   canBook = false,
   compactMobile = false,
+  isOpen = true,
+  locationAvailable = true,
 }: CatalogListingCardProps) {
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
@@ -70,10 +74,14 @@ export function CatalogListingCard({
   const descClamp =
     descriptionLineClamp === "none" ? "" : descriptionLineClamp
 
+  const isLocationRestricted = !locationAvailable;
+  const finalActionDisabled = isLocationRestricted || actionDisabled;
+  const finalDisabledLabel = isLocationRestricted ? (t('shop.unavailable') || 'Unavailable') : disabledLabel;
+
   const handlePrimary = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!actionDisabled) onPrimaryAction(item)
+    if (!finalActionDisabled) onPrimaryAction(item)
   }
 
   return (
@@ -98,22 +106,35 @@ export function CatalogListingCard({
           aria-hidden
         />
 
-        {showTypeBadge && (
-          <span className="absolute top-3 left-3 z-20 rounded-md bg-white/95 px-2 py-1 text-xs font-bold text-black shadow-sm">
-            {t(typeLabelKey) || typeLabelKey.split('.').pop()}
-          </span>
-        )}
+        {/* Status badges */}
+        <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1">
+          {showTypeBadge && (
+            <span className="rounded-md bg-white/95 px-2 py-1 text-[11px] font-bold text-black shadow-sm uppercase tracking-wider">
+              {t(typeLabelKey) || typeLabelKey.split('.').pop()}
+            </span>
+          )}
+          {!isOpen && (
+            <span className="rounded-full bg-red-500/90 backdrop-blur-sm px-2 py-1 text-[11px] font-bold text-white shadow-sm uppercase tracking-wider">
+              Closed
+            </span>
+          )}
+          {!locationAvailable && (
+            <span className="rounded-md bg-orange-500/90 backdrop-blur-sm px-2 py-1 text-[11px] font-bold text-white shadow-sm uppercase tracking-wider">
+              Unavailable
+            </span>
+          )}
+        </div>
 
         <button
           type="button"
-          disabled={actionDisabled}
+          disabled={finalActionDisabled}
           onClick={handlePrimary}
-          aria-label={actionDisabled ? disabledLabel : (t(ctaLabelKey) || 'Add')}
+          aria-label={finalActionDisabled ? finalDisabledLabel : (t(ctaLabelKey) || 'Add')}
           className="absolute bottom-3 right-3 z-20 flex h-9 w-9 items-center justify-center gap-1.5 rounded-full bg-white text-black shadow-[0_4px_14px_rgba(0,0,0,0.28)] ring-1 ring-black/10 transition-colors duration-200 hover:bg-black hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-black active:scale-95 md:h-10 md:w-auto md:max-w-[min(14rem,calc(100%-1.5rem))] md:px-3.5"
         >
           <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden md:inline text-sm font-bold truncate">
-            {actionDisabled ? disabledLabel : (t(ctaLabelKey) || 'Add')}
+            {finalActionDisabled ? finalDisabledLabel : (t(ctaLabelKey) || 'Add')}
           </span>
         </button>
       </div>

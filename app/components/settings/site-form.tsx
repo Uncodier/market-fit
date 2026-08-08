@@ -246,6 +246,7 @@ export function SiteForm({
         hero_subtitle: "",
         hero_cta_label: "Shop Now",
         hero_image_url: "",
+        shipping_cost: null,
         free_shipping_threshold: null,
         return_policy_summary: "30-Day Returns",
         trust_badges: [],

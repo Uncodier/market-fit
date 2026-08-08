@@ -77,6 +77,14 @@ type Props = {
   checkoutLoading: boolean
   paymentMethod: string
   setPaymentMethod: (value: string) => void
+  orderTiming?: "now" | "scheduled"
+  setOrderTiming?: (value: "now" | "scheduled") => void
+  scheduledFor?: Date | null
+  setScheduledFor?: (value: Date | null) => void
+  isOpen?: boolean
+  nextOpenSlot?: { at: Date; label: string } | null
+  locationAvailable?: boolean
+  deliveryTimeLabel?: string | null
 }
 
 export function ShopHeader({
@@ -117,6 +125,14 @@ export function ShopHeader({
   checkoutLoading,
   paymentMethod,
   setPaymentMethod,
+  orderTiming,
+  setOrderTiming,
+  scheduledFor,
+  setScheduledFor,
+  isOpen,
+  nextOpenSlot,
+  locationAvailable,
+  deliveryTimeLabel,
 }: Props) {
   // Prefer center search; Sign In is icon-only on mobile so it rarely needs collapse.
   const searchCollapsed = useMobileShellSearchCollapsed(false)
@@ -185,7 +201,7 @@ export function ShopHeader({
             ) : null}
             <div
               data-commerce-shell-actions-core
-              className="flex items-center justify-end gap-0.5 md:gap-3 min-w-0"
+              className="flex items-center justify-end gap-4 min-w-0"
             >
               <div className="hidden md:contents">
                 <CommerceShareControl
@@ -238,12 +254,20 @@ export function ShopHeader({
                     site={site}
                     paymentMethod={paymentMethod}
                     setPaymentMethod={setPaymentMethod}
+                    orderTiming={orderTiming}
+                    setOrderTiming={setOrderTiming}
+                    scheduledFor={scheduledFor}
+                    setScheduledFor={setScheduledFor}
+                    isOpen={isOpen}
+                    nextOpenSlot={nextOpenSlot}
+                    locationAvailable={locationAvailable}
+                    deliveryTimeLabel={deliveryTimeLabel}
                   />
                 </SheetContent>
               </Sheet>
 
               {session ? (
-                <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-0.5 shrink-0">
+                <Link href="/buyer" className="hover:opacity-80 transition-opacity shrink-0">
                   {session.user.user_metadata?.avatar_url ||
                   session.user.user_metadata?.picture ? (
                     <img

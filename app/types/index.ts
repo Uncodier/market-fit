@@ -443,6 +443,7 @@ export interface CatalogCategory {
   site_id: string;
   name: string;
   description?: string;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -640,6 +641,8 @@ export interface CatalogItemMetadata {
   variant_axes?: VariantAxis[];          // For parent items: defined variant axes
   option_values?: Record<string, string>; // For child items: selected axis value ID by axis ID
   dynamic_pricing?: DynamicPricingConfig;
+  shipping_cost?: number | null;
+  shipping_cost_mode?: 'extra' | 'covers_order';
 }
 
 /** Lightweight catalog link for list/table relation chips */
@@ -669,6 +672,7 @@ export interface CatalogItem {
   availability_mode: 'manual' | 'inventory' | 'always';
   availability_status: 'available' | 'unavailable' | 'sold_out';
   status: 'active' | 'archived';
+  sort_order: number;
   is_pos_available: boolean;
   is_recurring: boolean;
   is_reservation: boolean;

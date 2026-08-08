@@ -33,6 +33,7 @@ import {
 } from "@/app/components/ui/icons";
 import { resolveItemImage } from "@/app/lib/image-utils";
 import { NumpadPanel } from "./NumpadPanel";
+import { PosCustomerSelect } from "./PosCustomerSelect";
 import { cn } from "@/lib/utils";
 
 export interface PosCartItem extends CatalogItem {
@@ -46,13 +47,14 @@ interface CartPanelProps {
   cart: PosCartItem[];
   subtotal: number;
   taxTotal: number;
+  shippingTotal: number;
   total: number;
   updateQty: (id: string, delta: number) => void;
   setItemQty: (id: string, qty: number) => void;
   setItemPrice: (id: string, price: number) => void;
   selectedCartItemId: string | null;
   setSelectedCartItemId: (id: string | null) => void;
-  leadValue: RelationSelectValue;
+  leadValue: RelationSelectValue | string;
   setLeadValue: (value: RelationSelectValue) => void;
   fulfillment: "pickup" | "ship" | "dine_in" | "none";
   setFulfillment: (value: "pickup" | "ship" | "dine_in" | "none") => void;
@@ -73,6 +75,13 @@ interface CartPanelProps {
   pendingOrders: any[];
   handleOrderSelect: (val: string) => void;
   allowedFulfillments?: ("pickup" | "ship" | "dine_in" | "none")[];
+  siteId?: string;
+  onLeadUpdated?: (lead: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+  }) => void;
   t: (key: string) => string;
 }
 
@@ -80,6 +89,7 @@ export function CartPanel({
   cart,
   subtotal,
   taxTotal,
+  shippingTotal,
   total,
   updateQty,
   setItemQty,
@@ -107,6 +117,8 @@ export function CartPanel({
   pendingOrders,
   handleOrderSelect,
   allowedFulfillments = ["pickup", "ship", "dine_in", "none"],
+  siteId,
+  onLeadUpdated,
   t,
 }: CartPanelProps) {
   const money = (amount: number) =>
@@ -233,9 +245,10 @@ export function CartPanel({
                     hour: "numeric",
                     minute: "numeric",
                   }).format(new Date(o.created_at));
+                  const customerName = o.leads?.name ? ` (${o.leads.name})` : "";
                   return {
                     id: o.id,
-                    label: `${getTrans("pos.order", "Order")} - ${timeString}`,
+                    label: `${getTrans("pos.order", "Order")} - ${timeString}${customerName}`,
                   };
                 })}
                 value={
@@ -249,7 +262,8 @@ export function CartPanel({
                             (o: any) => o.id === activeOrderId,
                           );
                           if (order?.created_at) {
-                            return `${getTrans("pos.order", "Order")} - ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "numeric" }).format(new Date(order.created_at))}`;
+                            const customerName = order.leads?.name ? ` (${order.leads.name})` : "";
+                            return `${getTrans("pos.order", "Order")} - ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "numeric" }).format(new Date(order.created_at))}${customerName}`;
                           }
                           return getTrans("pos.order", "Order");
                         })(),
@@ -275,27 +289,19 @@ export function CartPanel({
               />
             </div>
 
-            <RelationSelect
-              options={leads.map((l) => {
-                const parts = [l.name, l.email, l.phone].filter(Boolean);
-                const label = parts.length > 0 ? parts.join(" · ") : t("pos.cart.customer") || "Customer";
-                const searchText = [l.name, l.email, l.personal_email, l.phone].filter(Boolean).join(" ");
-                return {
-                  id: l.id,
-                  label,
-                  searchText,
-                };
-              })}
-              value={leadValue}
-              onValueChange={setLeadValue}
-              placeholder={t("pos.cart.walkIn") || "Walk-in Customer"}
-              searchPlaceholder={t("pos.cart.searchCustomer") || "Search by name, email, or phone..."}
-              emptyMessage={t("pos.cart.noCustomers") || "No customers found"}
+            <PosCustomerSelect
+              leads={leads}
+              leadValue={leadValue}
+              setLeadValue={setLeadValue}
+              siteId={siteId}
+              onLeadUpdated={onLeadUpdated}
+              t={t}
             />
 
             <Select
               value={fulfillment}
               onValueChange={(val: any) => setFulfillment(val)}
+              disabled={allowedFulfillments.length <= 1}
             >
               <SelectTrigger className="bg-card">
                 <SelectValue
@@ -303,6 +309,11 @@ export function CartPanel({
                 />
               </SelectTrigger>
               <SelectContent>
+                {allowedFulfillments.includes("dine_in") && (
+                  <SelectItem value="dine_in">
+                    {t("consumeHere") || "Consume Here"}
+                  </SelectItem>
+                )}
                 {allowedFulfillments.includes("none") && (
                   <SelectItem value="none">
                     {t("pos.cart.fulfillments.carryOut") || "Carry Out / Walk-in"}
@@ -313,11 +324,6 @@ export function CartPanel({
                     {t("pos.cart.fulfillments.pickup") || "Store Pickup"}
                   </SelectItem>
                 )}
-                {allowedFulfillments.includes("dine_in") && (
-                  <SelectItem value="dine_in">
-                    {t("pos.cart.fulfillments.dineIn") || "Dine In"}
-                  </SelectItem>
-                )}
                 {allowedFulfillments.includes("ship") && (
                   <SelectItem value="ship">
                     {t("pos.cart.fulfillments.ship") || "Ship to Customer"}
@@ -326,7 +332,7 @@ export function CartPanel({
               </SelectContent>
             </Select>
 
-            {fulfillment !== "none" && (
+            {fulfillment !== "none" && locations.length > 1 && (
               <Select
                 value={originLocationId}
                 onValueChange={setOriginLocationId}
@@ -350,7 +356,7 @@ export function CartPanel({
               </Select>
             )}
 
-            {priceLists && priceLists.length > 0 && (
+            {priceLists && priceLists.length > 1 && (
               <Select value={priceListId} onValueChange={handlePriceListChange}>
                 <SelectTrigger className="bg-card">
                   <SelectValue
@@ -410,6 +416,16 @@ export function CartPanel({
               </span>
               <span className="text-sm font-medium text-muted-foreground">
                 {money(taxTotal)}
+              </span>
+            </div>
+          )}
+          {fulfillment === 'ship' && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">
+                {t("pos.cart.shipping") || "Shipping"}
+              </span>
+              <span className={cn("text-sm font-medium", shippingTotal === 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+                {shippingTotal === 0 ? (t("pos.cart.free") || "Free") : money(shippingTotal)}
               </span>
             </div>
           )}

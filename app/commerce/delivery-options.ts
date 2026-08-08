@@ -109,3 +109,54 @@ export function isFulfillmentAllowed(method: CheckoutFulfillmentMethod, items: {
   const allowed = intersectDeliveryOptions(items);
   return allowed.includes(method);
 }
+
+/**
+ * Resolves the final shipping cost for an order.
+ * Only applies if fulfillment method is 'ship'.
+ *
+ * Logic:
+ * 1. If cart subtotal >= free shipping threshold -> 0
+ * 2. If any item covers the entire order -> max of covers_order amounts + sum of extra amounts (ignores global site shipping cost)
+ * 3. Else -> global site shipping cost + sum of extra amounts
+ */
+export function resolveOrderShippingCost(
+  fulfillmentMethod: CheckoutFulfillmentMethod,
+  subtotal: number,
+  freeShippingThreshold: number | null | undefined,
+  siteShippingCost: number | null | undefined,
+  items: Partial<CatalogItem>[]
+): number {
+  if (fulfillmentMethod !== 'ship') {
+    return 0;
+  }
+
+  if (freeShippingThreshold != null && subtotal >= freeShippingThreshold) {
+    return 0;
+  }
+
+  let globalBase = siteShippingCost || 0;
+  let hasCoversOrder = false;
+  let maxCoversOrderAmount = 0;
+  let sumExtraAmount = 0;
+
+  for (const item of items) {
+    // undefined = inherit / no product contribution; null = explicit $0 contribution
+    if (item.metadata?.shipping_cost === undefined) continue;
+
+    const amount = item.metadata.shipping_cost ?? 0;
+    const mode = item.metadata?.shipping_cost_mode || 'extra';
+
+    if (mode === 'covers_order') {
+      hasCoversOrder = true;
+      maxCoversOrderAmount = Math.max(maxCoversOrderAmount, amount);
+    } else {
+      sumExtraAmount += amount;
+    }
+  }
+
+  if (hasCoversOrder) {
+    return maxCoversOrderAmount + sumExtraAmount;
+  }
+
+  return globalBase + sumExtraAmount;
+}

@@ -40,6 +40,8 @@ interface RelationSelectProps {
   searchPlaceholder?: string
   label?: string
   icon?: React.ReactNode
+  /** Renders inside the input on the right (before clear/chevron). */
+  endAction?: React.ReactNode
   createLabel?: (query: string) => string
 }
 
@@ -57,6 +59,7 @@ export function RelationSelect({
   searchPlaceholder = "Search...",
   label,
   icon,
+  endAction,
   createLabel = (q) => `Use "${q}"`
 }: RelationSelectProps) {
   const [open, setOpen] = React.useState(false)
@@ -152,7 +155,8 @@ export function RelationSelect({
               placeholder={placeholder}
               disabled={disabled}
               className={cn(
-                "w-full pr-9 font-inter cursor-pointer",
+                "w-full font-inter cursor-pointer",
+                endAction ? "pr-28" : "pr-9",
                 icon && "pl-9",
                 className
               )}
@@ -163,11 +167,20 @@ export function RelationSelect({
                 {icon}
               </div>
             )}
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {endAction && (
+                <div
+                  className="flex items-center"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  {endAction}
+                </div>
+              )}
               {clearable && !clearAfterSelect && value && !disabled && (
                 <button
                   type="button"
-                  className="h-3.5 w-3.5 mr-1 flex items-center justify-center rounded-full font-inter text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring"
+                  className="h-3.5 w-3.5 flex items-center justify-center rounded-full font-inter text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring"
                   onClick={handleClear}
                   aria-label="Clear selection"
                 >

@@ -17,6 +17,8 @@ export function slimCartItem(item: Record<string, any>): Record<string, any> {
             delivery_options: meta.delivery_options,
             pickup_location_ids: meta.pickup_location_ids,
             payment_options: meta.payment_options,
+            shipping_cost: meta.shipping_cost,
+            shipping_cost_mode: meta.shipping_cost_mode,
           }).filter(([, value]) => value !== undefined)
         )
       : undefined;

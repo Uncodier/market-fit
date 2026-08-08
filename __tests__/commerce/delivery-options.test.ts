@@ -5,6 +5,7 @@ import {
   isFulfillmentAllowed,
   intersectPickupLocationIds,
   itemHasDelivery,
+  resolveOrderShippingCost,
   CheckoutFulfillmentMethod
 } from '../../app/commerce/delivery-options';
 import { CatalogItem } from '../../app/types';
@@ -145,6 +146,59 @@ describe('delivery-options helpers', () => {
         { metadata: { delivery_options: ['pickup'] } },
       ];
       expect(intersectPickupLocationIds(items)).toEqual(['a', 'b']);
+    });
+  });
+
+  describe('resolveOrderShippingCost', () => {
+    it('returns 0 when fulfillment is not ship', () => {
+      expect(resolveOrderShippingCost('pickup', 100, null, 50, [])).toBe(0);
+      expect(resolveOrderShippingCost('dine_in', 100, null, 50, [])).toBe(0);
+      expect(resolveOrderShippingCost('none', 100, null, 50, [])).toBe(0);
+    });
+
+    it('returns 0 when free shipping threshold is met', () => {
+      expect(resolveOrderShippingCost('ship', 100, 50, 25, [])).toBe(0);
+    });
+
+    it('uses global site shipping when no product overrides', () => {
+      expect(resolveOrderShippingCost('ship', 40, 50, 25, [{ kind: 'product' }])).toBe(25);
+    });
+
+    it('adds extra on top of global', () => {
+      const items: Partial<CatalogItem>[] = [
+        { metadata: { shipping_cost: 10, shipping_cost_mode: 'extra' } },
+      ];
+      expect(resolveOrderShippingCost('ship', 40, null, 50, items)).toBe(60);
+    });
+
+    it('covers_order replaces global', () => {
+      const items: Partial<CatalogItem>[] = [
+        { metadata: { shipping_cost: 80, shipping_cost_mode: 'covers_order' } },
+      ];
+      expect(resolveOrderShippingCost('ship', 40, null, 50, items)).toBe(80);
+    });
+
+    it('covers_order max plus extras', () => {
+      const items: Partial<CatalogItem>[] = [
+        { metadata: { shipping_cost: 10, shipping_cost_mode: 'extra' } },
+        { metadata: { shipping_cost: 80, shipping_cost_mode: 'covers_order' } },
+      ];
+      expect(resolveOrderShippingCost('ship', 40, null, 50, items)).toBe(90);
+    });
+
+    it('uses max of multiple covers_order amounts', () => {
+      const items: Partial<CatalogItem>[] = [
+        { metadata: { shipping_cost: 40, shipping_cost_mode: 'covers_order' } },
+        { metadata: { shipping_cost: 80, shipping_cost_mode: 'covers_order' } },
+      ];
+      expect(resolveOrderShippingCost('ship', 40, null, 50, items)).toBe(80);
+    });
+
+    it('treats explicit null shipping_cost as zero contribution', () => {
+      const items: Partial<CatalogItem>[] = [
+        { metadata: { shipping_cost: null, shipping_cost_mode: 'covers_order' } },
+      ];
+      expect(resolveOrderShippingCost('ship', 40, null, 50, items)).toBe(0);
     });
   });
 });

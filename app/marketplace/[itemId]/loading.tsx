@@ -22,7 +22,7 @@ export default function PdpLoading() {
         actions={
           <div
             data-commerce-shell-actions-core
-            className="flex items-center justify-end gap-0.5 md:gap-3 min-w-0"
+            className="flex items-center justify-end gap-3 md:gap-4 min-w-0"
           >
             <div className="relative inline-flex shrink-0">
               <button type="button" className={shellClasses.iconButton} disabled>

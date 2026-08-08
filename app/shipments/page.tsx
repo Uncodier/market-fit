@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/app/components/ui/badge"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -23,6 +24,7 @@ import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { KanbanView } from "./components/KanbanView"
 import { updateShipmentStatus } from "./actions"
+import { listLocations } from "@/app/inventory/actions"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
@@ -46,7 +48,14 @@ export default function ShipmentsPage() {
   const pageSize = 50
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState('all')
+  const [locationFilter, setLocationFilter] = useState('all')
   const [viewType, setViewType] = useMobileView("table")
+
+  const { data: locationsData } = useSWR(
+    currentSite?.id ? ['locations', currentSite.id] : null,
+    () => listLocations(currentSite!.id)
+  )
+  const locations = locationsData?.data || []
 
   const fetcher = async (params: ShipmentParams) => {
     const res = await listShipments(params)
@@ -55,7 +64,9 @@ export default function ShipmentsPage() {
   }
 
   const { data, error, isLoading, mutate } = useSWR(
-    currentSite?.id ? { siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter } : null,
+    currentSite?.id
+      ? { siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter, locationId: locationFilter }
+      : null,
     fetcher
   )
 
@@ -137,8 +148,24 @@ export default function ShipmentsPage() {
                 </form>
               </div>
 
-              <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto">
-                <div className="hidden md:flex ml-2">
+              <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
+                {locations.length > 0 && (
+                  <Select
+                    value={locationFilter}
+                    onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
+                  >
+                    <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
+                      <SelectValue placeholder={t('allLocations') || 'All Locations'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <div className="hidden md:flex">
                   <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
               </div>

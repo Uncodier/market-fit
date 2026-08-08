@@ -126,7 +126,7 @@ export function Sidebar({
     <>
       {isAppsLauncherOpen && (
         <div 
-          className="fixed inset-0 z-[300] bg-background/60 backdrop-blur-md flex flex-col animate-in fade-in duration-200"
+          className="fixed inset-0 z-[300] bg-background/95 backdrop-blur-md flex flex-col animate-in fade-in duration-200"
           onClick={() => setIsAppsLauncherOpen(false)}
         >
           <div 

@@ -2,6 +2,7 @@ import { getShopSite, getShopCatalog, getShopCategories, getShopLocations, getSh
 import { notFound } from "next/navigation"
 import ShopClient from "./ShopClient"
 import { Metadata } from "next"
+import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -31,11 +32,12 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
     notFound()
   }
 
-  const [{ data: catalogItems, count, totalPages }, categories, { data: locations }, ownedItemIds] = await Promise.all([
+  const [{ data: catalogItems, count, totalPages }, categories, { data: locations }, ownedItemIds, buyerGeo] = await Promise.all([
     getShopCatalog(site.id, { page: 1, pageSize: 20 }),
     getShopCategories(site.id),
     getShopLocations(site.id),
-    getShopUserOwnedItems(site.id)
+    getShopUserOwnedItems(site.id),
+    getBuyerGeoApprox()
   ])
 
   const ownedIds = ownedItemIds.map(o => o.catalogItemId)
@@ -52,6 +54,7 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
         locations={locations as any[]} 
         ownedItemIds={ownedItemIds}
         ownedItemsData={ownedItemsData as any[]}
+        buyerGeo={buyerGeo}
       />
     </div>
   )

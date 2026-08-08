@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
+import { BusinessOpenToggle } from "@/app/components/settings/BusinessOpenToggle"
 import { TopBarTitle } from "./TopBarTitle"
 import { TopBarActions } from "./TopBarActions"
 import { Button } from "../ui/button"
@@ -295,6 +296,11 @@ export function TopBar({
         </div>
         
         <div className="flex items-center justify-end flex-1 min-w-0">
+          {(pathname === "/settings" || pathname.startsWith("/settings/")) && (
+            <div className="mr-2">
+              <BusinessOpenToggle />
+            </div>
+          )}
           <TopBarActions
             isProcessing={isProcessing}
             setIsProcessing={setIsProcessing}
@@ -315,6 +321,7 @@ export function TopBar({
             isAccountingPage={pathname === "/accounting"}
             isFinancePage={pathname === "/finance"}
             isJournalEntriesPage={pathname === "/accounting/entries"}
+            isSettingsPage={pathname === "/settings" || pathname.startsWith("/settings/")}
             isExperimentDetailPage={isExperimentDetailPage}
             segmentData={segmentData}
             requirementData={requirementData}

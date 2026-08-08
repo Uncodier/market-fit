@@ -34,8 +34,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
             </div>
           )}
         </div>
-        <div className="flex items-center mt-2">
-          <div className="flex-1" />
+        <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 shrink-0">
             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md text-lg hover:bg-gray-200 dark:hover:bg-gray-700" onClick={() => updateQty(item.id, -1)}>
               -
@@ -45,8 +44,8 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
               +
             </Button>
           </div>
-          <div className="flex-1 text-right">
-            <span className="font-bold text-gray-900 dark:text-gray-100">
+          <div className="text-right shrink-0">
+            <span className="font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
               {formatPrice(item.cartPrice * item.cartQty, item.currency || 'USD')}
             </span>
           </div>

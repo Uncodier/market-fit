@@ -17,6 +17,7 @@ export async function getShopCategories(siteId: string) {
     .from("catalog_categories")
     .select(`
       name,
+      sort_order,
       catalog_items!inner (
         id
       )
@@ -24,20 +25,24 @@ export async function getShopCategories(siteId: string) {
     .eq("site_id", siteId)
     .eq("catalog_items.status", "active")
     .eq("catalog_items.is_marketplace_listed", true)
-    .is("catalog_items.parent_id", null);
+    .is("catalog_items.parent_id", null)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
 
   if (!error && data) {
-    const cats = new Set<string>();
+    const cats: string[] = [];
     for (const row of data as Array<{ name?: string | null }>) {
-      if (row.name) cats.add(row.name);
+      if (row.name && !cats.includes(row.name)) {
+        cats.push(row.name);
+      }
     }
-    return Array.from(cats).sort();
+    return cats;
   }
 
   // Fallback: derive non-empty categories from listed catalog items
   const { data: items } = await supabase
     .from("catalog_items")
-    .select("category:catalog_categories(name)")
+    .select("category:catalog_categories(name, sort_order)")
     .eq("site_id", siteId)
     .eq("status", "active")
     .eq("is_marketplace_listed", true)
@@ -46,14 +51,20 @@ export async function getShopCategories(siteId: string) {
 
   if (!items) return [];
 
-  const cats = new Set<string>();
+  // Group to preserve sort_order from category
+  const catSet = new Map<string, number>();
   for (const item of items as any[]) {
-    const catName = Array.isArray(item.category)
-      ? item.category[0]?.name
-      : item.category?.name;
-    if (catName) cats.add(catName);
+    const cat = Array.isArray(item.category)
+      ? item.category[0]
+      : item.category;
+    if (cat?.name) {
+      catSet.set(cat.name, cat.sort_order ?? 99999);
+    }
   }
-  return Array.from(cats).sort();
+  
+  return Array.from(catSet.entries())
+    .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))
+    .map(e => e[0]);
 }
 
 export async function getShopCatalog(
@@ -98,7 +109,7 @@ export async function getShopCatalog(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  query = query.range(from, to).order("name");
+  query = query.range(from, to).order("sort_order", { ascending: true }).order("name", { ascending: true });
 
   const { data: items, count, error } = await query;
     

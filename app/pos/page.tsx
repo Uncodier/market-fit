@@ -10,6 +10,7 @@ import { listOrders, getOrder } from "@/app/orders/actions";
 import { resolveUnitPrice, listPriceLists } from "@/app/price-lists/actions";
 import { checkoutCart, CheckoutLine } from "@/app/commerce/checkout";
 import { calculateOrderTaxTotal, roundMoney } from "@/app/commerce/taxes";
+import { resolveOrderShippingCost } from "@/app/commerce/delivery-options";
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
 import { StickyHeader } from "@/app/components/ui/sticky-header";
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
@@ -42,6 +43,7 @@ import { isAccessOnlyItem } from "@/app/catalog/product-details";
 import {
   getItemDeliveryOptions,
   intersectDeliveryOptions,
+  defaultFulfillment,
   CheckoutFulfillmentMethod
 } from "@/app/commerce/delivery-options";
 import { CatalogItem } from "@/app/types";
@@ -57,10 +59,10 @@ export default function POSPage() {
   const [cart, setCart] = useState<PosCartItem[]>([]);
 
   // Checkout states
-  const [leadValue, setLeadValue] = useState<RelationSelectValue>(null);
+  const [leadValue, setLeadValue] = useState<RelationSelectValue | string>(null);
   const [fulfillment, setFulfillment] = useState<
     "pickup" | "ship" | "dine_in" | "none"
-  >("none");
+  >("dine_in");
   const [originLocationId, setOriginLocationId] = useState<string>("");
   const [priceListId, setPriceListId] = useState<string>("none");
   const [promoCode, setPromoCode] = useState("");
@@ -99,15 +101,32 @@ export default function POSPage() {
     }
   }, []);
 
-  const allowedFulfillments = useMemo(() => {
-    return intersectDeliveryOptions(cart.map((i: any) => ({
-      allowed: getItemDeliveryOptions(i, currentSite?.settings?.shop?.default_delivery_options)
-    })))
+  const allowedFulfillments = useMemo((): CheckoutFulfillmentMethod[] => {
+    // Empty cart: POS defaults to Consume Here (inactive single option)
+    if (cart.length === 0) return ["dine_in"];
+
+    const options = intersectDeliveryOptions(
+      cart.map((i: any) => ({
+        allowed: getItemDeliveryOptions(
+          i,
+          currentSite?.settings?.shop?.default_delivery_options,
+        ),
+      })),
+    );
+
+    // Keep a usable option so the select never renders with a dangling value
+    return options.length > 0 ? options : ["dine_in"];
   }, [cart, currentSite]);
 
   useEffect(() => {
-    if (allowedFulfillments.length > 0 && !allowedFulfillments.includes(fulfillment)) {
-      setFulfillment(allowedFulfillments[0]);
+    if (
+      allowedFulfillments.length > 0 &&
+      !allowedFulfillments.includes(fulfillment)
+    ) {
+      const next = allowedFulfillments.includes("dine_in")
+        ? "dine_in"
+        : defaultFulfillment(allowedFulfillments) || "dine_in";
+      setFulfillment(next);
     }
   }, [allowedFulfillments, fulfillment]);
 
@@ -128,7 +147,7 @@ export default function POSPage() {
     currentSite?.id ? ["locations", currentSite.id] : null,
     () => listLocations(currentSite!.id),
   );
-  const { data: leadsData } = useSWR(
+  const { data: leadsData, mutate: mutateLeads } = useSWR(
     currentSite?.id ? ["leads", currentSite.id] : null,
     () => getLeads(currentSite!.id),
   );
@@ -136,10 +155,43 @@ export default function POSPage() {
     currentSite?.id ? ["categories", currentSite.id] : null,
     () => listCatalogCategories(currentSite!.id),
   );
+
+  // Normalize leadId from URL (?leadId=) into a RelationSelect value once leads load
+  useEffect(() => {
+    if (typeof leadValue !== "string") return;
+    const lead = (leadsData?.leads || []).find((l: any) => l.id === leadValue);
+    if (!lead) return;
+    const parts = [lead.name, lead.email, lead.phone].filter(Boolean);
+    setLeadValue({
+      mode: "existing",
+      id: lead.id,
+      label: parts.length > 0 ? parts.join(" · ") : lead.name || lead.email,
+    });
+  }, [leadValue, leadsData]);
+
+  const handleLeadUpdated = (lead: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+  }) => {
+    const parts = [lead.name, lead.email, lead.phone].filter(Boolean);
+    setLeadValue({
+      mode: "existing",
+      id: lead.id,
+      label: parts.length > 0 ? parts.join(" · ") : lead.name || lead.email,
+    });
+    mutateLeads();
+  };
+
+  const leadRelationValue: RelationSelectValue =
+    typeof leadValue === "string"
+      ? { mode: "existing", id: leadValue, label: leadValue }
+      : leadValue;
   const { data: pendingOrdersData, mutate } = useSWR(
     currentSite?.id ? ["pending_orders", currentSite.id] : null,
     () =>
-      listOrders({ siteId: currentSite!.id, status: "pending", pageSize: 50 }),
+      listOrders({ siteId: currentSite!.id, status: "pending,in_progress", pageSize: 50 }),
   );
   const { data: priceListsData } = useSWR(
     currentSite?.id ? ["price_lists", currentSite.id] : null,
@@ -254,7 +306,7 @@ export default function POSPage() {
       // Dynamic price with no custom fields — request quote immediately
       const { id: leadId, error: leadError } = await resolveRelationId(
         "lead",
-        leadValue,
+        leadRelationValue,
         currentSite.id,
       );
       if (leadError || !leadId) {
@@ -439,7 +491,17 @@ export default function POSPage() {
     [cart, taxesByItem],
   );
 
-  const total = roundMoney(subtotal + taxTotal);
+  const shippingTotal = useMemo(() => {
+    return resolveOrderShippingCost(
+      fulfillment as any,
+      subtotal,
+      currentSite?.settings?.shop?.free_shipping_threshold,
+      currentSite?.settings?.shop?.shipping_cost,
+      cart
+    );
+  }, [fulfillment, subtotal, currentSite, cart]);
+
+  const total = roundMoney(subtotal + taxTotal + shippingTotal);
   const activeCartItems = cart.filter((c) => c.cartQty > 0);
 
   const initiateCheckout = () => {
@@ -495,7 +557,7 @@ export default function POSPage() {
     try {
       const { id: resolvedLeadId, error: leadError } = await resolveRelationId(
         "lead",
-        leadValue,
+        leadRelationValue,
         currentSite.id,
       );
       if (leadError) throw new Error(`Lead error: ${leadError}`);
@@ -602,7 +664,7 @@ export default function POSPage() {
 
       try {
         const { id: resolvedLeadId, error: leadError } =
-          await resolveRelationId("lead", leadValue, currentSite.id);
+          await resolveRelationId("lead", leadRelationValue, currentSite.id);
         if (leadError) throw new Error(`Lead error: ${leadError}`);
 
         const lines: CheckoutLine[] = cart
@@ -689,7 +751,7 @@ export default function POSPage() {
       if (res.error) throw new Error(res.error);
       const order = res.data;
 
-      if (!order || order.status !== "pending") {
+      if (!order || (order.status !== "pending" && order.status !== "in_progress")) {
         resetToNewOrder();
         return;
       }
@@ -848,6 +910,7 @@ export default function POSPage() {
                       cart={cart}
                       subtotal={subtotal}
                       taxTotal={taxTotal}
+                      shippingTotal={shippingTotal}
                       total={total}
                       updateQty={updateQty}
                       setItemQty={setItemQty}
@@ -873,10 +936,12 @@ export default function POSPage() {
                       closeCart={() => setIsMobileCartOpen(false)}
                       activeOrderId={activeOrderId}
                       pendingOrders={pendingOrders}
-              handleOrderSelect={handleOrderSelect}
-              allowedFulfillments={allowedFulfillments}
-              t={t}
-            />
+                      handleOrderSelect={handleOrderSelect}
+                      allowedFulfillments={allowedFulfillments}
+                      siteId={currentSite?.id}
+                      onLeadUpdated={handleLeadUpdated}
+                      t={t}
+                    />
                   </SheetContent>
                 </Sheet>
               </div>
@@ -898,6 +963,7 @@ export default function POSPage() {
               cart={cart}
               subtotal={subtotal}
               taxTotal={taxTotal}
+              shippingTotal={shippingTotal}
               total={total}
               updateQty={updateQty}
               setItemQty={setItemQty}
@@ -923,6 +989,8 @@ export default function POSPage() {
               pendingOrders={pendingOrders}
               handleOrderSelect={handleOrderSelect}
               allowedFulfillments={allowedFulfillments}
+              siteId={currentSite?.id}
+              onLeadUpdated={handleLeadUpdated}
               t={t}
             />
           </div>
@@ -957,7 +1025,7 @@ export default function POSPage() {
           if (!currentSite || !dynamicQuoteItem) return;
           const { id: leadId, error: leadError } = await resolveRelationId(
             "lead",
-            leadValue,
+            leadRelationValue,
             currentSite.id,
           );
           if (leadError || !leadId) {

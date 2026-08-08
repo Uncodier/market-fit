@@ -5,6 +5,7 @@ import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Truck, Store, CreditCard, Package } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { CheckoutIdentityPicker } from "@/app/components/commerce/CheckoutIdentityPicker"
 import { VenueMap } from "@/app/components/commerce/pdp/VenueMap"
 
@@ -12,9 +13,9 @@ interface CheckoutFormProps {
   session: any
   requiresAuth?: boolean
   source: string
-  fulfillment: 'pickup' | 'ship' | 'none'
-  setFulfillment: (val: 'pickup' | 'ship' | 'none') => void
-  allowedOptions: Array<'pickup' | 'ship' | 'none'>
+  fulfillment: 'pickup' | 'ship' | 'none' | 'dine_in'
+  setFulfillment: (val: 'pickup' | 'ship' | 'none' | 'dine_in') => void
+  allowedOptions: Array<'pickup' | 'ship' | 'none' | 'dine_in'>
   customerName: string
   setCustomerName: (val: string) => void
   customerEmail: string
@@ -31,6 +32,14 @@ interface CheckoutFormProps {
   paymentMethod?: string
   setPaymentMethod?: (val: any) => void
   availablePaymentMethods?: string[]
+  orderTiming?: 'now' | 'scheduled'
+  setOrderTiming?: (val: 'now' | 'scheduled') => void
+  scheduledFor?: Date | null
+  setScheduledFor?: (val: Date | null) => void
+  businessHours?: any[]
+  isOpen?: boolean
+  nextOpenSlot?: { at: Date, label: string } | null
+  deliveryTimeLabel?: string | null
 }
 
 export function CheckoutForm({
@@ -38,7 +47,9 @@ export function CheckoutForm({
   customerName, setCustomerName, customerEmail, setCustomerEmail,
   shippingAddress, setShippingAddress, ownerSiteId, setOwnerSiteId,
   handleCheckout, lockedDestination, locations = [], pickupLocationId, setPickupLocationId,
-  paymentMethod, setPaymentMethod, availablePaymentMethods = []
+  paymentMethod, setPaymentMethod, availablePaymentMethods = [],
+  orderTiming = 'now', setOrderTiming, scheduledFor, setScheduledFor,
+  businessHours = [], isOpen = true, nextOpenSlot, deliveryTimeLabel
 }: CheckoutFormProps) {
   const { t } = useLocalization()
 
@@ -58,6 +69,69 @@ export function CheckoutForm({
           setOwnerSiteId={setOwnerSiteId}
           lockedDestination={lockedDestination}
         />
+      </div>
+
+      <div className="space-y-6 pt-8 border-t">
+        <h3 className="text-xl font-bold">{t('checkout.orderTiming') || 'Order Timing'}</h3>
+        
+        {setOrderTiming && (
+          <div className="space-y-4">
+            <div className="inline-flex flex-col sm:flex-row p-1.5 bg-gray-100 dark:bg-zinc-800/80 rounded-2xl w-full gap-1">
+              <button
+                type="button"
+                onClick={() => setOrderTiming('now')}
+                className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
+                  orderTiming === 'now' 
+                    ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+                }`}
+              >
+                <span className="text-sm font-medium whitespace-nowrap">{t('checkout.orderNow') || 'Order Now'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderTiming('scheduled')}
+                className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
+                  orderTiming === 'scheduled' 
+                    ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+                }`}
+              >
+                <span className="text-sm font-medium whitespace-nowrap">{t('checkout.scheduleOrder') || 'Schedule Order'}</span>
+              </button>
+            </div>
+
+            {orderTiming === 'now' && !isOpen && nextOpenSlot && (
+              <div className="text-sm text-orange-700 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-300 p-4 rounded-xl border border-orange-100 dark:border-orange-900/30">
+                {t('checkout.storeClosedNotice', { time: nextOpenSlot.label }) || `This store is currently closed. Your order will be processed ${nextOpenSlot.label}. You can also choose to Schedule for another time.`}
+              </div>
+            )}
+
+            {orderTiming === 'now' && isOpen && deliveryTimeLabel && (
+              <div className="text-sm text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-2">
+                <Truck className="w-5 h-5 shrink-0" />
+                {t('checkout.usuallyReadyIn', { time: deliveryTimeLabel }) || `Usually ready in ${deliveryTimeLabel}.`}
+              </div>
+            )}
+
+            {orderTiming === 'scheduled' && setScheduledFor && (
+              <div className="p-4 bg-gray-50 dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                  {t('checkout.selectTime') || 'Select Time'}
+                </Label>
+                <DatePicker
+                  date={scheduledFor || undefined}
+                  setDate={(date: Date) => setScheduledFor(date)}
+                  showTimePicker={true}
+                  timeFormat="12h"
+                  mode="task"
+                  showEvents={true}
+                  className="w-full h-12 rounded-xl bg-background border-input ring-0 shadow-none"
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Show for both shop and marketplace when they have valid options */}
@@ -138,12 +212,14 @@ export function CheckoutForm({
           )}
         </div>
 
-          {fulfillment === 'pickup' && allowedOptions.includes('pickup') && (
+          {(fulfillment === 'pickup' || fulfillment === 'dine_in') && allowedOptions.some(opt => opt === 'pickup' || opt === 'dine_in') && (
             <div className="space-y-4 pt-2">
-              <Label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">{t('checkout.pickupLocation') || 'Pickup Location'}</Label>
+              <Label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">
+                {fulfillment === 'pickup' ? (t('checkout.pickupLocation') || 'Pickup Location') : (t('checkout.location') || 'Location')}
+              </Label>
               {locations.length === 0 ? (
                 <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-900/30">
-                  {t('checkout.noPickupLocations') || 'No valid pickup locations available for these items.'}
+                  {t('checkout.noPickupLocations') || 'No valid locations available for these items.'}
                 </div>
               ) : locations.length === 1 ? (
                 <div className="rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm overflow-hidden">

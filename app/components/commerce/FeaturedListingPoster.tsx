@@ -43,6 +43,8 @@ interface FeaturedListingPosterProps {
   canBook?: boolean
   /** Single hero vs compact tile in a 2-up / carousel rail */
   size?: "hero" | "tile"
+  isOpen?: boolean
+  locationAvailable?: boolean
 }
 
 /**
@@ -59,6 +61,8 @@ export function FeaturedListingPoster({
   isOwned = false,
   canBook = false,
   size = "hero",
+  isOpen = true,
+  locationAvailable = true,
 }: FeaturedListingPosterProps) {
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
@@ -69,7 +73,9 @@ export function FeaturedListingPoster({
   const priceSuffixKey = getListingPriceSuffix(item)
   const priceLabel = formatListingPrice(item, formatPrice, t)
   const isSoldOut = !item._shop?.sellable && item._shop?.availableQty === 0
-  const actionDisabled = isSoldOut || primaryDisabled
+  const isLocationRestricted = !locationAvailable
+  const actionDisabled = isSoldOut || primaryDisabled || isLocationRestricted
+  const finalDisabledLabel = isLocationRestricted ? (t("shop.unavailable") || "Unavailable") : disabledLabel
   const isHero = size === "hero"
 
   const handlePrimary = (e: React.MouseEvent) => {
@@ -100,11 +106,23 @@ export function FeaturedListingPoster({
         />
       </Link>
 
-      {typeLabelKey !== "marketplace.listing.badge.product" && (
-        <span className="absolute top-4 left-4 z-10 rounded-md bg-white px-2.5 py-1 text-xs font-bold text-black shadow-sm">
-          {t(typeLabelKey) || typeLabelKey.split(".").pop()}
-        </span>
-      )}
+      <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-1">
+        {typeLabelKey !== "marketplace.listing.badge.product" && (
+          <span className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-black shadow-sm uppercase tracking-wider">
+            {t(typeLabelKey) || typeLabelKey.split(".").pop()}
+          </span>
+        )}
+        {!isOpen && (
+          <span className="rounded-full bg-red-500/90 backdrop-blur-sm px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider">
+            Closed
+          </span>
+        )}
+        {!locationAvailable && (
+          <span className="rounded-md bg-orange-500/90 backdrop-blur-sm px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider">
+            Unavailable
+          </span>
+        )}
+      </div>
 
       <div
         className={`absolute inset-x-0 bottom-0 z-10 flex flex-col pointer-events-none ${
@@ -199,7 +217,7 @@ export function FeaturedListingPoster({
               }`}
             >
               {actionDisabled
-                ? disabledLabel
+                ? finalDisabledLabel
                 : t(ctaLabelKey) || ctaLabelKey.split(".").pop()}
             </button>
           </div>
@@ -218,6 +236,10 @@ interface FeaturedListingsRailProps {
   disabledLabel?: string
   isOwned?: boolean
   getCanBook?: (item: FeaturedItem) => boolean
+  isOpen?: boolean
+  locationAvailable?: boolean
+  getIsOpen?: (item: FeaturedItem) => boolean
+  getLocationAvailable?: (item: FeaturedItem) => boolean
 }
 
 /** 1 item → hero poster; 2 items → side-by-side posters (ecommerce focus rail). */
@@ -230,6 +252,10 @@ export function FeaturedListingsRail({
   disabledLabel,
   isOwned = false,
   getCanBook,
+  isOpen = true,
+  locationAvailable = true,
+  getIsOpen,
+  getLocationAvailable,
 }: FeaturedListingsRailProps) {
   if (items.length === 0) return null
 
@@ -246,6 +272,8 @@ export function FeaturedListingsRail({
         isOwned={isOwned}
         canBook={getCanBook?.(item)}
         size="hero"
+        isOpen={getIsOpen ? getIsOpen(item) : isOpen}
+        locationAvailable={getLocationAvailable ? getLocationAvailable(item) : locationAvailable}
       />
     )
   }
@@ -264,6 +292,8 @@ export function FeaturedListingsRail({
           isOwned={isOwned}
           canBook={getCanBook?.(item)}
           size="tile"
+          isOpen={getIsOpen ? getIsOpen(item) : isOpen}
+          locationAvailable={getLocationAvailable ? getLocationAvailable(item) : locationAvailable}
         />
       ))}
     </div>

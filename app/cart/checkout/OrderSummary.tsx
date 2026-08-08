@@ -10,6 +10,7 @@ import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCod
 interface OrderSummaryProps {
   items: any[]
   subtotal: number
+  shippingCost?: number
   checkoutLoading: boolean
   disabledReason?: string
   fulfillment?: string
@@ -25,6 +26,7 @@ interface OrderSummaryProps {
 export function OrderSummary({
   items,
   subtotal,
+  shippingCost = 0,
   checkoutLoading,
   disabledReason,
   fulfillment,
@@ -40,7 +42,7 @@ export function OrderSummary({
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
   const currency = items[0]?.currency || 'USD'
   const discount = appliedPromo?.discount ?? promoDiscount ?? 0
-  const payableTotal = Math.max(0, subtotal - discount)
+  const payableTotal = Math.max(0, subtotal - discount + shippingCost)
 
   const promoCartLines = useMemo(() => {
     return items.map((item: any) => ({
@@ -108,6 +110,14 @@ export function OrderSummary({
           <div className="flex justify-between items-center text-sm font-medium text-green-600 dark:text-green-400">
             <span>{t('checkout.discount') || 'Discount'}</span>
             <span>-{formatMoney(discount)}</span>
+          </div>
+        )}
+        {fulfillment === 'ship' && (
+          <div className="flex justify-between items-center text-sm font-medium">
+            <span className="text-muted-foreground">{t('checkout.shipping') || 'Shipping'}</span>
+            <span className={shippingCost === 0 ? "text-green-600 dark:text-green-400" : ""}>
+              {shippingCost === 0 ? (t('checkout.free') || 'Free') : formatMoney(shippingCost)}
+            </span>
           </div>
         )}
         <div className="flex justify-between items-center text-sm font-medium">

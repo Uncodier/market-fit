@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { OrderParams, OrderWithRelations } from "./types";
 import { SaleOrderData } from "@/app/types";
 
-export async function listOrders({ siteId, status, q, page = 1, pageSize = 50 }: OrderParams) {
+export async function listOrders({ siteId, status, q, locationId, page = 1, pageSize = 50 }: OrderParams) {
   try {
     const supabase = await createClient();
     
@@ -27,7 +27,14 @@ export async function listOrders({ siteId, status, q, page = 1, pageSize = 50 }:
       .order("created_at", { ascending: false });
 
     if (status && status !== 'all') {
-      query = query.eq("status", status);
+      if (status.includes(',')) {
+        query = query.in("status", status.split(','));
+      } else {
+        query = query.eq("status", status);
+      }
+    }
+    if (locationId && locationId !== 'all') {
+      query = query.eq("origin_location_id", locationId);
     }
     if (q) {
       query = query.ilike("order_number", `%${q}%`);

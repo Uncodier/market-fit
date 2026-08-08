@@ -104,6 +104,8 @@ export interface SiteSettings {
     hero_cta_label?: string
     hero_image_url?: string
     free_shipping_threshold?: number | null
+    delivery_time_min?: number | null
+    delivery_time_max?: number | null
     return_policy_summary?: string
     trust_badges?: any[]
     payment_methods?: string[]
@@ -211,6 +213,8 @@ export interface SiteSettings {
     hero_cta_label?: string
     hero_image_url?: string
     free_shipping_threshold?: number | null
+    delivery_time_min?: number | null
+    delivery_time_max?: number | null
     return_policy_summary?: string
     trust_badges?: Array<{
       title: string

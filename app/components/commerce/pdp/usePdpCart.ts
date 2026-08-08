@@ -38,16 +38,8 @@ export const usePdpCart = (siteId: string) => {
 
   const startBuyNow = (item: any, qty: number = 1, returnToUrl: string, reservationStart?: string, reservationEnd?: string) => {
     try {
-      const buyNowItem = {
-        ...item,
-        cartQty: qty,
-        cartPrice: item.target_sale_price || 0,
-        currency: item.currency || 'USD',
-        reservationStart,
-        reservationEnd
-      }
-      setCartItems('buynow', source, siteId, [buyNowItem])
-      router.push(`/cart/checkout?mode=buynow&source=${source}${siteId ? `&siteId=${siteId}` : ''}&returnTo=${encodeURIComponent(returnToUrl)}`)
+      addToCartStorage(item, qty, reservationStart, reservationEnd)
+      router.push(`/cart/checkout?mode=cart&source=${source}${siteId ? `&siteId=${siteId}` : ''}&returnTo=${encodeURIComponent(returnToUrl)}`)
     } catch (e) {
       console.error('Buy Now error', e)
     }

@@ -223,6 +223,36 @@ export function ShopSection({ active, onSave }: ShopSectionProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               control={form.control}
+              name="shop.shipping_cost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Global Shipping Cost</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                      <Input 
+                        type="number" 
+                        placeholder="0.00" 
+                        className="pl-7"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? null : parseFloat(e.target.value)
+                          field.onChange(val)
+                        }}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Fixed amount charged for shipping. For distance/weight-based quotes, enable Dynamic Pricing on the product instead.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="shop.free_shipping_threshold"
               render={({ field }) => (
                 <FormItem>
@@ -259,6 +289,56 @@ export function ShopSection({ active, onSave }: ShopSectionProps) {
                     <Input placeholder="30-Day Returns" {...field} value={field.value || ""} />
                   </FormControl>
                   <FormDescription>Short text summarizing your return policy (e.g., "30-Day Returns").</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={form.control}
+              name="shop.delivery_time_min"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Delivery time (min)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="30" 
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value === "" ? null : parseInt(e.target.value, 10)
+                        field.onChange(val)
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>Minimum delivery or prep time in minutes.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="shop.delivery_time_max"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>to (max)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="45" 
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value === "" ? null : parseInt(e.target.value, 10)
+                        field.onChange(val)
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>Maximum delivery time (optional).</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

@@ -22,6 +22,10 @@ import { useParams, useRouter } from "next/navigation"
 import { ShopOwnedAccess } from "./actions"
 import { useShopCatalog } from "./useShopCatalog"
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
+import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
+import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
+import { formatDeliveryTime } from "@/app/commerce/delivery-time"
+import { BuyerGeo } from "@/app/commerce/buyer-geo"
 
 interface CartItem extends CatalogItem {
   cartQty: number;
@@ -38,7 +42,8 @@ export default function ShopClient({
   initialTotalPages,
   locations, 
   ownedItemIds = [],
-  ownedItemsData = []
+  ownedItemsData = [],
+  buyerGeo
 }: { 
   site: any, 
   initialCatalog: CatalogItem[], 
@@ -47,7 +52,8 @@ export default function ShopClient({
   initialTotalPages: number,
   locations: any[], 
   ownedItemIds?: ShopOwnedAccess[],
-  ownedItemsData?: CatalogItem[]
+  ownedItemsData?: CatalogItem[],
+  buyerGeo?: BuyerGeo
 }) {
   const { theme, toggleTheme } = useTheme()
   const { t } = useLocalization()
@@ -85,6 +91,24 @@ export default function ShopClient({
     searchQuery,
     selectedCategory
   )
+
+  const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
+  const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
+  
+  // Compute business availability
+  const businessHours = site?.settings?.business_hours || []
+  const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
+  const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours) : null
+  
+  // Compute location availability
+  const locationAvailable = (() => {
+    if (!site?.settings?.locations || !buyerGeo) return true;
+    const res = evaluateLocationRestrictions(site.settings.locations, buyerGeo);
+    return res.available;
+  })();
+
+  const deliveryTimeLabel = formatDeliveryTime(site?.settings?.shop);
+
   useEffect(() => {
     if (selectedCategory && selectedCategory !== "all") {
       document.title = `${selectedCategory} | ${site?.name || "Shop"}`
@@ -345,9 +369,17 @@ export default function ShopClient({
         checkoutLoading={checkoutLoading}
         paymentMethod={paymentMethod}
         setPaymentMethod={setPaymentMethod}
+        orderTiming={orderTiming}
+        setOrderTiming={setOrderTiming}
+        scheduledFor={scheduledFor}
+        setScheduledFor={setScheduledFor}
+        isOpen={isOpen}
+        nextOpenSlot={nextOpenSlot}
+        locationAvailable={locationAvailable}
+        deliveryTimeLabel={deliveryTimeLabel}
       />
 
-      <ShopHeroTrust site={site} searchQuery={searchQuery} />
+      <ShopHeroTrust site={site} searchQuery={searchQuery} isOpen={isOpen} locationAvailable={locationAvailable} deliveryTimeLabel={deliveryTimeLabel} />
 
       <ShopCatalogMain
         siteSlug={siteSlug}
@@ -364,6 +396,8 @@ export default function ShopClient({
         totalPages={totalPages}
         setPage={setPage}
         addToCart={addToCart}
+        isOpen={isOpen}
+        locationAvailable={locationAvailable}
       />
       
       {/* Footer */}

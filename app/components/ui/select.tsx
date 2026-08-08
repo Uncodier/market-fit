@@ -106,14 +106,17 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm font-inter outline-none focus:bg-accent focus:text-accent-foreground data-[state=checked]:bg-accent/50 data-[state=checked]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-muted transition-colors duration-150 text-left leading-none",
+      // overflow-hidden + asChild ItemText avoid Safari flex overflow that pushes icons outside the popover
+      "relative flex w-full cursor-default select-none items-center overflow-hidden rounded-sm py-1.5 px-2 text-sm font-inter outline-none focus:bg-accent focus:text-accent-foreground data-[state=checked]:bg-accent/50 data-[state=checked]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-muted transition-colors duration-150 text-left leading-none",
       className
     )}
     {...props}
   >
     {/* Removed check icon - selection indicated by background color */}
-    <SelectPrimitive.ItemText className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-left flex items-center gap-2">
-      {children}
+    <SelectPrimitive.ItemText asChild>
+      <span className="inline-flex min-w-0 max-w-full flex-1 items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap text-left">
+        {children}
+      </span>
     </SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ))

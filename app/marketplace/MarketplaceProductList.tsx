@@ -10,9 +10,12 @@ import {
 } from "@/app/components/commerce/FeaturedListingPoster"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { CatalogItem } from "@/app/types"
+import { isBusinessOpen } from "@/app/commerce/business-hours"
+import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
+import { BuyerGeo } from "@/app/commerce/buyer-geo"
 
 interface MarketplaceProductListProps {
-  items: Array<CatalogItem & { site?: { id: string; name: string; logo_url?: string | null } }>
+  items: Array<CatalogItem & { site?: { id: string; name: string; logo_url?: string | null; settings?: any } }>
   initialCount: number
   isLoading: boolean
   compactMobile: boolean
@@ -20,6 +23,7 @@ interface MarketplaceProductListProps {
   totalPages: number
   setPage: (page: number) => void
   onPrimaryAction: (item: any) => void
+  buyerGeo?: BuyerGeo
 }
 
 export function MarketplaceProductList({
@@ -31,6 +35,7 @@ export function MarketplaceProductList({
   totalPages,
   setPage,
   onPrimaryAction,
+  buyerGeo,
 }: MarketplaceProductListProps) {
   const { t } = useLocalization()
 
@@ -67,6 +72,14 @@ export function MarketplaceProductList({
           getHref={(item) => `/marketplace/${item.id}`}
           onPrimaryAction={onPrimaryAction}
           showSeller
+          getIsOpen={(item) => {
+            if (!item.site?.settings?.business_hours) return true;
+            return isBusinessOpen(item.site.settings.business_hours);
+          }}
+          getLocationAvailable={(item) => {
+            if (!item.site?.settings?.locations || !buyerGeo) return true;
+            return evaluateLocationRestrictions(item.site.settings.locations, buyerGeo).available;
+          }}
         />
       ) : (
         <CommerceProductGrid
@@ -85,6 +98,8 @@ export function MarketplaceProductList({
               showSeller={true}
               descriptionLineClamp="line-clamp-1"
               compactMobile={compactMobile}
+              isOpen={!item.site?.settings?.business_hours ? true : isBusinessOpen(item.site.settings.business_hours)}
+              locationAvailable={!item.site?.settings?.locations || !buyerGeo ? true : evaluateLocationRestrictions(item.site.settings.locations, buyerGeo).available}
             />
           ))}
         </CommerceProductGrid>

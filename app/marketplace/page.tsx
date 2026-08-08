@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import { createServiceClient } from "@/lib/supabase/server"
 import { MarketplaceClient } from "./MarketplaceClient"
+import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 
 export const metadata = {
   title: 'Marketplace | Makinari',
@@ -13,7 +14,7 @@ export default async function MarketplacePage() {
 
   const { data: catalogItems, count, error } = await supabase
     .from('catalog_items')
-    .select('*, site:sites!inner(id, name, logo_url)', { count: 'exact' })
+    .select('*, site:sites!inner(id, name, logo_url, settings)', { count: 'exact' })
     .eq('is_marketplace_listed', true)
     .eq('status', 'active')
     .eq('availability_status', 'available')
@@ -26,6 +27,7 @@ export default async function MarketplacePage() {
   }
 
   const initialTotalPages = count ? Math.ceil(count / 20) : 0;
+  const buyerGeo = await getBuyerGeoApprox();
 
   return (
     <Suspense fallback={<div className="flex-1 min-h-screen bg-muted/30" />}>
@@ -33,6 +35,7 @@ export default async function MarketplacePage() {
         initialItems={catalogItems || []} 
         initialCount={count || 0}
         initialTotalPages={initialTotalPages}
+        buyerGeo={buyerGeo}
       />
     </Suspense>
   )

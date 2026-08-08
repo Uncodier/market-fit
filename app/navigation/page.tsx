@@ -88,7 +88,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
         "flex-none flex flex-col justify-center h-[64px] sticky top-0 z-[200]",
         "border-b dark:border-white/5 border-black/5",
         isOverlay 
-          ? "bg-background/80 backdrop-blur-3xl" 
+          ? "bg-background/95 backdrop-blur-3xl" 
           : "bg-background/95 backdrop-blur-sm"
       )}>
         <div className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">

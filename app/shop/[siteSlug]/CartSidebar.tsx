@@ -9,6 +9,7 @@ import {
   intersectDeliveryOptions, 
   defaultFulfillment,
   intersectPickupLocationIds,
+  resolveOrderShippingCost
 } from "@/app/commerce/delivery-options"
 import { 
   getItemPaymentOptions, 
@@ -34,6 +35,9 @@ export function CartSidebar({
   shippingAddress, setShippingAddress,
   ownerSiteId, setOwnerSiteId,
   paymentMethod, setPaymentMethod,
+  orderTiming, setOrderTiming,
+  scheduledFor, setScheduledFor,
+  isOpen, nextOpenSlot, locationAvailable, deliveryTimeLabel,
   handleCheckout, checkoutLoading, closeCart, site
 }: any) {
   
@@ -74,7 +78,18 @@ export function CartSidebar({
   }, [cart])
 
   const discount = appliedPromo?.discount ?? promoDiscount ?? 0
-  const payableTotal = Math.max(0, subtotal - discount)
+
+  const shippingCost = useMemo(() => {
+    return resolveOrderShippingCost(
+      fulfillment,
+      subtotal,
+      site?.settings?.shop?.free_shipping_threshold,
+      site?.settings?.shop?.shipping_cost,
+      cart
+    )
+  }, [fulfillment, subtotal, site, cart])
+
+  const payableTotal = Math.max(0, subtotal - discount + shippingCost)
   const currency = cart[0]?.currency || 'USD'
 
   const handleApplied = useCallback((promo: AppliedPromo) => {
@@ -103,7 +118,7 @@ export function CartSidebar({
   }, [availablePaymentMethods, paymentMethod, setPaymentMethod]);
 
   useEffect(() => {
-    if (fulfillment !== 'pickup') return;
+    if (fulfillment !== 'pickup' && fulfillment !== 'dine_in') return;
     if (pickupLocations.length === 0) return;
     if (!pickupLocations.some((l: any) => l.id === originLocationId)) {
       setOriginLocationId(pickupLocations[0].id);
@@ -169,6 +184,13 @@ export function CartSidebar({
                   availablePaymentMethods={availablePaymentMethods}
                   paymentMethod={paymentMethod}
                   setPaymentMethod={setPaymentMethod}
+                  orderTiming={orderTiming}
+                  setOrderTiming={setOrderTiming}
+                  scheduledFor={scheduledFor}
+                  setScheduledFor={setScheduledFor}
+                  isOpen={isOpen}
+                  nextOpenSlot={nextOpenSlot}
+                  deliveryTimeLabel={deliveryTimeLabel}
                   t={t}
                 />
               </div>
@@ -196,14 +218,16 @@ export function CartSidebar({
                   <span className="font-medium">-{formatPrice(discount, currency)}</span>
                 </div>
               )}
-              <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
-                <span>{t('shop.cart.shipping') || 'Shipping'}</span>
-                {site?.settings?.shop?.free_shipping_threshold && subtotal >= site.settings.shop.free_shipping_threshold ? (
-                  <span className="font-medium text-green-600 dark:text-green-400">{t('shop.cart.free') || 'Free'}</span>
-                ) : (
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{t('shop.cart.calculatedNextStep') || 'Calculated at next step'}</span>
-                )}
-              </div>
+              {fulfillment === 'ship' && (
+                <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
+                  <span>{t('shop.cart.shipping') || 'Shipping'}</span>
+                  {shippingCost === 0 ? (
+                    <span className="font-medium text-green-600 dark:text-green-400">{t('shop.cart.free') || 'Free'}</span>
+                  ) : (
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{formatPrice(shippingCost, currency)}</span>
+                  )}
+                </div>
+              )}
               <div className="pt-3 border-t dark:border-gray-800 flex justify-between items-center">
                 <span className="font-bold text-lg">{t('shop.cart.total') || 'Total'}</span>
                 <span className="font-black text-2xl text-gray-900 dark:text-gray-100">{formatPrice(payableTotal, currency)}</span>
@@ -218,7 +242,7 @@ export function CartSidebar({
           type="submit"
           form="checkout-form"
           className="w-full h-14 text-lg font-bold rounded-xl shadow-md transition-all active:scale-[0.98] bg-gray-900 text-white hover:bg-gray-100 hover:text-black dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white" 
-          disabled={cart.length === 0 || checkoutLoading || allowedOptions.length === 0 || (fulfillment === 'pickup' && pickupLocations.length === 0) || !paymentMethod}
+          disabled={cart.length === 0 || checkoutLoading || allowedOptions.length === 0 || ((fulfillment === 'pickup' || fulfillment === 'dine_in') && pickupLocations.length === 0) || !paymentMethod || !locationAvailable || (orderTiming === 'scheduled' && !scheduledFor)}
         >
           {checkoutLoading ? (t('shop.cart.processing') || "Processing securely...") : `${t('shop.cart.checkoutBtn') || 'Checkout'} • ${formatPrice(payableTotal, currency)}`}
         </Button>

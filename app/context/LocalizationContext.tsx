@@ -13,7 +13,7 @@ interface LocalizationContextType {
   locale: SupportedLocale;
   setLocale: (locale: SupportedLocale) => void;
   // helper to get localized strings/assets
-  t: (key: string) => string; 
+  t: (key: string, params?: Record<string, string | number>) => string;
   getAsset: (key: string) => string;
 }
 
@@ -97,9 +97,17 @@ export const LocalizationProvider = ({ children, initialCountry }: { children: R
     document.documentElement.lang = newLocale;
   };
 
-  const t = (key: string): string => {
-    if (!mounted) return translations[defaultLocale][key] || key;
-    return translations[locale]?.[key] || translations[defaultLocale]?.[key] || key;
+  const t = (key: string, params?: Record<string, string | number>): string => {
+    const raw = !mounted
+      ? (translations[defaultLocale][key] || key)
+      : (translations[locale]?.[key] || translations[defaultLocale]?.[key] || key);
+
+    if (!params) return raw;
+
+    return Object.entries(params).reduce(
+      (text, [name, value]) => text.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(value)),
+      raw
+    );
   };
 
   const getAsset = (key: string): string => {

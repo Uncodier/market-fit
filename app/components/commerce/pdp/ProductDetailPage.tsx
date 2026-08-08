@@ -114,7 +114,7 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
         actions={
           <div
             data-commerce-shell-actions-core
-            className="flex items-center justify-end gap-0.5 md:gap-3 min-w-0"
+            className="flex items-center justify-end gap-4 min-w-0"
           >
             <div className="hidden md:contents">
               <CommerceShareControl
@@ -136,7 +136,7 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
             />
 
             {session ? (
-              <Link href="/buyer" className="hover:opacity-80 transition-opacity ml-0.5 shrink-0">
+              <Link href="/buyer" className="hover:opacity-80 transition-opacity shrink-0">
                 {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
                   <img
                     src={

@@ -22,9 +22,13 @@ import {
 import { MarketplaceHeader } from "./MarketplaceHeader"
 import { MarketplaceProductList } from "./MarketplaceProductList"
 import { useMarketplaceProducts } from "./useMarketplaceProducts"
+import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
+import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
+import { formatDeliveryTime } from "@/app/commerce/delivery-time"
+import { BuyerGeo } from "@/app/commerce/buyer-geo"
 
 interface MarketplaceItem extends CatalogItem {
-  site: { id: string; name: string; logo_url?: string | null }
+  site: { id: string; name: string; logo_url?: string | null; settings?: any }
 }
 
 interface CartItem extends MarketplaceItem {
@@ -37,11 +41,13 @@ interface CartItem extends MarketplaceItem {
 export function MarketplaceClient({ 
   initialItems, 
   initialCount,
-  initialTotalPages 
+  initialTotalPages,
+  buyerGeo
 }: { 
   initialItems: MarketplaceItem[],
   initialCount: number,
-  initialTotalPages: number
+  initialTotalPages: number,
+  buyerGeo?: BuyerGeo
 }) {
   const { t, locale, setLocale } = useLocalization()
   const { user } = useAuth()
@@ -101,6 +107,26 @@ export function MarketplaceClient({
   // Shipping info
   const [fulfillment, setFulfillment] = useState<'pickup' | 'ship' | 'none' | 'dine_in'>('none')
   const [shippingAddress, setShippingAddress] = useState({ line1: "", line2: "", city: "", state: "", zip: "", country: "" })
+
+  const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
+  const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
+
+  const businessHours = siteSettings?.business_hours || []
+  const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
+  const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours) : null
+
+  const isLocationAvailable = React.useMemo(() => {
+    if (!siteSettings?.locations || siteSettings.locations.length === 0) return true;
+    if (fulfillment === 'ship' && shippingAddress.city && shippingAddress.zip) {
+      return evaluateLocationRestrictions(siteSettings.locations, shippingAddress).available;
+    }
+    if (buyerGeo) {
+      return evaluateLocationRestrictions(siteSettings.locations, buyerGeo).available;
+    }
+    return true;
+  }, [siteSettings, shippingAddress, fulfillment, buyerGeo]);
+
+  const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop);
 
   // Fetch settings when seller changes
   useEffect(() => {
@@ -197,6 +223,19 @@ export function MarketplaceClient({
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault()
     if (cart.length === 0) return
+
+    if (!isLocationAvailable) {
+      toast.error(t('checkout.unavailableLocation') || 'Service is not available in your area.');
+      return;
+    }
+
+    if (orderTiming === 'scheduled' && !scheduledFor) {
+      toast.error(t('checkout.selectTimeRequired') || 'Please select a date and time for your order.');
+      return;
+    }
+    
+    const finalScheduledFor = orderTiming === 'scheduled' ? scheduledFor?.toISOString() : 
+                              (orderTiming === 'now' && !isOpen && nextOpenSlot ? nextOpenSlot.at.toISOString() : undefined);
     
     const requiresAuth = cart.some((c: any) => c.kind === "digital_asset" || c.is_recurring)
     if (requiresAuth && !session?.user) {
@@ -263,6 +302,7 @@ export function MarketplaceClient({
       originLocationId: originLocationId,
       shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
       promotionCode: promotionCode || undefined,
+      scheduledFor: finalScheduledFor,
       source: 'marketplace',
       paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
       intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
@@ -401,6 +441,14 @@ export function MarketplaceClient({
           setShippingAddress={setShippingAddress}
           paymentMethod={paymentMethod}
           setPaymentMethod={setPaymentMethod}
+          orderTiming={orderTiming}
+          setOrderTiming={setOrderTiming}
+          scheduledFor={scheduledFor}
+          setScheduledFor={setScheduledFor}
+          isOpen={isOpen}
+          nextOpenSlot={nextOpenSlot}
+          locationAvailable={isLocationAvailable}
+          deliveryTimeLabel={deliveryTimeLabel}
           promotionCode={promotionCode}
           setPromotionCode={setPromotionCode}
           promoDiscount={promoDiscount}

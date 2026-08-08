@@ -18,13 +18,22 @@ import {
   intersectDeliveryOptions, 
   defaultFulfillment,
   intersectPickupLocationIds,
+  resolveOrderShippingCost,
   CheckoutFulfillmentMethod
 } from "@/app/commerce/delivery-options"
 import { getAvailablePaymentMethods, PaymentMethodType, getItemPaymentOptions, intersectPaymentOptions } from "@/app/commerce/payment-options"
 import { listLocations } from "@/app/inventory/actions"
 import { getSiteInfoBySlug } from "@/app/book/actions"
+import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
+import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
+import { formatDeliveryTime } from "@/app/commerce/delivery-time"
+import { getBuyerGeoApprox, BuyerGeo } from "@/app/commerce/buyer-geo"
 
-export default function CheckoutClient() {
+export default function CheckoutClient({
+  buyerGeo
+}: {
+  buyerGeo?: BuyerGeo
+} = {}) {
   const { t } = useLocalization()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -57,6 +66,14 @@ export default function CheckoutClient() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType | ''>('')
   const [promotionCode, setPromotionCode] = useState("")
   const [promoDiscount, setPromoDiscount] = useState(0)
+
+  // Order Timing
+  const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
+  const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
+
+  const businessHours = siteSettings?.business_hours || []
+  const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
+  const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours) : null
 
   const allowedOptions = React.useMemo(() => {
     return intersectDeliveryOptions(items.map((i: any) => ({
@@ -141,7 +158,17 @@ export default function CheckoutClient() {
   }, [mode, source, siteId])
 
   const subtotal = items.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0)
-  const payableTotal = Math.max(0, subtotal - promoDiscount)
+
+  const shippingCost = React.useMemo(() => {
+    return resolveOrderShippingCost(
+      fulfillment,
+      subtotal,
+      siteSettings?.shop?.free_shipping_threshold,
+      siteSettings?.shop?.shipping_cost,
+      items
+    )
+  }, [fulfillment, subtotal, siteSettings, items])
+  const payableTotal = Math.max(0, subtotal - promoDiscount + shippingCost)
 
   const requiresAuth = items.some(item => item.kind === 'digital_asset' || item.is_recurring)
 
@@ -152,8 +179,40 @@ export default function CheckoutClient() {
     return siteId || undefined
   })()
 
+  const isLocationAvailable = React.useMemo(() => {
+    if (!siteSettings?.locations || siteSettings.locations.length === 0) return true;
+    
+    // If we have a filled shipping address, use it
+    if (fulfillment === 'ship' && shippingAddress.city && shippingAddress.zip) {
+      return evaluateLocationRestrictions(siteSettings.locations, shippingAddress).available;
+    }
+    
+    // Otherwise fallback to buyer geo (IP)
+    if (buyerGeo) {
+      return evaluateLocationRestrictions(siteSettings.locations, buyerGeo).available;
+    }
+    
+    return true;
+  }, [siteSettings, shippingAddress, fulfillment, buyerGeo]);
+
+  const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop);
+
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!isLocationAvailable) {
+      toast.error(t('checkout.unavailableLocation') || 'Service is not available in your area.');
+      return;
+    }
+
+    if (orderTiming === 'scheduled' && !scheduledFor) {
+      toast.error(t('checkout.selectTimeRequired') || 'Please select a date and time for your order.');
+      return;
+    }
+    
+    const finalScheduledFor = orderTiming === 'scheduled' ? scheduledFor?.toISOString() : 
+                              (orderTiming === 'now' && !isOpen && nextOpenSlot ? nextOpenSlot.at.toISOString() : undefined);
+
     if (items.length === 0) return
 
     if (requiresAuth && !session?.user) {
@@ -228,9 +287,10 @@ export default function CheckoutClient() {
       buyerUserId: session?.user?.id,
       ownerSiteId,
       fulfillment,
-      originLocationId: fulfillment === 'pickup' ? pickupLocationId : undefined,
+      originLocationId: (fulfillment === 'pickup' || fulfillment === 'dine_in') ? pickupLocationId : undefined,
       shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
       promotionCode: promotionCode || undefined,
+      scheduledFor: finalScheduledFor,
       source: source as 'shop' | 'marketplace',
       paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
       intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
@@ -383,21 +443,34 @@ export default function CheckoutClient() {
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
                 availablePaymentMethods={availablePaymentMethods}
+                orderTiming={orderTiming}
+                setOrderTiming={setOrderTiming}
+                scheduledFor={scheduledFor}
+                setScheduledFor={setScheduledFor}
+                businessHours={businessHours}
+                isOpen={isOpen}
+                nextOpenSlot={nextOpenSlot}
+                deliveryTimeLabel={deliveryTimeLabel}
               />
             </div>
           </div>
 
           <div className="lg:col-span-5 xl:col-span-4 order-1 lg:order-2">
             <OrderSummary 
-              items={items} 
-              subtotal={subtotal} 
+              items={items}
+              subtotal={subtotal}
+              shippingCost={shippingCost}
               checkoutLoading={checkoutLoading}
               disabledReason={
-                !allowedOptions.includes(fulfillment) 
-                  ? "Selected delivery method not allowed"
-                  : (!paymentMethod || !availablePaymentMethods.includes(paymentMethod))
-                    ? "Payment method not allowed"
-                    : undefined
+                !isLocationAvailable
+                  ? t("checkout.unavailableLocation") || "Service is not available in your area"
+                  : (orderTiming === 'scheduled' && !scheduledFor)
+                    ? t("checkout.selectTimeRequired") || "Please select a date and time"
+                    : !allowedOptions.includes(fulfillment) 
+                      ? "Selected delivery method not allowed"
+                      : (!paymentMethod || !availablePaymentMethods.includes(paymentMethod))
+                        ? "Payment method not allowed"
+                        : undefined
               }
               fulfillment={fulfillment}
               paymentMethod={paymentMethod}

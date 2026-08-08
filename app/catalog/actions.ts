@@ -13,6 +13,7 @@ export async function listCatalogCategories(siteId: string) {
       .from("catalog_categories")
       .select("*")
       .eq("site_id", siteId)
+      .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
 
     if (error) {
@@ -65,6 +66,7 @@ export async function listCatalogItems({
       .select("*", { count: "exact" })
       .eq("site_id", siteId)
       .is("parent_id", null)
+      .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
 
     if (kind !== 'all') {

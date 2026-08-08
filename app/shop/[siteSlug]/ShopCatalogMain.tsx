@@ -29,6 +29,8 @@ interface ShopCatalogMainProps {
   totalPages: number
   setPage: (page: number) => void
   addToCart: (item: CatalogItem) => void
+  isOpen?: boolean
+  locationAvailable?: boolean
 }
 
 export function ShopCatalogMain({
@@ -46,6 +48,8 @@ export function ShopCatalogMain({
   totalPages,
   setPage,
   addToCart,
+  isOpen = true,
+  locationAvailable = true,
 }: ShopCatalogMainProps) {
   const { t } = useLocalization()
   const compactMobile = shouldUseCompactMobileListing(initialCount || 0)
@@ -191,6 +195,8 @@ export function ShopCatalogMain({
               getPrimaryDisabled={(item) =>
                 !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
               }
+              isOpen={isOpen}
+              locationAvailable={locationAvailable}
             />
           ) : (
             <CommerceProductGrid
@@ -212,6 +218,8 @@ export function ShopCatalogMain({
                   disabledLabel={t("shop.soldOut") || "Sold Out"}
                   isOwned={false}
                   compactMobile={compactMobile}
+                  isOpen={isOpen}
+                  locationAvailable={locationAvailable}
                 />
               ))}
             </CommerceProductGrid>

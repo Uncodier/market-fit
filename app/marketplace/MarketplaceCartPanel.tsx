@@ -9,7 +9,8 @@ import {
   getItemDeliveryOptions, 
   intersectDeliveryOptions, 
   defaultFulfillment,
-  intersectPickupLocationIds
+  intersectPickupLocationIds,
+  resolveOrderShippingCost
 } from "@/app/commerce/delivery-options"
 import { 
   getItemPaymentOptions, 
@@ -40,6 +41,14 @@ export function MarketplaceCartPanel({
   setShippingAddress,
   paymentMethod,
   setPaymentMethod,
+  orderTiming,
+  setOrderTiming,
+  scheduledFor,
+  setScheduledFor,
+  isOpen,
+  nextOpenSlot,
+  locationAvailable,
+  deliveryTimeLabel,
   promotionCode,
   setPromotionCode,
   promoDiscount = 0,
@@ -88,7 +97,18 @@ export function MarketplaceCartPanel({
   }, [cart])
 
   const discount = appliedPromo?.discount ?? promoDiscount ?? 0
-  const payableTotal = Math.max(0, subtotal - discount)
+  
+  const shippingCost = useMemo(() => {
+    return resolveOrderShippingCost(
+      fulfillment,
+      subtotal,
+      siteSettings?.shop?.free_shipping_threshold,
+      siteSettings?.shop?.shipping_cost,
+      cart
+    )
+  }, [fulfillment, subtotal, siteSettings, cart])
+
+  const payableTotal = Math.max(0, subtotal - discount + shippingCost)
   const currency = cart[0]?.currency || 'USD'
 
   const handleApplied = useCallback((promo: AppliedPromo) => {
@@ -117,7 +137,7 @@ export function MarketplaceCartPanel({
   }, [availablePaymentMethods, paymentMethod, setPaymentMethod]);
 
   useEffect(() => {
-    if (fulfillment !== 'pickup') return;
+    if (fulfillment !== 'pickup' && fulfillment !== 'dine_in') return;
     if (pickupLocations.length === 0) return;
     if (!pickupLocations.some((l: any) => l.id === originLocationId)) {
       setOriginLocationId(pickupLocations[0].id);
@@ -171,20 +191,27 @@ export function MarketplaceCartPanel({
                   lockedDestination={isLockedDestination}
                 />
 
-                <CartCheckoutFields 
-                  allowedOptions={allowedOptions}
-                  fulfillment={fulfillment}
-                  setFulfillment={setFulfillment}
-                  pickupLocations={pickupLocations}
-                  originLocationId={originLocationId}
-                  setOriginLocationId={setOriginLocationId}
-                  shippingAddress={shippingAddress}
-                  setShippingAddress={setShippingAddress}
-                  availablePaymentMethods={availablePaymentMethods}
-                  paymentMethod={paymentMethod}
-                  setPaymentMethod={setPaymentMethod}
-                  t={t}
-                />
+            <CartCheckoutFields
+              allowedOptions={allowedOptions}
+              fulfillment={fulfillment}
+              setFulfillment={setFulfillment}
+              pickupLocations={pickupLocations}
+              originLocationId={originLocationId}
+              setOriginLocationId={setOriginLocationId}
+              shippingAddress={shippingAddress}
+              setShippingAddress={setShippingAddress}
+              availablePaymentMethods={availablePaymentMethods}
+              paymentMethod={paymentMethod}
+              setPaymentMethod={setPaymentMethod}
+              orderTiming={orderTiming}
+              setOrderTiming={setOrderTiming}
+              scheduledFor={scheduledFor}
+              setScheduledFor={setScheduledFor}
+              isOpen={isOpen}
+              nextOpenSlot={nextOpenSlot}
+              deliveryTimeLabel={deliveryTimeLabel}
+              t={t}
+            />
               </form>
             </div>
           )}
@@ -214,6 +241,14 @@ export function MarketplaceCartPanel({
                   <span className="font-medium">-{formatPrice(discount, currency)}</span>
                 </div>
               )}
+              {fulfillment === 'ship' && (
+                <div className="flex justify-between items-center text-muted-foreground text-sm">
+                  <span>{t('shop.cart.shipping') || 'Shipping'}</span>
+                  <span className="font-medium text-foreground">
+                    {shippingCost === 0 ? (t('shop.cart.free') || 'Free') : formatPrice(shippingCost, currency)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="font-bold text-lg">{t('marketplace.cart.total') || 'Total'}</span>
                 <span className="font-black text-2xl">{formatPrice(payableTotal, currency)}</span>
@@ -223,7 +258,7 @@ export function MarketplaceCartPanel({
               type="submit"
               form="marketplace-checkout"
               className="w-full h-14 text-lg font-bold rounded-xl" 
-              disabled={checkoutLoading || allowedOptions.length === 0 || (fulfillment === 'pickup' && pickupLocations.length === 0) || !paymentMethod}
+              disabled={checkoutLoading || allowedOptions.length === 0 || ((fulfillment === 'pickup' || fulfillment === 'dine_in') && pickupLocations.length === 0) || !paymentMethod || !locationAvailable || (orderTiming === 'scheduled' && !scheduledFor)}
             >
               {checkoutLoading ? (t('marketplace.checkout.processing') || "Processing securely...") : `${t('marketplace.checkout.btn') || 'Checkout'} • ${formatPrice(payableTotal, currency)}`}
             </Button>

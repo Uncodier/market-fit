@@ -38,6 +38,7 @@ export interface CheckoutCartParams {
   existingOrderId?: string;
   intent?: 'draft' | 'send' | 'complete' | 'pay';
   paymentMethod?: string; // legacy/passthrough
+  scheduledFor?: string; // ISO
 }
 
 export async function checkoutCart({
@@ -57,7 +58,8 @@ export async function checkoutCart({
   customerEmail,
   payments,
   existingOrderId,
-  intent
+  intent,
+  scheduledFor
 }: CheckoutCartParams) {
   try {
     const supabase = await createClient();
@@ -67,9 +69,45 @@ export async function checkoutCart({
     
     // For shop, userId is undefined, so we need to get the site's user_id
     let resolvedUserId = userId;
-    if (isAdmin && !resolvedUserId) {
-      const { data: site } = await supabaseAdmin.from("sites").select("user_id").eq("id", siteId).single();
-      if (site) resolvedUserId = site.user_id;
+    let siteSettings: any = null;
+    
+    if (isAdmin) {
+      const { data: site } = await supabaseAdmin.from("sites").select("user_id, settings").eq("id", siteId).single();
+      if (site) {
+        resolvedUserId = resolvedUserId || site.user_id;
+        siteSettings = site.settings;
+      }
+    } else {
+      // Pos or sales, fetch site anyway to validate locations / business hours
+      const { data: site } = await supabaseAdmin.from("sites").select("settings").eq("id", siteId).single();
+      if (site) {
+        siteSettings = site.settings;
+      }
+    }
+
+    // Location & timing validation
+    if (siteSettings) {
+      // 1. Validate location restrictions
+      const { evaluateLocationRestrictions } = await import('./location-restrictions');
+      if (fulfillment === 'ship' && shippingAddress?.city && shippingAddress?.zip) {
+        const restrictions = siteSettings.locations || [];
+        const res = evaluateLocationRestrictions(restrictions, shippingAddress);
+        if (!res.available) {
+          throw new Error('Service is not available in the provided shipping address area.');
+        }
+      }
+
+      // 2. Validate business hours
+      const { isBusinessOpen } = await import('./business-hours');
+      const businessHours = siteSettings.business_hours || [];
+      if (businessHours.length > 0) {
+        if (!scheduledFor && !isBusinessOpen(businessHours)) {
+          throw new Error('Store is currently closed. Please select a time to schedule your order.');
+        }
+        if (scheduledFor && !isBusinessOpen(businessHours, new Date(scheduledFor))) {
+          throw new Error('The selected scheduled time is outside business hours.');
+        }
+      }
     }
 
     if (!lines || lines.length === 0) throw new Error("Cart is empty");
@@ -178,6 +216,7 @@ export async function checkoutCart({
     // 3. Process Lines (Verify Stock & Resolve Prices)
     let orderSubtotal = 0;
     const processedLines = [];
+    const catalogItemsForShipping: Partial<import("@/app/types").CatalogItem>[] = [];
     
     for (const line of lines) {
       // Assert can sell
@@ -185,7 +224,7 @@ export async function checkoutCart({
 
       const { data: catalogItem } = await (isAdmin ? supabaseAdmin : supabase)
         .from("catalog_items")
-        .select("name, description, is_recurring, kind, digital_subtype, is_reservation, currency")
+        .select("name, description, is_recurring, kind, digital_subtype, is_reservation, currency, metadata")
         .eq("id", line.catalogItemId)
         .single();
         
@@ -218,6 +257,10 @@ export async function checkoutCart({
       const subtotal = price * line.quantity;
       orderSubtotal += subtotal;
       
+      if (catalogItem) {
+        catalogItemsForShipping.push(catalogItem as any);
+      }
+      
       processedLines.push({
         site_id: siteId,
         catalog_item_id: line.catalogItemId,
@@ -241,7 +284,21 @@ export async function checkoutCart({
       processedLines.map((pl) => ({ catalogItemId: pl.catalog_item_id, subtotal: pl.subtotal })),
       taxesByItem || {}
     );
-    let orderTotal = roundMoney(orderSubtotal + orderTaxTotal);
+
+    // Calculate shipping cost
+    let orderShippingCost = 0;
+    if (fulfillment === 'ship') {
+      const { resolveOrderShippingCost } = await import('./delivery-options');
+      orderShippingCost = resolveOrderShippingCost(
+        fulfillment,
+        orderSubtotal,
+        siteSettings?.shop?.free_shipping_threshold,
+        siteSettings?.shop?.shipping_cost,
+        catalogItemsForShipping
+      );
+    }
+
+    let orderTotal = roundMoney(orderSubtotal + orderTaxTotal + orderShippingCost);
 
     // Verify all items have the same currency
     const uniqueCurrencies = Array.from(new Set(processedLines.map(pl => pl.currency)));
@@ -252,6 +309,7 @@ export async function checkoutCart({
 
     // Fail-fast: validate promotion before creating sale/order (avoids orphan orders)
     let normalizedPromotionCode: string | undefined;
+    let promoDiscount = 0;
     if (promotionCode?.trim()) {
       normalizedPromotionCode = promotionCode.trim().toUpperCase();
       const promoPreview = await resolvePromotionDiscount({
@@ -269,8 +327,9 @@ export async function checkoutCart({
       if ("error" in promoPreview) {
         throw new Error(`Promotion failed: ${promoPreview.error}`);
       }
+      promoDiscount = promoPreview.data.discount;
       orderTotal = roundMoney(
-        Math.max(0, orderSubtotal - promoPreview.data.discount + orderTaxTotal)
+        Math.max(0, orderSubtotal - promoDiscount + orderTaxTotal + orderShippingCost)
       );
     }
 
@@ -394,8 +453,10 @@ export async function checkoutCart({
         fulfillment_method: fulfillment,
         origin_location_id: finalOriginLocationId || null,
         shipping_address: shippingAddress || null,
+        scheduled_for: scheduledFor || null,
         subtotal: orderSubtotal,
         tax_total: orderTaxTotal,
+        shipping_cost: orderShippingCost,
         total: orderTotal,
         currency: orderCurrency,
         status: orderInitialStatus,
@@ -465,11 +526,13 @@ export async function checkoutCart({
         fulfillment_method: fulfillment,
         origin_location_id: finalOriginLocationId || null,
         shipping_address: shippingAddress || null,
+        scheduled_for: scheduledFor || null,
         subtotal: orderSubtotal,
         tax_total: orderTaxTotal,
+        shipping_cost: orderShippingCost,
         total: orderTotal,
         currency: orderCurrency,
-        discount_total: 0,
+        discount_total: promoDiscount,
         status: orderInitialStatus,
         order_number: `ORD-${Date.now().toString().slice(-6)}`,
         user_id: resolvedUserId,

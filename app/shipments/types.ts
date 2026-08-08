@@ -5,6 +5,7 @@ export interface ShipmentParams {
   status?: string;
   leadId?: string;
   q?: string;
+  locationId?: string;
   page?: number;
   pageSize?: number;
 }
