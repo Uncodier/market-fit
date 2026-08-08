@@ -13,6 +13,12 @@ export async function updateTransaction(
     description?: string;
     category?: string;
     date?: string;
+    locationId?: string | null;
+    leadId?: string | null;
+    segmentId?: string | null;
+    catalogItemId?: string | null;
+    catalogCategoryId?: string | null;
+    companyId?: string | null;
   }
 ) {
   try {
@@ -30,15 +36,24 @@ export async function updateTransaction(
     }
 
     // Update the transaction
+    const updateData: any = {
+      type: values.type,
+      amount: values.amount,
+      description: values.description,
+      category: values.category,
+      date: values.date
+    }
+    
+    if (values.locationId !== undefined) updateData.location_id = values.locationId
+    if (values.leadId !== undefined) updateData.lead_id = values.leadId
+    if (values.segmentId !== undefined) updateData.segment_id = values.segmentId
+    if (values.catalogItemId !== undefined) updateData.catalog_item_id = values.catalogItemId
+    if (values.catalogCategoryId !== undefined) updateData.catalog_category_id = values.catalogCategoryId
+    if (values.companyId !== undefined) updateData.company_id = values.companyId
+
     const { data, error } = await supabase
       .from("transactions")
-      .update({
-        type: values.type,
-        amount: values.amount,
-        description: values.description,
-        category: values.category,
-        date: values.date
-      })
+      .update(updateData)
       .eq("id", transactionId)
       .select()
       .single()

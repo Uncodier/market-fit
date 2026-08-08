@@ -190,11 +190,11 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
             <div className="mx-auto max-w-[800px] space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Basic Details</CardTitle>
+                  <CardTitle>{t('catalog.form.basicDetails') || 'Basic Details'}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Image</Label>
+                <Label>{t('catalog.form.image') || 'Image'}</Label>
                 <ImageUpload 
                   value={formData.image_url || ''} 
                   onChange={val => setFormData({...formData, image_url: val})} 
@@ -203,14 +203,14 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2 md:col-span-1">
-                  <Label>Name</Label>
+                  <Label>{t('catalog.form.name') || 'Name'}</Label>
                   <Input 
                     value={formData.name || ''} 
                     onChange={e => setFormData({...formData, name: e.target.value})} 
                   />
                 </div>
                 <div className="space-y-2 col-span-2 md:col-span-1">
-                  <Label>Type</Label>
+                  <Label>{t('catalog.form.type') || 'Type'}</Label>
                   <Select 
                     value={formData.kind || 'product'} 
                     onValueChange={(val: any) => setFormData({...formData, kind: val, digital_subtype: val !== 'digital_asset' ? null : formData.digital_subtype})}
@@ -226,7 +226,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
 
                 {formData.kind === 'digital_asset' && (
                   <div className="space-y-2 col-span-2 md:col-span-1">
-                    <Label>Subtype</Label>
+                    <Label>{t('catalog.form.subtype') || 'Subtype'}</Label>
                     <Select 
                       value={formData.digital_subtype || 'file'} 
                       onValueChange={(val: any) => setFormData({...formData, digital_subtype: val})}
@@ -244,7 +244,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                 )}
 
                 <div className="space-y-2 col-span-2 md:col-span-1">
-                  <Label>Category</Label>
+                  <Label>{t('catalog.form.category') || 'Category'}</Label>
                   <RelationSelect
                     value={categoryValue}
                     onValueChange={setCategoryValue}
@@ -255,7 +255,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               </div>
 
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label>{t('catalog.form.description') || 'Description'}</Label>
                 <Textarea 
                   value={formData.description || ''} 
                   onChange={e => setFormData({...formData, description: e.target.value})}
@@ -264,7 +264,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               </div>
               
               <div className="space-y-2">
-                <Label>SKU</Label>
+                <Label>{t('catalog.form.sku') || 'SKU'}</Label>
                 <Input 
                   value={formData.sku || ''} 
                   onChange={e => setFormData({...formData, sku: e.target.value})} 
@@ -275,7 +275,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                 </CardContent>
                 <ActionFooter>
                   <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
-                    Save Changes
+                    {saving ? (t('common.saving') || 'Saving...') : (t('common.saveChanges') || 'Save Changes')}
                   </Button>
                 </ActionFooter>
               </Card>
@@ -290,36 +290,36 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Availability & Inventory</CardTitle>
+                  <CardTitle>{t('catalog.form.availabilityInventory') || 'Availability & Inventory'}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
-                    <Label>Availability Mode</Label>
+                    <Label>{t('catalog.form.availabilityMode') || 'Availability Mode'}</Label>
                     <Select 
                       value={formData.availability_mode || 'always'} 
                       onValueChange={(val: any) => setFormData({...formData, availability_mode: val})}
                     >
                       <SelectTrigger><SelectValue/></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="always">Always Available</SelectItem>
-                        <SelectItem value="inventory">Based on Inventory</SelectItem>
-                        <SelectItem value="manual">Manual Status</SelectItem>
+                        <SelectItem value="always">{t('catalog.form.availability.always') || 'Always Available'}</SelectItem>
+                        <SelectItem value="inventory">{t('catalog.form.availability.inventory') || 'Based on Inventory'}</SelectItem>
+                        <SelectItem value="manual">{t('catalog.form.availability.manual') || 'Manual Status'}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {formData.availability_mode === 'manual' && (
                     <div className="space-y-2 pt-2 border-t">
-                      <Label>Manual Status</Label>
+                      <Label>{t('catalog.form.manualStatus') || 'Manual Status'}</Label>
                       <Select 
                         value={formData.availability_status || 'available'} 
                         onValueChange={(val: any) => setFormData({...formData, availability_status: val})}
                       >
                         <SelectTrigger><SelectValue/></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="available">Available</SelectItem>
-                          <SelectItem value="unavailable">Unavailable</SelectItem>
-                          <SelectItem value="sold_out">Sold Out</SelectItem>
+                          <SelectItem value="available">{t('catalog.status.available') || 'Available'}</SelectItem>
+                          <SelectItem value="unavailable">{t('catalog.status.unavailable') || 'Unavailable'}</SelectItem>
+                          <SelectItem value="sold_out">{t('catalog.status.soldOut') || 'Sold Out'}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -328,7 +328,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   <div className="space-y-4 pt-2 border-t">
                     <div className="flex items-center justify-between">
                       <div>
-                        <Label htmlFor="track_inventory" className="text-base cursor-pointer">Track inventory levels</Label>
+                        <Label htmlFor="track_inventory" className="text-base cursor-pointer">{t('catalog.form.trackInventory') || 'Track inventory levels'}</Label>
                         <p className="text-sm text-muted-foreground">Keep counts per location</p>
                       </div>
                       <Switch 
@@ -340,7 +340,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   </div>
                 </CardContent>
                 <ActionFooter>
-                  <Button variant="outline" onClick={handleSave} disabled={saving}>Save Settings</Button>
+                  <Button variant="outline" onClick={handleSave} disabled={saving}>{saving ? (t('common.saving') || 'Saving...') : (t('common.saveSettings') || 'Save Settings')}</Button>
                 </ActionFooter>
               </Card>
 
@@ -357,9 +357,9 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               {item && (
                 <Card className="border-destructive/20 bg-destructive/5">
                   <CardHeader>
-                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                    <CardTitle className="text-destructive">{t('catalog.form.dangerZone') || 'Danger Zone'}</CardTitle>
                     <CardDescription className="text-destructive/80">
-                      Irreversible actions for this product.
+                      {t('catalog.form.dangerDescription') || 'Irreversible actions for this product.'}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -369,7 +369,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                       onClick={() => setShowArchiveDialog(true)}
                       className="gap-2"
                     >
-                      <Trash2 size={16} /> Archive Product
+                      <Trash2 size={16} /> {t('catalog.form.archive') || 'Archive Product'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -437,8 +437,8 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
             <div className="mx-auto max-w-[800px]">
               <EmptyCard
                 icon={<Activity className="h-12 w-12 text-muted-foreground/50" />}
-                title="Inventory Tracking (Coming Soon)"
-                description="View stock levels and movement history across locations."
+                title={t('catalog.tabs.inventoryTracking') || "Inventory Tracking (Coming Soon)"}
+                description={t('catalog.tabs.inventoryTrackingDesc') || "View stock levels and movement history across locations."}
               />
             </div>
           </TabsContent>
@@ -447,8 +447,8 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
             <div className="mx-auto max-w-[800px]">
               <EmptyCard
                 icon={<Activity className="h-12 w-12 text-muted-foreground/50" />}
-                title="Sales History (Coming Soon)"
-                description="Track revenue and units sold over time for this item."
+                title={t('catalog.tabs.salesHistory') || "Sales History (Coming Soon)"}
+                description={t('catalog.tabs.salesHistoryDesc') || "Track revenue and units sold over time for this item."}
               />
             </div>
           </TabsContent>
@@ -458,13 +458,13 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
       <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive Product</AlertDialogTitle>
+            <AlertDialogTitle>{t('catalog.form.archiveTitle') || 'Archive Product'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to archive "{item?.name}"? This will hide it from the active catalog.
+              {t('catalog.form.archiveConfirm', { name: item?.name || '' }) || `Are you sure you want to archive "${item?.name}"? This will hide it from the active catalog.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={archiving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={archiving}>{t('common.cancel') || 'Cancel'}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
@@ -473,7 +473,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               disabled={archiving}
               className="!bg-destructive !text-destructive-foreground hover:!bg-destructive/90"
             >
-              {archiving ? "Archiving..." : "Archive Product"}
+              {archiving ? (t('common.archiving') || "Archiving...") : (t('catalog.form.archive') || "Archive Product")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

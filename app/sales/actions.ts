@@ -257,6 +257,8 @@ export async function getSaleById(siteId: string, saleId: string) {
       leadName: saleData.leads?.name || "Anonymous Customer",
       campaignId: saleData.campaign_id,
       segmentId: saleData.segment_id,
+      companyId: saleData.company_id || null,
+      accountingState: saleData.accounting_state || 'pending',
       saleDate: saleData.sale_date,
       paymentMethod: saleData.payment_method || "Unknown",
       paymentDetails: saleData.payment_details || undefined,

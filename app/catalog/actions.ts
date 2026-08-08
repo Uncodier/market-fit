@@ -27,7 +27,7 @@ export async function listCatalogCategories(siteId: string) {
   }
 }
 
-export async function upsertCatalogCategory(category: { id?: string, site_id: string, name: string, description?: string }) {
+export async function upsertCatalogCategory(category: { id?: string, site_id: string, name: string, description?: string, income_account_key?: string | null, cogs_account_key?: string | null }) {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase

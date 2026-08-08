@@ -106,6 +106,7 @@ export function JournalEntriesClient() {
     switch (type) {
       case 'sale': return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800'
       case 'expense': return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-800'
+      case 'purchase': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
       case 'opening': return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800'
       case 'manual': return 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800'
       default: return 'bg-muted text-muted-foreground'
@@ -120,6 +121,7 @@ export function JournalEntriesClient() {
             <TabsList className="h-9 p-1 bg-muted/50 rounded-lg flex w-full sm:w-auto overflow-x-auto justify-start hide-scrollbar">
               <TabsTrigger value="all" className="text-xs rounded-md data-[state=active]:shadow-sm px-4">{t('accounting.filter.all') || "All"}</TabsTrigger>
               <TabsTrigger value="sale" className="text-xs rounded-md data-[state=active]:shadow-sm px-4">{t('accounting.filter.sale') || "Sale"}</TabsTrigger>
+              <TabsTrigger value="purchase" className="text-xs rounded-md data-[state=active]:shadow-sm px-4">{t('accounting.filter.purchase') || "Purchase"}</TabsTrigger>
               <TabsTrigger value="expense" className="text-xs rounded-md data-[state=active]:shadow-sm px-4">{t('accounting.filter.expense') || "Expense"}</TabsTrigger>
               <TabsTrigger value="opening" className="text-xs rounded-md data-[state=active]:shadow-sm px-4">{t('accounting.filter.opening') || "Opening"}</TabsTrigger>
               <TabsTrigger value="manual" className="text-xs rounded-md data-[state=active]:shadow-sm px-4">{t('accounting.filter.manual') || "Manual"}</TabsTrigger>

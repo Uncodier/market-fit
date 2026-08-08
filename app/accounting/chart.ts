@@ -24,7 +24,7 @@ export async function ensureChartOfAccounts(siteId: string): Promise<void> {
 
   const { data: existingAccounts, error: existingError } = await supabase
     .from('accounting_accounts')
-    .select('code')
+    .select('id, code, key')
     .eq('site_id', siteId)
 
   if (existingError) {
@@ -32,8 +32,10 @@ export async function ensureChartOfAccounts(siteId: string): Promise<void> {
     throw new Error(`Could not fetch existing accounts: ${existingError.message}`)
   }
 
-  const existingCodes = new Set((existingAccounts || []).map((a: { code: string }) => a.code))
-  const missingAccounts = DEFAULT_CHART.filter(a => !existingCodes.has(a.code))
+  const existingByCode = new Map(
+    (existingAccounts || []).map((a: { id: string; code: string; key: string | null }) => [a.code, a])
+  )
+  const missingAccounts = DEFAULT_CHART.filter(a => !existingByCode.has(a.code))
 
   if (missingAccounts.length > 0) {
     const toInsert = missingAccounts.map(a => ({
@@ -53,6 +55,18 @@ export async function ensureChartOfAccounts(siteId: string): Promise<void> {
     if (insertError) {
       console.error('Error seeding chart of accounts:', insertError)
       throw new Error('Could not seed chart of accounts')
+    }
+  }
+
+  // Backfill keys for seeded system accounts that predate key support
+  for (const seed of DEFAULT_CHART) {
+    if (!seed.key) continue
+    const existing = existingByCode.get(seed.code)
+    if (existing && !existing.key) {
+      await supabase
+        .from('accounting_accounts')
+        .update({ key: seed.key })
+        .eq('id', existing.id)
     }
   }
 }

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { COMMON_CURRENCIES } from "@/app/lib/currencies"
 import { DynamicPricingCard } from "./DynamicPricingCard"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface CatalogItemPricingSectionProps {
   item: CatalogItem | null
@@ -26,24 +27,25 @@ export function CatalogItemPricingSection({
   handleSave,
   saving,
 }: CatalogItemPricingSectionProps) {
+  const { t } = useLocalization()
   const isDynamic = Boolean(formData.is_dynamic_price)
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Pricing</CardTitle>
+          <CardTitle>{t('catalog.pricing.title') || 'Pricing'}</CardTitle>
           <CardDescription>
             {isDynamic
-              ? "Sale price is determined by dynamic quote configuration below"
-              : "Default pricing (can be overridden by Price Lists)"}
+              ? (t('catalog.pricing.descDynamic') || "Sale price is determined by dynamic quote configuration below")
+              : (t('catalog.pricing.descFixed') || "Default pricing (can be overridden by Price Lists)")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             {!isDynamic && (
               <div className="space-y-2">
-                <Label>Sale Price</Label>
+                <Label>{t('catalog.pricing.salePrice') || 'Sale Price'}</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -53,7 +55,7 @@ export function CatalogItemPricingSection({
               </div>
             )}
             <div className="space-y-2">
-              <Label>Cost</Label>
+              <Label>{t('catalog.pricing.cost') || 'Cost'}</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -62,7 +64,7 @@ export function CatalogItemPricingSection({
               />
             </div>
             <div className="space-y-2 col-span-2">
-              <Label>Currency</Label>
+              <Label>{t('catalog.pricing.currency') || 'Currency'}</Label>
               <Select
                 value={formData.currency || 'USD'}
                 onValueChange={(val) => setFormData({...formData, currency: val})}
@@ -78,7 +80,7 @@ export function CatalogItemPricingSection({
           </div>
         </CardContent>
         <ActionFooter>
-          <Button variant="outline" onClick={handleSave} disabled={saving}>Save Pricing</Button>
+          <Button variant="outline" onClick={handleSave} disabled={saving}>{saving ? (t('common.saving') || "Saving...") : (t('common.savePricing') || "Save Pricing")}</Button>
         </ActionFooter>
       </Card>
 

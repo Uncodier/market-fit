@@ -22,10 +22,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createClient } from "@/lib/supabase/client"
 import { getActiveExpenseAccounts } from "@/app/accounting/chart"
 import { AccountingAccount } from "@/app/types"
+import { upsertPolizaForExpense, removePolizaForSource } from "@/app/accounting/ensure"
+import { useRouter } from "next/navigation"
 
 export default function TransactionsPage() {
   const { currentSite } = useSite()
   const { t } = useLocalization()
+  const router = useRouter()
   
   const [page, setPage] = useState(1)
   const pageSize = 50
@@ -74,7 +77,7 @@ export default function TransactionsPage() {
   // Set breadcrumbs
   useEffect(() => {
     const event = new CustomEvent('breadcrumb:update', {
-      detail: { title: t('layout.sidebar.transactions') || 'Transactions' }
+      detail: { title: t('layout.sidebar.transactions') || 'Expenses' }
     });
     window.dispatchEvent(event);
   }, [t]);
@@ -120,6 +123,32 @@ export default function TransactionsPage() {
     }
   }
 
+  const handlePublish = async (expense: any) => {
+    if (!currentSite?.id) return;
+    if (expense.amount <= 0) {
+      toast.error(t('expenses.error.publishAmount') || "Amount must be greater than zero to publish");
+      return;
+    }
+    try {
+      await upsertPolizaForExpense(expense.id, currentSite.id);
+      toast.success(t('expenses.success.published') || "Expense published to journal");
+      mutate();
+    } catch (e: any) {
+      toast.error(e.message || (t('expenses.error.publish') || "Failed to publish"));
+    }
+  };
+
+  const handleUnpublish = async (expense: any) => {
+    if (!currentSite?.id) return;
+    try {
+      await removePolizaForSource('expense', expense.id);
+      toast.success(t('expenses.success.unpublished') || "Expense unpublished");
+      mutate();
+    } catch (e: any) {
+      toast.error(e.message || (t('expenses.error.unpublish') || "Failed to unpublish"));
+    }
+  };
+
   if (!currentSite) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
@@ -161,10 +190,10 @@ export default function TransactionsPage() {
                 {locations.length > 1 && (
                   <Select value={locationFilter} onValueChange={(val) => { setLocationFilter(val); setPage(1); }}>
                     <SelectTrigger className="w-[180px] h-9">
-                      <SelectValue placeholder="All Locations" />
+                      <SelectValue placeholder={t('expenses.filters.allLocations') || "All Locations"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Locations</SelectItem>
+                      <SelectItem value="all">{t('expenses.filters.allLocations') || "All Locations"}</SelectItem>
                       {locations.map(loc => (
                         <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                       ))}
@@ -199,7 +228,7 @@ export default function TransactionsPage() {
               </div>
             ) : error ? (
               <div className="p-6 text-center text-red-500">
-                Failed to load expenses. {error.message}
+                {t('expenses.error.load') || "Failed to load expenses."} {error.message}
               </div>
             ) : (
               <>
@@ -217,7 +246,7 @@ export default function TransactionsPage() {
                   <TableBody>
                     {data?.data && data.data.length > 0 ? (
                       data.data.map((expense: any) => (
-                        <TableRow key={expense.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(expense)}>
+                        <TableRow key={expense.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/transactions/${expense.id}`)}>
                           <TableCell>
                             <div className="text-sm font-medium">
                               {format(new Date(expense.date), 'MMM d, yyyy')}
@@ -244,7 +273,7 @@ export default function TransactionsPage() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary" className="text-xs">
-                              {expense.type}
+                              {t(`expenses.type.${expense.type}`) || expense.type}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-medium">
@@ -263,6 +292,16 @@ export default function TransactionsPage() {
                                   <Pencil className="mr-2 h-4 w-4" />
                                   {t('common.edit') || "Edit"}
                                 </DropdownMenuItem>
+                                {expense.accounting_state !== 'posted' && (
+                                  <DropdownMenuItem onClick={() => handlePublish(expense)}>
+                                    {t('common.publish') || "Publish"}
+                                  </DropdownMenuItem>
+                                )}
+                                {expense.accounting_state === 'posted' && (
+                                  <DropdownMenuItem onClick={() => handleUnpublish(expense)}>
+                                    {t('common.cancel') || "Cancel"}
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(expense.id)}>
                                   <Trash2 className="mr-2 h-4 w-4" />
                                   {t('common.delete') || "Delete"}

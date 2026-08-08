@@ -13,8 +13,7 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { X } from "@/app/components/ui/icons"
-import { CreditCard, Banknote, HelpCircle, User } from "@/app/components/ui/icons"
+import { X, CreditCard, Banknote, HelpCircle, User, CheckCircle2 } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 
@@ -251,15 +250,26 @@ export function PaymentConfirmationDialog({
                 </div>
               </div>
             ) : (
-              <div className="p-6 bg-green-50/50 rounded-xl border border-green-100 flex flex-col gap-4">
-                <div className="flex items-center justify-between text-green-800">
-                  <span className="font-semibold">{t('pos.payment.status') || 'Status'}</span>
-                  <span className="font-bold text-lg bg-green-200/50 px-3 py-1 rounded-full">{t('pos.payment.fullyPaid') || 'Fully Paid'}</span>
+              <div className="flex flex-col h-full justify-between bg-slate-50 dark:bg-muted/10 rounded-2xl overflow-hidden">
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+                  <div className="w-14 h-14 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-7 h-7 text-green-600" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                      {t('pos.payment.status') || 'Status'}
+                    </p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {t('pos.payment.fullyPaid') || 'Fully Paid'}
+                    </p>
+                  </div>
                 </div>
                 {totalChange > 0 && (
-                  <div className="flex items-center justify-between text-green-800 pt-4 border-t border-green-200/50">
-                    <span className="font-semibold">{t('pos.payment.changeToReturn') || 'Change to Return'}</span>
-                    <span className="text-2xl font-bold">
+                  <div className="flex flex-col items-center justify-center py-6 px-4 bg-green-50/50 dark:bg-green-950/20 border-t border-green-100 dark:border-green-900/50">
+                    <span className="text-sm font-semibold text-green-800/70 dark:text-green-300/70 uppercase tracking-wider mb-2">
+                      {t('pos.payment.changeToReturn') || 'Change to Return'}
+                    </span>
+                    <span className="text-4xl font-bold text-green-600 dark:text-green-400">
                       {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalChange)}
                     </span>
                   </div>
@@ -268,7 +278,60 @@ export function PaymentConfirmationDialog({
             )}
           </div>
           
-          {/* Column 2: Numpad */}
+          {/* Column 2: Summary (Total to Pay & Applied Payments) */}
+          <div className="flex flex-col mt-4 md:mt-0 justify-between bg-slate-50 dark:bg-muted/10 rounded-2xl overflow-hidden h-full">
+            <div className="flex flex-col items-center justify-center py-8 px-4 border-b border-border/40 bg-white/50 dark:bg-background/20">
+              <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('pos.payment.totalToPay') || 'Total to Pay'}</span>
+              <span className="text-5xl font-bold text-foreground">
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalAmount)}
+              </span>
+            </div>
+
+            <div className="flex-1 flex flex-col min-h-0">
+              {payments.length > 0 ? (
+                <div className="flex-1 p-6 overflow-y-auto">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">{t('pos.payment.appliedPayments') || 'Applied Payments'}</h4>
+                  <div className="space-y-1">
+                    {payments.map((p, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-3 border-b border-border/40 last:border-0">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">{getMethodLabel(p.method)}</span>
+                          {p.method === 'cash' && p.change > 0 && (
+                            <span className="text-[11px] text-muted-foreground mt-0.5">
+                              {t('pos.payment.tendered') || 'Tendered'}: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.tendered)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-green-600">
+                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.amount)}
+                          </span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemovePayment(idx)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center p-6 text-muted-foreground/50 text-sm italic">
+                  {t('pos.payment.noPayments') || 'No payments applied yet.'}
+                </div>
+              )}
+            </div>
+
+            {remainingAmount > 0 && (
+              <div className="flex flex-col items-center justify-center py-6 px-4 bg-blue-50/50 dark:bg-blue-950/20 border-t border-blue-100 dark:border-blue-900/50 mt-auto">
+                <span className="text-sm font-semibold text-blue-800/70 dark:text-blue-300/70 uppercase tracking-wider mb-2">{t('pos.payment.remainingBalance') || 'Remaining Balance'}</span>
+                <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(remainingAmount)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Column 3: Numpad */}
           <div className="flex flex-col gap-3 mt-4 md:mt-0 justify-center h-full px-2">
             <div className="grid grid-cols-4 gap-3">
               <div className="col-span-3 grid grid-cols-3 gap-3">
@@ -328,59 +391,6 @@ export function PaymentConfirmationDialog({
                 </Button>
               </div>
             </div>
-          </div>
-
-          {/* Column 3: Summary (Total to Pay & Applied Payments) */}
-          <div className="flex flex-col mt-4 md:mt-0 justify-between bg-slate-50 dark:bg-muted/10 rounded-2xl overflow-hidden h-full">
-            <div className="flex flex-col items-center justify-center py-8 px-4 border-b border-border/40 bg-white/50 dark:bg-background/20">
-              <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t('pos.payment.totalToPay') || 'Total to Pay'}</span>
-              <span className="text-5xl font-bold text-foreground">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalAmount)}
-              </span>
-            </div>
-
-            <div className="flex-1 flex flex-col min-h-0">
-              {payments.length > 0 ? (
-                <div className="flex-1 p-6 overflow-y-auto">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">{t('pos.payment.appliedPayments') || 'Applied Payments'}</h4>
-                  <div className="space-y-1">
-                    {payments.map((p, idx) => (
-                      <div key={idx} className="flex items-center justify-between py-3 border-b border-border/40 last:border-0">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium">{getMethodLabel(p.method)}</span>
-                          {p.method === 'cash' && p.change > 0 && (
-                            <span className="text-[11px] text-muted-foreground mt-0.5">
-                              {t('pos.payment.tendered') || 'Tendered'}: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.tendered)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold text-green-600">
-                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.amount)}
-                          </span>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemovePayment(idx)}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center p-6 text-muted-foreground/50 text-sm italic">
-                  {t('pos.payment.noPayments') || 'No payments applied yet.'}
-                </div>
-              )}
-            </div>
-
-            {remainingAmount > 0 && (
-              <div className="flex flex-col items-center justify-center py-6 px-4 bg-blue-50/50 dark:bg-blue-950/20 border-t border-blue-100 dark:border-blue-900/50 mt-auto">
-                <span className="text-sm font-semibold text-blue-800/70 dark:text-blue-300/70 uppercase tracking-wider mb-2">{t('pos.payment.remainingBalance') || 'Remaining Balance'}</span>
-                <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(remainingAmount)}
-                </span>
-              </div>
-            )}
           </div>
         </div>
 

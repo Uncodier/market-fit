@@ -15,6 +15,12 @@ export async function createTransaction(values: {
   currency?: string;
   siteId: string;
   userId: string;
+  locationId?: string | null;
+  leadId?: string | null;
+  segmentId?: string | null;
+  catalogItemId?: string | null;
+  catalogCategoryId?: string | null;
+  companyId?: string | null;
 }) {
   try {
     const supabase = await createClient()
@@ -28,7 +34,14 @@ export async function createTransaction(values: {
       date: values.date,
       currency: values.currency || "USD",
       site_id: values.siteId,
-      user_id: values.userId
+      user_id: values.userId,
+      location_id: values.locationId || null,
+      lead_id: values.leadId || null,
+      segment_id: values.segmentId || null,
+      catalog_item_id: values.catalogItemId || null,
+      catalog_category_id: values.catalogCategoryId || null,
+      company_id: values.companyId || null,
+      accounting_state: 'pending' // As per plan
     }
 
     const { data, error } = await supabase

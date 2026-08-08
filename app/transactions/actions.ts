@@ -73,6 +73,39 @@ export async function listExpenses(params: {
   }
 }
 
+// Get expense by ID
+export async function getExpenseById(siteId: string, id: string) {
+  try {
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return { error: "Not authenticated" }
+
+    const isMember = await verifySiteMembership(supabase, session.user.id, siteId)
+    if (!isMember) return { error: "Not authorized for this site" }
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select(`
+        *,
+        campaign:campaigns(id, title),
+        location:locations(id, name),
+        lead:leads(id, name, email),
+        catalogItem:catalog_items(id, name),
+        catalogCategory:catalog_categories(id, name)
+      `)
+      .eq("id", id)
+      .eq("site_id", siteId)
+      .single()
+
+    if (error) throw new Error(`Error fetching expense: ${error.message}`)
+
+    return { expense: data, error: null }
+  } catch (error) {
+    console.error("Error in getExpenseById:", error)
+    return { expense: null, error: error instanceof Error ? error.message : "Unknown error" }
+  }
+}
+
 // Create expense
 export async function createExpense(values: {
   siteId: string;
@@ -84,6 +117,9 @@ export async function createExpense(values: {
   currency?: string;
   campaignId?: string | null;
   locationId?: string | null;
+  leadId?: string | null;
+  catalogItemId?: string | null;
+  catalogCategoryId?: string | null;
 }) {
   try {
     const supabase = await createClient()
@@ -98,12 +134,16 @@ export async function createExpense(values: {
       user_id: session.user.id,
       campaign_id: values.campaignId || null,
       location_id: values.locationId || null,
+      lead_id: values.leadId || null,
+      catalog_item_id: values.catalogItemId || null,
+      catalog_category_id: values.catalogCategoryId || null,
       type: values.type,
       amount: values.amount,
       description: values.description || null,
       category: values.category,
       date: values.date,
       currency: values.currency || "USD",
+      accounting_state: 'pending'
     }
 
     const { data, error } = await supabase
@@ -138,6 +178,9 @@ export async function updateExpense(
     date?: string;
     campaignId?: string | null;
     locationId?: string | null;
+    leadId?: string | null;
+    catalogItemId?: string | null;
+    catalogCategoryId?: string | null;
   }
 ) {
   try {
@@ -168,6 +211,9 @@ export async function updateExpense(
     if (values.date !== undefined) updateData.date = values.date
     if (values.campaignId !== undefined) updateData.campaign_id = values.campaignId
     if (values.locationId !== undefined) updateData.location_id = values.locationId
+    if (values.leadId !== undefined) updateData.lead_id = values.leadId
+    if (values.catalogItemId !== undefined) updateData.catalog_item_id = values.catalogItemId
+    if (values.catalogCategoryId !== undefined) updateData.catalog_category_id = values.catalogCategoryId
 
     const { data, error } = await supabase
       .from("transactions")

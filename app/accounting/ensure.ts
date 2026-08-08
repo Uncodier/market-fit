@@ -1,9 +1,214 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { buildFromSale, buildFromExpense, JournalDraft } from './builders'
+import {
+  buildFromSale,
+  buildFromExpense,
+  buildFromPurchase,
+  ExpenseSource,
+  JournalDraft,
+} from './builders'
 import { ensureChartOfAccounts, getAllAccounts } from './chart'
 import { insertJournalEntry } from './entries'
+
+const SALE_SELECT = `
+  *,
+  sale_orders(
+    tax_total,
+    sale_order_items(
+      catalog_item_id,
+      catalog_items(
+        category_id,
+        catalog_categories(income_account_key)
+      )
+    )
+  )
+`
+
+const EXPENSE_SELECT = `
+  *,
+  catalog_category:catalog_categories!catalog_category_id(cogs_account_key),
+  catalog_item:catalog_items!catalog_item_id(
+    category_id,
+    catalog_categories(cogs_account_key)
+  )
+`
+
+const PURCHASE_SELECT = `
+  *,
+  purchase_items(
+    catalog_item_id,
+    name,
+    quantity,
+    unit_cost,
+    subtotal,
+    catalog_items(kind)
+  )
+`
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null
+  return Array.isArray(value) ? value[0] ?? null : value
+}
+
+function normalizeExpenseSource(exp: any): ExpenseSource {
+  const directCategory = firstRelation(exp.catalog_category)
+  const item = firstRelation(exp.catalog_item)
+  const itemCategory = firstRelation(item?.catalog_categories)
+
+  const catalogCategory =
+    directCategory ||
+    (itemCategory ? { cogs_account_key: itemCategory.cogs_account_key } : null)
+
+  const catalogCategoryId =
+    exp.catalog_category_id || item?.category_id || null
+
+  return {
+    ...exp,
+    catalog_category_id: catalogCategoryId,
+    catalog_category: catalogCategory,
+  }
+}
+
+function buildAccountMaps(accounts: Awaited<ReturnType<typeof getAllAccounts>>) {
+  const codeMap = new Map<string, string>()
+  accounts.forEach(a => {
+    if (a.key) codeMap.set(a.key, a.code)
+  })
+  if (!codeMap.has('revenue')) codeMap.set('revenue', '4000')
+  if (!codeMap.has('cogs')) codeMap.set('cogs', '5000')
+  if (!codeMap.has('other')) codeMap.set('other', '5900')
+  return codeMap
+}
+
+type SourceTable = 'sales' | 'transactions' | 'purchases'
+type PolizaSourceType = 'sale' | 'expense' | 'purchase'
+
+export async function upsertPolizaForSale(saleId: string, siteId: string): Promise<void> {
+  await ensureChartOfAccounts(siteId)
+  const supabase = await createClient()
+
+  const { data: sale, error: saleError } = await supabase
+    .from('sales')
+    .select(SALE_SELECT)
+    .eq('id', saleId)
+    .single()
+
+  if (saleError || !sale) {
+    console.error('Failed to fetch sale', saleError)
+    throw new Error('Failed to fetch sale')
+  }
+
+  const accounts = await getAllAccounts(siteId)
+  const codeMap = buildAccountMaps(accounts)
+  const order = sale.sale_orders && sale.sale_orders.length > 0 ? sale.sale_orders[0] : null
+  const draft = buildFromSale(sale, order, codeMap)
+
+  await applyDraftToJournal(`sale:${saleId}`, draft, 'sales', saleId)
+}
+
+export async function upsertPolizaForExpense(transactionId: string, siteId: string): Promise<void> {
+  await ensureChartOfAccounts(siteId)
+  const supabase = await createClient()
+
+  const { data: exp, error: expError } = await supabase
+    .from('transactions')
+    .select(EXPENSE_SELECT)
+    .eq('id', transactionId)
+    .single()
+
+  if (expError || !exp) {
+    console.error('Failed to fetch expense', expError)
+    throw new Error('Failed to fetch expense')
+  }
+
+  const accounts = await getAllAccounts(siteId)
+  const codeMap = buildAccountMaps(accounts)
+  const draft = buildFromExpense(normalizeExpenseSource(exp), codeMap)
+
+  await applyDraftToJournal(`expense:${transactionId}`, draft, 'transactions', transactionId)
+}
+
+export async function upsertPolizaForPurchase(purchaseId: string, siteId: string): Promise<void> {
+  await ensureChartOfAccounts(siteId)
+  const supabase = await createClient()
+
+  const { data: purchase, error } = await supabase
+    .from('purchases')
+    .select(PURCHASE_SELECT)
+    .eq('id', purchaseId)
+    .eq('site_id', siteId)
+    .single()
+
+  if (error || !purchase) {
+    console.error('Failed to fetch purchase', error)
+    throw new Error('Failed to fetch purchase')
+  }
+
+  const items = purchase.purchase_items || []
+  const draft = buildFromPurchase(purchase, items)
+  await applyDraftToJournal(`purchase:${purchaseId}`, draft, 'purchases', purchaseId)
+}
+
+export async function removePolizaForSource(sourceType: PolizaSourceType, sourceId: string): Promise<void> {
+  const supabase = await createClient()
+  const idempotencyKey = `${sourceType}:${sourceId}`
+
+  const { error } = await supabase
+    .from('journal_entries')
+    .delete()
+    .eq('idempotency_key', idempotencyKey)
+
+  if (error) {
+    console.error('Failed to delete journal entry:', error)
+    throw new Error('Failed to delete journal entry')
+  }
+
+  const table: SourceTable =
+    sourceType === 'sale' ? 'sales' : sourceType === 'expense' ? 'transactions' : 'purchases'
+  await supabase
+    .from(table)
+    .update({ accounting_state: 'unpublished' })
+    .eq('id', sourceId)
+}
+
+async function applyDraftToJournal(
+  idempotencyKey: string,
+  draft: JournalDraft | null,
+  sourceTable: SourceTable,
+  sourceId: string
+) {
+  const supabase = await createClient()
+
+  const { data: existing } = await supabase
+    .from('journal_entries')
+    .select('id, source_hash')
+    .eq('idempotency_key', idempotencyKey)
+    .maybeSingle()
+
+  if (!draft) {
+    if (existing) {
+      await supabase.from('journal_entries').delete().eq('id', existing.id)
+    }
+    return
+  }
+
+  if (existing) {
+    if (existing.source_hash === draft.entry.sourceHash) {
+      await supabase.from(sourceTable)
+        .update({ accounting_state: 'posted' })
+        .eq('id', sourceId)
+      return
+    }
+    await supabase.from('journal_entries').delete().eq('id', existing.id)
+  }
+
+  await insertJournalEntry(draft)
+
+  await supabase.from(sourceTable)
+    .update({ accounting_state: 'posted' })
+    .eq('id', sourceId)
+}
 
 export async function ensurePolizasForPeriod(
   siteId: string,
@@ -16,8 +221,9 @@ export async function ensurePolizasForPeriod(
 
   const { data: sales, error: salesError } = await supabase
     .from('sales')
-    .select('*, sale_orders(*)')
+    .select(SALE_SELECT)
     .eq('site_id', siteId)
+    .neq('accounting_state', 'unpublished')
     .gte('sale_date', fromDate)
     .lte('sale_date', toDate)
 
@@ -28,8 +234,9 @@ export async function ensurePolizasForPeriod(
 
   const { data: expenses, error: expensesError } = await supabase
     .from('transactions')
-    .select('*')
+    .select(EXPENSE_SELECT)
     .eq('site_id', siteId)
+    .neq('accounting_state', 'unpublished')
     .gte('date', fromDate)
     .lte('date', toDate)
 
@@ -38,19 +245,27 @@ export async function ensurePolizasForPeriod(
     throw new Error('Failed to fetch expenses')
   }
 
+  const { data: purchases, error: purchasesError } = await supabase
+    .from('purchases')
+    .select(PURCHASE_SELECT)
+    .eq('site_id', siteId)
+    .neq('accounting_state', 'unpublished')
+    .gte('purchase_date', fromDate)
+    .lte('purchase_date', toDate)
+
+  if (purchasesError) {
+    console.error(purchasesError)
+    throw new Error('Failed to fetch purchases')
+  }
+
   const accounts = await getAllAccounts(siteId)
-  const expenseCodeMap = new Map<string, string>()
-  accounts.forEach(a => {
-    if (a.type === 'expense' && a.key) {
-      expenseCodeMap.set(a.key, a.code)
-    }
-  })
+  const codeMap = buildAccountMaps(accounts)
 
   const { data: existingEntries, error: existingError } = await supabase
     .from('journal_entries')
     .select('id, idempotency_key, source_hash')
     .eq('site_id', siteId)
-    .in('source_type', ['sale', 'expense'])
+    .in('source_type', ['sale', 'expense', 'purchase'])
 
   if (existingError) {
     console.error(existingError)
@@ -64,11 +279,12 @@ export async function ensurePolizasForPeriod(
 
   const toDeleteIds: string[] = []
   const toInsert: JournalDraft[] = []
+  const sourcesToMarkPosted: { table: SourceTable; id: string }[] = []
 
   for (const sale of sales || []) {
     const order =
       sale.sale_orders && sale.sale_orders.length > 0 ? sale.sale_orders[0] : null
-    const draft = buildFromSale(sale, order)
+    const draft = buildFromSale(sale, order, codeMap)
     const key = `sale:${sale.id}`
     const existing = existingMap.get(key)
 
@@ -78,15 +294,20 @@ export async function ensurePolizasForPeriod(
     }
 
     if (existing) {
-      if (existing.hash === draft.entry.sourceHash) continue
+      if (existing.hash === draft.entry.sourceHash) {
+        if (sale.accounting_state !== 'posted') {
+          sourcesToMarkPosted.push({ table: 'sales', id: sale.id })
+        }
+        continue
+      }
       toDeleteIds.push(existing.id)
     }
     toInsert.push(draft)
+    sourcesToMarkPosted.push({ table: 'sales', id: sale.id })
   }
 
   for (const exp of expenses || []) {
-    const code = expenseCodeMap.get(exp.category) || '5900'
-    const draft = buildFromExpense(exp, code)
+    const draft = buildFromExpense(normalizeExpenseSource(exp), codeMap)
     const key = `expense:${exp.id}`
     const existing = existingMap.get(key)
 
@@ -96,13 +317,41 @@ export async function ensurePolizasForPeriod(
     }
 
     if (existing) {
-      if (existing.hash === draft.entry.sourceHash) continue
+      if (existing.hash === draft.entry.sourceHash) {
+        if (exp.accounting_state !== 'posted') {
+          sourcesToMarkPosted.push({ table: 'transactions', id: exp.id })
+        }
+        continue
+      }
       toDeleteIds.push(existing.id)
     }
     toInsert.push(draft)
+    sourcesToMarkPosted.push({ table: 'transactions', id: exp.id })
   }
 
-  // Delete first so idempotency_key unique constraint allows re-insert
+  for (const purchase of purchases || []) {
+    const draft = buildFromPurchase(purchase, purchase.purchase_items || [])
+    const key = `purchase:${purchase.id}`
+    const existing = existingMap.get(key)
+
+    if (!draft) {
+      if (existing) toDeleteIds.push(existing.id)
+      continue
+    }
+
+    if (existing) {
+      if (existing.hash === draft.entry.sourceHash) {
+        if (purchase.accounting_state !== 'posted') {
+          sourcesToMarkPosted.push({ table: 'purchases', id: purchase.id })
+        }
+        continue
+      }
+      toDeleteIds.push(existing.id)
+    }
+    toInsert.push(draft)
+    sourcesToMarkPosted.push({ table: 'purchases', id: purchase.id })
+  }
+
   if (toDeleteIds.length > 0) {
     const { error: deleteError } = await supabase
       .from('journal_entries')
@@ -117,5 +366,19 @@ export async function ensurePolizasForPeriod(
 
   for (const draft of toInsert) {
     await insertJournalEntry(draft)
+  }
+
+  const salesToPost = sourcesToMarkPosted.filter(s => s.table === 'sales').map(s => s.id)
+  const txsToPost = sourcesToMarkPosted.filter(s => s.table === 'transactions').map(s => s.id)
+  const purchasesToPost = sourcesToMarkPosted.filter(s => s.table === 'purchases').map(s => s.id)
+
+  if (salesToPost.length > 0) {
+    await supabase.from('sales').update({ accounting_state: 'posted' }).in('id', salesToPost)
+  }
+  if (txsToPost.length > 0) {
+    await supabase.from('transactions').update({ accounting_state: 'posted' }).in('id', txsToPost)
+  }
+  if (purchasesToPost.length > 0) {
+    await supabase.from('purchases').update({ accounting_state: 'posted' }).in('id', purchasesToPost)
   }
 }

@@ -137,19 +137,19 @@ export function ProductTaxesCard({ catalogItemId }: ProductTaxesCardProps) {
     <Card id="product-taxes" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
       <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
         <CardTitle className="text-xl font-semibold flex items-center gap-2">
-          <Tag className="h-5 w-5" /> Taxes
+          <Tag className="h-5 w-5" /> {t("catalog.taxes.title") || "Taxes"}
         </CardTitle>
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
-              <PlusCircle className="mr-2 h-4 w-4" /> Create Tax
+              <PlusCircle className="mr-2 h-4 w-4" /> {t("catalog.taxes.createAction") || "Create Tax"}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>{t("catalog.taxes.create") || "Create New Tax"}</DialogTitle>
               <DialogDescription>
-                Create a new tax rate for this site and automatically apply it to this product.
+                {t("catalog.taxes.createDescription") || "Create a new tax rate for this site and automatically apply it to this product."}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -163,7 +163,7 @@ export function ProductTaxesCard({ catalogItemId }: ProductTaxesCardProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tax-rate">Rate (%)</Label>
+                <Label htmlFor="tax-rate">{t("catalog.taxes.rate") || "Rate (%)"}</Label>
                 <Input
                   id="tax-rate"
                   type="number"
@@ -177,10 +177,10 @@ export function ProductTaxesCard({ catalogItemId }: ProductTaxesCardProps) {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>
-                Cancel
+                {t("common.cancel") || "Cancel"}
               </Button>
               <Button onClick={handleCreateTax} disabled={isSubmitting || !newName.trim()}>
-                {isSubmitting ? "Creating..." : "Create Tax"}
+                {isSubmitting ? (t("common.creating") || "Creating...") : (t("catalog.taxes.createAction") || "Create Tax")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -233,7 +233,7 @@ export function ProductTaxesCard({ catalogItemId }: ProductTaxesCardProps) {
         ) : (
           <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed">
             <p className="text-muted-foreground text-sm">
-              No taxes are configured for this site yet. Create one to apply it to products.
+              {t("catalog.taxes.empty") || "No taxes are configured for this site yet. Create one to apply it to products."}
             </p>
           </div>
         )}

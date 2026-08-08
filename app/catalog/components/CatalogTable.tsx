@@ -9,17 +9,16 @@ import { useSite } from "@/app/context/SiteContext"
 import { updateCatalogAvailability } from "../actions"
 import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Archive, Edit } from "@/app/components/ui/icons"
+import { Archive, Edit, GripHorizontal, Settings } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import Link from "next/link"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/app/components/ui/accordion"
-import { GripVertical } from "lucide-react"
+import { Accordion, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from "@/app/components/ui/accordion"
 
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Button } from "@/app/components/ui/button"
-import { Plus } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { EditCatalogCategoryDialog } from "./EditCatalogCategoryDialog"
 
 interface CatalogTableProps {
   items: CatalogItem[]
@@ -92,6 +91,8 @@ export function CatalogTable({
   const { t } = useLocalization()
   const { currentSite } = useSite()
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({})
+  const [editingCategory, setEditingCategory] = useState<CatalogCategory | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const getVisibleCount = (id: string) => visibleCounts[id] || 10
   const loadMore = (id: string) => setVisibleCounts(prev => ({ ...prev, [id]: getVisibleCount(id) + 10 }))
@@ -174,6 +175,7 @@ export function CatalogTable({
   }
 
   return (
+    <>
     <DragDropContext onDragEnd={handleDragEndInternal}>
       <Droppable droppableId="categories-board" type="category" isDropDisabled={!isDragEnabled}>
         {(provided) => (
@@ -201,21 +203,40 @@ export function CatalogTable({
                         style={provided.draggableProps.style}
                       >
                         <AccordionItem value={section.id} className="border-none">
-                          <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 rounded-t-lg">
-                            <div className="flex items-center gap-3 text-sm flex-1">
-                              {isDragEnabled && !isUncategorized && (
-                                <div
-                                  {...provided.dragHandleProps}
-                                  className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground p-1 -ml-1 rounded"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <GripVertical className="h-4 w-4" />
-                                </div>
-                              )}
-                              <span className="font-semibold">{section.name}</span>
-                              <Badge variant="secondary" className="ml-2 font-normal text-xs">{section.items.length}</Badge>
-                            </div>
-                          </AccordionTrigger>
+                          <AccordionHeader className="flex items-center gap-1 rounded-t-lg hover:bg-muted/30 px-4">
+                            {isDragEnabled && !isUncategorized && (
+                              <div
+                                {...provided.dragHandleProps}
+                                className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground p-1 -ml-1 rounded shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <GripHorizontal className="h-4 w-4" />
+                              </div>
+                            )}
+                            <AccordionTrigger className="px-0 py-3 hover:no-underline flex-1 min-w-0">
+                              <div className="flex items-center gap-3 text-sm flex-1 min-w-0 text-left">
+                                <span className="font-semibold truncate">{section.name}</span>
+                                <Badge variant="secondary" className="ml-2 font-normal text-xs shrink-0">{section.items.length}</Badge>
+                              </div>
+                            </AccordionTrigger>
+                            {!isUncategorized && currentSite?.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                                aria-label="Edit category"
+                                onClick={() => {
+                                  const cat = categories.find(c => c.id === section.id)
+                                  if (cat) {
+                                    setEditingCategory(cat)
+                                    setIsEditDialogOpen(true)
+                                  }
+                                }}
+                              >
+                                <Settings className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </AccordionHeader>
                           <AccordionContent className="p-0">
                             <Droppable droppableId={section.id} type="item" isDropDisabled={!isDragEnabled}>
                               {(providedItem, snapshotItem) => (
@@ -270,7 +291,7 @@ export function CatalogTable({
                                                         {...providedRow.dragHandleProps}
                                                         className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-foreground"
                                                       >
-                                                        <GripVertical className="h-4 w-4" />
+                                                        <GripHorizontal className="h-4 w-4" />
                                                       </div>
                                                     </TableCell>
                                                   )}
@@ -420,5 +441,16 @@ export function CatalogTable({
         )}
       </Droppable>
     </DragDropContext>
+
+    {currentSite?.id && (
+      <EditCatalogCategoryDialog
+        siteId={currentSite.id}
+        category={editingCategory}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onSuccess={onUpdate}
+      />
+    )}
+    </>
   )
 }

@@ -87,6 +87,13 @@ export interface Transaction {
   currency: string;
   siteId: string;
   userId: string;
+  locationId?: string | null;
+  leadId?: string | null;
+  segmentId?: string | null;
+  catalogItemId?: string | null;
+  catalogCategoryId?: string | null;
+  companyId?: string | null;
+  accountingState?: 'pending' | 'posted' | 'unpublished';
   createdAt: string;
   updatedAt: string;
 }
@@ -133,6 +140,8 @@ export interface Sale {
   userId: string;
   buyerUserId?: string | null;
   ownerSiteId?: string | null;
+  companyId?: string | null;
+  accountingState?: 'pending' | 'posted' | 'unpublished';
   createdAt: string;
   updatedAt: string;
   commandId?: string;
@@ -268,6 +277,13 @@ export interface TransactionData {
   currency: string;
   site_id: string;
   user_id: string;
+  location_id?: string | null;
+  lead_id?: string | null;
+  segment_id?: string | null;
+  catalog_item_id?: string | null;
+  catalog_category_id?: string | null;
+  company_id?: string | null;
+  accounting_state?: 'pending' | 'posted' | 'unpublished';
   created_at: string;
   updated_at: string;
 }
@@ -287,7 +303,48 @@ export interface AccountingAccount {
   updatedAt: string;
 }
 
-export type JournalSourceType = 'sale' | 'expense' | 'opening' | 'manual';
+export type JournalSourceType = 'sale' | 'expense' | 'purchase' | 'opening' | 'manual';
+
+export type PurchaseLineInput = {
+  catalogItemId?: string | null
+  name: string
+  quantity: number
+  unitCost: number
+}
+
+export interface PurchaseItem {
+  id: string
+  purchaseId: string
+  siteId: string
+  catalogItemId?: string | null
+  name: string
+  quantity: number
+  unitCost: number
+  subtotal: number
+  catalogItemKind?: string | null
+}
+
+export interface Purchase {
+  id: string
+  siteId: string
+  vendorCompanyId?: string | null
+  vendorName?: string | null
+  userId?: string | null
+  title: string
+  status: 'draft' | 'pending' | 'completed' | 'cancelled'
+  amount: number
+  amountDue: number
+  currency: string
+  payments: Payment[]
+  purchaseDate: string
+  locationId?: string | null
+  accountingState: 'pending' | 'posted' | 'unpublished'
+  stockReceived: boolean
+  notes?: string | null
+  items?: PurchaseItem[]
+  createdAt: string
+  updatedAt: string
+}
 
 export interface JournalEntry {
   id: string;
@@ -311,6 +368,12 @@ export interface JournalLine {
   debit: number;
   credit: number;
   locationId: string | null;
+  leadId?: string | null;
+  campaignId?: string | null;
+  segmentId?: string | null;
+  catalogItemId?: string | null;
+  catalogCategoryId?: string | null;
+  companyId?: string | null;
   createdAt: string;
 }
 
@@ -340,6 +403,8 @@ export interface SaleData {
   user_id: string;
   buyer_user_id?: string | null;
   owner_site_id?: string | null;
+  company_id?: string | null;
+  accounting_state?: 'pending' | 'posted' | 'unpublished';
   created_at: string;
   updated_at: string;
 }
@@ -444,6 +509,8 @@ export interface CatalogCategory {
   name: string;
   description?: string;
   sort_order: number;
+  income_account_key?: string | null;
+  cogs_account_key?: string | null;
   created_at: string;
   updated_at: string;
 }

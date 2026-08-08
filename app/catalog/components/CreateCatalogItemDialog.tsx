@@ -232,7 +232,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                 {...register("target_sale_price")} 
               />
               <p className="text-xs text-muted-foreground mt-1">
-                {t("catalog.item.priceHint")}
+                {t("catalog.item.priceHint") || "If left blank, pricing might be dynamic."}
               </p>
             </div>
             <div className="space-y-2">

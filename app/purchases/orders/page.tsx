@@ -13,7 +13,7 @@ export default function PurchasesOrdersPage() {
 
   useEffect(() => {
     const event = new CustomEvent('breadcrumb:update', {
-      detail: { title: t('layout.sidebar.purchasesOrders') || 'Purchases' }
+      detail: { title: t('layout.sidebar.purchasesOrders') || 'Online purchases' }
     });
     window.dispatchEvent(event);
   }, [t]);

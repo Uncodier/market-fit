@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server"
+import { attachSiteSettings } from "@/app/marketplace/attach-site-settings"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('catalog_items')
-      .select('*, site:sites!inner(id, name, logo_url, settings), raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))', { count: 'exact' })
+      .select('*, site:sites!inner(id, name, logo_url), raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))', { count: 'exact' })
       .eq('is_marketplace_listed', true)
       .eq('status', 'active')
       .eq('availability_status', 'available')
@@ -52,7 +53,8 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    const enrichedData = data?.map(item => ({
+    const withSettings = await attachSiteSettings(supabase, data || [])
+    const enrichedData = withSettings.map(item => ({
       ...item,
       item_specs: (item.raw_specs || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((cis: any) => cis.item_spec).filter(Boolean),
     }))

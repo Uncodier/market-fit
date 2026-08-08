@@ -5,6 +5,7 @@ import {
   Accordion,
   AccordionContent,
   AccordionItem,
+  AccordionHeader,
   AccordionTrigger,
 } from "@/app/components/ui/accordion"
 import { ExternalLink, Info } from "@/app/components/ui/icons"
@@ -94,30 +95,32 @@ export function RequirementStatusList({
               value={status.id}
               className="border-none"
             >
-              <AccordionTrigger className="hover:no-underline py-3 px-0 flex flex-row-reverse justify-end gap-3 hover:bg-transparent [&>svg]:text-muted-foreground/50 [&>svg]:mt-1 font-normal items-start">
-                <div className="flex flex-col gap-1.5 w-full text-left">
-                  <span className="text-muted-foreground/60 text-[11px] font-mono tracking-wider flex gap-2">
-                    <span>
-                      {new Date(status.created_at).toLocaleDateString(undefined, {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit'
-                      })}
+              <AccordionHeader>
+                <AccordionTrigger className="hover:no-underline py-3 px-0 flex flex-row-reverse justify-end gap-3 hover:bg-transparent [&>svg]:text-muted-foreground/50 [&>svg]:mt-1 font-normal items-start">
+                  <div className="flex flex-col gap-1.5 w-full text-left">
+                    <span className="text-muted-foreground/60 text-[11px] font-mono tracking-wider flex gap-2">
+                      <span>
+                        {new Date(status.created_at).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit'
+                        })}
+                      </span>
+                      <span>
+                        {new Date(status.created_at).toLocaleTimeString(undefined, {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: false
+                        })}
+                      </span>
                     </span>
-                    <span>
-                      {new Date(status.created_at).toLocaleTimeString(undefined, {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        hour12: false
-                      })}
+                    <span className="text-blue-500/90 font-semibold text-sm leading-snug">
+                      {status.stage}
                     </span>
-                  </span>
-                  <span className="text-blue-500/90 font-semibold text-sm leading-snug">
-                    {status.stage}
-                  </span>
-                </div>
-              </AccordionTrigger>
+                  </div>
+                </AccordionTrigger>
+              </AccordionHeader>
               <AccordionContent className="px-0 pb-2">
                 <div className="pl-6 space-y-3 border-l border-border/50 ml-[7px] mt-1 mb-2">
                   {status.message && (

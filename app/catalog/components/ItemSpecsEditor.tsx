@@ -262,7 +262,7 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
                         <div className="flex items-start gap-4">
                           <div className="flex-1 space-y-4">
                             <div className="space-y-2">
-                              <Label>Name</Label>
+                              <Label>{t('catalog.specs.name') || 'Name'}</Label>
                               <Input 
                                 value={spec.name || ''} 
                                 onChange={e => handleUpdateSpecMedia(spec, 'name' as any, e.target.value)}
@@ -271,7 +271,7 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
                             </div>
 
                             <div className="space-y-2">
-                              <Label>Image</Label>
+                              <Label>{t('catalog.specs.image') || 'Image'}</Label>
                               <ImageUpload 
                                 value={spec.image_url || ''} 
                                 onChange={val => handleUpdateSpecMedia(spec, 'image_url', val)} 
@@ -280,7 +280,7 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
                             </div>
                             
                             <div className="space-y-2">
-                              <Label>Video URL</Label>
+                              <Label>{t('catalog.specs.videoUrl') || 'Video URL'}</Label>
                               <Input 
                                 value={spec.video_url || ''} 
                                 onChange={e => handleUpdateSpecMedia(spec, 'video_url', e.target.value)}
@@ -291,14 +291,14 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
                             {cat.slug === 'venue' && (
                               <>
                                 <div className="space-y-2">
-                                  <Label>Address</Label>
+                                  <Label>{t('catalog.specs.address') || 'Address'}</Label>
                                   <Input 
                                     value={spec.address || ''} 
                                     onChange={e => handleUpdateSpecMedia(spec, 'address', e.target.value)}
                                   />
                                 </div>
                                 <div className="space-y-2">
-                                  <Label>City</Label>
+                                  <Label>{t('catalog.specs.city') || 'City'}</Label>
                                   <Input 
                                     value={spec.city || ''} 
                                     onChange={e => handleUpdateSpecMedia(spec, 'city', e.target.value)}

@@ -48,7 +48,7 @@ export function SyncJournalEntriesDialog({ open, onOpenChange, onSynced }: SyncJ
         <DialogHeader>
           <DialogTitle>{t('accounting.syncEntries') || "Sync Journal Entries"}</DialogTitle>
           <DialogDescription>
-            {t('accounting.syncEntriesDesc') || "Automatically generate or update journal entries from sales and expenses in the selected period."}
+            {t('accounting.syncEntriesDesc') || "Automatically generate or update journal entries from sales, purchases, and expenses in the selected period."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

@@ -44,6 +44,13 @@ export function transformTransactionData(data: TransactionData): Transaction {
     currency: data.currency,
     siteId: data.site_id,
     userId: data.user_id,
+    locationId: data.location_id,
+    leadId: data.lead_id,
+    segmentId: data.segment_id,
+    catalogItemId: data.catalog_item_id,
+    catalogCategoryId: data.catalog_category_id,
+    companyId: data.company_id,
+    accountingState: data.accounting_state,
     createdAt: data.created_at,
     updatedAt: data.updated_at
   }
@@ -74,6 +81,8 @@ export function transformSaleData(data: SaleData): Sale {
     leadName: data.lead_name || null,
     campaignId: data.campaign_id,
     segmentId: data.segment_id,
+    companyId: data.company_id,
+    accountingState: data.accounting_state,
     saleDate: data.sale_date,
     paymentMethod: data.payment_method || "other",
     source: data.source || "online",

@@ -1,4 +1,4 @@
-import { buildFromSale, buildFromExpense } from '@/app/accounting/builders'
+import { buildFromSale, buildFromExpense, buildFromPurchase } from '@/app/accounting/builders'
 
 describe('accounting builders', () => {
   it('builds a balanced sale entry with tax and partial payment', () => {
@@ -53,18 +53,27 @@ describe('accounting builders', () => {
         currency: 'USD',
         description: 'Ads',
       },
-      '5200'
+      new Map([['advertising', '5200'], ['other', '5900']])
     )
 
     expect(draft).not.toBeNull()
-    expect(draft!.lines).toEqual([
-      { accountCode: '5200', debit: 40, credit: 0, locationId: null },
-      { accountCode: '1000', debit: 0, credit: 40, locationId: null },
-    ])
+    expect(draft!.lines.find(l => l.accountCode === '5200')).toMatchObject({
+      debit: 40,
+      credit: 0,
+    })
+    expect(draft!.lines.find(l => l.accountCode === '1000')).toMatchObject({
+      debit: 0,
+      credit: 40,
+    })
     expect(draft!.entry.idempotencyKey).toBe('expense:exp-1')
   })
 
   it('changes source hash when category changes', () => {
+    const map = new Map([
+      ['advertising', '5200'],
+      ['software', '5300'],
+      ['other', '5900'],
+    ])
     const a = buildFromExpense(
       {
         id: 'exp-1',
@@ -74,7 +83,7 @@ describe('accounting builders', () => {
         date: '2026-07-02',
         currency: 'USD',
       },
-      '5200'
+      map
     )
     const b = buildFromExpense(
       {
@@ -85,8 +94,89 @@ describe('accounting builders', () => {
         date: '2026-07-02',
         currency: 'USD',
       },
-      '5300'
+      map
     )
     expect(a!.entry.sourceHash).not.toBe(b!.entry.sourceHash)
+  })
+
+  it('builds purchase with inventory + AP for unpaid product bill', () => {
+    const draft = buildFromPurchase(
+      {
+        id: 'pur-1',
+        site_id: 'site-1',
+        status: 'pending',
+        amount: 100,
+        amount_due: 100,
+        purchase_date: '2026-08-07',
+        currency: 'USD',
+      },
+      [
+        {
+          catalog_item_id: 'item-1',
+          name: 'Widget',
+          quantity: 2,
+          unit_cost: 50,
+          subtotal: 100,
+          catalog_items: { kind: 'product' },
+        },
+      ]
+    )
+
+    expect(draft).not.toBeNull()
+    const debits = draft!.lines.reduce((s, l) => s + (l.debit || 0), 0)
+    const credits = draft!.lines.reduce((s, l) => s + (l.credit || 0), 0)
+    expect(debits).toBeCloseTo(credits, 2)
+    expect(draft!.lines.find(l => l.accountCode === '1200')?.debit).toBe(100)
+    expect(draft!.lines.find(l => l.accountCode === '2200')?.credit).toBe(100)
+    expect(draft!.entry.sourceType).toBe('purchase')
+    expect(draft!.entry.idempotencyKey).toBe('purchase:pur-1')
+  })
+
+  it('splits purchase cash/AP and inventory/operating', () => {
+    const draft = buildFromPurchase(
+      {
+        id: 'pur-2',
+        site_id: 'site-1',
+        status: 'pending',
+        amount: 150,
+        amount_due: 50,
+        purchase_date: '2026-08-07',
+        currency: 'USD',
+      },
+      [
+        {
+          catalog_item_id: 'item-1',
+          subtotal: 100,
+          catalog_items: { kind: 'product' },
+        },
+        {
+          catalog_item_id: null,
+          name: 'Consulting',
+          subtotal: 50,
+        },
+      ]
+    )
+
+    expect(draft).not.toBeNull()
+    expect(draft!.lines.find(l => l.accountCode === '1200')?.debit).toBe(100)
+    expect(draft!.lines.find(l => l.accountCode === '5600')?.debit).toBe(50)
+    expect(draft!.lines.find(l => l.accountCode === '1000')?.credit).toBe(100)
+    expect(draft!.lines.find(l => l.accountCode === '2200')?.credit).toBe(50)
+  })
+
+  it('returns null for draft purchases', () => {
+    expect(
+      buildFromPurchase(
+        {
+          id: 'pur-3',
+          site_id: 'site-1',
+          status: 'draft',
+          amount: 10,
+          amount_due: 10,
+          purchase_date: '2026-08-07',
+        },
+        []
+      )
+    ).toBeNull()
   })
 })

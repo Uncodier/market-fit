@@ -82,6 +82,7 @@ export const NAVIGATION_AREAS: Record<
     categoryKey: "layout.category.buying",
     items: [
       { key: "purchasesOrders", href: "/purchases/orders" },
+      { key: "bills", href: "/bills" },
       { key: "transactions", href: "/transactions" },
       { key: "purchasesSubscriptions", href: "/purchases/subscriptions" },
       { key: "purchasesQuotes", href: "/purchases/quotes" },

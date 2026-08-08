@@ -62,7 +62,7 @@ export default function BuyerLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { label: t("buyer.layout.home") || "Home", href: "/buyer", icon: <Home size={16} />, exact: true },
-    { label: t("buyer.layout.purchases") || "Purchases", href: "/buyer/orders", icon: <ShoppingCart size={16} /> },
+    { label: t("buyer.layout.purchases") || "Online purchases", href: "/buyer/orders", icon: <ShoppingCart size={16} /> },
     { label: t("buyer.layout.subscriptions") || "Subscriptions", href: "/buyer/subscriptions", icon: <Repeat size={16} /> },
     { label: t("buyer.layout.quotations") || "Quotations", href: "/buyer/quotes", icon: <FileText size={16} /> },
     { label: t("buyer.layout.assets") || "Assets", href: "/buyer/library", icon: <Archive size={16} /> },

@@ -215,12 +215,26 @@ export async function checkoutCart({
       }
     }
 
-    // 2. Resolve default price list if lead has one
+    // 2. Resolve default price list and dims if lead has one
     let finalPriceListId = priceListId;
-    if (!finalPriceListId && finalLeadId) {
-      const { data: lead } = await (isAdmin ? supabaseAdmin : supabase).from("leads").select("default_price_list_id").eq("id", finalLeadId).single();
-      if (lead?.default_price_list_id) {
-        finalPriceListId = lead.default_price_list_id;
+    let leadCampaignId = null;
+    let leadSegmentId = null;
+    let leadCompanyId = null;
+
+    if (finalLeadId) {
+      const { data: lead } = await (isAdmin ? supabaseAdmin : supabase)
+        .from("leads")
+        .select("default_price_list_id, campaign_id, segment_id, company_id")
+        .eq("id", finalLeadId)
+        .single();
+      
+      if (lead) {
+        if (!finalPriceListId && lead.default_price_list_id) {
+          finalPriceListId = lead.default_price_list_id;
+        }
+        leadCampaignId = lead.campaign_id;
+        leadSegmentId = lead.segment_id;
+        leadCompanyId = lead.company_id;
       }
     }
 
@@ -423,6 +437,9 @@ export async function checkoutCart({
         buyer_user_id: buyerUserId || null,
         owner_site_id: ownerSiteId || null,
         location_id: finalOriginLocationId || null,
+        campaign_id: leadCampaignId,
+        segment_id: leadSegmentId,
+        company_id: leadCompanyId,
         title: `Order - ${new Date().toLocaleDateString()}`,
         status: saleInitialStatus,
         amount: orderTotal,
@@ -499,6 +516,10 @@ export async function checkoutCart({
         buyer_user_id: buyerUserId || null,
         owner_site_id: ownerSiteId || null,
         location_id: finalOriginLocationId || null,
+        campaign_id: leadCampaignId,
+        segment_id: leadSegmentId,
+        company_id: leadCompanyId,
+        accounting_state: 'pending',
         title: `Order - ${new Date().toLocaleDateString()}`,
         status: saleInitialStatus,
         amount: orderTotal,

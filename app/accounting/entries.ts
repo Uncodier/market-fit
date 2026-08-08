@@ -31,7 +31,13 @@ export async function insertJournalEntry(draft: JournalDraft) {
     account_code: l.accountCode,
     debit: l.debit,
     credit: l.credit,
-    location_id: l.locationId,
+    location_id: l.locationId ?? null,
+    lead_id: l.leadId ?? null,
+    campaign_id: l.campaignId ?? null,
+    segment_id: l.segmentId ?? null,
+    catalog_item_id: l.catalogItemId ?? null,
+    catalog_category_id: l.catalogCategoryId ?? null,
+    company_id: l.companyId ?? null,
   }))
 
   const { error: linesError } = await supabase.from('journal_lines').insert(linesToInsert)

@@ -95,7 +95,8 @@ export function TopBarTitle({
       'accounting': t('layout.sidebar.chartOfAccounts') || 'Chart of Accounts',
       'finance': t('layout.sidebar.financeReports') || 'Finance Reports',
       'purchases': t('layout.category.buying') || 'Purchases',
-      'transactions': t('layout.sidebar.transactions') || 'Transactions'
+      'bills': t('layout.sidebar.bills') || 'Bills',
+      'transactions': t('layout.sidebar.transactions') || 'Expenses'
     }
     
     return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)

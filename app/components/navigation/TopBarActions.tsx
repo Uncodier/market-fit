@@ -2534,6 +2534,28 @@ The success of this experiment will be measured by:
         </Button>
       )}
 
+      {/* New Bill button in toolbar */}
+      {pathname.startsWith("/bills") && currentSite && (
+        <Button
+          size="default"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          onClick={() => {
+            if (pathname === "/bills") {
+              window.dispatchEvent(new CustomEvent("bills:create"))
+            } else {
+              router.push("/bills")
+              setTimeout(() => window.dispatchEvent(new CustomEvent("bills:create")), 100)
+            }
+          }}
+          title={t("bills.create.button") || "New bill"}
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden md:inline font-inter font-medium text-sm">
+            {t("bills.create.button") || "New bill"}
+          </span>
+        </Button>
+      )}
+
       {/* Add Expense button in toolbar */}
       {pathname === "/transactions" && currentSite && (
         <Button

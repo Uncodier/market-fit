@@ -10,9 +10,8 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { Badge } from "@/app/components/ui/badge"
 import { FinancialStats } from "@/app/components/campaigns/financial-stats"
 import { getCampaignTransactions } from "@/app/campaigns/actions/transactions/read"
-import { createTransaction } from "@/app/campaigns/actions/transactions/create"
-import { updateTransaction } from "@/app/campaigns/actions/transactions/update"
 import { deleteTransaction } from "@/app/campaigns/actions/transactions/delete"
+import { CreateExpenseDialog } from "@/app/transactions/components/CreateExpenseDialog"
 import { Revenue, Budget } from "@/app/types"
 import { useSite } from "@/app/context/SiteContext"
 import { CampaignSales } from "./campaign-sales"
@@ -53,13 +52,6 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
   const [isEditing, setIsEditing] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
-  const [newTransaction, setNewTransaction] = useState({
-    category: "content",
-    amount: "",
-    type: "fixed",
-    date: new Date().toISOString().split('T')[0],
-    notes: ""
-  });
   const [financialData, setFinancialData] = useState<{
     revenue: Revenue;
     budget: Budget;
@@ -77,7 +69,7 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
   
   // Add states for edit and delete dialogs
   const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
-  const [isEditingTransaction, setIsEditingTransaction] = useState(false);
+  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [isDeletingTransaction, setIsDeletingTransaction] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   
@@ -98,13 +90,26 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
         return;
       }
       
-      // Transformar las transacciones al formato esperado por la tabla
       const formattedTransactions = result.data?.map(transaction => ({
+        ...transaction,
         id: transaction.id,
-        category: transaction.category, // Usar category directamente
+        category: transaction.category,
         amount: transaction.amount,
         type: transaction.type,
-        date: transaction.date
+        date: transaction.date,
+        campaignId: transaction.campaignId,
+        campaign_id: transaction.campaignId,
+        locationId: transaction.locationId,
+        location_id: transaction.locationId,
+        leadId: transaction.leadId,
+        lead_id: transaction.leadId,
+        catalogItemId: transaction.catalogItemId,
+        catalog_item_id: transaction.catalogItemId,
+        catalogCategoryId: transaction.catalogCategoryId,
+        catalog_category_id: transaction.catalogCategoryId,
+        accountingState: transaction.accountingState,
+        accounting_state: transaction.accountingState,
+        description: transaction.description,
       })) || [];
       
       setTransactions(formattedTransactions);
@@ -218,72 +223,6 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
     }
   };
 
-  const handleTransactionChange = (field: string, value: string) => {
-    setNewTransaction(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleAddTransaction = async () => {
-    if (!newTransaction.amount || parseFloat(newTransaction.amount) <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-
-    const categoryLabels: Record<string, string> = {
-      "content": "Content Creation",
-      "advertising": "Digital Advertising",
-      "tools": "Marketing Tools",
-      "freelance": "Freelancer Support",
-      "adspend": "Ad Spend"
-    };
-
-    try {
-      if (!currentSite?.id) {
-        toast.error("Site information is missing");
-        return;
-      }
-
-      // Create the transaction data to send to the database
-      const transactionData = {
-        campaignId: campaign.id,
-        type: newTransaction.type as 'fixed' | 'variable',
-        amount: parseFloat(newTransaction.amount),
-        description: newTransaction.notes || categoryLabels[newTransaction.category] || newTransaction.category,
-        category: newTransaction.category,
-        date: newTransaction.date,
-        currency: "USD",
-        siteId: currentSite.id,
-        userId: currentSite.user_id // Using the site's user ID
-      };
-
-      // Save expense to the database
-      const result = await createTransaction(transactionData);
-      
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Expense added successfully");
-      
-      // Reset form
-      setNewTransaction({
-        category: "content",
-        amount: "",
-        type: "fixed",
-        date: new Date().toISOString().split('T')[0],
-        notes: ""
-      });
-      
-      // Después de agregar un gasto, simplemente volvemos a cargar las transacciones
-      await loadTransactions();
-    } catch (error) {
-      console.error("Error adding expense:", error);
-      toast.error("Failed to add expense. Please try again.");
-    }
-  };
 
   const handleSave = () => {
     // First ensure we have the correct calculated values
@@ -342,59 +281,17 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
 
   // Add handlers for edit and delete
   const handleEditTransaction = (transaction: any) => {
-    setEditingTransaction({
-      id: transaction.id,
-      category: transaction.category,
-      amount: transaction.amount.toString(),
-      type: transaction.type,
-      date: transaction.date
-    });
-    setIsEditingTransaction(true);
+    // we need to set the full transaction so CreateExpenseDialog can use it
+    setEditingTransaction(transaction);
+    setIsExpenseDialogOpen(true);
   };
   
-  const handleEditTransactionChange = (field: string, value: string) => {
-    setEditingTransaction((prev: any) => ({
-      ...prev,
-      [field]: value
-    }));
-  };
   
-  const handleUpdateTransaction = async () => {
-    if (!editingTransaction || !editingTransaction.id) {
-      toast.error("Expense data is missing");
-      return;
-    }
-    
-    if (!editingTransaction.amount || parseFloat(editingTransaction.amount) <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-    
-    try {
-      const result = await updateTransaction(editingTransaction.id, {
-        type: editingTransaction.type as 'fixed' | 'variable',
-        amount: parseFloat(editingTransaction.amount),
-        description: editingTransaction.category,
-        category: editingTransaction.category,
-        date: editingTransaction.date
-      });
-      
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-      
-      toast.success("Expense updated successfully");
-      setIsEditingTransaction(false);
-      
-      // Reload transactions to reflect the update
-      loadTransactions();
-    } catch (error) {
-      console.error("Error updating transaction:", error);
-      toast.error("Failed to update expense");
-    }
+  const handleCreateNewExpense = () => {
+    setEditingTransaction({ campaign_id: campaign.id, campaignId: campaign.id });
+    setIsExpenseDialogOpen(true);
   };
-  
+
   const handleDeleteTransaction = async () => {
     if (!transactionToDelete) {
       toast.error("Expense ID is missing");
@@ -434,128 +331,10 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
           <div>
             <div className="flex items-center justify-between mb-4 md:mb-6">
               <h3 className="text-lg font-medium">Campaign Costs</h3>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Expense
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="sm:max-w-[425px]">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Add New Expense</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Add a new expense to the campaign cost breakdown.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="transaction-category">Category</Label>
-                      <Select 
-                        defaultValue={newTransaction.category}
-                        onValueChange={(value) => handleTransactionChange('category', value)}
-                      >
-                        <SelectTrigger id="transaction-category" className="h-12">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {/* Marketing expenses */}
-                          <SelectItem value="advertising">Advertising</SelectItem>
-                          <SelectItem value="content">Content Creation</SelectItem>
-                          <SelectItem value="adspend">Ad Spend</SelectItem>
-                          <SelectItem value="seo">SEO Services</SelectItem>
-                          <SelectItem value="social">Social Media Marketing</SelectItem>
-                          <SelectItem value="email">Email Marketing</SelectItem>
-                          <SelectItem value="events">Events and Conferences</SelectItem>
-                          <SelectItem value="print">Print Materials</SelectItem>
-                          <SelectItem value="sponsorship">Sponsorships</SelectItem>
-                          
-                          {/* Sales expenses */}
-                          <SelectItem value="sales_commission">Sales Commissions</SelectItem>
-                          <SelectItem value="sales_travel">Sales Travel</SelectItem>
-                          <SelectItem value="crm">CRM and Sales Tools</SelectItem>
-                          
-                          {/* Technology expenses */}
-                          <SelectItem value="software">Software Subscriptions</SelectItem>
-                          <SelectItem value="hosting">Hosting and Infrastructure</SelectItem>
-                          <SelectItem value="tools">Marketing Tools</SelectItem>
-                          
-                          {/* Operational expenses */}
-                          <SelectItem value="freelance">Freelancer Support</SelectItem>
-                          <SelectItem value="agency">Agency Fees</SelectItem>
-                          <SelectItem value="consulting">Consulting Services</SelectItem>
-                          <SelectItem value="research">Market Research</SelectItem>
-                          <SelectItem value="utilities">Utilities</SelectItem>
-                          <SelectItem value="rent">Office Rent</SelectItem>
-                          
-                          {/* Administrative expenses */}
-                          <SelectItem value="salaries">Salaries and Benefits</SelectItem>
-                          <SelectItem value="insurance">Insurance</SelectItem>
-                          <SelectItem value="legal">Legal and Professional</SelectItem>
-                          <SelectItem value="travel">Travel and Entertainment</SelectItem>
-                          <SelectItem value="training">Training and Development</SelectItem>
-                          
-                          {/* Other expenses */}
-                          <SelectItem value="other">Other Expenses</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="transaction-amount">Amount</Label>
-                      <div className="flex items-center h-12 border rounded-md border-input px-3 bg-background">
-                        <span className="text-sm text-muted-foreground mr-2">$</span>
-                        <Input 
-                          id="transaction-amount" 
-                          type="number" 
-                          placeholder="0"
-                          value={newTransaction.amount}
-                          onChange={(e) => handleTransactionChange('amount', e.target.value)}
-                          className="border-0 h-full p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="transaction-type">Type</Label>
-                      <Select 
-                        defaultValue={newTransaction.type}
-                        onValueChange={(value) => handleTransactionChange('type', value)}
-                      >
-                        <SelectTrigger id="transaction-type" className="h-12">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="fixed">Fixed</SelectItem>
-                          <SelectItem value="variable">Variable</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="transaction-date">Date</Label>
-                      <Input 
-                        id="transaction-date" 
-                        type="date" 
-                        value={newTransaction.date}
-                        onChange={(e) => handleTransactionChange('date', e.target.value)}
-                        max={new Date().toISOString().split('T')[0]}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="transaction-notes">Notes (Optional)</Label>
-                      <Input 
-                        id="transaction-notes" 
-                        type="text" 
-                        placeholder="Enter any additional details"
-                        value={newTransaction.notes}
-                        onChange={(e) => handleTransactionChange('notes', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleAddTransaction}>Add Expense</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button variant="outline" size="sm" onClick={handleCreateNewExpense}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Expense
+              </Button>
             </div>
             
             <div className="rounded-md border overflow-hidden">
@@ -679,112 +458,15 @@ export function FinancialDetails({ campaign, onUpdateCampaign }: FinancialDetail
       </div>
 
       {/* Edit Expense Dialog */}
-      <AlertDialog open={isEditingTransaction} onOpenChange={setIsEditingTransaction}>
-        <AlertDialogContent className="sm:max-w-[425px]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Edit Expense</AlertDialogTitle>
-            <AlertDialogDescription>
-              Update the expense details below.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-transaction-category">Category</Label>
-              <Select 
-                value={editingTransaction?.category || ""}
-                onValueChange={(value) => handleEditTransactionChange('category', value)}
-              >
-                <SelectTrigger id="edit-transaction-category" className="h-12">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Marketing expenses */}
-                  <SelectItem value="advertising">Advertising</SelectItem>
-                  <SelectItem value="content">Content Creation</SelectItem>
-                  <SelectItem value="adspend">Ad Spend</SelectItem>
-                  <SelectItem value="seo">SEO Services</SelectItem>
-                  <SelectItem value="social">Social Media Marketing</SelectItem>
-                  <SelectItem value="email">Email Marketing</SelectItem>
-                  <SelectItem value="events">Events and Conferences</SelectItem>
-                  <SelectItem value="print">Print Materials</SelectItem>
-                  <SelectItem value="sponsorship">Sponsorships</SelectItem>
-                  
-                  {/* Sales expenses */}
-                  <SelectItem value="sales_commission">Sales Commissions</SelectItem>
-                  <SelectItem value="sales_travel">Sales Travel</SelectItem>
-                  <SelectItem value="crm">CRM and Sales Tools</SelectItem>
-                  
-                  {/* Technology expenses */}
-                  <SelectItem value="software">Software Subscriptions</SelectItem>
-                  <SelectItem value="hosting">Hosting and Infrastructure</SelectItem>
-                  <SelectItem value="tools">Marketing Tools</SelectItem>
-                  
-                  {/* Operational expenses */}
-                  <SelectItem value="freelance">Freelancer Support</SelectItem>
-                  <SelectItem value="agency">Agency Fees</SelectItem>
-                  <SelectItem value="consulting">Consulting Services</SelectItem>
-                  <SelectItem value="research">Market Research</SelectItem>
-                  <SelectItem value="utilities">Utilities</SelectItem>
-                  <SelectItem value="rent">Office Rent</SelectItem>
-                  
-                  {/* Administrative expenses */}
-                  <SelectItem value="salaries">Salaries and Benefits</SelectItem>
-                  <SelectItem value="insurance">Insurance</SelectItem>
-                  <SelectItem value="legal">Legal and Professional</SelectItem>
-                  <SelectItem value="travel">Travel and Entertainment</SelectItem>
-                  <SelectItem value="training">Training and Development</SelectItem>
-                  
-                  {/* Other expenses */}
-                  <SelectItem value="other">Other Expenses</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-transaction-amount">Amount</Label>
-              <div className="flex items-center h-12 border rounded-md border-input px-3 bg-background">
-                <span className="text-sm text-muted-foreground mr-2">$</span>
-                <Input 
-                  id="edit-transaction-amount" 
-                  type="number" 
-                  placeholder="0"
-                  value={editingTransaction?.amount || ""}
-                  onChange={(e) => handleEditTransactionChange('amount', e.target.value)}
-                  className="border-0 h-full p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-transaction-type">Type</Label>
-              <Select 
-                value={editingTransaction?.type || "fixed"}
-                onValueChange={(value) => handleEditTransactionChange('type', value)}
-              >
-                <SelectTrigger id="edit-transaction-type" className="h-12">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixed">Fixed</SelectItem>
-                  <SelectItem value="variable">Variable</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-transaction-date">Date</Label>
-              <Input 
-                id="edit-transaction-date" 
-                type="date" 
-                value={editingTransaction?.date || ""}
-                onChange={(e) => handleEditTransactionChange('date', e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleUpdateTransaction}>Update Expense</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {currentSite?.id && (
+        <CreateExpenseDialog
+          siteId={currentSite.id}
+          open={isExpenseDialogOpen}
+          onOpenChange={setIsExpenseDialogOpen}
+          onSuccess={loadTransactions}
+          expenseToEdit={editingTransaction}
+        />
+      )}
 
       {/* Delete Expense Confirmation Dialog */}
       <AlertDialog open={isDeletingTransaction} onOpenChange={setIsDeletingTransaction}>

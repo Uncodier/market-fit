@@ -77,8 +77,8 @@ export function BuyerHomeView({
       href: `${basePath}/profile`
     },
     {
-      title: t("buyer.home.cards.purchases.title") || "Purchases",
-      description: t("buyer.home.cards.purchases.desc") || "Track orders and view history.",
+      title: t("buyer.home.cards.purchases.title") || "Online purchases",
+      description: t("buyer.home.cards.purchases.desc") || "Marketplace orders and purchase history.",
       icon: <ShoppingCart className="w-6 h-6 text-foreground/70" />,
       href: `${basePath}/orders`,
       count: data?.counts?.orders,

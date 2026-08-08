@@ -278,7 +278,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                   }))
                 }}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger className="col-span-3 h-12">
                   <SelectValue placeholder="Select product type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -351,7 +351,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                   }))
                 }}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger className="col-span-3 h-12">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -416,7 +416,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                   }))
                 }}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger className="col-span-3 h-12">
                   <SelectValue placeholder="Select source" />
                 </SelectTrigger>
                 <SelectContent>
@@ -439,7 +439,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                   }))
                 }}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger className="col-span-3 h-12">
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent>
@@ -459,7 +459,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                 <DatePicker
                   date={formData.saleDate}
                   setDate={handleDateChange}
-                  className="w-full"
+                  className="h-12 w-full"
                   mode="report"
                 />
               </div>
@@ -480,7 +480,7 @@ export function CreateSaleDialog({ open, onOpenChange, onSuccess }: CreateSaleDi
                       }))
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12">
                       <SelectValue placeholder="Select a location" />
                     </SelectTrigger>
                     <SelectContent>
