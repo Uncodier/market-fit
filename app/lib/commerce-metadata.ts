@@ -3,9 +3,16 @@ import { resolveItemImage } from "@/app/lib/image-utils"
 
 const DEFAULT_DESCRIPTION_MAX = 200
 
-type ShareImageSource =
+export type ShareImageSource =
   | { kind: "url"; url: string }
   | { kind: "data"; dataUrl: string }
+
+export type ShopShareVisual = {
+  source: ShareImageSource
+  fit: "cover" | "contain"
+  title: string
+  subtitle?: string
+}
 
 function appBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL || "https://makinari.com").replace(/\/$/, "")
@@ -53,21 +60,36 @@ function firstShareImageSource(
   return undefined
 }
 
-export function resolveShopShareImageSource(site: {
+export function resolveShopShareVisual(site: {
   name: string
   logo_url?: string | null
-  settings?: { shop?: { hero_image_url?: string; hero_subtitle?: string; hero_title?: string } }
-}): ShareImageSource {
+  settings?: { shop?: {
+    hero_title?: string
+    hero_subtitle?: string
+    hero_image_url?: string
+  } }
+}): ShopShareVisual {
   const shop = site.settings?.shop
-  return (
-    firstShareImageSource(shop?.hero_image_url, site.logo_url) || {
+  const subtitle = shop?.hero_subtitle || shop?.hero_title || undefined
+  const hero = firstShareImageSource(shop?.hero_image_url)
+  if (hero) {
+    return { source: hero, fit: "cover", title: site.name, subtitle }
+  }
+
+  const logo = firstShareImageSource(site.logo_url)
+  if (logo) {
+    return { source: logo, fit: "contain", title: site.name, subtitle }
+  }
+
+  return {
+    source: {
       kind: "url",
-      url: resolveItemImage({
-        name: site.name,
-        description: shop?.hero_subtitle || shop?.hero_title || undefined,
-      }),
-    }
-  )
+      url: resolveItemImage({ name: site.name, description: subtitle }),
+    },
+    fit: "cover",
+    title: site.name,
+    subtitle,
+  }
 }
 
 export function resolveCatalogItemShareImageSource(item: {
@@ -84,59 +106,13 @@ export function resolveCatalogItemShareImageSource(item: {
   )
 }
 
-/** Absolute URL for og:image meta tags (never data:). */
-export function shareImageSourceToMetaUrl(
-  source: ShareImageSource,
-  openGraphImagePath?: string,
-): string {
-  if (source.kind === "url") return source.url
-  // data: logos cannot be embedded in meta tags — point crawlers at the route image.
-  return openGraphImagePath
-    ? toAbsoluteShareImageUrl(openGraphImagePath)
-    : toAbsoluteShareImageUrl("/opengraph-image.jpg")
-}
-
-export async function respondWithShareImageSource(
-  source: ShareImageSource,
-): Promise<Response> {
-  if (source.kind === "data") {
-    const match = /^data:([^;]+);base64,(.+)$/i.exec(source.dataUrl)
-    if (!match) {
-      return new Response("Invalid data image", { status: 400 })
-    }
-    const buffer = Buffer.from(match[2], "base64")
-    return new Response(buffer, {
-      headers: {
-        "Content-Type": match[1] || "image/png",
-        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
-      },
-    })
-  }
-
-  const absoluteUrl = toAbsoluteShareImageUrl(source.url)
-  const upstream = await fetch(absoluteUrl, {
-    headers: { Accept: "image/*" },
-    next: { revalidate: 3600 },
-  })
-
-  if (!upstream.ok || !upstream.body) {
-    return new Response("Share image unavailable", { status: 404 })
-  }
-
-  return new Response(upstream.body, {
-    headers: {
-      "Content-Type": upstream.headers.get("Content-Type") || "image/jpeg",
-      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
-    },
-  })
-}
-
 export function buildShareMetadata(opts: {
   title: string
   description?: string | null
   imageUrl?: string | null
   url?: string
   siteName?: string
+  icons?: Metadata["icons"]
 }): Metadata {
   const description = opts.description
     ? truncateText(opts.description)
@@ -151,6 +127,7 @@ export function buildShareMetadata(opts: {
   return {
     title: opts.title,
     description,
+    ...(opts.icons ? { icons: opts.icons } : {}),
     openGraph: {
       type: "website",
       title: opts.title,
@@ -160,7 +137,7 @@ export function buildShareMetadata(opts: {
       ...(images ? { images } : {}),
     },
     twitter: {
-      card: images ? "summary_large_image" : "summary",
+      card: images ? "summary_large_image" : "summary_large_image",
       title: opts.title,
       description,
       ...(image ? { images: [image] } : {}),
@@ -186,14 +163,18 @@ export function buildShopShareMetadata(
     shop?.hero_subtitle ||
     shop?.hero_title ||
     `Shop ${site.name} on Makinari.`
-  const source = resolveShopShareImageSource(site)
 
+  // Image/icon bytes come from opengraph-image.tsx / icon.tsx (supports data: logos).
+  // Do not put data: URLs or the global Makinari asset into og:image meta tags.
   return buildShareMetadata({
     title,
     description,
-    imageUrl: shareImageSourceToMetaUrl(source, `${path}/opengraph-image`),
     url: path,
     siteName: site.name,
+    icons: {
+      icon: [{ url: `${path}/icon`, type: "image/png" }],
+      apple: [{ url: `${path}/apple-icon`, type: "image/png" }],
+    },
   })
 }
 
@@ -214,13 +195,15 @@ export function buildCatalogItemShareMetadata(
     (siteName
       ? `Buy ${item.name} from ${siteName} on Makinari.`
       : `Buy ${item.name} on Makinari.`)
-  const source = resolveCatalogItemShareImageSource(item)
 
   return buildShareMetadata({
     title,
     description,
-    imageUrl: shareImageSourceToMetaUrl(source, `${path}/opengraph-image`),
     url: path,
     siteName: siteName || "Makinari",
+    icons: {
+      icon: [{ url: `${path}/icon`, type: "image/png" }],
+      apple: [{ url: `${path}/apple-icon`, type: "image/png" }],
+    },
   })
 }

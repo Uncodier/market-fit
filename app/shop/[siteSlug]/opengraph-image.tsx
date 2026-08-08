@@ -1,12 +1,11 @@
 import { getShopSite } from "./actions"
-import {
-  resolveShopShareImageSource,
-  respondWithShareImageSource,
-} from "@/app/lib/commerce-metadata"
+import { resolveShopShareVisual } from "@/app/lib/commerce-metadata"
+import { OG_SIZE, renderCommerceOgImage } from "@/app/lib/commerce-og"
 
+export const runtime = "nodejs"
 export const alt = "Shop"
-export const size = { width: 1200, height: 630 }
-export const contentType = "image/jpeg"
+export const size = OG_SIZE
+export const contentType = "image/png"
 
 export default async function Image({
   params,
@@ -15,12 +14,20 @@ export default async function Image({
 }) {
   const { siteSlug } = await params
   const site = await getShopSite(siteSlug)
+
   if (!site) {
-    return respondWithShareImageSource({
-      kind: "url",
-      url: "/opengraph-image.jpg",
+    return renderCommerceOgImage({
+      title: "Shop",
+      source: { kind: "url", url: "/images/logo.png" },
+      fit: "contain",
     })
   }
 
-  return respondWithShareImageSource(resolveShopShareImageSource(site))
+  const visual = resolveShopShareVisual(site)
+  return renderCommerceOgImage({
+    title: visual.title,
+    subtitle: visual.subtitle,
+    source: visual.source,
+    fit: visual.fit,
+  })
 }

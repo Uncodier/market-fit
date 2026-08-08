@@ -1,12 +1,11 @@
 import { getPdpCatalogItem } from "@/app/commerce/pdp-actions"
-import {
-  resolveCatalogItemShareImageSource,
-  respondWithShareImageSource,
-} from "@/app/lib/commerce-metadata"
+import { resolveCatalogItemShareImageSource } from "@/app/lib/commerce-metadata"
+import { OG_SIZE, renderCommerceOgImage } from "@/app/lib/commerce-og"
 
+export const runtime = "nodejs"
 export const alt = "Marketplace product"
-export const size = { width: 1200, height: 630 }
-export const contentType = "image/jpeg"
+export const size = OG_SIZE
+export const contentType = "image/png"
 
 export default async function Image({
   params,
@@ -15,9 +14,19 @@ export default async function Image({
 }) {
   const { itemId } = await params
   const item = await getPdpCatalogItem(itemId, { requireMarketplace: true })
-  const source = item
-    ? resolveCatalogItemShareImageSource(item as any)
-    : { kind: "url" as const, url: "/opengraph-image.jpg" }
 
-  return respondWithShareImageSource(source)
+  if (!item) {
+    return renderCommerceOgImage({
+      title: "Marketplace",
+      source: { kind: "url", url: "/images/logo.png" },
+      fit: "contain",
+    })
+  }
+
+  return renderCommerceOgImage({
+    title: item.name,
+    subtitle: item.description,
+    source: resolveCatalogItemShareImageSource(item as any),
+    fit: item.image_url || item.metadata?.gallery?.[0] ? "cover" : "contain",
+  })
 }

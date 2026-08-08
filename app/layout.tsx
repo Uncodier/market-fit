@@ -15,6 +15,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://makinari.com'),
   title: 'MAKINARI',
   description: 'Find your product market fit.',
+  icons: {
+    icon: '/images/logo.png',
+    apple: '/images/logo.png',
+  },
   // Do not set openGraph/twitter images here — Next concatenates parent images with
   // page metadata, which keeps the default Makinari logo on shop/item previews.
   openGraph: {
@@ -54,12 +58,10 @@ export default async function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Museo+Moderno:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
-        <link rel="icon" href="/images/logo.png" type="image/png" sizes="32x32" />
         <meta name="application-name" content="MAKINARI" />
         <meta name="apple-mobile-web-app-title" content="MAKINARI" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/images/logo.png" />
 
         {process.env.NODE_ENV !== 'development' && (
           <Script 
