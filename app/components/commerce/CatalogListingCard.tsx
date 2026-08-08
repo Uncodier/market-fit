@@ -28,7 +28,6 @@ interface CatalogListingCardProps {
   canBook?: boolean
   /** Dense 2-col tile on mobile (square image); slightly taller media from md up */
   compactMobile?: boolean
-  isOpen?: boolean
   locationAvailable?: boolean
 }
 
@@ -58,7 +57,6 @@ export function CatalogListingCard({
   isOwned = false,
   canBook = false,
   compactMobile = false,
-  isOpen = true,
   locationAvailable = true,
 }: CatalogListingCardProps) {
   const { t } = useLocalization()
@@ -111,11 +109,6 @@ export function CatalogListingCard({
           {showTypeBadge && (
             <span className="rounded-md bg-white/95 px-2 py-1 text-[11px] font-bold text-black shadow-sm uppercase tracking-wider">
               {t(typeLabelKey) || typeLabelKey.split('.').pop()}
-            </span>
-          )}
-          {!isOpen && (
-            <span className="rounded-full border border-red-300/70 bg-black/35 backdrop-blur-md px-2 py-1 text-[11px] font-semibold text-red-50 shadow-sm uppercase tracking-wider">
-              {t("shop.closed") || "Closed"}
             </span>
           )}
           {!locationAvailable && (

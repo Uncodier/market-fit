@@ -419,8 +419,6 @@ export default function ShopClient({
         totalPages={totalPages}
         setPage={setPage}
         addToCart={addToCart}
-        isOpen={isOpen}
-        nextOpenSlot={nextOpenSlot}
         locationAvailable={locationAvailable}
       />
       

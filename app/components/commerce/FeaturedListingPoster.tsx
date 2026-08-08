@@ -43,8 +43,6 @@ interface FeaturedListingPosterProps {
   canBook?: boolean
   /** Single hero vs compact tile in a 2-up / carousel rail */
   size?: "hero" | "tile"
-  isOpen?: boolean
-  nextOpenSlot?: { at: Date; label: string } | null
   locationAvailable?: boolean
 }
 
@@ -62,8 +60,6 @@ export function FeaturedListingPoster({
   isOwned = false,
   canBook = false,
   size = "hero",
-  isOpen = true,
-  nextOpenSlot = null,
   locationAvailable = true,
 }: FeaturedListingPosterProps) {
   const { t } = useLocalization()
@@ -79,9 +75,6 @@ export function FeaturedListingPoster({
   const actionDisabled = isSoldOut || primaryDisabled || isLocationRestricted
   const finalDisabledLabel = isLocationRestricted ? (t("shop.unavailable") || "Unavailable") : disabledLabel
   const isHero = size === "hero"
-  const closedLabel = nextOpenSlot
-    ? (t("shop.closedOpens", { time: nextOpenSlot.label }) || `Closed · Opens ${nextOpenSlot.label}`)
-    : (t("shop.closed") || "Closed")
 
   const handlePrimary = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -115,11 +108,6 @@ export function FeaturedListingPoster({
         {typeLabelKey !== "marketplace.listing.badge.product" && (
           <span className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-black shadow-sm uppercase tracking-wider">
             {t(typeLabelKey) || typeLabelKey.split(".").pop()}
-          </span>
-        )}
-        {!isOpen && (
-          <span className="rounded-full border border-red-300/70 bg-black/35 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-red-50 shadow-sm uppercase tracking-wider">
-            {closedLabel}
           </span>
         )}
         {!locationAvailable && (
@@ -241,11 +229,7 @@ interface FeaturedListingsRailProps {
   disabledLabel?: string
   isOwned?: boolean
   getCanBook?: (item: FeaturedItem) => boolean
-  isOpen?: boolean
-  nextOpenSlot?: { at: Date; label: string } | null
   locationAvailable?: boolean
-  getIsOpen?: (item: FeaturedItem) => boolean
-  getNextOpenSlot?: (item: FeaturedItem) => { at: Date; label: string } | null
   getLocationAvailable?: (item: FeaturedItem) => boolean
 }
 
@@ -259,11 +243,7 @@ export function FeaturedListingsRail({
   disabledLabel,
   isOwned = false,
   getCanBook,
-  isOpen = true,
-  nextOpenSlot = null,
   locationAvailable = true,
-  getIsOpen,
-  getNextOpenSlot,
   getLocationAvailable,
 }: FeaturedListingsRailProps) {
   if (items.length === 0) return null
@@ -281,8 +261,6 @@ export function FeaturedListingsRail({
         isOwned={isOwned}
         canBook={getCanBook?.(item)}
         size="hero"
-        isOpen={getIsOpen ? getIsOpen(item) : isOpen}
-        nextOpenSlot={getNextOpenSlot ? getNextOpenSlot(item) : nextOpenSlot}
         locationAvailable={getLocationAvailable ? getLocationAvailable(item) : locationAvailable}
       />
     )
@@ -302,8 +280,6 @@ export function FeaturedListingsRail({
           isOwned={isOwned}
           canBook={getCanBook?.(item)}
           size="tile"
-          isOpen={getIsOpen ? getIsOpen(item) : isOpen}
-          nextOpenSlot={getNextOpenSlot ? getNextOpenSlot(item) : nextOpenSlot}
           locationAvailable={getLocationAvailable ? getLocationAvailable(item) : locationAvailable}
         />
       ))}

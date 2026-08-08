@@ -11,10 +11,10 @@ export async function POST(req: Request) {
     const { orderId, siteId, returnUrl } = await req.json()
     const supabase = await createServiceClient(true)
     
-    // 1. Fetch order details
+    // 1. Fetch order details (include catalog image for Stripe Checkout summary)
     const { data: order, error: orderError } = await supabase
       .from('sale_orders')
-      .select('*, items:sale_order_items(*)')
+      .select('*, items:sale_order_items(*, catalog_item:catalog_items(image_url))')
       .eq('id', orderId)
       .single()
       
@@ -37,19 +37,35 @@ export async function POST(req: Request) {
     const zeroDecimalCurrencies = ['jpy', 'bif', 'clp', 'djf', 'gnf', 'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf'];
     const isZeroDecimal = zeroDecimalCurrencies.includes(orderCurrency);
 
-    const lineItems = order.items.map((item: any) => ({
-      price_data: {
-        currency: orderCurrency,
-        product_data: {
-          name: item.name,
-          description: item.description || undefined,
+    const lineItems = order.items.map((item: any) => {
+      const imageUrl = item.catalog_item?.image_url
+      const images =
+        typeof imageUrl === 'string' && /^https?:\/\//i.test(imageUrl)
+          ? [imageUrl]
+          : undefined
+
+      const rawDescription =
+        typeof item.description === 'string' ? item.description.trim() : ''
+      // Stripe product description max length is 500
+      const description = rawDescription
+        ? rawDescription.slice(0, 500)
+        : undefined
+
+      return {
+        price_data: {
+          currency: orderCurrency,
+          product_data: {
+            name: item.name,
+            ...(description ? { description } : {}),
+            ...(images ? { images } : {}),
+          },
+          unit_amount: isZeroDecimal
+            ? Math.round(item.unit_price ?? item.unitPrice ?? 0)
+            : Math.round((item.unit_price ?? item.unitPrice ?? 0) * 100),
         },
-        unit_amount: isZeroDecimal 
-          ? Math.round(item.unit_price ?? item.unitPrice ?? 0)
-          : Math.round((item.unit_price ?? item.unitPrice ?? 0) * 100),
-      },
-      quantity: item.quantity,
-    }))
+        quantity: item.quantity,
+      }
+    })
 
     // Add Shipping Cost as a line item if > 0
     if (order.shipping_cost && order.shipping_cost > 0) {

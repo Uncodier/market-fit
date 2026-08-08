@@ -29,8 +29,6 @@ interface ShopCatalogMainProps {
   totalPages: number
   setPage: (page: number) => void
   addToCart: (item: CatalogItem) => void
-  isOpen?: boolean
-  nextOpenSlot?: { at: Date; label: string } | null
   locationAvailable?: boolean
 }
 
@@ -49,8 +47,6 @@ export function ShopCatalogMain({
   totalPages,
   setPage,
   addToCart,
-  isOpen = true,
-  nextOpenSlot = null,
   locationAvailable = true,
 }: ShopCatalogMainProps) {
   const { t } = useLocalization()
@@ -197,8 +193,6 @@ export function ShopCatalogMain({
               getPrimaryDisabled={(item) =>
                 !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
               }
-              isOpen={isOpen}
-              nextOpenSlot={nextOpenSlot}
               locationAvailable={locationAvailable}
             />
           ) : (
@@ -221,7 +215,6 @@ export function ShopCatalogMain({
                   disabledLabel={t("shop.soldOut") || "Sold Out"}
                   isOwned={false}
                   compactMobile={compactMobile}
-                  isOpen={isOpen}
                   locationAvailable={locationAvailable}
                 />
               ))}
