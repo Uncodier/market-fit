@@ -29,6 +29,12 @@ describe('business-hours', () => {
     expect(isBusinessOpen(forced, date)).toBe(false);
   });
 
+  it('isBusinessOpen can ignore force_closed for scheduled slot validation', () => {
+    const forced = [{ ...mockHours[0], force_closed: true }];
+    const date = new Date('2026-08-03T12:00:00-04:00'); // Monday noon
+    expect(isBusinessOpen(forced, date, { ignoreForceClosed: true })).toBe(true);
+  });
+
   it('isBusinessOpen checks timezone and time correctly', () => {
     // 10:00 AM NY time (Monday)
     const openDate = new Date('2026-08-03T10:00:00-04:00');

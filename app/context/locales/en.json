@@ -1719,6 +1719,8 @@
   "checkout.shippingAddress": "Shipping Address",
   "checkout.state": "State",
   "checkout.storeClosedNotice": "This store is currently closed. Your order will be processed {{time}}.",
+  "checkout.storeClosedConfirm": "The store is currently closed. Your order will be processed {{time}}. Do you want to continue?",
+  "checkout.storeClosedConfirmGeneric": "The store is currently closed. Your order will be processed when it opens. Do you want to continue?",
   "checkout.usuallyReadyIn": "Usually ready in {{time}}",
   "checkout.storePickup": "Store Pickup",
   "checkout.streetAddress": "Street Address",

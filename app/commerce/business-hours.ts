@@ -51,11 +51,16 @@ function formatOpenSlotLabel(date: Date, time: string, isToday: boolean, locale 
   }
 }
 
-export function isBusinessOpen(businessHours?: BusinessHours[], now: Date = new Date()): boolean {
+export function isBusinessOpen(
+  businessHours?: BusinessHours[],
+  now: Date = new Date(),
+  options?: { ignoreForceClosed?: boolean }
+): boolean {
   if (!businessHours || businessHours.length === 0) return true;
 
   const bh = businessHours[0];
-  if (bh.force_closed) return false;
+  // force_closed is a temporary "closed now" override — ignore it when validating future scheduled slots
+  if (bh.force_closed && !options?.ignoreForceClosed) return false;
   if (!bh.timezone) return true;
 
   try {

@@ -210,6 +210,17 @@ export default function CheckoutClient({
       toast.error(t('checkout.selectTimeRequired') || 'Please select a date and time for your order.');
       return;
     }
+
+    if (orderTiming === 'now' && !isOpen) {
+      const confirmed = window.confirm(
+        nextOpenSlot?.label
+          ? (t('checkout.storeClosedConfirm', { time: nextOpenSlot.label }) ||
+            `The store is currently closed. Your order will be processed ${nextOpenSlot.label}. Do you want to continue?`)
+          : (t('checkout.storeClosedConfirmGeneric') ||
+            'The store is currently closed. Your order will be processed when it opens. Do you want to continue?')
+      );
+      if (!confirmed) return;
+    }
     
     const finalScheduledFor = orderTiming === 'scheduled' ? scheduledFor?.toISOString() : 
                               (orderTiming === 'now' && !isOpen && nextOpenSlot ? nextOpenSlot.at.toISOString() : undefined);

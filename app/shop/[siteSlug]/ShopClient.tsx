@@ -251,6 +251,29 @@ export default function ShopClient({
       return
     }
 
+    if (orderTiming === 'scheduled' && !scheduledFor) {
+      toast.error(t('checkout.selectTimeRequired') || 'Please select a date and time for your order.')
+      return
+    }
+
+    if (orderTiming === 'now' && !isOpen) {
+      const confirmed = window.confirm(
+        nextOpenSlot?.label
+          ? (t('checkout.storeClosedConfirm', { time: nextOpenSlot.label }) ||
+            `The store is currently closed. Your order will be processed ${nextOpenSlot.label}. Do you want to continue?`)
+          : (t('checkout.storeClosedConfirmGeneric') ||
+            'The store is currently closed. Your order will be processed when it opens. Do you want to continue?')
+      )
+      if (!confirmed) return
+    }
+
+    const finalScheduledFor =
+      orderTiming === 'scheduled' && scheduledFor
+        ? scheduledFor.toISOString()
+        : orderTiming === 'now' && !isOpen && nextOpenSlot
+          ? nextOpenSlot.at.toISOString()
+          : undefined
+
     setCheckoutLoading(true)
     let redirectingToStripe = false
 
@@ -273,7 +296,7 @@ export default function ShopClient({
         originLocationId: originLocationId,
         shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
         promotionCode: promotionCode || undefined,
-        scheduledFor: orderTiming === 'scheduled' && scheduledFor ? scheduledFor.toISOString() : undefined,
+        scheduledFor: finalScheduledFor,
         source: 'shop',
         paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
         intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')

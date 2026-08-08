@@ -87,6 +87,7 @@ export async function checkoutCart({
     }
 
     // Location & timing validation
+    let resolvedScheduledFor = scheduledFor;
     if (siteSettings) {
       // 1. Validate location restrictions
       const { evaluateLocationRestrictions } = await import('./location-restrictions');
@@ -98,14 +99,20 @@ export async function checkoutCart({
         }
       }
 
-      // 2. Validate business hours
-      const { isBusinessOpen } = await import('./business-hours');
+      // 2. Validate business hours — ASAP while closed is allowed; queue for next open slot when known
+      const { isBusinessOpen, getNextOpenSlot } = await import('./business-hours');
       const businessHours = siteSettings.business_hours || [];
       if (businessHours.length > 0) {
-        if (!scheduledFor && !isBusinessOpen(businessHours)) {
-          throw new Error('Store is currently closed. Please select a time to schedule your order.');
+        if (!resolvedScheduledFor && !isBusinessOpen(businessHours)) {
+          const nextOpen = getNextOpenSlot(businessHours);
+          if (nextOpen) {
+            resolvedScheduledFor = nextOpen.at.toISOString();
+          }
         }
-        if (scheduledFor && !isBusinessOpen(businessHours, new Date(scheduledFor))) {
+        if (
+          resolvedScheduledFor &&
+          !isBusinessOpen(businessHours, new Date(resolvedScheduledFor), { ignoreForceClosed: true })
+        ) {
           throw new Error('The selected scheduled time is outside business hours.');
         }
       }
@@ -457,7 +464,7 @@ export async function checkoutCart({
         fulfillment_method: fulfillment,
         origin_location_id: finalOriginLocationId || null,
         shipping_address: shippingAddress || null,
-        scheduled_for: scheduledFor || null,
+        scheduled_for: resolvedScheduledFor || null,
         subtotal: orderSubtotal,
         tax_total: orderTaxTotal,
         shipping_cost: orderShippingCost,
@@ -530,7 +537,7 @@ export async function checkoutCart({
         fulfillment_method: fulfillment,
         origin_location_id: finalOriginLocationId || null,
         shipping_address: shippingAddress || null,
-        scheduled_for: scheduledFor || null,
+        scheduled_for: resolvedScheduledFor || null,
         subtotal: orderSubtotal,
         tax_total: orderTaxTotal,
         shipping_cost: orderShippingCost,
