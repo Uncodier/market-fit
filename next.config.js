@@ -57,18 +57,21 @@ const nextConfig = {
     // Nota: Esto no es recomendable para producción, solo para desarrollo
     ignoreBuildErrors: true,
   },
+  // Next 16 reads serverActions from experimental (top-level is ignored).
   // www proxies shop/commerce to the app deployment; Origin is www while
-  // x-forwarded-host is app. Allow both so Server Actions are not aborted.
-  serverActions: {
-    bodySizeLimit: '10mb',
-    allowedOrigins: [
-      'www.makinari.com',
-      'makinari.com',
-      'app.makinari.com',
-      'demo.makinari.com',
-      '*.preview.makinari.com',
-    ],
-  }
+  // x-forwarded-host is app — allow www so Server Actions are not aborted.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+      allowedOrigins: [
+        'www.makinari.com',
+        'makinari.com',
+        'app.makinari.com',
+        'demo.makinari.com',
+        '*.preview.makinari.com',
+      ],
+    },
+  },
 }
 
 module.exports = nextConfig 
