@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { CatalogItem } from "@/app/types"
 import { CheckoutLine } from "@/app/commerce/checkout"
-import { checkoutCartRequest } from "@/app/commerce/checkout-client"
+import { checkoutCartRequest, createStripeOrderCheckout } from "@/app/commerce/checkout-client"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { Button } from "@/app/components/ui/button"
@@ -285,16 +285,11 @@ export default function ShopClient({
       }
 
       if (payableTotal > 0 && paymentMethod === 'card') {
-        const stripeRes = await fetch('/api/stripe/checkout/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: res.orderId,
-            siteId: site.id,
-            returnUrl: window.location.origin + '/shop/' + siteSlug
-          })
+        const stripeData = await createStripeOrderCheckout({
+          orderId: res.orderId!,
+          siteId: site.id,
+          returnUrl: window.location.origin + '/shop/' + siteSlug
         })
-        const stripeData = await stripeRes.json()
         if (stripeData.url) {
           redirectingToStripe = true
           window.location.href = stripeData.url

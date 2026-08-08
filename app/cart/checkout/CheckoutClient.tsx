@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { getCartItems, clearCart, CartMode } from "@/app/commerce/cart-storage"
 import { CheckoutLine } from "@/app/commerce/checkout"
-import { checkoutCartRequest } from "@/app/commerce/checkout-client"
+import { checkoutCartRequest, createStripeOrderCheckout } from "@/app/commerce/checkout-client"
 import { toast } from "sonner"
 import { ArrowLeft, User } from "@/app/components/ui/icons"
 import Link from "next/link"
@@ -305,16 +305,11 @@ export default function CheckoutClient({
       }
 
       if (payableTotal > 0 && paymentMethod === 'card') {
-        const stripeRes = await fetch('/api/stripe/checkout/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: res.orderId,
-            siteId: checkoutSiteId,
-            returnUrl: window.location.origin + returnTo
-          })
+        const stripeData = await createStripeOrderCheckout({
+          orderId: res.orderId!,
+          siteId: checkoutSiteId,
+          returnUrl: window.location.origin + returnTo
         })
-        const stripeData = await stripeRes.json()
         if (stripeData.url) {
           if (mode === 'buynow') clearCart(mode, source, siteId)
           redirectingToStripe = true

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { CheckoutLine } from "@/app/commerce/checkout"
-import { checkoutCartRequest } from "@/app/commerce/checkout-client"
+import { checkoutCartRequest, createStripeOrderCheckout } from "@/app/commerce/checkout-client"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
 import { CatalogItem } from "@/app/types"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
@@ -317,16 +317,11 @@ export function MarketplaceClient({
       }
 
       if (payableTotal > 0 && paymentMethod === 'card') {
-        const stripeRes = await fetch('/api/stripe/checkout/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: res.orderId,
-            siteId: siteId,
-            returnUrl: window.location.origin + (returnTo?.startsWith('/') ? returnTo : '/marketplace')
-          })
+        const stripeData = await createStripeOrderCheckout({
+          orderId: res.orderId!,
+          siteId: siteId,
+          returnUrl: window.location.origin + (returnTo?.startsWith('/') ? returnTo : '/marketplace')
         })
-        const stripeData = await stripeRes.json()
         if (stripeData.url) {
           redirectingToStripe = true
           window.location.href = stripeData.url
