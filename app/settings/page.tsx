@@ -165,6 +165,50 @@ const getGeneralSections = (t: (key: string) => string): QuickNavSection[] => [
   { id: "web-resources", title: t('settings.nav.webResources') || "Web Resources" },
 ]
 
+const getCompanySections = (t: (key: string) => string): QuickNavSection[] => [
+  { id: "company-profile", title: t('context.nav.companyInformation') || "Company Profile" },
+  {
+    id: "goals-quarterly",
+    title: t('context.nav.goals') || "Business Goals",
+    children: [
+      { id: "goals-quarterly", title: t('context.nav.goals.quarterly') || "Quarter Goals" },
+      { id: "goals-yearly", title: t('context.nav.goals.yearly') || "Year Goals" },
+      { id: "goals-five-year", title: t('context.nav.goals.fiveYear') || "5 Year Goals" },
+      { id: "goals-ten-year", title: t('context.nav.goals.tenYear') || "10 Year Goals" },
+    ]
+  },
+  {
+    id: "swot-strengths",
+    title: t('context.nav.swot') || "SWOT Analysis",
+    children: [
+      { id: "swot-strengths", title: t('context.nav.swot.strengths') || "Strengths" },
+      { id: "swot-weaknesses", title: t('context.nav.swot.weaknesses') || "Weaknesses" },
+      { id: "swot-opportunities", title: t('context.nav.swot.opportunities') || "Opportunities" },
+      { id: "swot-threats", title: t('context.nav.swot.threats') || "Threats" },
+    ]
+  },
+  {
+    id: "office-locations",
+    title: t('context.nav.officeLocations') || "Office Locations",
+    children: []
+  },
+  {
+    id: "service-available-restrictions",
+    title: t('context.nav.serviceRestrictions') || "Service Available Restrictions",
+    children: []
+  },
+  {
+    id: "service-exclusions-addresses",
+    title: t('context.nav.serviceExclusions') || "Service Exclusions Addresses",
+    children: []
+  },
+  {
+    id: "business-hours",
+    title: t('context.nav.businessHours') || "Business Hours",
+    children: []
+  },
+]
+
 const getMarketplaceSections = (t: (key: string) => string): QuickNavSection[] => [
   { id: "shop-hero", title: t('settings.nav.shopHero') || "Storefront Hero" },
   { id: "shop-trust", title: t('settings.nav.shopTrust') || "Trust & Policies" },
@@ -235,6 +279,7 @@ export default function SettingsPage() {
   const [teamSections, setTeamSections] = useState<QuickNavSection[]>(getInitialTeamSections(t))
   const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections(t))
   const [socialSections, setSocialSections] = useState<QuickNavSection[]>(getInitialSocialSections(t))
+  const [companySectionsState, setCompanySectionsState] = useState<QuickNavSection[]>(getCompanySections(t))
 
   // Simple refresh prevention specifically for settings page
   useSimpleRefreshPrevention()
@@ -255,6 +300,78 @@ export default function SettingsPage() {
     window.addEventListener('teamMembersUpdated', handleTeamMembersUpdate as EventListener);
     return () => {
       window.removeEventListener('teamMembersUpdated', handleTeamMembersUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for business hours updates
+  useEffect(() => {
+    const handleBusinessHoursUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCompanySectionsState(prev => prev.map(section => {
+        if (section.id === "business-hours") {
+          return { ...section, children: items };
+        }
+        return section;
+      }));
+    };
+
+    window.addEventListener('businessHoursUpdated', handleBusinessHoursUpdate as EventListener);
+    return () => {
+      window.removeEventListener('businessHoursUpdated', handleBusinessHoursUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for office locations updates
+  useEffect(() => {
+    const handleOfficeLocationsUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCompanySectionsState(prev => prev.map(section => {
+        if (section.id === "office-locations") {
+          return { ...section, children: items };
+        }
+        return section;
+      }));
+    };
+
+    window.addEventListener('officeLocationsUpdated', handleOfficeLocationsUpdate as EventListener);
+    return () => {
+      window.removeEventListener('officeLocationsUpdated', handleOfficeLocationsUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for service available restrictions updates
+  useEffect(() => {
+    const handleServiceAvailableRestrictionsUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCompanySectionsState(prev => prev.map(section => {
+        if (section.id === "service-available-restrictions") {
+          return { ...section, children: items };
+        }
+        return section;
+      }));
+    };
+
+    window.addEventListener('serviceAvailableRestrictionsUpdated', handleServiceAvailableRestrictionsUpdate as EventListener);
+    return () => {
+      window.removeEventListener('serviceAvailableRestrictionsUpdated', handleServiceAvailableRestrictionsUpdate as EventListener);
+    };
+  }, []);
+
+  // Listen for service exclusions addresses updates
+  useEffect(() => {
+    const handleServiceExclusionsAddressesUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setCompanySectionsState(prev => prev.map(section => {
+        if (section.id === "service-exclusions-addresses") {
+          return { ...section, children: items };
+        }
+        return section;
+      }));
+    };
+
+    window.addEventListener('serviceExclusionsAddressesUpdated', handleServiceExclusionsAddressesUpdate as EventListener);
+    return () => {
+      window.removeEventListener('serviceExclusionsAddressesUpdated', handleServiceExclusionsAddressesUpdate as EventListener);
     };
   }, []);
 
@@ -437,15 +554,17 @@ export default function SettingsPage() {
     switch (activeSegment) {
       case "general":
         return getGeneralSections(t)
+      case "company":
+        return companySectionsState
       case "channels":
         return getChannelsSections(t)
       case "team":
         return teamSections
-    case "activities":
-      return getActivitiesSections(t)
-    case "marketplace":
-      return getMarketplaceSections(t)
-    case "social":
+      case "activities":
+        return getActivitiesSections(t)
+      case "marketplace":
+        return getMarketplaceSections(t)
+      case "social":
         return socialSections
       case "calendar":
         return getCalendarSections(t)

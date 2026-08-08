@@ -118,7 +118,7 @@ export function FeaturedListingPoster({
           </span>
         )}
         {!isOpen && (
-          <span className="rounded-full bg-red-500/90 backdrop-blur-sm px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider">
+          <span className="rounded-full border border-red-300/70 bg-black/35 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-red-50 shadow-sm uppercase tracking-wider">
             {closedLabel}
           </span>
         )}

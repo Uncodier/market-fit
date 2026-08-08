@@ -114,7 +114,7 @@ export function CatalogListingCard({
             </span>
           )}
           {!isOpen && (
-            <span className="rounded-full bg-red-500/90 backdrop-blur-sm px-2 py-1 text-[11px] font-bold text-white shadow-sm uppercase tracking-wider">
+            <span className="rounded-full border border-red-300/70 bg-black/35 backdrop-blur-md px-2 py-1 text-[11px] font-semibold text-red-50 shadow-sm uppercase tracking-wider">
               {t("shop.closed") || "Closed"}
             </span>
           )}
