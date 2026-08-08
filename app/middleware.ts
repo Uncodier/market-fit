@@ -10,7 +10,8 @@ const ALLOWED_PUBLIC_PATHS = [
   '/demo',
   '/book',
   '/shop',
-  '/marketplace'
+  '/marketplace',
+  '/cart',
 ]
 
 // Define suspicious patterns that should be blocked immediately
