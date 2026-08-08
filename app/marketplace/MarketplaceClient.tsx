@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { checkoutCart, CheckoutLine } from "@/app/commerce/checkout"
+import { CheckoutLine } from "@/app/commerce/checkout"
+import { checkoutCartRequest } from "@/app/commerce/checkout-client"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
 import { CatalogItem } from "@/app/types"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
@@ -293,7 +294,7 @@ export function MarketplaceClient({
         reservationEnd: c.reservationEnd
       }))
 
-      const res = await checkoutCart({
+      const res = await checkoutCartRequest({
         siteId: siteId,
         lines,
         customerName: resolvedName,

@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { getCartItems, clearCart, CartMode } from "@/app/commerce/cart-storage"
-import { checkoutCart, CheckoutLine } from "@/app/commerce/checkout"
+import { CheckoutLine } from "@/app/commerce/checkout"
+import { checkoutCartRequest } from "@/app/commerce/checkout-client"
 import { toast } from "sonner"
 import { ArrowLeft, User } from "@/app/components/ui/icons"
 import Link from "next/link"
@@ -281,7 +282,7 @@ export default function CheckoutClient({
         reservationEnd: c.reservationEnd
       }))
 
-      const res = await checkoutCart({
+      const res = await checkoutCartRequest({
         siteId: checkoutSiteId,
         lines,
         customerName: resolvedName,

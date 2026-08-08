@@ -151,6 +151,47 @@ function isAllowedCorsOrigin(origin: string | null): origin is string {
   return false
 }
 
+function isTrustedActionOriginHost(host: string): boolean {
+  return (
+    host === 'makinari.com' ||
+    host.endsWith('.makinari.com') ||
+    host.endsWith('.uncodie.com') ||
+    host.endsWith('.aimarket.fit') ||
+    host.startsWith('localhost:') ||
+    host.startsWith('127.0.0.1:') ||
+    /^192\.168\.\d+\.\d+(:\d+)?$/.test(host)
+  )
+}
+
+/**
+ * www → app proxy sets x-forwarded-host=app while the browser Origin is www.
+ * Next aborts Server Actions on that mismatch (E80). Align forwarded host to
+ * the trusted Origin host so CSRF checks pass for proxied commerce pages.
+ */
+function nextWithAlignedServerActionHost(request: NextRequest): NextResponse {
+  const headers = new Headers(request.headers)
+  const actionId = request.headers.get('next-action')
+  const origin = request.headers.get('origin')
+
+  if (actionId && origin && origin !== 'null') {
+    try {
+      const originHost = new URL(origin).host
+      const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
+      if (
+        isTrustedActionOriginHost(originHost) &&
+        forwardedHost &&
+        forwardedHost !== originHost
+      ) {
+        headers.set('x-forwarded-host', originHost)
+      }
+    } catch {
+      // keep original headers
+    }
+  }
+
+  return NextResponse.next({ request: { headers } })
+}
+
 // CORS headers configuration
 const getCorsHeaders = (
   response: NextResponse,
@@ -263,7 +304,7 @@ export async function middleware(request: NextRequest) {
   
   // Excluir rutas específicas del middleware completamente
   if (EXCLUDED_PATHS.some(path => pathname === path || pathname.startsWith(path))) {
-    return NextResponse.next()
+    return nextWithAlignedServerActionHost(request)
   }
   
   // Skip Supabase auth for ALL /api/* routes - they do their own session checks.
@@ -271,7 +312,7 @@ export async function middleware(request: NextRequest) {
   // against Supabase; with many parallel fetches (layout, RSC, etc.) the connection
   // pool gets exhausted and connections go stale.
   if (pathname.startsWith('/api/')) {
-    const res = NextResponse.next()
+    const res = nextWithAlignedServerActionHost(request)
     return getCorsHeaders(res, request, isPublicBooking)
   }
   
@@ -285,7 +326,7 @@ export async function middleware(request: NextRequest) {
   
   // Si es una ruta pública conocida, permitir
   if (ALLOWED_PUBLIC_PATHS.some(path => pathname.startsWith(path))) {
-    const res = NextResponse.next()
+    const res = nextWithAlignedServerActionHost(request)
 
     // Commerce / buyer surfaces must never run in demo mode.
     // Clear the demo cookie on the response so the browser drops it before
@@ -310,7 +351,7 @@ export async function middleware(request: NextRequest) {
   
   try {
     // Crear el cliente de Supabase
-    const res = NextResponse.next()
+    const res = nextWithAlignedServerActionHost(request)
     
     // Add CORS headers
     getCorsHeaders(res, request, isPublicBooking);
