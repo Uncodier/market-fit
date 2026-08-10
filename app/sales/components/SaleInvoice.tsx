@@ -298,7 +298,7 @@ export function SaleInvoice({
                     </thead>
                     <tbody>
                       {sale.payments.map((payment, index) => (
-                        <tr key={payment.id} className={index < sale.payments!.length - 1 ? "border-b border-border dark:border-border" : ""}>
+                        <tr key={payment.id || `payment-${index}`} className={index < sale.payments!.length - 1 ? "border-b border-border dark:border-border" : ""}>
                           <td className="py-2 px-3">{formatDate(payment.date)}</td>
                           <td className="py-2 px-3 text-right text-green-600 dark:text-green-400">
                             {formatCurrency(payment.amount)}
@@ -348,8 +348,8 @@ export function SaleInvoice({
                 </TableHeader>
                 <TableBody>
                   {saleOrder.items && saleOrder.items.length > 0 ? (
-                    saleOrder.items.map((item: SaleOrderItem) => (
-                      <TableRow key={item.id} className="border-b border-border dark:border-border">
+                    saleOrder.items.map((item: SaleOrderItem, index: number) => (
+                      <TableRow key={item.id || `item-${index}`} className="border-b border-border dark:border-border">
                         <TableCell>
                           <div className="space-y-0.5">
                             <p className="font-medium text-sm">{item.name}</p>
