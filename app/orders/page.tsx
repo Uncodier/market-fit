@@ -19,12 +19,14 @@ import { ExternalLink, LayoutGrid, Clock, CheckCircle2, Ban, ListOrdered, PlayCi
 import Link from "next/link"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { OrdersKanban } from "./components/OrdersKanban"
 import { useOrdersRealtime } from "./hooks/useOrdersRealtime"
 import { listLocations } from "@/app/inventory/actions"
 import { toast } from "sonner"
+import { navigateToOrder } from "@/app/hooks/use-navigation-history"
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
@@ -203,7 +205,7 @@ export default function OrdersPage() {
               ) : viewType === "kanban" ? (
                 <OrdersKanban 
                   orders={data?.data || []} 
-                  onOrderClick={(order) => router.push(`/orders/${order.id}`)}
+                  onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
                   onUpdateOrderStatus={handleUpdateOrderStatus}
                 />
               ) : (
@@ -230,21 +232,43 @@ export default function OrdersPage() {
                           const hasNewItems = order.sale_order_items?.some((item: any) => item.status === 'new') || false;
                           
                           return (
-                            <TableRow key={order.id}>
+                            <TableRow key={order.id} className={cn(hasNewItems && "bg-amber-50/20 dark:bg-amber-500/5")}>
                               <TableCell>
-                                <div className="font-medium text-foreground flex items-center gap-2">
+                                <div className="font-medium text-foreground">
                                   {order.order_number}
-                                  {hasNewItems && (
-                                    <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 hover:bg-amber-600 text-white border-0 uppercase tracking-wider">
-                                      {t('orders.kanban.newItems') || 'New Items'}
-                                    </Badge>
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                  {order.sales?.source && (
+                                    <span>
+                                      {order.sales.source === 'online' || order.sales.source === 'shop' || order.sales.source === 'marketplace'
+                                        ? t('orders.kanban.sourceOnline')
+                                        : t('orders.kanban.sourcePos')}
+                                    </span>
+                                  )}
+                                  {order.fulfillment_method && order.fulfillment_method !== 'none' && (
+                                    <>
+                                      {order.sales?.source && <span className="opacity-40">·</span>}
+                                      <span>
+                                        {t(`orders.kanban.fulfillment.${order.fulfillment_method}`) || order.fulfillment_method}
+                                      </span>
+                                    </>
+                                  )}
+                                  {order.sales?.status && (
+                                    <>
+                                      <span className="opacity-40">·</span>
+                                      <span className={cn(
+                                        "font-medium",
+                                        (order.sales.status === 'completed' || order.sales.amount_due === 0)
+                                          ? "text-emerald-700 dark:text-emerald-400"
+                                          : "text-amber-700 dark:text-amber-400"
+                                      )}>
+                                        {(order.sales.status === 'completed' || order.sales.amount_due === 0)
+                                          ? t('orders.kanban.paid')
+                                          : t('orders.kanban.unpaid')}
+                                      </span>
+                                    </>
                                   )}
                                 </div>
-                                {order.sales?.source && (
-                                  <div className="text-xs text-muted-foreground mt-0.5 flex items-center">
-                                    {order.sales.source === 'online' ? 'Online Store' : 'Point of Sale'}
-                                  </div>
-                                )}
                               </TableCell>
                               <TableCell>
                                 <div className="font-medium">{leadName}</div>
@@ -269,12 +293,12 @@ export default function OrdersPage() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Link 
-                                  href={`/orders/${order.id}`} 
+                                <button 
+                                  onClick={() => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
                                   className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                                 >
                                   <ExternalLink className="h-4 w-4" />
-                                </Link>
+                                </button>
                               </TableCell>
                             </TableRow>
                           );

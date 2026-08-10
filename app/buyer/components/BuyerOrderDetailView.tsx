@@ -303,14 +303,16 @@ export function BuyerOrderDetailView({
                 </div>
               ) : (
                 <>
-                  {order.fulfillment_method && (
-                    <div>
-                      <div className="text-sm text-muted-foreground">{t('buyer.orders.detail.method') || 'Method'}</div>
-                      <div className="font-medium capitalize">
-                        {t(`buyer.orders.fulfillment.${order.fulfillment_method.toLowerCase()}`) || order.fulfillment_method.replace('_', ' ')}
-                      </div>
+                {order.fulfillment_method && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">{t('buyer.orders.detail.method') || 'Method'}</div>
+                    <div className="font-medium capitalize">
+                      {order.fulfillment_method === 'dine_in' ? 'Dine In' : 
+                       order.fulfillment_method === 'pickup' ? 'Pickup' : 
+                       order.fulfillment_method === 'ship' ? 'Delivery' : order.fulfillment_method}
                     </div>
-                  )}
+                  </div>
+                )}
                   
                   {order.shipping_address && (
                     <div>

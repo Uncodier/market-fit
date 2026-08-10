@@ -7,6 +7,7 @@ import { SaleOrder, SaleOrderItem } from "@/app/types"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Button } from "@/app/components/ui/button"
 import { Plus } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface SaleOrderDetailProps {
   saleOrder: SaleOrder | null
@@ -14,6 +15,8 @@ interface SaleOrderDetailProps {
 }
 
 export function SaleOrderDetail({ saleOrder, saleId }: SaleOrderDetailProps) {
+  const { t } = useLocalization()
+  
   // Add a createOrder handler for when there is no saleOrder yet
   const handleCreateOrder = () => {
     // Will be implemented later
@@ -27,16 +30,16 @@ export function SaleOrderDetail({ saleOrder, saleId }: SaleOrderDetailProps) {
         background: "linear-gradient(to bottom, #f9f9f9 0%, #ffffff 100%)"
       }}>
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-          <h3 className="font-medium text-lg text-gray-800">Order Details</h3>
+          <h3 className="font-medium text-lg text-gray-800">{t('sales.order.title') || 'Order Details'}</h3>
         </div>
         <div className="p-6 flex flex-col items-center justify-center min-h-[200px]">
-          <h3 className="font-medium text-xl mb-2">No Order Details</h3>
+          <h3 className="font-medium text-xl mb-2">{t('sales.order.noDetails') || 'No Order Details'}</h3>
           <p className="text-muted-foreground text-center mb-4">
-            There is no order information associated with this sale.
+            {t('sales.order.noDetailsDesc') || 'There is no order information associated with this sale.'}
           </p>
           <Button onClick={handleCreateOrder}>
             <Plus className="h-4 w-4 mr-2" />
-            Create Order
+            {t('sales.order.createOrder') || 'Create Order'}
           </Button>
         </div>
       </div>
@@ -52,7 +55,7 @@ export function SaleOrderDetail({ saleOrder, saleId }: SaleOrderDetailProps) {
       background: "linear-gradient(to bottom, #f9f9f9 0%, #ffffff 100%)"
     }}>
       <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-        <h3 className="font-medium text-lg text-gray-800">Order #{saleOrder.orderNumber}</h3>
+        <h3 className="font-medium text-lg text-gray-800">{t('sales.order.orderNumber') || 'Order'} #{saleOrder.orderNumber}</h3>
       </div>
       
       <ScrollArea className="max-h-[400px]">
@@ -61,10 +64,10 @@ export function SaleOrderDetail({ saleOrder, saleId }: SaleOrderDetailProps) {
             <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
-                  <TableHead className="text-sm font-semibold">Item</TableHead>
-                  <TableHead className="text-sm font-semibold text-right">Qty</TableHead>
-                  <TableHead className="text-sm font-semibold text-right">Price</TableHead>
-                  <TableHead className="text-sm font-semibold text-right">Total</TableHead>
+                  <TableHead className="text-sm font-semibold">{t('sales.order.item') || 'Item'}</TableHead>
+                  <TableHead className="text-sm font-semibold text-right">{t('sales.order.qty') || 'Qty'}</TableHead>
+                  <TableHead className="text-sm font-semibold text-right">{t('sales.order.price') || 'Price'}</TableHead>
+                  <TableHead className="text-sm font-semibold text-right">{t('sales.order.total') || 'Total'}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -87,7 +90,7 @@ export function SaleOrderDetail({ saleOrder, saleId }: SaleOrderDetailProps) {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-6">
-                      No items in this order
+                      {t('sales.order.noItems') || 'No items in this order'}
                     </TableCell>
                   </TableRow>
                 )}
@@ -97,33 +100,33 @@ export function SaleOrderDetail({ saleOrder, saleId }: SaleOrderDetailProps) {
 
           <div className="mt-6 space-y-2 pt-4 border-t border-dashed border-gray-200">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Subtotal:</span>
+              <span className="text-gray-500">{t('sales.order.subtotal') || 'Subtotal'}:</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
             
             {taxTotal > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Tax:</span>
+                <span className="text-gray-500">{t('sales.order.tax') || 'Tax'}:</span>
                 <span>{formatCurrency(taxTotal)}</span>
               </div>
             )}
             
             {discountTotal > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Discount:</span>
+                <span className="text-gray-500">{t('sales.order.discount') || 'Discount'}:</span>
                 <span className="text-green-600">-{formatCurrency(discountTotal)}</span>
               </div>
             )}
             
             <div className="flex justify-between font-semibold text-lg pt-3 mt-3 border-t border-gray-200">
-              <span>Total:</span>
+              <span>{t('sales.order.totalAmount') || 'Total'}:</span>
               <span className="text-primary">{formatCurrency(total)}</span>
             </div>
           </div>
           
           {saleOrder.notes && (
             <div className="mt-6 pt-4 border-t border-gray-200">
-              <h4 className="text-sm font-medium text-gray-600 mb-2">Notes:</h4>
+              <h4 className="text-sm font-medium text-gray-600 mb-2">{t('sales.order.notes') || 'Notes'}:</h4>
               <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-md italic">{saleOrder.notes}</p>
             </div>
           )}

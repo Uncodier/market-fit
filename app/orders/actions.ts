@@ -13,6 +13,7 @@ export async function listOrders({ siteId, status, q, locationId, page = 1, page
       .from("sale_orders")
       .select(`
         *,
+        fulfillment_method,
         sale_order_items (status),
         sales (
           status,

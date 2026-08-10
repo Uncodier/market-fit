@@ -10,6 +10,9 @@ import { format } from "date-fns"
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
+import { navigateToOrder } from "@/app/hooks/use-navigation-history"
+import { useRouter } from "next/navigation"
+
 const STATUS_STYLES = {
   pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200",
   completed: "bg-green-50 text-green-700 hover:bg-green-100 border-green-200",
@@ -43,6 +46,7 @@ export function SaleInvoice({
   onCreateOrder,
 }: SaleInvoiceProps) {
   const { t } = useLocalization()
+  const router = useRouter()
 
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return t('sales.noSegment') || "No Segment"
@@ -322,9 +326,9 @@ export function SaleInvoice({
               <div>
                 <div className="text-base font-medium flex items-center gap-2">
                   {t('sales.detail.orderNumber') || "Order"} #{saleOrder.orderNumber}
-                  <Link href={`/orders/${saleOrder.id}`} className="text-xs font-normal text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                  <button onClick={() => navigateToOrder({ orderId: saleOrder.id, orderNumber: saleOrder.orderNumber, router })} className="text-xs font-normal text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 cursor-pointer">
                     {t('sales.detail.viewDetails') || "View Details"}
-                  </Link>
+                  </button>
                 </div>
                 <div className="text-sm text-muted-foreground dark:text-muted-foreground mt-0.5">
                   {t('sales.detail.created') || "Created"}: {formatDate(saleOrder.createdAt)}

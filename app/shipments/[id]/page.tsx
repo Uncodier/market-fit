@@ -22,11 +22,14 @@ import { Save, MapPin, User, Archive, CheckCircle2, ListOrdered } from "@/app/co
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { format } from "date-fns"
 import Link from "next/link"
+import { navigateToOrder } from "@/app/hooks/use-navigation-history"
+import { useRouter } from "next/navigation"
 
 export default function ShipmentDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
   const { currentSite } = useSite()
   const { t } = useLocalization()
+  const router = useRouter()
 
   const [shipment, setShipment] = useState<ShipmentWithRelations | null>(null)
   const [loading, setLoading] = useState(true)
@@ -350,12 +353,12 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                       <div className="flex items-center gap-2">
                         <Archive className="h-4 w-4 text-muted-foreground" />
                         {shipment.sale_order_id ? (
-                          <Link
-                            href={`/orders/${shipment.sale_order_id}`}
-                            className="font-medium hover:underline text-blue-600"
+                          <button
+                            onClick={() => navigateToOrder({ orderId: shipment.sale_order_id!, orderNumber: shipment.sale_orders?.order_number, router })}
+                            className="font-medium hover:underline text-blue-600 text-left"
                           >
                             {shipment.sale_orders?.order_number}
-                          </Link>
+                          </button>
                         ) : (
                           <span>{shipment.sale_orders?.order_number}</span>
                         )}

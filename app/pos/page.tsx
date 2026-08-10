@@ -40,6 +40,7 @@ import {
   clearActivePosOrderId,
 } from "./active-order-storage";
 import { isAccessOnlyItem } from "@/app/catalog/product-details";
+import { navigateToOrder, navigateToSale } from "@/app/hooks/use-navigation-history"
 import {
   getItemDeliveryOptions,
   intersectDeliveryOptions,
@@ -617,9 +618,9 @@ export default function POSPage() {
       clearActivePosOrderId(currentSite.id);
       setIsPaymentDialogOpen(false);
       if (intent === "send" && res.orderId) {
-        router.push(`/orders/${res.orderId}`);
+        navigateToOrder({ orderId: res.orderId, router });
       } else if (res.saleId) {
-        router.push(`/sales/${res.saleId}`);
+        navigateToSale({ saleId: res.saleId, router });
       }
     } catch (err: any) {
       toast.error(
@@ -703,7 +704,7 @@ export default function POSPage() {
         setActiveOrderId("new");
         clearActivePosOrderId(currentSite.id);
         if (res.orderId) {
-          router.push(`/orders/${res.orderId}`);
+          navigateToOrder({ orderId: res.orderId, router });
         }
       } catch (err: any) {
         toast.error(

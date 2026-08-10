@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils"
 import { format, formatDistanceToNow } from "date-fns"
 import { Send, ExternalLink } from "@/app/components/ui/icons"
 import Link from "next/link"
+import { navigateToOrder } from "@/app/hooks/use-navigation-history"
+import { useRouter } from "next/navigation"
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-muted text-foreground hover:bg-muted/50 border-none",
@@ -39,6 +41,8 @@ export function KanbanView({
   shipments, 
   onUpdateShipmentStatus
 }: KanbanViewProps) {
+  const router = useRouter()
+  
   // Group shipments by status
   const shipmentsByStatus = React.useMemo(() => {
     const grouped: Record<string, any[]> = {}
@@ -102,13 +106,15 @@ export function KanbanView({
                                   <div className="flex justify-between items-start mb-2">
                                     <div className="text-sm font-medium line-clamp-1">
                                       {shipment.sale_order_id ? (
-                                        <Link
-                                          href={`/orders/${shipment.sale_order_id}`}
-                                          className="hover:underline text-blue-600"
-                                          onClick={e => e.stopPropagation()}
+                                        <button
+                                          onClick={e => {
+                                            e.stopPropagation()
+                                            navigateToOrder({ orderId: shipment.sale_order_id!, orderNumber: shipment.sale_orders?.order_number, router })
+                                          }}
+                                          className="hover:underline text-blue-600 text-left"
                                         >
                                           {shipment.sale_orders?.order_number || 'Unknown Order'}
-                                        </Link>
+                                        </button>
                                       ) : (
                                         shipment.sale_orders?.order_number || 'Unknown Order'
                                       )}

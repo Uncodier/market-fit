@@ -196,6 +196,7 @@ export interface SaleOrderData {
   owner_site_id?: string | null;
   promotion_id?: string;
   price_list_id?: string;
+  fulfillment_method?: 'pickup' | 'ship' | 'dine_in' | 'none' | null;
   created_at: string;
   updated_at: string;
 }

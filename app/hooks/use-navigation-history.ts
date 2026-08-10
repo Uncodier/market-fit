@@ -899,6 +899,22 @@ interface NavigateToExperimentParams {
   router: any
 }
 
+interface NavigateToOrderParams {
+  orderId: string
+  orderNumber?: string
+  router: any
+}
+
+interface NavigateToShipmentParams {
+  shipmentId: string
+  router: any
+}
+
+interface NavigateToSaleParams {
+  saleId: string
+  router: any
+}
+
 /**
  * Navigate to a task detail page
  * @example navigateToTask({ taskId: '123', taskTitle: 'My Task', router })
@@ -1019,4 +1035,36 @@ export function navigateToDeal({ dealId, dealName, router }: NavigateToDealParam
   markUINavigation()
   const encodedName = encodeURIComponent(dealName)
   router.push(`/deals/${dealId}?name=${encodedName}`)
+}
+
+/**
+ * Navigate to an order detail page
+ * @example navigateToOrder({ orderId: '123', orderNumber: 'ORD-123', router })
+ */
+export function navigateToOrder({ orderId, orderNumber, router }: NavigateToOrderParams): void {
+  markUINavigation()
+  const params = new URLSearchParams()
+  if (orderNumber) {
+    params.set('title', encodeURIComponent(orderNumber))
+  }
+  const queryString = params.toString()
+  router.push(`/orders/${orderId}${queryString ? `?${queryString}` : ''}`)
+}
+
+/**
+ * Navigate to a shipment detail page
+ * @example navigateToShipment({ shipmentId: '123', router })
+ */
+export function navigateToShipment({ shipmentId, router }: NavigateToShipmentParams): void {
+  markUINavigation()
+  router.push(`/shipments/${shipmentId}`)
+}
+
+/**
+ * Navigate to a sale detail page
+ * @example navigateToSale({ saleId: '123', router })
+ */
+export function navigateToSale({ saleId, router }: NavigateToSaleParams): void {
+  markUINavigation()
+  router.push(`/sales/${saleId}`)
 }

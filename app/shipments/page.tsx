@@ -27,6 +27,8 @@ import { updateShipmentStatus } from "./actions"
 import { listLocations } from "@/app/inventory/actions"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { navigateToOrder } from "@/app/hooks/use-navigation-history"
+import { useRouter } from "next/navigation"
 
 import { CreateShipmentDialog } from "./components/CreateShipmentDialog"
 
@@ -43,6 +45,7 @@ const STATUS_STYLES: Record<string, string> = {
 export default function ShipmentsPage() {
   const { currentSite } = useSite()
   const { t } = useLocalization()
+  const router = useRouter()
   
   const [page, setPage] = useState(1)
   const pageSize = 50
@@ -213,9 +216,12 @@ export default function ShipmentsPage() {
                                 <TableCell>
                                   <div className="font-medium text-foreground">
                                     {shipment.sale_order_id ? (
-                                      <Link href={`/orders/${shipment.sale_order_id}`} className="hover:underline text-blue-600">
+                                      <button 
+                                        onClick={() => navigateToOrder({ orderId: shipment.sale_order_id!, orderNumber: shipment.sale_orders?.order_number, router })} 
+                                        className="hover:underline text-blue-600 text-left"
+                                      >
                                         {shipment.sale_orders?.order_number || 'Unknown Order'}
-                                      </Link>
+                                      </button>
                                     ) : (
                                       shipment.sale_orders?.order_number || 'Unknown Order'
                                     )}

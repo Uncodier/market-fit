@@ -4,7 +4,6 @@ import { OrderWithRelations } from "../types"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Clock, Calendar, CheckCircle2, Ban, PlayCircle } from "@/app/components/ui/icons"
-import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -117,53 +116,63 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
                                   <Card 
                                     className={cn(
                                       "mb-3 cursor-pointer transition-all duration-200 border-border/60 hover:border-primary/40 relative group",
-                                      snapshot.isDragging ? "shadow-lg border-primary/50" : "shadow-sm hover:shadow-md"
+                                      snapshot.isDragging ? "shadow-lg border-primary/50" : "shadow-sm hover:shadow-md",
+                                      hasNewItems && "bg-amber-50/40 dark:bg-amber-500/5"
                                     )}
                                     onClick={() => onOrderClick(order)}
                                   >
-                                    <CardContent className="p-3">
-                                      <div className="flex flex-col gap-1.5">
-                                        <div>
-                                          <div className="flex justify-between items-start mb-1.5 gap-2">
-                                            <h3 className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors">
-                                              {order.order_number}
-                                            </h3>
-                                            <span className="font-semibold text-[13px] text-foreground flex-shrink-0 mt-0.5">
-                                              {formatCurrency(order.total, order.currency)}
-                                            </span>
-                                          </div>
-                                          <div className="text-xs text-muted-foreground flex items-center gap-2 min-h-8">
-                                            <Avatar className="h-6 w-6 flex-shrink-0">
-                                              <AvatarFallback className="text-[10px] font-medium bg-primary/10 text-primary">
-                                                {leadName.substring(0, 2).toUpperCase()}
-                                              </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col truncate">
-                                              <span className="truncate text-sm font-medium text-foreground">{leadName}</span>
-                                              {leadEmail && <span className="truncate text-[10px] opacity-70">{leadEmail}</span>}
-                                            </div>
-                                          </div>
-                                        </div>
-                                        
-                                        <div className="flex items-center justify-between mt-1 pt-2 border-t border-border/40">
-                                          <div className="flex items-center text-[11px] text-muted-foreground font-medium gap-2">
-                                            <div className="flex items-center">
-                                              <Calendar className="h-3 w-3 mr-1.5 opacity-70" />
-                                              {formatDate(order.created_at)}
-                                            </div>
-                                            {hasNewItems && (
-                                              <Badge className="text-[9px] px-1 py-0 h-4 bg-amber-500 hover:bg-amber-600 text-white border-0 uppercase tracking-wider">
-                                                {t('orders.kanban.newItems') || 'New Items'}
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          
-                                          {order.sales?.source && (
-                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal">
-                                              {order.sales.source === 'online' ? (t('orders.kanban.sourceOnline') || 'Online Store') : (t('orders.kanban.sourcePos') || 'POS')}
-                                            </Badge>
+                                    <CardContent className="p-3 space-y-2.5">
+                                      <div className="flex justify-between items-start gap-2">
+                                        <div className="min-w-0">
+                                          <h3 className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors truncate">
+                                            {order.order_number}
+                                          </h3>
+                                          <p className="text-sm text-foreground truncate mt-1">{leadName}</p>
+                                          {leadEmail && (
+                                            <p className="text-[11px] text-muted-foreground truncate">{leadEmail}</p>
                                           )}
                                         </div>
+                                        <span className="font-semibold text-[13px] text-foreground flex-shrink-0">
+                                          {formatCurrency(order.total, order.currency)}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+                                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0 flex-wrap">
+                                          <Calendar className="h-3 w-3 opacity-70 flex-shrink-0" />
+                                          <span className="whitespace-nowrap">{formatDate(order.created_at)}</span>
+                                          {order.sales?.source && (
+                                            <>
+                                              <span className="opacity-40">·</span>
+                                              <span className="truncate">
+                                                {order.sales.source === 'online' || order.sales.source === 'shop' || order.sales.source === 'marketplace'
+                                                  ? t('orders.kanban.sourceOnline')
+                                                  : t('orders.kanban.sourcePos')}
+                                              </span>
+                                            </>
+                                          )}
+                                          {order.fulfillment_method && order.fulfillment_method !== 'none' && (
+                                            <>
+                                              <span className="opacity-40">·</span>
+                                              <span className="truncate">
+                                                {t(`orders.kanban.fulfillment.${order.fulfillment_method}`) || order.fulfillment_method}
+                                              </span>
+                                            </>
+                                          )}
+                                        </div>
+
+                                        {order.sales?.status && (
+                                          <span className={cn(
+                                            "text-[11px] font-medium flex-shrink-0",
+                                            (order.sales.status === 'completed' || order.sales.amount_due === 0)
+                                              ? "text-emerald-700 dark:text-emerald-400"
+                                              : "text-amber-700 dark:text-amber-400"
+                                          )}>
+                                            {(order.sales.status === 'completed' || order.sales.amount_due === 0)
+                                              ? t('orders.kanban.paid')
+                                              : t('orders.kanban.unpaid')}
+                                          </span>
+                                        )}
                                       </div>
                                     </CardContent>
                                   </Card>
