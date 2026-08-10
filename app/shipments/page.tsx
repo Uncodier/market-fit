@@ -139,20 +139,9 @@ export default function ShipmentsPage() {
                   </TabsTrigger>
                 </TabsList>
               </div>
-              
-              <div className="flex items-center gap-2 w-full md:w-auto">
-                <form onSubmit={handleSearch} className="w-full md:w-auto">
-                  <SearchInput 
-                    placeholder={t('shipments.search') || "Search tracking or customer..."} 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    alwaysExpanded={false}
-                  />
-                </form>
-              </div>
 
-              <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
-                {locations.length > 0 && (
+              {locations.length > 0 && (
+                <div className="flex items-center gap-2">
                   <Select
                     value={locationFilter}
                     onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
@@ -167,7 +156,21 @@ export default function ShipmentsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                )}
+                </div>
+              )}
+              
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <form onSubmit={handleSearch} className="w-full md:w-auto">
+                  <SearchInput 
+                    placeholder={t('shipments.search') || "Search tracking or customer..."} 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    alwaysExpanded={false}
+                  />
+                </form>
+              </div>
+
+              <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
                 <div className="hidden md:flex">
                   <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>

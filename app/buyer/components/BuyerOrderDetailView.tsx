@@ -39,6 +39,16 @@ export function BuyerOrderDetailView({
         setError(res.error)
       } else {
         setOrder(res.data)
+        
+        // Dispatch breadcrumb update with order number
+        if (res.data) {
+          const event = new CustomEvent('breadcrumb:update', {
+            detail: {
+              title: res.data.order_number || `Purchase Order`,
+            }
+          });
+          window.dispatchEvent(event);
+        }
       }
       setLoading(false)
     }
@@ -162,6 +172,15 @@ export function BuyerOrderDetailView({
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(amount)
   }
+
+  const getDisplayPaymentMethod = (sale: any) => {
+    if (!sale) return null;
+    if (sale.payments && sale.payments.length > 0) {
+      const latestPayment = [...sale.payments].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      return latestPayment.method;
+    }
+    return sale.payment_method;
+  };
 
   const entitlements = order.entitlements || []
   const reservations = order.reservations || []
@@ -363,10 +382,10 @@ export function BuyerOrderDetailView({
                   </Badge>
                 </div>
                 
-                {payment.payment_method && (
+                {getDisplayPaymentMethod(payment) && (
                   <div>
                     <div className="text-sm text-muted-foreground">{t('buyer.orders.detail.paymentMethod') || 'Payment Method'}</div>
-                    <div className="font-medium capitalize">{payment.payment_method.replace('_', ' ')}</div>
+                    <div className="font-medium capitalize">{getDisplayPaymentMethod(payment).replace('_', ' ')}</div>
                   </div>
                 )}
 

@@ -73,6 +73,7 @@ export function RegisterPaymentDialog({ sale, open, onOpenChange, onSuccess }: R
     try {
       // Calculate the new amount due after payment
       const newAmountDue = Math.max(0, sale.amount_due - amount);
+      const newStatus = newAmountDue === 0 && sale.status === 'pending' ? 'completed' : sale.status;
       
       // Create payment record
       const payment = {
@@ -90,6 +91,7 @@ export function RegisterPaymentDialog({ sale, open, onOpenChange, onSuccess }: R
       const updatedSale: Sale = {
         ...sale,
         amount_due: newAmountDue,
+        status: newStatus,
         paymentMethod,
         payments: [...existingPayments, payment]
       };

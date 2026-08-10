@@ -3,14 +3,24 @@ import { SaleOrderData, SaleOrder } from "@/app/types"
 export interface OrderParams {
   siteId: string;
   status?: string;
+  paymentStatus?: string;
   q?: string;
   locationId?: string;
   page?: number;
   pageSize?: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface OrderWithRelations extends SaleOrderData {
-  sales?: { status: string; source: string; amount: number; payment_method: string; amount_due: number };
+  sales?: {
+    status: string;
+    source: string;
+    amount: number;
+    payment_method: string;
+    amount_due: number;
+    payments?: Array<{ id?: string; date: string; amount: number; method: string; notes?: string }>;
+  };
   leads?: { id: string; name: string; email?: string; phone?: string };
   shipments?: { id: string; status: string; tracking_number?: string; carrier?: string }[];
   price_lists?: { name: string };

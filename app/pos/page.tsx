@@ -189,11 +189,30 @@ export default function POSPage() {
     typeof leadValue === "string"
       ? { mode: "existing", id: leadValue, label: leadValue }
       : leadValue;
-  const { data: pendingOrdersData, mutate } = useSWR(
+  const { data: pendingOrdersData, mutate: mutatePending } = useSWR(
     currentSite?.id ? ["pending_orders", currentSite.id] : null,
     () =>
       listOrders({ siteId: currentSite!.id, status: "pending,in_progress", pageSize: 50 }),
   );
+  const { data: unpaidCompletedOrdersData, mutate: mutateUnpaid } = useSWR(
+    currentSite?.id ? ["unpaid_completed_orders", currentSite.id] : null,
+    () =>
+      listOrders({ siteId: currentSite!.id, status: "completed", paymentStatus: "unpaid", pageSize: 50 }),
+  );
+
+  const pendingOrders = useMemo(() => {
+    const p = pendingOrdersData?.data || [];
+    const u = unpaidCompletedOrdersData?.data || [];
+    // combine and sort by created_at descending
+    return [...p, ...u].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [pendingOrdersData, unpaidCompletedOrdersData]);
+
+  // When mutating, mutate both
+  const mutate = (key?: any) => {
+    mutatePending();
+    mutateUnpaid();
+  };
+
   const { data: priceListsData } = useSWR(
     currentSite?.id ? ["price_lists", currentSite.id] : null,
     () => listPriceLists({ siteId: currentSite!.id, pageSize: 100 }),
@@ -202,7 +221,6 @@ export default function POSPage() {
   const allItems = catalogData?.data || [];
   const locations = locationsData?.data || [];
   const categories = categoriesData?.data || [];
-  const pendingOrders = pendingOrdersData?.data || [];
   const priceLists = (priceListsData?.data || []).filter(
     (pl: any) => pl.is_active,
   );
@@ -752,7 +770,7 @@ export default function POSPage() {
       if (res.error) throw new Error(res.error);
       const order = res.data;
 
-      if (!order || (order.status !== "pending" && order.status !== "in_progress")) {
+      if (!order || (order.status !== "pending" && order.status !== "in_progress" && order.status !== "completed")) {
         resetToNewOrder();
         return;
       }

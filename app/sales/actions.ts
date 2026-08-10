@@ -155,18 +155,34 @@ export async function createSale(data: {
 export async function updateSale(siteId: string, updatedSale: Sale) {
   try {
     const supabase = await createClient();
-    
+
+    const payments = updatedSale.payments || [];
+    const latestPaymentMethod =
+      payments.length > 0
+        ? [...payments].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          )[0]?.method
+        : undefined;
+
+    const amountDue = Number(updatedSale.amount_due) || 0;
+    let status = updatedSale.status;
+    if (amountDue === 0 && status === "pending") {
+      status = "completed";
+    }
+
     const updateData: Partial<SaleData> = {
       title: updatedSale.title,
       product_name: updatedSale.productName,
       product_type: updatedSale.productType || null,
       amount: updatedSale.amount,
-      amount_due: updatedSale.amount_due,
-      status: updatedSale.status,
-      lead_id: updatedSale.leadId || null, // Ensure null instead of undefined
-      segment_id: updatedSale.segmentId || null, // Ensure null instead of undefined
+      amount_due: amountDue,
+      status,
+      lead_id: updatedSale.leadId || null,
+      segment_id: updatedSale.segmentId || null,
       source: updatedSale.source,
-      payments: updatedSale.payments,
+      payments,
+      payment_method:
+        latestPaymentMethod || updatedSale.paymentMethod || null,
     };
 
     const { data: sale, error } = await supabase
@@ -182,8 +198,9 @@ export async function updateSale(siteId: string, updatedSale: Sale) {
       return { error: error.message };
     }
 
-    // Revalidate the sales page
     revalidatePath("/sales");
+    revalidatePath(`/sales/${updatedSale.id}`);
+    revalidatePath("/orders");
     
     return { sale };
   } catch (error) {

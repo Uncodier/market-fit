@@ -67,6 +67,15 @@ export function OrderInvoiceDocument({
     return map[key] || method.replace(/_/g, ' ')
   }
 
+  const displayPaymentMethod = (sale?: any) => {
+    if (!sale) return null;
+    if (sale.payments && sale.payments.length > 0) {
+      const latestPayment = [...sale.payments].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      return latestPayment.method;
+    }
+    return sale.payment_method;
+  };
+
   const sourceLabel = (source?: string | null) => {
     if (!source) return t('common.na') || 'N/A'
     if (source === 'online' || source === 'shop' || source === 'marketplace') {
@@ -170,7 +179,7 @@ export function OrderInvoiceDocument({
                               {t('orders.detail.paymentMethod') || 'Payment Method'}
                             </td>
                             <td className="py-2 px-3">
-                              {paymentMethodLabel(order.sales?.payment_method)}
+                              {paymentMethodLabel(displayPaymentMethod(order.sales))}
                             </td>
                           </tr>
                           <tr className="border-b border-border">
@@ -254,7 +263,7 @@ export function OrderInvoiceDocument({
                         {t('orders.detail.paymentMethod') || 'Payment Method'}
                       </div>
                       <div className="text-sm font-semibold">
-                        {paymentMethodLabel(order.sales?.payment_method)}
+                        {paymentMethodLabel(displayPaymentMethod(order.sales))}
                       </div>
                     </div>
                     <div>

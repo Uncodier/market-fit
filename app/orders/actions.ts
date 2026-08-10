@@ -5,25 +5,28 @@ import { createClient } from "@/lib/supabase/server";
 import { OrderParams, OrderWithRelations } from "./types";
 import { SaleOrderData } from "@/app/types";
 
-export async function listOrders({ siteId, status, q, locationId, page = 1, pageSize = 50 }: OrderParams) {
+export async function listOrders({ siteId, status, paymentStatus, q, locationId, page = 1, pageSize = 50, startDate, endDate }: OrderParams) {
   try {
     const supabase = await createClient();
     
-    let query = supabase
-      .from("sale_orders")
-      .select(`
+    let selectString = `
         *,
         fulfillment_method,
         sale_order_items (status),
-        sales (
+        sales${paymentStatus === 'unpaid' ? '!inner' : ''} (
           status,
           source,
           amount,
           payment_method,
           amount_due,
+          payments,
           leads (id, name, email)
         )
-      `, { count: "exact" })
+      `;
+
+    let query = supabase
+      .from("sale_orders")
+      .select(selectString, { count: "exact" })
       .eq("site_id", siteId)
       .order("created_at", { ascending: false });
 
@@ -34,11 +37,20 @@ export async function listOrders({ siteId, status, q, locationId, page = 1, page
         query = query.eq("status", status);
       }
     }
+    if (paymentStatus === 'unpaid') {
+      query = query.gt('sales.amount_due', 0);
+    }
     if (locationId && locationId !== 'all') {
       query = query.eq("origin_location_id", locationId);
     }
     if (q) {
       query = query.ilike("order_number", `%${q}%`);
+    }
+    if (startDate) {
+      query = query.gte("created_at", startDate);
+    }
+    if (endDate) {
+      query = query.lte("created_at", endDate);
     }
 
     const from = (page - 1) * pageSize;
@@ -68,7 +80,7 @@ export async function getOrder(id: string) {
     .from("sale_orders")
     .select(`
       *,
-      sales (status, source, amount, payment_method, amount_due),
+      sales (status, source, amount, payment_method, amount_due, payments),
       shipments (id, status, tracking_number, carrier),
       price_lists (name),
       promotions (name, code),

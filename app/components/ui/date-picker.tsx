@@ -62,6 +62,7 @@ export function DatePicker({
   const [currentMonth, setCurrentMonth] = React.useState(new Date(defaultDate))
   const [open, setOpen] = React.useState(false)
   const [isSelectingEndDate, setIsSelectingEndDate] = React.useState(false)
+  const [tempStartDate, setTempStartDate] = React.useState<Date | null>(null)
   const [selectedPresetLabel, setSelectedPresetLabel] = React.useState<string | null>(null)
   const [isNavigating, setIsNavigating] = React.useState(false)
   const [forceUpdate, setForceUpdate] = React.useState(0)
@@ -69,6 +70,14 @@ export function DatePicker({
     hours: date?.getHours() ?? defaultDate.getHours(),
     minutes: date?.getMinutes() ?? defaultDate.getMinutes()
   })
+  
+  // Reset temporary state when popover closes
+  React.useEffect(() => {
+    if (!open) {
+      setIsSelectingEndDate(false);
+      setTempStartDate(null);
+    }
+  }, [open]);
   
   // Update currentMonth when date changes - prevent loops with useRef
   const lastProcessedDateRef = React.useRef<Date | null>(null);
@@ -339,6 +348,7 @@ export function DatePicker({
     if (mode === 'range' && setEndDate) {
       if (!isSelectingEndDate) {
         // Selecting start date
+        setTempStartDate(selectedDate);
         setDate(selectedDate);
         if (endDate && selectedDate > endDate) {
           setEndDate(selectedDate);
@@ -347,13 +357,13 @@ export function DatePicker({
         return;
       } else {
         // Selecting end date
-        let start = date || selectedDate;
+        let start = tempStartDate || date || selectedDate;
         let end = selectedDate;
         
-        if (date && selectedDate < date) {
+        if (start && selectedDate < start) {
           // If selected end date is before start date, swap them
+          end = start;
           start = selectedDate;
-          end = date;
           setDate(start);
           setEndDate(end);
         } else {
@@ -361,6 +371,7 @@ export function DatePicker({
         }
         
         setIsSelectingEndDate(false);
+        setTempStartDate(null);
         
         if (onRangeSelect) {
           // Notificar solo si hay cambios reales
@@ -434,8 +445,10 @@ export function DatePicker({
 
   // Check if a day is within the selected range
   const isDayInRange = (day: Date): boolean => {
-    if (mode !== 'range' || !endDate || !date) return false;
-    return day >= date && day <= endDate;
+    if (mode !== 'range' || isSelectingEndDate) return false;
+    const start = tempStartDate || date;
+    if (!endDate || !start) return false;
+    return day >= start && day <= endDate;
   };
   
   // Format the range display
@@ -601,11 +614,11 @@ export function DatePicker({
                   <div className="text-xs font-medium text-muted-foreground">Selected Range</div>
                   <div className="flex items-center justify-between w-full">
                     <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
-                      <span className="truncate">{date ? format(date, "MMM d, yyyy") : "Select date"}</span>
+                      <span className="truncate">{(tempStartDate || date) ? format((tempStartDate || date)!, "MMM d, yyyy") : "Select date"}</span>
                     </Badge>
                     <span className="px-2 text-muted-foreground flex-shrink-0">to</span>
                     <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
-                      <span className="truncate">{endDate ? format(endDate, "MMM d, yyyy") : (date ? format(date, "MMM d, yyyy") : "Select date")}</span>
+                      <span className="truncate">{!isSelectingEndDate && endDate ? format(endDate, "MMM d, yyyy") : "Select date"}</span>
                     </Badge>
                   </div>
                   {isSelectingEndDate && (
@@ -662,8 +675,9 @@ export function DatePicker({
                 ))}
                 {days.map((day, i) => {
                   const isInRange = isDayInRange(day);
-                  const isRangeStart = mode === 'range' && date && isSameDay(day, date);
-                  const isRangeEnd = mode === 'range' && endDate && isSameDay(day, endDate);
+                  const effectiveDate = tempStartDate || date;
+                  const isRangeStart = mode === 'range' && effectiveDate && isSameDay(day, effectiveDate);
+                  const isRangeEnd = mode === 'range' && !isSelectingEndDate && endDate && isSameDay(day, endDate);
                   const isFutureDate = shouldDisableDate(day);
                   
                   return (

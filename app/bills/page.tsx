@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listPurchases, deletePurchase } from "@/app/purchases/actions"
+import { listLocations } from "@/app/inventory/actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
@@ -16,6 +17,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { FileText, LayoutGrid, MoreHorizontal, Pencil, Trash2 } from "@/app/components/ui/icons"
 import { format } from "date-fns"
 import { Button } from "@/app/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +43,14 @@ export default function BillsPage() {
   const [page, setPage] = useState(1)
   const pageSize = 50
   const [statusFilter, setStatusFilter] = useState("all")
+  const [locationFilter, setLocationFilter] = useState("all")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  const { data: locationsData } = useSWR(
+    currentSite?.id ? ['locations', currentSite.id] : null,
+    () => listLocations(currentSite!.id)
+  )
+  const locations = locationsData?.data || []
 
   useEffect(() => {
     const event = new CustomEvent("breadcrumb:update", {
@@ -56,7 +65,7 @@ export default function BillsPage() {
     return () => window.removeEventListener("bills:create", handleCreate)
   }, [])
 
-  const fetcher = async (params: { siteId: string; page: number; pageSize: number; status: string }) => {
+  const fetcher = async (params: { siteId: string; page: number; pageSize: number; status: string; locationId: string }) => {
     const res = await listPurchases(params)
     if (res.error) throw new Error(res.error)
     return res
@@ -64,7 +73,7 @@ export default function BillsPage() {
 
   const { data, error, isLoading, mutate } = useSWR(
     currentSite?.id
-      ? { siteId: currentSite.id, page, pageSize, status: statusFilter }
+      ? { siteId: currentSite.id, page, pageSize, status: statusFilter, locationId: locationFilter }
       : null,
     fetcher
   )
@@ -86,24 +95,45 @@ export default function BillsPage() {
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
-              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
-                <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <LayoutGrid size={13} className="md:!hidden" />
-                  <span className="tab-label">{t("bills.filters.all") || "All"}</span>
-                </TabsTrigger>
-                <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <span className="tab-label">{t("bills.filters.pending") || "Pending"}</span>
-                </TabsTrigger>
-                <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <span className="tab-label">{t("bills.filters.completed") || "Completed"}</span>
-                </TabsTrigger>
-                <TabsTrigger value="draft" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <span className="tab-label">{t("bills.filters.draft") || "Draft"}</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+              <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
+                  <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
+                    <LayoutGrid size={13} className="md:!hidden" />
+                    <span className="tab-label">{t("bills.filters.all") || "All"}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
+                    <span className="tab-label">{t("bills.filters.pending") || "Pending"}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
+                    <span className="tab-label">{t("bills.filters.completed") || "Completed"}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="draft" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
+                    <span className="tab-label">{t("bills.filters.draft") || "Draft"}</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
+              {locations.length > 0 && (
+                <Select
+                  value={locationFilter}
+                  onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
+                >
+                  <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
+                    <SelectValue placeholder={t('allLocations') || 'All Locations'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
         </div>
       </StickyHeader>

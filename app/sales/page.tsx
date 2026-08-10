@@ -14,6 +14,7 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
 import { getSales, deleteSale, updateSale } from "./actions"
+import { listLocations } from "@/app/inventory/actions"
 import { toast } from "sonner"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
@@ -27,6 +28,7 @@ import { Sale } from "@/app/types"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Label } from "@/app/components/ui/label"
 import { useRouter } from "next/navigation"
+import { navigateToSale } from "@/app/hooks/use-navigation-history"
 import { RegisterPaymentDialog } from "./components/RegisterPaymentDialog"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
@@ -403,6 +405,7 @@ export default function SalesPage() {
   const { t } = useLocalization()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
+  const [locationFilter, setLocationFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [viewType, setViewType] = useMobileView("table")
@@ -432,6 +435,12 @@ export default function SalesPage() {
     },
     {}
   )
+
+  const { data: locationsData } = useSWR(
+    currentSite?.id ? ['locations', currentSite.id] : null,
+    () => listLocations(currentSite!.id)
+  )
+  const locations = locationsData?.data || []
 
   const { data: segmentsData, isLoading: isLoadingSegments } = useSWR(
     currentSite?.id ? ['segments', currentSite.id] : null,
@@ -500,6 +509,11 @@ export default function SalesPage() {
     if (status !== "all") {
       filtered = filtered.filter(sale => sale.status === status)
     }
+
+    // Then filter by location
+    if (locationFilter !== "all") {
+      filtered = filtered.filter(sale => sale.locationId === locationFilter)
+    }
     
     // Then filter by date range
     filtered = filtered.filter(sale => {
@@ -555,10 +569,10 @@ export default function SalesPage() {
     setCurrentPage(page)
   }
 
-  // Reset page when tab changes or date range changes
+  // Reset page when tab changes, location filter changes or date range changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeTab, dateRange])
+  }, [activeTab, locationFilter, dateRange])
 
   // Items per page change handler
   function handleItemsPerPageChange(value: string) {
@@ -568,7 +582,11 @@ export default function SalesPage() {
   
   // Sale click handler (for future details view)
   const handleSaleClick = (sale: Sale) => {
-    router.push(`/sales/${sale.id}`);
+    navigateToSale({
+      saleId: sale.id,
+      saleName: sale.title || `Sale ${sale.id.substring(0, 8)}`,
+      router
+    })
   }
 
   // Print sale handler
@@ -669,6 +687,23 @@ export default function SalesPage() {
                 </div>
                 
                 <div className="ml-auto flex flex-wrap justify-end items-center gap-2">
+                  {locations.length > 0 && (
+                    <Select
+                      value={locationFilter}
+                      onValueChange={(val) => { setLocationFilter(val); setCurrentPage(1); }}
+                    >
+                      <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
+                        <SelectValue placeholder={t('allLocations') || 'All Locations'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
+                        {locations.map((loc) => (
+                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">

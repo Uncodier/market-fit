@@ -425,7 +425,7 @@ export default function CheckoutClient({
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 md:px-8 py-8 md:py-12">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 max-w-[1400px] mx-auto">
           
-          <div className="lg:col-span-7 xl:col-span-8 order-2 lg:order-1">
+          <div className="lg:col-span-7 xl:col-span-8 order-1">
             <div className="bg-card border border-border/50 rounded-3xl p-6 lg:p-10 shadow-sm relative overflow-hidden">
               <CheckoutForm 
                 session={session}
@@ -462,7 +462,7 @@ export default function CheckoutClient({
             </div>
           </div>
 
-          <div className="lg:col-span-5 xl:col-span-4 order-1 lg:order-2">
+          <div className="lg:col-span-5 xl:col-span-4 order-2">
             <OrderSummary 
               items={items}
               subtotal={subtotal}

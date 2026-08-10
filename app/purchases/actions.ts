@@ -18,6 +18,7 @@ export async function listPurchases(params: {
   page?: number
   pageSize?: number
   status?: string
+  locationId?: string
 }) {
   try {
     const supabase = await createClient()
@@ -42,6 +43,10 @@ export async function listPurchases(params: {
 
     if (params.status && params.status !== "all") {
       query = query.eq("status", params.status)
+    }
+
+    if (params.locationId && params.locationId !== "all") {
+      query = query.eq("location_id", params.locationId)
     }
 
     const { data, count, error } = await query

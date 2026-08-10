@@ -17,7 +17,8 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { ExternalLink, LayoutGrid, Clock, CheckCircle2, Ban, ListOrdered, PlayCircle } from "@/app/components/ui/icons"
 import Link from "next/link"
-import { format } from "date-fns"
+import { format, subDays } from "date-fns"
+import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
@@ -46,6 +47,16 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [locationFilter, setLocationFilter] = useState('all')
   const [viewType, setViewType] = useMobileView("kanban")
+  
+  const [dateRange, setDateRange] = useState({
+    startDate: subDays(new Date(), 30),
+    endDate: new Date()
+  })
+
+  const handleDateRangeChange = (startDate: Date, endDate: Date) => {
+    setDateRange({ startDate, endDate })
+    setPage(1)
+  }
 
   const { data: locationsData } = useSWR(
     currentSite?.id ? ['locations', currentSite.id] : null,
@@ -61,7 +72,16 @@ export default function OrdersPage() {
 
   const { data, error, isLoading, mutate } = useSWR(
     currentSite?.id
-      ? { siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter, locationId: locationFilter }
+      ? { 
+          siteId: currentSite.id, 
+          page, 
+          pageSize, 
+          q: searchQuery, 
+          status: statusFilter, 
+          locationId: locationFilter,
+          startDate: dateRange.startDate.toISOString(),
+          endDate: dateRange.endDate.toISOString()
+        }
       : null,
     fetcher
   )
@@ -153,20 +173,6 @@ export default function OrdersPage() {
                   </TabsTrigger>
                 </TabsList>
               
-                <div className="flex items-center gap-2">
-                  <form onSubmit={handleSearch}>
-                    <SearchInput 
-                      placeholder={t('orders.search') || "Search order number..."} 
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                      alwaysExpanded={false}
-                    />
-                  </form>
-                </div>
-              </div>
-
-              <div className="ml-auto flex items-center gap-3">
                 {locations.length > 0 && (
                   <Select
                     value={locationFilter}
@@ -183,6 +189,27 @@ export default function OrdersPage() {
                     </SelectContent>
                   </Select>
                 )}
+
+                <div className="flex items-center gap-2">
+                  <form onSubmit={handleSearch}>
+                    <SearchInput 
+                      placeholder={t('orders.search') || "Search order number..."} 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                      alwaysExpanded={false}
+                    />
+                  </form>
+                </div>
+              </div>
+
+              <div className="ml-auto flex items-center gap-3">
+                <CalendarDateRangePicker 
+                  onRangeChange={handleDateRangeChange} 
+                  initialStartDate={dateRange.startDate}
+                  initialEndDate={dateRange.endDate}
+                />
+                
                 <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
             </div>

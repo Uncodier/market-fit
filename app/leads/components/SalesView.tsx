@@ -13,6 +13,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
 import { getSales } from "@/app/sales/actions"
 import { useRouter } from "next/navigation"
+import { navigateToSale } from "@/app/hooks/use-navigation-history"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 
 // Status styles for sales
@@ -120,25 +121,44 @@ export function SalesView({ leadId }: SalesViewProps) {
 
   // View sale handler - Navigate to sale detail page
   const handleViewSale = (sale: Sale) => {
-    router.push(`/sales/${sale.id}`)
+    navigateToSale({
+      saleId: sale.id,
+      saleName: sale.title || `Sale ${sale.id.substring(0, 8)}`,
+      router
+    })
   }
 
   // Register payment handler
   const handleRegisterPayment = (sale: Sale, e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push(`/sales/${sale.id}?action=payment`)
+    navigateToSale({
+      saleId: sale.id,
+      saleName: sale.title || `Sale ${sale.id.substring(0, 8)}`,
+      action: 'payment',
+      router
+    })
   }
 
   // Send sale handler
   const handleSendSale = (sale: Sale, e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push(`/sales/${sale.id}?action=send`)
+    navigateToSale({
+      saleId: sale.id,
+      saleName: sale.title || `Sale ${sale.id.substring(0, 8)}`,
+      action: 'send',
+      router
+    })
   }
 
   // Print sale handler
   const handlePrintSale = (sale: Sale, e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push(`/sales/${sale.id}?action=print`)
+    navigateToSale({
+      saleId: sale.id,
+      saleName: sale.title || `Sale ${sale.id.substring(0, 8)}`,
+      action: 'print',
+      router
+    })
   }
 
   // Calculate totals

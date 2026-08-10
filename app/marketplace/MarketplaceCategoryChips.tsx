@@ -35,7 +35,7 @@ function Chip({
       className={`flex-shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
         active
           ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-sm"
-          : "bg-white/90 text-gray-700 border-black/5 hover:bg-white dark:bg-[#030303]/80 dark:text-gray-300 dark:border-white/10 dark:hover:bg-[#030303] backdrop-blur-md shadow-sm"
+          : "bg-white/90 text-gray-700 border-black/5 active:bg-white dark:bg-[#030303]/80 dark:text-gray-300 dark:border-white/10 dark:active:bg-[#030303] backdrop-blur-md shadow-sm"
       }`}
     >
       {children}

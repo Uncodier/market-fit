@@ -14,6 +14,7 @@ import { updateDeal } from "@/app/deals/actions"
 import { createQuotationFromDeal } from "@/app/quotations/actions"
 import { Sale } from "@/app/types"
 import { useRouter } from "next/navigation"
+import { navigateToSale } from "@/app/hooks/use-navigation-history"
 import { RegisterPaymentDialog } from "@/app/sales/components/RegisterPaymentDialog"
 import { format } from "date-fns"
 
@@ -205,7 +206,11 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
             <ShoppingCart className="h-5 w-5" /> Sales Order
           </CardTitle>
           {sale ? (
-            <Button variant="outline" size="sm" onClick={() => router.push(`/sales/${sale.id}`)}>
+            <Button variant="outline" size="sm" onClick={() => navigateToSale({
+              saleId: sale.id,
+              saleName: sale.title || `Sale ${sale.id.substring(0, 8)}`,
+              router
+            })}>
               <ExternalLink className="mr-2 h-4 w-4" /> View Order
             </Button>
           ) : (

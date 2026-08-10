@@ -912,6 +912,8 @@ interface NavigateToShipmentParams {
 
 interface NavigateToSaleParams {
   saleId: string
+  saleName?: string
+  action?: string
   router: any
 }
 
@@ -1060,11 +1062,40 @@ export function navigateToShipment({ shipmentId, router }: NavigateToShipmentPar
   router.push(`/shipments/${shipmentId}`)
 }
 
+interface NavigateToPurchaseOrderParams {
+  orderId: string
+  orderNumber?: string
+  basePath?: string
+  router: any
+}
+
+/**
+ * Navigate to a purchase order detail page
+ * @example navigateToPurchaseOrder({ orderId: '123', orderNumber: 'PO-123', router })
+ */
+export function navigateToPurchaseOrder({ orderId, orderNumber, basePath = '/purchases', router }: NavigateToPurchaseOrderParams): void {
+  markUINavigation()
+  const params = new URLSearchParams()
+  if (orderNumber) {
+    params.set('title', encodeURIComponent(orderNumber))
+  }
+  const queryString = params.toString()
+  router.push(`${basePath}/orders/${orderId}${queryString ? `?${queryString}` : ''}`)
+}
+
 /**
  * Navigate to a sale detail page
- * @example navigateToSale({ saleId: '123', router })
+ * @example navigateToSale({ saleId: '123', saleName: 'Sale #123', router })
  */
-export function navigateToSale({ saleId, router }: NavigateToSaleParams): void {
+export function navigateToSale({ saleId, saleName, action, router }: NavigateToSaleParams): void {
   markUINavigation()
-  router.push(`/sales/${saleId}`)
+  const params = new URLSearchParams()
+  if (saleName) {
+    params.set('title', encodeURIComponent(saleName))
+  }
+  if (action) {
+    params.set('action', action)
+  }
+  const queryString = params.toString()
+  router.push(`/sales/${saleId}${queryString ? `?${queryString}` : ''}`)
 }

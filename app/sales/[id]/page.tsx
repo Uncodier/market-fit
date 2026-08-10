@@ -60,7 +60,31 @@ export default function SaleDetailPage(props: { params: Promise<{ id: string }> 
         }
 
         if (saleResult.sale) {
-          setSale(saleResult.sale);
+          let loadedSale = saleResult.sale;
+          const latestPaymentMethod =
+            loadedSale.payments && loadedSale.payments.length > 0
+              ? [...loadedSale.payments].sort(
+                  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+                )[0]?.method
+              : undefined;
+          const needsStatusSync =
+            loadedSale.amount_due === 0 && loadedSale.status === "pending";
+          const needsMethodSync =
+            !!latestPaymentMethod && latestPaymentMethod !== loadedSale.paymentMethod;
+
+          if (needsStatusSync || needsMethodSync) {
+            const syncResult = await updateSale(currentSite.id, {
+              ...loadedSale,
+              status: needsStatusSync ? "completed" : loadedSale.status,
+              paymentMethod: latestPaymentMethod || loadedSale.paymentMethod,
+            });
+            if (!syncResult.error) {
+              const refreshed = await getSaleById(currentSite.id, saleId);
+              if (refreshed.sale) loadedSale = refreshed.sale;
+            }
+          }
+
+          setSale(loadedSale);
         }
 
         const saleOrderResult = await getSaleOrderBySaleId(currentSite.id, saleId);

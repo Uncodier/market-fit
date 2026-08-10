@@ -17,6 +17,7 @@ import { Button } from "@/app/components/ui/button"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useRouter } from "next/navigation"
+import { navigateToPurchaseOrder } from "@/app/hooks/use-navigation-history"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -223,7 +224,12 @@ export function BuyerOrdersView({
                                 <div className="flex flex-col gap-2 md:w-56 mt-4 md:mt-0">
                                   <Button 
                                     variant="outline"
-                                    onClick={() => router.push(`${basePath}/orders/${order.id}`)}
+                                    onClick={() => navigateToPurchaseOrder({
+                                      orderId: order.id,
+                                      orderNumber: order.order_number,
+                                      basePath,
+                                      router
+                                    })}
                                     className="w-full"
                                   >
                                     {t('buyer.orders.viewPurchase') || 'View Purchase'}
@@ -251,7 +257,12 @@ export function BuyerOrdersView({
                               <div className="flex flex-col gap-2 md:w-56">
                                 <Button 
                                   variant="outline"
-                                  onClick={() => router.push(`${basePath}/orders/${order.id}`)}
+                                  onClick={() => navigateToPurchaseOrder({
+                                    orderId: order.id,
+                                    orderNumber: order.order_number,
+                                    basePath,
+                                    router
+                                  })}
                                   className="w-full"
                                 >
                                   {t('buyer.orders.viewPurchase') || 'View Purchase'}

@@ -185,11 +185,11 @@ export default function TransactionsPage() {
                   </TabsList>
                 </Tabs>
               </div>
-              
-              <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
-                {locations.length > 1 && (
+
+              {locations.length > 1 && (
+                <div className="flex items-center gap-2">
                   <Select value={locationFilter} onValueChange={(val) => { setLocationFilter(val); setPage(1); }}>
-                    <SelectTrigger className="w-[180px] h-9">
+                    <SelectTrigger className="w-[180px] h-8 text-xs bg-muted/30 border-0 rounded-full">
                       <SelectValue placeholder={t('expenses.filters.allLocations') || "All Locations"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -199,8 +199,10 @@ export default function TransactionsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                )}
-                
+                </div>
+              )}
+              
+              <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
                 <Select value={campaignFilter} onValueChange={(val) => { setCampaignFilter(val); setPage(1); }}>
                   <SelectTrigger className="w-[200px] h-9">
                     <SelectValue placeholder={t('expenses.filters.allCampaigns') || "All Campaigns"} />
