@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { playNewOrderAlarm } from "@/lib/audio"
 
 export function useOrdersRealtime(siteId: string | undefined, onInvalidate: () => void) {
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -13,8 +14,13 @@ export function useOrdersRealtime(siteId: string | undefined, onInvalidate: () =
 
     const supabase = createClient()
 
-    const handleEvent = (payload: { eventType?: string }) => {
+    const handleEvent = (payload: { eventType?: string; table?: string }) => {
       if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
+
+      // Play alarm on new sale orders
+      if (payload.eventType === "INSERT" && payload.table === "sale_orders") {
+        playNewOrderAlarm()
+      }
 
       const delay = payload.eventType === "INSERT" ? 300 : 500
       refreshTimeoutRef.current = setTimeout(() => {

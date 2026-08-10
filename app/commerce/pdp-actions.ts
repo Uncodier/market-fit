@@ -55,7 +55,7 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
       .eq("price_list_id", defaultList.id)
       .eq("catalog_item_id", item.id)
       .single();
-    if (price) {
+    if (price && price.unit_price !== undefined && price.unit_price !== null && price.unit_price !== 0) {
       finalPrice = price.unit_price;
     }
   }

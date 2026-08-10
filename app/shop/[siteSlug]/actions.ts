@@ -163,7 +163,8 @@ export async function getShopCatalog(
   // 4. Transform and enrich items
   const enrichedItems = items.map(item => {
     // Determine price
-    const finalPrice = priceMap.get(item.id) ?? item.target_sale_price;
+    const mappedPrice = priceMap.get(item.id);
+    const finalPrice = mappedPrice ? mappedPrice : item.target_sale_price;
 
     // Determine availability
     let sellable = true;
@@ -244,15 +245,17 @@ export async function getShopItemsByIds(siteId: string, ids: string[]) {
         availableQty = inventoryMap.get(item.id) || 0;
         sellable = availableQty > 0 || policy !== "block";
       }
-      return [
-        item.id,
-        {
-          ...item,
-          item_specs: ((item as any).raw_specs || [])
-            .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
-            .map((cis: any) => cis.item_spec)
-            .filter(Boolean),
-          target_sale_price: priceMap.get(item.id) ?? item.target_sale_price,
+          const mappedPrice = priceMap.get(item.id);
+          const finalPrice = mappedPrice ? mappedPrice : item.target_sale_price;
+          return [
+            item.id,
+            {
+              ...item,
+              item_specs: ((item as any).raw_specs || [])
+                .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+                .map((cis: any) => cis.item_spec)
+                .filter(Boolean),
+              target_sale_price: finalPrice,
           _shop: {
             categoryName: (Array.isArray(item.category) ? item.category[0]?.name : item.category?.name) || null,
             sellable,
