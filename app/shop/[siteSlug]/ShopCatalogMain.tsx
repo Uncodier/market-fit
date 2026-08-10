@@ -1,8 +1,8 @@
 "use client"
 
+import { useEffect, useMemo, useRef } from "react"
 import { CatalogItem } from "@/app/types"
 import { Search } from "@/app/components/ui/icons"
-import { Pagination } from "@/app/components/ui/pagination"
 import { CatalogListingCard } from "@/app/components/commerce/CatalogListingCard"
 import {
   CommerceProductGrid,
@@ -13,89 +13,219 @@ import {
   FEATURED_LISTING_THRESHOLD,
 } from "@/app/components/commerce/FeaturedListingPoster"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import type { ShopCategoryOffset } from "./shop-catalog-shared"
+import {
+  categoryDomId,
+  groupItemsByCategory,
+  SHOP_UNCATEGORIZED_NAME,
+} from "./shop-catalog-shared"
+import { ShopCategoryChips } from "./ShopCategoryChips"
+import { useShopCategorySpy } from "./useShopCategorySpy"
 
 interface ShopCatalogMainProps {
   siteSlug: string | string[]
   categories: string[]
-  selectedCategory: string
-  setSelectedCategory: (cat: string) => void
+  categoryOffsets: ShopCategoryOffset[]
   searchQuery: string
   ownedItems: CatalogItem[]
   ownedAccessMap: Map<string, boolean>
   sellableCatalogItems: CatalogItem[]
   initialCount: number
   isLoading: boolean
-  page: number
-  totalPages: number
-  setPage: (page: number) => void
+  isLoadingMore: boolean
+  isJumping: boolean
+  hasMoreBelow: boolean
+  loadMoreBelow: () => void
+  jumpToCategory: (offset: number, categoryName: string) => void
+  pendingScrollCategory: string | null
+  clearPendingScrollCategory: () => void
   addToCart: (item: CatalogItem) => void
   locationAvailable?: boolean
+  onActiveCategoryChange?: (category: string) => void
 }
 
 export function ShopCatalogMain({
   siteSlug,
   categories,
-  selectedCategory,
-  setSelectedCategory,
+  categoryOffsets,
   searchQuery,
   ownedItems,
   ownedAccessMap,
   sellableCatalogItems,
   initialCount,
   isLoading,
-  page,
-  totalPages,
-  setPage,
+  isLoadingMore,
+  isJumping,
+  hasMoreBelow,
+  loadMoreBelow,
+  jumpToCategory,
+  pendingScrollCategory,
+  clearPendingScrollCategory,
   addToCart,
   locationAvailable = true,
+  onActiveCategoryChange,
 }: ShopCatalogMainProps) {
   const { t } = useLocalization()
-  const compactMobile = shouldUseCompactMobileListing(initialCount || 0)
-  const resultsTitle =
-    searchQuery || selectedCategory !== "all"
-      ? t("shop.results") || "Results"
-      : t("shop.trendingNow") || "Trending Now"
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const isSearching = Boolean(searchQuery.trim())
+
+  const chipCategories = useMemo(() => {
+    const names = categoryOffsets.map((o) => o.name)
+    // Prefer ordered offsets; fall back to categories prop
+    return names.length > 0 ? names : categories
+  }, [categoryOffsets, categories])
+
+  const useSections = !isSearching && chipCategories.length > 0
+  const sections = useMemo(
+    () => (useSections ? groupItemsByCategory(sellableCatalogItems) : []),
+    [useSections, sellableCatalogItems]
+  )
+  const loadedSectionNames = useMemo(() => sections.map((s) => s.name), [sections])
+
+  const { activeCategory, setActiveCategory, scrollToCategory } = useShopCategorySpy(
+    loadedSectionNames,
+    useSections
+  )
+
+  useEffect(() => {
+    onActiveCategoryChange?.(activeCategory)
+  }, [activeCategory, onActiveCategoryChange])
+
+  // Scroll after a jump loads the target section
+  useEffect(() => {
+    if (!pendingScrollCategory) return
+    const ok = scrollToCategory(pendingScrollCategory)
+    if (ok) {
+      setActiveCategory(pendingScrollCategory, 1200)
+      clearPendingScrollCategory()
+    }
+  }, [
+    pendingScrollCategory,
+    sellableCatalogItems,
+    scrollToCategory,
+    setActiveCategory,
+    clearPendingScrollCategory,
+  ])
+
+  // Infinite scroll sentinel
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          if (hasMoreBelow && !isLoadingMore && !isJumping && !isLoading) {
+            loadMoreBelow()
+          }
+        }
+      },
+      { root: null, rootMargin: "240px 0px", threshold: 0 }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMoreBelow, isLoadingMore, isJumping, isLoading, loadMoreBelow])
+
+  const handleChipSelect = (cat: string) => {
+    if (isSearching) return
+
+    if (cat === "all") {
+      scrollToCategory("all")
+      return
+    }
+
+    const scrolled = scrollToCategory(cat)
+    if (scrolled) return
+
+    const offsetEntry = categoryOffsets.find((o) => o.name === cat)
+    if (!offsetEntry) return
+
+    // Far category: jump load + backfill
+    setActiveCategory(cat, 1500)
+    jumpToCategory(offsetEntry.offset, cat)
+  }
+
+  // Card theme follows total catalog quantity (same as before category sections):
+  // >10 → compact 2-col mobile; <3 → featured posters; else standard grid.
+  const catalogCount = initialCount || 0
+  const compactMobile = shouldUseCompactMobileListing(catalogCount)
+
+  const resultsTitle = isSearching
+    ? t("shop.results") || "Results"
+    : t("shop.trendingNow") || "Trending Now"
 
   const useFeaturedOwned =
     !isLoading && ownedItems.length > 0 && ownedItems.length < FEATURED_LISTING_THRESHOLD
   const useFeaturedSellable =
     !isLoading &&
+    !useSections &&
+    !compactMobile &&
     sellableCatalogItems.length > 0 &&
     sellableCatalogItems.length < FEATURED_LISTING_THRESHOLD
 
+  const renderCard = (item: CatalogItem) => (
+    <CatalogListingCard
+      key={item.id}
+      item={item}
+      href={`/shop/${siteSlug}/${item.id}`}
+      onPrimaryAction={addToCart}
+      showSeller={false}
+      descriptionLineClamp="line-clamp-1"
+      primaryDisabled={
+        !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
+      }
+      disabledLabel={t("shop.soldOut") || "Sold Out"}
+      isOwned={false}
+      compactMobile={compactMobile}
+      locationAvailable={locationAvailable}
+    />
+  )
+
+  const renderFeaturedRail = (items: CatalogItem[]) => (
+    <FeaturedListingsRail
+      items={items}
+      getHref={(item) => `/shop/${siteSlug}/${item.id}`}
+      onPrimaryAction={addToCart}
+      disabledLabel={t("shop.soldOut") || "Sold Out"}
+      getPrimaryDisabled={(item) =>
+        !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
+      }
+      locationAvailable={locationAvailable}
+    />
+  )
+
+  const renderItemsGrid = (items: CatalogItem[]) => {
+    if (
+      !compactMobile &&
+      catalogCount > 0 &&
+      catalogCount < FEATURED_LISTING_THRESHOLD &&
+      items.length > 0
+    ) {
+      return renderFeaturedRail(items)
+    }
+
+    return (
+      <CommerceProductGrid totalCount={catalogCount}>
+        {items.map(renderCard)}
+      </CommerceProductGrid>
+    )
+  }
+
   return (
     <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
-      {categories.length > 0 && (
-        <div className="sticky top-[72px] z-30 pointer-events-none -mx-4 px-4 md:mx-0 md:px-0 pt-1 pb-3 mb-6">
-          <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto pb-2">
-            <button
-              onClick={() => setSelectedCategory("all")}
-              className={`flex-shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
-                selectedCategory === "all"
-                  ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-sm"
-                  : "bg-white/90 text-gray-700 border-black/5 md:hover:bg-white active:bg-white dark:bg-[#030303]/80 dark:text-gray-300 dark:border-white/10 dark:md:hover:bg-[#030303] dark:active:bg-[#030303] backdrop-blur-md shadow-sm"
-              }`}
-            >
-              {t("shop.allCategories") || "All Categories"}
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`flex-shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
-                  selectedCategory === cat
-                    ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-sm"
-                    : "bg-white/90 text-gray-700 border-black/5 md:hover:bg-white active:bg-white dark:bg-[#030303]/80 dark:text-gray-300 dark:border-white/10 dark:md:hover:bg-[#030303] dark:active:bg-[#030303] backdrop-blur-md shadow-sm"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
+      {!isSearching && (
+        <ShopCategoryChips
+          categories={chipCategories}
+          activeCategory={activeCategory}
+          onSelect={handleChipSelect}
+          disabled={isJumping}
+        />
       )}
 
-      {ownedItems.length === 0 && (
+      <div id="shop-catalog-top" />
+
+      {ownedItems.length === 0 && !useSections && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 justify-between">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
             {resultsTitle}
@@ -158,9 +288,9 @@ export function ShopCatalogMain({
         </div>
       )}
 
-      {(sellableCatalogItems.length > 0 || ownedItems.length === 0) && (
+      {(sellableCatalogItems.length > 0 || ownedItems.length === 0 || isLoading) && (
         <div>
-          {ownedItems.length > 0 && (
+          {ownedItems.length > 0 && !useSections && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
                 {resultsTitle}
@@ -174,56 +304,66 @@ export function ShopCatalogMain({
             </div>
           )}
 
-          {sellableCatalogItems.length === 0 && !isLoading ? (
+          {sellableCatalogItems.length === 0 && !isLoading && !isJumping ? (
             <div className="py-24 text-center">
               <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                 {t("shop.noProductsFound") || "No products found"}
               </h3>
               <p className="text-gray-500">
                 {t("shop.tryAdjustingSearch") || "Try adjusting your search query."}
               </p>
             </div>
+          ) : useSections ? (
+            <div className="space-y-12">
+              {isJumping || (isLoading && sellableCatalogItems.length === 0) ? (
+                <CommerceProductGrid
+                  totalCount={catalogCount}
+                  isLoading
+                  skeletonCount={compactMobile ? 6 : 4}
+                >
+                  {[]}
+                </CommerceProductGrid>
+              ) : (
+                sections.map((section) => (
+                  <section
+                    key={section.name}
+                    id={categoryDomId(section.name)}
+                    className="scroll-mt-[140px]"
+                  >
+                    <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-6">
+                      {section.name === SHOP_UNCATEGORIZED_NAME
+                        ? t("shop.other") || "Other"
+                        : section.name}
+                    </h2>
+                    {renderItemsGrid(section.items)}
+                  </section>
+                ))
+              )}
+            </div>
           ) : useFeaturedSellable ? (
-            <FeaturedListingsRail
-              items={sellableCatalogItems}
-              getHref={(item) => `/shop/${siteSlug}/${item.id}`}
-              onPrimaryAction={addToCart}
-              disabledLabel={t("shop.soldOut") || "Sold Out"}
-              getPrimaryDisabled={(item) =>
-                !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
-              }
-              locationAvailable={locationAvailable}
-            />
+            renderFeaturedRail(sellableCatalogItems)
           ) : (
             <CommerceProductGrid
-              totalCount={initialCount || 0}
-              isLoading={isLoading}
-              skeletonCount={8}
+              totalCount={catalogCount}
+              isLoading={isLoading || isJumping}
+              skeletonCount={compactMobile ? 6 : 4}
             >
-              {sellableCatalogItems.map((item) => (
-                <CatalogListingCard
-                  key={item.id}
-                  item={item}
-                  href={`/shop/${siteSlug}/${item.id}`}
-                  onPrimaryAction={addToCart}
-                  showSeller={false}
-                  descriptionLineClamp="line-clamp-1"
-                  primaryDisabled={
-                    !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
-                  }
-                  disabledLabel={t("shop.soldOut") || "Sold Out"}
-                  isOwned={false}
-                  compactMobile={compactMobile}
-                  locationAvailable={locationAvailable}
-                />
-              ))}
+              {sellableCatalogItems.map(renderCard)}
             </CommerceProductGrid>
           )}
 
-          {totalPages > 1 && (
-            <div className="mt-12 flex justify-center border-t border-gray-200 dark:border-gray-800 pt-8">
-              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+          <div ref={sentinelRef} className="h-8 w-full" aria-hidden />
+
+          {isLoadingMore && !isJumping && (
+            <div className="mt-8">
+              <CommerceProductGrid
+                totalCount={catalogCount}
+                isLoading
+                skeletonCount={compactMobile ? 4 : 2}
+              >
+                {[]}
+              </CommerceProductGrid>
             </div>
           )}
         </div>

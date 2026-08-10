@@ -7133,6 +7133,7 @@
   "shop.closedOpens": "Closed · Opens {{time}}",
   "shop.noProductsFound": "No products found",
   "shop.onlyLeft": "Only {{count}} left",
+  "shop.other": "Other",
   "shop.poweredBy": "Powered by Uncodie.",
   "shop.product": "product",
   "shop.products": "products",

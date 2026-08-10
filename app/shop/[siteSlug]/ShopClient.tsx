@@ -20,7 +20,8 @@ import { ShopCatalogMain } from "./ShopCatalogMain"
 import { ShopHeader } from "./ShopHeader"
 import { useParams, useRouter } from "next/navigation"
 
-import { ShopOwnedAccess } from "./actions"
+import type { ShopOwnedAccess } from "./actions"
+import type { ShopCategoryOffset } from "./shop-catalog-shared"
 import { useShopCatalog } from "./useShopCatalog"
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
@@ -39,8 +40,8 @@ export default function ShopClient({
   site, 
   initialCatalog,
   initialCategories,
+  initialCategoryOffsets = [],
   initialCount,
-  initialTotalPages,
   locations, 
   ownedItemIds = [],
   ownedItemsData = [],
@@ -49,8 +50,8 @@ export default function ShopClient({
   site: any, 
   initialCatalog: CatalogItem[], 
   initialCategories: string[],
+  initialCategoryOffsets?: ShopCategoryOffset[],
   initialCount: number,
-  initialTotalPages: number,
   locations: any[], 
   ownedItemIds?: ShopOwnedAccess[],
   ownedItemsData?: CatalogItem[],
@@ -85,12 +86,22 @@ export default function ShopClient({
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const searchPlaceholder = t("shop.searchPlaceholder") || "Search products..."
-  const { catalogItems, page, setPage, totalPages, isLoading } = useShopCatalog(
+  const {
+    catalogItems,
+    isLoading,
+    isLoadingMore,
+    isJumping,
+    hasMoreBelow,
+    loadMoreBelow,
+    jumpToCategory,
+    pendingScrollCategory,
+    clearPendingScrollCategory,
+  } = useShopCatalog(
     site.id,
     initialCatalog,
-    initialTotalPages,
+    initialCount,
     searchQuery,
-    selectedCategory
+    initialCategoryOffsets
   )
 
   const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
@@ -124,12 +135,6 @@ export default function ShopClient({
   const ownedAccessMap = new Map(ownedItemIds?.map(o => [o.catalogItemId, o.canBook]) || [])
   const ownedItems = ownedItemsData || []
   const sellableCatalogItems = catalogItems.filter((i: any) => i._shop?.sellable !== false)
-
-  useEffect(() => {
-    if (selectedCategory !== "all" && !categories.includes(selectedCategory)) {
-      setSelectedCategory("all")
-    }
-  }, [categories, selectedCategory])
 
   const addToCart = (item: CatalogItem) => {
     if (ownedAccessMap.has(item.id)) {
@@ -407,19 +412,23 @@ export default function ShopClient({
       <ShopCatalogMain
         siteSlug={siteSlug}
         categories={categories}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
+        categoryOffsets={initialCategoryOffsets}
         searchQuery={searchQuery}
         ownedItems={ownedItems}
         ownedAccessMap={ownedAccessMap}
         sellableCatalogItems={sellableCatalogItems}
         initialCount={initialCount || 0}
         isLoading={isLoading}
-        page={page}
-        totalPages={totalPages}
-        setPage={setPage}
+        isLoadingMore={isLoadingMore}
+        isJumping={isJumping}
+        hasMoreBelow={hasMoreBelow}
+        loadMoreBelow={loadMoreBelow}
+        jumpToCategory={jumpToCategory}
+        pendingScrollCategory={pendingScrollCategory}
+        clearPendingScrollCategory={clearPendingScrollCategory}
         addToCart={addToCart}
         locationAvailable={locationAvailable}
+        onActiveCategoryChange={setSelectedCategory}
       />
       
       {/* Footer */}

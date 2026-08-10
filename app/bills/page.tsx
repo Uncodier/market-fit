@@ -8,6 +8,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { listPurchases, deletePurchase } from "@/app/purchases/actions"
 import { listLocations } from "@/app/inventory/actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { SearchInput } from "@/app/components/ui/search-input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
@@ -44,6 +45,7 @@ export default function BillsPage() {
   const pageSize = 50
   const [statusFilter, setStatusFilter] = useState("all")
   const [locationFilter, setLocationFilter] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   const { data: locationsData } = useSWR(
@@ -65,7 +67,7 @@ export default function BillsPage() {
     return () => window.removeEventListener("bills:create", handleCreate)
   }, [])
 
-  const fetcher = async (params: { siteId: string; page: number; pageSize: number; status: string; locationId: string }) => {
+  const fetcher = async (params: { siteId: string; page: number; pageSize: number; status: string; locationId: string; q: string }) => {
     const res = await listPurchases(params)
     if (res.error) throw new Error(res.error)
     return res
@@ -73,10 +75,16 @@ export default function BillsPage() {
 
   const { data, error, isLoading, mutate } = useSWR(
     currentSite?.id
-      ? { siteId: currentSite.id, page, pageSize, status: statusFilter, locationId: locationFilter }
+      ? { siteId: currentSite.id, page, pageSize, status: statusFilter, locationId: locationFilter, q: searchQuery }
       : null,
     fetcher
   )
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setPage(1)
+    mutate()
+  }
 
   const handleDelete = async (id: string) => {
     if (!currentSite?.id) return
@@ -96,7 +104,7 @@ export default function BillsPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+            <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-1 md:pb-0">
               <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
                   <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
@@ -114,9 +122,7 @@ export default function BillsPage() {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-            </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
               {locations.length > 0 && (
                 <Select
                   value={locationFilter}
@@ -133,6 +139,21 @@ export default function BillsPage() {
                   </SelectContent>
                 </Select>
               )}
+
+              <div className="flex items-center gap-2">
+                <form onSubmit={handleSearch}>
+                  <SearchInput 
+                    placeholder={t('bills.search') || "Search bills..."} 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                    alwaysExpanded={false}
+                  />
+                </form>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
             </div>
           </div>
         </div>

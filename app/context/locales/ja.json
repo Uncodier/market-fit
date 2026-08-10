@@ -6823,6 +6823,7 @@
   "shop.closedOpens": "閉店 · {{time}}に開店",
   "shop.noProductsFound": "製品が見つかりませんでした",
   "shop.onlyLeft": "{{count}} のみ残っています",
+  "shop.other": "その他",
   "shop.poweredBy": "Uncodieによって提供されます。",
   "shop.product": "製品",
   "shop.products": "製品",

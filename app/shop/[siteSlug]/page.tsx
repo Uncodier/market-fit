@@ -1,9 +1,10 @@
-import { getShopSite, getShopCatalog, getShopCategories, getShopLocations, getShopUserOwnedItems, getShopItemsByIds } from "./actions"
+import { getShopSite, getShopCatalog, getShopCategoryOffsets, getShopLocations, getShopUserOwnedItems, getShopItemsByIds } from "./actions"
 import { notFound } from "next/navigation"
 import ShopClient from "./ShopClient"
 import { Metadata } from "next"
 import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 import { buildShopShareMetadata } from "@/app/lib/commerce-metadata"
+import { SHOP_PAGE_SIZE, SHOP_UNCATEGORIZED_NAME } from "./shop-catalog-shared"
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -33,13 +34,17 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
     notFound()
   }
 
-  const [{ data: catalogItems, count, totalPages }, categories, { data: locations }, ownedItemIds, buyerGeo] = await Promise.all([
-    getShopCatalog(site.id, { page: 1, pageSize: 20 }),
-    getShopCategories(site.id),
+  const [{ data: catalogItems, count }, categoryOffsets, { data: locations }, ownedItemIds, buyerGeo] = await Promise.all([
+    getShopCatalog(site.id, { offset: 0, pageSize: SHOP_PAGE_SIZE }),
+    getShopCategoryOffsets(site.id),
     getShopLocations(site.id),
     getShopUserOwnedItems(site.id),
     getBuyerGeoApprox()
   ])
+
+  const categories = categoryOffsets
+    .map((o) => o.name)
+    .filter((name) => name !== SHOP_UNCATEGORIZED_NAME)
 
   const ownedIds = ownedItemIds.map(o => o.catalogItemId)
   const { data: ownedItemsData } = await getShopItemsByIds(site.id, ownedIds)
@@ -50,8 +55,8 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
         site={site} 
         initialCatalog={catalogItems as any[]} 
         initialCategories={categories}
+        initialCategoryOffsets={categoryOffsets}
         initialCount={count || 0}
-        initialTotalPages={totalPages || 0}
         locations={locations as any[]} 
         ownedItemIds={ownedItemIds}
         ownedItemsData={ownedItemsData as any[]}

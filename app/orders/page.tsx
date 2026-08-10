@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { ExternalLink, LayoutGrid, Clock, CheckCircle2, Ban, ListOrdered, PlayCircle } from "@/app/components/ui/icons"
+import { ExternalLink, LayoutGrid, Clock, CheckCircle2, Ban, ListOrdered, PlayCircle, Search } from "@/app/components/ui/icons"
 import Link from "next/link"
 import { format, subDays } from "date-fns"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
@@ -28,6 +28,8 @@ import { useOrdersRealtime } from "./hooks/useOrdersRealtime"
 import { listLocations } from "@/app/inventory/actions"
 import { toast } from "sonner"
 import { navigateToOrder } from "@/app/hooks/use-navigation-history"
+import { Button } from "@/app/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
@@ -149,8 +151,8 @@ export default function OrdersPage() {
         <StickyHeader className="border-b min-h-[71px] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="w-full pt-0">
             <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-8">
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
+              <div className="flex items-center gap-4">
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
                   <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('orders.tabs.all') || "All Orders"}>
                     <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('orders.tabs.all') || 'All Orders'}</span>
@@ -191,7 +193,7 @@ export default function OrdersPage() {
                 )}
 
                 <div className="flex items-center gap-2">
-                  <form onSubmit={handleSearch}>
+                  <form onSubmit={handleSearch} className="hidden md:block">
                     <SearchInput 
                       placeholder={t('orders.search') || "Search order number..."} 
                       value={searchQuery}
@@ -204,6 +206,30 @@ export default function OrdersPage() {
               </div>
 
               <div className="ml-auto flex items-center gap-3">
+                <div className="md:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[300px] p-2">
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        // Optional: close dropdown on search submit
+                      }}>
+                        <SearchInput 
+                          placeholder={t('orders.search') || "Search order number..."} 
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="bg-background w-full border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                          alwaysExpanded={true}
+                        />
+                      </form>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                
                 <CalendarDateRangePicker 
                   onRangeChange={handleDateRangeChange} 
                   initialStartDate={dateRange.startDate}

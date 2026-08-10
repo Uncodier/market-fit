@@ -6823,6 +6823,7 @@
   "shop.closedOpens": "Fermé · Ouvre {{time}}",
   "shop.noProductsFound": "Aucun produit trouvé",
   "shop.onlyLeft": "Il ne reste que {{count}}",
+  "shop.other": "Autres",
   "shop.poweredBy": "Propulsé par Uncodie.",
   "shop.product": "produit",
   "shop.products": "produits",

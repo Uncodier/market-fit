@@ -111,7 +111,7 @@ export default function ShipmentsPage() {
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+              <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-1 md:pb-0">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
                   <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
                     <LayoutGrid size={13} className="md:!hidden" />
@@ -138,10 +138,8 @@ export default function ShipmentsPage() {
                     <span className="tab-label">Delivered</span>
                   </TabsTrigger>
                 </TabsList>
-              </div>
 
-              {locations.length > 0 && (
-                <div className="flex items-center gap-2">
+                {locations.length > 0 && (
                   <Select
                     value={locationFilter}
                     onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
@@ -156,10 +154,8 @@ export default function ShipmentsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-              )}
-              
-              <div className="flex items-center gap-2 w-full md:w-auto">
+                )}
+                
                 <form onSubmit={handleSearch} className="w-full md:w-auto">
                   <SearchInput 
                     placeholder={t('shipments.search') || "Search tracking or customer..."} 

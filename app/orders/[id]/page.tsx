@@ -15,7 +15,7 @@ import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Badge } from "@/app/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { toast } from "sonner"
-import { Save, ExternalLink, CheckCircle2, FileText, Send } from "@/app/components/ui/icons"
+import { Save, ExternalLink, CheckCircle2, FileText, Send, Loader2 } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
@@ -36,6 +36,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   const [savingNotes, setSavingNotes] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [savingLines, setSavingLines] = useState(false)
+  const [isCreatingShipment, setIsCreatingShipment] = useState(false)
   const [modifiedLines, setModifiedLines] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -126,6 +127,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
       return
     }
 
+    setIsCreatingShipment(true)
     try {
       const locationsRes = await listLocations(currentSite.id)
       const locations = locationsRes.data || []
@@ -134,6 +136,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
 
       if (!defaultLocation?.id) {
         toast.error(t('orders.error.noLocation') || "No valid location found to ship from. Add one in Settings.")
+        setIsCreatingShipment(false)
         return
       }
 
@@ -152,6 +155,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
       }
     } catch (e: any) {
       toast.error(e.message || t('orders.error.shipmentCreateFailed') || "Failed to create shipment")
+      setIsCreatingShipment(false)
     }
   }
 
@@ -306,8 +310,9 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
             <div className="mx-auto max-w-[800px] space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">{t('orders.detail.associatedShipments') || 'Associated Shipments'}</h3>
-                <Button onClick={handleCreateShipment} size="sm" variant="outline">
-                  <Send className="h-4 w-4 mr-2" /> {t('orders.detail.createShipment') || 'Create Shipment'}
+                <Button onClick={handleCreateShipment} size="sm" disabled={isCreatingShipment}>
+                  {isCreatingShipment ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                  {t('orders.detail.createShipment') || 'Create Shipment'}
                 </Button>
               </div>
               <Card>

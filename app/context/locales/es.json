@@ -7143,6 +7143,7 @@
   "shop.closedOpens": "Cerrado · Abre {{time}}",
   "shop.noProductsFound": "No se encontraron productos",
   "shop.onlyLeft": "Quedan solo {{count}}",
+  "shop.other": "Otros",
   "shop.poweredBy": "Desarrollado por Uncodie.",
   "shop.product": "producto",
   "shop.products": "productos",

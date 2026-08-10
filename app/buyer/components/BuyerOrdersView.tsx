@@ -10,10 +10,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { LayoutGrid, Clock, CheckCircle2, ListOrdered, Plus } from "@/app/components/ui/icons"
+import { LayoutGrid, Clock, CheckCircle2, ListOrdered, Plus, Search } from "@/app/components/ui/icons"
 import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useRouter } from "next/navigation"
@@ -120,32 +121,56 @@ export function BuyerOrdersView({
       <Tabs value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }} className="flex-1 flex flex-col w-full min-h-0">
         <HeaderWrapper>
           <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-4 flex-1 overflow-x-auto no-scrollbar">
-              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
-                <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <LayoutGrid size={13} className="md:!hidden" />
-                  <span className="tab-label">{t('buyer.orders.filters.all') || 'All'}</span>
-                </TabsTrigger>
-                <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <Clock size={13} className="md:!hidden" />
-                  <span className="tab-label">{t('buyer.orders.filters.pending') || 'Pending'}</span>
-                </TabsTrigger>
-                <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <CheckCircle2 size={13} className="md:!hidden" />
-                  <span className="tab-label">{t('buyer.orders.filters.completed') || 'Completed'}</span>
-                </TabsTrigger>
-              </TabsList>
+              <div className="flex items-center gap-4 flex-1 overflow-x-auto no-scrollbar">
+                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
+                  <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
+                    <LayoutGrid size={13} className="md:!hidden" />
+                    <span className="tab-label">{t('buyer.orders.filters.all') || 'All'}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
+                    <Clock size={13} className="md:!hidden" />
+                    <span className="tab-label">{t('buyer.orders.filters.pending') || 'Pending'}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
+                    <CheckCircle2 size={13} className="md:!hidden" />
+                    <span className="tab-label">{t('buyer.orders.filters.completed') || 'Completed'}</span>
+                  </TabsTrigger>
+                </TabsList>
 
-              <SearchInput
-                placeholder={t('buyer.orders.search') || "Search purchases..."} 
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                alwaysExpanded={false}
-              />
-            </div>
-            
-            <div className="ml-auto flex items-center justify-end gap-3">
+                <div className="hidden md:block">
+                  <SearchInput
+                    placeholder={t('buyer.orders.search') || "Search purchases..."} 
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                    alwaysExpanded={false}
+                  />
+                </div>
+              </div>
+              
+              <div className="ml-auto flex items-center justify-end gap-3">
+                <div className="md:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[300px] p-2">
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                      }}>
+                        <SearchInput
+                          placeholder={t('buyer.orders.search') || "Search purchases..."} 
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                          className="bg-background w-full border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                          alwaysExpanded={true}
+                        />
+                      </form>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               {scope === 'personal' && sites.length > 1 && (
                 <Select value={ownerFilter} onValueChange={(val) => { setOwnerFilter(val); setPage(1); mutate(); }}>
                   <SelectTrigger className="w-auto min-w-[180px] h-9 whitespace-nowrap">

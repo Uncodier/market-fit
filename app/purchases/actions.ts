@@ -19,6 +19,7 @@ export async function listPurchases(params: {
   pageSize?: number
   status?: string
   locationId?: string
+  q?: string
 }) {
   try {
     const supabase = await createClient()
@@ -47,6 +48,10 @@ export async function listPurchases(params: {
 
     if (params.locationId && params.locationId !== "all") {
       query = query.eq("location_id", params.locationId)
+    }
+
+    if (params.q) {
+      query = query.ilike("title", `%${params.q}%`)
     }
 
     const { data, count, error } = await query

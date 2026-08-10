@@ -166,7 +166,7 @@ export default function TransactionsPage() {
       <StickyHeader>
         <div className="w-full pt-0">
             <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+              <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-1 md:pb-0">
                 <Tabs value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setPage(1); }}>
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
                     <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
@@ -184,10 +184,8 @@ export default function TransactionsPage() {
                     ))}
                   </TabsList>
                 </Tabs>
-              </div>
 
-              {locations.length > 1 && (
-                <div className="flex items-center gap-2">
+                {locations.length > 1 && (
                   <Select value={locationFilter} onValueChange={(val) => { setLocationFilter(val); setPage(1); }}>
                     <SelectTrigger className="w-[180px] h-8 text-xs bg-muted/30 border-0 rounded-full">
                       <SelectValue placeholder={t('expenses.filters.allLocations') || "All Locations"} />
@@ -199,8 +197,8 @@ export default function TransactionsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-              )}
+                )}
+              </div>
               
               <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
                 <Select value={campaignFilter} onValueChange={(val) => { setCampaignFilter(val); setPage(1); }}>
