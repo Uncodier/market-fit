@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { resolvePostAuthRedirect } from '@/lib/auth/post-auth-redirect'
 
 // Lista específica y exacta de rutas públicas permitidas
 const ALLOWED_PUBLIC_PATHS = [
@@ -332,6 +333,36 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/auth'
     url.search = request.nextUrl.search // Mantener los query params
     return NextResponse.redirect(url)
+  }
+
+  // Signed-in users hitting the sign-in page go to returnTo or /robots
+  if (pathname === '/auth') {
+    const res = NextResponse.next()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name) {
+            return request.cookies.get(name)?.value
+          },
+          set(name, value, options) {
+            res.cookies.set(name, value, options)
+          },
+          remove(name, options) {
+            res.cookies.set(name, '', { ...options, maxAge: 0 })
+          },
+        },
+      }
+    )
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      const destination = resolvePostAuthRedirect(
+        request.nextUrl.searchParams.get('returnTo')
+      )
+      return NextResponse.redirect(new URL(destination, request.url))
+    }
   }
   
   // Si es una ruta pública conocida, permitir

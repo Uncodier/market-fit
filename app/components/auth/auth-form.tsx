@@ -15,6 +15,7 @@ import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google, Shield,
 import { Separator } from "@/app/components/ui/separator"
 import { Alert, AlertDescription } from "@/app/components/ui/alert"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { DEFAULT_POST_AUTH_PATH, resolvePostAuthRedirect } from "@/lib/auth/post-auth-redirect"
 
 interface AuthFormProps {
   mode?: 'login' | 'register'
@@ -71,7 +72,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
   const [mfaVerifying, setMfaVerifying] = useState(false)
   
   // Get returnTo from URL or default to AI Agents (robots)
-  const [finalReturnTo, setFinalReturnTo] = useState<string>('/buyer')
+  const [finalReturnTo, setFinalReturnTo] = useState<string>(DEFAULT_POST_AUTH_PATH)
   
   const isDark = theme === 'dark'
   
@@ -107,10 +108,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
     // Get returnTo from URL if not provided as prop
     if (!returnTo && typeof window !== 'undefined') {
       const url = new URL(window.location.href)
-      const urlReturnTo = url.searchParams.get('returnTo')
-      setFinalReturnTo(urlReturnTo || '/buyer')
+      setFinalReturnTo(resolvePostAuthRedirect(url.searchParams.get('returnTo')))
     } else {
-      setFinalReturnTo(returnTo || '/buyer')
+      setFinalReturnTo(resolvePostAuthRedirect(returnTo))
     }
 
     // If signup data is provided, validate referral code immediately

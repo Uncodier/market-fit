@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { User, AuthChangeEvent, Session, OAuthResponse, Provider } from '@supabase/supabase-js'
 import { useSupabaseClient } from './use-supabase-client'
+import { resolveAuthenticatedSignInRedirect } from '@/lib/auth/post-auth-redirect'
 
 // Declarar tipos para MarketFit en el window object
 declare global {
@@ -153,10 +154,12 @@ export function useAuth() {
           
           if (!isPasswordResetFlow) {
             const url = new URL(window.location.href)
-            const returnTo = url.searchParams.get('returnTo') || '/buyer'
+            const destination = resolveAuthenticatedSignInRedirect(
+              url.searchParams.get('returnTo')
+            )
             
-            console.log('[useAuth] checkAuth: Found session, redirecting to:', returnTo, 'from path:', currentPath)
-            router.push(returnTo)
+            console.log('[useAuth] checkAuth: Found session, redirecting to:', destination, 'from path:', currentPath)
+            router.push(destination)
           } else {
             console.log('[useAuth] checkAuth: Found session but ignoring redirect - user is in password reset flow:', currentPath)
           }
@@ -205,14 +208,14 @@ export function useAuth() {
           // Si el usuario acaba de iniciar sesión, redirigir a la página adecuada
           // PERO no redirigir si está en un flujo de reset de contraseña
           if (currentPath.startsWith('/auth') && !isPasswordResetFlow) {
-            // Obtener el returnTo desde la URL
             const url = new URL(window.location.href)
-            const returnTo = url.searchParams.get('returnTo') || '/buyer'
+            const destination = resolveAuthenticatedSignInRedirect(
+              url.searchParams.get('returnTo')
+            )
             
-            console.log('[useAuth] SIGNED_IN event detected, redirecting to:', returnTo, 'from path:', currentPath)
+            console.log('[useAuth] SIGNED_IN event detected, redirecting to:', destination, 'from path:', currentPath)
             
-            // Redirigir inmediatamente
-            router.push(returnTo)
+            router.push(destination)
           } else if (isPasswordResetFlow) {
             console.log('[useAuth] SIGNED_IN event detected but ignoring redirect - user is in password reset flow:', currentPath)
           }
