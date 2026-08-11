@@ -74,6 +74,7 @@ export const siteFormSchema = z.object({
     b2b2c: z.boolean().optional().default(false)
   }).optional().default({ b2b: false, b2c: false, b2b2c: false }),
   currency: z.string().optional(),
+  default_locale: z.enum(["en", "es", "fr", "de", "ja"]).optional(),
   about: z.string().optional(),
   company_size: z.string().optional(),
   products: z.array(z.object({
@@ -128,6 +129,7 @@ export const siteFormSchema = z.object({
     timezone: z.string().min(1, "Timezone is required"),
     respectHolidays: z.boolean().optional().default(true),
     force_closed: z.boolean().optional().default(false),
+    force_open_until: z.string().nullable().optional(),
     days: z.object({
       monday: z.object({
         enabled: z.boolean(),

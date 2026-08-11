@@ -10,7 +10,7 @@ export function LeadDetailSkeleton() {
     <div className="flex-1 p-0">
       <Tabs defaultValue="journey">
         <StickyHeader>
-          <div className="px-16 pt-0 flex-1">
+          <div className="pt-0 flex-1">
             <div className="flex items-center justify-between w-full">
               <TabsList>
                 <TabsTrigger value="journey">Customer Journey</TabsTrigger>
@@ -31,7 +31,7 @@ export function LeadDetailSkeleton() {
           </div>
         </StickyHeader>
 
-        <div className="px-16" style={{ paddingTop: "32px" }}>
+        <div className="px-4 lg:px-8" style={{ paddingTop: "32px" }}>
           <div className="flex flex-row space-x-6">
             {/* Tab Content - Left Side (60%) */}
             <div className="w-[60%]">

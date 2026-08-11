@@ -15,7 +15,12 @@ import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Badge } from "@/app/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { toast } from "sonner"
-import { Save, ExternalLink, CheckCircle2, FileText, Send, Loader2 } from "@/app/components/ui/icons"
+import { Save, ExternalLink, CheckCircle2, FileText, Send, Loader2, Mail, Link, Printer } from "@/app/components/ui/icons"
+import {
+  ensureOrderPublicAccessToken,
+  sendSaleOrder,
+} from "@/app/orders/send-actions"
+import { buildPublicDocPath } from "@/app/documents/public-token"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
@@ -38,6 +43,7 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   const [savingLines, setSavingLines] = useState(false)
   const [isCreatingShipment, setIsCreatingShipment] = useState(false)
   const [modifiedLines, setModifiedLines] = useState<Record<string, string>>({})
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -184,15 +190,108 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
   const hasShipments = order.shipments && order.shipments.length > 0;
   // Fallback to jsonb items if no normalized sale_order_items found
   const items = order.sale_order_items && order.sale_order_items.length > 0 ? order.sale_order_items : (order.items || []);
+  const lastEmailedAt = (order as any).last_emailed_at as string | null | undefined
+
+  const handlePrint = () => {
+    window.open(`/order-pdf/${order.id}`, "_blank")
+  }
+
+  const handleSendEmail = async () => {
+    if (!(order as any).leads?.email) {
+      toast.error(
+        t("orders.detail.sendMissingEmail") ||
+          "Add a client email before sending this order"
+      )
+      return
+    }
+    setSending(true)
+    try {
+      const res = await sendSaleOrder(order.id)
+      if (res.error) toast.error(res.error)
+      else {
+        toast.success(
+          t("orders.detail.sentEmail") || "Order emailed with PDF attached"
+        )
+        if (res.data) {
+          setOrder({
+            ...order,
+            ...(res.data as any),
+            leads: (res.data as any).leads || (order as any).leads,
+          })
+        }
+      }
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleCopyClientLink = async () => {
+    setSending(true)
+    try {
+      const tokenRes = await ensureOrderPublicAccessToken(order.id)
+      if (tokenRes.error || !tokenRes.token) {
+        toast.error(tokenRes.error || "Failed to create public link")
+        return
+      }
+      const link = `${window.location.origin}${buildPublicDocPath("so", tokenRes.token)}`
+      await navigator.clipboard.writeText(link)
+      toast.success(t("orders.detail.linkCopied") || "Link copied to clipboard")
+      setOrder({ ...order, public_access_token: tokenRes.token } as any)
+    } finally {
+      setSending(false)
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <Tabs defaultValue="details" className="flex-1 flex flex-col">
         <StickyHeader>
-          <div className="w-full pt-0 flex justify-between items-center">
-            <TabsList>
-              <TabsTrigger value="details">{t('orders.detail.tabs.details') || 'Details'}</TabsTrigger>
-              <TabsTrigger value="shipments">{t('orders.detail.tabs.shipments') || 'Shipments'}</TabsTrigger>
-            </TabsList>
+          <div className="w-full pt-0 flex justify-between items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <TabsList>
+                <TabsTrigger value="details">{t('orders.detail.tabs.details') || 'Details'}</TabsTrigger>
+                <TabsTrigger value="shipments">{t('orders.detail.tabs.shipments') || 'Shipments'}</TabsTrigger>
+              </TabsList>
+              <div className="flex items-center gap-1">
+                {order.status !== "cancelled" && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSendEmail}
+                      disabled={sending}
+                      className="flex items-center gap-1"
+                    >
+                      <Mail className="h-4 w-4" />
+                      {lastEmailedAt
+                        ? t("orders.detail.resendEmail") || "Resend"
+                        : t("orders.detail.sendEmail") || "Email"}
+                    </Button>
+                    <div className="w-px h-6 bg-border mx-1" />
+                  </>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyClientLink}
+                  disabled={sending}
+                  className="flex items-center gap-1"
+                >
+                  <Link className="h-4 w-4" />
+                  {t("orders.detail.clientLink") || "Client Link"}
+                </Button>
+                <div className="w-px h-6 bg-border mx-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrint}
+                  className="flex items-center gap-1"
+                >
+                  <Printer className="h-4 w-4" />
+                  {t("common.print") || "Print"}
+                </Button>
+              </div>
+            </div>
             <div className="flex items-center justify-end">
               <OrderStatusBar
                 currentStatus={order.status}

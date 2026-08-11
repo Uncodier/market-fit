@@ -85,7 +85,7 @@ export async function getPurchaseById(siteId: string, id: string) {
       .from("purchases")
       .select(`
         *,
-        vendor:companies!vendor_company_id(id, name),
+        vendor:companies!vendor_company_id(id, name, email),
         purchase_items(*, catalog_items(id, name, kind))
       `)
       .eq("id", id)

@@ -3,6 +3,18 @@
 import { createClient } from "@/lib/supabase/server"
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions"
 import { calculateOrderTaxTotal, roundMoney } from "@/app/commerce/taxes"
+import { buildQuotationPdf, uint8ToBase64 } from "@/app/quotations/quotation-pdf"
+import {
+  buildQuotationEmailSubject,
+  getSendGridConfig,
+  sendQuotationEmailViaSendGrid,
+} from "@/app/quotations/send-quotation-email"
+import {
+  formatDocumentMoney,
+  resolveDocumentLocale,
+} from "@/app/lib/i18n/document-t"
+import { ensureQuotationPublicAccessToken } from "@/app/quotations/public-actions"
+import { buildPublicQuoteUrl } from "@/app/quotations/public-token"
 
 export async function listQuotations({
   siteId,
@@ -43,12 +55,82 @@ export async function getQuotation(id: string) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('quotations')
-    .select('*, items:quotation_items(*), lead:leads(id, name, email, buyer_user_id), site:sites(id, name, logo_url)')
+    .select(`
+      *,
+      items:quotation_items(
+        *,
+        catalog_item:catalog_items(
+          id, site_id, name, image_url, kind, digital_subtype, currency,
+          is_recurring, is_reservation, is_dynamic_price, metadata
+        )
+      ),
+      lead:leads(id, name, email, buyer_user_id),
+      deal:deals!quotations_deal_id_fkey(id, name, amount),
+      site:sites(id, name, logo_url, url)
+    `)
     .eq('id', id)
     .single()
     
   if (error) return { error: error.message }
   return { data }
+}
+
+export async function updateQuotationBasics(
+  id: string,
+  updates: {
+    leadId: string
+    buyerUserId?: string | null
+    dealName: string
+    dealAmount?: number
+  }
+) {
+  const supabase = await createClient()
+  const { data: quote, error: quoteError } = await supabase
+    .from("quotations")
+    .select("id, status, deal_id")
+    .eq("id", id)
+    .single()
+
+  if (quoteError || !quote) return { error: "Quotation not found" }
+  if (quote.status !== "draft") {
+    return { error: "Only draft quotations can be edited" }
+  }
+
+  let buyerUserId = updates.buyerUserId
+  if (buyerUserId === undefined || buyerUserId === null) {
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("buyer_user_id")
+      .eq("id", updates.leadId)
+      .single()
+    buyerUserId = updates.buyerUserId ?? lead?.buyer_user_id ?? null
+  }
+
+  const { error } = await supabase
+    .from("quotations")
+    .update({
+      lead_id: updates.leadId,
+      buyer_user_id: buyerUserId,
+    })
+    .eq("id", id)
+
+  if (error) return { error: error.message }
+
+  if (quote.deal_id) {
+    const dealUpdate: { name: string; amount?: number } = {
+      name: updates.dealName,
+    }
+    if (updates.dealAmount !== undefined) {
+      dealUpdate.amount = updates.dealAmount
+    }
+    const { error: dealError } = await supabase
+      .from("deals")
+      .update(dealUpdate)
+      .eq("id", quote.deal_id)
+    if (dealError) return { error: dealError.message }
+  }
+
+  return getQuotation(id)
 }
 
 export async function createQuotationFromDeal(siteId: string, dealId: string, leadId: string) {
@@ -99,7 +181,121 @@ export async function updateQuotationStatus(id: string, status: string) {
 }
 
 export async function sendQuotation(id: string) {
-  return updateQuotationStatus(id, 'sent')
+  const supabase = await createClient()
+  const { data: quote, error: quoteError } = await supabase
+    .from("quotations")
+    .select(`
+      *,
+      items:quotation_items(*),
+      lead:leads(id, name, email, buyer_user_id),
+      site:sites(id, name, logo_url, url)
+    `)
+    .eq("id", id)
+    .single()
+
+  if (quoteError || !quote) return { error: "Quotation not found" }
+
+  if (!["draft", "sent"].includes(quote.status)) {
+    return { error: "Only draft or sent quotations can be emailed" }
+  }
+
+  const awaitingAuthorization = (quote.items || []).some(
+    (item: any) => item.metadata?.dynamic_quote?.status === "awaiting_authorization"
+  )
+  const hasProcessing = (quote.items || []).some(
+    (item: any) => item.metadata?.dynamic_quote?.status === "processing"
+  )
+  if (awaitingAuthorization || hasProcessing) {
+    return { error: "Authorize dynamic quote items before sending" }
+  }
+
+  const toEmail = quote.lead?.email?.trim()
+  if (!toEmail) {
+    return { error: "Client email is required to send this quote" }
+  }
+
+  const mailConfig = getSendGridConfig()
+  if (!mailConfig) {
+    return { error: "Email is not configured (SENDGRID_API_KEY / SENDGRID_FROM_EMAIL)" }
+  }
+
+  const { data: siteSettings } = await supabase
+    .from("settings")
+    .select("default_locale, locations")
+    .eq("site_id", quote.site_id)
+    .maybeSingle()
+
+  const locale = resolveDocumentLocale(
+    (siteSettings as { default_locale?: string } | null)?.default_locale
+  )
+  const locations = (siteSettings as { locations?: any[] } | null)?.locations
+  const primaryLocation =
+    Array.isArray(locations) && locations.length > 0 ? locations[0] : null
+
+  const tokenRes = await ensureQuotationPublicAccessToken(id)
+  if (tokenRes.error || !tokenRes.token) {
+    return { error: tokenRes.error || "Failed to create public quote link" }
+  }
+
+  const buyerLink = buildPublicQuoteUrl(tokenRes.token)
+  const quoteRef = quote.id.substring(0, 8)
+  const currency = quote.currency || "USD"
+  const totalLabel = formatDocumentMoney(Number(quote.total) || 0, currency, locale)
+  const siteName = quote.site?.name || "Quote"
+
+  const pdfBytes = await buildQuotationPdf({
+    id: quote.id,
+    title: quote.title,
+    status: quote.status,
+    currency,
+    created_at: quote.created_at,
+    valid_until: quote.valid_until,
+    subtotal: quote.subtotal,
+    tax_total: quote.tax_total,
+    discount_total: quote.discount_total,
+    total: quote.total,
+    items: quote.items || [],
+    lead: quote.lead,
+    site: quote.site,
+    location: primaryLocation,
+    locale,
+    buyerLink,
+  })
+
+  const emailResult = await sendQuotationEmailViaSendGrid({
+    toEmail,
+    toName: quote.lead?.name,
+    fromEmail: mailConfig.fromEmail,
+    fromName: mailConfig.fromName || siteName,
+    subject: buildQuotationEmailSubject({ siteName, quoteRef, locale }),
+    siteName,
+    quoteRef,
+    totalLabel,
+    buyerLink,
+    pdfBase64: uint8ToBase64(pdfBytes),
+    pdfFilename: `quote-${quoteRef}.pdf`,
+    apiKey: mailConfig.apiKey,
+    locale,
+  })
+
+  if ("error" in emailResult) {
+    return { error: emailResult.error }
+  }
+
+  if (quote.status === "draft") {
+    const statusRes = await updateQuotationStatus(id, "sent")
+    if (statusRes.error) return { error: statusRes.error }
+    return { success: true, data: statusRes.data, emailed: true }
+  }
+
+  return { success: true, data: quote, emailed: true }
+}
+
+export async function deleteQuotation(id: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('quotations').delete().eq('id', id)
+  if (error) return { error: error.message }
+  return { success: true }
 }
 
 async function recalculateQuotationTotals(quotationId: string, supabase: any) {

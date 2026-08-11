@@ -2,6 +2,7 @@ import { getPdpCatalogItem } from "@/app/commerce/pdp-actions"
 import { getShopSite } from "../actions"
 import { notFound } from "next/navigation"
 import { ProductDetailPage } from "@/app/components/commerce/pdp/ProductDetailPage"
+import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstrap"
 import { createClient } from "@/lib/supabase/server"
 import { Metadata } from "next"
 import { buildCatalogItemShareMetadata } from "@/app/lib/commerce-metadata"
@@ -41,7 +42,12 @@ export default async function ShopItemPage({ params }: { params: Promise<{ siteS
     notFound()
   }
 
-  const siteFromItem = (item as any).site as { id: string; name: string; logo_url: string | null } | null | undefined
+  const siteFromItem = (item as any).site as {
+    id: string
+    name: string
+    logo_url: string | null
+    settings?: { default_locale?: string }
+  } | null | undefined
   const siteSlugFromName = siteFromItem?.name
     ? siteFromItem.name.toLowerCase().replace(/[^a-z0-9-]/g, "-")
     : null
@@ -77,5 +83,12 @@ export default async function ShopItemPage({ params }: { params: Promise<{ siteS
     }
   }
 
-  return <ProductDetailPage item={item as any} site={site} backUrl={`/shop/${siteSlug}`} experience={experience as any} />
+  const siteDefaultLocale = site?.settings?.default_locale
+
+  return (
+    <>
+      <SiteLocaleBootstrap locale={siteDefaultLocale} />
+      <ProductDetailPage item={item as any} site={site} backUrl={`/shop/${siteSlug}`} experience={experience as any} />
+    </>
+  )
 }

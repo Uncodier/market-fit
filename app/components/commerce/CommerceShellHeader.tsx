@@ -24,7 +24,9 @@ function HeaderColumns({
   const [sideWidth, setSideWidth] = useState<number | null>(null)
 
   useEffect(() => {
-    // Only mirror side widths when the center column is visible on mobile.
+    // On small screens with a visible center, mirror the actions width onto the
+    // brand column so the nav stays visually centered. Desktop uses natural
+    // brand/actions widths so the center can claim all leftover space.
     if (hideCenterOnMobile) {
       setSideWidth(null)
       return
@@ -33,7 +35,12 @@ function HeaderColumns({
     const el = actionsRef.current
     if (!el) return
 
+    const mq = window.matchMedia("(min-width: 768px)")
     const measure = () => {
+      if (mq.matches) {
+        setSideWidth(null)
+        return
+      }
       const next = Math.ceil(el.getBoundingClientRect().width)
       setSideWidth((prev) => (prev === next ? prev : next))
     }
@@ -41,16 +48,20 @@ function HeaderColumns({
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)
-    return () => observer.disconnect()
+    mq.addEventListener("change", measure)
+    return () => {
+      observer.disconnect()
+      mq.removeEventListener("change", measure)
+    }
   }, [actions, hideCenterOnMobile])
 
   return (
     <>
-      {/* Mobile: with center, mirror actions width. Without center, brand yields so actions never clip. */}
+      {/* Brand: content-sized on desktop; mirrored to actions width on mobile when center is shown. */}
       <div
         data-commerce-shell-brand
-        className={`flex items-center justify-start gap-2 md:gap-4 relative z-10 min-w-0 overflow-hidden md:flex-1 md:basis-0 md:!w-auto md:overflow-visible ${
-          hideCenterOnMobile ? "flex-1" : "shrink-0"
+        className={`flex items-center justify-start gap-2 md:gap-4 relative z-10 min-w-0 shrink-0 overflow-hidden md:overflow-visible ${
+          hideCenterOnMobile ? "flex-1 md:flex-none" : ""
         }`}
         style={
           !hideCenterOnMobile && sideWidth != null
@@ -62,13 +73,14 @@ function HeaderColumns({
         {brand}
       </div>
 
+      {/* Center: takes all space between brand and actions (no artificial max-width). */}
       <div
         className={`${
           hideCenterOnMobile ? "hidden md:flex" : "flex"
-        } flex-1 min-w-0 justify-start md:justify-center px-1.5 md:px-4 md:min-w-[33.333%] md:max-w-[50%] md:basis-[33.333%]`}
+        } flex-1 min-w-0 justify-start md:justify-center px-1.5 md:px-4`}
       >
         {center ? (
-          <div className="flex min-w-0 w-full">
+          <div className="flex min-w-0 w-full max-w-full">
             {center}
           </div>
         ) : null}
@@ -77,7 +89,7 @@ function HeaderColumns({
       <div
         ref={actionsRef}
         data-commerce-shell-actions
-        className="flex items-center justify-end gap-2 md:gap-3 relative z-10 min-w-0 shrink-0 md:flex-1 md:basis-0 md:w-auto"
+        className="flex items-center justify-end gap-2 md:gap-3 relative z-10 shrink-0"
       >
         {actions}
       </div>

@@ -1,4 +1,10 @@
-import { isBusinessOpen, getNextOpenSlot, BusinessHours } from '../../app/commerce/business-hours';
+import {
+  isBusinessOpen,
+  getNextOpenSlot,
+  getNextScheduledClose,
+  withStoreOpenState,
+  BusinessHours,
+} from '../../app/commerce/business-hours';
 
 describe('business-hours', () => {
   const mockHours: BusinessHours[] = [
@@ -51,6 +57,55 @@ describe('business-hours', () => {
     // Saturday
     const satDate = new Date('2026-08-08T12:00:00-04:00');
     expect(isBusinessOpen(mockHours, satDate)).toBe(false);
+  });
+
+  it('isBusinessOpen respects force_open_until outside schedule', () => {
+    const lateDate = new Date('2026-08-03T21:30:00-04:00'); // Monday 9:30pm
+    expect(isBusinessOpen(mockHours, lateDate)).toBe(false);
+
+    const until = new Date('2026-08-04T17:00:00-04:00').toISOString(); // Tuesday close
+    const forcedOpen = [{ ...mockHours[0], force_open_until: until }];
+    expect(isBusinessOpen(forcedOpen, lateDate)).toBe(true);
+
+    const afterUntil = new Date('2026-08-04T17:30:00-04:00');
+    expect(isBusinessOpen(forcedOpen, afterUntil)).toBe(false);
+  });
+
+  it('getNextScheduledClose returns today end while still before close', () => {
+    const noon = new Date('2026-08-03T12:00:00-04:00');
+    const close = getNextScheduledClose(mockHours, noon);
+    expect(close?.toISOString()).toBe(new Date('2026-08-03T17:00:00-04:00').toISOString());
+  });
+
+  it('getNextScheduledClose returns next enabled day after hours', () => {
+    const late = new Date('2026-08-03T21:30:00-04:00'); // Monday night
+    const close = getNextScheduledClose(mockHours, late);
+    expect(close?.toISOString()).toBe(new Date('2026-08-04T17:00:00-04:00').toISOString());
+  });
+
+  it('withStoreOpenState opens outside hours until next scheduled close', () => {
+    const late = new Date('2026-08-03T21:30:00-04:00');
+    const next = withStoreOpenState(mockHours, true, late);
+    expect(next[0].force_closed).toBe(false);
+    expect(next[0].force_open_until).toBe(new Date('2026-08-04T17:00:00-04:00').toISOString());
+    expect(isBusinessOpen(next, late)).toBe(true);
+  });
+
+  it('withStoreOpenState closes outside hours without force_closed', () => {
+    const late = new Date('2026-08-03T21:30:00-04:00');
+    const open = withStoreOpenState(mockHours, true, late);
+    const closed = withStoreOpenState(open, false, late);
+    expect(closed[0].force_open_until).toBeNull();
+    expect(closed[0].force_closed).toBe(false);
+    expect(isBusinessOpen(closed, late)).toBe(false);
+  });
+
+  it('withStoreOpenState force-closes during schedule hours', () => {
+    const noon = new Date('2026-08-03T12:00:00-04:00');
+    const closed = withStoreOpenState(mockHours, false, noon);
+    expect(closed[0].force_closed).toBe(true);
+    expect(closed[0].force_open_until).toBeNull();
+    expect(isBusinessOpen(closed, noon)).toBe(false);
   });
 
   it('getNextOpenSlot returns correct slot when checked early in the day', () => {

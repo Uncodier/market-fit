@@ -11,7 +11,12 @@ import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { Sale, SaleOrder } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Pencil, Trash2, Printer, CreditCard } from "@/app/components/ui/icons"
+import { Pencil, Trash2, Printer, CreditCard, Send, Link } from "@/app/components/ui/icons"
+import {
+  ensureSalePublicAccessToken,
+  sendSaleInvoice,
+} from "@/app/sales/send-actions"
+import { buildPublicDocPath } from "@/app/documents/public-token"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from "@/app/components/ui/alert-dialog"
 import { EditSaleDialog } from "../components/EditSaleDialog"
 import { CreateSaleOrderDialog } from "../components/CreateSaleOrderDialog"
@@ -34,6 +39,7 @@ export default function SaleDetailPage(props: { params: Promise<{ id: string }> 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateOrderDialogOpen, setIsCreateOrderDialogOpen] = useState(false);
   const [isRegisterPaymentDialogOpen, setIsRegisterPaymentDialogOpen] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     async function loadSale() {
@@ -183,6 +189,55 @@ export default function SaleDetailPage(props: { params: Promise<{ id: string }> 
       window.open(`/invoice-pdf/${sale.id}`, '_blank');
     }
   };
+
+  const handleSend = async () => {
+    if (!sale) return
+    if (!sale.leadEmail) {
+      toast.error(
+        t("sales.detail.sendMissingEmail") ||
+          "Add a client email before sending this invoice"
+      )
+      return
+    }
+    setSending(true)
+    try {
+      const res = await sendSaleInvoice(sale.id)
+      if (res.error) toast.error(res.error)
+      else {
+        toast.success(
+          t("sales.detail.sentEmail") || "Invoice emailed with PDF attached"
+        )
+        if (res.data) {
+          setSale({
+            ...sale,
+            lastEmailedAt: res.data.last_emailed_at || new Date().toISOString(),
+            publicAccessToken: res.data.public_access_token || sale.publicAccessToken,
+            leadEmail: res.data.leads?.email || sale.leadEmail,
+          })
+        }
+      }
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleCopyClientLink = async () => {
+    if (!sale) return
+    setSending(true)
+    try {
+      const tokenRes = await ensureSalePublicAccessToken(sale.id)
+      if (tokenRes.error || !tokenRes.token) {
+        toast.error(tokenRes.error || "Failed to create public link")
+        return
+      }
+      const link = `${window.location.origin}${buildPublicDocPath("i", tokenRes.token)}`
+      await navigator.clipboard.writeText(link)
+      toast.success(t("sales.detail.linkCopied") || "Link copied to clipboard")
+      setSale({ ...sale, publicAccessToken: tokenRes.token })
+    } finally {
+      setSending(false)
+    }
+  }
 
   const handlePublish = async () => {
     if (!currentSite?.id || !sale) return;
@@ -346,6 +401,39 @@ export default function SaleDetailPage(props: { params: Promise<{ id: string }> 
               </Button>
 
               <div className="w-px h-6 bg-border mx-1" />
+
+              {sale && sale.status !== "cancelled" && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSend}
+                    disabled={sending}
+                    className="flex items-center gap-1"
+                  >
+                    <Send className="h-4 w-4" />
+                    {sale.lastEmailedAt
+                      ? t("sales.detail.resendEmail") || "Resend"
+                      : t("sales.detail.sendEmail") || "Send"}
+                  </Button>
+                  <div className="w-px h-6 bg-border mx-1" />
+                </>
+              )}
+              {sale && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyClientLink}
+                    disabled={sending}
+                    className="flex items-center gap-1"
+                  >
+                    <Link className="h-4 w-4" />
+                    {t("sales.detail.clientLink") || "Client Link"}
+                  </Button>
+                  <div className="w-px h-6 bg-border mx-1" />
+                </>
+              )}
 
               {sale && (
                 sale.accountingState !== 'posted' ? (

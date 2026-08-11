@@ -261,6 +261,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     })(),
     // Add company info
     currency: site.settings?.currency || "USD",
+    default_locale: site.settings?.default_locale || "en",
     about: site.settings?.about || "",
     company_size: site.settings?.company_size || "",
     industry: site.settings?.industry || "",

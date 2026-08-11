@@ -121,6 +121,9 @@ export interface Sale {
   locationId?: string | null;
   leadId: string | null;
   leadName: string | null;
+  leadEmail?: string | null;
+  lastEmailedAt?: string | null;
+  publicAccessToken?: string | null;
   campaignId: string | null;
   segmentId: string | null;
   saleDate: string;
@@ -330,6 +333,9 @@ export interface Purchase {
   siteId: string
   vendorCompanyId?: string | null
   vendorName?: string | null
+  vendorEmail?: string | null
+  lastEmailedAt?: string | null
+  publicAccessToken?: string | null
   userId?: string | null
   title: string
   status: 'draft' | 'pending' | 'completed' | 'cancelled'

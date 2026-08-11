@@ -94,6 +94,7 @@ export interface SiteSettings {
   team_roles?: { name: string; permissions: string[]; description?: string }[] | null
   org_structure?: Record<string, any> | null
   currency?: string
+  default_locale?: "en" | "es" | "fr" | "de" | "ja"
   created_at?: string
   updated_at?: string
   competitors?: CompetitorUrl[] | null
@@ -323,6 +324,8 @@ export interface BusinessHours {
   name: string
   timezone: string
   respectHolidays?: boolean
+  force_closed?: boolean
+  force_open_until?: string | null
   days: {
     monday: { enabled: boolean; start?: string; end?: string }
     tuesday: { enabled: boolean; start?: string; end?: string }
@@ -1207,6 +1210,21 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   default_delivery_options: ['pickup', 'ship', 'dine_in']
                 }),
                 currency: settingsData.currency || "USD",
+                default_locale: (["en", "es", "fr", "de", "ja"] as const).includes(
+                  (settingsData as { default_locale?: string }).default_locale as
+                    | "en"
+                    | "es"
+                    | "fr"
+                    | "de"
+                    | "ja"
+                )
+                  ? ((settingsData as { default_locale?: string }).default_locale as
+                      | "en"
+                      | "es"
+                      | "fr"
+                      | "de"
+                      | "ja")
+                  : "en",
                 business_model: (() => {
                   const parsed = parseJsonField(settingsData.business_model, { b2b: false, b2c: false, b2b2c: false });
                   return parsed;

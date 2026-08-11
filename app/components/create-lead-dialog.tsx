@@ -24,6 +24,13 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/app/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { useSite } from "@/app/context/SiteContext"

@@ -101,7 +101,7 @@ export async function requestDynamicQuote(params: {
         deal_id: dealId,
         lead_id: params.leadId,
         buyer_user_id: lead?.buyer_user_id || null,
-        status: "draft",
+        status: "sent",
         currency: item.currency || "USD",
         valid_until: validUntil,
       })

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { Settings, Shield, CreditCard, Plug, Sun, Moon } from "@/app/components/ui/icons"
 import { Switch } from "@/app/components/ui/switch"
 import { useTheme } from "@/app/context/ThemeContext"
+import { BusinessOpenToggle } from "@/app/components/settings/BusinessOpenToggle"
 import { MenuItem, EmojiIcon } from "./MenuItem"
 import {
   Tooltip,
@@ -12,7 +13,7 @@ import {
   TooltipTrigger,
 } from "@/app/components/ui/tooltip"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect, useRef } from "react"
+import { Fragment, useState, useEffect, useRef } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { type LucideIcon } from "@/app/components/ui/icons"
 
@@ -292,38 +293,41 @@ export function ConfigurationSection({
 
               if (isTheme) {
                 return (
-                  <div key="settings-child-theme" className={cn("relative", !isCollapsed && "pl-3")}>
-                    <MenuItem
-                      href="#"
-                      icon={isDarkMode ? Moon : Sun}
-                      title={
-                        isDarkMode
-                          ? t("layout.sidebar.darkMode") || "Dark Mode"
-                          : t("layout.sidebar.lightMode") || "Light Mode"
-                      }
-                      isActive={false}
-                      isCollapsed={isCollapsed}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        toggleTheme()
-                      }}
-                    >
-                      {!isCollapsed && (
-                        <div className="ml-auto flex items-center">
-                          <Switch
-                            checked={isDarkMode}
-                            onCheckedChange={toggleTheme}
-                            onClick={(e) => e.stopPropagation()}
-                            aria-label={
-                              isDarkMode ? "Disable dark mode" : "Enable dark mode"
-                            }
-                            className="data-[state=checked]:bg-primary/90 focus:outline-none focus:ring-0"
-                            style={{ outline: "none" }}
-                          />
-                        </div>
-                      )}
-                    </MenuItem>
-                  </div>
+                  <Fragment key="settings-child-theme-group">
+                    <BusinessOpenToggle isCollapsed={isCollapsed} />
+                    <div className={cn("relative", !isCollapsed && "pl-3")}>
+                      <MenuItem
+                        href="#"
+                        icon={isDarkMode ? Moon : Sun}
+                        title={
+                          isDarkMode
+                            ? t("layout.sidebar.darkMode") || "Dark Mode"
+                            : t("layout.sidebar.lightMode") || "Light Mode"
+                        }
+                        isActive={false}
+                        isCollapsed={isCollapsed}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          toggleTheme()
+                        }}
+                      >
+                        {!isCollapsed && (
+                          <div className="ml-auto flex items-center">
+                            <Switch
+                              checked={isDarkMode}
+                              onCheckedChange={toggleTheme}
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label={
+                                isDarkMode ? "Disable dark mode" : "Enable dark mode"
+                              }
+                              className="data-[state=checked]:bg-primary/90 focus:outline-none focus:ring-0"
+                              style={{ outline: "none" }}
+                            />
+                          </div>
+                        )}
+                      </MenuItem>
+                    </div>
+                  </Fragment>
                 )
               }
 

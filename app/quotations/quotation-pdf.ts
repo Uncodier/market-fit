@@ -1,0 +1,437 @@
+import { PDFDocument, StandardFonts } from "pdf-lib"
+import {
+  documentT,
+  formatDocumentDate,
+  formatDocumentMoney,
+  resolveDocumentLocale,
+} from "@/app/lib/i18n/document-t"
+import {
+  drawPdfWrappedText,
+  drawRightText,
+  embedPdfLogo,
+  formatPdfLocationLines,
+  pdfInk,
+  pdfMuted,
+  pdfRule,
+  pdfSoftFill,
+  resolveBillToLines,
+  type QuotationPdfLocation,
+} from "@/app/quotations/quotation-pdf-helpers"
+
+export type QuotationPdfItem = {
+  name: string
+  quantity: number
+  unit_price: number
+  subtotal: number
+}
+
+export type QuotationPdfSite = {
+  name?: string | null
+  logo_url?: string | null
+  url?: string | null
+}
+
+export type QuotationPdfInput = {
+  id: string
+  title?: string | null
+  status?: string | null
+  currency?: string | null
+  created_at?: string | null
+  valid_until?: string | null
+  subtotal?: number | null
+  tax_total?: number | null
+  discount_total?: number | null
+  total?: number | null
+  items?: QuotationPdfItem[] | null
+  lead?: { name?: string | null; email?: string | null } | null
+  site?: QuotationPdfSite | null
+  location?: QuotationPdfLocation | null
+  locale?: string | null
+  buyerLink: string
+}
+
+/**
+ * Clean invoice-style A4 PDF (matches /quote-pdf HTML print layout / sales invoice-pdf).
+ */
+export async function buildQuotationPdf(input: QuotationPdfInput): Promise<Uint8Array> {
+  const doc = await PDFDocument.create()
+  const page = doc.addPage([595.28, 841.89])
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+  const locale = resolveDocumentLocale(input.locale)
+  const currency = input.currency || "USD"
+  const margin = 48
+  const right = page.getWidth() - margin
+  const contentWidth = right - margin
+  let y = page.getHeight() - margin
+
+  const t = (key: string) => documentT(locale, key)
+  const siteName = input.site?.name || t("quotations.document.quote")
+  const quoteRef = input.id.substring(0, 8)
+  const logo = await embedPdfLogo(doc, input.site?.logo_url)
+
+  // Header
+  if (logo) {
+    const max = 40
+    const scale = Math.min(max / logo.width, max / logo.height)
+    const w = logo.width * scale
+    const h = logo.height * scale
+    page.drawImage(logo, { x: margin, y: y - h, width: w, height: h })
+  }
+
+  const titleX = logo ? margin + 52 : margin
+  page.drawText(t("quotations.document.quote").toUpperCase(), {
+    x: titleX,
+    y: y - 14,
+    size: 22,
+    font: bold,
+    color: pdfInk,
+  })
+  page.drawText(`#${quoteRef}`, {
+    x: titleX,
+    y: y - 34,
+    size: 12,
+    font,
+    color: pdfMuted,
+  })
+  if (input.title) {
+    page.drawText(String(input.title).slice(0, 40), {
+      x: titleX,
+      y: y - 50,
+      size: 9,
+      font,
+      color: pdfMuted,
+    })
+  }
+
+  drawRightText(page, t("quotations.document.created"), {
+    right,
+    y: y - 10,
+    size: 9,
+    font,
+    color: pdfMuted,
+  })
+  drawRightText(page, formatDocumentDate(input.created_at, locale), {
+    right,
+    y: y - 26,
+    size: 11,
+    font: bold,
+    color: pdfInk,
+  })
+  drawRightText(page, t("quotations.document.validUntil"), {
+    right,
+    y: y - 46,
+    size: 9,
+    font,
+    color: pdfMuted,
+  })
+  drawRightText(page, formatDocumentDate(input.valid_until, locale), {
+    right,
+    y: y - 62,
+    size: 10,
+    font: bold,
+    color: pdfInk,
+  })
+
+  y -= 78
+  page.drawLine({
+    start: { x: margin, y },
+    end: { x: right, y },
+    thickness: 0.8,
+    color: pdfRule,
+  })
+  y -= 24
+
+  // From / Bill to
+  const colW = (contentWidth - 24) / 2
+  const billX = margin + colW + 24
+  page.drawText(t("quotations.document.from").toUpperCase(), {
+    x: margin,
+    y,
+    size: 8,
+    font: bold,
+    color: pdfMuted,
+  })
+  page.drawText(t("quotations.document.billTo").toUpperCase(), {
+    x: billX,
+    y,
+    size: 8,
+    font: bold,
+    color: pdfMuted,
+  })
+  y -= 16
+
+  let fromY = y
+  page.drawText(siteName.slice(0, 40), {
+    x: margin,
+    y: fromY,
+    size: 12,
+    font: bold,
+    color: pdfInk,
+  })
+  fromY -= 14
+  if (input.site?.url) {
+    fromY = drawPdfWrappedText(page, String(input.site.url).replace(/^https?:\/\//, ""), {
+      x: margin,
+      y: fromY,
+      size: 9,
+      font,
+      color: pdfMuted,
+      maxWidth: colW,
+    })
+  }
+  for (const line of formatPdfLocationLines(input.location).slice(0, 3)) {
+    fromY = drawPdfWrappedText(page, line, {
+      x: margin,
+      y: fromY,
+      size: 9,
+      font,
+      color: pdfMuted,
+      maxWidth: colW,
+    })
+  }
+
+  const billTo = resolveBillToLines(input.lead)
+  let billY = y
+  page.drawText(billTo.primary.slice(0, 40), {
+    x: billX,
+    y: billY,
+    size: 12,
+    font: bold,
+    color: pdfInk,
+  })
+  billY -= 14
+  if (billTo.secondary) {
+    billY = drawPdfWrappedText(page, billTo.secondary, {
+      x: billX,
+      y: billY,
+      size: 9,
+      font,
+      color: pdfMuted,
+      maxWidth: colW,
+    })
+  }
+
+  y = Math.min(fromY, billY) - 18
+
+  // Summary strip
+  page.drawRectangle({
+    x: margin,
+    y: y - 44,
+    width: contentWidth,
+    height: 56,
+    color: pdfSoftFill,
+  })
+  const col1 = margin + 16
+  const col2 = margin + contentWidth / 3 + 8
+  const col3 = margin + (contentWidth * 2) / 3 + 8
+  page.drawText(t("quotations.document.total"), {
+    x: col1,
+    y: y - 8,
+    size: 8,
+    font,
+    color: pdfMuted,
+  })
+  page.drawText(formatDocumentMoney(input.total || 0, currency, locale), {
+    x: col1,
+    y: y - 28,
+    size: 14,
+    font: bold,
+    color: pdfInk,
+  })
+  page.drawText("STATUS", {
+    x: col2,
+    y: y - 8,
+    size: 8,
+    font,
+    color: pdfMuted,
+  })
+  page.drawText(String(input.status || "draft").toUpperCase(), {
+    x: col2,
+    y: y - 28,
+    size: 11,
+    font: bold,
+    color: pdfInk,
+  })
+  page.drawText(t("quotations.document.validUntil"), {
+    x: col3,
+    y: y - 8,
+    size: 8,
+    font,
+    color: pdfMuted,
+  })
+  page.drawText(formatDocumentDate(input.valid_until, locale), {
+    x: col3,
+    y: y - 28,
+    size: 11,
+    font: bold,
+    color: pdfInk,
+  })
+  y -= 72
+
+  // Table header
+  page.drawRectangle({
+    x: margin,
+    y: y - 6,
+    width: contentWidth,
+    height: 22,
+    color: pdfSoftFill,
+  })
+  const cols = {
+    name: margin + 10,
+    qty: margin + 300,
+    price: margin + 360,
+    total: right - 10,
+  }
+  page.drawText(t("quotations.document.item"), {
+    x: cols.name,
+    y,
+    size: 9,
+    font: bold,
+    color: pdfMuted,
+  })
+  page.drawText(t("quotations.document.qty"), {
+    x: cols.qty,
+    y,
+    size: 9,
+    font: bold,
+    color: pdfMuted,
+  })
+  drawRightText(page, t("quotations.document.price"), {
+    right: cols.price + 40,
+    y,
+    size: 9,
+    font: bold,
+    color: pdfMuted,
+  })
+  drawRightText(page, t("quotations.document.total"), {
+    right: cols.total,
+    y,
+    size: 9,
+    font: bold,
+    color: pdfMuted,
+  })
+  y -= 24
+
+  for (const item of input.items || []) {
+    if (y < 140) break
+    page.drawText((item.name || t("quotations.document.item")).slice(0, 42), {
+      x: cols.name,
+      y,
+      size: 10,
+      font,
+      color: pdfInk,
+    })
+    page.drawText(String(item.quantity ?? 0), {
+      x: cols.qty + 6,
+      y,
+      size: 10,
+      font,
+      color: pdfInk,
+    })
+    drawRightText(page, formatDocumentMoney(item.unit_price, currency, locale), {
+      right: cols.price + 40,
+      y,
+      size: 10,
+      font,
+      color: pdfInk,
+    })
+    drawRightText(page, formatDocumentMoney(item.subtotal, currency, locale), {
+      right: cols.total,
+      y,
+      size: 10,
+      font: bold,
+      color: pdfInk,
+    })
+    y -= 10
+    page.drawLine({
+      start: { x: margin, y: y + 4 },
+      end: { x: right, y: y + 4 },
+      thickness: 0.4,
+      color: pdfRule,
+    })
+    y -= 14
+  }
+
+  y -= 8
+  const totalsX = right - 180
+  const drawTotal = (label: string, value: string, emphasize = false) => {
+    page.drawText(label, {
+      x: totalsX,
+      y,
+      size: emphasize ? 11 : 9,
+      font: emphasize ? bold : font,
+      color: emphasize ? pdfInk : pdfMuted,
+    })
+    drawRightText(page, value, {
+      right,
+      y,
+      size: emphasize ? 12 : 10,
+      font: emphasize ? bold : font,
+      color: pdfInk,
+    })
+    y -= emphasize ? 20 : 16
+  }
+
+  drawTotal(
+    t("quotations.document.subtotal"),
+    formatDocumentMoney(input.subtotal || 0, currency, locale)
+  )
+  if (Number(input.tax_total) > 0) {
+    drawTotal(
+      t("quotations.document.tax"),
+      formatDocumentMoney(input.tax_total || 0, currency, locale)
+    )
+  }
+  if (Number(input.discount_total) > 0) {
+    drawTotal(
+      t("quotations.document.discount"),
+      `-${formatDocumentMoney(input.discount_total || 0, currency, locale)}`
+    )
+  }
+  page.drawLine({
+    start: { x: totalsX, y: y + 10 },
+    end: { x: right, y: y + 10 },
+    thickness: 0.7,
+    color: pdfRule,
+  })
+  drawTotal(
+    t("quotations.document.total"),
+    formatDocumentMoney(input.total || 0, currency, locale),
+    true
+  )
+
+  y -= 10
+  page.drawRectangle({
+    x: margin,
+    y: y - 36,
+    width: contentWidth,
+    height: 44,
+    color: pdfSoftFill,
+  })
+  page.drawText(t("quotations.document.reviewOnline"), {
+    x: margin + 12,
+    y: y - 12,
+    size: 9,
+    font: bold,
+    color: pdfInk,
+  })
+  page.drawText(input.buyerLink.slice(0, 78), {
+    x: margin + 12,
+    y: y - 28,
+    size: 8,
+    font,
+    color: pdfMuted,
+  })
+
+  return doc.save()
+}
+
+export function uint8ToBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64")
+  }
+  let binary = ""
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary)
+}

@@ -9,9 +9,19 @@ import jaTranslations from './locales/ja.json';
 
 export type SupportedLocale = 'en' | 'es' | 'fr' | 'de' | 'ja';
 
+const SUPPORTED_LOCALES: SupportedLocale[] = ['en', 'es', 'fr', 'de', 'ja'];
+
+export function isSupportedLocale(value: unknown): value is SupportedLocale {
+  return typeof value === 'string' && (SUPPORTED_LOCALES as string[]).includes(value);
+}
+
 interface LocalizationContextType {
   locale: SupportedLocale;
+  /** True after the initial localStorage / geo / browser resolution has run. */
+  isReady: boolean;
   setLocale: (locale: SupportedLocale) => void;
+  /** Apply site default when the visitor has no saved preference. Does not persist. */
+  applySiteDefaultLocale: (locale: SupportedLocale) => void;
   // helper to get localized strings/assets
   t: (key: string, params?: Record<string, string | number>) => string;
   getAsset: (key: string) => string;
@@ -97,6 +107,14 @@ export const LocalizationProvider = ({ children, initialCountry }: { children: R
     document.documentElement.lang = newLocale;
   };
 
+  const applySiteDefaultLocale = (siteLocale: SupportedLocale) => {
+    if (!isSupportedLocale(siteLocale)) return;
+    const savedLocale = localStorage.getItem('makinari-locale');
+    if (isSupportedLocale(savedLocale)) return;
+    setLocaleState(siteLocale);
+    document.documentElement.lang = siteLocale;
+  };
+
   const t = (key: string, params?: Record<string, string | number>): string => {
     const raw = !mounted
       ? (translations[defaultLocale][key] || key)
@@ -116,7 +134,7 @@ export const LocalizationProvider = ({ children, initialCountry }: { children: R
   };
 
   return (
-    <LocalizationContext.Provider value={{ locale, setLocale, t, getAsset }}>
+    <LocalizationContext.Provider value={{ locale, isReady: mounted, setLocale, applySiteDefaultLocale, t, getAsset }}>
       {children}
     </LocalizationContext.Provider>
   );

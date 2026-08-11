@@ -108,6 +108,7 @@ export function SiteForm({
       resource_urls: initialData?.resource_urls || [],
       competitors: initialData?.competitors || [],
       focusMode: initialData?.focusMode || 50,
+      default_locale: initialData?.default_locale || "en",
       about: initialData?.about || "",
       company_size: initialData?.company_size || "",
       industry: initialData?.industry || "",

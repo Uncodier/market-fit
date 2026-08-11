@@ -14,6 +14,12 @@ import {
   findPosClientMutation,
   recordPosClientMutation,
 } from "@/app/pos/actions/idempotency";
+import {
+  assertQuotationCheckoutable,
+  markQuotationAccepted,
+  quotationItemsToCheckoutLines,
+  type QuotationForCheckout,
+} from "@/app/quotations/quote-checkout";
 
 export interface CheckoutLine {
   catalogItemId: string;
@@ -45,20 +51,24 @@ export interface CheckoutCartParams {
   scheduledFor?: string; // ISO
   /** Client-generated id for local-first POS outbox idempotency */
   clientMutationId?: string;
+  /** When set, lines/prices come from the quotation (server-authoritative). */
+  quotationId?: string;
+  /** Public share token from /q/[token] — allows guest checkout for that quote. */
+  publicAccessToken?: string;
 }
 
 export async function checkoutCart({
   siteId,
-  lines,
-  priceListId,
-  leadId,
+  lines: inputLines,
+  priceListId: inputPriceListId,
+  leadId: inputLeadId,
   promotionCode,
   fulfillment,
   originLocationId,
   shippingAddress,
-  source,
+  source: inputSource,
   userId,
-  buyerUserId,
+  buyerUserId: inputBuyerUserId,
   ownerSiteId,
   customerName,
   customerEmail,
@@ -68,9 +78,11 @@ export async function checkoutCart({
   paymentMethod,
   scheduledFor,
   clientMutationId,
+  quotationId,
+  publicAccessToken,
 }: CheckoutCartParams) {
   try {
-    if (clientMutationId && source === "pos") {
+    if (clientMutationId && inputSource === "pos") {
       const existing = await findPosClientMutation(siteId, clientMutationId);
       if (existing.data) {
         return {
@@ -84,6 +96,45 @@ export async function checkoutCart({
 
     const supabase = await createClient();
     const supabaseAdmin = await createServiceClient(true);
+
+    let lines = inputLines;
+    let source = inputSource;
+    let priceListId = inputPriceListId;
+    let leadId = inputLeadId;
+    let buyerUserId = inputBuyerUserId;
+    let quoteForAccept: QuotationForCheckout | null = null;
+
+    if (quotationId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const sessionUserId = session?.user?.id || inputBuyerUserId || null;
+
+      const { data: quote, error: quoteError } = await supabaseAdmin
+        .from("quotations")
+        .select("*, items:quotation_items(*)")
+        .eq("id", quotationId)
+        .single();
+
+      if (quoteError || !quote) throw new Error("Quotation not found");
+
+      const tokenOk =
+        Boolean(publicAccessToken) &&
+        typeof quote.public_access_token === "string" &&
+        quote.public_access_token === publicAccessToken;
+
+      const gate = assertQuotationCheckoutable(quote, {
+        buyerUserId: sessionUserId,
+        siteId,
+        publicAccess: tokenOk,
+      });
+      if (!gate.ok) throw new Error(gate.error);
+
+      quoteForAccept = quote as QuotationForCheckout;
+      lines = quotationItemsToCheckoutLines(quote.items || []);
+      source = "quote";
+      priceListId = priceListId || quote.price_list_id || undefined;
+      leadId = leadId || quote.lead_id || undefined;
+      buyerUserId = sessionUserId || quote.buyer_user_id || inputBuyerUserId;
+    }
     
     const isAdmin = ['shop', 'marketplace', 'quote'].includes(source);
     
@@ -843,6 +894,10 @@ export async function checkoutCart({
         orderId: order.id,
         result: { success: true },
       });
+    }
+
+    if (quoteForAccept) {
+      await markQuotationAccepted(supabaseAdmin, quoteForAccept, sale.id);
     }
 
     return { success: true, saleId: sale.id, orderId: order.id };

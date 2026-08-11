@@ -42,6 +42,7 @@ import { CatalogItemDetailsMarketingCard } from "../components/CatalogItemDetail
 import { VariantsCard } from "../components/VariantsCard"
 import { CatalogItemPricingSection } from "../components/CatalogItemPricingSection"
 import { MarketplaceTab } from "../components/MarketplaceTab"
+import { ChannelsTab } from "../components/ChannelsTab"
 
 export default function CatalogItemDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -173,6 +174,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               <TabsTrigger value="variants">{t('catalog.tabs.variants') || 'Variants'}</TabsTrigger>
               <TabsTrigger value="delivery">{t('catalog.tabs.delivery') || 'Delivery'}</TabsTrigger>
               <TabsTrigger value="marketplace">{t('catalog.tabs.marketplace') || 'Marketplace'}</TabsTrigger>
+              <TabsTrigger value="channels">{t('catalog.tabs.channels') || 'Channels'}</TabsTrigger>
               <TabsTrigger value="inventory">{t('catalog.tabs.inventory') || 'Inventory'}</TabsTrigger>
               <TabsTrigger value="sales">{t('catalog.tabs.sales') || 'Sales'}</TabsTrigger>
               {formData.is_recurring && (
@@ -409,6 +411,16 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
 
           <TabsContent value="marketplace" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
             <MarketplaceTab
+              item={item}
+              formData={formData}
+              setFormData={setFormData}
+              handleSave={handleSave}
+              saving={saving}
+            />
+          </TabsContent>
+
+          <TabsContent value="channels" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+            <ChannelsTab
               item={item}
               formData={formData}
               setFormData={setFormData}

@@ -42,11 +42,14 @@ export default function CheckoutClient({
   const session = user ? { user } : null
 
   // URL Params
-  const source = searchParams?.get('source') || 'marketplace'
+  const sourceParam = searchParams?.get('source') || 'marketplace'
   const siteId = searchParams?.get('siteId')
-  const returnTo = searchParams?.get('returnTo') || (source === 'shop' && siteId ? `/shop/${siteId}` : '/marketplace')
+  const returnTo = searchParams?.get('returnTo') || (sourceParam === 'shop' && siteId ? `/shop/${siteId}` : '/marketplace')
   const mode = (searchParams?.get('mode') as CartMode) || 'cart'
   const initialOwnerSiteId = searchParams?.get('ownerSiteId')
+  const quotationId = searchParams?.get('quotationId')
+  const publicAccessToken = searchParams?.get('publicAccessToken')
+  const source = quotationId ? 'shop' : sourceParam
 
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -289,7 +292,10 @@ export default function CheckoutClient({
         catalogItemId: c.id,
         quantity: c.cartQty,
         reservationStart: c.reservationStart,
-        reservationEnd: c.reservationEnd
+        reservationEnd: c.reservationEnd,
+        ...(quotationId && c.cartPrice != null
+          ? { unitPriceOverride: Number(c.cartPrice) }
+          : {}),
       }))
 
       const res = await checkoutCartRequest({
@@ -304,7 +310,9 @@ export default function CheckoutClient({
         shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
         promotionCode: promotionCode || undefined,
         scheduledFor: finalScheduledFor,
-        source: source as 'shop' | 'marketplace',
+        source: quotationId ? 'quote' : (source as 'shop' | 'marketplace'),
+        quotationId: quotationId || undefined,
+        publicAccessToken: publicAccessToken || undefined,
         paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
         intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
       })

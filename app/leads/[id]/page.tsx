@@ -270,7 +270,7 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
     <div className="flex-1 p-0">
       <Tabs defaultValue="journey">
         <StickyHeader>
-          <div className="px-16 pt-0 flex-1 w-full">
+          <div className="pt-0 flex-1 w-full">
             <div className="flex items-center justify-between w-full">
               <TabsList>
                 <TabsTrigger value="journey">Customer Journey</TabsTrigger>
@@ -292,7 +292,7 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
           </div>
         </StickyHeader>
 
-        <div className="px-16" style={{ paddingTop: "32px" }}>
+        <div className="px-4 lg:px-8" style={{ paddingTop: "32px" }}>
           {lead && (
             <div className="flex flex-row space-x-6">
               {/* Tab Content - Left Side (60%) */}

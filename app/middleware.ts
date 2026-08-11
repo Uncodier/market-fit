@@ -14,6 +14,16 @@ const ALLOWED_PUBLIC_PATHS = [
   '/cart',
 ]
 
+/** Guest document share links — require `/prefix/` so `/q` does not match `/quotations`. */
+function isPublicDocumentSharePath(pathname: string): boolean {
+  return (
+    pathname.startsWith('/q/') ||
+    pathname.startsWith('/i/') ||
+    pathname.startsWith('/so/') ||
+    pathname.startsWith('/vb/')
+  )
+}
+
 // Define suspicious patterns that should be blocked immediately
 const SUSPICIOUS_PATTERNS = [
   /\.php(\?|$)/i,
@@ -325,7 +335,10 @@ export async function middleware(request: NextRequest) {
   }
   
   // Si es una ruta pública conocida, permitir
-  if (ALLOWED_PUBLIC_PATHS.some(path => pathname.startsWith(path))) {
+  if (
+    ALLOWED_PUBLIC_PATHS.some(path => pathname.startsWith(path)) ||
+    isPublicDocumentSharePath(pathname)
+  ) {
     const res = nextWithAlignedServerActionHost(request)
 
     // Commerce / buyer surfaces must never run in demo mode.
@@ -336,7 +349,8 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/marketplace') ||
       pathname.startsWith('/buyer') ||
       pathname.startsWith('/cart') ||
-      pathname.startsWith('/book')
+      pathname.startsWith('/book') ||
+      isPublicDocumentSharePath(pathname)
 
     if (isCommerceSurface && request.cookies.has('market_fit_demo_site_id')) {
       res.cookies.set('market_fit_demo_site_id', '', {

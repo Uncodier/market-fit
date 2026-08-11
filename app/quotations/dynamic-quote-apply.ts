@@ -177,7 +177,7 @@ export async function applyPricedResult(params: {
 
   const { error: quotationUpdateError } = await supabase
     .from("quotations")
-    .update({ valid_until: validUntil, status: "draft" })
+    .update({ valid_until: validUntil })
     .eq("id", quotationId);
 
   if (quotationUpdateError) {

@@ -1,102 +1,95 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Switch } from "@/app/components/ui/switch"
-import { Label } from "@/app/components/ui/label"
 import { toast } from "sonner"
 import { Store } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { isBusinessOpen, withStoreOpenState } from "@/app/commerce/business-hours"
+import { MenuItem } from "@/app/components/navigation/MenuItem"
 
-export function BusinessOpenToggle() {
+interface BusinessOpenToggleProps {
+  isCollapsed?: boolean
+}
+
+export function BusinessOpenToggle({ isCollapsed }: BusinessOpenToggleProps) {
   const { currentSite, updateSettings } = useSite()
   const { t } = useLocalization()
   const [isUpdating, setIsUpdating] = useState(false)
+  const [now, setNow] = useState(() => new Date())
 
-  if (!currentSite) return null;
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
 
-  const businessHours = currentSite.settings?.business_hours || [];
-  const hasHours = businessHours.length > 0;
-  
-  // If we don't have business hours configured, they can't toggle this.
-  // We could create a default one, but let's just default to open.
-  const isForceClosed = hasHours && !!businessHours[0].force_closed;
-  const isOpen = !isForceClosed;
+  if (!currentSite) return null
+
+  const businessHours = currentSite.settings?.business_hours || []
+  const hasHours = businessHours.length > 0
+  const isOpen = hasHours ? isBusinessOpen(businessHours, now) : true
+  const title = isOpen
+    ? t("settings.storeOpen.open")
+    : t("settings.storeOpen.closed")
 
   const handleToggle = async (checked: boolean) => {
     if (!hasHours) {
-      toast.error(t("settings.storeOpen.configureHoursFirst"));
-      return;
+      toast.error(t("settings.storeOpen.configureHoursFirst"))
+      return
     }
 
-    setIsUpdating(true);
+    setIsUpdating(true)
     try {
-      const newForceClosed = !checked;
-      const newHours = [...businessHours];
-      newHours[0] = { ...newHours[0], force_closed: newForceClosed };
+      const newHours = withStoreOpenState(businessHours, checked, now)
 
       await updateSettings(currentSite.id, {
-        business_hours: newHours
-      });
+        business_hours: newHours,
+      })
 
       toast.success(
-        newForceClosed
-          ? t("settings.storeOpen.toast.closed")
-          : t("settings.storeOpen.toast.open")
-      );
+        checked
+          ? t("settings.storeOpen.toast.open")
+          : t("settings.storeOpen.toast.closed")
+      )
     } catch (err) {
-      console.error(err);
-      toast.error(t("settings.storeOpen.toast.error"));
+      console.error(err)
+      toast.error(t("settings.storeOpen.toast.error"))
     } finally {
-      setIsUpdating(false);
+      setIsUpdating(false)
     }
-  };
+  }
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2 rounded-full border px-3 py-1.5 transition-colors",
-        isOpen
-          ? "border-emerald-500/45 bg-emerald-500/15 dark:border-emerald-400/50 dark:bg-emerald-500/20"
-          : "border-rose-500/40 bg-rose-500/10 dark:border-rose-400/45 dark:bg-rose-500/15",
-        (isUpdating || !hasHours) && "opacity-60"
-      )}
-    >
-      <span
-        className={cn(
-          "h-2 w-2 shrink-0 rounded-full",
-          isOpen ? "bg-emerald-500 dark:bg-emerald-400" : "bg-rose-500 dark:bg-rose-400"
-        )}
-        aria-hidden
-      />
-      <Store
-        className={cn(
-          "h-4 w-4",
-          isOpen ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300"
-        )}
-      />
-      <Label
-        htmlFor="store-open-toggle"
-        className={cn(
-          "cursor-pointer select-none text-sm font-semibold",
-          isOpen ? "text-emerald-800 dark:text-emerald-200" : "text-rose-800 dark:text-rose-200"
-        )}
+    <div className={cn("relative", !isCollapsed && "pl-3")}>
+      <MenuItem
+        href="#"
+        icon={Store}
+        title={title}
+        isActive={false}
+        isCollapsed={isCollapsed}
+        onClick={(e) => {
+          e.preventDefault()
+          if (!isUpdating) void handleToggle(!isOpen)
+        }}
       >
-        {isOpen ? t("settings.storeOpen.open") : t("settings.storeOpen.closed")}
-      </Label>
-      <Switch
-        id="store-open-toggle"
-        checked={isOpen}
-        onCheckedChange={handleToggle}
-        disabled={isUpdating || !hasHours}
-        className={cn(
-          "ml-0.5 origin-right scale-90 [&>span]:bg-white [&>span]:shadow-sm dark:[&>span]:bg-white",
-          isOpen
-            ? "data-[state=checked]:bg-emerald-500"
-            : "data-[state=unchecked]:bg-rose-500/50"
+        {!isCollapsed && (
+          <div className="ml-auto flex items-center">
+            <Switch
+              checked={isOpen}
+              disabled={isUpdating}
+              onCheckedChange={(checked) => {
+                void handleToggle(checked)
+              }}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={title}
+              className="data-[state=checked]:bg-primary/90 focus:outline-none focus:ring-0"
+              style={{ outline: "none" }}
+            />
+          </div>
         )}
-      />
+      </MenuItem>
     </div>
   )
 }

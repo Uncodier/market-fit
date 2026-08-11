@@ -3,14 +3,19 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getQuotation } from "@/app/quotations/actions"
-import { acceptQuotation } from "@/app/quotations/buyer-actions"
+import { rejectQuotation } from "@/app/quotations/buyer-actions"
+import {
+  getQuotationByPublicToken,
+  rejectQuotationByPublicToken,
+} from "@/app/quotations/public-actions"
+import { startQuoteCheckout } from "@/app/commerce/quote-cart"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { toast } from "sonner"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { FileText, CheckCircle2, ChevronLeft, CreditCard } from "@/app/components/ui/icons"
+import { FileText, CheckCircle2, ChevronLeft, Ban, ShoppingCart } from "@/app/components/ui/icons"
 import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { DestinationSelector } from "@/app/components/commerce/DestinationSelector"
@@ -18,8 +23,10 @@ import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 export interface BuyerQuoteDetailViewProps {
-  quoteId: string
-  backHref?: string
+  quoteId?: string
+  /** When set, loads/rejects via public token (no account required). */
+  publicAccessToken?: string
+  backHref?: string | null
   returnUrl?: string
   defaultOwnerSiteId?: string | null
   lockDestination?: boolean
@@ -27,8 +34,9 @@ export interface BuyerQuoteDetailViewProps {
 
 export function BuyerQuoteDetailView({ 
   quoteId, 
+  publicAccessToken,
   backHref = "/buyer/quotes",
-  returnUrl = "/buyer",
+  returnUrl,
   defaultOwnerSiteId = null,
   lockDestination = false
 }: BuyerQuoteDetailViewProps) {
@@ -36,18 +44,30 @@ export function BuyerQuoteDetailView({
   const { user } = useAuth()
   const { t } = useLocalization()
   const session = user ? { user } : null
+  const isPublic = Boolean(publicAccessToken)
+  const resolvedReturnUrl =
+    returnUrl || (isPublic && publicAccessToken ? `/q/${publicAccessToken}` : "/buyer")
   
   const [quotation, setQuotation] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [accepting, setAccepting] = useState(false)
+  const [rejecting, setRejecting] = useState(false)
   const [ownerSiteId, setOwnerSiteId] = useState<string | null>(defaultOwnerSiteId)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadQuotation = async () => {
     setLoading(true)
-    const res = await getQuotation(quoteId)
+    setLoadError(null)
+    const res = publicAccessToken
+      ? await getQuotationByPublicToken(publicAccessToken)
+      : quoteId
+        ? await getQuotation(quoteId)
+        : { error: "Missing quote reference" }
+
     if (res.error) {
       toast.error(res.error)
-      router.push(backHref)
+      setLoadError(res.error)
+      if (!isPublic && backHref) router.push(backHref)
     } else {
       setQuotation(res.data)
     }
@@ -56,71 +76,86 @@ export function BuyerQuoteDetailView({
 
   useEffect(() => {
     loadQuotation()
-  }, [quoteId])
+  }, [quoteId, publicAccessToken])
 
-  const handleAccept = async () => {
+  const handleAccept = () => {
     if (!quotation) return
     setAccepting(true)
-    
-    const res = await acceptQuotation(quotation.id, ownerSiteId)
-    
-    if (res.error) {
-      toast.error(res.error)
-      setAccepting(false)
-    } else {
-      // If amount > 0, redirect to stripe
-      if (quotation.total > 0) {
-        try {
-          const stripeRes = await fetch('/api/stripe/checkout/order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: res.orderId,
-              siteId: quotation.site_id,
-              returnUrl: window.location.origin + returnUrl
-            })
-          })
-          const stripeData = await stripeRes.json()
-          if (stripeData.url) {
-            window.location.href = stripeData.url
-            return
-          } else {
-            toast.error(stripeData.error || t('buyer.quotes.detail.paymentError') || "Failed to initiate payment")
-          }
-        } catch (e) {
-          toast.error(t('buyer.quotes.detail.gatewayError') || "Failed to connect to payment gateway")
-        }
-      } else {
-        toast.success(t('buyer.quotes.detail.accepted') || "Quotation accepted!")
-        router.push(returnUrl)
-      }
+    try {
+      const path = startQuoteCheckout(quotation, {
+        returnTo: resolvedReturnUrl,
+        ownerSiteId,
+        publicAccessToken: publicAccessToken || null,
+      })
+      router.push(path)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : (t('buyer.quotes.detail.checkoutError') || "Failed to start checkout"))
       setAccepting(false)
     }
+  }
+
+  const handleReject = async () => {
+    if (!quotation) return
+    setRejecting(true)
+    const res = publicAccessToken
+      ? await rejectQuotationByPublicToken(publicAccessToken)
+      : await rejectQuotation(quotation.id)
+    if (res.error) {
+      toast.error(res.error)
+      setRejecting(false)
+      return
+    }
+    toast.success(t('buyer.quotes.detail.rejected') || "Quote rejected")
+    await loadQuotation()
+    setRejecting(false)
   }
 
   if (loading) {
     return <div className="p-8 space-y-4"><Skeleton className="h-10 w-1/3"/><Skeleton className="h-64 w-full"/></div>
   }
 
+  if (loadError && !quotation) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="text-center max-w-md space-y-2">
+          <h1 className="text-xl font-bold">{t('buyer.quotes.detail.unavailable') || 'Quote unavailable'}</h1>
+          <p className="text-muted-foreground text-sm">{loadError}</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!quotation) return null
 
   const isExpired = quotation.valid_until && new Date(quotation.valid_until) < new Date()
-  const canAccept = quotation.status === 'sent' && !isExpired
+  const canRespond = quotation.status === 'sent' && !isExpired
+  const busy = accepting || rejecting
+  const isSiteScope = lockDestination || (backHref?.startsWith("/purchases") ?? false)
+
+  const headerContent = (
+    <div className="flex w-full items-center gap-4">
+      {backHref ? (
+        <Button variant="ghost" size="icon" onClick={() => router.push(backHref)} className="rounded-full">
+          <ChevronLeft className="w-5 h-5" />
+        </Button>
+      ) : null}
+      <div>
+        <h1 className="font-bold text-lg leading-tight">{t('buyer.quotes.detail.quote') || 'Quote'} {quotation.id.substring(0,8)}</h1>
+        <p className="text-xs text-muted-foreground">{t('buyer.quotes.detail.from') || 'From'} {quotation.site?.name}</p>
+      </div>
+      <Badge variant="outline" className="uppercase ml-auto">{quotation.status ? (t(`status.${quotation.status.toLowerCase()}`) || quotation.status) : ''}</Badge>
+    </div>
+  )
 
   return (
     <div className="flex-1 flex flex-col min-h-full">
-      <StickyHeader>
-        <div className="flex w-full items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push(backHref)} className="rounded-full">
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="font-bold text-lg leading-tight">{t('buyer.quotes.detail.quote') || 'Quote'} {quotation.id.substring(0,8)}</h1>
-            <p className="text-xs text-muted-foreground">{t('buyer.quotes.detail.from') || 'From'} {quotation.site?.name}</p>
-          </div>
-          <Badge variant="outline" className="uppercase ml-auto">{quotation.status ? (t(`status.${quotation.status.toLowerCase()}`) || quotation.status) : ''}</Badge>
+      {isSiteScope ? (
+        <StickyHeader>{headerContent}</StickyHeader>
+      ) : (
+        <div className="sticky top-[72px] z-30 bg-transparent min-h-[71px] flex items-center w-full">
+          {headerContent}
         </div>
-      </StickyHeader>
+      )}
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -149,7 +184,7 @@ export function BuyerQuoteDetailView({
             
             <div className="text-right">
               <div className="text-3xl font-bold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: quotation.currency || 'USD' }).format(quotation.total)}</div>
-              {canAccept && (
+              {canRespond && (
                 <div className="mt-2 text-sm text-muted-foreground">
                   {t('buyer.quotes.detail.ready') || 'Ready to accept'}
                 </div>
@@ -217,13 +252,13 @@ export function BuyerQuoteDetailView({
             </CardContent>
           </Card>
 
-          {canAccept && (
+          {canRespond && (
             <Card className="border-primary/50 shadow-md">
               <CardContent className="pt-6 space-y-6">
                 <div>
-                  <h3 className="font-bold text-lg mb-2">{t('buyer.quotes.detail.accept') || 'Accept & Pay'}</h3>
+                  <h3 className="font-bold text-lg mb-2">{t('buyer.quotes.detail.accept') || 'Accept'}</h3>
                   <p className="text-muted-foreground text-sm">
-                    {t('buyer.quotes.detail.acceptDesc') || 'By accepting this quote, an order will be generated and you will be redirected to complete the payment securely.'}
+                    {t('buyer.quotes.detail.acceptDesc') || 'Accept this quote to continue to checkout with the quoted prices. You can choose delivery and payment options next.'}
                   </p>
                 </div>
                 
@@ -236,24 +271,45 @@ export function BuyerQuoteDetailView({
                   />
                 )}
 
-                <Button 
-                  size="lg" 
-                  className="w-full text-base h-14" 
-                  onClick={handleAccept} 
-                  disabled={accepting}
-                >
-                  {accepting ? (
-                    <span className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-full border-2 border-background border-t-transparent animate-spin" />
-                      {t('buyer.quotes.detail.processing') || 'Processing...'}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <CreditCard className="w-5 h-5" />
-                      {quotation.total > 0 ? (t('buyer.quotes.detail.payNow') || 'Pay Now') : (t('buyer.quotes.detail.acceptQuote') || 'Accept Quote')}
-                    </span>
-                  )}
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    className="flex-1 text-base h-14 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-500/30 dark:hover:bg-red-500/10"
+                    onClick={handleReject} 
+                    disabled={busy}
+                  >
+                    {rejecting ? (
+                      <span className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                        {t('buyer.quotes.detail.processing') || 'Processing...'}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Ban className="w-5 h-5" />
+                        {t('buyer.quotes.detail.reject') || 'Reject'}
+                      </span>
+                    )}
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    className="flex-1 text-base h-14" 
+                    onClick={handleAccept} 
+                    disabled={busy}
+                  >
+                    {accepting ? (
+                      <span className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full border-2 border-background border-t-transparent animate-spin" />
+                        {t('buyer.quotes.detail.processing') || 'Processing...'}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <ShoppingCart className="w-5 h-5" />
+                        {t('buyer.quotes.detail.proceedToCheckout') || 'Proceed to Checkout'}
+                      </span>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -268,6 +324,13 @@ export function BuyerQuoteDetailView({
             <div className="bg-green-50 text-green-700 p-4 rounded-xl border border-green-200 text-center flex items-center justify-center gap-2 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20">
               <CheckCircle2 className="w-5 h-5" />
               {t('buyer.quotes.detail.alreadyAccepted') || 'This quote has already been accepted.'}
+            </div>
+          )}
+
+          {quotation.status === 'rejected' && (
+            <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 text-center flex items-center justify-center gap-2 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">
+              <Ban className="w-5 h-5" />
+              {t('buyer.quotes.detail.alreadyRejected') || 'This quote has been rejected.'}
             </div>
           )}
         </div>

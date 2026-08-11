@@ -15,7 +15,12 @@ import {
 import { Purchase } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { CreditCard, Package, Trash2, BookOpen, Pencil } from "@/app/components/ui/icons"
+import { CreditCard, Package, Trash2, BookOpen, Pencil, Send, Link, Printer } from "@/app/components/ui/icons"
+import {
+  ensureBillPublicAccessToken,
+  sendVendorBill,
+} from "@/app/bills/send-actions"
+import { buildPublicDocPath } from "@/app/documents/public-token"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +47,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [sending, setSending] = useState(false)
 
   const load = async () => {
     if (!currentSite?.id || !unwrappedParams.id) return
@@ -127,6 +133,53 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
     }
   }
 
+  const handlePrint = () => {
+    if (!purchase) return
+    window.open(`/bill-pdf/${purchase.id}`, "_blank")
+  }
+
+  const handleSend = async () => {
+    if (!purchase) return
+    if (!purchase.vendorEmail) {
+      toast.error(
+        t("bills.detail.sendMissingEmail") ||
+          "Add a vendor email before sending this bill"
+      )
+      return
+    }
+    setSending(true)
+    try {
+      const res = await sendVendorBill(purchase.id)
+      if (res.error) toast.error(res.error)
+      else {
+        toast.success(
+          t("bills.detail.sentEmail") || "Bill emailed with PDF attached"
+        )
+        if (res.data) setPurchase(res.data)
+      }
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleCopyVendorLink = async () => {
+    if (!purchase) return
+    setSending(true)
+    try {
+      const tokenRes = await ensureBillPublicAccessToken(purchase.id)
+      if (tokenRes.error || !tokenRes.token) {
+        toast.error(tokenRes.error || "Failed to create public link")
+        return
+      }
+      const link = `${window.location.origin}${buildPublicDocPath("vb", tokenRes.token)}`
+      await navigator.clipboard.writeText(link)
+      toast.success(t("bills.detail.linkCopied") || "Link copied to clipboard")
+      setPurchase({ ...purchase, publicAccessToken: tokenRes.token })
+    } finally {
+      setSending(false)
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
@@ -141,6 +194,37 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
           </div>
           {purchase && (
             <div className="flex flex-wrap gap-2">
+              {purchase.status !== "cancelled" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSend}
+                  disabled={busy || sending}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {purchase.lastEmailedAt
+                    ? t("bills.detail.resendEmail") || "Resend"
+                    : t("bills.detail.sendEmail") || "Send"}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyVendorLink}
+                disabled={busy || sending}
+              >
+                <Link className="h-4 w-4 mr-2" />
+                {t("bills.detail.vendorLink") || "Vendor Link"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                disabled={busy}
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                {t("common.print") || "Print"}
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} disabled={busy}>
                 <Pencil className="h-4 w-4 mr-2" />
                 {t("common.edit") || "Edit"}

@@ -1,4 +1,4 @@
-import { toZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { addDays } from 'date-fns';
 
 export interface BusinessHours {
@@ -6,6 +6,8 @@ export interface BusinessHours {
   timezone: string
   respectHolidays?: boolean
   force_closed?: boolean
+  /** ISO timestamp: manual open override active until this instant (next scheduled close). */
+  force_open_until?: string | null
   days: {
     monday: { enabled: boolean; start?: string; end?: string }
     tuesday: { enabled: boolean; start?: string; end?: string }
@@ -51,16 +53,24 @@ function formatOpenSlotLabel(date: Date, time: string, isToday: boolean, locale 
   }
 }
 
-export function isBusinessOpen(
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function isForceOpenActive(bh: BusinessHours, now: Date): boolean {
+  if (!bh.force_open_until) return false;
+  const until = new Date(bh.force_open_until);
+  return !Number.isNaN(until.getTime()) && now < until;
+}
+
+/** True when `now` falls inside the configured weekly schedule (ignores manual overrides). */
+export function isWithinScheduledHours(
   businessHours?: BusinessHours[],
-  now: Date = new Date(),
-  options?: { ignoreForceClosed?: boolean }
+  now: Date = new Date()
 ): boolean {
   if (!businessHours || businessHours.length === 0) return true;
 
   const bh = businessHours[0];
-  // force_closed is a temporary "closed now" override — ignore it when validating future scheduled slots
-  if (bh.force_closed && !options?.ignoreForceClosed) return false;
   if (!bh.timezone) return true;
 
   try {
@@ -82,8 +92,101 @@ export function isBusinessOpen(
     return minutesSinceMidnight >= startMinutes && minutesSinceMidnight < endMinutes;
   } catch (err) {
     console.error('Error computing business hours', err);
-    return true; // fallback to open
+    return true;
   }
+}
+
+/**
+ * Next scheduled closing instant on/after `now`.
+ * If today still has an end time ahead (even before opening), that end is used;
+ * otherwise the next enabled day's end.
+ */
+export function getNextScheduledClose(
+  businessHours?: BusinessHours[],
+  now: Date = new Date()
+): Date | null {
+  if (!businessHours || businessHours.length === 0) return null;
+  const bh = businessHours[0];
+  if (!bh.timezone) return null;
+
+  try {
+    let checkDate = toZonedTime(now, bh.timezone);
+
+    for (let i = 0; i < 7; i++) {
+      const dayOfWeek = DAYS[checkDate.getDay()];
+      const dayConfig = bh.days[dayOfWeek as keyof BusinessHours['days']];
+
+      if (dayConfig?.enabled && dayConfig.end) {
+        const [endH, endM] = dayConfig.end.split(':').map(Number);
+        const minutesSinceMidnight = checkDate.getHours() * 60 + checkDate.getMinutes();
+        const endMinutes = endH * 60 + endM;
+
+        if (i === 0 && minutesSinceMidnight < endMinutes) {
+          const dateStr = formatInTimeZone(now, bh.timezone, 'yyyy-MM-dd');
+          return fromZonedTime(`${dateStr}T${pad2(endH)}:${pad2(endM)}:00`, bh.timezone);
+        }
+
+        if (i > 0) {
+          // checkDate is wall-clock in the zone (from toZonedTime / local addDays).
+          const y = checkDate.getFullYear();
+          const m = pad2(checkDate.getMonth() + 1);
+          const d = pad2(checkDate.getDate());
+          return fromZonedTime(`${y}-${m}-${d}T${pad2(endH)}:${pad2(endM)}:00`, bh.timezone);
+        }
+      }
+
+      checkDate = addDays(checkDate, 1);
+      checkDate.setHours(0, 0, 0, 0);
+    }
+    return null;
+  } catch (err) {
+    console.error('Error computing next scheduled close', err);
+    return null;
+  }
+}
+
+/** Apply manual open/close override on the primary business-hours schedule. */
+export function withStoreOpenState(
+  businessHours: BusinessHours[],
+  wantOpen: boolean,
+  now: Date = new Date()
+): BusinessHours[] {
+  if (!businessHours.length) return businessHours;
+
+  const scheduleOpen = isWithinScheduledHours(businessHours, now);
+  const next: BusinessHours = { ...businessHours[0] };
+
+  if (wantOpen) {
+    next.force_closed = false;
+    if (scheduleOpen) {
+      next.force_open_until = null;
+    } else {
+      const until = getNextScheduledClose(businessHours, now);
+      next.force_open_until = until ? until.toISOString() : null;
+    }
+  } else {
+    next.force_open_until = null;
+    next.force_closed = scheduleOpen;
+  }
+
+  return [next, ...businessHours.slice(1)];
+}
+
+export function isBusinessOpen(
+  businessHours?: BusinessHours[],
+  now: Date = new Date(),
+  options?: { ignoreForceClosed?: boolean }
+): boolean {
+  if (!businessHours || businessHours.length === 0) return true;
+
+  const bh = businessHours[0];
+  // Manual overrides — ignore when validating future scheduled slots against the calendar
+  if (!options?.ignoreForceClosed) {
+    if (bh.force_closed) return false;
+    if (isForceOpenActive(bh, now)) return true;
+  }
+
+  return isWithinScheduledHours(businessHours, now);
 }
 
 export function getNextOpenSlot(
@@ -94,6 +197,8 @@ export function getNextOpenSlot(
   if (!businessHours || businessHours.length === 0) return null;
   const bh = businessHours[0];
   if (!bh.timezone) return null;
+
+  if (isForceOpenActive(bh, now) && !bh.force_closed) return null;
 
   try {
     let checkDate = toZonedTime(now, bh.timezone);

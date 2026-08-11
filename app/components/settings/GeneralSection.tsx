@@ -7,12 +7,26 @@ import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
 import { Button } from "../ui/button"
-import { PlusCircle, Trash2, UploadCloud, AppWindow, Globe, Tag } from "../ui/icons"
+import { Trash2, UploadCloud, AppWindow, Globe, Tag } from "../ui/icons"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select"
 import { useDropzone } from "react-dropzone"
 import Image from "next/image"
-import { cn } from "@/lib/utils"
 import { useState } from "react"
-import { type SiteFormValues } from "./form-schema"
+import { useLocalization, type SupportedLocale } from "@/app/context/LocalizationContext"
+
+const SITE_LOCALES: { value: SupportedLocale; label: string }[] = [
+  { value: "en", label: "English" },
+  { value: "es", label: "Español" },
+  { value: "fr", label: "Français" },
+  { value: "de", label: "Deutsch" },
+  { value: "ja", label: "日本語" },
+]
 
 interface GeneralSectionProps {
   active: boolean
@@ -21,6 +35,7 @@ interface GeneralSectionProps {
 
 export function GeneralSection({ active, onSave }: GeneralSectionProps) {
   const form = useFormContext<SiteFormValues>()
+  const { t } = useLocalization()
   const [savingCard, setSavingCard] = useState<string | null>(null)
 
   const handleSave = async (id: string) => {
@@ -148,6 +163,44 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
                       />
                     </div>
                   </FormControl>
+                  <FormMessage className="text-xs mt-2" />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="default_locale"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">
+                    {t("settings.general.defaultLocale") || "Default site language"}
+                  </FormLabel>
+                  <Select
+                    value={field.value || "en"}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-12 text-base">
+                        <SelectValue
+                          placeholder={
+                            t("settings.general.defaultLocalePlaceholder") ||
+                            "Select language"
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {SITE_LOCALES.map((locale) => (
+                        <SelectItem key={locale.value} value={locale.value}>
+                          {locale.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {t("settings.general.defaultLocaleDescription") ||
+                      "Language used for quotes, emails, and other outbound documents."}
+                  </FormDescription>
                   <FormMessage className="text-xs mt-2" />
                 </FormItem>
               )}

@@ -55,6 +55,16 @@ const UpdateNotificationSchema = z.object({
 
 export type UpdateNotificationInput = z.infer<typeof UpdateNotificationSchema>
 
+async function readJsonBody(response: Response): Promise<any | null> {
+  const contentType = response.headers.get("content-type") || ""
+  if (!contentType.includes("application/json")) return null
+  try {
+    return await response.json()
+  } catch {
+    return null
+  }
+}
+
 export async function getNotifications(site_id: string, user_id: string): Promise<NotificationsResponse> {
   try {
     const response = await fetch(`/api/notifications?site_id=${site_id}&user_id=${user_id}`, {
@@ -64,12 +74,14 @@ export async function getNotifications(site_id: string, user_id: string): Promis
       },
     })
 
+    const data = await readJsonBody(response)
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Error fetching notifications')
+      throw new Error(data?.error || `Error fetching notifications (${response.status})`)
+    }
+    if (!data) {
+      throw new Error("Error fetching notifications: invalid response")
     }
 
-    const data = await response.json()
     return { notifications: data.notifications || [] }
   } catch (error) {
     console.error("Error loading notifications:", error)

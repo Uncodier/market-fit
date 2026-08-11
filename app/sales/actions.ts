@@ -247,7 +247,7 @@ export async function getSaleById(siteId: string, saleId: string) {
     // Fetch the sale from the database
     const { data: saleData, error } = await supabase
       .from("sales")
-      .select("*, leads(name)")
+      .select("*, leads(id, name, email)")
       .eq("site_id", siteId)
       .eq("id", saleId)
       .single();
@@ -272,6 +272,9 @@ export async function getSaleById(siteId: string, saleId: string) {
       locationId: saleData.location_id || null,
       leadId: saleData.lead_id,
       leadName: saleData.leads?.name || "Anonymous Customer",
+      leadEmail: saleData.leads?.email || undefined,
+      lastEmailedAt: saleData.last_emailed_at || undefined,
+      publicAccessToken: saleData.public_access_token || undefined,
       campaignId: saleData.campaign_id,
       segmentId: saleData.segment_id,
       companyId: saleData.company_id || null,

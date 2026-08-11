@@ -4,6 +4,7 @@ import ShopClient from "./ShopClient"
 import { Metadata } from "next"
 import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 import { buildShopShareMetadata } from "@/app/lib/commerce-metadata"
+import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstrap"
 import { SHOP_PAGE_SIZE, SHOP_UNCATEGORIZED_NAME } from "./shop-catalog-shared"
 
 export const revalidate = 0;
@@ -51,6 +52,7 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
+      <SiteLocaleBootstrap locale={site.settings?.default_locale} />
       <ShopClient 
         site={site} 
         initialCatalog={catalogItems as any[]} 

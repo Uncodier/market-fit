@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import useSWR from "swr"
 import {
@@ -30,24 +30,56 @@ import {
   hasDynamicQuoteFields,
 } from "@/app/catalog/dynamic-pricing"
 import { validateDynamicQuoteFields } from "@/app/components/commerce/DynamicQuoteFieldsForm"
-import { Plus, Trash2 } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import {
   CreateQuotationQuoteStep,
   QuoteFieldDraft,
 } from "./CreateQuotationQuoteStep"
+import { CreateQuotationLineItems } from "./CreateQuotationLineItems"
 import {
   CreateQuotationFormData,
   CreateQuotationLine,
   submitCreateQuotation,
+  submitUpdateQuotation,
 } from "./create-quotation-submit"
 
 function newLineKey() {
   return `line_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
+export type QuotationToEdit = {
+  id: string
+  status?: string
+  title?: string | null
+  lead?: { id: string; name?: string | null; email?: string | null; buyer_user_id?: string | null } | null
+  deal?: { id: string; name?: string | null; amount?: number | null } | null
+  buyer_user_id?: string | null
+}
+
+interface CreateQuotationDialogProps {
+  trigger?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  quotationToEdit?: QuotationToEdit | null
+  onSuccess?: () => void
+}
+
+export function CreateQuotationDialog({
+  trigger,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  quotationToEdit = null,
+  onSuccess,
+}: CreateQuotationDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : uncontrolledOpen
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setUncontrolledOpen(next)
+    controlledOnOpenChange?.(next)
+  }
+
+  const isEditing = Boolean(quotationToEdit?.id)
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
@@ -86,7 +118,7 @@ export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }
   )
 
   const { data: catalogData } = useSWR(
-    open && currentSite ? ["catalog", currentSite.id] : null,
+    open && currentSite && !isEditing ? ["catalog", currentSite.id] : null,
     () => listCatalogItems({ siteId: currentSite!.id, pageSize: 100 })
   )
 
@@ -105,18 +137,19 @@ export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }
   }))
 
   const dynamicSteps = useMemo(() => {
+    if (isEditing) return []
     return lineItems.flatMap((row) => {
       if (!row.value || row.value.mode !== "existing") return []
       const item = catalogItems.find((i) => i.id === row.value!.id)
       if (!item || !hasDynamicQuoteFields(item)) return []
       return [{ lineKey: row.key, item }]
     })
-  }, [lineItems, catalogItems])
+  }, [lineItems, catalogItems, isEditing])
 
-  const totalSteps = 1 + dynamicSteps.length
+  const totalSteps = isEditing ? 1 : 1 + dynamicSteps.length
   const isDetailsStep = stepIndex === 0
   const activeDynamicStep =
-    !isDetailsStep && dynamicSteps.length > 0
+    !isEditing && !isDetailsStep && dynamicSteps.length > 0
       ? dynamicSteps[stepIndex - 1] || null
       : null
 
@@ -127,6 +160,47 @@ export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }
     setStepIndex(0)
     setFieldDrafts({})
     setStepError(null)
+  }
+
+  useEffect(() => {
+    if (!open || !quotationToEdit) return
+
+    const lead = quotationToEdit.lead
+    const deal = quotationToEdit.deal
+    reset({
+      name: deal?.name || quotationToEdit.title || "",
+      lead_value: lead
+        ? { mode: "existing", id: lead.id, label: lead.name || lead.email || lead.id }
+        : null,
+      clientEmail: lead?.email || "",
+      amount:
+        deal?.amount != null && Number(deal.amount) !== 0
+          ? String(deal.amount)
+          : "",
+    })
+
+    if (lead?.buyer_user_id && lead.email) {
+      setBuyerUser({
+        buyerUserId: lead.buyer_user_id,
+        email: lead.email,
+        name: lead.name || lead.email,
+      })
+    } else {
+      setBuyerUser(null)
+    }
+    setStepIndex(0)
+    setStepError(null)
+  }, [open, quotationToEdit, reset])
+
+  const formMessages = {
+    clientNameRequired:
+      t("quotations.create.errors.clientNameRequired") || "Client name is required",
+    clientEmailRequired:
+      t("quotations.create.errors.clientEmailRequired") || "Client email is required",
+    errorDeal: t("quotations.create.errorDeal") || "Failed to create associated deal",
+    errorQuote: isEditing
+      ? t("quotations.edit.error") || "Failed to update quotation"
+      : t("quotations.create.errorQuote") || "Failed to create quotation",
   }
 
   const createQuotation = async (data: CreateQuotationFormData) => {
@@ -140,16 +214,7 @@ export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }
         lineItems,
         catalogItems,
         fieldDrafts,
-        messages: {
-          clientNameRequired:
-            t("quotations.create.errors.clientNameRequired") || "Client name is required",
-          clientEmailRequired:
-            t("quotations.create.errors.clientEmailRequired") || "Client email is required",
-          errorDeal:
-            t("quotations.create.errorDeal") || "Failed to create associated deal",
-          errorQuote:
-            t("quotations.create.errorQuote") || "Failed to create quotation",
-        },
+        messages: formMessages,
       })
       toast.success(t("quotations.create.success") || "Quotation created successfully")
       resetDialog()
@@ -157,16 +222,42 @@ export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }
       router.push(`/quotations/${quotationId}`)
     } catch (error: unknown) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : t("quotations.create.errorQuote") || "Failed to create quotation"
+        error instanceof Error ? error.message : formMessages.errorQuote
       )
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const goToFieldStepsOrCreate = handleSubmit(async (data) => {
+  const updateQuotation = async (data: CreateQuotationFormData) => {
+    if (!currentSite || !quotationToEdit) return
+    setIsSubmitting(true)
+    try {
+      await submitUpdateQuotation({
+        quotationId: quotationToEdit.id,
+        siteId: currentSite.id,
+        data,
+        buyerUser,
+        messages: formMessages,
+      })
+      toast.success(t("quotations.edit.success") || "Quotation updated successfully")
+      resetDialog()
+      setOpen(false)
+      onSuccess?.()
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : formMessages.errorQuote
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const goToFieldStepsOrSubmit = handleSubmit(async (data) => {
+    if (isEditing) {
+      await updateQuotation(data)
+      return
+    }
     if (dynamicSteps.length > 0) {
       setStepError(null)
       setStepIndex(1)
@@ -217,24 +308,39 @@ export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }
     })
   }
 
+  const submitLabel = isSubmitting
+    ? isEditing
+      ? t("quotations.edit.saving") || "Saving..."
+      : t("quotations.create.creating") || "Creating..."
+    : isEditing
+      ? t("quotations.edit.submit") || "Save Changes"
+      : dynamicSteps.length > 0
+        ? t("quotations.create.continue") || "Continue"
+        : t("quotations.create.submit") || "Create Quotation"
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>
-            {t("quotations.create.title") || "Create New Quotation"}
+            {isEditing
+              ? t("quotations.edit.title") || "Edit Quotation"
+              : t("quotations.create.title") || "Create New Quotation"}
           </DialogTitle>
           <DialogDescription>
-            {isDetailsStep
-              ? t("quotations.create.desc") ||
-                "This will create a new quotation and its associated deal."
-              : t("quotations.create.quoteAssistantDesc") ||
-                "Fill quote fields for each dynamic pricing item."}
+            {isEditing
+              ? t("quotations.edit.desc") ||
+                "Update the basic details for this draft quotation."
+              : isDetailsStep
+                ? t("quotations.create.desc") ||
+                  "This will create a new quotation and its associated deal."
+                : t("quotations.create.quoteAssistantDesc") ||
+                  "Fill quote fields for each dynamic pricing item."}
           </DialogDescription>
         </DialogHeader>
 
-        {totalSteps > 1 && (
+        {!isEditing && totalSteps > 1 && (
           <div className="flex items-center gap-2 pb-1">
             {Array.from({ length: totalSteps }).map((_, i) => (
               <div
@@ -249,7 +355,7 @@ export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }
         )}
 
         {isDetailsStep ? (
-          <form onSubmit={goToFieldStepsOrCreate} className="space-y-4 py-2">
+          <form onSubmit={goToFieldStepsOrSubmit} className="space-y-4 py-2">
             <BuyerUserEmailField
               value={buyerUser}
               onChange={setBuyerUser}
@@ -319,61 +425,18 @@ export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }
               </div>
             )}
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <Label>
-                  {t("quotations.create.fields.item") || "Product / Service (Optional)"}
-                </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                  onClick={() =>
-                    setLineItems((prev) => [...prev, { key: newLineKey(), value: null }])
-                  }
-                  aria-label={t("quotations.create.addItem") || "Add product"}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {lineItems.map((row) => (
-                <div key={row.key} className="flex items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <RelationSelect
-                      options={catalogOptions}
-                      value={row.value}
-                      onValueChange={(val) => updateLineValue(row.key, val)}
-                      placeholder={
-                        t("quotations.create.fields.itemPlaceholder") ||
-                        "Select or create an item..."
-                      }
-                      emptyMessage="No items found"
-                    />
-                  </div>
-                  {lineItems.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 shrink-0"
-                      onClick={() => removeLine(row.key)}
-                      aria-label="Remove product"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-
-              {dynamicSteps.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {t("quotations.create.quoteAssistantHint") ||
-                    `${dynamicSteps.length} item(s) need quote fields on the next step.`}
-                </p>
-              )}
-            </div>
+            {!isEditing && (
+              <CreateQuotationLineItems
+                lineItems={lineItems}
+                catalogOptions={catalogOptions}
+                dynamicStepsCount={dynamicSteps.length}
+                onAdd={() =>
+                  setLineItems((prev) => [...prev, { key: newLineKey(), value: null }])
+                }
+                onUpdate={updateLineValue}
+                onRemove={removeLine}
+              />
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="amount">
@@ -398,11 +461,7 @@ export function CreateQuotationDialog({ trigger }: { trigger?: React.ReactNode }
                 {t("common.cancel") || "Cancel"}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? t("quotations.create.creating") || "Creating..."
-                  : dynamicSteps.length > 0
-                    ? t("quotations.create.continue") || "Continue"
-                    : t("quotations.create.submit") || "Create Quotation"}
+                {submitLabel}
               </Button>
             </DialogFooter>
           </form>

@@ -96,7 +96,7 @@ function ScheduleForm({
     if (error) {
       toast.error(error)
     } else if (savedData) {
-      toast.success("Schedule saved")
+      toast.success(t("catalog.schedules.saved") || "Schedule saved")
       onSaved(savedData as ReservationSchedule)
     }
   }
@@ -113,7 +113,7 @@ function ScheduleForm({
       toast.error(error)
       setIsDeleting(false)
     } else {
-      toast.success("Schedule removed")
+      toast.success(t("catalog.schedules.removed") || "Schedule removed")
       onDeleted()
     }
   }
@@ -192,7 +192,9 @@ function ScheduleForm({
                         />
                       )}
                     />
-                    <span className="capitalize text-sm font-medium">{day}</span>
+                    <span className="capitalize text-sm font-medium">
+                      {t(`settings.company.days.${day}`) || day}
+                    </span>
                   </div>
                   
                   {watch(`days.${day}.enabled`) ? (
@@ -206,7 +208,7 @@ function ScheduleForm({
                               <Input type="time" className="h-9 w-32 bg-background" {...field} />
                             )}
                           />
-                          <span className="text-muted-foreground text-sm px-2">to</span>
+                          <span className="text-muted-foreground text-sm px-2">{t("catalog.schedules.to") || "to"}</span>
                           <Controller
                             name={`days.${day}.timeBlocks.${index}.end`}
                             control={control}
@@ -241,12 +243,12 @@ function ScheduleForm({
                           setValue(`days.${day}.timeBlocks`, [...currentBlocks, { start: "09:00", end: "17:00" }]);
                         }}
                       >
-                        <Plus className="h-3 w-3 mr-2" /> Add hours
+                        <Plus className="h-3 w-3 mr-2" /> {t("catalog.schedules.addHours") || "Add hours"}
                       </Button>
                     </div>
                   ) : (
                     <div className="text-sm text-muted-foreground mt-3 sm:mt-0 px-2 h-9 flex items-center justify-end sm:justify-start w-full sm:w-auto sm:flex-1">
-                      Closed
+                      {t("catalog.schedules.closed") || "Closed"}
                     </div>
                   )}
                 </div>
@@ -265,14 +267,15 @@ function ScheduleForm({
                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Remove
+                  {t("common.remove") || "Remove"}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>{t("catalog.schedules.removeScheduleTitle") || "Remove Schedule"}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to remove this schedule? This action cannot be undone.
+                    {t("catalog.schedules.removeConfirm") ||
+                      "Are you sure you want to remove this schedule? This action cannot be undone."}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -289,10 +292,14 @@ function ScheduleForm({
 
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
+                {t("common.cancel") || "Cancel"}
               </Button>
               <Button type="submit" disabled={isSubmitting || isDeleting}>
-                {isSubmitting ? "Saving..." : schedule.id ? "Save Changes" : "Create Schedule"}
+                {isSubmitting
+                  ? (t("common.saving") || "Saving...")
+                  : schedule.id
+                    ? (t("catalog.schedules.saveChanges") || "Save Changes")
+                    : (t("catalog.schedules.createSchedule") || "Create Schedule")}
               </Button>
             </div>
           </ActionFooter>
@@ -372,7 +379,7 @@ export function ReservationScheduleCard({ catalogItemId }: { catalogItemId: stri
         <div>
           <h2 className="text-xl font-semibold">{t("catalog.schedules.title") || "Schedules"}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure reservation schedules and availability slots.
+            {t("catalog.schedules.description") || "Configure reservation schedules and availability slots."}
           </p>
         </div>
         <Button
@@ -390,7 +397,9 @@ export function ReservationScheduleCard({ catalogItemId }: { catalogItemId: stri
         <div className="text-center py-10 bg-muted/20 border rounded-lg border-dashed">
           <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-20" />
           <p className="text-muted-foreground text-sm font-medium">{t("catalog.schedules.noSchedules") || "No schedules configured"}</p>
-          <p className="text-muted-foreground text-xs mt-1">Add a schedule to define when this item can be booked.</p>
+          <p className="text-muted-foreground text-xs mt-1">
+            {t("catalog.schedules.emptyHint") || "Add a schedule to define when this item can be booked."}
+          </p>
           <Button variant="outline" size="sm" className="mt-4" onClick={addSchedule}>
             <PlusCircle className="mr-2 h-4 w-4" /> {t("catalog.schedules.addSchedule") || "Add Schedule"}
           </Button>
@@ -410,19 +419,19 @@ export function ReservationScheduleCard({ catalogItemId }: { catalogItemId: stri
                   <div className="flex flex-col gap-1">
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">
                       <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                      {schedule.name || "New Schedule"}
+                      {schedule.name || t("catalog.schedules.newSchedule") || "New Schedule"}
                     </CardTitle>
                     {schedule.id ? (
                       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-2 md:mt-1">
-                        <span>{activeDays} days active</span>
+                        <span>{t("catalog.schedules.daysActive", { count: activeDays }) || `${activeDays} days active`}</span>
                         <span>•</span>
-                        <span>{schedule.duration_minutes || 60} min slots</span>
+                        <span>{t("catalog.schedules.minSlots", { count: schedule.duration_minutes || 60 }) || `${schedule.duration_minutes || 60} min slots`}</span>
                         <span>•</span>
-                        <span>Capacity: {schedule.capacity || 1}</span>
+                        <span>{t("catalog.schedules.capacityLabel", { count: schedule.capacity || 1 }) || `Capacity: ${schedule.capacity || 1}`}</span>
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground mt-2 md:mt-1">
-                        Not saved yet. Expand to configure.
+                        {t("catalog.schedules.notSavedYet") || "Not saved yet. Expand to configure."}
                       </div>
                     )}
                   </div>

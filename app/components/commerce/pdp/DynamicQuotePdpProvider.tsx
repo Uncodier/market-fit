@@ -20,11 +20,12 @@ import {
   pollDynamicQuoteProgress,
   type DynamicQuoteProgressLog,
 } from "@/app/quotations/dynamic-quote-progress"
-import { acceptQuotation } from "@/app/quotations/buyer-actions"
+import { startQuoteCheckout } from "@/app/commerce/quote-cart"
 import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useRouter } from "next/navigation"
 
 export interface DynamicQuotePdpContextValue {
   item: CatalogItem
@@ -73,6 +74,7 @@ export function DynamicQuotePdpProvider({
   children,
 }: DynamicQuotePdpProviderProps) {
   const { t } = useLocalization()
+  const router = useRouter()
   const config = useMemo(() => getDynamicPricingConfig(item), [item])
   const { startBuyNow, addToCartStorage } = usePdpCart(item.site_id)
   const { user } = useAuth()
@@ -254,34 +256,31 @@ export function DynamicQuotePdpProvider({
     return { ...item, target_sale_price: unitPrice } as CatalogItem
   }, [item, unitPrice])
 
-  const acceptIfNeeded = useCallback(async () => {
-    if (!quotationId) return
-    if (quotationStatus === "sent") {
-      const acceptRes = await acceptQuotation(quotationId, null)
-      if (acceptRes.error) throw new Error(acceptRes.error)
-    }
-  }, [quotationId, quotationStatus])
-
   const handleCheckout = useCallback(async () => {
     const quoteItem = pricedItem()
     if (!quotationId || !quoteItem) return
     setLoading(true)
     try {
-      await acceptIfNeeded()
-      startBuyNow(quoteItem, quantity, backUrl)
+      if (quotationStatus === "sent") {
+        const res = await getQuotation(quotationId)
+        if (res.error || !res.data) throw new Error(res.error || "Quotation not found")
+        const path = startQuoteCheckout(res.data, { returnTo: backUrl })
+        router.push(path)
+      } else {
+        startBuyNow(quoteItem, quantity, backUrl)
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to checkout with quote")
     } finally {
       setLoading(false)
     }
-  }, [pricedItem, quotationId, acceptIfNeeded, startBuyNow, quantity, backUrl])
+  }, [pricedItem, quotationId, quotationStatus, startBuyNow, quantity, backUrl, router])
 
   const handleAddToCart = useCallback(async () => {
     const quoteItem = pricedItem()
     if (!quotationId || !quoteItem) return
     setLoading(true)
     try {
-      await acceptIfNeeded()
       addToCartStorage(quoteItem, quantity)
       toast.success(
         `${quoteItem.name} ${t("marketplace.addedToCart") || "added to cart"}`
@@ -291,7 +290,7 @@ export function DynamicQuotePdpProvider({
     } finally {
       setLoading(false)
     }
-  }, [pricedItem, quotationId, acceptIfNeeded, addToCartStorage, quantity, t])
+  }, [pricedItem, quotationId, addToCartStorage, quantity, t])
 
   if (!config) {
     return <>{children}</>

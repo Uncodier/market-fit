@@ -470,18 +470,18 @@ export async function listBuyerVisitSites() {
 
     const { data: leads } = await auth.supabase
       .from("leads")
-      .select("site_id, site:sites(id, name, slug)")
+      .select("site_id, site:sites(id, name)")
       .eq("buyer_user_id", auth.user.id)
 
     const { data: entitlements } = await auth.supabase
       .from("entitlements")
-      .select("site_id, site:sites(id, name, slug)")
+      .select("site_id, site:sites(id, name)")
       .eq("buyer_user_id", auth.user.id)
 
-    const map = new Map<string, { id: string; name: string; slug?: string }>()
+    const map = new Map<string, { id: string; name: string }>()
     for (const row of [...(leads || []), ...(entitlements || [])]) {
       const site = (row as any).site
-      if (site?.id) map.set(site.id, { id: site.id, name: site.name, slug: site.slug })
+      if (site?.id) map.set(site.id, { id: site.id, name: site.name })
     }
 
     return { data: Array.from(map.values()) }

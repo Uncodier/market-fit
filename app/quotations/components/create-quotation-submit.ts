@@ -4,7 +4,11 @@ import { resolveRelationId, isPendingCreate } from "@/app/commerce/resolve-relat
 import { findOrCreateLeadForBuyer } from "@/app/commerce/resolve-buyer-lead"
 import { BuyerUser } from "@/app/components/commerce/BuyerUserEmailField"
 import { createDeal } from "@/app/deals/actions"
-import { createQuotationFromDeal, addQuotationItem } from "../actions"
+import {
+  createQuotationFromDeal,
+  addQuotationItem,
+  updateQuotationBasics,
+} from "../actions"
 import { requestDynamicQuote } from "../dynamic-quote-actions"
 import { isDynamicPricedItem } from "@/app/catalog/dynamic-pricing"
 import { QuoteFieldDraft } from "./CreateQuotationQuoteStep"
@@ -157,4 +161,35 @@ export async function submitCreateQuotation(params: {
   }
 
   return quotationId
+}
+
+export async function submitUpdateQuotation(params: {
+  quotationId: string
+  siteId: string
+  data: CreateQuotationFormData
+  buyerUser: BuyerUser | null
+  messages: {
+    clientNameRequired: string
+    clientEmailRequired: string
+    errorQuote: string
+  }
+}): Promise<void> {
+  const finalLeadId = await resolveCreateQuotationLeadId({
+    siteId: params.siteId,
+    data: params.data,
+    buyerUser: params.buyerUser,
+    clientNameRequired: params.messages.clientNameRequired,
+    clientEmailRequired: params.messages.clientEmailRequired,
+  })
+
+  const res = await updateQuotationBasics(params.quotationId, {
+    leadId: finalLeadId,
+    buyerUserId: params.buyerUser?.buyerUserId || null,
+    dealName: params.data.name,
+    dealAmount: params.data.amount ? parseFloat(params.data.amount) : 0,
+  })
+
+  if (res.error) {
+    throw new Error(res.error || params.messages.errorQuote)
+  }
 }

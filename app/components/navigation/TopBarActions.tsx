@@ -2454,7 +2454,7 @@ The success of this experiment will be measured by:
         </Button>
       )}
 
-      {isQuotationsPage && currentSite && (
+      {isQuotationsPage && pathname === "/quotations" && currentSite && (
         <CreateQuotationDialog
           trigger={
             <Button

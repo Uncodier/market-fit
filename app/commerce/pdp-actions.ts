@@ -42,7 +42,7 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
       .eq("catalog_item_id", item.id),
     supabase
       .from("settings")
-      .select("commerce")
+      .select("commerce, default_locale")
       .eq("site_id", item.site_id)
       .single()
   ]);
@@ -111,8 +111,20 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
     }
   }
 
+  const siteRow = item.site as { id: string; name: string; logo_url: string | null } | null | undefined
+  const defaultLocale =
+    (settings as { default_locale?: string } | null)?.default_locale || undefined
+
   const withSpecs = {
     ...item,
+    site: siteRow
+      ? {
+          ...siteRow,
+          settings: {
+            default_locale: defaultLocale,
+          },
+        }
+      : siteRow,
     item_specs: ((item as any).raw_specs || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((cis: any) => cis.item_spec).filter(Boolean),
     target_sale_price: finalPrice,
     _shop: {

@@ -2,17 +2,59 @@
 
 import { createServiceClient } from "@/lib/supabase/server"
 import {
+  addDays,
   addMinutes,
   parseISO,
-  startOfDay,
-  endOfDay,
   isAfter,
   isBefore,
-  setHours,
-  setMinutes,
-  eachDayOfInterval,
-  format,
 } from "date-fns"
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz"
+
+const DEFAULT_TZ = "UTC"
+
+function toDateStr(value: string): string {
+  return value.slice(0, 10)
+}
+
+function normalizeTime(time: string): string {
+  const [h = "00", m = "00", s = "00"] = time.split(":")
+  return `${h.padStart(2, "0")}:${m.padStart(2, "0")}:${(s || "00").padStart(2, "0")}`
+}
+
+/** Instant for a wall-clock date+time in the schedule timezone. */
+function zonedDateTime(dateStr: string, time: string, timeZone: string): Date {
+  return fromZonedTime(`${dateStr}T${normalizeTime(time)}`, timeZone)
+}
+
+function eachDateString(startDateStr: string, endDateStr: string): string[] {
+  const start = toDateStr(startDateStr)
+  const end = toDateStr(endDateStr)
+  const result: string[] = []
+  // Noon UTC avoids day-boundary shifts when stepping calendar dates
+  let current = parseISO(`${start}T12:00:00Z`)
+  const last = parseISO(`${end}T12:00:00Z`)
+  while (current.getTime() <= last.getTime()) {
+    result.push(formatInTimeZone(current, "UTC", "yyyy-MM-dd"))
+    current = addDays(current, 1)
+  }
+  return result
+}
+
+function dayOfWeekInZone(dateStr: string, timeZone: string): string {
+  return formatInTimeZone(
+    zonedDateTime(dateStr, "12:00:00", timeZone),
+    timeZone,
+    "eeee"
+  ).toLowerCase()
+}
+
+function getTimeBlocks(dayConfig: any): { start: string; end: string }[] {
+  if (dayConfig.timeBlocks?.length) return dayConfig.timeBlocks
+  if (dayConfig.start && dayConfig.end) {
+    return [{ start: dayConfig.start, end: dayConfig.end }]
+  }
+  return []
+}
 
 export async function getBookedSeats(
   catalogItemId: string,
@@ -60,8 +102,12 @@ export async function getAvailableSlots(
 
   if (!schedules || schedules.length === 0) return []
 
-  const days = eachDayOfInterval({ start: parseISO(startDateStr), end: parseISO(endDateStr) })
+  const dateStrs = eachDateString(startDateStr, endDateStr)
   const result: { start: string; end: string; available: number }[] = []
+
+  // Pad query window so evening slots near UTC day boundaries are included
+  const rangeStart = addDays(parseISO(`${toDateStr(startDateStr)}T00:00:00Z`), -1)
+  const rangeEnd = addDays(parseISO(`${toDateStr(endDateStr)}T23:59:59Z`), 1)
 
   // 2. Get reservations
   const { data: reservations } = await supabase
@@ -69,29 +115,25 @@ export async function getAvailableSlots(
     .select("start_time, end_time, quantity, status")
     .eq("catalog_item_id", catalogItemId)
     .in("status", ["pending", "confirmed"])
-    .gte("start_time", startOfDay(parseISO(startDateStr)).toISOString())
-    .lte("end_time", endOfDay(parseISO(endDateStr)).toISOString())
+    .gte("start_time", rangeStart.toISOString())
+    .lte("end_time", rangeEnd.toISOString())
 
-  for (const dateObj of days) {
-    const dayOfWeek = format(dateObj, "eeee").toLowerCase()
-    
+  for (const dateStr of dateStrs) {
     for (const schedule of schedules) {
-      const dayConfig = schedule.days[dayOfWeek]
+      const timeZone = schedule.timezone || DEFAULT_TZ
+      const dayOfWeek = dayOfWeekInZone(dateStr, timeZone)
+      const dayConfig = schedule.days?.[dayOfWeek]
       if (!dayConfig?.enabled) continue
 
       const duration = schedule.duration_minutes || 60
       const capacity = schedule.capacity || 1
-
-      const blocks = dayConfig.timeBlocks || (dayConfig.start && dayConfig.end ? [{ start: dayConfig.start, end: dayConfig.end }] : [])
+      const blocks = getTimeBlocks(dayConfig)
       
       for (const block of blocks) {
         if (!block.start || !block.end) continue
 
-        const [startH, startM] = block.start.split(":").map(Number)
-        const [endH, endM] = block.end.split(":").map(Number)
-
-        const dayStart = setMinutes(setHours(dateObj, startH), startM)
-        const dayEnd = setMinutes(setHours(dateObj, endH), endM)
+        const dayStart = zonedDateTime(dateStr, block.start, timeZone)
+        const dayEnd = zonedDateTime(dateStr, block.end, timeZone)
 
         let current = dayStart
         while (isBefore(current, dayEnd)) {
@@ -156,29 +198,27 @@ export async function assertReservationSlot(
   if (isBefore(start, new Date()) && !isAdmin) {
     throw new Error("Cannot book in the past")
   }
-
-  const dayOfWeek = format(start, "eeee").toLowerCase()
   
   // Find a schedule that accommodates this slot
   let validScheduleFound = false
   let capacityError = false
   
   for (const schedule of schedules) {
-    const dayConfig = schedule.days[dayOfWeek]
+    const timeZone = schedule.timezone || DEFAULT_TZ
+    const dateStr = formatInTimeZone(start, timeZone, "yyyy-MM-dd")
+    const dayOfWeek = dayOfWeekInZone(dateStr, timeZone)
+    const dayConfig = schedule.days?.[dayOfWeek]
     if (!dayConfig?.enabled) continue
 
-    const blocks = dayConfig.timeBlocks || (dayConfig.start && dayConfig.end ? [{ start: dayConfig.start, end: dayConfig.end }] : [])
+    const blocks = getTimeBlocks(dayConfig)
     if (blocks.length === 0) continue
 
     let isWithinAnyBlock = false
     for (const block of blocks) {
       if (!block.start || !block.end) continue
 
-      const [startH, startM] = block.start.split(":").map(Number)
-      const [endH, endM] = block.end.split(":").map(Number)
-
-      const dayStart = setMinutes(setHours(start, startH), startM)
-      const dayEnd = setMinutes(setHours(start, endH), endM)
+      const dayStart = zonedDateTime(dateStr, block.start, timeZone)
+      const dayEnd = zonedDateTime(dateStr, block.end, timeZone)
 
       if (!isBefore(start, dayStart) && !isAfter(end, dayEnd)) {
         isWithinAnyBlock = true

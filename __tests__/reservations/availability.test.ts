@@ -1,19 +1,21 @@
 import { getBookedSeats, getAvailableSlots, assertReservationSlot } from '../../app/reservations/availability';
-import { addDays, parseISO, startOfDay, addMinutes, format } from 'date-fns';
+import { addDays, addMinutes, format } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 
-// Mock Supabase client
-const mockSupabase = {
-  from: jest.fn().mockReturnThis(),
-  select: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  in: jest.fn().mockReturnThis(),
-  gte: jest.fn().mockReturnThis(),
-  lte: jest.fn().mockReturnThis(),
-  single: jest.fn(),
-};
+function createChain(resolved: any) {
+  const chain: any = {};
+  const methods = ['from', 'select', 'eq', 'in', 'gte', 'lte', 'neq', 'single'];
+  for (const m of methods) {
+    chain[m] = jest.fn(() => chain);
+  }
+  chain.then = (resolve: any, reject: any) => Promise.resolve(resolved).then(resolve, reject);
+  return chain;
+}
+
+const mockCreateServiceClient = jest.fn();
 
 jest.mock('../../lib/supabase/server', () => ({
-  createServiceClient: () => mockSupabase,
+  createServiceClient: (...args: any[]) => mockCreateServiceClient(...args),
 }));
 
 describe('Reservation Availability Engine', () => {
@@ -26,10 +28,9 @@ describe('Reservation Availability Engine', () => {
 
   describe('getBookedSeats', () => {
     it('should sum quantities of overlapping reservations', async () => {
-      const start = parseISO('2026-07-25T10:00:00Z');
-      const end = parseISO('2026-07-25T11:00:00Z');
-
-      mockSupabase.lte.mockResolvedValueOnce({
+      const start = fromZonedTime('2026-07-25T10:00:00', 'UTC');
+      const end = fromZonedTime('2026-07-25T11:00:00', 'UTC');
+      const client = createChain({
         data: [
           { quantity: 2, status: 'confirmed' },
           { quantity: 1, status: 'pending' },
@@ -37,54 +38,53 @@ describe('Reservation Availability Engine', () => {
         error: null,
       });
 
-      const seats = await getBookedSeats(catalogItemId, start, end, mockSupabase);
+      const seats = await getBookedSeats(catalogItemId, start, end, client);
       expect(seats).toBe(3);
-      expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
+      expect(client.from).toHaveBeenCalledWith('reservations');
     });
 
     it('should return 0 if no overlapping reservations', async () => {
-      const start = parseISO('2026-07-25T10:00:00Z');
-      const end = parseISO('2026-07-25T11:00:00Z');
+      const start = fromZonedTime('2026-07-25T10:00:00', 'UTC');
+      const end = fromZonedTime('2026-07-25T11:00:00', 'UTC');
+      const client = createChain({ data: [], error: null });
 
-      mockSupabase.lte.mockResolvedValueOnce({
-        data: [],
-        error: null,
-      });
-
-      const seats = await getBookedSeats(catalogItemId, start, end, mockSupabase);
+      const seats = await getBookedSeats(catalogItemId, start, end, client);
       expect(seats).toBe(0);
     });
   });
 
   describe('getAvailableSlots', () => {
     it('should generate slots based on schedule and booked seats', async () => {
-      const today = new Date();
-      // Ensure the test uses a future date to avoid "past date" filtering
-      const tomorrow = addDays(today, 1);
-      const tomorrowStr = tomorrow.toISOString();
-      const dayOfWeek = format(tomorrow, "eeee").toLowerCase();
+      const tomorrow = addDays(new Date(), 1);
+      const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
+      const dayOfWeek = format(tomorrow, 'eeee').toLowerCase();
+      const timeZone = 'UTC';
 
-      // Mock schedule
-      mockSupabase.single.mockResolvedValueOnce({
-        data: {
+      const slot1Start = fromZonedTime(`${tomorrowStr}T10:00:00`, timeZone);
+      const slot1End = addMinutes(slot1Start, 60);
+
+      const schedulesChain = createChain({
+        data: [{
           catalog_item_id: catalogItemId,
           duration_minutes: 60,
           capacity: 5,
+          timezone: timeZone,
           days: {
             [dayOfWeek]: { enabled: true, start: '10:00', end: '12:00' }
           }
-        }
+        }],
       });
-
-      // Mock reservations (1 booking of 2 seats at 10:00)
-      const slot1Start = new Date(tomorrow);
-      slot1Start.setHours(10, 0, 0, 0);
-      const slot1End = addMinutes(slot1Start, 60);
-      
-      mockSupabase.lte.mockResolvedValueOnce({
+      const reservationsChain = createChain({
         data: [
           { start_time: slot1Start.toISOString(), end_time: slot1End.toISOString(), quantity: 2, status: 'confirmed' }
-        ]
+        ],
+      });
+
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn((table: string) => {
+          if (table === 'reservation_schedules') return schedulesChain;
+          return reservationsChain;
+        }),
       });
 
       const slots = await getAvailableSlots(catalogItemId, tomorrowStr, tomorrowStr, 1);
@@ -93,11 +93,55 @@ describe('Reservation Availability Engine', () => {
       expect(slots[0].available).toBe(3); // 5 capacity - 2 booked
       expect(slots[1].available).toBe(5); // 5 capacity - 0 booked
     });
+
+    it('should interpret schedule hours in the schedule timezone (not server local/UTC)', async () => {
+      // Pick a Wednesday far enough in the future
+      const wednesday = new Date('2026-08-12T12:00:00Z');
+      const dateStr = '2026-08-12';
+      const timeZone = 'America/Mexico_City';
+
+      const schedulesChain = createChain({
+        data: [{
+          catalog_item_id: catalogItemId,
+          duration_minutes: 60,
+          capacity: 10,
+          timezone: timeZone,
+          days: {
+            wednesday: { enabled: true, start: '19:00', end: '20:00' }
+          }
+        }],
+      });
+      const reservationsChain = createChain({ data: [] });
+
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn((table: string) => {
+          if (table === 'reservation_schedules') return schedulesChain;
+          return reservationsChain;
+        }),
+      });
+
+      // Freeze "now" before the slot
+      jest.useFakeTimers().setSystemTime(new Date('2026-08-10T12:00:00Z'));
+
+      const slots = await getAvailableSlots(catalogItemId, dateStr, dateStr, 1);
+
+      jest.useRealTimers();
+
+      expect(slots).toHaveLength(1);
+      // 19:00 America/Mexico_City (UTC-6) => 01:00 UTC next day
+      expect(slots[0].start).toBe(fromZonedTime(`${dateStr}T19:00:00`, timeZone).toISOString());
+      expect(slots[0].end).toBe(fromZonedTime(`${dateStr}T20:00:00`, timeZone).toISOString());
+      // Ensure we did NOT treat 19:00 as UTC (which would display as 1pm in Mexico)
+      expect(slots[0].start).not.toBe(`${dateStr}T19:00:00.000Z`);
+      expect(wednesday.getUTCDay()).toBe(3); // sanity: Aug 12 2026 is Wednesday
+    });
   });
 
   describe('assertReservationSlot', () => {
     it('should throw if no schedule configured', async () => {
-      mockSupabase.single.mockResolvedValueOnce({ data: null });
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn(() => createChain({ data: null })),
+      });
       
       await expect(
         assertReservationSlot(siteId, catalogItemId, new Date().toISOString(), new Date().toISOString(), 1)
@@ -105,7 +149,9 @@ describe('Reservation Availability Engine', () => {
     });
 
     it('should throw if booking in the past', async () => {
-      mockSupabase.single.mockResolvedValueOnce({ data: { days: {} } });
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn(() => createChain({ data: [{ days: {}, timezone: 'UTC' }] })),
+      });
       const past = addDays(new Date(), -1).toISOString();
       
       await expect(
@@ -115,23 +161,30 @@ describe('Reservation Availability Engine', () => {
 
     it('should pass if valid and sufficient capacity', async () => {
       const tomorrow = addDays(new Date(), 1);
-      const dayOfWeek = format(tomorrow, "eeee").toLowerCase();
-      
-      const start = new Date(tomorrow);
-      start.setHours(10, 0, 0, 0);
+      const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
+      const dayOfWeek = format(tomorrow, 'eeee').toLowerCase();
+      const timeZone = 'UTC';
+
+      const start = fromZonedTime(`${tomorrowStr}T10:00:00`, timeZone);
       const end = addMinutes(start, 60);
 
-      mockSupabase.single.mockResolvedValueOnce({
-        data: {
+      const schedulesChain = createChain({
+        data: [{
           capacity: 10,
+          timezone: timeZone,
           days: {
             [dayOfWeek]: { enabled: true, start: '09:00', end: '17:00' }
           }
-        }
+        }],
       });
+      const bookedChain = createChain({ data: [] });
 
-      // getBookedSeats mock return 0
-      mockSupabase.lte.mockResolvedValueOnce({ data: [] });
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn((table: string) => {
+          if (table === 'reservation_schedules') return schedulesChain;
+          return bookedChain;
+        }),
+      });
 
       await expect(
         assertReservationSlot(siteId, catalogItemId, start.toISOString(), end.toISOString(), 2)
@@ -140,29 +193,69 @@ describe('Reservation Availability Engine', () => {
 
     it('should throw if insufficient capacity', async () => {
       const tomorrow = addDays(new Date(), 1);
-      const dayOfWeek = format(tomorrow, "eeee").toLowerCase();
-      
-      const start = new Date(tomorrow);
-      start.setHours(10, 0, 0, 0);
+      const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
+      const dayOfWeek = format(tomorrow, 'eeee').toLowerCase();
+      const timeZone = 'UTC';
+
+      const start = fromZonedTime(`${tomorrowStr}T10:00:00`, timeZone);
       const end = addMinutes(start, 60);
 
-      mockSupabase.single.mockResolvedValueOnce({
-        data: {
+      const schedulesChain = createChain({
+        data: [{
           capacity: 2,
+          timezone: timeZone,
           days: {
             [dayOfWeek]: { enabled: true, start: '09:00', end: '17:00' }
           }
-        }
+        }],
+      });
+      const bookedChain = createChain({
+        data: [{ quantity: 2, status: 'confirmed' }],
       });
 
-      // getBookedSeats mock return 2 (fully booked)
-      mockSupabase.lte.mockResolvedValueOnce({ 
-        data: [{ quantity: 2, status: 'confirmed' }] 
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn((table: string) => {
+          if (table === 'reservation_schedules') return schedulesChain;
+          return bookedChain;
+        }),
       });
 
       await expect(
         assertReservationSlot(siteId, catalogItemId, start.toISOString(), end.toISOString(), 1)
       ).rejects.toThrow('Not enough capacity for this slot');
+    });
+
+    it('should validate slots using the schedule timezone', async () => {
+      const dateStr = '2026-08-12';
+      const timeZone = 'America/Mexico_City';
+      const start = fromZonedTime(`${dateStr}T19:00:00`, timeZone);
+      const end = fromZonedTime(`${dateStr}T20:00:00`, timeZone);
+
+      const schedulesChain = createChain({
+        data: [{
+          capacity: 10,
+          timezone: timeZone,
+          days: {
+            wednesday: { enabled: true, start: '19:00', end: '20:00' }
+          }
+        }],
+      });
+      const bookedChain = createChain({ data: [] });
+
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn((table: string) => {
+          if (table === 'reservation_schedules') return schedulesChain;
+          return bookedChain;
+        }),
+      });
+
+      jest.useFakeTimers().setSystemTime(new Date('2026-08-10T12:00:00Z'));
+
+      await expect(
+        assertReservationSlot(siteId, catalogItemId, start.toISOString(), end.toISOString(), 1)
+      ).resolves.toBe(true);
+
+      jest.useRealTimers();
     });
   });
 });

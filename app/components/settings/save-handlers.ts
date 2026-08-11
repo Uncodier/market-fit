@@ -778,7 +778,17 @@ export const handleSaveGeneral = async (data: SiteFormValues, options: SaveOptio
       return
     }
 
-    const { name, url, description, logo_url, resource_urls, competitors, focusMode, tracking } = data
+    const {
+      name,
+      url,
+      description,
+      logo_url,
+      resource_urls,
+      competitors,
+      focusMode,
+      tracking,
+      default_locale,
+    } = data
 
     // Save focusMode to localStorage
     if (typeof focusMode === 'number') {
@@ -816,11 +826,12 @@ export const handleSaveGeneral = async (data: SiteFormValues, options: SaveOptio
       }
     }
 
-    // Update settings with competitors and focus_mode
+    // Update settings with competitors, focus_mode, and default site language
     const settingsUpdate: any = {
       site_id: currentSite.id,
       competitors: filteredCompetitors?.length > 0 ? filteredCompetitors : [],
-      focus_mode: focusMode || 50
+      focus_mode: focusMode || 50,
+      default_locale: default_locale || "en",
     }
 
     // Preserve existing settings ID if it exists
