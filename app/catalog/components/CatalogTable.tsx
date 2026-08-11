@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Archive, Edit, GripHorizontal, Settings } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
-import Link from "next/link"
+import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { Accordion, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from "@/app/components/ui/accordion"
 
@@ -61,14 +61,14 @@ function RelatedChips({
         {label}
       </span>
       {visible.map((related) => (
-        <Link key={related.id} href={`/catalog/${related.id}`}>
+        <NavigationLink key={related.id} href={`/catalog/${related.id}`}>
           <Badge
             variant="outline"
             className="text-[10px] font-normal px-1.5 py-0 h-5 hover:bg-muted/80 cursor-pointer"
           >
             {related.name}
           </Badge>
-        </Link>
+        </NavigationLink>
       ))}
       {remaining > 0 && (
         <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0 h-5">
@@ -394,12 +394,12 @@ export function CatalogTable({
                                                     )}
                                                   </TableCell>
                                                   <TableCell className="py-3">
-                                                    <Link 
+                                                    <NavigationLink 
                                                       href={`/catalog/${item.id}`} 
                                                       className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                                                     >
                                                       <Edit className="h-4 w-4" />
-                                                    </Link>
+                                                    </NavigationLink>
                                                   </TableCell>
                                                 </TableRow>
                                               )}

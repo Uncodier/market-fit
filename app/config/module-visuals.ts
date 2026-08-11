@@ -38,6 +38,7 @@ import {
   ListOrdered,
   Repeat,
   CalendarDays,
+  PenTool,
   ShoppingCart,
   QrCode,
   Receipt,
@@ -77,6 +78,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   promotions: Ticket,
   subscriptions: Repeat,
   reservations: CalendarDays,
+  visits: PenTool,
   campaigns: Target,
   segments: Tag,
   content: FileVideo,
@@ -237,6 +239,7 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   shipments: buildVariant(190, 170, 200, 75, 46, "mesh-4", false),
   controlCenter: buildVariant(165, 150, 90, 70, 44, "mesh-5", false),
   reservations: buildVariant(178, 195, 310, 68, 48, "mesh-6", false),
+  visits: buildVariant(170, 185, 150, 74, 46, "mesh-1", false),
   checkIn: buildVariant(175, 190, 135, 80, 46, "mesh-2", true, true),
   inventory: buildVariant(160, 175, 160, 65, 42, "mesh-7", false),
 

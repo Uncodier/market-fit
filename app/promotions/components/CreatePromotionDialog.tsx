@@ -9,12 +9,16 @@ import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
-import { upsertPromotion } from "../actions"
+import { setPromotionCategories, setPromotionItems, upsertPromotion } from "../actions"
 import useSWR from "swr"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import type { PromotionChannel } from "@/app/types"
+import { DEFAULT_PROMOTION_CHANNELS } from "../promotion-channels"
+import { PromotionChannelsFields } from "./PromotionChannelsFields"
+import { PromotionTargetPicker } from "./PromotionTargetPicker"
 
 interface CreatePromotionDialogProps {
   open: boolean
@@ -29,25 +33,45 @@ type FormData = {
   discount_type: 'percent' | 'fixed'
   discount_value: string
   applies_to: 'all' | 'selected_items'
+  channels: PromotionChannel[]
+  location_ids: string[]
+}
+
+const EMPTY_FORM: FormData = {
+  name: '',
+  code: '',
+  campaign_value: null,
+  discount_type: 'percent',
+  discount_value: '',
+  applies_to: 'all',
+  channels: [...DEFAULT_PROMOTION_CHANNELS],
+  location_ids: [],
 }
 
 export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreatePromotionDialogProps) {
   const { currentSite } = useSite()
   const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   
   const { data: campaigns } = useSWR(currentSite?.id ? ['campaigns', currentSite.id] : null, () => getCampaigns(currentSite!.id))
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
-    defaultValues: {
-      discount_type: 'percent',
-      applies_to: 'all',
-      campaign_value: null
-    }
+    defaultValues: EMPTY_FORM,
   })
 
   const discountType = watch('discount_type')
   const campaignValue = watch('campaign_value')
+  const appliesTo = watch('applies_to')
+  const channels = watch('channels')
+  const locationIds = watch('location_ids')
+
+  const resetForm = () => {
+    reset(EMPTY_FORM)
+    setSelectedItemIds([])
+    setSelectedCategoryIds([])
+  }
 
   const onSubmit = async (data: FormData) => {
     if (!currentSite || !user) return
@@ -58,6 +82,17 @@ export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreateP
       if (campError) throw new Error(`Campaign error: ${campError}`)
       if (!resolvedCampaignId) throw new Error("Campaign is required")
 
+      if (
+        data.applies_to === 'selected_items' &&
+        selectedItemIds.length === 0 &&
+        selectedCategoryIds.length === 0
+      ) {
+        throw new Error("Select at least one product or category")
+      }
+
+      const channels = data.channels?.length ? data.channels : [...DEFAULT_PROMOTION_CHANNELS]
+      const location_ids = channels.includes("pos") ? (data.location_ids || []) : []
+
       const res = await upsertPromotion({
         site_id: currentSite.id,
         user_id: user.id,
@@ -67,13 +102,23 @@ export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreateP
         discount_type: data.discount_type,
         discount_value: parseFloat(data.discount_value),
         applies_to: data.applies_to,
+        channels,
+        location_ids,
         status: 'draft'
       })
 
       if (res.error) throw new Error(res.error)
+      if (!res.data?.id) throw new Error("Failed to create promotion")
+
+      if (data.applies_to === 'selected_items') {
+        const itemsRes = await setPromotionItems(res.data.id, currentSite.id, selectedItemIds)
+        if (itemsRes.error) throw new Error(itemsRes.error)
+        const catsRes = await setPromotionCategories(res.data.id, currentSite.id, selectedCategoryIds)
+        if (catsRes.error) throw new Error(catsRes.error)
+      }
 
       toast.success('Promotion created successfully')
-      reset()
+      resetForm()
       onSuccess()
       onOpenChange(false)
     } catch (error: any) {
@@ -84,8 +129,11 @@ export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreateP
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={(next) => {
+      if (!next) resetForm()
+      onOpenChange(next)
+    }}>
+      <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Promotion</DialogTitle>
           <DialogDescription>
@@ -109,6 +157,7 @@ export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreateP
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
             <Input id="name" placeholder="e.g. Summer Sale 20%" {...register("name", { required: "Name is required" })} />
+            {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -137,16 +186,43 @@ export function CreatePromotionDialog({ open, onOpenChange, onSuccess }: CreateP
           
           <div className="space-y-2">
             <Label>Applies To</Label>
-            <Select value={watch('applies_to')} onValueChange={v => setValue('applies_to', v as 'all'|'selected_items')}>
+            <Select value={appliesTo} onValueChange={v => setValue('applies_to', v as 'all'|'selected_items')}>
               <SelectTrigger><SelectValue/></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Entire Order</SelectItem>
                 <SelectItem value="selected_items">Specific products or categories</SelectItem>
               </SelectContent>
             </Select>
-            {watch('applies_to') === 'selected_items' && (
-              <p className="text-xs text-muted-foreground mt-1">You can select products and categories after creating the promotion.</p>
+            {appliesTo === 'selected_items' && (
+              <div className="pt-2">
+                <PromotionTargetPicker
+                  siteId={currentSite?.id}
+                  selectedItemIds={selectedItemIds}
+                  selectedCategoryIds={selectedCategoryIds}
+                  onItemsChange={setSelectedItemIds}
+                  onCategoriesChange={setSelectedCategoryIds}
+                  compact
+                />
+              </div>
             )}
+          </div>
+
+          <div className="space-y-2 pt-2 border-t">
+            <Label>Channels</Label>
+            <p className="text-xs text-muted-foreground">
+              Choose where this promotion can be redeemed.
+            </p>
+            <PromotionChannelsFields
+              siteId={currentSite?.id}
+              channels={channels}
+              locationIds={locationIds}
+              compact
+              idPrefix="create-promo-channel"
+              onChange={({ channels: nextChannels, location_ids }) => {
+                setValue('channels', nextChannels)
+                setValue('location_ids', location_ids)
+              }}
+            />
           </div>
 
           <DialogFooter className="pt-4">

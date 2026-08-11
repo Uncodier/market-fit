@@ -9,10 +9,13 @@ import { Input } from "@/app/components/ui/input"
 import { toast } from "sonner"
 import { checkInTicket } from "@/app/commerce/ticket-check-in"
 import { Loader2, QrCode, Ticket } from "@/app/components/ui/icons"
+import { v4 as uuidv4 } from "uuid"
 
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { resolveBuyerIdentityForSite, type BuyerIdentityResolution } from "@/app/commerce/resolve-buyer-qr"
 import { BuyerIdentitySheet } from "../components/BuyerIdentitySheet"
+import { enqueueCheckIn } from "@/app/pos/local/outbox"
+import { drainPosOutbox } from "@/app/pos/local/sync-engine"
 
 export default function CheckInClient() {
   const { currentSite } = useSite()
@@ -33,6 +36,13 @@ export default function CheckInClient() {
     if (!trimmed || !currentSite?.id) return
     
     if (trimmed.startsWith("mf:user:")) {
+      if (!navigator.onLine) {
+        toast.error(
+          t("pos.sync.requiresOnline") ||
+            "This action requires an internet connection",
+        )
+        return
+      }
       setLoading(true)
       const res = await resolveBuyerIdentityForSite({ code: trimmed, siteId: currentSite.id })
       setLoading(false)
@@ -49,17 +59,42 @@ export default function CheckInClient() {
     }
 
     setLoading(true)
-    const { success, message, itemName, error } = await checkInTicket({ code: trimmed, siteId: currentSite.id })
-    setLoading(false)
-    
-    if (error) {
-      toast.error(error)
-    } else if (success) {
-      toast.success(`${message}: ${itemName}`)
+    const clientMutationId = uuidv4()
+    const online = navigator.onLine
+
+    const queueOffline = async () => {
+      await enqueueCheckIn(currentSite.id, {
+        siteId: currentSite.id,
+        code: trimmed,
+        clientMutationId,
+      })
+      toast.success(
+        t("pos.sync.pendingCheckIn") ||
+          "Check-in saved locally. Will sync when online.",
+      )
     }
-    
-    if (code === manualCode) {
-      setManualCode("")
+
+    try {
+      if (!online) {
+        await queueOffline()
+      } else {
+        const { success, message, itemName, error } = await checkInTicket({
+          code: trimmed,
+          siteId: currentSite.id,
+          clientMutationId,
+        })
+        if (error) {
+          toast.error(error)
+        } else if (success) {
+          toast.success(`${message}: ${itemName}`)
+        }
+      }
+    } catch {
+      // Transport failure — queue for later sync
+      await queueOffline()
+    } finally {
+      setLoading(false)
+      if (code === manualCode) setManualCode("")
     }
   }
 

@@ -875,7 +875,7 @@ export const handleSaveShop = async (data: SiteFormValues, options: SaveOptions)
       return_policy_summary: "30-Day Returns",
       trust_badges: [],
       payment_methods: ['card', 'cash_on_pickup'],
-      default_delivery_options: ['pickup', 'ship'],
+      default_delivery_options: ['pickup', 'ship', 'dine_in'],
       bank_transfer: {}
     }
 

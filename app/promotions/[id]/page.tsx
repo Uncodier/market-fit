@@ -5,9 +5,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
 import { getPromotion, upsertPromotion, listPromotionItems, setPromotionItems, deletePromotion, listPromotionCategories, setPromotionCategories } from "../actions"
-import { listCatalogItems, listCatalogCategories } from "@/app/catalog/actions"
 import { PromotionWithCampaign } from "../types"
-import { CatalogItem } from "@/app/types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -20,7 +18,12 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { toast } from "sonner"
 import { ChevronLeft, Save, Trash2, Activity } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { Checkbox } from "@/app/components/ui/checkbox"
+import { PromotionChannelsCard } from "../components/PromotionChannelsCard"
+import { PromotionTargetPicker } from "../components/PromotionTargetPicker"
+import {
+  normalizePromotionChannels,
+  normalizePromotionLocationIds,
+} from "../promotion-channels"
 
 export default function PromotionDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -31,33 +34,28 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
   const [promo, setPromo] = useState<PromotionWithCampaign | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  
-  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
-  
-  const [catalogCategories, setCatalogCategories] = useState<any[]>([])
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
 
   useEffect(() => {
     async function load() {
       if (!currentSite) return
-      const [{ data, error }, catalogRes, itemsRes, catsListRes, promoCatsRes] = await Promise.all([
+      const [{ data, error }, itemsRes, promoCatsRes] = await Promise.all([
         getPromotion(params.id),
-        listCatalogItems({ siteId: currentSite.id, pageSize: 1000 }),
         listPromotionItems(params.id, currentSite.id),
-        listCatalogCategories(currentSite.id),
         listPromotionCategories(params.id, currentSite.id)
       ])
       
       if (error) {
         toast.error("Failed to load promotion")
       } else if (data) {
-        setPromo(data)
+        setPromo({
+          ...data,
+          channels: normalizePromotionChannels(data.channels),
+          location_ids: normalizePromotionLocationIds(data.location_ids),
+        })
       }
-      if (catalogRes.data) setCatalogItems(catalogRes.data)
       if (itemsRes.data) setSelectedItemIds(itemsRes.data.map((i: any) => i.catalog_item_id))
-      
-      if (catsListRes.data) setCatalogCategories(catsListRes.data)
       if (promoCatsRes.data) setSelectedCategoryIds(promoCatsRes.data.map((c: any) => c.catalog_category_id))
         
       setLoading(false)
@@ -84,9 +82,18 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
   const handleSave = async () => {
     if (!currentSite || !promo) return
     setSaving(true)
-    
+
+    const channels = normalizePromotionChannels(promo.channels)
+    const location_ids = channels.includes("pos")
+      ? normalizePromotionLocationIds(promo.location_ids)
+      : []
+
     // Save basic
-    const { error: promoError } = await upsertPromotion(promo)
+    const { error: promoError } = await upsertPromotion({
+      ...promo,
+      channels,
+      location_ids,
+    })
     if (promoError) toast.error(promoError)
     
     // Save items/categories if applicable
@@ -188,6 +195,16 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
             </ActionFooter>
           </Card>
 
+          {currentSite && (
+            <PromotionChannelsCard
+              siteId={currentSite.id}
+              promo={promo}
+              onChange={(patch) => setPromo({ ...promo, ...patch })}
+              onSave={handleSave}
+              saving={saving}
+            />
+          )}
+
           <Card>
             <CardHeader><CardTitle>Rules</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -203,47 +220,14 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
               </div>
 
               {promo.applies_to === 'selected_items' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="border rounded-md p-4 max-h-[300px] overflow-y-auto space-y-2 bg-muted/20">
-                    <Label className="block mb-2">Select Categories</Label>
-                    {catalogCategories.length === 0 && (
-                      <p className="text-sm text-muted-foreground italic">No categories found</p>
-                    )}
-                    {catalogCategories.map(cat => (
-                      <div key={cat.id} className="flex items-center space-x-2 py-1">
-                        <Checkbox 
-                          id={`cat-${cat.id}`}
-                          checked={selectedCategoryIds.includes(cat.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) setSelectedCategoryIds([...selectedCategoryIds, cat.id])
-                            else setSelectedCategoryIds(selectedCategoryIds.filter(id => id !== cat.id))
-                          }}
-                        />
-                        <label htmlFor={`cat-${cat.id}`} className="text-sm cursor-pointer">{cat.name}</label>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="border rounded-md p-4 max-h-[300px] overflow-y-auto space-y-2 bg-muted/20">
-                    <Label className="block mb-2">Select Products</Label>
-                    {catalogItems.length === 0 && (
-                      <p className="text-sm text-muted-foreground italic">No products found</p>
-                    )}
-                    {catalogItems.map(item => (
-                      <div key={item.id} className="flex items-center space-x-2 py-1">
-                        <Checkbox 
-                          id={`item-${item.id}`}
-                          checked={selectedItemIds.includes(item.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) setSelectedItemIds([...selectedItemIds, item.id])
-                            else setSelectedItemIds(selectedItemIds.filter(id => id !== item.id))
-                          }}
-                        />
-                        <label htmlFor={`item-${item.id}`} className="text-sm cursor-pointer">{item.name}</label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <PromotionTargetPicker
+                  siteId={currentSite?.id}
+                  selectedItemIds={selectedItemIds}
+                  selectedCategoryIds={selectedCategoryIds}
+                  onItemsChange={setSelectedItemIds}
+                  onCategoriesChange={setSelectedCategoryIds}
+                  idPrefix={`promo-${promo.id}-target`}
+                />
               )}
 
               <div className="grid grid-cols-3 gap-4 pt-4 border-t">

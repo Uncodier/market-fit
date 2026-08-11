@@ -13,6 +13,7 @@ import { CompanySection } from "./CompanySection"
 import { BrandingSection } from "./BrandingSection"
 import { MarketingSection } from "./MarketingSection"
 import { ShopSection } from "./ShopSection"
+import { VisitsSection } from "./VisitsSection"
 import { CustomerJourneySection } from "./CustomerJourneySection"
 import { SocialSection } from "./SocialSection"
 import { ChannelsSection } from "./ChannelsSection"
@@ -251,7 +252,7 @@ export function SiteForm({
         return_policy_summary: "30-Day Returns",
         trust_badges: [],
         payment_methods: ['card', 'cash_on_pickup'],
-        default_delivery_options: ['pickup', 'ship'],
+        default_delivery_options: ['pickup', 'ship', 'dine_in'],
         bank_transfer: {}
       }
     }
@@ -483,6 +484,10 @@ export function SiteForm({
 
           {renderCard("marketplace",
             <ShopSection active={true} onSave={onSaveShop} />
+          )}
+
+          {renderCard("visits",
+            <VisitsSection active={true} />
           )}
 
           {renderCard("branding",

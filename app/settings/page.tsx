@@ -214,6 +214,11 @@ const getMarketplaceSections = (t: (key: string) => string): QuickNavSection[] =
   { id: "shop-trust", title: t('settings.nav.shopTrust') || "Trust & Policies" },
 ]
 
+const getVisitsSections = (t: (key: string) => string): QuickNavSection[] => [
+  { id: "visits-channels", title: t('settings.nav.visitsChannels') || "Visit channels" },
+  { id: "visits-terms", title: t('settings.nav.visitsTerms') || "Visit Terms" },
+]
+
 const getChannelsSections = (t: (key: string) => string): QuickNavSection[] => [
   { id: "website-channel", title: t('settings.nav.websiteChannel') || "Website Channel" },
   { id: "agent-email-channel", title: t('settings.nav.agentEmailChannel') || "Agent Email Channel" },
@@ -578,6 +583,8 @@ export default function SettingsPage() {
         return getActivitiesSections(t)
       case "marketplace":
         return getMarketplaceSections(t)
+      case "visits":
+        return getVisitsSections(t)
       case "social":
         return socialSections
       case "calendar":
@@ -636,6 +643,7 @@ export default function SettingsPage() {
                 <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
                 <TabsTrigger value="company" className="text-xs rounded-full px-4">{t('settings.tabs.company') || 'Company'}</TabsTrigger>
                 <TabsTrigger value="marketplace" className="text-xs rounded-full px-4">{t('settings.tabs.marketplace') || 'Marketplace'}</TabsTrigger>
+                <TabsTrigger value="visits" className="text-xs rounded-full px-4">{t('settings.tabs.visits') || 'Visits'}</TabsTrigger>
                 <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
                 <TabsTrigger value="calendar" className="text-xs rounded-full px-4">{t('settings.tabs.calendar') || 'Calendar'}</TabsTrigger>

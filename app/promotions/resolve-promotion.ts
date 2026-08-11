@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { assertPromotionChannelAccess } from "./promotion-channels";
 
 export type PromotionCartLine = {
   catalogItemId: string;
@@ -11,6 +12,10 @@ export type ResolvePromotionParams = {
   lines: PromotionCartLine[];
   buyerUserId?: string | null;
   leadId?: string | null;
+  /** Checkout/order source used for channel targeting (marketplace, shop, pos, …). */
+  source?: string | null;
+  /** POS / pickup location used when channel is pos. */
+  locationId?: string | null;
   /** Exclude this order when counting per-user usage (apply on existing order). */
   excludeOrderId?: string | null;
   forceServiceRole?: boolean;
@@ -40,6 +45,8 @@ export async function resolvePromotionDiscount(
       lines,
       buyerUserId,
       leadId,
+      source,
+      locationId,
       excludeOrderId,
       forceServiceRole = false,
     } = params;
@@ -61,6 +68,14 @@ export async function resolvePromotionDiscount(
       .single();
 
     if (!promo) return { error: "Invalid or inactive promotion code" };
+
+    const channelError = assertPromotionChannelAccess({
+      channels: promo.channels,
+      locationIds: promo.location_ids,
+      source,
+      locationId,
+    });
+    if (channelError) return { error: channelError };
 
     const now = new Date();
     if (promo.starts_at && new Date(promo.starts_at) > now) {

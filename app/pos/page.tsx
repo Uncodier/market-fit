@@ -1,174 +1,120 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import useSWR from "swr";
+import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { v4 as uuidv4 } from "uuid";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider";
-import { listCatalogItems, listCatalogCategories } from "@/app/catalog/actions";
-import { listOrders, getOrder } from "@/app/orders/actions";
-import { resolveUnitPrice, listPriceLists } from "@/app/price-lists/actions";
-import { checkoutCart, CheckoutLine } from "@/app/commerce/checkout";
-import { calculateOrderTaxTotal, roundMoney } from "@/app/commerce/taxes";
-import { resolveOrderShippingCost } from "@/app/commerce/delivery-options";
-import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
 import { StickyHeader } from "@/app/components/ui/sticky-header";
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { Button } from "@/app/components/ui/button";
 import { SearchInput } from "@/app/components/ui/search-input";
-import {
-  RelationSelect,
-  RelationSelectValue,
-} from "@/app/components/ui/relation-select";
-import { resolveRelationId } from "@/app/commerce/resolve-relation";
+import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
-import { toast } from "sonner";
-import { ShoppingCart, Ticket } from "@/app/components/ui/icons";
-import { listLocations } from "@/app/inventory/actions";
-import { getLeads } from "@/app/leads/actions";
+import { ShoppingCart } from "@/app/components/ui/icons";
+import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal";
 import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialog";
-import { PosVariantPickerDialog } from "./components/PosVariantPickerDialog"
-import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal"
-import { requestDynamicQuote } from "@/app/quotations/dynamic-quote-actions"
-import { hasDynamicQuoteFields, isDynamicPricedItem } from "@/app/catalog/dynamic-pricing"
-import { CartPanel, PosCartItem } from "./components/CartPanel";
+import { PosVariantPickerDialog } from "./components/PosVariantPickerDialog";
+import { CartPanel } from "./components/CartPanel";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
-import { useRouter } from "next/navigation"
-import {
-  getActivePosOrderId,
-  setActivePosOrderId,
-  clearActivePosOrderId,
-} from "./active-order-storage";
-import { isAccessOnlyItem } from "@/app/catalog/product-details";
-import { navigateToOrder, navigateToSale } from "@/app/hooks/use-navigation-history"
-import {
-  getItemDeliveryOptions,
-  intersectDeliveryOptions,
-  defaultFulfillment,
-  CheckoutFulfillmentMethod
-} from "@/app/commerce/delivery-options";
-import { CatalogItem } from "@/app/types";
+import { PosSyncBadge } from "./components/PosSyncBadge";
+import { PosSyncIssues } from "./components/PosSyncIssues";
+import { usePosCatalog } from "./hooks/use-pos-catalog";
+import { usePosCart } from "./hooks/use-pos-cart";
+import { usePosCheckout } from "./hooks/use-pos-checkout";
+import { usePosSyncStatus } from "./hooks/use-pos-sync-status";
+import { usePosAddItem } from "./hooks/use-pos-add-item";
+import { enqueueCreateLead } from "./local/outbox";
+import { getPosDb } from "./local/db";
+import { drainPosOutbox } from "./local/sync-engine";
 
 export default function POSPage() {
   const { currentSite } = useSite();
   const { t } = useLocalization();
   const { user } = useAuth();
   const router = useRouter();
+  const siteId = currentSite?.id;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [cart, setCart] = useState<PosCartItem[]>([]);
-
-  // Checkout states
-  const [leadValue, setLeadValue] = useState<RelationSelectValue | string>(null);
-  const [fulfillment, setFulfillment] = useState<
-    "pickup" | "ship" | "dine_in" | "none"
-  >("dine_in");
-  const [originLocationId, setOriginLocationId] = useState<string>("");
-  const [priceListId, setPriceListId] = useState<string>("none");
-  const [promoCode, setPromoCode] = useState("");
-  const [selectedCartItemId, setSelectedCartItemId] = useState<string | null>(
-    null,
-  );
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [variantParentItem, setVariantParentItem] = useState<CatalogItem | null>(null);
-  const [dynamicQuoteItem, setDynamicQuoteItem] = useState<CatalogItem | null>(null);
-  const [dynamicQuoteLoading, setDynamicQuoteLoading] = useState(false);
-  const [activeOrderId, setActiveOrderId] = useState<string>("new");
-  const [buyerUserId, setBuyerUserId] = useState<string | null>(null);
-  const creatingOrderRef = React.useRef<boolean>(false);
-  const restoredOrderRef = React.useRef<boolean>(false);
+  const [syncIssuesOpen, setSyncIssuesOpen] = useState(false);
+
+  const { status: syncStatus, retrySync } = usePosSyncStatus(siteId);
+  const catalog = usePosCatalog(siteId);
+  const cartApi = usePosCart({
+    siteId,
+    shopSettings: currentSite?.settings?.shop,
+    catalogItems: catalog.catalogItems,
+    locations: catalog.locations,
+    priceLists: catalog.priceLists,
+    priceListItems: catalog.priceListItems,
+    promotions: catalog.promotions,
+    getTaxesForCart: catalog.getTaxesForCart,
+    t,
+  });
+
+  const leadRelationValue: RelationSelectValue =
+    typeof cartApi.leadValue === "string"
+      ? { mode: "existing", id: cartApi.leadValue, label: cartApi.leadValue }
+      : cartApi.leadValue;
+
+  const checkout = usePosCheckout({
+    siteId,
+    userId: user?.id,
+    cart: cartApi.cart,
+    total: cartApi.total,
+    leadValue: cartApi.leadValue,
+    leadRelationValue,
+    fulfillment: cartApi.fulfillment,
+    originLocationId: cartApi.originLocationId,
+    priceListId: cartApi.priceListId,
+    promoCode: cartApi.promoCode,
+    activeOrderId: cartApi.activeOrderId,
+    buyerUserId: cartApi.buyerUserId,
+    router,
+    onCleared: () => {
+      void cartApi.resetToNewOrder();
+    },
+    t,
+  });
+
+  const addApi = usePosAddItem({
+    siteId,
+    userId: user?.id,
+    leadValue: cartApi.leadValue,
+    leadRelationValue,
+    addItemToCart: cartApi.addItemToCart,
+    router,
+    t,
+  });
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const leadIdParam = params.get("leadId");
-      const buyerUserParam = params.get("buyerUserId");
-      
-      if (leadIdParam) {
-        setLeadValue(leadIdParam);
-      }
-      if (buyerUserParam) {
-        setBuyerUserId(buyerUserParam);
-      }
-      
-      // Optionally clean up the URL without reloading
-      if (leadIdParam || buyerUserParam) {
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
-      }
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const leadIdParam = params.get("leadId");
+    const buyerUserParam = params.get("buyerUserId");
+    if (leadIdParam) cartApi.setLeadValue(leadIdParam);
+    if (buyerUserParam) cartApi.setBuyerUserId(buyerUserParam);
+    if (leadIdParam || buyerUserParam) {
+      window.history.replaceState({}, "", window.location.pathname);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const allowedFulfillments = useMemo((): CheckoutFulfillmentMethod[] => {
-    // Empty cart: POS defaults to Consume Here (inactive single option)
-    if (cart.length === 0) return ["dine_in"];
-
-    const options = intersectDeliveryOptions(
-      cart.map((i: any) => ({
-        allowed: getItemDeliveryOptions(
-          i,
-          currentSite?.settings?.shop?.default_delivery_options,
-        ),
-      })),
-    );
-
-    // Keep a usable option so the select never renders with a dangling value
-    return options.length > 0 ? options : ["dine_in"];
-  }, [cart, currentSite]);
-
   useEffect(() => {
-    if (
-      allowedFulfillments.length > 0 &&
-      !allowedFulfillments.includes(fulfillment)
-    ) {
-      const next = allowedFulfillments.includes("dine_in")
-        ? "dine_in"
-        : defaultFulfillment(allowedFulfillments) || "dine_in";
-      setFulfillment(next);
-    }
-  }, [allowedFulfillments, fulfillment]);
-
-  // Fetch sellable catalog items (can be optimized to only show active)
-  const { data: catalogData, isLoading: catalogLoading, isValidating: catalogValidating } = useSWR(
-    currentSite?.id ? ["pos_catalog", currentSite.id, searchQuery] : null,
-    () =>
-      listCatalogItems({
-        siteId: currentSite!.id,
-        status: "active",
-        isPosAvailable: true,
-        q: searchQuery,
-        pageSize: 100,
-      }),
-  );
-
-  const { data: locationsData } = useSWR(
-    currentSite?.id ? ["locations", currentSite.id] : null,
-    () => listLocations(currentSite!.id),
-  );
-  const { data: leadsData, mutate: mutateLeads } = useSWR(
-    currentSite?.id ? ["leads", currentSite.id] : null,
-    () => getLeads(currentSite!.id),
-  );
-  const { data: categoriesData } = useSWR(
-    currentSite?.id ? ["categories", currentSite.id] : null,
-    () => listCatalogCategories(currentSite!.id),
-  );
-
-  // Normalize leadId from URL (?leadId=) into a RelationSelect value once leads load
-  useEffect(() => {
-    if (typeof leadValue !== "string") return;
-    const lead = (leadsData?.leads || []).find((l: any) => l.id === leadValue);
+    if (typeof cartApi.leadValue !== "string") return;
+    const lead = catalog.leads.find((l: any) => l.id === cartApi.leadValue);
     if (!lead) return;
     const parts = [lead.name, lead.email, lead.phone].filter(Boolean);
-    setLeadValue({
+    cartApi.setLeadValue({
       mode: "existing",
       id: lead.id,
       label: parts.length > 0 ? parts.join(" · ") : lead.name || lead.email,
     });
-  }, [leadValue, leadsData]);
+  }, [cartApi.leadValue, catalog.leads]);
 
   const handleLeadUpdated = (lead: {
     id: string;
@@ -177,669 +123,146 @@ export default function POSPage() {
     phone?: string | null;
   }) => {
     const parts = [lead.name, lead.email, lead.phone].filter(Boolean);
-    setLeadValue({
+    cartApi.setLeadValue({
       mode: "existing",
       id: lead.id,
       label: parts.length > 0 ? parts.join(" · ") : lead.name || lead.email,
     });
-    mutateLeads();
+    void catalog.reload();
   };
 
-  const leadRelationValue: RelationSelectValue =
-    typeof leadValue === "string"
-      ? { mode: "existing", id: leadValue, label: leadValue }
-      : leadValue;
-  const { data: pendingOrdersData, mutate: mutatePending } = useSWR(
-    currentSite?.id ? ["pending_orders", currentSite.id] : null,
-    () =>
-      listOrders({ siteId: currentSite!.id, status: "pending,in_progress", pageSize: 50 }),
-  );
-  const { data: unpaidCompletedOrdersData, mutate: mutateUnpaid } = useSWR(
-    currentSite?.id ? ["unpaid_completed_orders", currentSite.id] : null,
-    () =>
-      listOrders({ siteId: currentSite!.id, status: "completed", paymentStatus: "unpaid", pageSize: 50 }),
-  );
-
-  const pendingOrders = useMemo(() => {
-    const p = pendingOrdersData?.data || [];
-    const u = unpaidCompletedOrdersData?.data || [];
-    // combine and sort by created_at descending
-    return [...p, ...u].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [pendingOrdersData, unpaidCompletedOrdersData]);
-
-  // When mutating, mutate both
-  const mutate = (key?: any) => {
-    mutatePending();
-    mutateUnpaid();
-  };
-
-  const { data: priceListsData } = useSWR(
-    currentSite?.id ? ["price_lists", currentSite.id] : null,
-    () => listPriceLists({ siteId: currentSite!.id, pageSize: 100 }),
-  );
-
-  const allItems = catalogData?.data || [];
-  const locations = locationsData?.data || [];
-  const categories = categoriesData?.data || [];
-  const priceLists = (priceListsData?.data || []).filter(
-    (pl: any) => pl.is_active,
-  );
-
-  const availableItems = useMemo(() => {
-    return allItems.filter(
-      (item: any) =>
-        item.availability_mode !== "manual" ||
-        item.availability_status === "available"
-    );
-  }, [allItems]);
-
-  const hasProducts = useMemo(() => availableItems.some((i: any) => i.kind === "product"), [availableItems]);
-  const hasServices = useMemo(() => availableItems.some((i: any) => i.kind === "service"), [availableItems]);
-  const hasDigital = useMemo(() => availableItems.some((i: any) => i.kind === "digital_asset"), [availableItems]);
-
-  const nonEmptyCategories = useMemo(() => {
-    return categories.filter((cat: any) =>
-      availableItems.some((i: any) => i.category_id === cat.id)
-    );
-  }, [categories, availableItems]);
-
-  const items = useMemo(() => {
-    if (selectedCategory === "all") return allItems;
-    if (selectedCategory === "kind_product")
-      return allItems.filter((i: any) => i.kind === "product");
-    if (selectedCategory === "kind_service")
-      return allItems.filter((i: any) => i.kind === "service");
-    if (selectedCategory === "kind_digital_asset")
-      return allItems.filter((i: any) => i.kind === "digital_asset");
-    return allItems.filter((i: any) => i.category_id === selectedCategory);
-  }, [allItems, selectedCategory]);
-
-  // Set default location if empty
-  useEffect(() => {
-    if (locations.length > 0 && !originLocationId) {
-      const def = locations.find((l: any) => l.is_default) || locations[0];
-      if (def) setOriginLocationId(def.id);
-    }
-  }, [locations, originLocationId]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && currentSite && user) {
-      const pendingStr = sessionStorage.getItem("pos-pending-reservation");
-      if (pendingStr) {
-        try {
-          const pending = JSON.parse(pendingStr);
-          const item = allItems.find((i: any) => i.id === pending.itemId);
-          if (item) {
-            sessionStorage.removeItem("pos-pending-reservation");
-            // Need to wrap in an async IIFE to call resolveUnitPrice
-            (async () => {
-              const res = await resolveUnitPrice(
-                currentSite.id,
-                item.id,
-                priceListId && priceListId !== "none" ? priceListId : undefined,
-              );
-              const price = res.price || item.target_sale_price || 0;
-              setCart(prev => [
-                { ...item, cartQty: 1, cartPrice: price, reservationStart: pending.startIso, reservationEnd: pending.endIso },
-                ...prev
-              ]);
-            })();
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
-  }, [allItems, currentSite, user, priceListId]);
-
-  const handlePriceListChange = async (newId: string) => {
-    setPriceListId(newId);
-    if (!currentSite || cart.length === 0) return;
-
-    const actualId = newId === "none" ? undefined : newId;
-
-    // re-resolve prices
-    const newCart = await Promise.all(
-      cart.map(async (c) => {
-        const res = await resolveUnitPrice(currentSite.id, c.id, actualId);
-        return { ...c, cartPrice: res.price || c.target_sale_price || 0 };
-      }),
-    );
-
-    setCart(newCart);
-  };
-
-  const addToCart = async (item: CatalogItem) => {
-    if (!currentSite || !user) return;
-
-    if (isDynamicPricedItem(item)) {
-      if (!leadValue) {
-        toast.error(t("pos.selectClientFirst") || "Select a client before requesting a quote");
-        return;
-      }
-      if (hasDynamicQuoteFields(item)) {
-        setDynamicQuoteItem(item);
-        return;
-      }
-
-      // Dynamic price with no custom fields — request quote immediately
-      const { id: leadId, error: leadError } = await resolveRelationId(
-        "lead",
-        leadRelationValue,
-        currentSite.id,
-      );
-      if (leadError || !leadId) {
-        toast.error(leadError || "Select a client before requesting a quote");
-        return;
-      }
-      setDynamicQuoteLoading(true);
-      try {
-        const res = await requestDynamicQuote({
-          siteId: currentSite.id,
-          catalogItemId: item.id,
-          leadId,
-          quantity: 1,
-          fieldValues: {},
-        });
-        if (res.error && !res.data?.quotationId) {
-          throw new Error(res.error);
-        }
-        toast.success(
-          t("quotations.dynamicQuote.created") || "Quote request created",
-        );
-        if (res.data?.quotationId) {
-          router.push(`/quotations/${res.data.quotationId}`);
-        }
-      } catch (err: any) {
-        toast.error(err?.message || "Failed to request quote");
-      } finally {
-        setDynamicQuoteLoading(false);
-      }
+  const handleLeadValueChange = async (value: RelationSelectValue) => {
+    if (!siteId || !value) {
+      cartApi.setLeadValue(value);
       return;
     }
-
-    // Check if it's a parent item with variants
-    if (item.metadata?.variant_axes && item.metadata.variant_axes.length > 0 && !item.is_purchasable) {
-      setVariantParentItem(item);
-      return;
-    }
-
-    // Check if unavailable
-    if (
-      item.availability_mode === "manual" &&
-      item.availability_status !== "available"
-    ) {
-      toast.error(t("pos.errorItemNotAvailable") || "Item is not available");
-      return;
-    }
-
-    if (item.is_reservation && !isAccessOnlyItem(item)) {
-      router.push(`/pos/book/${item.id}`)
-      return;
-    }
-
-    const existing = cart.find((c) => c.id === item.id);
-    let newCart = [...cart];
-
-    if (existing) {
-      newCart = cart.map((c) =>
-        c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c,
-      );
-      setCart(newCart);
-    } else {
-      // Fetch resolved price (using resolveUnitPrice server action)
-      const res = await resolveUnitPrice(
-        currentSite.id,
-        item.id,
-        priceListId && priceListId !== "none" ? priceListId : undefined,
-      );
-      const price = res.price || item.target_sale_price || 0;
-      newCart = [{ ...item, cartQty: 1, cartPrice: price }, ...cart];
-      setCart(newCart);
-    }
-
-    setSelectedCartItemId(item.id);
-
-    if (activeOrderId === "new" && !creatingOrderRef.current) {
-      creatingOrderRef.current = true;
-      try {
-        const lines: CheckoutLine[] = newCart
-          .filter((c) => c.cartQty > 0)
-          .map((c) => ({
-            catalogItemId: c.id,
-            quantity: c.cartQty,
-          }));
-
-        const res = await checkoutCart({
-          siteId: currentSite.id,
-          userId: user.id,
-          lines,
-          fulfillment,
-          originLocationId: originLocationId,
-          source: "pos",
-          payments: [],
-          existingOrderId: activeOrderId !== "new" ? activeOrderId : undefined,
-          intent: 'draft'
-        });
-
-        if (res.orderId) {
-          setActiveOrderId(res.orderId);
-          setActivePosOrderId(currentSite.id, res.orderId);
-          mutate(["pending_orders", currentSite.id]);
-        }
-      } catch (err) {
-        console.error("Failed to auto-create order", err);
-      } finally {
-        creatingOrderRef.current = false;
-      }
-    }
-  };
-
-  const updateQty = (id: string, delta: number) => {
-    setCart(
-      cart
-        .map((c) => {
-          if (c.id === id) {
-            const newQty = Math.max(0, c.cartQty + delta);
-            return { ...c, cartQty: newQty };
-          }
-          return c;
-        })
-        .filter((c) => c.cartQty > 0),
-    );
-  };
-
-  const setItemQty = (id: string, qty: number) => {
-    setCart((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          return { ...c, cartQty: Math.max(0, qty) };
-        }
-        return c;
-      })
-    );
-  };
-
-  const setItemPrice = (id: string, price: number) => {
-    setCart(
-      cart.map((c) => {
-        if (c.id === id) {
-          return { ...c, cartPrice: Math.max(0, price) };
-        }
-        return c;
-      }),
-    );
-  };
-
-  const subtotal = cart.reduce(
-    (sum, item) => sum + item.cartPrice * item.cartQty,
-    0,
-  );
-
-  const cartTaxKey = useMemo(
-    () =>
-      cart
-        .map((c) => c.id)
-        .sort()
-        .join(","),
-    [cart],
-  );
-
-  const { data: taxesByItem } = useSWR(
-    currentSite?.id && cart.length > 0
-      ? ["pos_cart_taxes", currentSite.id, cartTaxKey]
-      : null,
-    () =>
-      getTaxesByCatalogItemIds(
-        currentSite!.id,
-        cart.map((c) => c.id),
-      ).then((res) => res.data || {}),
-  );
-
-  const taxTotal = useMemo(
-    () =>
-      calculateOrderTaxTotal(
-        cart
-          .filter((c) => c.cartQty > 0)
-          .map((c) => ({
-            catalogItemId: c.id,
-            subtotal: c.cartPrice * c.cartQty,
-          })),
-        taxesByItem || {},
-      ),
-    [cart, taxesByItem],
-  );
-
-  const shippingTotal = useMemo(() => {
-    return resolveOrderShippingCost(
-      fulfillment as any,
-      subtotal,
-      currentSite?.settings?.shop?.free_shipping_threshold,
-      currentSite?.settings?.shop?.shipping_cost,
-      cart
-    );
-  }, [fulfillment, subtotal, currentSite, cart]);
-
-  const total = roundMoney(subtotal + taxTotal + shippingTotal);
-  const activeCartItems = cart.filter((c) => c.cartQty > 0);
-
-  const initiateCheckout = () => {
-    if (activeCartItems.length === 0) return;
-    if (!originLocationId) {
-      toast.error(t("pos.errorSelectOrigin") || "Select an origin location");
-      return;
-    }
-    if (fulfillment === "ship" && !leadValue) {
-      toast.error(
-        t("pos.errorSelectCustomerShipping") ||
-          "Select a customer for shipping",
-      );
-      return;
-    }
-    setIsPaymentDialogOpen(true);
-  };
-
-  const handleCheckout = async (
-    payments: {
-      method: string;
-      amount: number;
-      tendered: number;
-      change: number;
-    }[],
-    checkoutPromoCode?: string,
-    intent?: 'complete' | 'pay' | 'send'
-  ) => {
-    if (!currentSite || !user) return;
-
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const remainingAmount = roundMoney(total - totalPaid);
-    const requiresCustomer = intent === 'complete' && remainingAmount > 0;
-
-    if (intent === 'send' && payments.length === 0) {
-      toast.error(
-        t("pos.errorAddPaymentFirst") || "Add at least one payment first",
-      );
-      return;
-    }
-
-    if (requiresCustomer && !leadValue) {
-      toast.error(
-        t("pos.errorSelectCustomerUnpaid") ||
-          "Select a customer to leave payment pending",
-      );
-      setIsPaymentDialogOpen(false);
-      return;
-    }
-
-    setCheckoutLoading(true);
-
-    try {
-      const { id: resolvedLeadId, error: leadError } = await resolveRelationId(
-        "lead",
-        leadRelationValue,
-        currentSite.id,
-      );
-      if (leadError) throw new Error(`Lead error: ${leadError}`);
-
-      if (requiresCustomer && !resolvedLeadId) {
-        toast.error(
-          t("pos.errorSelectCustomerUnpaid") ||
-            "Select a customer to leave payment pending",
-        );
-        setCheckoutLoading(false);
-        setIsPaymentDialogOpen(false);
-        return;
-      }
-
-      const lines: CheckoutLine[] = cart
-        .filter((c) => c.cartQty > 0)
-        .map((c) => ({
-          catalogItemId: c.id,
-          quantity: c.cartQty,
-          unitPriceOverride: c.cartPrice,
-        }));
-
-      const finalPromoCode = checkoutPromoCode || promoCode || undefined;
-
-      const res = await checkoutCart({
-        siteId: currentSite.id,
-        userId: user.id,
-        lines,
-        priceListId:
-          priceListId && priceListId !== "none" ? priceListId : undefined,
-        leadId: resolvedLeadId || undefined,
-        buyerUserId: buyerUserId || undefined,
-        fulfillment,
-        originLocationId: originLocationId,
-        promotionCode: finalPromoCode,
-        source: "pos",
-        payments,
-        existingOrderId: activeOrderId !== "new" ? activeOrderId : undefined,
-        intent: intent || 'pay'
+    if (value.mode === "create" && !navigator.onLine) {
+      const localLeadId = `local_${uuidv4()}`;
+      const clientMutationId = uuidv4();
+      await getPosDb().leads.put({
+        id: localLeadId,
+        site_id: siteId,
+        name: value.label.trim(),
+        is_local: true,
       });
-
-      if (res.error) {
-        toast.error(res.error);
-        setCheckoutLoading(false);
-        setIsPaymentDialogOpen(false);
-        return;
-      }
-
-      toast.success(
-        intent === "send"
-          ? (t("pos.paymentRegistered") || "Payment registered. Order kept pending.")
-          : (t("pos.checkoutComplete") || "Checkout complete!"),
+      await enqueueCreateLead(siteId, {
+        siteId,
+        localLeadId,
+        name: value.label.trim(),
+        clientMutationId,
+      });
+      catalog.setLeads((prev) => [
+        {
+          id: localLeadId,
+          site_id: siteId,
+          name: value.label.trim(),
+          is_local: true,
+        },
+        ...prev,
+      ]);
+      cartApi.setLeadValue({
+        mode: "existing",
+        id: localLeadId,
+        label: value.label.trim(),
+      });
+      toast.message(
+        t("pos.sync.pendingLead") ||
+          "Customer saved locally. Will sync when online.",
       );
-      setCart([]);
-      setLeadValue(null);
-      setActiveOrderId("new");
-      clearActivePosOrderId(currentSite.id);
-      setIsPaymentDialogOpen(false);
-      if (intent === "send" && res.orderId) {
-        navigateToOrder({ orderId: res.orderId, router });
-      } else if (res.saleId) {
-        navigateToSale({ saleId: res.saleId, router });
-      }
-    } catch (err: any) {
-      toast.error(
-        err.message || t("pos.errorCheckingOut") || "Error checking out",
-      );
-    } finally {
-      setCheckoutLoading(false);
+      return;
     }
+    cartApi.setLeadValue(value);
   };
 
+  const filteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = catalog.catalogItems;
+    if (q) {
+      list = list.filter(
+        (i) =>
+          i.name?.toLowerCase().includes(q) ||
+          i.sku?.toLowerCase().includes(q),
+      );
+    }
+    if (selectedCategory === "all") return list;
+    if (selectedCategory === "kind_product")
+      return list.filter((i) => i.kind === "product");
+    if (selectedCategory === "kind_service")
+      return list.filter((i) => i.kind === "service");
+    if (selectedCategory === "kind_digital_asset")
+      return list.filter((i) => i.kind === "digital_asset");
+    return list.filter((i) => i.category_id === selectedCategory);
+  }, [catalog.catalogItems, searchQuery, selectedCategory]);
+
+  const hasProducts = catalog.availableItems.some((i) => i.kind === "product");
+  const hasServices = catalog.availableItems.some((i) => i.kind === "service");
+  const hasDigital = catalog.availableItems.some(
+    (i) => i.kind === "digital_asset",
+  );
+  const nonEmptyCategories = catalog.categories.filter((cat: any) =>
+    catalog.availableItems.some((i) => i.category_id === cat.id),
+  );
+
   useEffect(() => {
-    // Si queremos un titulo especial
-    const event = new CustomEvent("breadcrumb:update", {
-      detail: {
-        title: t("layout.sidebar.pos") || "Point of Sale",
-      },
-    });
-    window.dispatchEvent(event);
+    window.dispatchEvent(
+      new CustomEvent("breadcrumb:update", {
+        detail: { title: t("layout.sidebar.pos") || "Point of Sale" },
+      }),
+    );
   }, [t]);
 
   useEffect(() => {
-    const handleSendOrder = async () => {
-      const activeItems = cart.filter((c) => c.cartQty > 0);
-      if (activeItems.length === 0) {
-        toast.error(t("pos.errorCartEmpty") || "Cart is empty");
-        return;
-      }
-      if (!originLocationId) {
-        toast.error(t("pos.errorSelectOrigin") || "Select an origin location");
-        return;
-      }
-      if (fulfillment === "ship" && !leadValue) {
-        toast.error(
-          t("pos.errorSelectCustomerShipping") ||
-            "Select a customer for shipping",
-        );
-        return;
-      }
-      if (!currentSite || !user) return;
-
-      setCheckoutLoading(true);
-
-      try {
-        const { id: resolvedLeadId, error: leadError } =
-          await resolveRelationId("lead", leadRelationValue, currentSite.id);
-        if (leadError) throw new Error(`Lead error: ${leadError}`);
-
-        const lines: CheckoutLine[] = cart
-          .filter((c) => c.cartQty > 0)
-          .map((c) => ({
-            catalogItemId: c.id,
-            quantity: c.cartQty,
-            unitPriceOverride: c.cartPrice,
-          }));
-
-        const res = await checkoutCart({
-          siteId: currentSite.id,
-          userId: user.id,
-          lines,
-          priceListId:
-            priceListId && priceListId !== "none" ? priceListId : undefined,
-          leadId: resolvedLeadId || undefined,
-          buyerUserId: buyerUserId || undefined,
-          fulfillment,
-          originLocationId: originLocationId,
-        source: "pos",
-        payments: [], // Sending empty payments so it becomes a pending order (or completed if rules apply, but no payment collected here)
-        existingOrderId: activeOrderId !== "new" ? activeOrderId : undefined,
-        intent: 'send'
-      });
-
-        if (res.error) {
-          toast.error(res.error);
-          setCheckoutLoading(false);
-          return;
-        }
-
-        toast.success(t("pos.orderSent") || "Order sent to orders panel!");
-        setCart([]);
-        setLeadValue(null);
-        setActiveOrderId("new");
-        clearActivePosOrderId(currentSite.id);
-        if (res.orderId) {
-          navigateToOrder({ orderId: res.orderId, router });
-        }
-      } catch (err: any) {
-        toast.error(
-          err.message || t("pos.errorSendingOrder") || "Error sending order",
-        );
-      } finally {
-        setCheckoutLoading(false);
-      }
+    const handler = () => {
+      void checkout.handleSendOrder();
     };
+    window.addEventListener("pos:send-order", handler);
+    return () => window.removeEventListener("pos:send-order", handler);
+  }, [checkout.handleSendOrder]);
 
-    window.addEventListener("pos:send-order", handleSendOrder);
-    return () => window.removeEventListener("pos:send-order", handleSendOrder);
-  }, [
-    cart,
-    originLocationId,
-    leadValue,
-    fulfillment,
-    priceListId,
-    currentSite,
-    user,
-    router,
-  ]);
+  const catalogLoading =
+    !siteId ||
+    (!catalog.hydrated && !catalog.hasLocalData) ||
+    (catalog.hydrated &&
+      !catalog.hasLocalData &&
+      (syncStatus.pulling || !syncStatus.online));
 
-  const resetToNewOrder = () => {
-    setActiveOrderId("new");
-    if (currentSite) clearActivePosOrderId(currentSite.id);
-    setCart([]);
-    setLeadValue(null);
-    setPriceListId("none");
+  const emptyOffline =
+    catalog.hydrated && !catalog.hasLocalData && !syncStatus.online;
+
+  const cartPanelProps = {
+    cart: cartApi.cart,
+    subtotal: cartApi.subtotal,
+    taxTotal: cartApi.taxTotal,
+    shippingTotal: cartApi.shippingTotal,
+    total: cartApi.total,
+    updateQty: cartApi.updateQty,
+    setItemQty: cartApi.setItemQty,
+    setItemPrice: cartApi.setItemPrice,
+    selectedCartItemId: cartApi.selectedCartItemId,
+    setSelectedCartItemId: cartApi.setSelectedCartItemId,
+    leadValue: cartApi.leadValue as any,
+    setLeadValue: handleLeadValueChange,
+    fulfillment: cartApi.fulfillment,
+    setFulfillment: cartApi.setFulfillment,
+    originLocationId: cartApi.originLocationId,
+    setOriginLocationId: cartApi.setOriginLocationId,
+    priceListId: cartApi.priceListId,
+    handlePriceListChange: cartApi.handlePriceListChange,
+    promoCode: cartApi.promoCode,
+    setPromoCode: cartApi.setPromoCode,
+    priceLists: catalog.priceLists,
+    handleCheckout: checkout.initiateCheckout,
+    checkoutLoading: checkout.checkoutLoading || cartApi.loadingOrder,
+    leads: catalog.leads,
+    locations: catalog.locations,
+    activeOrderId: cartApi.activeOrderId,
+    pendingOrders: catalog.pendingOrders,
+    handleOrderSelect: cartApi.handleOrderSelect,
+    allowedFulfillments: cartApi.allowedFulfillments,
+    siteId,
+    onLeadUpdated: handleLeadUpdated,
+    t,
   };
-
-  const handleOrderSelect = async (val: string) => {
-    if (!val || val === "new") {
-      resetToNewOrder();
-      return;
-    }
-
-    const orderId = val;
-    setActiveOrderId(orderId);
-    if (currentSite) setActivePosOrderId(currentSite.id, orderId);
-
-    try {
-      setCheckoutLoading(true);
-      const res = await getOrder(orderId);
-      if (res.error) throw new Error(res.error);
-      const order = res.data;
-
-      if (!order || (order.status !== "pending" && order.status !== "in_progress" && order.status !== "completed")) {
-        resetToNewOrder();
-        return;
-      }
-
-      // Populate lead if available
-      if (order.leads) {
-        setLeadValue({
-          mode: "existing",
-          id: order.leads.id,
-          label: order.leads.name || order.leads.email,
-        });
-      } else {
-        setLeadValue(null);
-      }
-
-      // Populate price list if available
-      if (order.price_list_id) {
-        setPriceListId(order.price_list_id);
-      } else {
-        setPriceListId("none");
-      }
-
-      // Populate cart from order items
-      if (order?.sale_order_items && allItems.length > 0) {
-        const loadedCart: PosCartItem[] = order.sale_order_items.map((oi: any) => {
-          const catalogItem = allItems.find(
-            (c: any) => c.id === oi.catalog_item_id,
-          );
-          return {
-            ...catalogItem,
-            id: oi.catalog_item_id, // ensure ID is set for missing items
-            name: oi.name,
-            cartQty: oi.quantity,
-            cartPrice: oi.unit_price,
-          } as PosCartItem;
-        });
-        setCart(loadedCart);
-      }
-    } catch (err: any) {
-      resetToNewOrder();
-      toast.error(
-        err.message || t("pos.errorLoadingOrder") || "Failed to load order",
-      );
-    } finally {
-      setCheckoutLoading(false);
-    }
-  };
-
-  // Allow restore again when switching sites
-  useEffect(() => {
-    restoredOrderRef.current = false;
-  }, [currentSite?.id]);
-
-  // Restore last open order on mount / site change
-  useEffect(() => {
-    if (!currentSite || !user || allItems.length === 0 || restoredOrderRef.current) {
-      return;
-    }
-
-    const savedOrderId = getActivePosOrderId(currentSite.id);
-    restoredOrderRef.current = true;
-
-    if (savedOrderId && activeOrderId === "new") {
-      handleOrderSelect(savedOrderId).catch((err) => {
-        console.error("Failed to restore POS order", err);
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSite, user, allItems]);
 
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] overflow-hidden bg-muted/30">
@@ -850,62 +273,70 @@ export default function POSPage() {
       >
         <StickyHeader className="!top-0">
           <div className="w-full pt-0">
-            <div className="flex items-center gap-8">
-              <div>
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
+            <div className="flex items-center gap-4 sm:gap-8">
+              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
+                <TabsTrigger value="all" className="rounded-full text-xs px-3">
+                  {t("pos.filters.all") || "All"}
+                </TabsTrigger>
+                {hasProducts && (
                   <TabsTrigger
-                    value="all"
+                    value="kind_product"
                     className="rounded-full text-xs px-3"
                   >
-                    {t("pos.filters.all") || "All"}
+                    {t("pos.filters.products") || "Products"}
                   </TabsTrigger>
-                  {hasProducts && (
-                    <TabsTrigger
-                      value="kind_product"
-                      className="rounded-full text-xs px-3"
-                    >
-                      {t("pos.filters.products") || "Products"}
-                    </TabsTrigger>
-                  )}
-                  {hasServices && (
-                    <TabsTrigger
-                      value="kind_service"
-                      className="rounded-full text-xs px-3"
-                    >
-                      {t("pos.filters.services") || "Services"}
-                    </TabsTrigger>
-                  )}
-                  {hasDigital && (
-                    <TabsTrigger
-                      value="kind_digital_asset"
-                      className="rounded-full text-xs px-3"
-                    >
-                      {t("pos.filters.digitalAssets") || "Digital"}
-                    </TabsTrigger>
-                  )}
-                  {nonEmptyCategories.map((cat: any) => (
-                    <TabsTrigger
-                      key={cat.id}
-                      value={cat.id}
-                      className="rounded-full text-xs px-3"
-                    >
-                      {cat.name}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
+                )}
+                {hasServices && (
+                  <TabsTrigger
+                    value="kind_service"
+                    className="rounded-full text-xs px-3"
+                  >
+                    {t("pos.filters.services") || "Services"}
+                  </TabsTrigger>
+                )}
+                {hasDigital && (
+                  <TabsTrigger
+                    value="kind_digital_asset"
+                    className="rounded-full text-xs px-3"
+                  >
+                    {t("pos.filters.digitalAssets") || "Digital"}
+                  </TabsTrigger>
+                )}
+                {nonEmptyCategories.map((cat: any) => (
+                  <TabsTrigger
+                    key={cat.id}
+                    value={cat.id}
+                    className="rounded-full text-xs px-3"
+                  >
+                    {cat.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
               <SearchInput
                 placeholder={t("pos.searchCatalog") || "Search catalog..."}
-                className="w-64 flex-shrink-0"
+                className="w-48 sm:w-64 flex-shrink-0"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 type="text"
               />
-              <div className="flex-1 hidden sm:flex justify-end pr-4">
+
+              <div className="flex-1 flex justify-end items-center gap-2 pr-1">
+                <PosSyncBadge
+                  status={syncStatus}
+                  onRetry={() => {
+                    if (syncStatus.failedCount > 0) {
+                      setSyncIssuesOpen(true);
+                      return;
+                    }
+                    retrySync();
+                    if (siteId) void drainPosOutbox(siteId);
+                  }}
+                  t={t}
+                />
               </div>
 
-              <div className="flex justify-end md:hidden flex-shrink-0 gap-2">
+              <div className="flex justify-end md:hidden flex-shrink-0">
                 <Sheet
                   open={isMobileCartOpen}
                   onOpenChange={setIsMobileCartOpen}
@@ -917,49 +348,18 @@ export default function POSPage() {
                       className="relative h-9 w-9"
                     >
                       <ShoppingCart className="h-4 w-4" />
-                      {cart.length > 0 && (
+                      {cartApi.cart.length > 0 && (
                         <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-                          {cart.reduce((s, c) => s + c.cartQty, 0)}
+                          {cartApi.cart.reduce((s, c) => s + c.cartQty, 0)}
                         </span>
                       )}
                     </Button>
                   </SheetTrigger>
                   <SheetContent className="w-full sm:max-w-md p-0 flex flex-col z-[100]">
                     <CartPanel
-                      cart={cart}
-                      subtotal={subtotal}
-                      taxTotal={taxTotal}
-                      shippingTotal={shippingTotal}
-                      total={total}
-                      updateQty={updateQty}
-                      setItemQty={setItemQty}
-                      setItemPrice={setItemPrice}
-                      selectedCartItemId={selectedCartItemId}
-                      setSelectedCartItemId={setSelectedCartItemId}
-                      leadValue={leadValue}
-                      setLeadValue={setLeadValue}
-                      fulfillment={fulfillment}
-                      setFulfillment={setFulfillment}
-                      originLocationId={originLocationId}
-                      setOriginLocationId={setOriginLocationId}
-                      priceListId={priceListId}
-                      handlePriceListChange={handlePriceListChange}
-                      promoCode={promoCode}
-                      setPromoCode={setPromoCode}
-                      priceLists={priceLists}
-                      handleCheckout={initiateCheckout}
-                      checkoutLoading={checkoutLoading}
-                      leads={leadsData?.leads || []}
-                      locations={locations}
-                      isMobile={true}
+                      {...cartPanelProps}
+                      isMobile
                       closeCart={() => setIsMobileCartOpen(false)}
-                      activeOrderId={activeOrderId}
-                      pendingOrders={pendingOrders}
-                      handleOrderSelect={handleOrderSelect}
-                      allowedFulfillments={allowedFulfillments}
-                      siteId={currentSite?.id}
-                      onLeadUpdated={handleLeadUpdated}
-                      t={t}
                     />
                   </SheetContent>
                 </Sheet>
@@ -968,113 +368,64 @@ export default function POSPage() {
           </div>
         </StickyHeader>
 
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-          <PosCatalogGrid
-            items={items as CatalogItem[]}
-            loading={!currentSite || catalogLoading || (!catalogData && catalogValidating)}
-            onAdd={addToCart}
-            t={t}
-          />
-
-          {/* Right: Cart (Desktop) */}
-          <div className="hidden md:flex w-96 flex-col bg-card overflow-hidden min-h-0">
-            <CartPanel
-              cart={cart}
-              subtotal={subtotal}
-              taxTotal={taxTotal}
-              shippingTotal={shippingTotal}
-              total={total}
-              updateQty={updateQty}
-              setItemQty={setItemQty}
-              setItemPrice={setItemPrice}
-              selectedCartItemId={selectedCartItemId}
-              setSelectedCartItemId={setSelectedCartItemId}
-              leadValue={leadValue}
-              setLeadValue={setLeadValue}
-              fulfillment={fulfillment}
-              setFulfillment={setFulfillment}
-              originLocationId={originLocationId}
-              setOriginLocationId={setOriginLocationId}
-              priceListId={priceListId}
-              handlePriceListChange={handlePriceListChange}
-              promoCode={promoCode}
-              setPromoCode={setPromoCode}
-              priceLists={priceLists}
-              handleCheckout={initiateCheckout}
-              checkoutLoading={checkoutLoading}
-              leads={leadsData?.leads || []}
-              locations={locations}
-              activeOrderId={activeOrderId}
-              pendingOrders={pendingOrders}
-              handleOrderSelect={handleOrderSelect}
-              allowedFulfillments={allowedFulfillments}
-              siteId={currentSite?.id}
-              onLeadUpdated={handleLeadUpdated}
+        {emptyOffline ? (
+          <div className="flex-1 flex items-center justify-center p-8 text-center text-sm text-muted-foreground">
+            {t("pos.sync.emptyOffline") ||
+              "Connect once to download the catalog for offline use."}
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+            <PosCatalogGrid
+              items={filteredItems}
+              loading={catalogLoading}
+              onAdd={addApi.addToCart}
               t={t}
             />
+            <div className="hidden md:flex w-96 flex-col bg-card overflow-hidden min-h-0">
+              <CartPanel {...cartPanelProps} />
+            </div>
           </div>
-        </div>
+        )}
       </Tabs>
 
+      <PosSyncIssues
+        siteId={siteId}
+        open={syncIssuesOpen}
+        onOpenChange={setSyncIssuesOpen}
+        t={t}
+      />
+
       <PaymentConfirmationDialog
-        open={isPaymentDialogOpen}
-        onOpenChange={setIsPaymentDialogOpen}
-        totalAmount={total}
-        onConfirm={handleCheckout}
-        isLoading={checkoutLoading}
-        hasCustomer={!!leadValue}
+        open={checkout.isPaymentDialogOpen}
+        onOpenChange={checkout.setIsPaymentDialogOpen}
+        totalAmount={cartApi.total}
+        onConfirm={checkout.handleCheckout}
+        isLoading={checkout.checkoutLoading}
+        hasCustomer={!!cartApi.leadValue}
       />
 
       <PosVariantPickerDialog
-        item={variantParentItem}
-        open={!!variantParentItem}
-        onOpenChange={(o) => !o && setVariantParentItem(null)}
+        item={addApi.variantParentItem}
+        open={!!addApi.variantParentItem}
+        onOpenChange={(o) => !o && addApi.setVariantParentItem(null)}
         onConfirm={(childItem) => {
-          setVariantParentItem(null);
-          addToCart(childItem);
+          addApi.setVariantParentItem(null);
+          void addApi.addToCart(childItem);
         }}
       />
 
       <DynamicQuoteFieldsModal
-        item={dynamicQuoteItem}
-        open={!!dynamicQuoteItem}
-        onOpenChange={(o) => !o && setDynamicQuoteItem(null)}
-        confirming={dynamicQuoteLoading}
+        item={addApi.dynamicQuoteItem}
+        open={!!addApi.dynamicQuoteItem}
+        onOpenChange={(o) => !o && addApi.setDynamicQuoteItem(null)}
+        confirming={addApi.dynamicQuoteLoading}
         onConfirm={async ({ fieldValues, quantity }) => {
-          if (!currentSite || !dynamicQuoteItem) return;
-          const { id: leadId, error: leadError } = await resolveRelationId(
-            "lead",
-            leadRelationValue,
-            currentSite.id,
+          if (!addApi.dynamicQuoteItem) return;
+          await addApi.requestQuote(
+            addApi.dynamicQuoteItem,
+            fieldValues,
+            quantity,
           );
-          if (leadError || !leadId) {
-            toast.error(leadError || "Select a client before requesting a quote");
-            return;
-          }
-          setDynamicQuoteLoading(true);
-          try {
-            const res = await requestDynamicQuote({
-              siteId: currentSite.id,
-              catalogItemId: dynamicQuoteItem.id,
-              leadId,
-              quantity,
-              fieldValues,
-            });
-            if (res.error && !res.data?.quotationId) {
-              throw new Error(res.error);
-            }
-            toast.success(
-              t("quotations.dynamicQuote.created") || "Quote request created",
-            );
-            setDynamicQuoteItem(null);
-            if (res.data?.quotationId) {
-              router.push(`/quotations/${res.data.quotationId}`);
-            }
-          } catch (err: any) {
-            toast.error(err?.message || "Failed to request quote");
-          } finally {
-            setDynamicQuoteLoading(false);
-          }
         }}
       />
     </div>

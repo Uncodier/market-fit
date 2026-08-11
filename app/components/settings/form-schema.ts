@@ -516,7 +516,7 @@ export const siteFormSchema = z.object({
       icon: z.string()
     })).max(3).optional().default([]),
     payment_methods: z.array(z.enum(['card', 'cash_on_pickup', 'bank_transfer'])).optional().default(['card', 'cash_on_pickup']),
-    default_delivery_options: z.array(z.enum(['pickup', 'ship', 'none', 'dine_in'])).optional().default(['pickup', 'ship']),
+    default_delivery_options: z.array(z.enum(['pickup', 'ship', 'none', 'dine_in'])).optional().default(['pickup', 'ship', 'dine_in']),
     bank_transfer: z.object({
       bank_name: z.string().optional(),
       account_holder: z.string().optional(),
@@ -536,7 +536,7 @@ export const siteFormSchema = z.object({
     return_policy_summary: "30-Day Returns",
     trust_badges: [],
     payment_methods: ['card', 'cash_on_pickup'],
-    default_delivery_options: ['pickup', 'ship'],
+    default_delivery_options: ['pickup', 'ship', 'dine_in'],
     bank_transfer: {}
   }),
   

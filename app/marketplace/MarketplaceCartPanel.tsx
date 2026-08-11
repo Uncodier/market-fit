@@ -225,6 +225,7 @@ export function MarketplaceCartPanel({
               setCode={setPromotionCode}
               cartLines={promoCartLines}
               buyerUserId={session?.user?.id}
+              source="marketplace"
               applied={appliedPromo}
               onApplied={handleApplied}
               onCleared={handleCleared}

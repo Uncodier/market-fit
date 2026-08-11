@@ -46,6 +46,7 @@ export const routes: RouteConfig[] = [
   { path: "/promotions", hasLayout: true },
   { path: "/subscriptions", hasLayout: true },
   { path: "/reservations", hasLayout: true },
+  { path: "/visits", hasLayout: true },
   { path: "/purchases", hasLayout: true },
   { path: "/bills", hasLayout: true },
   { path: "/transactions", hasLayout: true },

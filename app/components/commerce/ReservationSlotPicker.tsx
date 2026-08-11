@@ -13,7 +13,7 @@ import {
   isBefore,
   startOfDay,
 } from "date-fns"
-import { getAvailableSlots } from "@/app/reservations/availability"
+import { getReservationSlotsLocalFirst } from "@/app/pos/local/reservation-slots"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -74,7 +74,12 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
       const startStr = format(startDate, "yyyy-MM-dd")
       const endStr = format(addDays(startDate, 41), "yyyy-MM-dd")
       
-      const available = await getAvailableSlots(catalogItemId, startStr, endStr, quantity)
+      const { slots: available } = await getReservationSlotsLocalFirst({
+        catalogItemId,
+        startDate: startStr,
+        endDate: endStr,
+        qty: quantity,
+      })
       setAllSlots(available)
       
       const availMap: Record<string, boolean> = {}

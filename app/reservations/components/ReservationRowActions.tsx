@@ -1,0 +1,80 @@
+"use client"
+
+import { useRouter } from "next/navigation"
+import useSWR from "swr"
+import type { Reservation } from "@/app/types"
+import { Button } from "@/app/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu"
+import {
+  MoreHorizontal,
+  CalendarCheck,
+  Ban,
+  CheckCircle,
+  ClipboardList,
+} from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { getVisitsSettings } from "@/app/visits/actions"
+import { reservationCanRegisterVisitor } from "@/app/visits/visit-helpers"
+
+export function ReservationRowActions({
+  reservation,
+  siteId,
+  updating,
+  onStatusChange,
+}: {
+  reservation: Reservation
+  siteId: string
+  updating: boolean
+  onStatusChange: (id: string, status: Reservation["status"]) => void
+}) {
+  const { t } = useLocalization()
+  const router = useRouter()
+  const { data: settingsData } = useSWR(siteId ? ["visits-settings", siteId] : null, () =>
+    getVisitsSettings(siteId)
+  )
+  const settings = settingsData?.data
+  const canRegister =
+    Boolean(settings) && reservationCanRegisterVisitor(settings!, reservation)
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0" disabled={updating}>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {reservation.status === "pending" && (
+          <DropdownMenuItem onClick={() => onStatusChange(reservation.id, "confirmed")}>
+            <CalendarCheck className="h-4 w-4 mr-2" /> {t("reservations.actions.confirm")}
+          </DropdownMenuItem>
+        )}
+        {canRegister && (
+          <DropdownMenuItem
+            onClick={() => router.push(`/visits?reservationId=${reservation.id}`)}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" /> {t("reservations.actions.registerVisitor")}
+          </DropdownMenuItem>
+        )}
+        {reservation.status === "confirmed" && (
+          <DropdownMenuItem onClick={() => onStatusChange(reservation.id, "completed")}>
+            <CheckCircle className="h-4 w-4 mr-2" /> {t("reservations.actions.markCompleted")}
+          </DropdownMenuItem>
+        )}
+        {reservation.status !== "cancelled" && (
+          <DropdownMenuItem
+            onClick={() => onStatusChange(reservation.id, "cancelled")}
+            className="text-red-600 focus:text-red-600"
+          >
+            <Ban className="h-4 w-4 mr-2" /> {t("reservations.actions.cancel")}
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}

@@ -28,6 +28,10 @@ interface PromoCodeFieldProps {
   cartLines: PromoCartLine[]
   buyerUserId?: string | null
   leadId?: string | null
+  /** Channel used for promo targeting (marketplace, shop, pos). */
+  source?: string | null
+  /** POS/pickup location used when source is pos. */
+  locationId?: string | null
   applied: AppliedPromo | null
   onApplied: (promo: AppliedPromo) => void
   onCleared: () => void
@@ -40,6 +44,8 @@ export function PromoCodeField({
   cartLines,
   buyerUserId,
   leadId,
+  source,
+  locationId,
   applied,
   onApplied,
   onCleared,
@@ -80,6 +86,8 @@ export function PromoCodeField({
         lines: cartLines,
         buyerUserId,
         leadId,
+        source,
+        locationId,
       })
 
       if (requestId !== requestIdRef.current) return
@@ -147,8 +155,8 @@ export function PromoCodeField({
     }, AUTO_VALIDATE_MS)
 
     return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- validate on code/cart/identity changes only
-  }, [code, cartFingerprint, siteId, buyerUserId, leadId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- validate on code/cart/identity/channel changes only
+  }, [code, cartFingerprint, siteId, buyerUserId, leadId, source, locationId])
 
   const handleCodeChange = (value: string) => {
     const next = value.toUpperCase()

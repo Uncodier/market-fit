@@ -24,7 +24,7 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
   const [levelsRes, settingsRes, defaultList] = await Promise.all([
     supabase.from("inventory_levels").select("catalog_item_id, quantity").eq("site_id", siteId),
     supabase.from("settings").select("commerce").eq("site_id", siteId).single(),
-    supabase.from("price_lists").select("id").eq("site_id", siteId).eq("is_default", true).maybeSingle(),
+    supabase.from("price_lists").select("id, currency").eq("site_id", siteId).eq("is_default", true).maybeSingle(),
   ]);
 
   let priceMap = new Map<string, number>();
@@ -67,6 +67,7 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
     const mappedPrice = priceMap.get(item.id);
     return {
       ...item,
+      currency: item.currency || defaultList.data?.currency || 'USD',
       item_specs: ((item as any).raw_specs || [])
         .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
         .map((cis: any) => cis.item_spec)

@@ -131,6 +131,12 @@ export function BuyerHomeView({
       href: `${basePath}/library?subtype=pass`,
       count: data?.counts?.passes,
       newCount: data?.newCounts?.passes
+    },
+    {
+      title: t("buyer.home.cards.visits.title") || "Register a visit",
+      description: t("buyer.home.cards.visits.desc") || "Accept Visit Terms and check in online.",
+      icon: <Calendar className="w-6 h-6 text-foreground/70" />,
+      href: `${basePath}/visits/new`,
     }
   ]
 

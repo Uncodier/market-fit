@@ -203,6 +203,7 @@ export function CartSidebar({
                 setCode={setPromotionCode}
                 cartLines={promoCartLines}
                 buyerUserId={session?.user?.id}
+                source="shop"
                 applied={appliedPromo}
                 onApplied={handleApplied}
                 onCleared={handleCleared}

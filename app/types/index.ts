@@ -777,13 +777,36 @@ export interface Subscription {
   lead?: { name: string; email?: string };
 }
 
+export type ReservationResourceType = 'catalog_item' | 'location' | 'employee';
+export type ReservationChannel = 'physical' | 'online';
+
+export interface VisitsSettings {
+  enabled_physical: boolean;
+  enabled_online: boolean;
+  require_signature: boolean;
+  require_photo: boolean;
+  require_id: boolean;
+  terms_text: string;
+  default_duration_minutes: number;
+}
+
 export interface Reservation {
   id: string;
   site_id: string;
   lead_id: string;
   buyer_user_id?: string | null;
   owner_site_id?: string | null;
-  catalog_item_id: string;
+  catalog_item_id?: string | null;
+  resource_type?: ReservationResourceType;
+  location_id?: string | null;
+  assignee_user_id?: string | null;
+  channel?: ReservationChannel;
+  terms_text?: string | null;
+  terms_accepted_at?: string | null;
+  signature_url?: string | null;
+  photo_url?: string | null;
+  id_url?: string | null;
+  signed_at?: string | null;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   start_time: string;
   end_time: string;
@@ -794,7 +817,9 @@ export interface Reservation {
   created_at: string;
   updated_at: string;
   catalog_item?: Partial<CatalogItem>;
+  location?: { id: string; name: string } | null;
   lead?: { name: string; email?: string };
+  buyer_profile?: { id: string; name?: string | null; avatar_url?: string | null } | null;
 }
 
 export interface ReservationSchedule {
@@ -964,6 +989,8 @@ export interface ShipmentLocationPing {
   recorded_at: string;
 }
 
+export type PromotionChannel = 'marketplace' | 'shop' | 'pos';
+
 export interface Promotion {
   id: string;
   site_id: string;
@@ -974,6 +1001,10 @@ export interface Promotion {
   discount_type: 'percent' | 'fixed';
   discount_value: number;
   applies_to: 'all' | 'selected_items';
+  /** Channels where the promo applies. Empty/missing = all storefront channels. */
+  channels?: PromotionChannel[];
+  /** POS location IDs. Empty = all locations when POS is enabled. */
+  location_ids?: string[];
   min_order_amount?: number;
   usage_limit?: number;
   usage_limit_per_user?: number;

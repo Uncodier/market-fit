@@ -92,6 +92,7 @@ export function TopBarTitle({
       'promotions': t('layout.sidebar.promotions') || 'Promotions',
       'subscriptions': t('layout.sidebar.subscriptions') || 'Subscriptions',
       'reservations': t('layout.sidebar.reservations') || 'Reservations',
+      'visits': t('layout.sidebar.visits') || 'Visits',
       'accounting': t('layout.sidebar.chartOfAccounts') || 'Chart of Accounts',
       'finance': t('layout.sidebar.financeReports') || 'Finance Reports',
       'purchases': t('layout.category.buying') || 'Purchases',

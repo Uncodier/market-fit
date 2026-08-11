@@ -6,7 +6,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
-import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useCurrentTime } from "@/app/hooks/useCurrentTime"
 import { CurrentTimeIndicator } from "@/app/control-center/components/CurrentTimeIndicator"
@@ -69,11 +69,22 @@ function ReservationItem({ reservation, onClick, showDay, showTime }: {
         )}
       >
         <Avatar className="h-5 w-5 mr-1.5">
+          {reservation.buyer_profile?.avatar_url ? (
+            <AvatarImage
+              src={reservation.buyer_profile.avatar_url}
+              alt={reservation.lead?.name || ""}
+              className="object-cover"
+            />
+          ) : null}
           <AvatarFallback className="text-[10px] bg-primary/10">
-            {getLeadInitials(reservation.lead?.name)}
+            {getLeadInitials(reservation.lead?.name || reservation.buyer_profile?.name)}
           </AvatarFallback>
         </Avatar>
-        <span className="flex-1 truncate">{reservation.catalog_item?.name || 'Unknown Service'}</span>
+        <span className="flex-1 truncate">
+          {reservation.catalog_item?.name ||
+            reservation.location?.name ||
+            (reservation.resource_type === "employee" ? "Employee" : "Unknown Service")}
+        </span>
         {(showDay || showTime) && (
           <span className="text-muted-foreground mr-2">
             {showDay && dayStr}

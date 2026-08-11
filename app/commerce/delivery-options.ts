@@ -26,7 +26,7 @@ export function getItemDeliveryOptions(
 
   // Backward compatibility defaults
   if (item.kind === 'product') {
-    return ['pickup', 'ship'];
+    return ['pickup', 'ship', 'dine_in'];
   }
 
   // service, digital_asset, etc.

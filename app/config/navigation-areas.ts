@@ -74,6 +74,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "shipments", href: "/shipments" },
       { key: "controlCenter", href: "/control-center" },
       { key: "reservations", href: "/reservations" },
+      { key: "visits", href: "/visits" },
       { key: "checkIn", href: "/pos/check-in" },
       { key: "inventory", href: "/inventory" },
     ],

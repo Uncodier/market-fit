@@ -8,6 +8,10 @@ import {
   resolvePromotionDiscount,
   type PromotionCartLine,
 } from "./resolve-promotion";
+import {
+  normalizePromotionChannels,
+  normalizePromotionLocationIds,
+} from "./promotion-channels";
 
 export async function listPromotions({ siteId, campaignId, status, q, page = 1, pageSize = 50 }: PromotionParams) {
   try {
@@ -58,9 +62,24 @@ export async function getPromotion(id: string) {
 export async function upsertPromotion(promotion: Partial<Promotion>) {
   try {
     const supabase = await createClient();
+    const channels = promotion.channels
+      ? normalizePromotionChannels(promotion.channels)
+      : undefined;
+    const location_ids =
+      channels && !channels.includes("pos")
+        ? []
+        : promotion.location_ids
+          ? normalizePromotionLocationIds(promotion.location_ids)
+          : promotion.location_ids;
+
     const { data, error } = await supabase
       .from("promotions")
-      .upsert({ ...promotion, updated_at: new Date().toISOString() })
+      .upsert({
+        ...promotion,
+        ...(channels ? { channels } : {}),
+        ...(location_ids !== undefined ? { location_ids } : {}),
+        updated_at: new Date().toISOString(),
+      })
       .select()
       .single();
 
@@ -203,6 +222,8 @@ export async function previewPromotionForCart(params: {
   lines: PromotionCartLine[];
   buyerUserId?: string | null;
   leadId?: string | null;
+  source?: string | null;
+  locationId?: string | null;
 }) {
   const result = await resolvePromotionDiscount({
     ...params,
@@ -235,10 +256,14 @@ export async function applyPromotionToOrder(
 
     const { data: order } = await supabase
       .from("sale_orders")
-      .select("id, sale_id, tax_total, buyer_user_id, lead_id")
+      .select("id, sale_id, tax_total, buyer_user_id, lead_id, origin_location_id, sales(source)")
       .eq("id", saleOrderId)
       .single();
     if (!order) throw new Error("Order not found");
+
+    const saleSource = Array.isArray((order as any).sales)
+      ? (order as any).sales[0]?.source
+      : (order as any).sales?.source;
 
     const resolved = await resolvePromotionDiscount({
       siteId,
@@ -249,6 +274,8 @@ export async function applyPromotionToOrder(
       })),
       buyerUserId: order.buyer_user_id,
       leadId: order.lead_id,
+      source: saleSource || null,
+      locationId: order.origin_location_id || null,
       excludeOrderId: saleOrderId,
       forceServiceRole,
     });

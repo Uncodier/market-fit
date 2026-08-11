@@ -48,7 +48,16 @@ const routeTitles: Record<string, string> = {
   'integrations': 'Integrations',
   'context': 'Context',
   'applications': 'Applications',
-  'pos': 'POS'
+  'pos': 'POS',
+  'catalog': 'Catalog',
+  'promotions': 'Promotions',
+  'orders': 'Orders',
+  'price-lists': 'Price Lists',
+  'inventory': 'Inventory',
+  'shipments': 'Shipments',
+  'subscriptions': 'Subscriptions',
+  'reservations': 'Reservations',
+  'visits': 'Visits',
 }
 
 /**
@@ -291,26 +300,113 @@ export function useNavigationHistory() {
   const fullPath = queryString ? `${pathname}?${queryString}` : pathname
   
   // Listen to breadcrumb:update to dynamically update the current history item's label
+  // and ensure parent → detail trail is present when a parent is provided
   useEffect(() => {
     const handleBreadcrumbUpdate = (event: any) => {
       if (event.detail && event.detail.title) {
         setHistory(prev => {
-          if (prev.items.length === 0) return prev;
-          
-          const newItems = [...prev.items];
-          const lastItem = newItems[newItems.length - 1];
-          
+          const title = event.detail.title as string
+          const parent = event.detail.parent as { title: string; path: string } | undefined
+          const currentPath =
+            typeof window !== 'undefined'
+              ? `${window.location.pathname}${window.location.search || ''}`
+              : fullPath
+
+          // When parent is provided, push Catalog > Item (or equivalent) into history
+          if (parent?.path && parent?.title) {
+            const parentPath = parent.path
+            const parentPathname = parentPath.split('?')[0]
+            const currentPathname = currentPath.split('?')[0]
+
+            const parentIndex = prev.items.findIndex(
+              (item) => item.path.split('?')[0] === parentPathname
+            )
+            const lastItem = prev.items[prev.items.length - 1]
+            const lastPathname = lastItem?.path.split('?')[0]
+
+            // Empty history or missing parent: build [parent, current]
+            if (prev.items.length === 0 || parentIndex === -1) {
+              const newHistory: NavigationHistory = {
+                items: [
+                  {
+                    path: parentPath,
+                    label: parent.title,
+                    timestamp: Date.now() - 1,
+                  },
+                  {
+                    path: currentPath,
+                    label: title,
+                    timestamp: Date.now(),
+                  },
+                ],
+              }
+              saveHistory(newHistory)
+              return newHistory
+            }
+
+            // Parent exists and last item is the current detail: only update label/path
+            if (lastPathname === currentPathname) {
+              if (
+                lastItem.label === title &&
+                lastItem.path === currentPath
+              ) {
+                return prev
+              }
+              const newItems = [...prev.items]
+              newItems[newItems.length - 1] = {
+                ...lastItem,
+                path: currentPath,
+                label: title,
+              }
+              // Keep parent label in sync
+              if (newItems[parentIndex].label !== parent.title) {
+                newItems[parentIndex] = {
+                  ...newItems[parentIndex],
+                  label: parent.title,
+                }
+              }
+              const newHistory = { items: newItems }
+              saveHistory(newHistory)
+              return newHistory
+            }
+
+            // Parent exists but detail not yet appended (e.g. list → detail without UI mark)
+            if (lastPathname === parentPathname) {
+              const newHistory: NavigationHistory = {
+                items: [
+                  ...prev.items.slice(0, parentIndex + 1).map((item, idx) =>
+                    idx === parentIndex
+                      ? { ...item, label: parent.title, path: parentPath }
+                      : item
+                  ),
+                  {
+                    path: currentPath,
+                    label: title,
+                    timestamp: Date.now(),
+                  },
+                ],
+              }
+              saveHistory(newHistory)
+              return newHistory
+            }
+          }
+
+          if (prev.items.length === 0) return prev
+
+          const newItems = [...prev.items]
+          const lastItem = newItems[newItems.length - 1]
+
           // Only update if the title actually changed to avoid unnecessary re-renders
-          if (lastItem.label !== event.detail.title) {
+          if (lastItem.label !== title) {
             newItems[newItems.length - 1] = {
               ...lastItem,
-              label: event.detail.title
-            };
-            const newHistory = { items: newItems };
-            saveHistory(newHistory);
-            return newHistory;
+              label: title,
+            }
+            const newHistory = { items: newItems }
+            saveHistory(newHistory)
+            return newHistory
           }
-          return prev;
+          return prev
         });
       }
     };
@@ -319,7 +415,7 @@ export function useNavigationHistory() {
     return () => {
       window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
     };
-  }, []);
+  }, [fullPath]);
 
   // Initialize history from localStorage on mount
   useEffect(() => {

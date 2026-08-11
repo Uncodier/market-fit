@@ -10,6 +10,10 @@ import { createShipment } from "@/app/shipments/actions";
 import { assertReservationSlot } from "@/app/reservations/availability";
 import { grantFromOrder, syncSubscriptionEntitlements } from "./entitlements";
 import { calculateOrderTaxTotal, roundMoney } from "./taxes";
+import {
+  findPosClientMutation,
+  recordPosClientMutation,
+} from "@/app/pos/actions/idempotency";
 
 export interface CheckoutLine {
   catalogItemId: string;
@@ -39,6 +43,8 @@ export interface CheckoutCartParams {
   intent?: 'draft' | 'send' | 'complete' | 'pay';
   paymentMethod?: string; // legacy/passthrough
   scheduledFor?: string; // ISO
+  /** Client-generated id for local-first POS outbox idempotency */
+  clientMutationId?: string;
 }
 
 export async function checkoutCart({
@@ -60,9 +66,22 @@ export async function checkoutCart({
   existingOrderId,
   intent,
   paymentMethod,
-  scheduledFor
+  scheduledFor,
+  clientMutationId,
 }: CheckoutCartParams) {
   try {
+    if (clientMutationId && source === "pos") {
+      const existing = await findPosClientMutation(siteId, clientMutationId);
+      if (existing.data) {
+        return {
+          success: true,
+          saleId: existing.data.sale_id || undefined,
+          orderId: existing.data.order_id || undefined,
+          idempotent: true,
+        };
+      }
+    }
+
     const supabase = await createClient();
     const supabaseAdmin = await createServiceClient(true);
     
@@ -346,6 +365,8 @@ export async function checkoutCart({
         })),
         buyerUserId,
         leadId: finalLeadId,
+        source,
+        locationId: originLocationId || null,
         excludeOrderId: existingOrderId || null,
         forceServiceRole: isAdmin,
       });
@@ -811,6 +832,17 @@ export async function checkoutCart({
           await syncSubscriptionEntitlements(sub.id, isAdmin);
         }
       }
+    }
+
+    if (clientMutationId && source === "pos") {
+      await recordPosClientMutation({
+        siteId,
+        clientMutationId,
+        kind: "checkout",
+        saleId: sale.id,
+        orderId: order.id,
+        result: { success: true },
+      });
     }
 
     return { success: true, saleId: sale.id, orderId: order.id };

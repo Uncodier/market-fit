@@ -17,6 +17,8 @@ interface OrderSummaryProps {
   paymentMethod?: string
   siteId?: string
   buyerUserId?: string | null
+  source?: string | null
+  locationId?: string | null
   promotionCode: string
   setPromotionCode: (val: string) => void
   promoDiscount: number
@@ -33,6 +35,8 @@ export function OrderSummary({
   paymentMethod,
   siteId,
   buyerUserId,
+  source,
+  locationId,
   promotionCode,
   setPromotionCode,
   promoDiscount,
@@ -94,6 +98,8 @@ export function OrderSummary({
             setCode={setPromotionCode}
             cartLines={promoCartLines}
             buyerUserId={buyerUserId}
+            source={source}
+            locationId={locationId}
             applied={appliedPromo}
             onApplied={handleApplied}
             onCleared={handleCleared}

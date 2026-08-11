@@ -32,12 +32,12 @@ export default function ReservationsPage() {
   useEffect(() => {
     const event = new CustomEvent('breadcrumb:update', {
       detail: {
-        title: 'Reservations',
+        title: t('layout.sidebar.reservations') || t('reservations.title') || 'Reservations',
         parent: null
       }
     });
     window.dispatchEvent(event);
-  }, []);
+  }, [t]);
 
   const reservations = data?.data || []
 
@@ -62,7 +62,7 @@ export default function ReservationsPage() {
             </Tabs>
             <div className="w-full md:w-auto">
               <SearchInput 
-                placeholder="Search reservations..." 
+                placeholder={t('reservations.search.placeholder')}
                 value={""}
                 onChange={() => {}}
                 alwaysExpanded={false}
@@ -77,10 +77,10 @@ export default function ReservationsPage() {
                 value={viewType} 
                 onValueChange={(v) => v && setViewType(v as 'list' | 'calendar')}
               >
-                <ToggleGroupItem value="list" className="h-7 px-2" aria-label="List view">
+                <ToggleGroupItem value="list" className="h-7 px-2" aria-label={t('reservations.view.list')}>
                   <List className="h-4 w-4" />
                 </ToggleGroupItem>
-                <ToggleGroupItem value="calendar" className="h-7 px-2" aria-label="Calendar view">
+                <ToggleGroupItem value="calendar" className="h-7 px-2" aria-label={t('reservations.view.calendar')}>
                   <CalendarIcon className="h-4 w-4" />
                 </ToggleGroupItem>
               </ToggleGroup>

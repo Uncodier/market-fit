@@ -113,7 +113,7 @@ export function CatalogListingCard({
           )}
           {!locationAvailable && (
             <span className="rounded-md bg-orange-500/90 backdrop-blur-sm px-2 py-1 text-[11px] font-bold text-white shadow-sm uppercase tracking-wider">
-              Unavailable
+              {t('shop.unavailable') || 'Unavailable'}
             </span>
           )}
         </div>

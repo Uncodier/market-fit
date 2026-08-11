@@ -483,6 +483,8 @@ export default function CheckoutClient({
               paymentMethod={paymentMethod}
               siteId={resolvedCheckoutSiteId}
               buyerUserId={session?.user?.id}
+              source={source}
+              locationId={pickupLocationId || undefined}
               promotionCode={promotionCode}
               setPromotionCode={setPromotionCode}
               promoDiscount={promoDiscount}

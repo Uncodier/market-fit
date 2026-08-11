@@ -221,8 +221,10 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
           </div>
 
           <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="target_sale_price">{t("catalog.create.defaultSalePrice") || "Default Sale Price"}</Label>
+            <div className="space-y-2 flex flex-col justify-start">
+              <div className="min-h-[40px] flex items-end">
+                <Label htmlFor="target_sale_price" className="leading-tight">{t("catalog.create.defaultSalePrice") || "Default Sale Price"}</Label>
+              </div>
               <Input 
                 id="target_sale_price" 
                 type="number" 
@@ -235,8 +237,10 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                 {t("catalog.item.priceHint") || "If left blank, pricing might be dynamic."}
               </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="currency">{t("catalog.create.currency") || "Currency"}</Label>
+            <div className="space-y-2 flex flex-col justify-start">
+              <div className="min-h-[40px] flex items-end">
+                <Label htmlFor="currency" className="leading-tight">{t("catalog.create.currency") || "Currency"}</Label>
+              </div>
               <Select 
                 value={watch('currency')} 
                 onValueChange={(val: string) => setValue('currency', val)}
@@ -253,8 +257,10 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="cost">{t("catalog.create.unitCost") || "Unit Cost"}</Label>
+            <div className="space-y-2 flex flex-col justify-start">
+              <div className="min-h-[40px] flex items-end">
+                <Label htmlFor="cost" className="leading-tight">{t("catalog.create.unitCost") || "Unit Cost"}</Label>
+              </div>
               <Input 
                 id="cost" 
                 type="number" 

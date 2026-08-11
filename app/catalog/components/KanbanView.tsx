@@ -10,8 +10,8 @@ import { CatalogItem, CatalogCategory } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Archive, DatabaseIcon, Edit } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
-import Link from "next/link"
-import { GripHorizontal } from "lucide-react"
+import { NavigationLink } from "@/app/components/navigation/NavigationLink"
+import { GripHorizontal } from "@/app/components/ui/icons"
 
 import { Button } from "@/app/components/ui/button"
 
@@ -182,13 +182,13 @@ export function KanbanView({
                                               <div className="text-sm font-medium line-clamp-2 pr-2">
                                                 {item.name}
                                               </div>
-                                              <Link 
+                                              <NavigationLink 
                                                 href={`/catalog/${item.id}`} 
                                                 className="text-muted-foreground hover:text-muted-foreground shrink-0"
                                                 onClick={e => e.stopPropagation()}
                                               >
                                                 <Edit className="h-3 w-3" />
-                                              </Link>
+                                              </NavigationLink>
                                             </div>
                                             {item.sku && (
                                               <div className="text-xs text-muted-foreground font-mono mb-2">

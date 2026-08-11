@@ -12,6 +12,7 @@ export async function getReservations(siteId: string) {
       .select(`
         *,
         catalog_item:catalog_items(id, name, description, kind),
+        location:locations(id, name),
         lead:leads(id, name, email, phone)
       `)
       .eq("site_id", siteId)
@@ -21,8 +22,26 @@ export async function getReservations(siteId: string) {
       console.error("Error fetching reservations:", error);
       return { data: [], error: error.message };
     }
-    
-    return { data: data as Reservation[] };
+
+    const buyerIds = Array.from(
+      new Set((data || []).map((r) => r.buyer_user_id).filter(Boolean))
+    ) as string[]
+
+    let profileById = new Map<string, { id: string; name?: string | null; avatar_url?: string | null }>()
+    if (buyerIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, name, avatar_url")
+        .in("id", buyerIds)
+      profileById = new Map((profiles || []).map((p) => [p.id, p]))
+    }
+
+    const enriched = (data || []).map((row) => ({
+      ...row,
+      buyer_profile: row.buyer_user_id ? profileById.get(row.buyer_user_id) || null : null,
+    }))
+
+    return { data: enriched as Reservation[] };
   } catch (error: any) {
     return { data: [], error: error.message };
   }

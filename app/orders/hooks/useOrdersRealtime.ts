@@ -2,12 +2,24 @@
 
 import { useEffect, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { playNewOrderAlarm } from "@/lib/audio"
+import {
+  ensureAudioUnlockListeners,
+  playNewOrderAlarm,
+  unlockAudio,
+} from "@/lib/audio"
 
 export function useOrdersRealtime(siteId: string | undefined, onInvalidate: () => void) {
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onInvalidateRef = useRef(onInvalidate)
   onInvalidateRef.current = onInvalidate
+
+  // Unlock Web Audio on the first user gesture so realtime INSERT can play later.
+  useEffect(() => {
+    if (!siteId) return
+    const detach = ensureAudioUnlockListeners()
+    void unlockAudio()
+    return detach
+  }, [siteId])
 
   useEffect(() => {
     if (!siteId) return

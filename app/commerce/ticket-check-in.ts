@@ -1,6 +1,10 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import {
+  findPosClientMutation,
+  recordPosClientMutation,
+} from "@/app/pos/actions/idempotency"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -65,7 +69,15 @@ async function checkInReservation({
   }
 }
 
-export async function checkInTicket({ code, siteId }: { code: string; siteId: string }) {
+export async function checkInTicket({
+  code,
+  siteId,
+  clientMutationId,
+}: {
+  code: string
+  siteId: string
+  clientMutationId?: string
+}) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -83,13 +95,39 @@ export async function checkInTicket({ code, siteId }: { code: string; siteId: st
     return { error: "Not authorized for this site" }
   }
 
+  if (clientMutationId) {
+    const existing = await findPosClientMutation(siteId, clientMutationId)
+    if (existing.data?.result) {
+      return {
+        success: true,
+        message: existing.data.result.message || "Checked in",
+        itemName: existing.data.result.itemName || "Item",
+        idempotent: true,
+      }
+    }
+  }
+
   const reservationResult = await checkInReservation({
     code,
     siteId,
     userId: user.id,
     supabase,
   })
-  if (reservationResult) return reservationResult
+  if (reservationResult) {
+    if (clientMutationId && reservationResult.success) {
+      await recordPosClientMutation({
+        siteId,
+        clientMutationId,
+        kind: "check_in",
+        result: {
+          success: true,
+          message: reservationResult.message,
+          itemName: reservationResult.itemName,
+        },
+      })
+    }
+    return reservationResult
+  }
 
   // Entitlement check-in: access_token, ticket_token, or entitlement id
   let orQuery = `metadata->>access_token.eq.${code},metadata->>ticket_token.eq.${code}`
@@ -156,9 +194,20 @@ export async function checkInTicket({ code, siteId }: { code: string; siteId: st
   const isPass = entitlement.metadata?.access_token && !entitlement.metadata?.ticket_token
   const usesLeftMsg = newUses !== null ? ` (${newUses} uses left)` : ""
 
-  return {
-    success: true,
+  const result = {
+    success: true as const,
     message: isPass ? "Pass checked in successfully" : "Ticket checked in successfully",
     itemName: `${(entitlement as any).catalog_item?.name || "Item"}${usesLeftMsg}`,
   }
+
+  if (clientMutationId) {
+    await recordPosClientMutation({
+      siteId,
+      clientMutationId,
+      kind: "check_in",
+      result,
+    })
+  }
+
+  return result
 }

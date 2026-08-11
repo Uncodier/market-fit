@@ -3,14 +3,16 @@
 import React, { useState } from "react"
 import { Reservation } from "@/app/types"
 import { Badge } from "@/app/components/ui/badge"
-import { Button } from "@/app/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-import { MoreHorizontal, CalendarCheck, Ban, CheckCircle, Calendar as CalendarIcon } from "@/app/components/ui/icons"
+import { Calendar as CalendarIcon } from "@/app/components/ui/icons"
 import { updateReservationStatus } from "../actions"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { ReservationAttestationCell } from "./ReservationAttestationCell"
+import { ReservationCustomerCell } from "./ReservationCustomerCell"
+import { ReservationRowActions } from "./ReservationRowActions"
 
 interface ReservationsListProps {
   reservations: Reservation[]
@@ -19,6 +21,7 @@ interface ReservationsListProps {
 }
 
 export function ReservationsList({ reservations, siteId, onUpdate }: ReservationsListProps) {
+  const { t } = useLocalization()
   const [updating, setUpdating] = useState<string | null>(null)
 
   const handleStatusChange = async (id: string, status: Reservation['status']) => {
@@ -27,14 +30,20 @@ export function ReservationsList({ reservations, siteId, onUpdate }: Reservation
     if (error) {
       toast.error(error)
     } else {
-      toast.success("Reservation updated")
+      toast.success(t("reservations.toast.updated"))
       onUpdate()
     }
     setUpdating(null)
   }
 
   const grouped = reservations.reduce((acc, res) => {
-    const serviceName = res.catalog_item?.name || 'Unknown Service'
+    const type = res.resource_type || 'catalog_item'
+    const serviceName =
+      type === 'location'
+        ? (res.location?.name || t("visits.resource.locationFallback"))
+        : type === 'employee'
+          ? t("visits.resource.teamFallback")
+          : (res.catalog_item?.name || t("reservations.resource.unknownService"))
     if (!acc[serviceName]) acc[serviceName] = []
     acc[serviceName].push(res)
     return acc
@@ -45,8 +54,8 @@ export function ReservationsList({ reservations, siteId, onUpdate }: Reservation
       <div className="p-8">
         <EmptyCard 
           icon={<CalendarIcon className="h-10 w-10 text-muted-foreground" />}
-          title="No reservations found"
-          description="When customers book your services, they will appear here."
+          title={t("reservations.empty.title")}
+          description={t("reservations.empty.description")}
           className="border-0 shadow-none bg-transparent"
         />
       </div>
@@ -64,10 +73,11 @@ export function ReservationsList({ reservations, siteId, onUpdate }: Reservation
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="pl-6">Customer</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead className="pl-6">{t("reservations.table.customer")}</TableHead>
+                <TableHead>{t("reservations.table.status")}</TableHead>
+                <TableHead>{t("reservations.table.attestation")}</TableHead>
+                <TableHead>{t("reservations.table.date")}</TableHead>
+                <TableHead>{t("reservations.table.time")}</TableHead>
                 <TableHead className="w-16 pr-6"></TableHead>
               </TableRow>
             </TableHeader>
@@ -75,16 +85,18 @@ export function ReservationsList({ reservations, siteId, onUpdate }: Reservation
               {resList.map((res) => (
                 <TableRow key={res.id} className="hover:bg-muted/50 transition-colors">
                   <TableCell className="pl-6">
-                    <p className="font-medium text-sm text-foreground">{res.lead?.name || 'Unknown Customer'}</p>
-                    <p className="text-xs text-muted-foreground">{res.lead?.email || 'No email'}</p>
+                    <ReservationCustomerCell reservation={res} siteId={siteId} />
                   </TableCell>
                   <TableCell>
                     <Badge 
                       variant={res.status === 'confirmed' ? 'success' : res.status === 'completed' ? 'secondary' : res.status === 'pending' ? 'warning' : 'destructive'}
                       className="capitalize"
                     >
-                      {res.status}
+                      {t(`reservations.status.${res.status}`) || res.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <ReservationAttestationCell reservation={res} siteId={siteId} />
                   </TableCell>
                   <TableCell>
                     {format(new Date(res.start_time), 'MMM d, yyyy')}
@@ -93,33 +105,12 @@ export function ReservationsList({ reservations, siteId, onUpdate }: Reservation
                     {format(new Date(res.start_time), 'h:mm a')} - {format(new Date(res.end_time), 'h:mm a')}
                   </TableCell>
                   <TableCell className="pr-6">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0" disabled={updating === res.id}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {res.status === 'pending' && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(res.id, 'confirmed')}>
-                            <CalendarCheck className="h-4 w-4 mr-2" /> Confirm
-                          </DropdownMenuItem>
-                        )}
-                        {res.status === 'confirmed' && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(res.id, 'completed')}>
-                            <CheckCircle className="h-4 w-4 mr-2" /> Mark Completed
-                          </DropdownMenuItem>
-                        )}
-                        {res.status !== 'cancelled' && (
-                          <DropdownMenuItem 
-                            onClick={() => handleStatusChange(res.id, 'cancelled')}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Ban className="h-4 w-4 mr-2" /> Cancel
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <ReservationRowActions
+                      reservation={res}
+                      siteId={siteId}
+                      updating={updating === res.id}
+                      onStatusChange={handleStatusChange}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

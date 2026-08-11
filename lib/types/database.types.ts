@@ -143,6 +143,21 @@ export interface Database {
         Insert: any
         Update: any
       }
+      pos_client_mutations: {
+        Row: {
+          id: string
+          site_id: string
+          client_mutation_id: string
+          kind: 'checkout' | 'check_in' | 'create_lead'
+          sale_id: string | null
+          order_id: string | null
+          lead_id: string | null
+          result: Record<string, any>
+          created_at: string
+        }
+        Insert: any
+        Update: any
+      }
       promotions: {
         Row: {
           id: string
@@ -154,6 +169,8 @@ export interface Database {
           discount_type: 'percent' | 'fixed'
           discount_value: number
           applies_to: 'all' | 'selected_items'
+          channels: ('marketplace' | 'shop' | 'pos')[]
+          location_ids: string[]
           min_order_amount: number | null
           usage_limit: number | null
           usage_limit_per_user: number | null
