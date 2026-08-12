@@ -8,8 +8,8 @@ import { BookingExperience } from "@/app/components/commerce/booking/BookingExpe
 import { usePdpCart } from "@/app/components/commerce/pdp/usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { ExitDemoMode } from "@/app/components/commerce/ExitDemoMode"
 import { useEffect } from "react"
+import { ShopSlugNotFound } from "../../ShopSlugNotFound"
 
 export default function ShopBookingPage(props: { params: Promise<{ siteSlug: string; itemId: string }> | { siteSlug: string; itemId: string } }) {
   const params = use(props.params as any) as { siteSlug: string; itemId: string };
@@ -38,7 +38,11 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
     return <div className="min-h-screen flex items-center justify-center bg-muted/20">Loading...</div>
   }
 
-  if (!site || !item) {
+  if (!site) {
+    return <ShopSlugNotFound slug={params.siteSlug} />
+  }
+
+  if (!item) {
     return <div className="min-h-screen flex items-center justify-center bg-muted/20">Item not found</div>
   }
 
@@ -49,14 +53,11 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
   }
 
   return (
-    <>
-      <ExitDemoMode />
-      <BookingExperience
-        mode="cart"
-        item={item}
-        backUrl={`/shop/${params.siteSlug}/${item.id}`}
-        onCartAdd={handleCartAdd}
-      />
-    </>
+    <BookingExperience
+      mode="cart"
+      item={item}
+      backUrl={`/shop/${params.siteSlug}/${item.id}`}
+      onCartAdd={handleCartAdd}
+    />
   )
 }

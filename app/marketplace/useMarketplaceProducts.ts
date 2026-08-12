@@ -17,14 +17,12 @@ function isDefaultFilters(
   selectedKind: string,
   selectedSubtype: string,
   showOnlyRecurring: boolean,
-  filterParam: string | null,
 ) {
-  const defaultKind = filterParam === 'recurring' ? 'recurring' : 'all'
   return (
     searchQuery === '' &&
-    selectedKind === defaultKind &&
+    selectedKind === 'all' &&
     selectedSubtype === 'all' &&
-    showOnlyRecurring === (filterParam === 'recurring')
+    !showOnlyRecurring
   )
 }
 
@@ -35,7 +33,6 @@ export function useMarketplaceProducts(
   selectedKind: string,
   selectedSubtype: string,
   showOnlyRecurring: boolean,
-  filterParam: string | null
 ) {
   const [page, _setPage] = useState(1)
 
@@ -54,9 +51,12 @@ export function useMarketplaceProducts(
   )
 
   useEffect(() => {
+    // Skip the first paint only when SSR defaults already match the URL filters.
     if (skipInitial.current) {
       skipInitial.current = false
-      return
+      if (isDefaultFilters(searchQuery, selectedKind, selectedSubtype, showOnlyRecurring)) {
+        return
+      }
     }
 
     const nextKey = filtersKey(searchQuery, selectedKind, selectedSubtype, showOnlyRecurring)
@@ -68,7 +68,7 @@ export function useMarketplaceProducts(
       }
     }
 
-    if (page === 1 && isDefaultFilters(searchQuery, selectedKind, selectedSubtype, showOnlyRecurring, filterParam)) {
+    if (page === 1 && isDefaultFilters(searchQuery, selectedKind, selectedSubtype, showOnlyRecurring)) {
       setItems(initialItems)
       setTotalPages(initialTotalPages)
       return
@@ -112,7 +112,7 @@ export function useMarketplaceProducts(
       cancelled = true
       clearTimeout(timer)
     }
-  }, [page, searchQuery, selectedKind, selectedSubtype, showOnlyRecurring, filterParam, initialItems, initialTotalPages])
+  }, [page, searchQuery, selectedKind, selectedSubtype, showOnlyRecurring, initialItems, initialTotalPages])
 
   return { items, page, setPage, totalPages, isLoading }
 }

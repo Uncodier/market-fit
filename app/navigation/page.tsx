@@ -23,7 +23,8 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (inputRef.current) {
+    // Only auto-focus on desktop to prevent mobile keyboard from popping up
+    if (inputRef.current && window.innerWidth > 768) {
       inputRef.current.focus()
     }
   }, [])

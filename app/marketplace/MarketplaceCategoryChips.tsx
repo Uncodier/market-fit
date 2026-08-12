@@ -1,9 +1,11 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 const KIND_OPTIONS = [
   ["all", "marketplace.categories.all", "All Items"],
+  ["discounts", "marketplace.categories.discounts", "Discounts"],
   ["product", "marketplace.categories.products", "Products"],
   ["service", "marketplace.categories.services", "Services"],
   ["digital_asset", "marketplace.categories.digitalAssets", "Digital Assets"],
@@ -56,7 +58,7 @@ function SidebarButton({
     <button
       type="button"
       onClick={onClick}
-      className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+      className={`flex w-full !justify-start text-left px-3 py-2 rounded-lg text-sm transition-colors ${
         active
           ? "bg-primary/10 text-primary font-medium"
           : "hover:bg-muted text-muted-foreground"
@@ -73,6 +75,7 @@ type FilterProps = {
   selectedSubtype: string
   setSelectedSubtype: (subtype: string) => void
   effectiveKind: string
+  leadingChip?: ReactNode
 }
 
 /** Mobile-only horizontal chips (shop-style). */
@@ -82,12 +85,14 @@ export function MarketplaceCategoryChips({
   selectedSubtype,
   setSelectedSubtype,
   effectiveKind,
+  leadingChip,
 }: FilterProps) {
   const { t } = useLocalization()
 
   return (
     <div className="md:hidden sticky top-[72px] z-30 pointer-events-none -mx-4 px-4 pt-1 pb-3 mb-6 space-y-3">
       <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto pb-2">
+        {leadingChip}
         {KIND_OPTIONS.map(([value, key, fallback]) => (
           <Chip
             key={value}
@@ -123,11 +128,13 @@ export function MarketplaceFilterSidebar({
   selectedSubtype,
   setSelectedSubtype,
   effectiveKind,
+  leadingChip,
 }: FilterProps) {
   const { t } = useLocalization()
 
   return (
     <aside className="w-full md:w-64 shrink-0 space-y-8 hidden md:block sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto overflow-x-hidden pb-4">
+      {leadingChip && <div className="mb-2">{leadingChip}</div>}
       <div>
         <h3 className="font-bold text-lg mb-4">
           {t("marketplace.categories.title") || "Categories"}

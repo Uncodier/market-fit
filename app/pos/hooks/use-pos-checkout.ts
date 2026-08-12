@@ -32,6 +32,11 @@ type UsePosCheckoutArgs = {
   originLocationId: string;
   priceListId: string;
   promoCode: string;
+  appliedPromo?: {
+    promotionId: string;
+    code: string | null;
+    byConditions: boolean;
+  } | null;
   activeOrderId: string;
   buyerUserId: string | null;
   router: { push: (href: string) => void };
@@ -50,6 +55,7 @@ export function usePosCheckout({
   originLocationId,
   priceListId,
   promoCode,
+  appliedPromo = null,
   activeOrderId,
   buyerUserId,
   router,
@@ -111,7 +117,15 @@ export function usePosCheckout({
       buyerUserId: buyerUserId || undefined,
       fulfillment,
       originLocationId,
-      promotionCode: params.promo || promoCode || undefined,
+      promotionCode:
+        params.promo ||
+        appliedPromo?.code ||
+        promoCode ||
+        undefined,
+      promotionId:
+        params.promo || appliedPromo?.code || promoCode
+          ? undefined
+          : appliedPromo?.promotionId || undefined,
       source: "pos",
       payments: params.payments,
       existingOrderId:

@@ -4,13 +4,17 @@ import React, { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { getCartItems, clearCart, CartMode } from "@/app/commerce/cart-storage"
+import { rememberDeviceOrder, getDeviceOrders } from "@/app/commerce/device-order-storage"
 import { CheckoutLine } from "@/app/commerce/checkout"
 import { checkoutCartRequest, createStripeOrderCheckout } from "@/app/commerce/checkout-client"
+import { buildPublicDocPath } from "@/app/documents/public-token"
+import { withInternalFrom } from "@/app/documents/internal-back"
 import { toast } from "sonner"
 import { ArrowLeft, User } from "@/app/components/ui/icons"
 import Link from "next/link"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { CommerceOrderSuccess } from "@/app/components/commerce/CommerceOrderSuccess"
 import { CheckoutForm } from "./CheckoutForm"
 import { OrderSummary } from "./OrderSummary"
 import { Button } from "@/app/components/ui/button"
@@ -22,6 +26,7 @@ import {
   resolveOrderShippingCost,
   CheckoutFulfillmentMethod
 } from "@/app/commerce/delivery-options"
+import { resolveCheckoutCopyMode } from "@/app/commerce/checkout-labels"
 import { getAvailablePaymentMethods, PaymentMethodType, getItemPaymentOptions, intersectPaymentOptions } from "@/app/commerce/payment-options"
 import { listPublicLocations } from "@/app/inventory/actions"
 import { getSiteInfoBySlug } from "@/app/book/actions"
@@ -55,8 +60,19 @@ export default function CheckoutClient({
   const [loading, setLoading] = useState(true)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [ownerSiteId, setOwnerSiteId] = useState<string | null>(initialOwnerSiteId)
+  const [orderSuccess, setOrderSuccess] = useState(false)
+  const [successOrderToken, setSuccessOrderToken] = useState<string | null>(null)
+  const [successPaymentMethod, setSuccessPaymentMethod] = useState<string>("")
   
   const [siteSettings, setSiteSettings] = useState<any>(null)
+
+  const continueShoppingHref = (() => {
+    if (returnTo.startsWith("/shop/")) {
+      const base = returnTo.split("#")[0].split("?")[0]
+      return `${base}#your-orders`
+    }
+    return returnTo.startsWith("/") ? returnTo : "/marketplace"
+  })()
   
   // Contact info
   const [customerName, setCustomerName] = useState("")
@@ -155,10 +171,59 @@ export default function CheckoutClient({
   }, [session])
 
   useEffect(() => {
-    const loadedItems = getCartItems(mode, source, siteId)
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    const justOrdered =
+      url.searchParams.get("ordered") === "1" ||
+      url.searchParams.get("success") === "true"
+
+    if (justOrdered) {
+      const cartBeforeClear = getCartItems(mode, source, siteId)
+      const checkoutSiteId = siteId || cartBeforeClear[0]?.site_id || null
+      clearCart(mode, source, siteId)
+      setItems([])
+      // Prefer device-cache token for this seller
+      let token: string | null = null
+      if (checkoutSiteId) {
+        token = getDeviceOrders(checkoutSiteId)[0]?.publicAccessToken || null
+      }
+      if (!token) {
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (!key?.startsWith("market-device-orders-")) continue
+            const parsed = JSON.parse(localStorage.getItem(key) || "[]")
+            if (Array.isArray(parsed) && parsed[0]?.publicAccessToken) {
+              token = parsed[0].publicAccessToken
+              break
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+      setSuccessOrderToken(token)
+      if (url.searchParams.get("pay") === "bank_transfer") {
+        setSuccessPaymentMethod("bank_transfer")
+      }
+      setOrderSuccess(true)
+      url.searchParams.delete("ordered")
+      url.searchParams.delete("success")
+      url.searchParams.delete("order_id")
+      url.searchParams.delete("pay")
+      window.history.replaceState({}, "", url.pathname + url.search)
+      setLoading(false)
+      return
+    }
+
+    const loadedItems = getCartItems(mode, source, siteId).filter(
+      (item: any) => source !== "shop" || !siteId || !item.site_id || item.site_id === siteId
+    )
     setItems(loadedItems)
     setLoading(false)
   }, [mode, source, siteId])
+
+  const copyMode = React.useMemo(() => resolveCheckoutCopyMode(items), [items])
 
   const subtotal = items.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0)
 
@@ -317,19 +382,47 @@ export default function CheckoutClient({
         intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
       })
 
-      if (res.error) {
-        toast.error(res.error)
+      if (res.error || !res.success) {
+        toast.error(res.error || "Checkout failed. Please try again.")
         return
       }
 
-      if (payableTotal > 0 && paymentMethod === 'card') {
+      rememberDeviceOrder(checkoutSiteId, {
+        orderId: res.orderId,
+        publicAccessToken: res.publicAccessToken,
+        orderNumber: res.orderNumber,
+        status: res.status,
+        total: res.total,
+        currency: res.currency,
+        createdAt: res.createdAt,
+        items: items.map((c) => ({
+          name: c.name,
+          imageUrl: c.image_url ?? null,
+          unitPrice: c.cartPrice ?? c.target_sale_price ?? null,
+        })),
+      })
+
+      const checkoutReturn =
+        window.location.origin +
+        `/cart/checkout?${new URLSearchParams({
+          ...(source ? { source } : {}),
+          ...(siteId ? { siteId } : {}),
+          ...(mode ? { mode } : {}),
+          ...(initialOwnerSiteId ? { ownerSiteId: initialOwnerSiteId } : {}),
+          ...(returnTo ? { returnTo } : {}),
+          ordered: "1",
+          ...(paymentMethod === "bank_transfer" ? { pay: "bank_transfer" } : {}),
+        }).toString()}`
+
+      if (payableTotal > 0 && paymentMethod === "card") {
         const stripeData = await createStripeOrderCheckout({
-          orderId: res.orderId!,
+          orderId: res.orderId,
           siteId: checkoutSiteId,
-          returnUrl: window.location.origin + returnTo
+          returnUrl: window.location.origin + (returnTo.startsWith("/") ? returnTo : "/marketplace"),
+          successUrl: checkoutReturn,
         })
         if (stripeData.url) {
-          if (mode === 'buynow') clearCart(mode, source, siteId)
+          clearCart(mode, source, siteId)
           redirectingToStripe = true
           window.location.href = stripeData.url
           return
@@ -339,8 +432,10 @@ export default function CheckoutClient({
       }
 
       clearCart(mode, source, siteId)
-      const payParam = paymentMethod === 'bank_transfer' ? '&pay=bank_transfer' : ''
-      router.push(`${returnTo}${returnTo.includes('?') ? '&' : '?'}success=true${payParam}`)
+      setItems([])
+      setSuccessOrderToken(res.publicAccessToken || null)
+      setSuccessPaymentMethod(paymentMethod || "")
+      setOrderSuccess(true)
     } catch (e: any) {
       console.error('Checkout failed:', e)
       toast.error(e?.message || "Checkout failed. Please try again.")
@@ -353,6 +448,36 @@ export default function CheckoutClient({
 
   if (loading) {
     return <div className="min-h-screen bg-muted/30 flex items-center justify-center">Loading checkout...</div>
+  }
+
+  if (orderSuccess) {
+    const orderHref = successOrderToken
+      ? withInternalFrom(
+          buildPublicDocPath("so", successOrderToken),
+          continueShoppingHref.split("#")[0]
+        )
+      : null
+    return (
+      <CommerceOrderSuccess
+        title={t("checkout.success.title") || "Order Confirmed"}
+        description={
+          t("checkout.success.desc") ||
+          "Thank you for your purchase. You can view your order summary or keep shopping."
+        }
+        continueLabel={t("checkout.success.continueShopping") || "Continue shopping"}
+        primaryHref={orderHref || undefined}
+        primaryLabel={
+          orderHref
+            ? t("checkout.success.viewOrder") || "View order summary"
+            : undefined
+        }
+        paymentMethod={successPaymentMethod}
+        bankTransfer={siteSettings?.shop?.bank_transfer}
+        onContinue={() => {
+          router.push(continueShoppingHref)
+        }}
+      />
+    )
   }
 
   if (items.length === 0) {

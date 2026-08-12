@@ -336,32 +336,34 @@ export async function middleware(request: NextRequest) {
   }
 
   // Signed-in users hitting the sign-in page go to returnTo or /robots
-  if (pathname === '/auth') {
-    const res = NextResponse.next()
+  if (pathname === '/auth' || pathname === '/auth/') {
+    const pendingCookies: Array<{ name: string; value: string; options?: any }> = []
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name) {
-            return request.cookies.get(name)?.value
+          getAll() {
+            return request.cookies.getAll()
           },
-          set(name, value, options) {
-            res.cookies.set(name, value, options)
-          },
-          remove(name, options) {
-            res.cookies.set(name, '', { ...options, maxAge: 0 })
+          setAll(cookiesToSet) {
+            pendingCookies.push(...cookiesToSet)
           },
         },
       }
     )
 
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
+    // Prefer getUser (validates JWT) over getSession for server auth checks
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
       const destination = resolvePostAuthRedirect(
         request.nextUrl.searchParams.get('returnTo')
       )
-      return NextResponse.redirect(new URL(destination, request.url))
+      const response = NextResponse.redirect(new URL(destination, request.url))
+      pendingCookies.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options)
+      })
+      return response
     }
   }
   

@@ -65,6 +65,11 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
   }, [session, email])
 
   const containerRef = useRef<HTMLDivElement>(null)
+  const didAutoSelectTodayRef = useRef(false)
+
+  useEffect(() => {
+    didAutoSelectTodayRef.current = false
+  }, [catalogItemId])
 
   useEffect(() => {
     async function loadMonthAvailability() {
@@ -96,6 +101,20 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
       loadMonthAvailability()
     }
   }, [catalogItemId, currentMonth, quantity])
+
+  // Auto-select today when it has available slots so times show without an extra click.
+  useEffect(() => {
+    if (didAutoSelectTodayRef.current || isLoadingSlots || selectedDate) return
+
+    const today = startOfDay(new Date())
+    const todayStr = format(today, "yyyy-MM-dd")
+    if (!monthAvailability[todayStr]) return
+
+    didAutoSelectTodayRef.current = true
+    setSelectedDate(today)
+    setSelectedSlot(null)
+    setActiveStep("time")
+  }, [isLoadingSlots, monthAvailability, selectedDate])
 
   const firstDayOfMonth = startOfMonth(currentMonth).getDay()
   const startDate = addDays(startOfMonth(currentMonth), -firstDayOfMonth)

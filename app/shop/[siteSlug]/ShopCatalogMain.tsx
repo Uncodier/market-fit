@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { CatalogItem } from "@/app/types"
 import { Search } from "@/app/components/ui/icons"
 import { CatalogListingCard } from "@/app/components/commerce/CatalogListingCard"
@@ -19,8 +19,21 @@ import {
   groupItemsByCategory,
   SHOP_UNCATEGORIZED_NAME,
 } from "./shop-catalog-shared"
+import {
+  matchShopCategory,
+  readShopCategoryFromLocation,
+  writeShopCategoryToLocation,
+} from "./shop-category-url"
 import { ShopCategoryChips } from "./ShopCategoryChips"
 import { useShopCategorySpy } from "./useShopCategorySpy"
+import { PromoCarousel } from "@/app/components/commerce/PromoCarousel"
+import { PromoListingCard } from "@/app/components/commerce/PromoListingCard"
+import type {
+  PromoBadge,
+  StorefrontPromoCard,
+} from "@/app/promotions/promotion-merchandising"
+import type { DeviceOrder } from "@/app/commerce/device-order-storage"
+import { ShopDeviceOrders } from "./ShopDeviceOrders"
 
 interface ShopCatalogMainProps {
   siteSlug: string | string[]
@@ -29,6 +42,9 @@ interface ShopCatalogMainProps {
   searchQuery: string
   ownedItems: CatalogItem[]
   ownedAccessMap: Map<string, boolean>
+  deviceOrders?: DeviceOrder[]
+  siteId?: string
+  onDeviceOrdersHydrated?: (orders: DeviceOrder[]) => void
   sellableCatalogItems: CatalogItem[]
   initialCount: number
   isLoading: boolean
@@ -41,7 +57,12 @@ interface ShopCatalogMainProps {
   clearPendingScrollCategory: () => void
   addToCart: (item: CatalogItem) => void
   locationAvailable?: boolean
+  getLocationAvailable?: (item: CatalogItem) => boolean
+  leadingChip?: ReactNode
   onActiveCategoryChange?: (category: string) => void
+  generalPromos?: StorefrontPromoCard[]
+  promoBadgesByItemId?: Record<string, PromoBadge>
+  categoryPromosByName?: Record<string, StorefrontPromoCard[]>
 }
 
 export function ShopCatalogMain({
@@ -51,6 +72,9 @@ export function ShopCatalogMain({
   searchQuery,
   ownedItems,
   ownedAccessMap,
+  deviceOrders = [],
+  siteId,
+  onDeviceOrdersHydrated,
   sellableCatalogItems,
   initialCount,
   isLoading,
@@ -63,10 +87,20 @@ export function ShopCatalogMain({
   clearPendingScrollCategory,
   addToCart,
   locationAvailable = true,
+  getLocationAvailable,
+  leadingChip,
   onActiveCategoryChange,
+  generalPromos = [],
+  promoBadgesByItemId = {},
+  categoryPromosByName = {},
 }: ShopCatalogMainProps) {
+  const resolveLocationAvailable = (item: CatalogItem) =>
+    getLocationAvailable ? getLocationAvailable(item) : locationAvailable
   const { t } = useLocalization()
   const sentinelRef = useRef<HTMLDivElement>(null)
+  /** Captured once so the initial "all" spy state cannot wipe `?category=` before restore. */
+  const urlCategoryRef = useRef<string | null | undefined>(undefined)
+  const [categoryUrlReady, setCategoryUrlReady] = useState(false)
   const isSearching = Boolean(searchQuery.trim())
 
   const chipCategories = useMemo(() => {
@@ -90,6 +124,18 @@ export function ShopCatalogMain({
   useEffect(() => {
     onActiveCategoryChange?.(activeCategory)
   }, [activeCategory, onActiveCategoryChange])
+
+  // Capture `?category=` once on mount (before any URL writes).
+  useEffect(() => {
+    if (urlCategoryRef.current !== undefined) return
+    urlCategoryRef.current = readShopCategoryFromLocation()
+  }, [])
+
+  // Reflect the active category in the URL so refresh/share restores it.
+  useEffect(() => {
+    if (!useSections || !categoryUrlReady) return
+    writeShopCategoryToLocation(activeCategory)
+  }, [activeCategory, useSections, categoryUrlReady])
 
   // Scroll after a jump loads the target section
   useEffect(() => {
@@ -130,6 +176,9 @@ export function ShopCatalogMain({
   const handleChipSelect = (cat: string) => {
     if (isSearching) return
 
+    if (!categoryUrlReady) setCategoryUrlReady(true)
+    writeShopCategoryToLocation(cat)
+
     if (cat === "all") {
       scrollToCategory("all")
       return
@@ -145,6 +194,36 @@ export function ShopCatalogMain({
     setActiveCategory(cat, 1500)
     jumpToCategory(offsetEntry.offset, cat)
   }
+
+  // Restore category from ?category= on first load
+  useEffect(() => {
+    if (categoryUrlReady || !useSections || isLoading) return
+    if (urlCategoryRef.current === undefined) {
+      urlCategoryRef.current = readShopCategoryFromLocation()
+    }
+
+    const matched = matchShopCategory(urlCategoryRef.current, chipCategories)
+    if (matched) {
+      const scrolled = scrollToCategory(matched)
+      if (!scrolled) {
+        const offsetEntry = categoryOffsets.find((o) => o.name === matched)
+        if (offsetEntry) {
+          setActiveCategory(matched, 1500)
+          jumpToCategory(offsetEntry.offset, matched)
+        }
+      }
+    }
+    setCategoryUrlReady(true)
+  }, [
+    categoryUrlReady,
+    useSections,
+    isLoading,
+    chipCategories,
+    categoryOffsets,
+    scrollToCategory,
+    setActiveCategory,
+    jumpToCategory,
+  ])
 
   // Card theme follows total catalog quantity (same as before category sections):
   // >10 → compact 2-col mobile; <3 → featured posters; else standard grid.
@@ -164,6 +243,20 @@ export function ShopCatalogMain({
     sellableCatalogItems.length > 0 &&
     sellableCatalogItems.length < FEATURED_LISTING_THRESHOLD
 
+  const renderFeaturedRail = (items: CatalogItem[]) => (
+    <FeaturedListingsRail
+      items={items}
+      getHref={(item) => `/shop/${siteSlug}/${item.id}`}
+      onPrimaryAction={addToCart}
+      disabledLabel={t("shop.soldOut") || "Sold Out"}
+      getPrimaryDisabled={(item) =>
+        !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
+      }
+      getLocationAvailable={resolveLocationAvailable}
+      getPromoBadge={(item) => promoBadgesByItemId[item.id] || null}
+    />
+  )
+
   const renderCard = (item: CatalogItem) => (
     <CatalogListingCard
       key={item.id}
@@ -178,35 +271,39 @@ export function ShopCatalogMain({
       disabledLabel={t("shop.soldOut") || "Sold Out"}
       isOwned={false}
       compactMobile={compactMobile}
-      locationAvailable={locationAvailable}
+      locationAvailable={resolveLocationAvailable(item)}
+      promoBadge={promoBadgesByItemId[item.id] || null}
     />
   )
 
-  const renderFeaturedRail = (items: CatalogItem[]) => (
-    <FeaturedListingsRail
-      items={items}
-      getHref={(item) => `/shop/${siteSlug}/${item.id}`}
-      onPrimaryAction={addToCart}
-      disabledLabel={t("shop.soldOut") || "Sold Out"}
-      getPrimaryDisabled={(item) =>
-        !(item as any)._shop?.sellable && (item as any)._shop?.availableQty === 0
-      }
-      locationAvailable={locationAvailable}
-    />
-  )
+  const renderSectionGrid = (
+    items: CatalogItem[],
+    sectionPromos: StorefrontPromoCard[] = [],
+  ) => {
+    const promoCards = sectionPromos.map((promo) => (
+      <PromoListingCard
+        key={`promo-${promo.id}`}
+        promo={promo}
+        href={`/shop/${siteSlug}/promo/${promo.id}`}
+        compactMobile={compactMobile}
+        surface="shop"
+        siteSlug={String(siteSlug)}
+      />
+    ))
 
-  const renderItemsGrid = (items: CatalogItem[]) => {
     if (
       !compactMobile &&
       catalogCount > 0 &&
       catalogCount < FEATURED_LISTING_THRESHOLD &&
-      items.length > 0
+      items.length > 0 &&
+      promoCards.length === 0
     ) {
       return renderFeaturedRail(items)
     }
 
     return (
-      <CommerceProductGrid totalCount={catalogCount}>
+      <CommerceProductGrid totalCount={catalogCount + promoCards.length}>
+        {promoCards}
         {items.map(renderCard)}
       </CommerceProductGrid>
     )
@@ -214,18 +311,35 @@ export function ShopCatalogMain({
 
   return (
     <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
-      {!isSearching && (
+      {!isSearching && generalPromos.length > 0 && (
+        <PromoCarousel
+          promos={generalPromos}
+          hrefFor={(id) => `/shop/${siteSlug}/promo/${id}`}
+          catalogCount={catalogCount}
+          surface="shop"
+          siteSlug={String(siteSlug)}
+        />
+      )}
+
+      {(!isSearching || leadingChip) && (
         <ShopCategoryChips
-          categories={chipCategories}
+          categories={isSearching ? [] : chipCategories}
           activeCategory={activeCategory}
           onSelect={handleChipSelect}
           disabled={isJumping}
+          leadingChip={leadingChip}
         />
       )}
 
       <div id="shop-catalog-top" />
 
-      {ownedItems.length === 0 && !useSections && (
+      <ShopDeviceOrders
+        orders={deviceOrders}
+        siteId={siteId || ""}
+        onOrdersHydrated={onDeviceOrdersHydrated}
+      />
+
+      {ownedItems.length === 0 && deviceOrders.length === 0 && !useSections && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 justify-between">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
             {resultsTitle}
@@ -290,7 +404,7 @@ export function ShopCatalogMain({
 
       {(sellableCatalogItems.length > 0 || ownedItems.length === 0 || isLoading) && (
         <div>
-          {ownedItems.length > 0 && !useSections && (
+          {(ownedItems.length > 0 || deviceOrders.length > 0) && !useSections && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <h2 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
                 {resultsTitle}
@@ -336,7 +450,10 @@ export function ShopCatalogMain({
                         ? t("shop.other") || "Other"
                         : section.name}
                     </h2>
-                    {renderItemsGrid(section.items)}
+                    {renderSectionGrid(
+                      section.items,
+                      categoryPromosByName[section.name] || [],
+                    )}
                   </section>
                 ))
               )}

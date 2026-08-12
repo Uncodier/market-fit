@@ -33,6 +33,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { createClient } from "@/lib/supabase/client"
 import { getSegments } from "@/app/segments/actions"
 import { listPromotions } from "@/app/promotions/actions"
+import { formatPromotionDiscountLabel } from "@/app/promotions/bogo-discount"
 import useSWR from "swr"
 import { 
   CampaignSummary, 
@@ -862,7 +863,7 @@ export default function TaskDetailPage(props: { params: Promise<{ id: string }> 
                             </div>
                             <div className="text-right">
                               <div className="font-medium text-sm">
-                                {promo.discount_type === 'percent' ? `${promo.discount_value}% OFF` : `$${promo.discount_value} OFF`}
+                                {formatPromotionDiscountLabel(promo)}
                               </div>
                               <Badge className={`mt-1 text-[10px] ${promo.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                                 {promo.status.toUpperCase()}

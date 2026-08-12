@@ -10,8 +10,9 @@ import {
 } from "@/app/components/commerce/FeaturedListingPoster"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { CatalogItem } from "@/app/types"
-import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
+import { isItemLocationAvailable } from "@/app/commerce/buyer-location-availability"
+import type { PromoBadge } from "@/app/promotions/promotion-merchandising"
 
 interface MarketplaceProductListProps {
   items: Array<CatalogItem & { site?: { id: string; name: string; logo_url?: string | null; settings?: any } }>
@@ -23,6 +24,7 @@ interface MarketplaceProductListProps {
   setPage: (page: number) => void
   onPrimaryAction: (item: any) => void
   buyerGeo?: BuyerGeo
+  promoBadgesByItemId?: Record<string, PromoBadge>
 }
 
 export function MarketplaceProductList({
@@ -35,8 +37,16 @@ export function MarketplaceProductList({
   setPage,
   onPrimaryAction,
   buyerGeo,
+  promoBadgesByItemId = {},
 }: MarketplaceProductListProps) {
   const { t } = useLocalization()
+
+  const getLocationAvailable = (item: MarketplaceProductListProps["items"][number]) =>
+    isItemLocationAvailable({
+      item,
+      settingsLocations: item.site?.settings?.locations || null,
+      buyerGeo,
+    })
 
   if (items.length === 0 && !isLoading) {
     return (
@@ -71,10 +81,8 @@ export function MarketplaceProductList({
           getHref={(item) => `/marketplace/${item.id}`}
           onPrimaryAction={onPrimaryAction}
           showSeller
-          getLocationAvailable={(item) => {
-            if (!item.site?.settings?.locations || !buyerGeo) return true;
-            return evaluateLocationRestrictions(item.site.settings.locations, buyerGeo).available;
-          }}
+          getLocationAvailable={getLocationAvailable}
+          getPromoBadge={(item) => promoBadgesByItemId[item.id] || null}
         />
       ) : (
         <CommerceProductGrid
@@ -93,7 +101,8 @@ export function MarketplaceProductList({
               showSeller={true}
               descriptionLineClamp="line-clamp-1"
               compactMobile={compactMobile}
-              locationAvailable={!item.site?.settings?.locations || !buyerGeo ? true : evaluateLocationRestrictions(item.site.settings.locations, buyerGeo).available}
+              locationAvailable={getLocationAvailable(item)}
+              promoBadge={promoBadgesByItemId[item.id] || null}
             />
           ))}
         </CommerceProductGrid>

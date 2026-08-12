@@ -19,6 +19,8 @@ import { FileText, CheckCircle2, ChevronLeft, Ban, ShoppingCart } from "@/app/co
 import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { DestinationSelector } from "@/app/components/commerce/DestinationSelector"
+import { PublicDocumentShopNav } from "@/app/documents/components/PublicDocumentShopNav"
+import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
@@ -111,15 +113,26 @@ export function BuyerQuoteDetailView({
   }
 
   if (loading) {
-    return <div className="p-8 space-y-4"><Skeleton className="h-10 w-1/3"/><Skeleton className="h-64 w-full"/></div>
+    if (isPublic) {
+      return <PublicDocumentViewSkeleton />
+    }
+    return (
+      <div className="p-8 space-y-4">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
   }
 
   if (loadError && !quotation) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center max-w-md space-y-2">
-          <h1 className="text-xl font-bold">{t('buyer.quotes.detail.unavailable') || 'Quote unavailable'}</h1>
-          <p className="text-muted-foreground text-sm">{loadError}</p>
+      <div className="min-h-screen bg-muted/30 flex flex-col">
+        {isPublic ? <PublicDocumentShopNav /> : null}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center max-w-md space-y-2">
+            <h1 className="text-xl font-bold">{t('buyer.quotes.detail.unavailable') || 'Quote unavailable'}</h1>
+            <p className="text-muted-foreground text-sm">{loadError}</p>
+          </div>
         </div>
       </div>
     )
@@ -131,6 +144,7 @@ export function BuyerQuoteDetailView({
   const canRespond = quotation.status === 'sent' && !isExpired
   const busy = accepting || rejecting
   const isSiteScope = lockDestination || (backHref?.startsWith("/purchases") ?? false)
+  const quoteSiteId = quotation.site?.id || quotation.site_id || null
 
   const headerContent = (
     <div className="flex w-full items-center gap-4">
@@ -148,11 +162,19 @@ export function BuyerQuoteDetailView({
   )
 
   return (
-    <div className="flex-1 flex flex-col min-h-full">
+    <div className={`flex-1 flex flex-col min-h-full ${isPublic ? "min-h-screen bg-muted/30" : ""}`}>
+      {isPublic ? (
+        <PublicDocumentShopNav
+          siteId={quoteSiteId}
+          siteName={quotation.site?.name}
+          logoUrl={quotation.site?.logo_url}
+          currency={quotation.currency}
+        />
+      ) : null}
       {isSiteScope ? (
         <StickyHeader>{headerContent}</StickyHeader>
       ) : (
-        <div className="sticky top-[72px] z-30 bg-transparent min-h-[71px] flex items-center w-full">
+        <div className={`sticky z-30 bg-transparent min-h-[71px] flex items-center w-full px-4 md:px-6 ${isPublic ? "top-0" : "top-[72px]"}`}>
           {headerContent}
         </div>
       )}

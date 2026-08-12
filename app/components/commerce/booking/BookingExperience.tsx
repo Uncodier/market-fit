@@ -2,17 +2,20 @@
 
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { CatalogItem } from "@/app/types"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { ReservationSlotPicker } from "../ReservationSlotPicker"
 import { Button } from "@/app/components/ui/button"
-import { ArrowLeft, CheckCircle } from "@/app/components/ui/icons"
+import { ArrowLeft, CheckCircle, User } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { bookWithEntitlement } from "@/app/commerce/redeem-reservation"
 import { toast } from "sonner"
 import { RelationSelect } from "@/app/components/ui/relation-select"
 import { upsertReservation } from "@/app/reservations/actions"
 import { assertReservationSlot } from "@/app/reservations/availability"
+import { CommerceShellHeader } from "@/app/components/commerce/CommerceShellHeader"
 
 interface BookingExperienceProps {
   mode: "cart" | "entitlement" | "pos" | "admin"
@@ -41,6 +44,8 @@ export function BookingExperience({
 }: BookingExperienceProps) {
   const { t } = useLocalization()
   const router = useRouter()
+  const { user } = useAuth()
+  const session = user ? { user } : null
   const [booking, setBooking] = useState(false)
 
   // Only used for admin mode
@@ -108,34 +113,107 @@ export function BookingExperience({
 
   const imageUrl = resolveItemImage(item)
 
+  const title =
+    mode === "entitlement"
+      ? t("booking.redeemTitle") || "Book with Pass"
+      : mode === "admin"
+        ? t("booking.adminTitle") || "Create Reservation"
+        : t("booking.selectTime") || "Select a Time"
+
+  const backLabel = t("booking.back") || "Back"
+
+  // Standalone commerce surfaces (shop / marketplace) use the floating pill header.
+  // POS / admin sit under the seller TopBar and keep the compact sub-header.
+  const useShellHeader = !hideHeader && (mode === "cart" || mode === "entitlement")
+
+  const shellActions = headerAction ? (
+    <div className="flex items-center gap-2">{headerAction}</div>
+  ) : session ? (
+    <div className="flex items-center gap-2 shrink-0">
+      {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
+        <img
+          src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture}
+          alt="Avatar"
+          className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
+        />
+      ) : (
+        <div className="w-8 h-8 min-w-8 rounded-full bg-muted flex items-center justify-center border border-border shadow-sm shrink-0">
+          <User className="w-4 h-4 text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  ) : (
+    <div />
+  )
+
   return (
-    <div className={`flex-1 flex flex-col ${hideHeader ? "" : "bg-muted/20"}`}>
-      {!hideHeader && (
-        <header className={mode === "entitlement" ? "absolute top-20 left-0 right-0 z-40 bg-transparent h-16 flex items-center justify-center px-4 md:px-8" : (mode === "pos" || mode === "admin") ? "absolute top-16 left-0 right-0 z-40 bg-background border-b h-16 flex items-center justify-center px-4 md:px-8" : "absolute top-0 left-0 right-0 z-40 bg-background border-b h-16 flex items-center justify-center px-4 md:px-8"}>
+    <div className={`flex-1 flex flex-col ${hideHeader ? "" : "bg-muted/30 min-h-screen"}`}>
+      {useShellHeader && (
+        <>
+          <div className="h-4 w-full shrink-0" />
+          <CommerceShellHeader
+            brand={
+              backUrl ? (
+                <Link
+                  href={backUrl}
+                  className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  <span className="font-medium">{backLabel}</span>
+                </Link>
+              ) : (
+                <div />
+              )
+            }
+            center={
+              <span className="font-black text-xl tracking-tight uppercase truncate">
+                {title}
+              </span>
+            }
+            actions={shellActions}
+          />
+        </>
+      )}
+
+      {!hideHeader && !useShellHeader && (
+        <header
+          className={
+            mode === "pos" || mode === "admin"
+              ? "absolute top-16 left-0 right-0 z-40 bg-background border-b h-16 flex items-center justify-center px-4 md:px-8"
+              : "absolute top-0 left-0 right-0 z-40 bg-background border-b h-16 flex items-center justify-center px-4 md:px-8"
+          }
+        >
           <div className="w-full max-w-7xl flex items-center justify-between">
             <div className="flex items-center">
               {backUrl && (
-                <Button variant="ghost" size="sm" className="rounded-full pr-4 mr-4" onClick={() => router.push(backUrl)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full pr-4 mr-4"
+                  onClick={() => router.push(backUrl)}
+                >
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  <span className="font-medium">{t("booking.back") || "Back"}</span>
+                  <span className="font-medium">{backLabel}</span>
                 </Button>
               )}
-              <h1 className="text-lg font-bold tracking-tight">
-                {mode === "entitlement" ? (t("booking.redeemTitle") || "Book with Pass") : 
-                 mode === "admin" ? (t("booking.adminTitle") || "Create Reservation") : 
-                 (t("booking.selectTime") || "Select a Time")}
-              </h1>
+              <h1 className="text-lg font-bold tracking-tight">{title}</h1>
             </div>
             {headerAction && (
-              <div className="flex items-center gap-2">
-                {headerAction}
-              </div>
+              <div className="flex items-center gap-2">{headerAction}</div>
             )}
           </div>
         </header>
       )}
 
-      <main className={`flex-1 w-full flex flex-col ${hideHeader ? "p-0" : "max-w-7xl mx-auto p-4 md:p-8 pt-24 md:pt-28"}`}>
+      <main
+        className={`flex-1 w-full flex flex-col ${
+          hideHeader
+            ? "p-0"
+            : useShellHeader
+              ? "max-w-7xl mx-auto p-4 md:p-8"
+              : "max-w-7xl mx-auto p-4 md:p-8 pt-24 md:pt-28"
+        }`}
+      >
         {booking && (
           <div className="fixed inset-0 z-50 bg-background/50 backdrop-blur-sm flex items-center justify-center">
             <div className="px-6 py-4 bg-card border rounded-full shadow-2xl font-bold text-lg flex items-center gap-3">

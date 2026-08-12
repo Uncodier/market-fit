@@ -20,6 +20,7 @@ import { CartButton } from "../CartButton"
 import { LocaleSelector } from "../LocaleSelector"
 import { CurrencySelector } from "../CurrencySelector"
 import { CommerceShareControl } from "../CommerceShareControl"
+import { getCartItems } from "@/app/commerce/cart-storage"
 
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { PdpExperience } from "./pdp-experience"
@@ -46,20 +47,16 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
   const [cartCount, setCartCount] = useState(0)
   const [subtotal, setSubtotal] = useState(0)
 
+  const isMarketplace = pathname?.startsWith('/marketplace')
+  const cartSource = isMarketplace ? 'marketplace' : 'shop'
+  const cartSiteId = site?.id || item.site_id || item.site?.id || null
+
   useEffect(() => {
     const checkCart = () => {
-      let count = 0
-      let sub = 0
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && key.startsWith('market-cart-')) {
-          try {
-            const cart = JSON.parse(localStorage.getItem(key) || '[]')
-            count += cart.reduce((s: any, c: any) => s + (c.cartQty || 0), 0)
-            sub += cart.reduce((s: any, c: any) => s + ((c.cartPrice || 0) * (c.cartQty || 0)), 0)
-          } catch(e) {}
-        }
-      }
+      const cart = getCartItems('cart', cartSource, cartSource === 'shop' ? cartSiteId : null)
+        .filter((c: any) => cartSource !== 'shop' || !cartSiteId || !c.site_id || c.site_id === cartSiteId)
+      const count = cart.reduce((s: number, c: any) => s + (c.cartQty || 0), 0)
+      const sub = cart.reduce((s: number, c: any) => s + ((c.cartPrice || 0) * (c.cartQty || 0)), 0)
       setCartCount(count)
       setSubtotal(sub)
     }
@@ -67,7 +64,7 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
     checkCart()
     window.addEventListener('storage', checkCart)
     return () => window.removeEventListener('storage', checkCart)
-  }, [])
+  }, [cartSource, cartSiteId])
   
   const siteName = site?.name || item.site?.name
   const siteLogo = site?.logo_url || item.site?.logo_url

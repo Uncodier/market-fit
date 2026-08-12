@@ -87,10 +87,12 @@ export type LocalPromotion = {
   id: string;
   site_id: string;
   name: string;
-  code: string;
+  code: string | null;
   status: string;
   discount_type: string;
   discount_value: number;
+  bogo_buy_qty?: number | null;
+  bogo_get_qty?: number | null;
   applies_to: string;
   min_order_amount?: number | null;
   usage_limit?: number | null;
@@ -98,10 +100,17 @@ export type LocalPromotion = {
   usage_limit_per_user?: number | null;
   starts_at?: string | null;
   ends_at?: string | null;
+  active_weekdays?: number[] | null;
+  required_items_mode?: string | null;
   channels?: string[] | null;
   location_ids?: string[] | null;
   catalog_item_ids?: string[];
   category_ids?: string[];
+  required_items?: { catalog_item_id: string; min_quantity: number }[];
+  required_categories?: { catalog_category_id: string; min_quantity: number }[];
+  image_url?: string | null;
+  show_on_shop?: boolean;
+  show_on_marketplace?: boolean;
 };
 
 export type LocalPendingOrder = {

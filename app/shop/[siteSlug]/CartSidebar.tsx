@@ -11,6 +11,7 @@ import {
   intersectPickupLocationIds,
   resolveOrderShippingCost
 } from "@/app/commerce/delivery-options"
+import { resolveCheckoutCopyMode, checkoutLabelKey } from "@/app/commerce/checkout-labels"
 import { 
   getItemPaymentOptions, 
   intersectPaymentOptions, 
@@ -45,6 +46,8 @@ export function CartSidebar({
   const { formatPrice } = useDisplayCurrency()
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
 
+  const copyMode = resolveCheckoutCopyMode(cart)
+
   const allowedOptions = useMemo(() => {
     return intersectDeliveryOptions(cart.map((i: any) => ({
       allowed: getItemDeliveryOptions(i, site?.settings?.shop?.default_delivery_options)
@@ -74,6 +77,7 @@ export function CartSidebar({
     return cart.map((item: any) => ({
       catalogItemId: item.id,
       subtotal: (item.cartPrice ?? item.target_sale_price ?? 0) * (item.cartQty || 1),
+      quantity: item.cartQty || 1,
     }))
   }, [cart])
 
@@ -158,7 +162,7 @@ export function CartSidebar({
             </div>
             
             <form id="checkout-form" onSubmit={handleCheckout} className="space-y-5 bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              <h3 className="font-bold text-lg border-b dark:border-gray-800 pb-3">{t('shop.cart.contactShipping') || 'Contact & Shipping'}</h3>
+              <h3 className="font-bold text-lg border-b dark:border-gray-800 pb-3">{t(checkoutLabelKey('shop.cart.contactShipping', copyMode)) || 'Contact & Shipping'}</h3>
               
               <div className="space-y-4 pt-2">
                 <CheckoutIdentityPicker
@@ -192,6 +196,7 @@ export function CartSidebar({
                   nextOpenSlot={nextOpenSlot}
                   deliveryTimeLabel={deliveryTimeLabel}
                   t={t}
+                  copyMode={copyMode}
                 />
               </div>
             </form>
@@ -248,7 +253,7 @@ export function CartSidebar({
           {checkoutLoading
             ? (t('shop.cart.processing') || "Processing securely...")
             : paymentMethod === 'cash_on_pickup'
-              ? (t('checkout.placeOrderCash') || 'Place order • Pay at store')
+              ? (t(checkoutLabelKey('checkout.placeOrderCash', copyMode)) || 'Place order • Pay at store')
               : paymentMethod === 'bank_transfer'
                 ? (t('checkout.placeOrderTransfer') || 'Place order • Pay by transfer')
                 : (t('checkout.paySecurely') || 'Pay securely')}

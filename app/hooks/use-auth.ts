@@ -124,11 +124,7 @@ export function useAuth() {
         
         if (error) {
           console.error('[Auth] Error checking session:', error.message)
-          setUser(null)
-          return
         }
-        
-        
         
         setUser(session?.user ?? null)
         
@@ -159,7 +155,7 @@ export function useAuth() {
             )
             
             console.log('[useAuth] checkAuth: Found session, redirecting to:', destination, 'from path:', currentPath)
-            router.push(destination)
+            window.location.replace(destination)
           } else {
             console.log('[useAuth] checkAuth: Found session but ignoring redirect - user is in password reset flow:', currentPath)
           }
@@ -215,7 +211,7 @@ export function useAuth() {
             
             console.log('[useAuth] SIGNED_IN event detected, redirecting to:', destination, 'from path:', currentPath)
             
-            router.push(destination)
+            window.location.replace(destination)
           } else if (isPasswordResetFlow) {
             console.log('[useAuth] SIGNED_IN event detected but ignoring redirect - user is in password reset flow:', currentPath)
           }

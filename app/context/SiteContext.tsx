@@ -973,12 +973,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // 5. No sites available
       // 6. Not already on create-site page or auth pages
       // 7. Not trying to redirect FROM create-site (this was the bug!)
-      const isCommerceSurface = 
-        pathname.startsWith('/buyer') || 
+      const isCommerceSurface =
+        pathname.startsWith('/buyer') ||
         pathname.startsWith('/marketplace') ||
         pathname.startsWith('/shop') ||
         pathname.startsWith('/book') ||
-        pathname.startsWith('/cart');
+        pathname.startsWith('/cart') ||
+        pathname.startsWith('/q/') ||
+        pathname.startsWith('/i/') ||
+        pathname.startsWith('/so/') ||
+        pathname.startsWith('/vb/');
 
       // Case A: No sites at all -> go to buyer/orders instead of create-site
       if (

@@ -13,6 +13,7 @@ const AUTO_VALIDATE_MS = 800
 export type PromoCartLine = {
   catalogItemId: string
   subtotal: number
+  quantity?: number
 }
 
 export type AppliedPromo = {
@@ -54,7 +55,7 @@ export function PromoCodeField({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const cartFingerprint = cartLines
-    .map((l) => `${l.catalogItemId}:${l.subtotal}`)
+    .map((l) => `${l.catalogItemId}:${l.subtotal}:${l.quantity ?? 1}`)
     .join("|")
   const prevFingerprint = useRef(cartFingerprint)
   const requestIdRef = useRef(0)

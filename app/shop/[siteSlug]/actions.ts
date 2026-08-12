@@ -1,18 +1,27 @@
 "use server"
 
+import { unstable_cache } from "next/cache";
 import { getSiteInfoBySlug } from "@/app/book/actions";
 import { listPublicLocations } from "@/app/inventory/actions";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
+  SHOP_CACHE_REVALIDATE_SECONDS,
   SHOP_PAGE_SIZE,
   SHOP_UNCATEGORIZED_NAME,
+  shopCacheTag,
+  shopSlugCacheTag,
   type ShopCategoryOffset,
 } from "./shop-catalog-shared";
 
 export async function getShopSite(slug: string) {
-  // Try to find the site ID by slug
-  const site = await getSiteInfoBySlug(slug);
-  return site;
+  return unstable_cache(
+    async () => getSiteInfoBySlug(slug),
+    ["shop-site", slug],
+    {
+      revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
+      tags: [shopSlugCacheTag(slug)],
+    }
+  )();
 }
 
 function categoryNameFromJoin(category: unknown): string | null {
@@ -83,42 +92,51 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
 }
 
 export async function getShopCategoryOffsets(siteId: string): Promise<ShopCategoryOffset[]> {
-  const supabase = await createServiceClient(true);
+  return unstable_cache(
+    async () => {
+      const supabase = await createServiceClient(true);
 
-  // Walk the same order as getShopCatalog so offsets match range() jumps.
-  const { data: rows, error } = await supabase
-    .from("catalog_items")
-    .select("category:catalog_categories(name)")
-    .eq("site_id", siteId)
-    .eq("status", "active")
-    .eq("is_marketplace_listed", true)
-    .is("parent_id", null)
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
+      // Walk the same order as getShopCatalog so offsets match range() jumps.
+      const { data: rows, error } = await supabase
+        .from("catalog_items")
+        .select("category:catalog_categories(name)")
+        .eq("site_id", siteId)
+        .eq("status", "active")
+        .eq("is_marketplace_listed", true)
+        .is("parent_id", null)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true });
 
-  if (error || !rows) return [];
+      if (error || !rows) return [];
 
-  const offsets: ShopCategoryOffset[] = [];
-  let currentName: string | null = null;
+      const offsets: ShopCategoryOffset[] = [];
+      let currentName: string | null = null;
 
-  for (let i = 0; i < rows.length; i++) {
-    const name = categoryNameFromJoin((rows[i] as any).category) || SHOP_UNCATEGORIZED_NAME;
-    if (name !== currentName) {
-      if (currentName !== null) {
-        const prev = offsets[offsets.length - 1];
-        prev.count = i - prev.offset;
+      for (let i = 0; i < rows.length; i++) {
+        const name = categoryNameFromJoin((rows[i] as any).category) || SHOP_UNCATEGORIZED_NAME;
+        if (name !== currentName) {
+          if (currentName !== null) {
+            const prev = offsets[offsets.length - 1];
+            prev.count = i - prev.offset;
+          }
+          offsets.push({ name, offset: i, count: 0 });
+          currentName = name;
+        }
       }
-      offsets.push({ name, offset: i, count: 0 });
-      currentName = name;
+
+      if (offsets.length > 0) {
+        const last = offsets[offsets.length - 1];
+        last.count = rows.length - last.offset;
+      }
+
+      return offsets;
+    },
+    ["shop-category-offsets", siteId],
+    {
+      revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
+      tags: [shopCacheTag(siteId)],
     }
-  }
-
-  if (offsets.length > 0) {
-    const last = offsets[offsets.length - 1];
-    last.count = rows.length - last.offset;
-  }
-
-  return offsets;
+  )();
 }
 
 export async function getShopCategories(siteId: string) {
@@ -148,87 +166,113 @@ export async function getShopCatalog(
       ? Math.max(0, options.offset)
       : Math.max(0, ((options.page || 1) - 1) * pageSize);
   const page = Math.floor(offset / pageSize) + 1;
-  const supabase = await createServiceClient(true);
 
-  let query = supabase
-    .from("catalog_items")
-    .select(
-      `
+  return unstable_cache(
+    async () => {
+      const supabase = await createServiceClient(true);
+
+      let query = supabase
+        .from("catalog_items")
+        .select(
+          `
       *,
       category:catalog_categories(name),
       raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
     `,
-      { count: "exact" }
-    )
-    .eq("site_id", siteId)
-    .eq("status", "active")
-    .eq("is_marketplace_listed", true)
-    .is("parent_id", null);
+          { count: "exact" }
+        )
+        .eq("site_id", siteId)
+        .eq("status", "active")
+        .eq("is_marketplace_listed", true)
+        .is("parent_id", null);
 
-  if (search) {
-    query = query.ilike("name", `%${search}%`);
-  }
+      if (search) {
+        query = query.ilike("name", `%${search}%`);
+      }
 
-  if (category !== "all" && category !== SHOP_UNCATEGORIZED_NAME) {
-    const { data: cats } = await supabase
-      .from("catalog_categories")
-      .select("id")
-      .eq("site_id", siteId)
-      .eq("name", category);
-    const catIds = (cats || []).map((c: { id: string }) => c.id);
-    if (catIds.length === 0) {
-      return { data: [], count: 0, totalPages: 0, page, pageSize, offset };
+      if (category !== "all" && category !== SHOP_UNCATEGORIZED_NAME) {
+        const { data: cats } = await supabase
+          .from("catalog_categories")
+          .select("id")
+          .eq("site_id", siteId)
+          .eq("name", category);
+        const catIds = (cats || []).map((c: { id: string }) => c.id);
+        if (catIds.length === 0) {
+          return { data: [], count: 0, totalPages: 0, page, pageSize, offset };
+        }
+        query = query.in("category_id", catIds);
+      } else if (category === SHOP_UNCATEGORIZED_NAME) {
+        query = query.is("category_id", null);
+      }
+
+      const from = offset;
+      const to = offset + pageSize - 1;
+
+      query = query
+        .range(from, to)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true });
+
+      const { data: items, count, error } = await query;
+
+      if (error || !items) {
+        return { data: [], count: 0, totalPages: 0, page, pageSize, offset, error: error?.message };
+      }
+
+      const enrichedItems = await enrichShopItems(siteId, items, supabase);
+
+      return {
+        data: enrichedItems,
+        count: count || 0,
+        totalPages: count ? Math.ceil(count / pageSize) : 0,
+        page,
+        pageSize,
+        offset,
+      };
+    },
+    ["shop-catalog", siteId, String(offset), String(pageSize), search, category],
+    {
+      revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
+      tags: [shopCacheTag(siteId)],
     }
-    query = query.in("category_id", catIds);
-  } else if (category === SHOP_UNCATEGORIZED_NAME) {
-    query = query.is("category_id", null);
-  }
-
-  const from = offset;
-  const to = offset + pageSize - 1;
-
-  query = query
-    .range(from, to)
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-
-  const { data: items, count, error } = await query;
-
-  if (error || !items) {
-    return { data: [], count: 0, totalPages: 0, page, pageSize, offset, error: error?.message };
-  }
-
-  const enrichedItems = await enrichShopItems(siteId, items, supabase);
-
-  return {
-    data: enrichedItems,
-    count: count || 0,
-    totalPages: count ? Math.ceil(count / pageSize) : 0,
-    page,
-    pageSize,
-    offset,
-  };
+  )();
 }
 
 export async function getShopItemsByIds(siteId: string, ids: string[]) {
   if (!ids || ids.length === 0) return { data: [] };
-  const supabase = await createServiceClient(true);
+  const sortedIds = [...ids].sort();
 
-  const { data: items, error } = await supabase
-    .from("catalog_items")
-    .select(`
+  const cached = await unstable_cache(
+    async () => {
+      const supabase = await createServiceClient(true);
+
+      const { data: items, error } = await supabase
+        .from("catalog_items")
+        .select(`
       *,
       category:catalog_categories(name),
       raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
     `)
-    .eq("site_id", siteId)
-    .in("id", ids);
+        .eq("site_id", siteId)
+        .in("id", sortedIds);
 
-  if (error || !items) return { data: [], error: error?.message };
+      if (error || !items) return { data: [] as any[], error: error?.message };
 
-  const enriched = await enrichShopItems(siteId, items, supabase);
-  const byId = new Map(enriched.map((item) => [item.id, item]));
-  return { data: ids.map((id) => byId.get(id)).filter(Boolean) };
+      const enriched = await enrichShopItems(siteId, items, supabase);
+      return { data: enriched, error: undefined as string | undefined };
+    },
+    ["shop-items-by-ids", siteId, sortedIds.join(",")],
+    {
+      revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
+      tags: [shopCacheTag(siteId)],
+    }
+  )();
+
+  const byId = new Map(cached.data.map((item: any) => [item.id, item]));
+  return {
+    data: ids.map((id) => byId.get(id)).filter(Boolean),
+    error: cached.error,
+  };
 }
 
 export type ShopOwnedAccess = {
@@ -321,5 +365,12 @@ export async function getShopUserOwnedItems(siteId: string): Promise<ShopOwnedAc
 }
 
 export async function getShopLocations(siteId: string) {
-  return listPublicLocations(siteId);
+  return unstable_cache(
+    async () => listPublicLocations(siteId),
+    ["shop-locations", siteId],
+    {
+      revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
+      tags: [shopCacheTag(siteId)],
+    }
+  )();
 }

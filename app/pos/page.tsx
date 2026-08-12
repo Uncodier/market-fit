@@ -47,6 +47,7 @@ export default function POSPage() {
   const cartApi = usePosCart({
     siteId,
     shopSettings: currentSite?.settings?.shop,
+    siteTimezone: currentSite?.settings?.business_hours?.[0]?.timezone || null,
     catalogItems: catalog.catalogItems,
     locations: catalog.locations,
     priceLists: catalog.priceLists,
@@ -72,6 +73,7 @@ export default function POSPage() {
     originLocationId: cartApi.originLocationId,
     priceListId: cartApi.priceListId,
     promoCode: cartApi.promoCode,
+    appliedPromo: cartApi.appliedPromo,
     activeOrderId: cartApi.activeOrderId,
     buyerUserId: cartApi.buyerUserId,
     router,
@@ -250,6 +252,10 @@ export default function POSPage() {
     handlePriceListChange: cartApi.handlePriceListChange,
     promoCode: cartApi.promoCode,
     setPromoCode: cartApi.setPromoCode,
+    appliedPromo: cartApi.appliedPromo,
+    promoDiscount: cartApi.promoDiscount,
+    validatePromotion: cartApi.validatePromotion,
+    clearAppliedPromo: cartApi.clearAppliedPromo,
     priceLists: catalog.priceLists,
     handleCheckout: checkout.initiateCheckout,
     checkoutLoading: checkout.checkoutLoading || cartApi.loadingOrder,
@@ -265,13 +271,13 @@ export default function POSPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] overflow-hidden bg-muted/30">
+    <div className="flex flex-col md:flex-row md:items-start min-h-[calc(100dvh-var(--topbar-height,64px))] bg-muted/30">
       <Tabs
         value={selectedCategory}
         onValueChange={setSelectedCategory}
-        className="flex-1 flex flex-col min-h-0"
+        className="flex-1 min-w-0 flex flex-col"
       >
-        <StickyHeader className="!top-0">
+        <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex items-center gap-4 sm:gap-8">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
@@ -369,24 +375,23 @@ export default function POSPage() {
         </StickyHeader>
 
         {emptyOffline ? (
-          <div className="flex-1 flex items-center justify-center p-8 text-center text-sm text-muted-foreground">
+          <div className="flex-1 flex items-center justify-center p-8 text-center text-sm text-muted-foreground min-h-[50vh]">
             {t("pos.sync.emptyOffline") ||
               "Connect once to download the catalog for offline use."}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-            <PosCatalogGrid
-              items={filteredItems}
-              loading={catalogLoading}
-              onAdd={addApi.addToCart}
-              t={t}
-            />
-            <div className="hidden md:flex w-96 flex-col bg-card overflow-hidden min-h-0">
-              <CartPanel {...cartPanelProps} />
-            </div>
-          </div>
+          <PosCatalogGrid
+            items={filteredItems}
+            loading={catalogLoading}
+            onAdd={addApi.addToCart}
+            t={t}
+          />
         )}
       </Tabs>
+
+      <div className="hidden md:flex w-96 flex-none flex-col bg-card border-l sticky top-[var(--topbar-height,64px)] h-[calc(100dvh-var(--topbar-height,64px))] overflow-hidden">
+        <CartPanel {...cartPanelProps} />
+      </div>
 
       <PosSyncIssues
         siteId={siteId}

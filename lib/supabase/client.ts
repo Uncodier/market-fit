@@ -121,51 +121,12 @@ export function createClient() {
   try {
     clientCreationTimestamp = Date.now()
     
+    // Let @supabase/ssr manage auth cookies (getAll/setAll). Custom get/set
+    // handlers break chunked session cookies and can miss an active session.
     supabaseClient = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        cookies: {
-          get(name: string) {
-            if (isServerSide()) return undefined
-            
-            try {
-              return document.cookie
-                .split('; ')
-                .find((row) => row.startsWith(`${name}=`))
-                ?.split('=')[1]
-            } catch (error) {
-              console.error('Error obteniendo cookie:', error)
-              return undefined
-            }
-          },
-          set(name: string, value: string, options: { maxAge?: number; path?: string; domain?: string; secure?: boolean }) {
-            if (isServerSide()) return
-            
-            try {
-              let cookie = `${name}=${value}`
-              if (options?.path) cookie += `; path=${options.path}`
-              if (options?.maxAge) cookie += `; max-age=${options.maxAge}`
-              if (options?.domain) cookie += `; domain=${options.domain}`
-              if (options?.secure) cookie += `; secure`
-              document.cookie = cookie
-            } catch (error) {
-              console.error('Error estableciendo cookie:', error)
-            }
-          },
-          remove(name: string, options: { path?: string; domain?: string }) {
-            if (isServerSide()) return
-            
-            try {
-              let cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:01 GMT`
-              if (options?.path) cookie += `; path=${options.path}`
-              if (options?.domain) cookie += `; domain=${options.domain}`
-              document.cookie = cookie
-            } catch (error) {
-              console.error('Error eliminando cookie:', error)
-            }
-          }
-        },
         realtime: {
           params: {
             eventsPerSecond: 10

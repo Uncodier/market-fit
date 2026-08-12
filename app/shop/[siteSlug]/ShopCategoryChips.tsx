@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { SHOP_UNCATEGORIZED_NAME } from "./shop-catalog-shared"
 
@@ -9,6 +9,8 @@ interface ShopCategoryChipsProps {
   activeCategory: string
   onSelect: (category: string) => void
   disabled?: boolean
+  /** Optional location pill rendered first in the row */
+  leadingChip?: ReactNode
 }
 
 export function ShopCategoryChips({
@@ -16,6 +18,7 @@ export function ShopCategoryChips({
   activeCategory,
   onSelect,
   disabled = false,
+  leadingChip,
 }: ShopCategoryChipsProps) {
   const { t } = useLocalization()
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -29,7 +32,7 @@ export function ShopCategoryChips({
     scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" })
   }, [activeCategory])
 
-  if (categories.length === 0) return null
+  if (categories.length === 0 && !leadingChip) return null
 
   const chipClass = (active: boolean) =>
     `flex-shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
@@ -44,15 +47,18 @@ export function ShopCategoryChips({
         ref={scrollerRef}
         className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto pb-2"
       >
-        <button
-          type="button"
-          disabled={disabled}
-          ref={activeCategory === "all" ? activeRef : undefined}
-          onClick={() => onSelect("all")}
-          className={chipClass(activeCategory === "all")}
-        >
-          {t("shop.allCategories") || "All Categories"}
-        </button>
+        {leadingChip}
+        {categories.length > 0 && (
+          <button
+            type="button"
+            disabled={disabled}
+            ref={activeCategory === "all" ? activeRef : undefined}
+            onClick={() => onSelect("all")}
+            className={chipClass(activeCategory === "all")}
+          >
+            {t("shop.allCategories") || "All Categories"}
+          </button>
+        )}
         {categories.map((cat) => (
           <button
             key={cat}

@@ -43,7 +43,7 @@ export function CourseExperienceClient({
   }
 
   return (
-    <BuyerExperienceShell backUrl={backUrl}>
+    <BuyerExperienceShell backUrl={backUrl} variant="course">
       <CoursePdpLayout item={item} backUrl={backUrl} experience={experience} />
     </BuyerExperienceShell>
   )

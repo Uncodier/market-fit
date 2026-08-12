@@ -1004,23 +1004,53 @@ export interface Promotion {
   name: string;
   description?: string;
   code?: string;
-  discount_type: 'percent' | 'fixed';
+  discount_type: 'percent' | 'fixed' | 'bogo';
   discount_value: number;
+  /** Buy qty for BOGO (Buy X Get Y). Ignored for percent/fixed. */
+  bogo_buy_qty?: number;
+  /** Get (free) qty for BOGO. Ignored for percent/fixed. */
+  bogo_get_qty?: number;
   applies_to: 'all' | 'selected_items';
   /** Channels where the promo applies. Empty/missing = all storefront channels. */
   channels?: PromotionChannel[];
   /** POS location IDs. Empty = all locations when POS is enabled. */
   location_ids?: string[];
-  min_order_amount?: number;
+  min_order_amount?: number | null;
   usage_limit?: number;
   usage_limit_per_user?: number;
   usage_count: number;
   status: 'draft' | 'active' | 'paused' | 'expired';
-  starts_at?: string;
-  ends_at?: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  active_weekdays?: number[];
+  required_items_mode?: 'all' | 'any';
+  /** Merchandising image for shop/marketplace cards. */
+  image_url?: string | null;
+  /** Show in shop merchandising surfaces. */
+  show_on_shop?: boolean;
+  /** Show in marketplace Discounts feed / product flags. */
+  show_on_marketplace?: boolean;
+  /** Currency for fixed discounts / min order. Null = site default. */
+  currency?: string | null;
   user_id: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface PromotionRequiredItem {
+  id: string;
+  promotion_id: string;
+  catalog_item_id: string;
+  site_id: string;
+  min_quantity: number;
+}
+
+export interface PromotionRequiredCategory {
+  id: string;
+  promotion_id: string;
+  catalog_category_id: string;
+  site_id: string;
+  min_quantity: number;
 }
 
 export interface PromotionCatalogItem {

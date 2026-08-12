@@ -4,6 +4,9 @@ import { MarketplaceClient } from "./MarketplaceClient"
 import { attachSiteSettings } from "./attach-site-settings"
 import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 import { buildShareMetadata } from "@/app/lib/commerce-metadata"
+import { getMarketplaceMerchandising } from "@/app/promotions/storefront-promotions"
+
+export const dynamic = "force-dynamic"
 
 export const metadata = buildShareMetadata({
   title: "Marketplace | Makinari",
@@ -34,6 +37,7 @@ export default async function MarketplacePage() {
   const itemsWithSettings = await attachSiteSettings(supabase, catalogItems || [])
   const initialTotalPages = count ? Math.ceil(count / 20) : 0;
   const buyerGeo = await getBuyerGeoApprox();
+  const merchandising = await getMarketplaceMerchandising({})
 
   return (
     <Suspense fallback={<div className="flex-1 min-h-screen bg-muted/30" />}>
@@ -42,6 +46,8 @@ export default async function MarketplacePage() {
         initialCount={count || 0}
         initialTotalPages={initialTotalPages}
         buyerGeo={buyerGeo}
+        discountsFeed={merchandising.discountsFeed}
+        promoBadgesByItemId={merchandising.byItemId}
       />
     </Suspense>
   )

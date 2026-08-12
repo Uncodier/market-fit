@@ -2,6 +2,16 @@
 
 export const SHOP_PAGE_SIZE = 20
 export const SHOP_UNCATEGORIZED_NAME = "Other"
+/** Data-cache TTL for public shop fetches (seconds). */
+export const SHOP_CACHE_REVALIDATE_SECONDS = 60
+
+export function shopCacheTag(siteId: string): string {
+  return `shop:${siteId}`
+}
+
+export function shopSlugCacheTag(slug: string): string {
+  return `shop-slug:${slug}`
+}
 
 export type ShopCategoryOffset = {
   name: string

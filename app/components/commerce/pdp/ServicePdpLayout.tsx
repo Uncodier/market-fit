@@ -7,10 +7,9 @@ import { resolveItemImage } from "@/app/lib/image-utils"
 import { resolveItemSpecDisplay, resolveVenueLocation } from "@/app/catalog/product-details"
 import { VenueLocationDetails } from "./VenueLocationDetails"
 import { VenueLocationSection } from "./VenueLocationSection"
-import { MapPin, User, Clock, CheckCircle, Calendar, ChevronLeft } from "@/app/components/ui/icons"
+import { MapPin, User, Clock, CheckCircle, Calendar } from "@/app/components/ui/icons"
 import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
-import Link from "next/link"
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { getActivePassEntitlementForReservable } from "@/app/buyer/entitlement-queries"
 
@@ -199,22 +198,8 @@ export function ServicePdpLayout({
               <PdpPriceBlock price={displayPrice} currency={item.currency || "USD"} />
             </div>
           )}
-          {(venueLocation.name || venueLocation.address || venueLocation.city || isReservationExperience) && (
+          {(venueLocation.name || venueLocation.address || venueLocation.city) && (
             <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              {isReservationExperience && (
-                <>
-                  <Link
-                    href={experience!.backUrl || backUrl}
-                    className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5 mr-0.5" />
-                    {t("buyer.reservations.back") || t("common.back") || "Back"}
-                  </Link>
-                  {(venueLocation.address || venueLocation.city || venueLocation.name) && (
-                    <span className="text-border select-none" aria-hidden>·</span>
-                  )}
-                </>
-              )}
               <VenueLocationDetails
                 name={venueLocation.name}
                 address={venueLocation.address}

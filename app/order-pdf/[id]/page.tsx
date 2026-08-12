@@ -4,6 +4,9 @@ import React, { useEffect, useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { getOrder } from "@/app/orders/actions"
 import { PublicDocumentView } from "@/app/documents/components/PublicDocumentView"
+import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
+import { resolveSalePaymentMethod } from "@/app/documents/document-meta"
+import { mapDocumentLineItems } from "@/app/documents/map-document-items"
 import { documentT } from "@/app/lib/i18n/document-t"
 
 export default function OrderPdfPage(props: { params: Promise<{ id: string }> }) {
@@ -21,16 +24,11 @@ export default function OrderPdfPage(props: { params: Promise<{ id: string }> })
       }
       const order = res.data as any
       const locale = currentSite?.settings?.default_locale || "en"
-      const items = (
+      const items = mapDocumentLineItems(
         order.sale_order_items?.length
           ? order.sale_order_items
           : order.items || []
-      ).map((item: any) => ({
-        name: item.name || "Item",
-        quantity: Number(item.quantity) || 0,
-        unit_price: Number(item.unit_price ?? item.unitPrice) || 0,
-        subtotal: Number(item.subtotal) || 0,
-      }))
+      )
 
       document.title = `Order - ${String(order.order_number || order.id).substring(0, 12)}`
 
@@ -49,12 +47,16 @@ export default function OrderPdfPage(props: { params: Promise<{ id: string }> })
           name: order.leads?.name,
           email: order.leads?.email,
         },
+        siteId: currentSite?.id || order.site_id || order.owner_site_id || null,
         siteName: currentSite?.name || "Order",
         siteUrl: currentSite?.url,
         logoUrl: currentSite?.logo_url,
         location: currentSite?.settings?.locations?.[0],
         locale,
         statusKind: "orders" as const,
+        fulfillmentMethod: order.fulfillment_method,
+        paymentMethod: resolveSalePaymentMethod(order.sales),
+        shippingAddress: order.shipping_address,
       })
     }
     load()
@@ -68,11 +70,7 @@ export default function OrderPdfPage(props: { params: Promise<{ id: string }> })
     )
   }
   if (!view) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center text-gray-500">
-        Loading…
-      </div>
-    )
+    return <PublicDocumentViewSkeleton />
   }
   return <PublicDocumentView {...view} />
 }

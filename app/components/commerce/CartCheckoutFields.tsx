@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Truck, Store, CreditCard, MapPin, MonitorSmartphone, Banknote } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { DatePicker } from "@/app/components/ui/date-picker"
+import { checkoutLabelKey, CheckoutCopyMode } from "@/app/commerce/checkout-labels"
 import type { ReactNode } from "react"
 
 interface CartCheckoutFieldsProps {
@@ -28,6 +29,7 @@ interface CartCheckoutFieldsProps {
   nextOpenSlot?: { at: Date, label: string } | null
   deliveryTimeLabel?: string | null
   t?: (key: string) => string | undefined
+  copyMode?: CheckoutCopyMode
 }
 
 function SegmentedTabs<T extends string>({
@@ -82,7 +84,8 @@ export function CartCheckoutFields({
   isOpen = true,
   nextOpenSlot,
   deliveryTimeLabel,
-  t: propT
+  t: propT,
+  copyMode = 'retail'
 }: CartCheckoutFieldsProps) {
   const { t: contextT } = useLocalization()
   const t = propT || contextT
@@ -91,12 +94,12 @@ export function CartCheckoutFields({
     [
       allowedOptions.includes('pickup') && {
         value: 'pickup' as const,
-        label: t('checkout.storePickup') || 'Store Pickup',
+        label: t(checkoutLabelKey('checkout.storePickup', copyMode)) || 'Store Pickup',
         icon: <Store className="w-3.5 h-3.5 text-emerald-500 shrink-0" />,
       },
       allowedOptions.includes('ship') && {
         value: 'ship' as const,
-        label: t('checkout.shipToMe') || 'Ship to Me',
+        label: t(checkoutLabelKey('checkout.shipToMe', copyMode)) || 'Ship to Me',
         icon: <Truck className="w-3.5 h-3.5 text-blue-500 shrink-0" />,
       },
       allowedOptions.includes('dine_in') && {
@@ -121,7 +124,7 @@ export function CartCheckoutFields({
       },
       availablePaymentMethods.includes('cash_on_pickup') && {
         value: 'cash_on_pickup',
-        label: t('checkout.cashOnPickup') || 'Cash on Pickup',
+        label: t(checkoutLabelKey('checkout.cashOnPickup', copyMode)) || 'Cash on Pickup',
         icon: <Banknote className="w-3.5 h-3.5 text-emerald-500 shrink-0" />,
       },
       availablePaymentMethods.includes('bank_transfer') && {
@@ -178,7 +181,7 @@ export function CartCheckoutFields({
       )}
 
       <div className={`${setOrderTiming ? 'mt-4' : 'mt-6 pt-6 border-t border-gray-100 dark:border-gray-800'}`}>
-        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 block">{t('checkout.deliveryMethod') || 'Delivery Method'}</Label>
+        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 block">{t(checkoutLabelKey('checkout.deliveryMethod', copyMode)) || 'Delivery Method'}</Label>
         {allowedOptions.length === 0 ? (
           <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
             {t('checkout.incompatibleDelivery') || 'These items cannot be purchased together due to incompatible delivery methods. Please remove some items.'}
@@ -195,11 +198,11 @@ export function CartCheckoutFields({
       {(fulfillment === 'pickup' || fulfillment === 'dine_in') && allowedOptions.some(opt => opt === 'pickup' || opt === 'dine_in') && setOriginLocationId && (
         <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-800">
           <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 block">
-            {fulfillment === 'pickup' ? (t('checkout.pickupLocation') || 'Pickup Location') : (t('checkout.location') || 'Location')}
+            {fulfillment === 'pickup' ? (t(checkoutLabelKey('checkout.pickupLocation', copyMode)) || 'Pickup Location') : (t('checkout.location') || 'Location')}
           </Label>
           {pickupLocations.length === 0 ? (
             <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
-              {t('checkout.noPickupLocations') || 'No valid locations available for these items.'}
+              {t(checkoutLabelKey('checkout.noPickupLocations', copyMode)) || 'No valid locations available for these items.'}
             </div>
           ) : pickupLocations.length === 1 ? (
             <div className="h-12 px-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -224,7 +227,7 @@ export function CartCheckoutFields({
 
       {fulfillment === 'ship' && allowedOptions.includes('ship') && setShippingAddress && shippingAddress && (
         <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">{t('checkout.shippingAddress') || 'Shipping Address'}</Label>
+          <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">{t(checkoutLabelKey('checkout.shippingAddress', copyMode)) || 'Shipping Address'}</Label>
           <Input placeholder={t('checkout.streetAddress') || "Street Address"} value={shippingAddress.line1} onChange={e => setShippingAddress({...shippingAddress, line1: e.target.value})} required className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
           <Input placeholder={t('checkout.aptSuite') || "Apt, Suite, etc. (optional)"} value={shippingAddress.line2} onChange={e => setShippingAddress({...shippingAddress, line2: e.target.value})} className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
           <div className="grid grid-cols-2 gap-3">

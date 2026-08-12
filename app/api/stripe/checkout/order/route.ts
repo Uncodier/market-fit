@@ -8,7 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: Request) {
   try {
-    const { orderId, siteId, returnUrl } = await req.json()
+    const { orderId, siteId, returnUrl, successUrl } = await req.json()
     const supabase = await createServiceClient(true)
     
     // 1. Fetch order details (include catalog image for Stripe Checkout summary)
@@ -103,7 +103,7 @@ export async function POST(req: Request) {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: `${returnUrl}?success=true&order_id=${orderId}`,
+      success_url: successUrl || `${returnUrl}?success=true&order_id=${orderId}`,
       cancel_url: `${returnUrl}?canceled=true`,
       customer_email: customerEmail || undefined,
       metadata: {

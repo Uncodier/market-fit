@@ -29,12 +29,13 @@ import {
   CreditCard,
   ShoppingCart,
   Tag,
-  PlusCircle,
 } from "@/app/components/ui/icons";
 import { resolveItemImage } from "@/app/lib/image-utils";
 import { NumpadPanel } from "./NumpadPanel";
 import { PosCustomerSelect } from "./PosCustomerSelect";
+import { PosAppliedPromoCard } from "./PosAppliedPromoCard";
 import { cn } from "@/lib/utils";
+import type { LocalPromoMatch } from "@/app/pos/local/resolve-promo-local";
 
 export interface PosCartItem extends CatalogItem {
   cartQty: number;
@@ -65,6 +66,10 @@ interface CartPanelProps {
   priceLists: any[];
   promoCode: string;
   setPromoCode: (value: string) => void;
+  appliedPromo: LocalPromoMatch | null;
+  promoDiscount: number;
+  validatePromotion: () => void;
+  clearAppliedPromo: () => void;
   handleCheckout: () => void;
   checkoutLoading: boolean;
   leads: any[];
@@ -107,6 +112,10 @@ export function CartPanel({
   priceLists,
   promoCode,
   setPromoCode,
+  appliedPromo,
+  promoDiscount,
+  validatePromotion,
+  clearAppliedPromo,
   handleCheckout,
   checkoutLoading,
   leads,
@@ -219,6 +228,15 @@ export function CartPanel({
                 </div>
               </div>
             ))}
+
+            {appliedPromo && (
+              <PosAppliedPromoCard
+                promo={appliedPromo}
+                money={money}
+                onClear={clearAppliedPromo}
+                label={getTrans}
+              />
+            )}
           </div>
         )}
       </div>
@@ -378,13 +396,32 @@ export function CartPanel({
 
             <div className="space-y-1.5 pt-1">
               <div className="relative">
-                <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder={t("pos.cart.promoCode") || "Promo code..."}
                   value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  className="uppercase pl-9 bg-card"
+                  onChange={(e) => {
+                    setPromoCode(e.target.value);
+                    if (appliedPromo?.code) clearAppliedPromo();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      validatePromotion();
+                    }
+                  }}
+                  className="uppercase pl-9 pr-24 bg-card"
                 />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs"
+                  onClick={validatePromotion}
+                  disabled={cart.length === 0}
+                >
+                  {getTrans("pos.cart.validatePromo", "Validate")}
+                </Button>
               </div>
             </div>
           </TabsContent>
@@ -409,6 +446,16 @@ export function CartPanel({
               {money(subtotal)}
             </span>
           </div>
+          {promoDiscount > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">
+                {t("pos.cart.discount") || "Discount"}
+              </span>
+              <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                −{money(promoDiscount)}
+              </span>
+            </div>
+          )}
           {taxTotal > 0 && (
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">

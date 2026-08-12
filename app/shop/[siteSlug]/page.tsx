@@ -1,14 +1,14 @@
-import { getShopSite, getShopCatalog, getShopCategoryOffsets, getShopLocations, getShopUserOwnedItems, getShopItemsByIds } from "./actions"
-import { notFound } from "next/navigation"
+import { getShopSite, getShopCatalog, getShopCategoryOffsets, getShopLocations } from "./actions"
 import ShopClient from "./ShopClient"
 import { Metadata } from "next"
 import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 import { buildShopShareMetadata } from "@/app/lib/commerce-metadata"
 import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstrap"
-import { SHOP_PAGE_SIZE, SHOP_UNCATEGORIZED_NAME } from "./shop-catalog-shared"
+import { SHOP_CACHE_REVALIDATE_SECONDS, SHOP_PAGE_SIZE, SHOP_UNCATEGORIZED_NAME } from "./shop-catalog-shared"
+import { getShopMerchandising } from "@/app/promotions/storefront-promotions"
+import { ShopSlugNotFound } from "./ShopSlugNotFound"
 
-export const revalidate = 0;
-export const dynamic = 'force-dynamic';
+export const revalidate = SHOP_CACHE_REVALIDATE_SECONDS;
 
 export async function generateMetadata({ params }: { params: Promise<{ siteSlug: string }> | { siteSlug: string } }): Promise<Metadata> {
   const resolvedParams = await params;
@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ siteSlug:
   if (!siteSlug) return { title: 'Shop | Makinari' };
 
   const site = await getShopSite(siteSlug);
-  if (!site) return { title: 'Shop | Makinari' };
+  if (!site) return { title: 'Shop Not Found | Makinari' };
 
   return buildShopShareMetadata(site, `/shop/${siteSlug}`);
 }
@@ -26,29 +26,27 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
   const siteSlug = 'siteSlug' in resolvedParams ? resolvedParams.siteSlug : undefined;
   
   if (!siteSlug) {
-    notFound();
+    return <ShopSlugNotFound />
   }
 
   const site = await getShopSite(siteSlug);
   
   if (!site) {
-    notFound()
+    return <ShopSlugNotFound slug={siteSlug} />
   }
 
-  const [{ data: catalogItems, count }, categoryOffsets, { data: locations }, ownedItemIds, buyerGeo] = await Promise.all([
+  const timezone = site?.settings?.business_hours?.[0]?.timezone || null
+  const [{ data: catalogItems, count }, categoryOffsets, { data: locations }, buyerGeo, merchandising] = await Promise.all([
     getShopCatalog(site.id, { offset: 0, pageSize: SHOP_PAGE_SIZE }),
     getShopCategoryOffsets(site.id),
     getShopLocations(site.id),
-    getShopUserOwnedItems(site.id),
-    getBuyerGeoApprox()
+    getBuyerGeoApprox(),
+    getShopMerchandising({ siteId: site.id, siteSlug, timezone }),
   ])
 
   const categories = categoryOffsets
     .map((o) => o.name)
     .filter((name) => name !== SHOP_UNCATEGORIZED_NAME)
-
-  const ownedIds = ownedItemIds.map(o => o.catalogItemId)
-  const { data: ownedItemsData } = await getShopItemsByIds(site.id, ownedIds)
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
@@ -60,9 +58,10 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
         initialCategoryOffsets={categoryOffsets}
         initialCount={count || 0}
         locations={locations as any[]} 
-        ownedItemIds={ownedItemIds}
-        ownedItemsData={ownedItemsData as any[]}
         buyerGeo={buyerGeo}
+        generalPromos={merchandising.general}
+        promoBadgesByItemId={merchandising.byItemId}
+        categoryPromosByName={merchandising.categoryPromosByName}
       />
     </div>
   )

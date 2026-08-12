@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { getBillByPublicToken } from "@/app/bills/send-actions"
 import { PublicDocumentView } from "@/app/documents/components/PublicDocumentView"
+import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { documentT } from "@/app/lib/i18n/document-t"
 
 export default function PublicBillPage(props: {
@@ -45,6 +46,7 @@ export default function PublicBillPage(props: {
           name: purchase.vendorName,
           email: purchase.vendorEmail,
         },
+        siteId: res.raw.site?.id || branding?.site?.id || purchase.siteId || null,
         siteName: res.raw.site?.name || branding?.site?.name || "Bill",
         siteUrl: res.raw.site?.url || branding?.site?.url,
         logoUrl: res.raw.site?.logo_url || branding?.site?.logo_url,
@@ -64,11 +66,7 @@ export default function PublicBillPage(props: {
     )
   }
   if (!view) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-gray-500">
-        Loading…
-      </div>
-    )
+    return <PublicDocumentViewSkeleton />
   }
   return <PublicDocumentView {...view} />
 }

@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { CatalogItem } from "@/app/types";
 import { CatalogListParams, CatalogListResponse, CatalogAvailabilityResult } from "./types";
 import { attachCatalogRelationSummaries } from "./relation-summaries";
+import { shopCacheTag } from "@/app/shop/[siteSlug]/shop-catalog-shared";
 
 export async function listCatalogCategories(siteId: string) {
   try {
@@ -188,6 +189,7 @@ export async function upsertCatalogItem(item: Partial<CatalogItem>) {
     revalidatePath(`/pos`);
     if (item.site_id) {
       revalidatePath(`/shop/${item.site_id}`);
+      revalidateTag(shopCacheTag(item.site_id), "max");
     }
     
     return { data: data as CatalogItem };
@@ -222,6 +224,7 @@ export async function updateCatalogAvailability(
 
     revalidatePath(`/catalog`);
     revalidatePath(`/pos`);
+    revalidateTag(shopCacheTag(siteId), "max");
     
     return { data: data as CatalogItem };
   } catch (error: any) {
@@ -246,6 +249,7 @@ export async function deleteCatalogItem(siteId: string, catalogItemId: string) {
 
     revalidatePath(`/catalog`);
     revalidatePath(`/pos`);
+    revalidateTag(shopCacheTag(siteId), "max");
     
     return { success: true };
   } catch (error: any) {

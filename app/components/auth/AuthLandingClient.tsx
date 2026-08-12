@@ -10,6 +10,8 @@ import { WhatsApp } from "@/app/components/ui/icons"
 import { GitHubIcon } from "@/app/components/ui/social-icons"
 import { siteConfig } from "@/config"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { createClient } from "@/lib/supabase/client"
+import { resolveAuthenticatedSignInRedirect } from "@/lib/auth/post-auth-redirect"
 
 export function AuthLandingClient() {
   const { theme } = useTheme()
@@ -17,6 +19,7 @@ export function AuthLandingClient() {
   const { t } = useLocalization()
   const [authType, setAuthType] = useState<string>("signin")
   const [mounted, setMounted] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
 
   // Safari detection script que ejecuta inmediatamente
   useEffect(() => {
@@ -42,6 +45,38 @@ export function AuthLandingClient() {
       document.head.appendChild(script);
     }
   }, [])
+
+  // If already signed in, leave /auth immediately (hard navigation).
+  useEffect(() => {
+    let cancelled = false
+
+    const redirectIfAuthenticated = async () => {
+      try {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (cancelled) return
+
+        if (session?.user) {
+          const url = new URL(window.location.href)
+          const destination = resolveAuthenticatedSignInRedirect(
+            url.searchParams.get("returnTo")
+          )
+          window.location.replace(destination)
+          return
+        }
+      } catch (error) {
+        console.warn("[AuthLanding] session check failed:", error)
+      } finally {
+        if (!cancelled) setCheckingSession(false)
+      }
+    }
+
+    redirectIfAuthenticated()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const [returnTo, setReturnTo] = useState<string | null>(null)
   const [signupData, setSignupData] = useState<{
     email?: string
@@ -127,11 +162,17 @@ export function AuthLandingClient() {
   //   }
   // }, [])
 
+  if (checkingSession || !mounted) {
+    return (
+      <div className="min-h-screen dark:bg-black-paper bg-white-paper bg-white" />
+    )
+  }
+
   return (
     <div className="min-h-screen dark:bg-black-paper bg-white-paper bg-white">
       <div className="auth-page min-h-screen grid lg:grid-cols-2">
       {/* Left side - Branding and Info */}
-      <div className="flex flex-col justify-center px-6 py-16 lg:py-0 lg:px-12 xl:px-16 relative overflow-hidden dark:bg-black-paper bg-white-paper bg-[#f8f9fa] min-h-[100vh] lg:min-h-screen lg:sticky top-0 border-b lg:border-b-0 lg:border-r dark:border-white/5 border-black/5">
+      <div className="order-2 lg:order-1 flex flex-col justify-center px-6 py-16 lg:py-0 lg:px-12 xl:px-16 relative overflow-hidden dark:bg-black-paper bg-white-paper bg-[#f8f9fa] min-h-[100vh] lg:min-h-screen lg:sticky top-0 border-b lg:border-b-0 lg:border-r dark:border-white/5 border-black/5">
         {/* Animated background elements - Retro Futuristic (Mexico 68 inspired) */}
         <div className="absolute inset-0 overflow-hidden">
           {/* Op-art concentric circles (Mexico 68 geometric lines) */}
@@ -251,7 +292,7 @@ export function AuthLandingClient() {
       </div>
 
       {/* Right side - Auth Form */}
-      <div className="flex flex-col justify-center px-6 py-16 lg:py-12 lg:px-12 xl:px-16 dark:bg-black-paper bg-white-paper bg-white relative min-h-[100vh] lg:min-h-screen border-l dark:border-white/[0.02] border-black/5">
+      <div className="order-1 lg:order-2 flex flex-col justify-center px-6 py-16 lg:py-12 lg:px-12 xl:px-16 dark:bg-black-paper bg-white-paper bg-white relative min-h-[100vh] lg:min-h-screen border-l dark:border-white/[0.02] border-black/5">
         <div className="absolute inset-0 dark:bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.04),transparent_50%)] bg-[radial-gradient(ellipse_at_top_right,rgba(139,92,246,0.1),transparent_50%)] pointer-events-none z-0"></div>
         {mounted && (
           <div className="mx-auto w-full max-w-md relative z-10">

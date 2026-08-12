@@ -34,7 +34,7 @@ export default async function ReservationPage(props: { params: Promise<{ id: str
   }
 
   return (
-    <BuyerExperienceShell backUrl={backUrl}>
+    <BuyerExperienceShell backUrl={backUrl} variant="reservation">
       <ServicePdpLayout
         item={reservation.catalog_item}
         backUrl={backUrl}

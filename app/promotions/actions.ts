@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { PromotionParams, PromotionWithCampaign } from "./types";
 import { Promotion } from "@/app/types";
@@ -12,6 +12,7 @@ import {
   normalizePromotionChannels,
   normalizePromotionLocationIds,
 } from "./promotion-channels";
+import { shopCacheTag } from "@/app/shop/[siteSlug]/shop-catalog-shared";
 
 export async function listPromotions({ siteId, campaignId, status, q, page = 1, pageSize = 50 }: PromotionParams) {
   try {
@@ -59,7 +60,7 @@ export async function getPromotion(id: string) {
   return { data: data as any as PromotionWithCampaign };
 }
 
-export async function upsertPromotion(promotion: Partial<Promotion>) {
+export async function upsertPromotion(promotion: Partial<Promotion> & Record<string, unknown>) {
   try {
     const supabase = await createClient();
     const channels = promotion.channels
@@ -72,22 +73,42 @@ export async function upsertPromotion(promotion: Partial<Promotion>) {
           ? normalizePromotionLocationIds(promotion.location_ids)
           : promotion.location_ids;
 
+    // Never persist joined relations (e.g. campaigns) or other non-column fields
+    const {
+      campaigns: _campaigns,
+      catalog_item_ids: _catalogItemIds,
+      category_ids: _categoryIds,
+      required_items: _requiredItems,
+      required_categories: _requiredCategories,
+      ...rest
+    } = promotion as Partial<Promotion> & {
+      campaigns?: unknown
+      catalog_item_ids?: unknown
+      category_ids?: unknown
+      required_items?: unknown
+      required_categories?: unknown
+    }
+
+    const row = {
+      ...rest,
+      ...(channels ? { channels } : {}),
+      ...(location_ids !== undefined ? { location_ids } : {}),
+      updated_at: new Date().toISOString(),
+    }
+
     const { data, error } = await supabase
       .from("promotions")
-      .upsert({
-        ...promotion,
-        ...(channels ? { channels } : {}),
-        ...(location_ids !== undefined ? { location_ids } : {}),
-        updated_at: new Date().toISOString(),
-      })
+      .upsert(row)
       .select()
       .single();
 
     if (error) throw new Error(error.message);
     
     revalidatePath(`/promotions`);
+    revalidatePath(`/marketplace`);
     if (promotion.id) revalidatePath(`/promotions/${promotion.id}`);
     if (promotion.campaign_id) revalidatePath(`/campaigns/${promotion.campaign_id}`);
+    if (promotion.site_id) revalidateTag(shopCacheTag(promotion.site_id), "max");
     
     return { data: data as Promotion };
   } catch (error: any) {
@@ -147,6 +168,33 @@ export async function listPromotionCategories(promotionId: string, siteId: strin
   }
 }
 
+export async function listPromotionRequiredItems(promotionId: string, siteId: string) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("promotion_required_items")
+      .select(`
+        id, catalog_item_id, min_quantity,
+        catalog_items(name, sku, target_sale_price)
+      `)
+      .eq("promotion_id", promotionId)
+      .eq("site_id", siteId);
+
+    if (error) throw new Error(error.message);
+    
+    return { 
+      data: data.map((d: any) => ({
+        id: d.id,
+        catalog_item_id: d.catalog_item_id,
+        min_quantity: d.min_quantity,
+        catalog_item: Array.isArray(d.catalog_items) ? d.catalog_items[0] : d.catalog_items
+      }))
+    };
+  } catch (error: any) {
+    return { error: error.message, data: [] };
+  }
+}
+
 export async function setPromotionItems(promotionId: string, siteId: string, catalogItemIds: string[]) {
   try {
     const supabase = await createClient();
@@ -167,6 +215,7 @@ export async function setPromotionItems(promotionId: string, siteId: string, cat
     }
     
     revalidatePath(`/promotions/${promotionId}`);
+    revalidateTag(shopCacheTag(siteId), "max");
     return { success: true };
   } catch (error: any) {
     return { error: error.message };
@@ -193,6 +242,7 @@ export async function setPromotionCategories(promotionId: string, siteId: string
     }
     
     revalidatePath(`/promotions/${promotionId}`);
+    revalidateTag(shopCacheTag(siteId), "max");
     return { success: true };
   } catch (error: any) {
     return { error: error.message };
@@ -202,6 +252,12 @@ export async function setPromotionCategories(promotionId: string, siteId: string
 export async function deletePromotion(id: string) {
   try {
     const supabase = await createClient();
+    const { data: existing } = await supabase
+      .from("promotions")
+      .select("site_id")
+      .eq("id", id)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("promotions")
       .delete()
@@ -210,6 +266,107 @@ export async function deletePromotion(id: string) {
     if (error) throw new Error(error.message);
     
     revalidatePath(`/promotions`);
+    if (existing?.site_id) revalidateTag(shopCacheTag(existing.site_id), "max");
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function listPromotionRequiredCategories(promotionId: string, siteId: string) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("promotion_required_categories")
+      .select(`
+        id, catalog_category_id, min_quantity,
+        catalog_categories(name)
+      `)
+      .eq("promotion_id", promotionId)
+      .eq("site_id", siteId);
+
+    if (error) throw new Error(error.message);
+
+    return {
+      data: data.map((d: any) => ({
+        id: d.id,
+        catalog_category_id: d.catalog_category_id,
+        min_quantity: d.min_quantity,
+        catalog_category: Array.isArray(d.catalog_categories)
+          ? d.catalog_categories[0]
+          : d.catalog_categories,
+      })),
+    };
+  } catch (error: any) {
+    return { error: error.message, data: [] };
+  }
+}
+
+export async function setPromotionRequiredItems(
+  promotionId: string,
+  siteId: string,
+  items: { catalog_item_id: string; min_quantity: number }[]
+) {
+  try {
+    const supabase = await createClient();
+    
+    // Check permission
+    const { data: promo } = await supabase.from("promotions").select("id").eq("id", promotionId).eq("site_id", siteId).single();
+    if (!promo) throw new Error("Promotion not found or access denied");
+
+    await supabase.from("promotion_required_items").delete().eq("promotion_id", promotionId);
+
+    if (items.length > 0) {
+      const { error } = await supabase.from("promotion_required_items").insert(
+        items.map(item => ({
+          promotion_id: promotionId,
+          site_id: siteId,
+          catalog_item_id: item.catalog_item_id,
+          min_quantity: item.min_quantity
+        }))
+      );
+      if (error) throw new Error(error.message);
+    }
+    
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function setPromotionRequiredCategories(
+  promotionId: string,
+  siteId: string,
+  categories: { catalog_category_id: string; min_quantity: number }[]
+) {
+  try {
+    const supabase = await createClient();
+
+    const { data: promo } = await supabase
+      .from("promotions")
+      .select("id")
+      .eq("id", promotionId)
+      .eq("site_id", siteId)
+      .single();
+    if (!promo) throw new Error("Promotion not found or access denied");
+
+    await supabase
+      .from("promotion_required_categories")
+      .delete()
+      .eq("promotion_id", promotionId);
+
+    if (categories.length > 0) {
+      const { error } = await supabase.from("promotion_required_categories").insert(
+        categories.map((cat) => ({
+          promotion_id: promotionId,
+          site_id: siteId,
+          catalog_category_id: cat.catalog_category_id,
+          min_quantity: cat.min_quantity,
+        }))
+      );
+      if (error) throw new Error(error.message);
+    }
+
     return { success: true };
   } catch (error: any) {
     return { error: error.message };
@@ -218,7 +375,8 @@ export async function deletePromotion(id: string) {
 
 export async function previewPromotionForCart(params: {
   siteId: string;
-  code: string;
+  code?: string;
+  promotionId?: string;
   lines: PromotionCartLine[];
   buyerUserId?: string | null;
   leadId?: string | null;
@@ -242,39 +400,45 @@ export async function previewPromotionForCart(params: {
 export async function applyPromotionToOrder(
   siteId: string,
   saleOrderId: string,
-  promotionCode: string,
-  forceServiceRole: boolean = false
+  promotionCode: string | null | undefined,
+  forceServiceRole: boolean = false,
+  promotionId?: string | null,
 ) {
   try {
     const supabase = forceServiceRole ? await createServiceClient(true) : await createClient();
 
     const { data: items } = await supabase
       .from("sale_order_items")
-      .select("catalog_item_id, subtotal")
+      .select("catalog_item_id, subtotal, quantity")
       .eq("sale_order_id", saleOrderId);
     if (!items || items.length === 0) throw new Error("Order has no items");
 
     const { data: order } = await supabase
       .from("sale_orders")
-      .select("id, sale_id, tax_total, buyer_user_id, lead_id, origin_location_id, sales(source)")
+      .select("id, sale_id, tax_total, buyer_user_id, origin_location_id, sales(source, lead_id)")
       .eq("id", saleOrderId)
       .single();
     if (!order) throw new Error("Order not found");
 
-    const saleSource = Array.isArray((order as any).sales)
-      ? (order as any).sales[0]?.source
-      : (order as any).sales?.source;
+    // lead_id lives on sales (not sale_orders)
+    const saleRel = Array.isArray((order as any).sales)
+      ? (order as any).sales[0]
+      : (order as any).sales;
+    const saleSource = saleRel?.source ?? null;
+    const saleLeadId = saleRel?.lead_id ?? null;
 
     const resolved = await resolvePromotionDiscount({
       siteId,
       code: promotionCode,
+      promotionId,
       lines: items.map((item: any) => ({
         catalogItemId: item.catalog_item_id,
         subtotal: Number(item.subtotal),
+        quantity: Number(item.quantity) || 1,
       })),
       buyerUserId: order.buyer_user_id,
-      leadId: order.lead_id,
-      source: saleSource || null,
+      leadId: saleLeadId,
+      source: saleSource,
       locationId: order.origin_location_id || null,
       excludeOrderId: saleOrderId,
       forceServiceRole,
@@ -282,14 +446,14 @@ export async function applyPromotionToOrder(
 
     if ("error" in resolved) throw new Error(resolved.error);
 
-    const { promotionId, discount, orderSubtotal } = resolved.data;
+    const { promotionId: resolvedPromoId, discount, orderSubtotal } = resolved.data;
     const taxTotal = Number(order.tax_total) || 0;
     const total = Math.max(0, orderSubtotal - discount + taxTotal);
 
     const { error: updateError } = await supabase
       .from("sale_orders")
       .update({
-        promotion_id: promotionId,
+        promotion_id: resolvedPromoId,
         discount_total: discount,
         total: total,
       })
@@ -297,20 +461,33 @@ export async function applyPromotionToOrder(
 
     if (updateError) throw new Error(updateError.message);
 
-    if (order.sale_id) {
-      await supabase.from("sales").update({ amount: total, amount_due: total }).eq("id", order.sale_id);
-    }
-
     const { data: promo } = await supabase
       .from("promotions")
-      .select("usage_count")
-      .eq("id", promotionId)
+      .select("usage_count, campaign_id")
+      .eq("id", resolvedPromoId)
       .single();
 
     await supabase
       .from("promotions")
       .update({ usage_count: (promo?.usage_count ?? 0) + 1 })
-      .eq("id", promotionId);
+      .eq("id", resolvedPromoId);
+
+    // Attribute sale + lead to the promotion's campaign (any channel)
+    const campaignId = promo?.campaign_id || null;
+    if (order.sale_id) {
+      const saleUpdate: Record<string, unknown> = {
+        amount: total,
+        amount_due: total,
+      };
+      if (campaignId) saleUpdate.campaign_id = campaignId;
+      await supabase.from("sales").update(saleUpdate).eq("id", order.sale_id);
+    }
+    if (campaignId && saleLeadId) {
+      await supabase
+        .from("leads")
+        .update({ campaign_id: campaignId })
+        .eq("id", saleLeadId);
+    }
 
     return { success: true, discount, total };
   } catch (error: any) {

@@ -7,7 +7,13 @@ import { listLocations } from "@/app/inventory/actions";
 import { getLeads } from "@/app/leads/actions";
 import { listOrders } from "@/app/orders/actions";
 import { listPriceLists } from "@/app/price-lists/actions";
-import { listPromotions, listPromotionItems, listPromotionCategories } from "@/app/promotions/actions";
+import {
+  listPromotions,
+  listPromotionItems,
+  listPromotionCategories,
+  listPromotionRequiredItems,
+  listPromotionRequiredCategories,
+} from "@/app/promotions/actions";
 import { isPromotionAllowedForChannel } from "@/app/promotions/promotion-channels";
 
 export type PosSnapshot = {
@@ -93,9 +99,11 @@ export async function pullPosSnapshot(siteId: string): Promise<
     );
     const promotions = await Promise.all(
       posPromos.map(async (promo: any) => {
-        const [itemsRes, catsRes] = await Promise.all([
+        const [itemsRes, catsRes, reqRes, reqCatsRes] = await Promise.all([
           listPromotionItems(promo.id, siteId),
           listPromotionCategories(promo.id, siteId),
+          listPromotionRequiredItems(promo.id, siteId),
+          listPromotionRequiredCategories(promo.id, siteId),
         ]);
         return {
           ...promo,
@@ -104,6 +112,15 @@ export async function pullPosSnapshot(siteId: string): Promise<
           ),
           category_ids: (catsRes?.data || []).map(
             (r: any) => r.catalog_category_id,
+          ),
+          required_items: (reqRes?.data || []).map(
+            (r: any) => ({ catalog_item_id: r.catalog_item_id, min_quantity: r.min_quantity })
+          ),
+          required_categories: (reqCatsRes?.data || []).map(
+            (r: any) => ({
+              catalog_category_id: r.catalog_category_id,
+              min_quantity: r.min_quantity,
+            })
           ),
         };
       }),

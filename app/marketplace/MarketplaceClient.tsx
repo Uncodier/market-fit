@@ -1,13 +1,19 @@
 "use client"
-
 import React, { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { CheckoutLine } from "@/app/commerce/checkout"
-import { checkoutCartRequest, createStripeOrderCheckout } from "@/app/commerce/checkout-client"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
+import { getDeviceOrders } from "@/app/commerce/device-order-storage"
+import { buildPublicDocPath } from "@/app/documents/public-token"
+import { withInternalFrom } from "@/app/documents/internal-back"
+import { runMarketplaceCheckout } from "./run-marketplace-checkout"
 import { CatalogItem } from "@/app/types"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
-import { useSearchParams, useRouter } from "next/navigation"
+import { usePathname, useSearchParams, useRouter } from "next/navigation"
+import {
+  buildMarketplaceCategorySearch,
+  parseMarketplaceKind,
+  parseMarketplaceSubtype,
+} from "./marketplace-category-url"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { shouldUseCompactMobileListing } from "@/app/components/commerce/CommerceProductGrid"
@@ -16,17 +22,27 @@ import { getSiteInfoBySlug } from "@/app/book/actions"
 import { listPublicLocations } from "@/app/inventory/actions"
 import { MarketplaceCartPanel } from "./MarketplaceCartPanel"
 import { MarketplaceFooter } from "./MarketplaceFooter"
-import {
-  MarketplaceCategoryChips,
-  MarketplaceFilterSidebar,
-} from "./MarketplaceCategoryChips"
+import { MarketplaceCategoryChips, MarketplaceFilterSidebar } from "./MarketplaceCategoryChips"
 import { MarketplaceHeader } from "./MarketplaceHeader"
 import { MarketplaceProductList } from "./MarketplaceProductList"
 import { useMarketplaceProducts } from "./useMarketplaceProducts"
+import type { PromoBadge, StorefrontPromoCard } from "@/app/promotions/promotion-merchandising"
+import { readPendingStorefrontPromo } from "@/app/components/commerce/PromoBundleExperience"
+import { MarketplaceDiscountsFeed } from "./MarketplaceDiscountsFeed"
 import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
 import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictions"
 import { formatDeliveryTime } from "@/app/commerce/delivery-time"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
+import {
+  buyerGeoToAddress,
+  isBuyerLocationIncompatible,
+  isItemLocationAvailable,
+} from "@/app/commerce/buyer-location-availability"
+import { useBuyerLocation } from "@/app/components/commerce/use-buyer-location"
+import {
+  buyerLocationLeadingChip,
+  BuyerLocationSheetHost,
+} from "@/app/components/commerce/BuyerLocationControls"
 
 interface MarketplaceItem extends CatalogItem {
   site: { id: string; name: string; logo_url?: string | null; settings?: any }
@@ -43,38 +59,59 @@ export function MarketplaceClient({
   initialItems, 
   initialCount,
   initialTotalPages,
-  buyerGeo
+  buyerGeo,
+  discountsFeed = [],
+  promoBadgesByItemId = {},
 }: { 
   initialItems: MarketplaceItem[],
   initialCount: number,
   initialTotalPages: number,
-  buyerGeo?: BuyerGeo
+  buyerGeo?: BuyerGeo,
+  discountsFeed?: StorefrontPromoCard[],
+  promoBadgesByItemId?: Record<string, PromoBadge>,
 }) {
   const { t, locale, setLocale } = useLocalization()
   const { user } = useAuth()
   const searchParams = useSearchParams()
+  const pathname = usePathname() || "/marketplace"
   const router = useRouter()
   const session = user ? { user } : null
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>([])
   const [isCartLoaded, setIsCartLoaded] = useState(false)
-  const filterParam = searchParams?.get("filter")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedKind, setSelectedKind] = useState<string>(filterParam === "recurring" ? "recurring" : "all")
-  const [selectedSubtype, setSelectedSubtype] = useState<string>("all")
-  const [showOnlyRecurring, setShowOnlyRecurring] = useState(filterParam === "recurring")
+  const selectedKind = parseMarketplaceKind(searchParams?.get("filter"))
+  const selectedSubtype = parseMarketplaceSubtype(searchParams?.get("subtype"))
+  const showOnlyRecurring = selectedKind === "recurring"
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const searchPlaceholder = t("marketplace.searchPlaceholder") || "Search everything..."
   const searchLabel = t("common.search") || "Search"
+  const showingDiscounts = selectedKind === "discounts"
 
+  const setSelectedKind = (kind: string) => {
+    const qs = buildMarketplaceCategorySearch(searchParams, {
+      kind,
+      subtype: kind === "digital_asset" ? selectedSubtype : "all",
+    })
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
+
+  const setSelectedSubtype = (subtype: string) => {
+    const qs = buildMarketplaceCategorySearch(searchParams, {
+      kind: selectedKind,
+      subtype,
+    })
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
+
+  const productKind = showingDiscounts ? "all" : selectedKind
   const { items: rawItems, page, setPage, totalPages, isLoading } = useMarketplaceProducts(
     initialItems,
     initialTotalPages,
     searchQuery,
-    selectedKind,
+    productKind,
     selectedSubtype,
     showOnlyRecurring,
-    filterParam
   )
   const items = rawItems as MarketplaceItem[];
   const compactMobile = shouldUseCompactMobileListing(initialCount || 0)
@@ -94,7 +131,9 @@ export function MarketplaceClient({
   // Checkout states
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [orderSuccess, setOrderSuccess] = useState(false)
+  const [successOrderToken, setSuccessOrderToken] = useState<string | null>(null)
   const [promotionCode, setPromotionCode] = useState("")
+  const [promotionId, setPromotionId] = useState<string | null>(null)
   const [promoDiscount, setPromoDiscount] = useState(0)
   const [customerName, setCustomerName] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
@@ -112,22 +151,77 @@ export function MarketplaceClient({
   const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
 
+  const buyerLocation = useBuyerLocation({
+    scope: "marketplace",
+    initialGeo: buyerGeo,
+    alwaysShowPill: true,
+    setLocationFallback: t("shop.location.setLocation") || "Set location",
+  })
+
   const businessHours = siteSettings?.business_hours || []
   const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
   const nextOpenSlot = !isOpen ? getNextOpenSlot(businessHours, new Date(), locale) : null
 
   const isLocationAvailable = React.useMemo(() => {
-    if (!siteSettings?.locations || siteSettings.locations.length === 0) return true;
-    if (fulfillment === 'ship' && shippingAddress.city && shippingAddress.zip) {
-      return evaluateLocationRestrictions(siteSettings.locations, shippingAddress).available;
+    // Pickup / dine-in at a chosen store is not gated by buyer IP geo
+    if (
+      originLocationId &&
+      (fulfillment === "pickup" || fulfillment === "dine_in")
+    ) {
+      return true
     }
-    if (buyerGeo) {
-      return evaluateLocationRestrictions(siteSettings.locations, buyerGeo).available;
+    if (!siteSettings?.locations || siteSettings.locations.length === 0) return true
+    if (fulfillment === "ship" && shippingAddress.city && shippingAddress.zip) {
+      return evaluateLocationRestrictions(siteSettings.locations, shippingAddress).available
     }
-    return true;
-  }, [siteSettings, shippingAddress, fulfillment, buyerGeo]);
+    const geo = buyerLocation.effectiveBuyerGeo
+    if (geo) {
+      return evaluateLocationRestrictions(
+        siteSettings.locations,
+        buyerGeoToAddress(geo)
+      ).available
+    }
+    return true
+  }, [
+    siteSettings,
+    shippingAddress,
+    fulfillment,
+    originLocationId,
+    buyerLocation.effectiveBuyerGeo,
+  ])
 
-  const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop);
+  const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop)
+
+  // Red chip when current area is incompatible with cart seller, or with any visible listing
+  const locationChipRestricted = React.useMemo(() => {
+    if (siteSettings?.locations?.length) {
+      return isBuyerLocationIncompatible({
+        settingsLocations: siteSettings.locations,
+        buyerGeo: buyerLocation.effectiveBuyerGeo,
+        selectedLocationId:
+          originLocationId &&
+          (fulfillment === "pickup" || fulfillment === "dine_in")
+            ? originLocationId
+            : null,
+      })
+    }
+    if (!buyerLocation.effectiveBuyerGeo) return false
+    return items.some(
+      (item) =>
+        !isItemLocationAvailable({
+          item,
+          settingsLocations: item.site?.settings?.locations || null,
+          buyerGeo: buyerLocation.effectiveBuyerGeo,
+        })
+    )
+  }, [
+    siteSettings,
+    buyerLocation.effectiveBuyerGeo,
+    originLocationId,
+    fulfillment,
+    items,
+  ])
+
 
   // Fetch settings when seller changes
   useEffect(() => {
@@ -154,7 +248,6 @@ export function MarketplaceClient({
     }
   }, [cart])
 
-
   // URL params for company mode
   const initialOwnerSiteId = searchParams?.get("ownerSiteId")
   const returnTo = searchParams?.get("returnTo")
@@ -172,16 +265,33 @@ export function MarketplaceClient({
   useEffect(() => {
     if (typeof window === "undefined") return
     const url = new URL(window.location.href)
-    if (url.searchParams.get("success") === "true") {
-      setOrderSuccess(true)
+    if (
+      url.searchParams.get("success") === "true" ||
+      url.searchParams.get("ordered") === "1"
+    ) {
+      const siteIdFromCart = getCartItems("cart", "marketplace")[0]?.site_id
       setCart([])
       clearCart("cart", "marketplace")
+      setIsCartOpen(false)
+      if (siteIdFromCart) {
+        setSuccessOrderToken(getDeviceOrders(siteIdFromCart)[0]?.publicAccessToken || null)
+      }
+      setOrderSuccess(true)
       url.searchParams.delete("success")
       url.searchParams.delete("order_id")
+      url.searchParams.delete("ordered")
       window.history.replaceState({}, "", url.toString())
+      setIsCartLoaded(true)
     } else {
       setCart(getCartItems("cart", "marketplace"))
-      if (url.searchParams.get("cart") === "1") setIsCartOpen(true)
+      const pending = readPendingStorefrontPromo()
+      if (pending && pending.surface === "marketplace") {
+        if (pending.code) setPromotionCode(pending.code)
+        setPromotionId(pending.promotionId)
+        setIsCartOpen(true)
+      } else if (url.searchParams.get("cart") === "1") {
+        setIsCartOpen(true)
+      }
       setIsCartLoaded(true)
     }
   }, [])
@@ -222,146 +332,66 @@ export function MarketplaceClient({
   const payableTotal = Math.max(0, subtotal - promoDiscount)
   const cartCount = cart.reduce((s, c) => s + c.cartQty, 0)
 
-  const handleCheckout = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (cart.length === 0) return
-
-    if (!isLocationAvailable) {
-      toast.error(t('checkout.unavailableLocation') || 'Service is not available in your area.');
-      return;
-    }
-
-    if (orderTiming === 'scheduled' && !scheduledFor) {
-      toast.error(t('checkout.selectTimeRequired') || 'Please select a date and time for your order.');
-      return;
-    }
-    
-    const finalScheduledFor = orderTiming === 'scheduled' ? scheduledFor?.toISOString() : 
-                              (orderTiming === 'now' && !isOpen && nextOpenSlot ? nextOpenSlot.at.toISOString() : undefined);
-    
-    const requiresAuth = cart.some((c: any) => c.kind === "digital_asset" || c.is_recurring)
-    if (requiresAuth && !session?.user) {
-      toast.error(t("checkout.identity.signInToAccess") || "Please sign in to purchase digital items or subscriptions.")
-      return
-    }
-
-    const resolvedName =
-      customerName ||
-      session?.user?.user_metadata?.name ||
-      session?.user?.user_metadata?.full_name ||
-      session?.user?.email ||
-      ""
-    const resolvedEmail = customerEmail || session?.user?.email || ""
-
-    if (!resolvedName || !resolvedEmail) {
-      toast.error("Please enter your name and email")
-      return
-    }
-
-    if (fulfillment === 'ship' && (!shippingAddress.line1 || !shippingAddress.city || !shippingAddress.zip)) {
-      toast.error("Please enter a complete shipping address")
-      return
-    }
-
-    if (fulfillment !== 'none' && !originLocationId) {
-      toast.error("Store location error. Please try again.")
-      return
-    }
-
-    if (!paymentMethod) {
-      toast.error("Please select a payment method")
-      return
-    }
-
-    setCheckoutLoading(true)
-    let redirectingToStripe = false
-
-    // Group by siteId since checkoutCart currently processes one site at a time.
-    const uniqueSiteIds = Array.from(new Set(cart.map(c => c.site_id)))
-    
-    if (uniqueSiteIds.length > 1) {
-      toast.error("V1 only supports checking out from one seller at a time. Please remove items from other sellers.")
-      setCheckoutLoading(false)
-      return
-    }
-    
-    const siteId = uniqueSiteIds[0]
-
-    try {
-      const lines: CheckoutLine[] = cart.map(c => ({
-        catalogItemId: c.id,
-        quantity: c.cartQty,
-        reservationStart: c.reservationStart,
-        reservationEnd: c.reservationEnd
-      }))
-
-      const res = await checkoutCartRequest({
-        siteId: siteId,
-        lines,
-        customerName: resolvedName,
-        customerEmail: resolvedEmail,
-        buyerUserId: session?.user?.id,
-        ownerSiteId,
-        fulfillment,
-        originLocationId: originLocationId,
-        shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
-        promotionCode: promotionCode || undefined,
-        scheduledFor: finalScheduledFor,
-        source: 'marketplace',
-        paymentMethod: paymentMethod === 'cash_on_pickup' ? 'cash' : paymentMethod === 'bank_transfer' ? 'bank_transfer' : undefined,
-        intent: payableTotal === 0 ? 'complete' : (paymentMethod === 'cash_on_pickup' || paymentMethod === 'bank_transfer' ? 'send' : 'draft')
-      })
-
-      if (res.error) {
-        toast.error(res.error)
-        return
-      }
-
-      if (payableTotal > 0 && paymentMethod === 'card') {
-        const stripeData = await createStripeOrderCheckout({
-          orderId: res.orderId!,
-          siteId: siteId,
-          returnUrl: window.location.origin + (returnTo?.startsWith('/') ? returnTo : '/marketplace')
-        })
-        if (stripeData.url) {
-          redirectingToStripe = true
-          window.location.href = stripeData.url
-          return
+  const handleCheckout = (e: React.FormEvent) =>
+    runMarketplaceCheckout({
+      e,
+      cart,
+      session,
+      customerName,
+      customerEmail,
+      fulfillment,
+      originLocationId,
+      shippingAddress,
+      paymentMethod,
+      orderTiming,
+      scheduledFor,
+      isOpen,
+      nextOpenSlot,
+      isLocationAvailable,
+      payableTotal,
+      promotionCode,
+      promotionId,
+      ownerSiteId,
+      returnTo,
+      t,
+      setCheckoutLoading,
+      onSuccess: () => {
+        const siteIdFromCart = cart[0]?.site_id
+        setCart([])
+        clearCart("cart", "marketplace")
+        setIsCartOpen(false)
+        if (siteIdFromCart) {
+          setSuccessOrderToken(getDeviceOrders(siteIdFromCart)[0]?.publicAccessToken || null)
         }
-        toast.error(stripeData.error || "Failed to initiate payment")
-        return
-      }
-
-      setOrderSuccess(true)
-      setCart([])
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-
-      if (returnTo?.startsWith('/')) {
-        router.push(returnTo)
-      }
-    } catch (e: any) {
-      console.error('Checkout failed:', e)
-      toast.error(e?.message || "Checkout failed. Please try again.")
-    } finally {
-      if (!redirectingToStripe) {
-        setCheckoutLoading(false)
-      }
-    }
-  }
+        setOrderSuccess(true)
+        window.scrollTo({ top: 0, behavior: "smooth" })
+      },
+      onReturn: () => {
+        if (returnTo?.startsWith("/")) router.push(returnTo)
+      },
+    })
 
   if (orderSuccess) {
+    const orderHref = successOrderToken
+      ? withInternalFrom(buildPublicDocPath("so", successOrderToken), "/marketplace")
+      : null
     return (
       <CommerceOrderSuccess
         title={t('marketplace.success.title') || 'Order Confirmed'}
-        description={t('marketplace.success.desc') || "Thank you for your purchase. We've sent a confirmation email with your order details."}
+        description={t('marketplace.success.desc') || "Thank you for your purchase. You can view your order summary or keep shopping."}
         continueLabel={t('marketplace.success.continueShopping') || 'Continue Shopping'}
-        primaryHref={returnTo?.startsWith('/') ? returnTo : "/buyer"}
-        primaryLabel={t('marketplace.success.viewPurchases') || 'View My Purchases'}
+        primaryHref={orderHref || undefined}
+        primaryLabel={
+          orderHref
+            ? (t('checkout.success.viewOrder') || 'View order summary')
+            : undefined
+        }
         paymentMethod={paymentMethod}
         bankTransfer={siteSettings?.shop?.bank_transfer}
         onContinue={() => {
           setOrderSuccess(false)
           setPaymentMethod('')
+          setSuccessOrderToken(null)
         }}
       />
     )
@@ -394,6 +424,11 @@ export function MarketplaceClient({
             selectedSubtype={selectedSubtype}
             setSelectedSubtype={setSelectedSubtype}
             effectiveKind={effectiveKind}
+            leadingChip={buyerLocationLeadingChip(
+              buyerLocation,
+              "w-full justify-start max-w-none",
+              locationChipRestricted
+            )}
           />
 
           <div className="flex-1 min-w-0 w-full">
@@ -403,20 +438,36 @@ export function MarketplaceClient({
               selectedSubtype={selectedSubtype}
               setSelectedSubtype={setSelectedSubtype}
               effectiveKind={effectiveKind}
+              leadingChip={buyerLocationLeadingChip(
+                buyerLocation,
+                undefined,
+                locationChipRestricted
+              )}
             />
-            <MarketplaceProductList
-              items={items}
-              initialCount={initialCount || 0}
-              isLoading={isLoading}
-              compactMobile={compactMobile}
-              page={page}
-              totalPages={totalPages}
-              setPage={setPage}
-              onPrimaryAction={addToCart}
-            />
+            {showingDiscounts ? (
+              <MarketplaceDiscountsFeed
+                discountsFeed={discountsFeed}
+                compactMobile={compactMobile}
+              />
+            ) : (
+              <MarketplaceProductList
+                items={items}
+                initialCount={initialCount || 0}
+                isLoading={isLoading}
+                compactMobile={compactMobile}
+                page={page}
+                totalPages={totalPages}
+                setPage={setPage}
+                onPrimaryAction={addToCart}
+                buyerGeo={buyerLocation.effectiveBuyerGeo}
+                promoBadgesByItemId={promoBadgesByItemId}
+              />
+            )}
           </div>
         </div>
       </main>
+
+      <BuyerLocationSheetHost location={buyerLocation} />
 
       {isCartOpen && (
         <MarketplaceCartPanel

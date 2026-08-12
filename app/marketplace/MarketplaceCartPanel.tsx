@@ -12,6 +12,7 @@ import {
   intersectPickupLocationIds,
   resolveOrderShippingCost
 } from "@/app/commerce/delivery-options"
+import { resolveCheckoutCopyMode, checkoutLabelKey } from "@/app/commerce/checkout-labels"
 import { 
   getItemPaymentOptions, 
   intersectPaymentOptions, 
@@ -61,6 +62,8 @@ export function MarketplaceCartPanel({
 }: any) {
   const { formatPrice } = useDisplayCurrency()
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
+
+  const copyMode = resolveCheckoutCopyMode(cart)
   
   const allowedOptions = useMemo(() => {
     return intersectDeliveryOptions(cart.map((i: any) => ({
@@ -93,6 +96,7 @@ export function MarketplaceCartPanel({
     return cart.map((item: any) => ({
       catalogItemId: item.id,
       subtotal: (item.cartPrice ?? item.target_sale_price ?? 0) * (item.cartQty || 1),
+      quantity: item.cartQty || 1,
     }))
   }, [cart])
 
@@ -211,6 +215,7 @@ export function MarketplaceCartPanel({
               nextOpenSlot={nextOpenSlot}
               deliveryTimeLabel={deliveryTimeLabel}
               t={t}
+              copyMode={copyMode}
             />
               </form>
             </div>
@@ -264,7 +269,7 @@ export function MarketplaceCartPanel({
               {checkoutLoading
                 ? (t('marketplace.checkout.processing') || "Processing securely...")
                 : paymentMethod === 'cash_on_pickup'
-                  ? (t('checkout.placeOrderCash') || 'Place order • Pay at store')
+                  ? (t(checkoutLabelKey('checkout.placeOrderCash', copyMode)) || 'Place order • Pay at store')
                   : paymentMethod === 'bank_transfer'
                     ? (t('checkout.placeOrderTransfer') || 'Place order • Pay by transfer')
                     : (t('checkout.paySecurely') || 'Pay securely')}

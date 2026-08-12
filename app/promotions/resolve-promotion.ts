@@ -1,14 +1,21 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { assertPromotionChannelAccess } from "./promotion-channels";
+import { checkPromotionWeekday, checkPromotionRequiredItems } from "./promotion-conditions";
+import { computeBogoDiscount, lineUnitPrice } from "./bogo-discount";
 
 export type PromotionCartLine = {
   catalogItemId: string;
   subtotal: number;
+  quantity?: number;
+  categoryId?: string | null;
 };
 
 export type ResolvePromotionParams = {
   siteId: string;
-  code: string;
+  /** Coupon code. Optional when promotionId is provided. */
+  code?: string | null;
+  /** Direct promotion id for automatic / condition-based promos without a code. */
+  promotionId?: string | null;
   lines: PromotionCartLine[];
   buyerUserId?: string | null;
   leadId?: string | null;
@@ -49,25 +56,42 @@ export async function resolvePromotionDiscount(
       locationId,
       excludeOrderId,
       forceServiceRole = false,
+      promotionId: promotionIdParam,
     } = params;
 
-    const code = normalizePromotionCode(params.code);
-    if (!code) return { error: "Invalid or inactive promotion code" };
+    const code = normalizePromotionCode(params.code || "");
+    if (!code && !promotionIdParam) {
+      return { error: "Invalid or inactive promotion code" };
+    }
     if (!lines || lines.length === 0) return { error: "Order has no items" };
 
     const supabase = forceServiceRole
       ? await createServiceClient(true)
       : await createClient();
 
-    const { data: promo } = await supabase
+    const promoQuery = supabase
       .from("promotions")
       .select("*")
       .eq("site_id", siteId)
-      .eq("code", code)
-      .eq("status", "active")
-      .single();
+      .eq("status", "active");
+
+    const [{ data: promo }, { data: settings }] = await Promise.all([
+      promotionIdParam
+        ? promoQuery.eq("id", promotionIdParam).maybeSingle()
+        : promoQuery.eq("code", code).maybeSingle(),
+      supabase
+        .from("settings")
+        .select("business_hours")
+        .eq("site_id", siteId)
+        .maybeSingle(),
+    ]);
 
     if (!promo) return { error: "Invalid or inactive promotion code" };
+
+    // Codeless promotions may only be applied by id (condition-based auto promos)
+    if (!promotionIdParam && !promo.code) {
+      return { error: "Invalid or inactive promotion code" };
+    }
 
     const channelError = assertPromotionChannelAccess({
       channels: promo.channels,
@@ -85,6 +109,28 @@ export async function resolvePromotionDiscount(
       return { error: "Promotion has expired" };
     }
 
+    const businessHours = settings?.business_hours;
+    const parsedHours =
+      typeof businessHours === "string"
+        ? (() => {
+            try {
+              return JSON.parse(businessHours);
+            } catch {
+              return null;
+            }
+          })()
+        : businessHours;
+    const timezone =
+      Array.isArray(parsedHours) && parsedHours.length > 0
+        ? parsedHours[0]?.timezone
+        : null;
+
+    const weekdayError = checkPromotionWeekday({
+      activeWeekdays: promo.active_weekdays,
+      timezone,
+    });
+    if (weekdayError) return { error: weekdayError };
+
     if (promo.usage_limit && promo.usage_count >= promo.usage_limit) {
       return { error: "Promotion usage limit reached" };
     }
@@ -95,18 +141,66 @@ export async function resolvePromotionDiscount(
       return { error: `Order must be at least ${promo.min_order_amount}` };
     }
 
+    const [{ data: requiredItems }, { data: requiredCategories }] =
+      await Promise.all([
+        supabase
+          .from("promotion_required_items")
+          .select("catalog_item_id, min_quantity")
+          .eq("promotion_id", promo.id),
+        supabase
+          .from("promotion_required_categories")
+          .select("catalog_category_id, min_quantity")
+          .eq("promotion_id", promo.id),
+      ]);
+
+    if (
+      (requiredItems && requiredItems.length > 0) ||
+      (requiredCategories && requiredCategories.length > 0)
+    ) {
+      // Resolve category_id for cart lines when not already provided
+      let linesWithCategories = lines;
+      const needsCategoryLookup = lines.some((l) => l.categoryId == null);
+      if (needsCategoryLookup && lines.length > 0) {
+        const itemIds = lines.map((i) => i.catalogItemId);
+        const { data: catalogItems } = await supabase
+          .from("catalog_items")
+          .select("id, category_id")
+          .in("id", itemIds);
+        const catMap = new Map(
+          (catalogItems || []).map((ci: any) => [ci.id, ci.category_id])
+        );
+        linesWithCategories = lines.map((l) => ({
+          ...l,
+          categoryId: l.categoryId ?? catMap.get(l.catalogItemId) ?? null,
+        }));
+      }
+
+      const reqItemsError = checkPromotionRequiredItems({
+        mode: promo.required_items_mode as "all" | "any",
+        requiredItems: requiredItems || [],
+        requiredCategories: requiredCategories || [],
+        lines: linesWithCategories,
+      });
+      if (reqItemsError) return { error: reqItemsError };
+    }
+
     if (promo.usage_limit_per_user) {
-      const identityField = buyerUserId ? "buyer_user_id" : leadId ? "lead_id" : null;
-      if (!identityField) {
+      if (!buyerUserId && !leadId) {
         return { error: "Promotion requires an identifiable buyer" };
       }
-      const identityValue = buyerUserId || leadId;
 
-      let usageQuery = supabase
-        .from("sale_orders")
-        .select("id", { count: "exact", head: true })
-        .eq("promotion_id", promo.id)
-        .eq(identityField, identityValue);
+      // buyer_user_id is on sale_orders; lead_id is on sales
+      let usageQuery = buyerUserId
+        ? supabase
+            .from("sale_orders")
+            .select("id", { count: "exact", head: true })
+            .eq("promotion_id", promo.id)
+            .eq("buyer_user_id", buyerUserId)
+        : supabase
+            .from("sale_orders")
+            .select("id, sales!inner(lead_id)", { count: "exact", head: true })
+            .eq("promotion_id", promo.id)
+            .eq("sales.lead_id", leadId!);
 
       if (excludeOrderId) {
         usageQuery = usageQuery.neq("id", excludeOrderId);
@@ -124,42 +218,74 @@ export async function resolvePromotionDiscount(
     }
 
     let discount = 0;
-    if (promo.applies_to === "all") {
-      discount =
-        promo.discount_type === "fixed"
-          ? Number(promo.discount_value)
-          : orderSubtotal * (Number(promo.discount_value) / 100);
-    } else {
-      const { data: pItems } = await supabase
-        .from("promotion_catalog_items")
-        .select("catalog_item_id")
-        .eq("promotion_id", promo.id);
-      const eligibleItemIds = new Set(pItems?.map((p: any) => p.catalog_item_id) || []);
+    const { data: pItems } = await supabase
+      .from("promotion_catalog_items")
+      .select("catalog_item_id")
+      .eq("promotion_id", promo.id);
+    const eligibleItemIds = new Set(
+      pItems?.map((p: any) => p.catalog_item_id) || []
+    );
 
-      const { data: pCats } = await supabase
-        .from("promotion_catalog_categories")
-        .select("catalog_category_id")
-        .eq("promotion_id", promo.id);
-      const eligibleCategoryIds = new Set(pCats?.map((p: any) => p.catalog_category_id) || []);
+    const { data: pCats } = await supabase
+      .from("promotion_catalog_categories")
+      .select("catalog_category_id")
+      .eq("promotion_id", promo.id);
+    const eligibleCategoryIds = new Set(
+      pCats?.map((p: any) => p.catalog_category_id) || []
+    );
 
-      if (eligibleItemIds.size === 0 && eligibleCategoryIds.size === 0) {
-        return { error: "Promotion has no eligible products or categories configured" };
-      }
+    // selected_items with no targets configured → treat as entire order
+    const scopesEntireOrder =
+      promo.applies_to === "all" ||
+      (eligibleItemIds.size === 0 && eligibleCategoryIds.size === 0);
 
+    let itemCatMap = new Map<string, string | null>();
+    if (!scopesEntireOrder) {
       const itemIds = lines.map((i) => i.catalogItemId);
       const { data: catalogItems } = await supabase
         .from("catalog_items")
         .select("id, category_id")
         .in("id", itemIds);
-      const itemCatMap = new Map(catalogItems?.map((ci: any) => [ci.id, ci.category_id]));
+      itemCatMap = new Map(
+        catalogItems?.map((ci: any) => [ci.id, ci.category_id])
+      );
+    }
 
+    const isLineEligible = (item: PromotionCartLine) => {
+      if (scopesEntireOrder) return true;
+      const catId = item.categoryId ?? itemCatMap.get(item.catalogItemId);
+      return (
+        eligibleItemIds.has(item.catalogItemId) ||
+        (!!catId && eligibleCategoryIds.has(catId))
+      );
+    };
+
+    if (promo.discount_type === "bogo") {
+      const bogoLines = lines.map((item) => ({
+        unitPrice: lineUnitPrice(Number(item.subtotal), item.quantity),
+        quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
+        eligible: isLineEligible(item),
+      }));
+      if (!bogoLines.some((l) => l.eligible)) {
+        return { error: "No eligible items for this promotion" };
+      }
+      discount = computeBogoDiscount(
+        bogoLines,
+        promo.bogo_buy_qty ?? 1,
+        promo.bogo_get_qty ?? 1
+      );
+      if (discount <= 0) {
+        return { error: "Not enough eligible items for this promotion" };
+      }
+    } else if (scopesEntireOrder) {
+      discount =
+        promo.discount_type === "fixed"
+          ? Number(promo.discount_value)
+          : orderSubtotal * (Number(promo.discount_value) / 100);
+    } else {
       let eligibleSubtotal = 0;
       for (const item of lines) {
-        const catId = itemCatMap.get(item.catalogItemId);
-        const isEligible =
-          eligibleItemIds.has(item.catalogItemId) ||
-          (catId && eligibleCategoryIds.has(catId));
-        if (isEligible) eligibleSubtotal += Number(item.subtotal);
+        if (isLineEligible(item)) eligibleSubtotal += Number(item.subtotal);
       }
 
       if (eligibleSubtotal <= 0) {

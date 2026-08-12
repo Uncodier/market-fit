@@ -1,9 +1,28 @@
 import type { CheckoutCartParams } from '@/app/commerce/checkout'
 import { resolveAppApiUrl } from '@/app/commerce/app-api-url'
 
+export type CheckoutCartSuccess = {
+  success: true
+  saleId: string
+  orderId: string
+  publicAccessToken: string
+  orderNumber?: string | null
+  status?: string | null
+  total?: number | null
+  currency?: string | null
+  createdAt?: string | null
+  error?: undefined
+}
+
 export type CheckoutCartResult =
-  | { success: true; saleId: string; orderId: string; error?: undefined }
-  | { error: string; success?: undefined; saleId?: undefined; orderId?: undefined }
+  | CheckoutCartSuccess
+  | {
+      error: string
+      success?: undefined
+      saleId?: undefined
+      orderId?: undefined
+      publicAccessToken?: undefined
+    }
 
 /**
  * Call checkout over HTTP so www → app proxy does not trip Server Actions CSRF.
@@ -37,6 +56,8 @@ export async function createStripeOrderCheckout(params: {
   orderId: string
   siteId: string
   returnUrl: string
+  /** When set, Stripe redirects here on success instead of returnUrl?success=true */
+  successUrl?: string
 }): Promise<{ url?: string; error?: string }> {
   const res = await fetch(resolveAppApiUrl('/api/stripe/checkout/order'), {
     method: 'POST',

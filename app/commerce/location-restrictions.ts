@@ -14,12 +14,47 @@ export interface Address {
 }
 
 function normalize(str?: string): string {
-  return (str || '').trim().toLowerCase();
+  return (str || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '');
+}
+
+/** Collapse common ISO / name variants so MX matches Mexico, US matches United States, etc. */
+function normalizeCountry(str?: string): string {
+  const n = normalize(str);
+  const aliases: Record<string, string> = {
+    mx: 'mexico',
+    mexico: 'mexico',
+    us: 'united states',
+    usa: 'united states',
+    'united states': 'united states',
+    'united states of america': 'united states',
+    gb: 'united kingdom',
+    uk: 'united kingdom',
+    'united kingdom': 'united kingdom',
+  };
+  return aliases[n] || n;
 }
 
 function addressMatches(rule: Address, target: Address): boolean {
-  if (rule.country && normalize(rule.country) !== normalize(target.country)) return false;
-  if (rule.state && normalize(rule.state) !== normalize(target.state)) return false;
+  if (rule.country) {
+    if (target.country) {
+      if (normalizeCountry(rule.country) !== normalizeCountry(target.country)) return false;
+    } else if (!rule.city && !rule.state && !rule.zip && !rule.address) {
+      // Country-only rule cannot match a buyer with no country
+      return false;
+    }
+    // Rule has city/zip too: allow match on those when store pick omitted country
+  }
+  if (rule.state) {
+    if (target.state) {
+      if (normalize(rule.state) !== normalize(target.state)) return false;
+    } else if (!rule.city && !rule.zip && !rule.address) {
+      return false;
+    }
+  }
   if (rule.city && normalize(rule.city) !== normalize(target.city)) return false;
   if (rule.zip && normalize(rule.zip) !== normalize(target.zip)) return false;
   
@@ -64,23 +99,28 @@ export function evaluateLocationRestrictions(
   }
 
   // 2. Check inclusions ("solo trabajo")
-  // If ANY location has included_addresses, the buyer MUST match at least one of them across all locations.
-  const hasAnyInclusions = activeRestrictions.some(r => r.included_addresses && r.included_addresses.length > 0);
-  
+  // Ignore blank placeholder rows (enabled + empty city/country) — those used to block everyone.
+  const meaningfulIncludes = (addrs?: Address[]) =>
+    (addrs || []).filter(
+      (a) => !!(a.country || a.state || a.city || a.zip || a.address)
+    );
+
+  const hasAnyInclusions = activeRestrictions.some(
+    (r) => meaningfulIncludes(r.included_addresses).length > 0
+  );
+
   if (hasAnyInclusions) {
     let matchedInclude = false;
     for (const restriction of activeRestrictions) {
-      if (restriction.included_addresses) {
-        for (const rule of restriction.included_addresses) {
-          if (addressMatches(rule, buyerAddress)) {
-            matchedInclude = true;
-            break;
-          }
+      for (const rule of meaningfulIncludes(restriction.included_addresses)) {
+        if (addressMatches(rule, buyerAddress)) {
+          matchedInclude = true;
+          break;
         }
       }
       if (matchedInclude) break;
     }
-    
+
     if (!matchedInclude) {
       return { available: false, reason: 'outside_service_area' };
     }

@@ -32,13 +32,11 @@ function ScheduleForm({
   schedule, 
   catalogItemId, 
   onSaved, 
-  onCancel,
   onDeleted 
 }: { 
   schedule: Partial<ReservationSchedule>, 
   catalogItemId: string, 
   onSaved: (s: ReservationSchedule) => void,
-  onCancel: () => void,
   onDeleted: () => void
 }) {
   const { currentSite } = useSite()
@@ -291,10 +289,7 @@ function ScheduleForm({
             </AlertDialog>
 
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={onCancel}>
-                {t("common.cancel") || "Cancel"}
-              </Button>
-              <Button type="submit" disabled={isSubmitting || isDeleting}>
+              <Button type="submit" variant="outline" disabled={isSubmitting || isDeleting}>
                 {isSubmitting
                   ? (t("common.saving") || "Saving...")
                   : schedule.id
@@ -451,7 +446,6 @@ export function ReservationScheduleCard({ catalogItemId }: { catalogItemId: stri
                     schedule={schedule} 
                     catalogItemId={catalogItemId}
                     onSaved={(s) => handleSaved(index, s)}
-                    onCancel={() => toggleExpansion(index)}
                     onDeleted={() => handleDeleted(index)}
                   />
                 </CardContent>

@@ -6,8 +6,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { resolveItemSpecDisplay, resolveVenueLocation } from "@/app/catalog/product-details"
 import { VenueLocationSection } from "./VenueLocationSection"
-import { CheckCircle, MapPin, ChevronLeft, User } from "@/app/components/ui/icons"
-import Link from "next/link"
+import { CheckCircle, MapPin, User } from "@/app/components/ui/icons"
 import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -71,24 +70,15 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
 
   if (isEntitlementExperience) {
     return (
-      <div className="pb-16 max-w-7xl mx-auto w-full px-4 md:px-8 mt-12 md:mt-16 space-y-8">
+      <div className="pb-16 max-w-7xl mx-auto w-full px-4 md:px-8 space-y-8">
         <div>
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-2">
             {item.name}
           </h1>
-          <div className="text-muted-foreground font-medium flex items-center gap-4">
-            <Link
-              href={experience!.backUrl || backUrl}
-              className="inline-flex items-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-full hover:bg-muted -ml-2"
-            >
-              <ChevronLeft className="w-3 h-3 mr-1" />
-              {t("buyer.reservations.back") || t("common.back") || "Back"}
-            </Link>
-            <div>
-              {isRecurring
-                ? t("pdp.subscriptionBadge") || "Subscription"
-                : t("pdp.accessPassBadge") || "Access Pass"}
-            </div>
+          <div className="text-muted-foreground font-medium">
+            {isRecurring
+              ? t("pdp.subscriptionBadge") || "Subscription"
+              : t("pdp.accessPassBadge") || "Access Pass"}
           </div>
         </div>
 

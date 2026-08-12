@@ -166,8 +166,10 @@ export interface Database {
           name: string
           description: string | null
           code: string | null
-          discount_type: 'percent' | 'fixed'
+          discount_type: 'percent' | 'fixed' | 'bogo'
           discount_value: number
+          bogo_buy_qty: number
+          bogo_get_qty: number
           applies_to: 'all' | 'selected_items'
           channels: ('marketplace' | 'shop' | 'pos')[]
           location_ids: string[]
@@ -178,9 +180,37 @@ export interface Database {
           status: 'draft' | 'active' | 'paused' | 'expired'
           starts_at: string | null
           ends_at: string | null
+          active_weekdays: number[]
+          required_items_mode: 'all' | 'any'
+          image_url: string | null
+          show_on_shop: boolean
+          show_on_marketplace: boolean
+          currency: string | null
           user_id: string
           created_at: string
           updated_at: string
+        }
+        Insert: any
+        Update: any
+      }
+      promotion_required_items: {
+        Row: {
+          id: string
+          promotion_id: string
+          catalog_item_id: string
+          site_id: string
+          min_quantity: number
+        }
+        Insert: any
+        Update: any
+      }
+      promotion_required_categories: {
+        Row: {
+          id: string
+          promotion_id: string
+          catalog_category_id: string
+          site_id: string
+          min_quantity: number
         }
         Insert: any
         Update: any

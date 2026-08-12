@@ -11,7 +11,9 @@ export const usePdpCart = (siteId: string) => {
   
   const addToCartStorage = (item: any, qty: number = 1, reservationStart?: string, reservationEnd?: string) => {
     try {
-      const current = getCartItems('cart', source, siteId)
+      const current = getCartItems('cart', source, siteId).filter(
+        (c: any) => source !== 'shop' || !siteId || !c.site_id || c.site_id === siteId
+      )
       
       const existingIdx = current.findIndex((c: any) => 
         c.id === item.id && c.reservationStart === reservationStart
@@ -22,6 +24,7 @@ export const usePdpCart = (siteId: string) => {
       } else {
         current.push({
           ...item,
+          site_id: item.site_id || siteId,
           cartQty: qty,
           cartPrice: item.target_sale_price || 0,
           currency: item.currency || 'USD',
@@ -29,8 +32,13 @@ export const usePdpCart = (siteId: string) => {
           reservationEnd
         });
       }
+
+      const scoped =
+        source === 'shop' && siteId
+          ? current.filter((c: any) => !c.site_id || c.site_id === siteId)
+          : current
       
-      setCartItems('cart', source, siteId, current)
+      setCartItems('cart', source, siteId, scoped)
     } catch (e) {
       console.error('Cart sync error', e);
     }

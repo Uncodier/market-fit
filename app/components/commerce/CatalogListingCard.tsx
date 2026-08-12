@@ -4,6 +4,8 @@ import React from "react"
 import Link from "next/link"
 import { Plus } from "@/app/components/ui/icons"
 import { CatalogItem } from "@/app/types"
+import type { PromoBadge } from "@/app/promotions/promotion-merchandising"
+import { promoBadgeLabel } from "@/app/promotions/promotion-merchandising"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
@@ -29,6 +31,8 @@ interface CatalogListingCardProps {
   /** Dense 2-col tile on mobile (square image); slightly taller media from md up */
   compactMobile?: boolean
   locationAvailable?: boolean
+  /** Item-specific promotion flag (does not replace PDP navigation). */
+  promoBadge?: PromoBadge | null
 }
 
 function formatListingPrice(
@@ -58,6 +62,7 @@ export function CatalogListingCard({
   canBook = false,
   compactMobile = false,
   locationAvailable = true,
+  promoBadge = null,
 }: CatalogListingCardProps) {
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
@@ -74,7 +79,9 @@ export function CatalogListingCard({
 
   const isLocationRestricted = !locationAvailable;
   const finalActionDisabled = isLocationRestricted || actionDisabled;
-  const finalDisabledLabel = isLocationRestricted ? (t('shop.unavailable') || 'Unavailable') : disabledLabel;
+  const finalDisabledLabel = isLocationRestricted
+    ? (t('shop.locationRestricted') || 'Location')
+    : disabledLabel;
 
   const handlePrimary = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -106,14 +113,25 @@ export function CatalogListingCard({
 
         {/* Status badges */}
         <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1">
+          {promoBadge && (
+            <Link
+              href={promoBadge.href}
+              onClick={(e) => e.stopPropagation()}
+              className="rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-bold text-white shadow-sm uppercase tracking-wider hover:bg-emerald-700"
+            >
+              {promoBadge.discount_type
+                ? promoBadgeLabel(promoBadge, t)
+                : promoBadge.label}
+            </Link>
+          )}
           {showTypeBadge && (
             <span className="rounded-md bg-white/95 px-2 py-1 text-[11px] font-bold text-black shadow-sm uppercase tracking-wider">
               {t(typeLabelKey) || typeLabelKey.split('.').pop()}
             </span>
           )}
           {!locationAvailable && (
-            <span className="rounded-md bg-orange-500/90 backdrop-blur-sm px-2 py-1 text-[11px] font-bold text-white shadow-sm uppercase tracking-wider">
-              {t('shop.unavailable') || 'Unavailable'}
+            <span className="rounded-md bg-red-600/95 backdrop-blur-sm px-2 py-1 text-[11px] font-bold text-white shadow-sm uppercase tracking-wider">
+              {t('shop.locationRestricted') || 'Location'}
             </span>
           )}
         </div>

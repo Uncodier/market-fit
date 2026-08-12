@@ -6,6 +6,7 @@ import { resolveItemImage } from "@/app/lib/image-utils"
 import { ShieldCheck } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCodeField"
+import { checkoutLabelKey, CheckoutCopyMode } from "@/app/commerce/checkout-labels"
 
 interface OrderSummaryProps {
   items: any[]
@@ -23,6 +24,7 @@ interface OrderSummaryProps {
   setPromotionCode: (val: string) => void
   promoDiscount: number
   setPromoDiscount: (val: number) => void
+  copyMode?: CheckoutCopyMode
 }
 
 export function OrderSummary({
@@ -41,6 +43,7 @@ export function OrderSummary({
   setPromotionCode,
   promoDiscount,
   setPromoDiscount,
+  copyMode = 'retail'
 }: OrderSummaryProps) {
   const { t } = useLocalization()
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
@@ -52,6 +55,7 @@ export function OrderSummary({
     return items.map((item: any) => ({
       catalogItemId: item.id,
       subtotal: (item.cartPrice ?? item.target_sale_price ?? 0) * (item.cartQty || 1),
+      quantity: item.cartQty || 1,
     }))
   }, [items])
 
@@ -135,7 +139,7 @@ export function OrderSummary({
           <span className="text-muted-foreground">{t('payment') || 'Payment'}</span>
           <span className="font-semibold text-right">
             {paymentMethod === 'cash_on_pickup' ? (
-              <span className="text-emerald-600 dark:text-emerald-500">{t('checkout.cashOnPickup') || 'Cash — pay at store'}</span>
+              <span className="text-emerald-600 dark:text-emerald-500">{t(checkoutLabelKey('checkout.cashOnPickup', copyMode)) || 'Cash — pay at store'}</span>
             ) : paymentMethod === 'bank_transfer' ? (
               <span className="text-indigo-600 dark:text-indigo-500">{t('checkout.bankTransfer') || 'Bank Transfer'}</span>
             ) : (
@@ -161,7 +165,7 @@ export function OrderSummary({
           : disabledReason 
             ? disabledReason 
             : paymentMethod === 'cash_on_pickup'
-              ? `${t('checkout.placeOrderCash') || 'Place order • Pay at store'}`
+              ? `${t(checkoutLabelKey('checkout.placeOrderCash', copyMode)) || 'Place order • Pay at store'}`
               : paymentMethod === 'bank_transfer'
               ? `${t('checkout.placeOrderTransfer') || 'Place order • Pay by transfer'}`
               : (t('checkout.paySecurely') || 'Pay securely')

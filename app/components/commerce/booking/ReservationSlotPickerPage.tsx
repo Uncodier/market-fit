@@ -69,9 +69,9 @@ export function ReservationSlotPickerPage({
   setNotes,
 }: ReservationSlotPickerPageProps) {
   return (
-    <div className="flex flex-col md:flex-row gap-8 lg:gap-12 w-full mt-4">
-      <div className="w-full md:w-[350px] lg:w-[400px] shrink-0">
-        <div className="bg-card border rounded-3xl p-6 shadow-sm">
+    <div className="flex flex-col md:flex-row md:items-stretch gap-8 lg:gap-12 w-full mt-4">
+      <div className="w-full md:w-[350px] lg:w-[400px] shrink-0 flex">
+        <div className="bg-card border rounded-3xl p-6 shadow-sm w-full h-full">
           <div className="flex items-center justify-between mb-8">
             <Button
               variant="ghost"
@@ -148,8 +148,8 @@ export function ReservationSlotPickerPage({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col gap-6">
-        <div className="bg-card border rounded-3xl p-6 shadow-sm min-h-[400px] flex flex-col">
+      <div className="flex-1 flex flex-col">
+        <div className="bg-card border rounded-3xl p-6 shadow-sm flex-1 flex flex-col h-full">
           {!selectedDate ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50">
               <CalendarIcon className="h-16 w-16 mb-4 text-muted-foreground" />

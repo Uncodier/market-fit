@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/app/components/ui/button"
+import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { Plus, Trash2 } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { listCatalogCategories, listCatalogItems } from "@/app/catalog/actions"
 import type { CatalogItem } from "@/app/types"
 
@@ -17,6 +19,13 @@ interface PromotionTargetPickerProps {
   onItemsChange: (ids: string[]) => void
   onCategoriesChange: (ids: string[]) => void
   compact?: boolean
+  /** When true, only product selection is shown (no categories). */
+  hideCategories?: boolean
+  /** When set, shows a Min Qty input next to each selected row. */
+  itemQuantities?: Record<string, number>
+  categoryQuantities?: Record<string, number>
+  onItemQuantityChange?: (id: string, quantity: number) => void
+  onCategoryQuantityChange?: (id: string, quantity: number) => void
 }
 
 function ExpandingSelectSection({
@@ -27,6 +36,9 @@ function ExpandingSelectSection({
   options,
   selectedIds,
   onSelectedIdsChange,
+  quantities,
+  onQuantityChange,
+  quantitiesLabel = "Min Qty",
 }: {
   title: string
   addLabel: string
@@ -35,9 +47,13 @@ function ExpandingSelectSection({
   options: { id: string; label: string }[]
   selectedIds: string[]
   onSelectedIdsChange: (ids: string[]) => void
+  quantities?: Record<string, number>
+  onQuantityChange?: (id: string, quantity: number) => void
+  quantitiesLabel?: string
 }) {
   // Extra blank rows beyond the selected ids. When nothing is selected, always show 1 blank.
   const [extraBlankCount, setExtraBlankCount] = useState(0)
+  const showQuantities = Boolean(quantities && onQuantityChange)
 
   useEffect(() => {
     if (selectedIds.length === 0) setExtraBlankCount(0)
@@ -117,7 +133,7 @@ function ExpandingSelectSection({
 
           return (
             <div key={`slot-${index}-${slotId || "blank"}`} className="flex gap-2 items-center">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <RelationSelect
                   options={availableOptions}
                   value={value}
@@ -127,6 +143,25 @@ function ExpandingSelectSection({
                   emptyMessage={emptyMessage}
                 />
               </div>
+              {showQuantities && slotId && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                    {quantitiesLabel}
+                  </Label>
+                  <Input
+                    type="number"
+                    className="w-16 h-9"
+                    min={1}
+                    value={quantities?.[slotId] ?? 1}
+                    onChange={(e) =>
+                      onQuantityChange?.(
+                        slotId,
+                        Math.max(1, parseInt(e.target.value) || 1)
+                      )
+                    }
+                  />
+                </div>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -151,10 +186,18 @@ export function PromotionTargetPicker({
   selectedCategoryIds,
   onItemsChange,
   onCategoriesChange,
+  hideCategories = false,
+  itemQuantities,
+  categoryQuantities,
+  onItemQuantityChange,
+  onCategoryQuantityChange,
 }: PromotionTargetPickerProps) {
+  const { t } = useLocalization()
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
   const [catalogCategories, setCatalogCategories] = useState<CatalogCategory[]>([])
   const [loading, setLoading] = useState(false)
+  const minQtyLabel =
+    t("promotions.detail.restrictions.minQty") || "Min Qty"
 
   useEffect(() => {
     let cancelled = false
@@ -188,27 +231,47 @@ export function PromotionTargetPicker({
 
   return (
     <div className="space-y-6">
-      <ExpandingSelectSection
-        title="Categories"
-        addLabel="Add Category"
-        placeholder="Select category..."
-        emptyMessage="No categories found"
-        options={catalogCategories.map((cat) => ({ id: cat.id, label: cat.name }))}
-        selectedIds={selectedCategoryIds}
-        onSelectedIdsChange={onCategoriesChange}
-      />
+      {!hideCategories && (
+        <ExpandingSelectSection
+          title={t("promotions.detail.targets.categories") || "Categories"}
+          addLabel={
+            t("promotions.detail.targets.addCategory") || "Add Category"
+          }
+          placeholder={
+            t("promotions.detail.targets.selectCategory") ||
+            "Select category..."
+          }
+          emptyMessage={
+            t("promotions.detail.targets.noCategories") ||
+            "No categories found"
+          }
+          options={catalogCategories.map((cat) => ({ id: cat.id, label: cat.name }))}
+          selectedIds={selectedCategoryIds}
+          onSelectedIdsChange={onCategoriesChange}
+          quantities={categoryQuantities}
+          onQuantityChange={onCategoryQuantityChange}
+          quantitiesLabel={minQtyLabel}
+        />
+      )}
 
       <ExpandingSelectSection
-        title="Products"
-        addLabel="Add Product"
-        placeholder="Select product..."
-        emptyMessage="No products found"
+        title={t("promotions.detail.targets.products") || "Products"}
+        addLabel={t("promotions.detail.targets.addProduct") || "Add Product"}
+        placeholder={
+          t("promotions.detail.targets.selectProduct") || "Select product..."
+        }
+        emptyMessage={
+          t("promotions.detail.targets.noProducts") || "No products found"
+        }
         options={catalogItems.map((item) => ({
           id: item.id,
           label: item.sku ? `${item.name} (${item.sku})` : item.name,
         }))}
         selectedIds={selectedItemIds}
         onSelectedIdsChange={onItemsChange}
+        quantities={itemQuantities}
+        onQuantityChange={onItemQuantityChange}
+        quantitiesLabel={minQtyLabel}
       />
     </div>
   )

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { getPurchaseById } from "@/app/purchases/actions"
 import { PublicDocumentView } from "@/app/documents/components/PublicDocumentView"
+import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { documentT } from "@/app/lib/i18n/document-t"
 
 export default function BillPdfPage(props: { params: Promise<{ id: string }> }) {
@@ -47,6 +48,7 @@ export default function BillPdfPage(props: { params: Promise<{ id: string }> }) 
           name: purchase.vendorName,
           email: purchase.vendorEmail,
         },
+        siteId: currentSite.id,
         siteName: currentSite.name || "Bill",
         siteUrl: currentSite.url,
         logoUrl: currentSite.logo_url,
@@ -66,11 +68,7 @@ export default function BillPdfPage(props: { params: Promise<{ id: string }> }) 
     )
   }
   if (!view) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center text-gray-500">
-        Loading…
-      </div>
-    )
+    return <PublicDocumentViewSkeleton />
   }
   return <PublicDocumentView {...view} />
 }

@@ -5,10 +5,9 @@ import { useSite } from "@/app/context/SiteContext"
 import { getQuotation } from "@/app/quotations/actions"
 import { ensureQuotationPublicAccessToken } from "@/app/quotations/public-actions"
 import { buildPublicQuoteUrl } from "@/app/quotations/public-token"
-import {
-  PrintableQuotation,
-  PrintableQuotationSkeleton,
-} from "@/app/quotations/components/PrintableQuotation"
+import { PublicDocumentShopNav } from "@/app/documents/components/PublicDocumentShopNav"
+import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
+import { PrintableQuotation } from "@/app/quotations/components/PrintableQuotation"
 
 export default function QuotePdfPage(props: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(props.params)
@@ -53,31 +52,42 @@ export default function QuotePdfPage(props: { params: Promise<{ id: string }> })
     }
   }, [quotation])
 
+  const siteId = quotation?.site?.id || quotation?.site_id || currentSite?.id || null
   const siteName = quotation?.site?.name || currentSite?.name || ""
   const siteUrl = quotation?.site?.url || currentSite?.url || ""
   const logoUrl = quotation?.site?.logo_url || currentSite?.logo_url || ""
   const locale = currentSite?.settings?.default_locale || "en"
   const location = currentSite?.settings?.locations?.[0] || null
 
+  if (loading) {
+    return <PublicDocumentViewSkeleton />
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 print:bg-white py-8 print:py-0">
-      {loading ? (
-        <PrintableQuotationSkeleton />
-      ) : quotation ? (
-        <PrintableQuotation
-          quotation={quotation}
-          siteName={siteName}
-          siteUrl={siteUrl}
-          logoUrl={logoUrl}
-          location={location}
-          locale={locale}
-          buyerLink={buyerLink}
-        />
-      ) : (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">Quote not found</p>
-        </div>
-      )}
+    <div className="min-h-screen bg-gray-100 text-gray-900 dark:bg-[#030303] dark:text-gray-100 print:bg-white print:text-black">
+      <PublicDocumentShopNav
+        siteId={siteId}
+        siteName={siteName}
+        logoUrl={logoUrl}
+        currency={quotation?.currency || currentSite?.settings?.currency}
+      />
+      <div className="py-8 print:py-0">
+        {quotation ? (
+          <PrintableQuotation
+            quotation={quotation}
+            siteName={siteName}
+            siteUrl={siteUrl}
+            logoUrl={logoUrl}
+            location={location}
+            locale={locale}
+            buyerLink={buyerLink}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-500">Quote not found</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

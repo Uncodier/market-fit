@@ -20,6 +20,10 @@ import {
   quotationItemsToCheckoutLines,
   type QuotationForCheckout,
 } from "@/app/quotations/quote-checkout";
+import {
+  generatePublicAccessToken,
+  isValidPublicAccessToken,
+} from "@/app/documents/public-token";
 
 export interface CheckoutLine {
   catalogItemId: string;
@@ -35,6 +39,8 @@ export interface CheckoutCartParams {
   priceListId?: string;
   leadId?: string;
   promotionCode?: string;
+  /** Automatic / condition-based promotion without a coupon code. */
+  promotionId?: string;
   fulfillment: 'pickup' | 'ship' | 'dine_in' | 'none';
   originLocationId?: string; // required if fulfillment is 'ship'
   shippingAddress?: any;
@@ -63,6 +69,7 @@ export async function checkoutCart({
   priceListId: inputPriceListId,
   leadId: inputLeadId,
   promotionCode,
+  promotionId: inputPromotionId,
   fulfillment,
   originLocationId,
   shippingAddress,
@@ -404,15 +411,21 @@ export async function checkoutCart({
 
     // Fail-fast: validate promotion before creating sale/order (avoids orphan orders)
     let normalizedPromotionCode: string | undefined;
+    let resolvedPromotionId: string | undefined;
     let promoDiscount = 0;
-    if (promotionCode?.trim()) {
-      normalizedPromotionCode = promotionCode.trim().toUpperCase();
+    if (promotionCode?.trim() || inputPromotionId) {
+      normalizedPromotionCode = promotionCode?.trim()
+        ? promotionCode.trim().toUpperCase()
+        : undefined;
+      resolvedPromotionId = inputPromotionId || undefined;
       const promoPreview = await resolvePromotionDiscount({
         siteId,
         code: normalizedPromotionCode,
+        promotionId: resolvedPromotionId,
         lines: processedLines.map((pl) => ({
           catalogItemId: pl.catalog_item_id,
           subtotal: pl.subtotal,
+          quantity: pl.quantity,
         })),
         buyerUserId,
         leadId: finalLeadId,
@@ -425,6 +438,7 @@ export async function checkoutCart({
         throw new Error(`Promotion failed: ${promoPreview.error}`);
       }
       promoDiscount = promoPreview.data.discount;
+      resolvedPromotionId = promoPreview.data.promotionId;
       orderTotal = roundMoney(
         Math.max(0, orderSubtotal - promoDiscount + orderTaxTotal + orderShippingCost)
       );
@@ -791,11 +805,17 @@ export async function checkoutCart({
     // 6.b Update order JSONB items for backwards compatibility is already handled above in the update/insert.
 
     // 7. Apply Promotion (if provided) — already validated above; persist discount + usage
-    if (normalizedPromotionCode) {
+    if (normalizedPromotionCode || resolvedPromotionId) {
       const { data: orderWithPromo } = await (isAdmin ? supabaseAdmin : supabase).from("sale_orders").select("promotion_id").eq("id", order.id).single();
       
       if (!orderWithPromo?.promotion_id) {
-        const promoResult = await applyPromotionToOrder(siteId, order.id, normalizedPromotionCode, isAdmin);
+        const promoResult = await applyPromotionToOrder(
+          siteId,
+          order.id,
+          normalizedPromotionCode,
+          isAdmin,
+          resolvedPromotionId,
+        );
         if (promoResult.error) {
           throw new Error(`Promotion failed: ${promoResult.error}`);
         }
@@ -900,7 +920,52 @@ export async function checkoutCart({
       await markQuotationAccepted(supabaseAdmin, quoteForAccept, sale.id);
     }
 
-    return { success: true, saleId: sale.id, orderId: order.id };
+    // Public share token so shop/marketplace buyers can open /so/[token] after checkout
+    // (named distinctly from the quotation `publicAccessToken` param above)
+    let orderPublicAccessToken =
+      typeof order.public_access_token === "string" ? order.public_access_token : null;
+    if (!isValidPublicAccessToken(orderPublicAccessToken)) {
+      orderPublicAccessToken = generatePublicAccessToken();
+      const { data: withToken, error: tokenError } = await (isAdmin
+        ? supabaseAdmin
+        : supabase)
+        .from("sale_orders")
+        .update({ public_access_token: orderPublicAccessToken })
+        .eq("id", order.id)
+        .select(
+          "public_access_token, order_number, status, total, currency, created_at"
+        )
+        .single();
+      if (tokenError || !withToken?.public_access_token) {
+        throw new Error(
+          `Failed to create public order link: ${tokenError?.message || "unknown"}`
+        );
+      }
+      order = { ...order, ...withToken };
+      orderPublicAccessToken = withToken.public_access_token as string;
+    } else {
+      const { data: latest } = await (isAdmin ? supabaseAdmin : supabase)
+        .from("sale_orders")
+        .select(
+          "public_access_token, order_number, status, total, currency, created_at"
+        )
+        .eq("id", order.id)
+        .single();
+      if (latest) order = { ...order, ...latest };
+      orderPublicAccessToken = order.public_access_token as string;
+    }
+
+    return {
+      success: true,
+      saleId: sale.id,
+      orderId: order.id,
+      publicAccessToken: orderPublicAccessToken,
+      orderNumber: order.order_number ?? null,
+      status: order.status ?? null,
+      total: order.total ?? null,
+      currency: order.currency ?? null,
+      createdAt: order.created_at ?? null,
+    };
   } catch (error: any) {
     return { error: error.message };
   }

@@ -18,21 +18,16 @@ export async function createClient(skipDemo: boolean = false) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+        getAll() {
+          return cookieStore.getAll()
         },
-        set(name: string, value: string, options: any) {
+        setAll(cookiesToSet) {
           try {
-            cookieStore.set(name, value, options)
-          } catch (error) {
-            // Ignore in server components
-          }
-        },
-        remove(name: string, options: any) {
-          try {
-            cookieStore.set(name, '', { ...options, maxAge: 0 })
-          } catch (error) {
-            // Ignore in server components
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+          } catch {
+            // Ignore in Server Components — middleware refreshes the session.
           }
         },
       },
@@ -40,14 +35,18 @@ export async function createClient(skipDemo: boolean = false) {
   )
 }
 
-// Cliente con permisos elevados (solo para operaciones del servidor)
+// Cliente con permisos elevados (solo para operaciones del servidor).
+// When skipDemo is true, do NOT call cookies() — required for unstable_cache /
+// static data scopes that cannot access dynamic request stores.
 export async function createServiceClient(skipDemo: boolean = false) {
-  const cookieStore = await cookies();
-  const demoSiteId = cookieStore.get('market_fit_demo_site_id')?.value;
-  
-  if (demoSiteId && !skipDemo) {
-    console.log('🤖 DEMO MODE ACTIVE (SERVICE) - Usando datos simulados para:', demoSiteId);
-    return createDemoMockClient(demoSiteId) as any;
+  if (!skipDemo) {
+    const cookieStore = await cookies();
+    const demoSiteId = cookieStore.get('market_fit_demo_site_id')?.value;
+
+    if (demoSiteId) {
+      console.log('🤖 DEMO MODE ACTIVE (SERVICE) - Usando datos simulados para:', demoSiteId);
+      return createDemoMockClient(demoSiteId) as any;
+    }
   }
 
   return createServerClient<Database>(

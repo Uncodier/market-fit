@@ -10,9 +10,8 @@ import { resolveVenueLocation, resolveItemSpecDisplay, resolveItemSpecDisplays }
 import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 
-import { CheckCircle, MapPin, ChevronLeft, Download } from "@/app/components/ui/icons"
+import { CheckCircle, MapPin, Download } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { downloadAccessPass } from "@/app/lib/download-access-pass"
 
@@ -65,28 +64,19 @@ export function TicketPdpLayout({ item, backUrl, experience }: { item: CatalogIt
 
   if (experience?.kind === 'entitlement' && experience.entitlement) {
     return (
-      <div className="pb-16 max-w-7xl mx-auto w-full px-4 md:px-8 mt-12 md:mt-16 space-y-8">
+      <div className="pb-16 max-w-7xl mx-auto w-full px-4 md:px-8 space-y-8">
         <div>
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-2">
             {event?.name || item.name}
           </h1>
-          <div className="text-muted-foreground font-medium flex flex-wrap items-center gap-4">
-            <Link
-              href={experience!.backUrl || backUrl}
-              className="inline-flex items-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-full hover:bg-muted -ml-2"
-            >
-              <ChevronLeft className="w-3 h-3 mr-1" />
-              {t("buyer.reservations.back") || t("common.back") || "Back"}
-            </Link>
-            <div className="flex flex-wrap items-center gap-2">
-              {t('buyer.library.actions.ticket') || 'Ticket'}
-              {attributes.event_date && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-border" />
-                  <span>{attributes.event_date}</span>
-                </>
-              )}
-            </div>
+          <div className="text-muted-foreground font-medium flex flex-wrap items-center gap-2">
+            {t('buyer.library.actions.ticket') || 'Ticket'}
+            {attributes.event_date && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-border" />
+                <span>{attributes.event_date}</span>
+              </>
+            )}
           </div>
         </div>
 

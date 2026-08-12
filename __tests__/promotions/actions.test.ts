@@ -46,6 +46,7 @@ describe("applyPromotionToOrder", () => {
       qb.select = jest.fn().mockReturnValue(qb);
       qb.eq = jest.fn().mockReturnValue(qb);
       qb.single = jest.fn().mockReturnValue(qb);
+      qb.maybeSingle = jest.fn().mockReturnValue(qb);
       qb.in = jest.fn().mockReturnValue(qb);
       qb.neq = jest.fn().mockReturnValue(qb);
       qb.not = jest.fn().mockReturnValue(qb);
@@ -53,6 +54,7 @@ describe("applyPromotionToOrder", () => {
 
       if (tableName === "promotions") {
         qb.single = jest.fn().mockResolvedValue(promoData ? { data: promoData } : { data: null });
+        qb.maybeSingle = jest.fn().mockResolvedValue(promoData ? { data: promoData } : { data: null });
         qb.update = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
       } else if (tableName === "sale_order_items") {
         qb.eq = jest.fn().mockResolvedValue({ data: itemsData });
@@ -83,6 +85,10 @@ describe("applyPromotionToOrder", () => {
         qb.eq = jest.fn().mockResolvedValue({ data: promoCategories });
       } else if (tableName === "catalog_items") {
         qb.in = jest.fn().mockResolvedValue({ data: catalogItems });
+      } else if (tableName === "settings") {
+        qb.maybeSingle = jest.fn().mockResolvedValue({ data: { business_hours: null } });
+      } else if (tableName === "sales" || tableName === "leads") {
+        qb.update = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
       }
       return qb;
     };
@@ -91,7 +97,7 @@ describe("applyPromotionToOrder", () => {
 
   it("applies a valid ALL promotion", async () => {
     setupMocks(
-      { id: "promo1", status: "active", applies_to: "all", discount_type: "percent", discount_value: 10, usage_count: 0 },
+      { id: "promo1", code: "CODE", status: "active", applies_to: "all", discount_type: "percent", discount_value: 10, usage_count: 0 },
       [{ id: "line1", subtotal: 100 }],
       { id: "order1", buyer_user_id: "user1", tax_total: 10 }
     );
@@ -104,7 +110,7 @@ describe("applyPromotionToOrder", () => {
 
   it("rejects if per-user limit reached", async () => {
     setupMocks(
-      { id: "promo1", status: "active", applies_to: "all", usage_limit_per_user: 2, usage_count: 5 },
+      { id: "promo1", code: "CODE", status: "active", applies_to: "all", usage_limit_per_user: 2, usage_count: 5 },
       [{ id: "line1", subtotal: 100 }],
       { id: "order1", buyer_user_id: "user1" },
       2 // prior uses
@@ -116,7 +122,7 @@ describe("applyPromotionToOrder", () => {
 
   it("applies if per-user limit NOT reached", async () => {
     setupMocks(
-      { id: "promo1", status: "active", applies_to: "all", discount_type: "fixed", discount_value: 20, usage_limit_per_user: 2, usage_count: 5 },
+      { id: "promo1", code: "CODE", status: "active", applies_to: "all", discount_type: "fixed", discount_value: 20, usage_limit_per_user: 2, usage_count: 5 },
       [{ id: "line1", subtotal: 100 }],
       { id: "order1", buyer_user_id: "user1", tax_total: 0 },
       1 // prior uses
@@ -129,7 +135,7 @@ describe("applyPromotionToOrder", () => {
 
   it("rejects if per-user limit set but no buyer identity", async () => {
     setupMocks(
-      { id: "promo1", status: "active", applies_to: "all", usage_limit_per_user: 1 },
+      { id: "promo1", code: "CODE", status: "active", applies_to: "all", usage_limit_per_user: 1 },
       [{ id: "line1", subtotal: 100 }],
       { id: "order1", buyer_user_id: null, lead_id: null } // no identity
     );
@@ -140,7 +146,7 @@ describe("applyPromotionToOrder", () => {
 
   it("calculates discount based ONLY on eligible products/categories", async () => {
     setupMocks(
-      { id: "promo1", status: "active", applies_to: "selected_items", discount_type: "percent", discount_value: 50 },
+      { id: "promo1", code: "CODE", status: "active", applies_to: "selected_items", discount_type: "percent", discount_value: 50 },
       [
         { id: "line1", catalog_item_id: "item1", subtotal: 100 }, // matched explicitly
         { id: "line2", catalog_item_id: "item2", subtotal: 50 }, // matched via category
@@ -166,7 +172,7 @@ describe("applyPromotionToOrder", () => {
 
   it("rejects if applies_to selected_items but no items are eligible", async () => {
     setupMocks(
-      { id: "promo1", status: "active", applies_to: "selected_items", discount_type: "percent", discount_value: 50 },
+      { id: "promo1", code: "CODE", status: "active", applies_to: "selected_items", discount_type: "percent", discount_value: 50 },
       [
         { id: "line3", catalog_item_id: "item3", subtotal: 200 } // not matched
       ],
@@ -181,5 +187,102 @@ describe("applyPromotionToOrder", () => {
 
     const res = await applyPromotionToOrder("site1", "order1", "CODE");
     expect(res.error).toBe("No eligible items for this promotion");
+  });
+
+  it("attributes sale and lead to the promotion campaign", async () => {
+    const salesUpdate = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
+    const leadsUpdate = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
+
+    setupMocks(
+      {
+        id: "promo1",
+        code: "CODE",
+        status: "active",
+        applies_to: "all",
+        discount_type: "fixed",
+        discount_value: 5,
+        usage_count: 0,
+        campaign_id: "camp1",
+      },
+      [{ id: "line1", catalog_item_id: "item1", subtotal: 100, quantity: 1 }],
+      {
+        id: "order1",
+        sale_id: "sale1",
+        buyer_user_id: "user1",
+        tax_total: 0,
+        sales: { source: "shop", lead_id: "lead1" },
+      }
+    );
+
+    mockSupabase.from.mockImplementation((tableName: string) => {
+      const qb: any = {};
+      qb.select = jest.fn().mockReturnValue(qb);
+      qb.eq = jest.fn().mockReturnValue(qb);
+      qb.single = jest.fn().mockReturnValue(qb);
+      qb.maybeSingle = jest.fn().mockReturnValue(qb);
+      qb.in = jest.fn().mockReturnValue(qb);
+      qb.neq = jest.fn().mockReturnValue(qb);
+      qb.not = jest.fn().mockReturnValue(qb);
+      qb.update = jest.fn().mockReturnValue(qb);
+
+      if (tableName === "promotions") {
+        qb.maybeSingle = jest.fn().mockResolvedValue({
+          data: {
+            id: "promo1",
+            code: "CODE",
+            status: "active",
+            applies_to: "all",
+            discount_type: "fixed",
+            discount_value: 5,
+            usage_count: 0,
+            campaign_id: "camp1",
+          },
+        });
+        qb.single = jest.fn().mockResolvedValue({
+          data: { usage_count: 0, campaign_id: "camp1" },
+        });
+        qb.update = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
+      } else if (tableName === "sale_order_items") {
+        qb.eq = jest.fn().mockResolvedValue({
+          data: [{ id: "line1", catalog_item_id: "item1", subtotal: 100, quantity: 1 }],
+        });
+      } else if (tableName === "sale_orders") {
+        qb.eq = jest.fn().mockImplementation((col: string) => {
+          if (col === "id") {
+            return {
+              single: jest.fn().mockResolvedValue({
+                data: {
+                  id: "order1",
+                  sale_id: "sale1",
+                  buyer_user_id: "user1",
+                  tax_total: 0,
+                  sales: { source: "shop", lead_id: "lead1" },
+                },
+              }),
+            };
+          }
+          return qb;
+        });
+        qb.update = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
+      } else if (tableName === "settings") {
+        qb.maybeSingle = jest.fn().mockResolvedValue({ data: { business_hours: null } });
+      } else if (tableName === "promotion_catalog_items" || tableName === "promotion_catalog_categories") {
+        qb.eq = jest.fn().mockResolvedValue({ data: [] });
+      } else if (tableName === "sales") {
+        qb.update = salesUpdate;
+      } else if (tableName === "leads") {
+        qb.update = leadsUpdate;
+      }
+      return qb;
+    });
+
+    const res = await applyPromotionToOrder("site1", "order1", "CODE");
+    expect(res.error).toBeUndefined();
+    expect(salesUpdate).toHaveBeenCalledWith({
+      amount: 95,
+      amount_due: 95,
+      campaign_id: "camp1",
+    });
+    expect(leadsUpdate).toHaveBeenCalledWith({ campaign_id: "camp1" });
   });
 });

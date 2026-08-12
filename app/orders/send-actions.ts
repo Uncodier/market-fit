@@ -12,6 +12,8 @@ import {
   sendDocumentEmailViaSendGrid,
 } from "@/app/documents/send-document-email"
 import { buildDocumentPdf, uint8ToBase64 } from "@/app/documents/document-pdf"
+import { resolveSalePaymentMethod } from "@/app/documents/document-meta"
+import { mapDocumentLineItems } from "@/app/documents/map-document-items"
 import { documentT, formatDocumentMoney } from "@/app/lib/i18n/document-t"
 import { loadSiteBranding, publicTokenSchemaError } from "@/app/documents/site-branding"
 
@@ -63,7 +65,9 @@ export async function getOrderByPublicToken(token: string) {
   const supabase = await createServiceClient(true)
   const { data: order, error } = await supabase
     .from("sale_orders")
-    .select("*, sale_order_items(*), site:sites!site_id(id, name, logo_url, url)")
+    .select(
+      "*, sale_order_items(*, catalog_item:catalog_item_id(id, name, image_url)), site:sites!site_id(id, name, logo_url, url), sales:sale_id(id, status, payment_method, payments, leads(id, name, email))"
+    )
     .eq("public_access_token", token)
     .single()
 
@@ -80,22 +84,40 @@ export async function getOrderByPublicToken(token: string) {
     return { error: "This order is no longer available" }
   }
 
-  let lead: any = null
-  if (order.sale_id) {
+  let sale: any = Array.isArray(order.sales) ? order.sales[0] : order.sales
+  let lead: any = sale?.leads
+    ? Array.isArray(sale.leads)
+      ? sale.leads[0]
+      : sale.leads
+    : null
+
+  // Fallback fetch if the FK embed did not resolve.
+  if (!sale && order.sale_id) {
     const { data: saleData } = await supabase
       .from("sales")
-      .select("leads(id, name, email)")
+      .select("id, status, payment_method, payments, leads(id, name, email)")
       .eq("id", order.sale_id)
       .single()
-    lead = saleData?.leads || null
+    sale = saleData || null
+    const nestedLead = saleData?.leads
+    lead = nestedLead
+      ? Array.isArray(nestedLead)
+        ? nestedLead[0]
+        : nestedLead
+      : null
   }
 
   const branding = await loadSiteBranding(supabase, order.site_id || order.owner_site_id)
+  const lineItems =
+    order.sale_order_items?.length > 0
+      ? order.sale_order_items
+      : order.items || []
   return {
     data: {
       ...order,
-      items: order.sale_order_items || [],
+      items: lineItems,
       leads: lead,
+      sales: sale,
       site: Array.isArray(order.site) ? order.site[0] : order.site,
     },
     branding,
@@ -122,12 +144,14 @@ export async function sendSaleOrder(id: string) {
   if (order.status === "cancelled") return { error: "Cancelled orders cannot be emailed" }
 
   let lead: any = null
+  let sale: any = null
   if (order.sale_id) {
     const { data: saleData } = await supabase
       .from("sales")
-      .select("leads(id, name, email)")
+      .select("id, status, payment_method, payments, leads(id, name, email)")
       .eq("id", order.sale_id)
       .single()
+    sale = saleData || null
     lead = saleData?.leads || null
   }
 
@@ -155,12 +179,7 @@ export async function sendSaleOrder(id: string) {
   const currency = order.currency || "USD"
   const totalLabel = formatDocumentMoney(Number(order.total) || 0, currency, locale)
   const siteName = site?.name || "Order"
-  const items = (order.sale_order_items || []).map((item: any) => ({
-    name: item.name || "Item",
-    quantity: Number(item.quantity) || 0,
-    unit_price: Number(item.unit_price) || 0,
-    subtotal: Number(item.subtotal) || 0,
-  }))
+  const items = mapDocumentLineItems(order.sale_order_items)
 
   const pdfBytes = await buildDocumentPdf({
     docKindLabel: documentT(locale, "orders.detail.breadcrumbOrder") || "Order",
@@ -180,6 +199,9 @@ export async function sendSaleOrder(id: string) {
     viewLink,
     reviewLabelKey: "documents.reviewOnline",
     statusKind: "orders",
+    fulfillmentMethod: order.fulfillment_method,
+    paymentMethod: resolveSalePaymentMethod(sale),
+    shippingAddress: order.shipping_address,
   })
 
   const emailResult = await sendDocumentEmailViaSendGrid({

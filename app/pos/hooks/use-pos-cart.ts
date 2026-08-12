@@ -13,7 +13,7 @@ import {
 import { calculateOrderTaxTotal, roundMoney } from "@/app/commerce/taxes";
 import { resolveOrderShippingCost } from "@/app/commerce/delivery-options";
 import { resolveUnitPriceLocal } from "@/app/pos/local/resolve-unit-price-local";
-import { resolvePromotionDiscountLocal } from "@/app/pos/local/resolve-promo-local";
+import { usePosPromo } from "@/app/pos/hooks/use-pos-promo";
 import {
   clearCartSession,
   loadCartSession,
@@ -25,6 +25,8 @@ import { toast } from "sonner";
 type UsePosCartArgs = {
   siteId?: string;
   shopSettings?: any;
+  /** IANA timezone for weekday promotion checks (from site business hours). */
+  siteTimezone?: string | null;
   catalogItems: CatalogItem[];
   locations: any[];
   priceLists: any[];
@@ -37,6 +39,7 @@ type UsePosCartArgs = {
 export function usePosCart({
   siteId,
   shopSettings,
+  siteTimezone = null,
   catalogItems,
   locations,
   priceLists,
@@ -53,7 +56,6 @@ export function usePosCart({
     useState<CheckoutFulfillmentMethod>("dine_in");
   const [originLocationId, setOriginLocationId] = useState("");
   const [priceListId, setPriceListId] = useState("none");
-  const [promoCode, setPromoCode] = useState("");
   const [selectedCartItemId, setSelectedCartItemId] = useState<string | null>(
     null,
   );
@@ -64,6 +66,22 @@ export function usePosCart({
   const [loadingOrder, setLoadingOrder] = useState(false);
   const restoredRef = useRef(false);
   const persistTimer = useRef<number | null>(null);
+
+  const {
+    promoCode,
+    setPromoCode,
+    appliedPromo,
+    promoDiscount,
+    validatePromotion,
+    clearAppliedPromo,
+    resetPromo,
+  } = usePosPromo({
+    cart,
+    promotions,
+    originLocationId,
+    siteTimezone,
+    t,
+  });
 
   // Hydrate cart session from Dexie
   useEffect(() => {
@@ -86,7 +104,7 @@ export function usePosCart({
     return () => {
       cancelled = true;
     };
-  }, [siteId]);
+  }, [siteId, setPromoCode]);
 
   // Persist session (debounced)
   useEffect(() => {
@@ -129,13 +147,16 @@ export function usePosCart({
   }, [locations, originLocationId]);
 
   const allowedFulfillments = useMemo((): CheckoutFulfillmentMethod[] => {
-    if (cart.length === 0) return ["dine_in"];
-    const options = intersectDeliveryOptions(
+    if (cart.length === 0) return ["dine_in", "none"];
+    const baseOptions = intersectDeliveryOptions(
       cart.map((i) => ({
         allowed: getItemDeliveryOptions(i, shopSettings?.default_delivery_options),
       })),
     );
-    return options.length > 0 ? options : ["dine_in"];
+    const posOptions = new Set(baseOptions);
+    posOptions.add("dine_in");
+    posOptions.add("none");
+    return Array.from(posOptions) as CheckoutFulfillmentMethod[];
   }, [cart, shopSettings]);
 
   useEffect(() => {
@@ -286,22 +307,7 @@ export function usePosCart({
       ),
     [fulfillment, subtotal, shopSettings, cart],
   );
-  const promoDiscount = useMemo(() => {
-    if (!promoCode.trim()) return 0;
-    const res = resolvePromotionDiscountLocal({
-      code: promoCode,
-      promotions,
-      lines: cart
-        .filter((c) => c.cartQty > 0)
-        .map((c) => ({
-          catalogItemId: c.id,
-          categoryId: c.category_id,
-          subtotal: c.cartPrice * c.cartQty,
-        })),
-      locationId: originLocationId || null,
-    });
-    return "data" in res ? res.data.discount : 0;
-  }, [promoCode, promotions, cart, originLocationId]);
+
   const total = roundMoney(
     Math.max(0, subtotal - promoDiscount) + taxTotal + shippingTotal,
   );
@@ -312,9 +318,10 @@ export function usePosCart({
     setCart([]);
     setLeadValue(null);
     setPriceListId("none");
-    setPromoCode("");
+    setFulfillment("dine_in");
+    resetPromo();
     if (siteId) await clearCartSession(siteId);
-  }, [siteId]);
+  }, [siteId, resetPromo]);
 
   const populateFromOrder = (order: any) => {
     if (
@@ -430,6 +437,10 @@ export function usePosCart({
     priceListId,
     promoCode,
     setPromoCode,
+    appliedPromo,
+    promoDiscount,
+    validatePromotion,
+    clearAppliedPromo,
     selectedCartItemId,
     setSelectedCartItemId,
     activeOrderId,

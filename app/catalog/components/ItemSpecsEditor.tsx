@@ -201,8 +201,6 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
     }
   }
 
-  if (loading) return <div className="text-sm text-muted-foreground p-4">Loading entities...</div>
-
   // Categories to show: System defaults for this kind, plus any category that has a selected spec, plus custom categories.
   const categoriesToShow = categories.filter(c => 
     (!c.is_system) || 
@@ -215,116 +213,134 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>{t('marketplace.catalogDetails.entities') || 'Entities & Collections'}</CardTitle>
-          <Button variant="outline" size="sm" onClick={handleAddCustomCategory}>
-            <Plus className="w-4 h-4 mr-2" /> Add Custom Category
-          </Button>
+          {!loading && (
+            <Button variant="outline" size="sm" onClick={handleAddCustomCategory}>
+              <Plus className="w-4 h-4 mr-2" /> Add Custom Category
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
-        {categoriesToShow.map((cat, index) => {
-          const isMulti = cat.slug === 'artist' || !cat.is_system
-          const selectedForCat = itemSpecs.filter(s => s.category_id === cat.id)
+        {loading ? (
+          <div className="space-y-8">
+            {[0, 1].map((i) => (
+              <div key={i} className={i > 0 ? "pt-8 border-t" : ""}>
+                <div className="mb-6">
+                  <div className="h-6 w-28 bg-muted/50 rounded animate-pulse" />
+                </div>
+                <div className="space-y-4">
+                  <div className="h-10 w-full md:w-1/2 bg-muted/50 rounded animate-pulse" />
+                  <div className="h-10 w-full bg-muted/50 rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          categoriesToShow.map((cat, index) => {
+            const isMulti = cat.slug === 'artist' || !cat.is_system
+            const selectedForCat = itemSpecs.filter(s => s.category_id === cat.id)
 
-          const options = allSpecs
-            .filter(s => s.category_id === cat.id)
-            .map(s => ({ id: s.id, label: s.name }))
+            const options = allSpecs
+              .filter(s => s.category_id === cat.id)
+              .map(s => ({ id: s.id, label: s.name }))
 
-          return (
-            <div key={cat.id} className={index > 0 ? "pt-8 border-t mt-8" : ""}>
-              <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h3 className="font-semibold text-lg capitalize">{cat.name}</h3>
+            return (
+              <div key={cat.id} className={index > 0 ? "pt-8 border-t mt-8" : ""}>
+                <div className="mb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-semibold text-lg capitalize">{cat.name}</h3>
+                    {selectedForCat.length > 0 && (
+                      <span className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                        {selectedForCat.length}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {(!isMulti && selectedForCat.length > 0) ? null : (
+                    <div className="w-full md:w-1/2">
+                      <RelationSelect
+                        options={options}
+                        value={null}
+                        onValueChange={(val) => handleSpecSelect(cat, val)}
+                        placeholder={`Select or create ${cat.name.toLowerCase()}...`}
+                        clearAfterSelect={true}
+                      />
+                    </div>
+                  )}
+
                   {selectedForCat.length > 0 && (
-                    <span className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                      {selectedForCat.length}
-                    </span>
+                    <div className="space-y-6">
+                      {selectedForCat.map((spec, specIndex) => (
+                        <div key={spec.id} className={`relative ${isMulti && specIndex > 0 ? 'pt-6 border-t mt-6' : ''}`}>
+                          <div className="flex items-start gap-4">
+                            <div className="flex-1 space-y-4">
+                              <div className="space-y-2">
+                                <Label>{t('catalog.specs.name') || 'Name'}</Label>
+                                <Input 
+                                  value={spec.name || ''} 
+                                  onChange={e => handleUpdateSpecMedia(spec, 'name' as any, e.target.value)}
+                                  placeholder={`e.g. ${cat.name}`}
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label>{t('catalog.specs.image') || 'Image'}</Label>
+                                <ImageUpload 
+                                  value={spec.image_url || ''} 
+                                  onChange={val => handleUpdateSpecMedia(spec, 'image_url', val)} 
+                                  onRemove={() => handleUpdateSpecMedia(spec, 'image_url', '')} 
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label>{t('catalog.specs.videoUrl') || 'Video URL'}</Label>
+                                <Input 
+                                  value={spec.video_url || ''} 
+                                  onChange={e => handleUpdateSpecMedia(spec, 'video_url', e.target.value)}
+                                  placeholder="https://..."
+                                />
+                              </div>
+                              
+                              {cat.slug === 'venue' && (
+                                <>
+                                  <div className="space-y-2">
+                                    <Label>{t('catalog.specs.address') || 'Address'}</Label>
+                                    <Input 
+                                      value={spec.address || ''} 
+                                      onChange={e => handleUpdateSpecMedia(spec, 'address', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>{t('catalog.specs.city') || 'City'}</Label>
+                                    <Input 
+                                      value={spec.city || ''} 
+                                      onChange={e => handleUpdateSpecMedia(spec, 'city', e.target.value)}
+                                    />
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive mt-8 shrink-0"
+                              onClick={() => handleRemoveSpec(spec.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
-
-              <div className="space-y-6">
-                {(!isMulti && selectedForCat.length > 0) ? null : (
-                  <div className="w-full md:w-1/2">
-                    <RelationSelect
-                      options={options}
-                      value={null}
-                      onValueChange={(val) => handleSpecSelect(cat, val)}
-                      placeholder={`Select or create ${cat.name.toLowerCase()}...`}
-                      clearAfterSelect={true}
-                    />
-                  </div>
-                )}
-
-                {selectedForCat.length > 0 && (
-                  <div className="space-y-6">
-                    {selectedForCat.map((spec, specIndex) => (
-                      <div key={spec.id} className={`relative ${isMulti && specIndex > 0 ? 'pt-6 border-t mt-6' : ''}`}>
-                        <div className="flex items-start gap-4">
-                          <div className="flex-1 space-y-4">
-                            <div className="space-y-2">
-                              <Label>{t('catalog.specs.name') || 'Name'}</Label>
-                              <Input 
-                                value={spec.name || ''} 
-                                onChange={e => handleUpdateSpecMedia(spec, 'name' as any, e.target.value)}
-                                placeholder={`e.g. ${cat.name}`}
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>{t('catalog.specs.image') || 'Image'}</Label>
-                              <ImageUpload 
-                                value={spec.image_url || ''} 
-                                onChange={val => handleUpdateSpecMedia(spec, 'image_url', val)} 
-                                onRemove={() => handleUpdateSpecMedia(spec, 'image_url', '')} 
-                              />
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <Label>{t('catalog.specs.videoUrl') || 'Video URL'}</Label>
-                              <Input 
-                                value={spec.video_url || ''} 
-                                onChange={e => handleUpdateSpecMedia(spec, 'video_url', e.target.value)}
-                                placeholder="https://..."
-                              />
-                            </div>
-                            
-                            {cat.slug === 'venue' && (
-                              <>
-                                <div className="space-y-2">
-                                  <Label>{t('catalog.specs.address') || 'Address'}</Label>
-                                  <Input 
-                                    value={spec.address || ''} 
-                                    onChange={e => handleUpdateSpecMedia(spec, 'address', e.target.value)}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label>{t('catalog.specs.city') || 'City'}</Label>
-                                  <Input 
-                                    value={spec.city || ''} 
-                                    onChange={e => handleUpdateSpecMedia(spec, 'city', e.target.value)}
-                                  />
-                                </div>
-                              </>
-                            )}
-                          </div>
-                          
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-destructive mt-8 shrink-0"
-                            onClick={() => handleRemoveSpec(spec.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )
-        })}
+            )
+          })
+        )}
       </CardContent>
       <ActionFooter>
         <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>

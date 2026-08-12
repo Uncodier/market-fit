@@ -2,7 +2,6 @@
 
 import React from "react"
 import { BuyerQuoteDetailView } from "@/app/buyer/components/BuyerQuoteDetailView"
-import { BuyerShell } from "@/app/buyer/components/BuyerShell"
 
 export default function PublicQuotePage({
   params,
@@ -12,12 +11,10 @@ export default function PublicQuotePage({
   const resolvedParams = React.use(params)
 
   return (
-    <BuyerShell requireAuth={false}>
-      <BuyerQuoteDetailView
-        publicAccessToken={resolvedParams.token}
-        backHref={null}
-        returnUrl={`/q/${resolvedParams.token}`}
-      />
-    </BuyerShell>
+    <BuyerQuoteDetailView
+      publicAccessToken={resolvedParams.token}
+      backHref={null}
+      returnUrl={`/q/${resolvedParams.token}`}
+    />
   )
 }

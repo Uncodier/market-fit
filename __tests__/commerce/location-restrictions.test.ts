@@ -53,6 +53,48 @@ describe('evaluateLocationRestrictions', () => {
     expect(evaluateLocationRestrictions(locations, { city: 'los angeles' }).available).toBe(true);
   });
 
+  it('ignores blank included address placeholders', () => {
+    const locations = [
+      {
+        restrictions: {
+          enabled: true,
+          included_addresses: [{ name: '', city: '', country: '' }],
+        },
+      },
+    ];
+    expect(
+      evaluateLocationRestrictions(locations, { city: 'Celaya', country: 'MX' }).available
+    ).toBe(true);
+  });
+
+  it('matches ISO country codes to country names', () => {
+    const locations = [
+      {
+        restrictions: {
+          enabled: true,
+          included_addresses: [{ country: 'Mexico', city: 'Celaya' }],
+        },
+      },
+    ];
+    expect(
+      evaluateLocationRestrictions(locations, { country: 'MX', city: 'Celaya' }).available
+    ).toBe(true);
+  });
+
+  it('matches cities ignoring accents', () => {
+    const locations = [
+      {
+        restrictions: {
+          enabled: true,
+          included_addresses: [{ city: 'Mexico' }],
+        },
+      },
+    ];
+    expect(
+      evaluateLocationRestrictions(locations, { city: 'México' }).available
+    ).toBe(true);
+  });
+
   it('excludes take precedence over includes', () => {
     const locations = [
       {

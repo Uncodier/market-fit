@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Checkbox } from "@/app/components/ui/checkbox"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { listLocations } from "@/app/inventory/actions"
 import type { Location, PromotionChannel } from "@/app/types"
 import {
@@ -12,23 +13,81 @@ import {
   normalizePromotionLocationIds,
 } from "../promotion-channels"
 
-const CHANNEL_OPTIONS: { id: PromotionChannel; label: string; description: string }[] = [
+const CHANNEL_OPTIONS: {
+  id: PromotionChannel
+  labelKey: string
+  labelFallback: string
+  descriptionKey: string
+  descriptionFallback: string
+}[] = [
   {
     id: "marketplace",
-    label: "Marketplace",
-    description: "Public marketplace checkout",
+    labelKey: "promotions.detail.channels.marketplace",
+    labelFallback: "Marketplace",
+    descriptionKey: "promotions.detail.channels.marketplaceDesc",
+    descriptionFallback: "Public marketplace checkout",
   },
   {
     id: "shop",
-    label: "Shop",
-    description: "Online storefront for this site",
+    labelKey: "promotions.detail.channels.shop",
+    labelFallback: "Shop",
+    descriptionKey: "promotions.detail.channels.shopDesc",
+    descriptionFallback: "Online storefront for this site",
   },
   {
     id: "pos",
-    label: "POS",
-    description: "Point of Sale registers and locations",
+    labelKey: "promotions.detail.channels.pos",
+    labelFallback: "POS",
+    descriptionKey: "promotions.detail.channels.posDesc",
+    descriptionFallback: "Point of Sale registers and locations",
   },
 ]
+
+function isFullChannelSet(channels: PromotionChannel[]): boolean {
+  return (
+    channels.length === DEFAULT_PROMOTION_CHANNELS.length &&
+    DEFAULT_PROMOTION_CHANNELS.every((c) => channels.includes(c))
+  )
+}
+
+interface RestrictionToggleProps {
+  id: string
+  title: string
+  description: string
+  enabled: boolean
+  onEnabledChange: (enabled: boolean) => void
+  children?: React.ReactNode
+}
+
+function RestrictionToggle({
+  id,
+  title,
+  description,
+  enabled,
+  onEnabledChange,
+  children,
+}: RestrictionToggleProps) {
+  return (
+    <div className="rounded-lg border">
+      <div className="flex flex-row items-center justify-between p-3">
+        <div className="space-y-0.5 pr-4">
+          <Label htmlFor={id} className="text-sm cursor-pointer">
+            {title}
+          </Label>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+        <Switch
+          id={id}
+          checked={enabled}
+          onCheckedChange={(v) => onEnabledChange(!!v)}
+        />
+      </div>
+      {enabled && children && (
+        <div className="border-t p-3 bg-muted/20 space-y-3">{children}</div>
+      )}
+    </div>
+  )
+}
 
 interface PromotionChannelsFieldsProps {
   siteId?: string | null
@@ -48,14 +107,30 @@ export function PromotionChannelsFields({
   locationIds: locationIdsProp,
   onChange,
   idPrefix = "promo-channel",
-  compact = false,
 }: PromotionChannelsFieldsProps) {
+  const { t } = useLocalization()
   const [locations, setLocations] = useState<Location[]>([])
   const [loadingLocations, setLoadingLocations] = useState(false)
 
   const channels = normalizePromotionChannels(channelsProp)
   const locationIds = normalizePromotionLocationIds(locationIdsProp)
   const posEnabled = channels.includes("pos")
+
+  const [channelsOn, setChannelsOn] = useState(!isFullChannelSet(channels))
+  const [locationsOn, setLocationsOn] = useState(locationIds.length > 0)
+
+  // Only auto-enable from data when channels are already restricted.
+  // Do not force OFF when the full set is selected — user may have just
+  // turned the restriction on to edit it.
+  useEffect(() => {
+    if (!isFullChannelSet(channels)) {
+      setChannelsOn(true)
+    }
+  }, [channels])
+
+  useEffect(() => {
+    if (locationIds.length > 0) setLocationsOn(true)
+  }, [locationIds.length])
 
   useEffect(() => {
     let cancelled = false
@@ -74,19 +149,26 @@ export function PromotionChannelsFields({
     }
   }, [siteId])
 
+  const setChannels = (next: PromotionChannel[]) => {
+    const normalized =
+      next.length > 0 ? next : [...DEFAULT_PROMOTION_CHANNELS]
+    onChange({
+      channels: normalized,
+      location_ids: normalized.includes("pos") ? locationIds : [],
+    })
+  }
+
   const toggleChannel = (channel: PromotionChannel, enabled: boolean) => {
     let next = enabled
       ? Array.from(new Set([...channels, channel]))
       : channels.filter((c) => c !== channel)
 
     if (next.length === 0) {
-      next = [...DEFAULT_PROMOTION_CHANNELS]
+      // Keep at least one channel while restriction is on
+      next = [channel]
     }
 
-    onChange({
-      channels: next,
-      location_ids: next.includes("pos") ? locationIds : [],
-    })
+    setChannels(next)
   }
 
   const toggleLocation = (locationId: string, enabled: boolean) => {
@@ -98,63 +180,113 @@ export function PromotionChannelsFields({
 
   return (
     <div className="space-y-3">
-      {CHANNEL_OPTIONS.map((option) => {
-        const checked = channels.includes(option.id)
-        const fieldId = `${idPrefix}-${option.id}`
-        return (
-          <div
-            key={option.id}
-            className={`flex flex-row items-center justify-between rounded-lg border ${compact ? "p-3" : "p-4"}`}
-          >
-            <div className="space-y-0.5 pr-4">
-              <Label htmlFor={fieldId} className={`${compact ? "text-sm" : "text-base"} cursor-pointer`}>
-                {option.label}
-              </Label>
-              <p className="text-xs text-muted-foreground">{option.description}</p>
-            </div>
-            <Switch
-              id={fieldId}
-              checked={checked}
-              onCheckedChange={(value) => toggleChannel(option.id, !!value)}
-            />
-          </div>
-        )
-      })}
-
-      {posEnabled && (
-        <div className="border rounded-md p-3 max-h-[220px] overflow-y-auto space-y-2 bg-muted/20">
-          <Label className="block">POS Locations</Label>
-          <p className="text-xs text-muted-foreground">
-            Optional. If none are selected, the promotion applies at every active location.
-          </p>
-          {loadingLocations && (
-            <p className="text-sm text-muted-foreground italic">Loading locations…</p>
-          )}
-          {!loadingLocations && locations.length === 0 && (
-            <p className="text-sm text-muted-foreground italic">No locations found</p>
-          )}
-          {locations.map((loc) => {
-            const locId = `${idPrefix}-loc-${loc.id}`
+      <RestrictionToggle
+        id={`${idPrefix}-limit-channels`}
+        title={t("promotions.detail.channels.limitTitle") || "Channels"}
+        description={
+          t("promotions.detail.channels.limitDescription") ||
+          "Limit the promotion to specific sales channels"
+        }
+        enabled={channelsOn}
+        onEnabledChange={(enabled) => {
+          setChannelsOn(enabled)
+          if (!enabled) {
+            setLocationsOn(false)
+            onChange({
+              channels: [...DEFAULT_PROMOTION_CHANNELS],
+              location_ids: [],
+            })
+          }
+        }}
+      >
+        <div className="space-y-2">
+          {CHANNEL_OPTIONS.map((option) => {
+            const fieldId = `${idPrefix}-${option.id}`
+            const checked = channels.includes(option.id)
             return (
-              <div key={loc.id} className="flex items-center space-x-2 py-1">
+              <div key={option.id} className="flex items-start space-x-2 py-1">
                 <Checkbox
-                  id={locId}
-                  checked={locationIds.includes(loc.id)}
-                  onCheckedChange={(checked) => toggleLocation(loc.id, !!checked)}
+                  id={fieldId}
+                  checked={checked}
+                  onCheckedChange={(value) =>
+                    toggleChannel(option.id, !!value)
+                  }
+                  className="mt-0.5"
                 />
-                <label htmlFor={locId} className="text-sm cursor-pointer">
-                  {loc.name}
-                  {(loc.city || loc.address) && (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      — {[loc.address, loc.city].filter(Boolean).join(", ")}
-                    </span>
-                  )}
-                </label>
+                <div className="space-y-0.5">
+                  <label htmlFor={fieldId} className="text-sm cursor-pointer font-medium">
+                    {t(option.labelKey) || option.labelFallback}
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {t(option.descriptionKey) || option.descriptionFallback}
+                  </p>
+                </div>
               </div>
             )
           })}
         </div>
+      </RestrictionToggle>
+
+      {posEnabled && (
+        <RestrictionToggle
+          id={`${idPrefix}-limit-locations`}
+          title={
+            t("promotions.detail.channels.locationsTitle") || "POS locations"
+          }
+          description={
+            t("promotions.detail.channels.locationsDescription") ||
+            "Limit the promotion to specific POS locations"
+          }
+          enabled={locationsOn}
+          onEnabledChange={(enabled) => {
+            setLocationsOn(enabled)
+            if (!enabled) {
+              onChange({ channels, location_ids: [] })
+            }
+          }}
+        >
+          <div className="max-h-[220px] overflow-y-auto space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {t("promotions.detail.channels.locationsHint") ||
+                "If none are selected, the promotion applies at every active location."}
+            </p>
+            {loadingLocations && (
+              <p className="text-sm text-muted-foreground italic">
+                {t("promotions.detail.channels.loadingLocations") ||
+                  "Loading locations…"}
+              </p>
+            )}
+            {!loadingLocations && locations.length === 0 && (
+              <p className="text-sm text-muted-foreground italic">
+                {t("promotions.detail.channels.noLocations") ||
+                  "No locations found"}
+              </p>
+            )}
+            {locations.map((loc) => {
+              const locId = `${idPrefix}-loc-${loc.id}`
+              return (
+                <div key={loc.id} className="flex items-center space-x-2 py-1">
+                  <Checkbox
+                    id={locId}
+                    checked={locationIds.includes(loc.id)}
+                    onCheckedChange={(checked) =>
+                      toggleLocation(loc.id, !!checked)
+                    }
+                  />
+                  <label htmlFor={locId} className="text-sm cursor-pointer">
+                    {loc.name}
+                    {(loc.city || loc.address) && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        — {[loc.address, loc.city].filter(Boolean).join(", ")}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              )
+            })}
+          </div>
+        </RestrictionToggle>
       )}
     </div>
   )

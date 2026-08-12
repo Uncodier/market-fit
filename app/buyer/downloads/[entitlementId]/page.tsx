@@ -51,7 +51,7 @@ export default async function BuyerDownloadsPage(props: {
   }
 
   return (
-    <BuyerExperienceShell backUrl={backUrl}>
+    <BuyerExperienceShell backUrl={backUrl} variant="downloads">
       <DigitalPdpLayout item={item} backUrl={backUrl} experience={experience} />
     </BuyerExperienceShell>
   )

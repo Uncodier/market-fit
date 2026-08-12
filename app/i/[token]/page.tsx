@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react"
 import { getSaleByPublicToken } from "@/app/sales/send-actions"
 import { PublicDocumentView } from "@/app/documents/components/PublicDocumentView"
+import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
+import { mapDocumentLineItems } from "@/app/documents/map-document-items"
 import { documentT } from "@/app/lib/i18n/document-t"
 
 export default function PublicInvoicePage(props: {
@@ -23,21 +25,17 @@ export default function PublicInvoicePage(props: {
       const order = res.saleOrder
       const branding = res.branding
       const locale = branding?.locale || "en"
-      const rawItems = order?.items || []
+      const mapped = mapDocumentLineItems(order?.items || [])
       const items =
-        rawItems.length > 0
-          ? rawItems.map((item: any) => ({
-              name: item.name || "Item",
-              quantity: Number(item.quantity) || 0,
-              unit_price: Number(item.unit_price ?? item.unitPrice) || 0,
-              subtotal: Number(item.subtotal) || 0,
-            }))
+        mapped.length > 0
+          ? mapped
           : [
               {
                 name: sale.product_name || sale.title || "Sale",
                 quantity: 1,
                 unit_price: Number(sale.amount) || 0,
                 subtotal: Number(sale.amount) || 0,
+                status: null,
               },
             ]
 
@@ -54,6 +52,7 @@ export default function PublicInvoicePage(props: {
         total: order?.total ?? sale.amount,
         items,
         party: { name: sale.leads?.name, email: sale.leads?.email },
+        siteId: sale.site?.id || branding?.site?.id || sale.site_id || null,
         siteName: sale.site?.name || branding?.site?.name || "Invoice",
         siteUrl: sale.site?.url || branding?.site?.url,
         logoUrl: sale.site?.logo_url || branding?.site?.logo_url,
@@ -73,11 +72,7 @@ export default function PublicInvoicePage(props: {
     )
   }
   if (!view) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-gray-500">
-        Loading…
-      </div>
-    )
+    return <PublicDocumentViewSkeleton />
   }
 
   return <PublicDocumentView {...view} />

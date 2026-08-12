@@ -6,6 +6,7 @@ export interface BuyerGeo {
   longitude?: string;
   country?: string;
   city?: string;
+  state?: string;
   zip?: string;
 }
 

@@ -19,6 +19,7 @@ import { Tag, Plus, Edit, Calendar } from "@/app/components/ui/icons"
 import Link from "next/link"
 import { format } from "date-fns"
 import { CreatePromotionDialog } from "./components/CreatePromotionDialog"
+import { formatPromotionDiscountLabel } from "./bogo-discount"
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-muted text-foreground hover:bg-muted/50 border-none",
@@ -148,7 +149,7 @@ export default function PromotionsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="font-medium text-foreground">
-                              {promo.discount_type === 'percent' ? `${promo.discount_value}% OFF` : `$${promo.discount_value} OFF`}
+                              {formatPromotionDiscountLabel(promo)}
                             </div>
                             {promo.applies_to === 'selected_items' && (
                               <div className="text-xs text-muted-foreground">Selected items</div>

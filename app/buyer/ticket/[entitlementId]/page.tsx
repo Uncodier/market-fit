@@ -38,7 +38,7 @@ export default async function BuyerTicketPage(props: {
   }
 
   return (
-    <BuyerExperienceShell backUrl={backUrl}>
+    <BuyerExperienceShell backUrl={backUrl} variant="ticket">
       <TicketPdpLayout item={item} backUrl={backUrl} experience={experience} />
     </BuyerExperienceShell>
   )

@@ -61,7 +61,8 @@
     --radius: 0.5rem;
   }
  
-  .dark {
+  /* html.dark beats :root when both match (same element), so dark tokens stick */
+  html.dark {
     --background: 222.2 84% 4.9%;
     --is-dark: 1;
     --foreground: 210 40% 98%;

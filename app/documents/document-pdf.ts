@@ -7,6 +7,8 @@ import {
   translateDocumentStatus,
   type DocumentStatusKind,
 } from "@/app/lib/i18n/document-t"
+import type { DocumentShippingAddress } from "@/app/documents/document-meta"
+import { drawDocumentOrderMeta } from "@/app/documents/document-pdf-meta"
 import {
   drawPdfWrappedText,
   drawRightText,
@@ -25,6 +27,7 @@ export type DocumentPdfItem = {
   quantity: number
   unit_price: number
   subtotal: number
+  status?: string | null
 }
 
 export type DocumentPdfInput = {
@@ -47,6 +50,9 @@ export type DocumentPdfInput = {
   viewLink: string
   reviewLabelKey?: string
   statusKind?: DocumentStatusKind
+  fulfillmentMethod?: string | null
+  paymentMethod?: string | null
+  shippingAddress?: DocumentShippingAddress | null
 }
 
 /** Clean invoice-style A4 PDF shared by sales / orders / bills / quotes. */
@@ -222,6 +228,18 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
   }
   y -= 72
 
+  y = drawDocumentOrderMeta(page, {
+    y,
+    margin,
+    contentWidth,
+    locale,
+    font,
+    bold,
+    fulfillmentMethod: input.fulfillmentMethod,
+    paymentMethod: input.paymentMethod,
+    shippingAddress: input.shippingAddress,
+  })
+
   page.drawRectangle({
     x: margin,
     y: y - 6,
@@ -229,12 +247,24 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
     height: 22,
     color: pdfSoftFill,
   })
-  const cols = {
-    name: margin + 10,
-    qty: margin + 300,
-    price: margin + 360,
-    total: right - 10,
-  }
+  const lineItems = input.items || []
+  const showItemStatus =
+    input.statusKind === "orders" || lineItems.some((item) => Boolean(item.status))
+  const cols = showItemStatus
+    ? {
+        name: margin + 10,
+        status: margin + 210,
+        qty: margin + 310,
+        price: margin + 365,
+        total: right - 10,
+      }
+    : {
+        name: margin + 10,
+        status: 0,
+        qty: margin + 300,
+        price: margin + 360,
+        total: right - 10,
+      }
   page.drawText(t("quotations.document.item"), {
     x: cols.name,
     y,
@@ -242,6 +272,15 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
     font: bold,
     color: pdfMuted,
   })
+  if (showItemStatus) {
+    page.drawText(t("quotations.document.status"), {
+      x: cols.status,
+      y,
+      size: 9,
+      font: bold,
+      color: pdfMuted,
+    })
+  }
   page.drawText(t("quotations.document.qty"), {
     x: cols.qty,
     y,
@@ -265,15 +304,34 @@ export async function buildDocumentPdf(input: DocumentPdfInput): Promise<Uint8Ar
   })
   y -= 24
 
-  for (const item of input.items || []) {
+  for (const item of lineItems) {
     if (y < 140) break
-    page.drawText((item.name || t("quotations.document.item")).slice(0, 42), {
-      x: cols.name,
-      y,
-      size: 10,
-      font,
-      color: pdfInk,
-    })
+    page.drawText(
+      (item.name || t("quotations.document.item")).slice(0, showItemStatus ? 28 : 42),
+      {
+        x: cols.name,
+        y,
+        size: 10,
+        font,
+        color: pdfInk,
+      }
+    )
+    if (showItemStatus) {
+      const lineStatus = item.status
+        ? translateDocumentStatus(
+            locale,
+            item.status,
+            input.statusKind || "orders"
+          )
+        : "—"
+      page.drawText(lineStatus.toUpperCase().slice(0, 14), {
+        x: cols.status,
+        y,
+        size: 9,
+        font,
+        color: pdfInk,
+      })
+    }
     page.drawText(String(item.quantity ?? 0), {
       x: cols.qty + 6,
       y,

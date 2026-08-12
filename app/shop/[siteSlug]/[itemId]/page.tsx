@@ -6,6 +6,7 @@ import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstr
 import { createClient } from "@/lib/supabase/server"
 import { Metadata } from "next"
 import { buildCatalogItemShareMetadata } from "@/app/lib/commerce-metadata"
+import { ShopSlugNotFound } from "../ShopSlugNotFound"
 
 export const dynamic = "force-dynamic"
 
@@ -32,7 +33,7 @@ export default async function ShopItemPage({ params }: { params: Promise<{ siteS
   const itemId = 'itemId' in resolvedParams ? resolvedParams.itemId : undefined;
   
   if (!siteSlug || !itemId) {
-    notFound();
+    return <ShopSlugNotFound slug={siteSlug} />
   }
 
   // Prefer resolving via catalog item (includes site join) so a flaky slug scan
@@ -58,7 +59,10 @@ export default async function ShopItemPage({ params }: { params: Promise<{ siteS
   let site = siteMatchesSlug ? siteFromItem : null
   if (!site) {
     const resolved = await getShopSite(siteSlug)
-    if (!resolved || resolved.id !== (item as any).site_id) {
+    if (!resolved) {
+      return <ShopSlugNotFound slug={siteSlug} />
+    }
+    if (resolved.id !== (item as any).site_id) {
       notFound()
     }
     site = resolved

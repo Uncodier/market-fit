@@ -11,6 +11,8 @@ import {
   getListingCtaLabel,
   getListingPriceSuffix,
 } from "@/app/catalog/product-details"
+import type { PromoBadge } from "@/app/promotions/promotion-merchandising"
+import { promoBadgeLabel } from "@/app/promotions/promotion-merchandising"
 
 type FeaturedItem = CatalogItem & {
   site?: { id: string; name: string; logo_url?: string | null }
@@ -44,6 +46,7 @@ interface FeaturedListingPosterProps {
   /** Single hero vs compact tile in a 2-up / carousel rail */
   size?: "hero" | "tile"
   locationAvailable?: boolean
+  promoBadge?: PromoBadge | null
 }
 
 /**
@@ -61,6 +64,7 @@ export function FeaturedListingPoster({
   canBook = false,
   size = "hero",
   locationAvailable = true,
+  promoBadge = null,
 }: FeaturedListingPosterProps) {
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
@@ -73,7 +77,9 @@ export function FeaturedListingPoster({
   const isSoldOut = !item._shop?.sellable && item._shop?.availableQty === 0
   const isLocationRestricted = !locationAvailable
   const actionDisabled = isSoldOut || primaryDisabled || isLocationRestricted
-  const finalDisabledLabel = isLocationRestricted ? (t("shop.unavailable") || "Unavailable") : disabledLabel
+  const finalDisabledLabel = isLocationRestricted
+    ? (t("shop.locationRestricted") || "Location")
+    : disabledLabel
   const isHero = size === "hero"
 
   const handlePrimary = (e: React.MouseEvent) => {
@@ -105,14 +111,25 @@ export function FeaturedListingPoster({
       </Link>
 
       <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-1">
+        {promoBadge && (
+          <Link
+            href={promoBadge.href}
+            onClick={(e) => e.stopPropagation()}
+            className="rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider hover:bg-emerald-700"
+          >
+            {promoBadge.discount_type
+              ? promoBadgeLabel(promoBadge, t)
+              : promoBadge.label}
+          </Link>
+        )}
         {typeLabelKey !== "marketplace.listing.badge.product" && (
           <span className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-black shadow-sm uppercase tracking-wider">
             {t(typeLabelKey) || typeLabelKey.split(".").pop()}
           </span>
         )}
         {!locationAvailable && (
-          <span className="rounded-md bg-orange-500/90 backdrop-blur-sm px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider">
-            Unavailable
+          <span className="rounded-md bg-red-600/95 backdrop-blur-sm px-2.5 py-1 text-xs font-bold text-white shadow-sm uppercase tracking-wider">
+            {t("shop.locationRestricted") || "Location"}
           </span>
         )}
       </div>
@@ -231,6 +248,7 @@ interface FeaturedListingsRailProps {
   getCanBook?: (item: FeaturedItem) => boolean
   locationAvailable?: boolean
   getLocationAvailable?: (item: FeaturedItem) => boolean
+  getPromoBadge?: (item: FeaturedItem) => PromoBadge | null | undefined
 }
 
 /** 1 item → hero poster; 2 items → side-by-side posters (ecommerce focus rail). */
@@ -245,6 +263,7 @@ export function FeaturedListingsRail({
   getCanBook,
   locationAvailable = true,
   getLocationAvailable,
+  getPromoBadge,
 }: FeaturedListingsRailProps) {
   if (items.length === 0) return null
 
@@ -262,6 +281,7 @@ export function FeaturedListingsRail({
         canBook={getCanBook?.(item)}
         size="hero"
         locationAvailable={getLocationAvailable ? getLocationAvailable(item) : locationAvailable}
+        promoBadge={getPromoBadge?.(item) || null}
       />
     )
   }
@@ -281,6 +301,7 @@ export function FeaturedListingsRail({
           canBook={getCanBook?.(item)}
           size="tile"
           locationAvailable={getLocationAvailable ? getLocationAvailable(item) : locationAvailable}
+          promoBadge={getPromoBadge?.(item) || null}
         />
       ))}
     </div>

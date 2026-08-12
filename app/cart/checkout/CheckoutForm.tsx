@@ -8,6 +8,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { CheckoutIdentityPicker } from "@/app/components/commerce/CheckoutIdentityPicker"
 import { VenueMap } from "@/app/components/commerce/pdp/VenueMap"
+import { checkoutLabelKey, CheckoutCopyMode } from "@/app/commerce/checkout-labels"
 
 interface CheckoutFormProps {
   session: any
@@ -40,6 +41,7 @@ interface CheckoutFormProps {
   isOpen?: boolean
   nextOpenSlot?: { at: Date, label: string } | null
   deliveryTimeLabel?: string | null
+  copyMode?: CheckoutCopyMode
 }
 
 export function CheckoutForm({
@@ -49,7 +51,8 @@ export function CheckoutForm({
   handleCheckout, lockedDestination, locations = [], pickupLocationId, setPickupLocationId,
   paymentMethod, setPaymentMethod, availablePaymentMethods = [],
   orderTiming = 'now', setOrderTiming, scheduledFor, setScheduledFor,
-  businessHours = [], isOpen = true, nextOpenSlot, deliveryTimeLabel
+  businessHours = [], isOpen = true, nextOpenSlot, deliveryTimeLabel,
+  copyMode = 'retail'
 }: CheckoutFormProps) {
   const { t } = useLocalization()
 
@@ -136,7 +139,7 @@ export function CheckoutForm({
 
       {/* Show for both shop and marketplace when they have valid options */}
       <div className="space-y-6 pt-8 border-t">
-        <h3 className="text-xl font-bold">{t('checkout.deliveryMethod') || 'Delivery Method'}</h3>
+        <h3 className="text-xl font-bold">{t(checkoutLabelKey('checkout.deliveryMethod', copyMode)) || 'Delivery Method'}</h3>
         
         <div>
           {allowedOptions.length === 0 ? (
@@ -156,7 +159,7 @@ export function CheckoutForm({
                   }`}
                 >
                   <Store className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-medium whitespace-nowrap">{t('checkout.storePickup') || 'Store Pickup'}</span>
+                  <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.storePickup', copyMode)) || 'Store Pickup'}</span>
                 </button>
               )}
               {allowedOptions.includes('ship') && (
@@ -170,7 +173,7 @@ export function CheckoutForm({
                   }`}
                 >
                   <Truck className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-medium whitespace-nowrap">{t('checkout.shipToMe') || 'Ship to Me'}</span>
+                  <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.shipToMe', copyMode)) || 'Ship to Me'}</span>
                 </button>
               )}
               {allowedOptions.includes('dine_in') && (
@@ -198,7 +201,7 @@ export function CheckoutForm({
                   }`}
                 >
                   <Package className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-medium whitespace-nowrap">{t('checkout.digitalService') || 'Digital / Service'}</span>
+                  <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.digitalService', copyMode)) || 'Digital / Service'}</span>
                 </button>
               )}
             </div>
@@ -208,11 +211,11 @@ export function CheckoutForm({
           {(fulfillment === 'pickup' || fulfillment === 'dine_in') && allowedOptions.some(opt => opt === 'pickup' || opt === 'dine_in') && (
             <div className="space-y-4 pt-2">
               <Label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">
-                {fulfillment === 'pickup' ? (t('checkout.pickupLocation') || 'Pickup Location') : (t('checkout.location') || 'Location')}
+                {fulfillment === 'pickup' ? (t(checkoutLabelKey('checkout.pickupLocation', copyMode)) || 'Pickup Location') : (t('checkout.location') || 'Location')}
               </Label>
               {locations.length === 0 ? (
                 <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-900/30">
-                  {t('checkout.noPickupLocations') || 'No valid locations available for these items.'}
+                  {t(checkoutLabelKey('checkout.noPickupLocations', copyMode)) || 'No valid locations available for these items.'}
                 </div>
               ) : locations.length === 1 ? (
                 <div className="rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm overflow-hidden">
@@ -288,7 +291,7 @@ export function CheckoutForm({
           {fulfillment === 'ship' && allowedOptions.includes('ship') && (
             <div className="space-y-4">
               <div>
-                <Label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">{t('checkout.shippingAddress') || 'Shipping Address'}</Label>
+                <Label className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">{t(checkoutLabelKey('checkout.shippingAddress', copyMode)) || 'Shipping Address'}</Label>
                 <Input placeholder={t('checkout.streetAddress') || 'Street Address'} value={shippingAddress?.line1} onChange={e => setShippingAddress({...shippingAddress, line1: e.target.value})} required className="h-12 rounded-xl mb-3" />
                 <Input placeholder={t('checkout.aptSuite') || 'Apt, Suite, etc. (optional)'} value={shippingAddress?.line2} onChange={e => setShippingAddress({...shippingAddress, line2: e.target.value})} className="h-12 rounded-xl mb-3" />
                 <div className="grid grid-cols-2 gap-3 mb-3">
@@ -333,7 +336,7 @@ export function CheckoutForm({
                     }`}
                   >
                     <Store className="w-4 h-4 shrink-0" />
-                    <span className="text-sm font-medium whitespace-nowrap">{t('checkout.cashOnPickup') || 'Cash on Pickup'}</span>
+                    <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.cashOnPickup', copyMode)) || 'Cash on Pickup'}</span>
                   </button>
                 )}
                 {availablePaymentMethods.includes('bank_transfer') && (
