@@ -24,22 +24,32 @@ import { EmptyCard } from "@/app/components/ui/empty-card";
 import {
   Store,
   X,
-  Plus,
-  Minus,
   CreditCard,
   ShoppingCart,
   Tag,
 } from "@/app/components/ui/icons";
-import { resolveItemImage } from "@/app/lib/image-utils";
 import { NumpadPanel } from "./NumpadPanel";
 import { PosCustomerSelect } from "./PosCustomerSelect";
+import { PosOrderNotesField } from "./PosOrderNotesField";
 import { PosAppliedPromoCard } from "./PosAppliedPromoCard";
+import { PosCartLines } from "./PosCartLines";
 import { cn } from "@/lib/utils";
 import type { LocalPromoMatch } from "@/app/pos/local/resolve-promo-local";
+
+export interface PosCartModifier {
+  groupId: string;
+  catalogItemId: string;
+  name: string;
+  cartQty: number;
+  cartPrice: number;
+}
 
 export interface PosCartItem extends CatalogItem {
   cartQty: number;
   cartPrice: number;
+  /** Stable cart line identity (host + modifiers). */
+  lineKey?: string;
+  modifiers?: PosCartModifier[];
   reservationStart?: string;
   reservationEnd?: string;
 }
@@ -80,6 +90,8 @@ interface CartPanelProps {
   pendingOrders: any[];
   handleOrderSelect: (val: string) => void;
   allowedFulfillments?: ("pickup" | "ship" | "dine_in" | "none")[];
+  orderNotes?: string;
+  setOrderNotes?: (value: string) => void;
   siteId?: string;
   onLeadUpdated?: (lead: {
     id: string;
@@ -126,6 +138,8 @@ export function CartPanel({
   pendingOrders,
   handleOrderSelect,
   allowedFulfillments = ["pickup", "ship", "dine_in", "none"],
+  orderNotes = "",
+  setOrderNotes,
   siteId,
   onLeadUpdated,
   t,
@@ -176,58 +190,13 @@ export function CartPanel({
           </div>
         ) : (
           <div className="space-y-3">
-            {cart.map((item) => (
-              <div
-                key={item.id}
-                className={cn(
-                  "flex items-center gap-3 p-0 pr-3 rounded-lg border shadow-sm h-14 cursor-pointer transition-all",
-                  selectedCartItemId === item.id
-                    ? "bg-primary/10 dark:bg-primary/20"
-                    : "bg-card hover:border-primary/50",
-                )}
-                onClick={() => setSelectedCartItemId?.(item.id)}
-              >
-                <div className="h-full aspect-square rounded-l-lg bg-muted/30 overflow-hidden flex-shrink-0">
-                  <img
-                    src={resolveItemImage(item)}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm text-foreground truncate">
-                    {item.name}
-                  </h4>
-                  <div className="text-muted-foreground text-xs mt-0.5">
-                    {money(item.cartPrice)}
-                  </div>
-                </div>
-                <div
-                  className="flex items-center gap-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-6 w-6 rounded-full"
-                    onClick={() => updateQty(item.id, -1)}
-                  >
-                    <Minus className="h-3 w-3" />
-                  </Button>
-                  <span className="w-4 text-center text-sm font-medium">
-                    {item.cartQty}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-6 w-6 rounded-full"
-                    onClick={() => updateQty(item.id, 1)}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+            <PosCartLines
+              cart={cart}
+              selectedCartItemId={selectedCartItemId}
+              setSelectedCartItemId={setSelectedCartItemId}
+              updateQty={updateQty}
+              money={money}
+            />
 
             {appliedPromo && (
               <PosAppliedPromoCard
@@ -315,6 +284,14 @@ export function CartPanel({
               onLeadUpdated={onLeadUpdated}
               t={t}
             />
+
+            {setOrderNotes && (
+              <PosOrderNotesField
+                notes={orderNotes}
+                setNotes={setOrderNotes}
+                t={t}
+              />
+            )}
 
             <Select
               value={fulfillment}

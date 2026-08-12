@@ -1,3 +1,24 @@
+/** Max raw prompt length before URL-encoding (avoids backend 403s on long paths). */
+const MAX_PROMPT_CHARS = 220
+
+export type ItemImagePromptInput = {
+  image_url?: string | null
+  name: string
+  description?: string | null
+  category?: string | { name?: string | null } | null
+  siteDescription?: string | null
+  site?: { description?: string | null; name?: string | null } | null
+  parent?: { name?: string | null; description?: string | null } | null
+  /** How parent context is phrased in AI prompts. Defaults to variant. */
+  parentRelation?: "variant" | "addon"
+  _shop?: {
+    categoryName?: string | null
+    siteDescription?: string | null
+    parentName?: string | null
+    parentDescription?: string | null
+  } | null
+}
+
 function publicPromptImageUrl(prompt: string, size = 1024): string {
   const apiServerUrl =
     process.env.NEXT_PUBLIC_API_SERVER_URL || "http://localhost:3001";
@@ -6,17 +27,95 @@ function publicPromptImageUrl(prompt: string, size = 1024): string {
   )}?width=${size}&height=${size}`;
 }
 
-export function resolveItemImage(item: {
-  image_url?: string | null;
-  name: string;
-  description?: string | null;
-}): string {
+function cleanPromptPart(value?: string | null, max = 80): string {
+  if (typeof value !== "string") return ""
+  return value.replace(/\s+/g, " ").trim().slice(0, max)
+}
+
+function categoryLabel(item: ItemImagePromptInput): string | null {
+  if (typeof item.category === "string" && item.category.trim()) {
+    return item.category.trim()
+  }
+  if (item.category && typeof item.category === "object") {
+    const name = item.category.name?.trim()
+    if (name) return name
+  }
+  const fromShop = item._shop?.categoryName?.trim()
+  return fromShop || null
+}
+
+function siteDescriptionOf(item: ItemImagePromptInput): string | null {
+  return (
+    cleanPromptPart(item.siteDescription, 120) ||
+    cleanPromptPart(item._shop?.siteDescription, 120) ||
+    cleanPromptPart(item.site?.description, 120) ||
+    null
+  )
+}
+
+function parentOf(
+  item: ItemImagePromptInput,
+): { name: string; description?: string | null } | null {
+  const name =
+    cleanPromptPart(item.parent?.name, 80) ||
+    cleanPromptPart(item._shop?.parentName, 80)
+  if (!name) return null
+  return {
+    name,
+    description:
+      item.parent?.description ?? item._shop?.parentDescription ?? null,
+  }
+}
+
+/** Build a compact AI image prompt from catalog / shop context. */
+export function buildItemImagePrompt(item: ItemImagePromptInput): string {
+  const parts: string[] = []
+  const name = cleanPromptPart(item.name, 80) || "Product"
+  parts.push(name)
+
+  const parent = parentOf(item)
+  if (parent && parent.name.toLowerCase() !== name.toLowerCase()) {
+    const parentDesc = cleanPromptPart(parent.description, 60)
+    if (item.parentRelation === "addon") {
+      parts.push(
+        parentDesc
+          ? `add-on for ${parent.name}: ${parentDesc}`
+          : `add-on for ${parent.name}`,
+      )
+    } else {
+      parts.push(
+        parentDesc
+          ? `variant of ${parent.name}: ${parentDesc}`
+          : `variant of ${parent.name}`,
+      )
+    }
+  }
+
+  const siteName = cleanPromptPart(item.site?.name, 40)
+  if (siteName) parts.push(`sold at ${siteName}`)
+
+  const desc = cleanPromptPart(item.description, 90)
+  if (desc) parts.push(desc)
+
+  const cat = cleanPromptPart(categoryLabel(item), 40)
+  if (cat) parts.push(`category ${cat}`)
+
+  const siteDesc = siteDescriptionOf(item)
+  if (siteDesc) parts.push(siteDesc)
+
+  let prompt = parts.join(". ")
+  if (prompt.length > MAX_PROMPT_CHARS) {
+    prompt = prompt.slice(0, MAX_PROMPT_CHARS).trim()
+  }
+  return prompt
+}
+
+export function resolveItemImage(item: ItemImagePromptInput): string {
   const uploaded = realImageUrl(item.image_url);
   if (uploaded) {
     return uploaded;
   }
-  // Use name only to avoid long URL 403s on backend
-  return publicPromptImageUrl(item.name);
+  return publicPromptImageUrl(buildItemImagePrompt(item));
 }
 
 /** Real uploaded URLs only (skips AI prompt placeholders). */
@@ -31,24 +130,46 @@ export type PdpGalleryEntry = {
   catalogItemId?: string
 }
 
+type GalleryParent = ItemImagePromptInput & {
+  id: string
+  metadata?: { gallery?: unknown } | null
+}
+
+type GalleryChild = {
+  id: string
+  name: string
+  description?: string | null
+  image_url?: string | null
+}
+
 /**
  * PDP gallery entries for thumbs + main image.
- * With variants: one thumb per child — uploaded image_url, else AI prompt image for the SKU name.
+ * With variants: one thumb per child — uploaded image_url, else AI prompt image for the SKU
+ * (includes parent name/description, category, and site description when available).
  * Parent real image is included when children exist and parent has its own photo.
  * Extra metadata.gallery URLs are appended (deduped).
  */
 export function buildPdpGalleryEntries(params: {
-  parent: {
-    id: string
-    name: string
-    image_url?: string | null
-    metadata?: { gallery?: unknown } | null
-  }
-  children?: { id: string; name: string; image_url?: string | null }[]
+  parent: GalleryParent
+  children?: GalleryChild[]
 }): PdpGalleryEntry[] {
   const children = params.children || []
   const entries: PdpGalleryEntry[] = []
   const seen = new Set<string>()
+  const parentContext = {
+    parent: {
+      name: params.parent.name,
+      description: params.parent.description,
+    },
+    category: params.parent.category ?? params.parent._shop?.categoryName ?? null,
+    siteDescription:
+      params.parent.siteDescription ??
+      params.parent._shop?.siteDescription ??
+      params.parent.site?.description ??
+      null,
+    site: params.parent.site,
+    _shop: params.parent._shop,
+  }
 
   const push = (url: string, catalogItemId?: string) => {
     if (!url || seen.has(url)) return
@@ -62,8 +183,11 @@ export function buildPdpGalleryEntries(params: {
     if (parentReal) push(parentReal, params.parent.id)
 
     for (const child of children) {
-      // Own upload, otherwise AI image for this variant name.
-      const url = resolveItemImage(child)
+      // Own upload, otherwise AI image for this variant with parent/site context.
+      const url = resolveItemImage({
+        ...child,
+        ...parentContext,
+      })
       // Allow same URL for multiple variants (shared upload) — key by item, not URL.
       if (!url) continue
       const alreadyForChild = entries.some((e) => e.catalogItemId === child.id)
@@ -89,13 +213,8 @@ export function buildPdpGalleryEntries(params: {
 
 /** Image URLs for gallery entries. */
 export function buildPdpGalleryUrls(params: {
-  parent: {
-    id: string
-    name: string
-    image_url?: string | null
-    metadata?: { gallery?: unknown } | null
-  }
-  children?: { id: string; name: string; image_url?: string | null }[]
+  parent: GalleryParent
+  children?: GalleryChild[]
 }): string[] {
   return buildPdpGalleryEntries({
     parent: params.parent,

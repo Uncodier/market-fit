@@ -10,9 +10,15 @@ import {
   hasDynamicQuoteFields,
   isDynamicPricedItem,
 } from "@/app/catalog/dynamic-pricing";
-import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/product-details";
+import {
+  isAccessOnlyItem,
+  requiresVariantSelection,
+} from "@/app/catalog/product-details";
 import { createClient } from "@/lib/supabase/client";
-import type { PosCartItem } from "@/app/pos/components/CartPanel";
+import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions";
+import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types";
+import type { PosCartItem, PosCartModifier } from "@/app/pos/components/CartPanel";
+import { getPosDb } from "@/app/pos/local/db";
 
 type Args = {
   siteId?: string;
@@ -22,7 +28,56 @@ type Args = {
   addItemToCart: (item: CatalogItem, extras?: Partial<PosCartItem>) => void;
   router: { push: (href: string) => void };
   t: (key: string) => string;
+  modifierGroupsByHostId?: Record<string, ModifierGroupWithItems[]>;
 };
+
+function groupsFromMap(
+  hostIds: string[],
+  map?: Record<string, ModifierGroupWithItems[]>,
+): ModifierGroupWithItems[] {
+  if (!map) return [];
+  for (const hostId of hostIds) {
+    if (map[hostId]?.length) return map[hostId];
+  }
+  return [];
+}
+
+async function hasModifierGroups(
+  item: CatalogItem,
+  siteId: string | undefined,
+  modifierGroupsByHostId?: Record<string, ModifierGroupWithItems[]>,
+): Promise<boolean> {
+  const hostIds = [item.id, item.parent_id].filter(Boolean) as string[];
+
+  if (groupsFromMap(hostIds, modifierGroupsByHostId).length > 0) return true;
+
+  if (typeof window !== "undefined" && siteId) {
+    try {
+      const meta = await getPosDb().meta.get(siteId);
+      if (
+        groupsFromMap(
+          hostIds,
+          (meta as any)?.modifierGroupsByHostId,
+        ).length > 0
+      ) {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (typeof navigator !== "undefined" && navigator.onLine) {
+    try {
+      const { data } = await getModifierGroupsForCatalogItem(item.id);
+      if (data?.length) return true;
+    } catch {
+      // ignore
+    }
+  }
+
+  return false;
+}
 
 export function usePosAddItem({
   siteId,
@@ -32,10 +87,10 @@ export function usePosAddItem({
   addItemToCart,
   router,
   t,
+  modifierGroupsByHostId,
 }: Args) {
-  const [variantParentItem, setVariantParentItem] = useState<CatalogItem | null>(
-    null,
-  );
+  const [optionsParentItem, setOptionsParentItem] =
+    useState<CatalogItem | null>(null);
   const [dynamicQuoteItem, setDynamicQuoteItem] = useState<CatalogItem | null>(
     null,
   );
@@ -87,6 +142,18 @@ export function usePosAddItem({
     }
   };
 
+  const confirmOptions = (
+    item: CatalogItem,
+    modifiers: PosCartModifier[] = [],
+  ) => {
+    addItemToCart(item, modifiers.length ? { modifiers } : undefined);
+    setOptionsParentItem(null);
+  };
+
+  const openOptions = (item: CatalogItem) => {
+    setOptionsParentItem(item);
+  };
+
   const addToCart = async (item: CatalogItem) => {
     if (!siteId || !userId) return;
 
@@ -114,11 +181,11 @@ export function usePosAddItem({
     }
 
     if (requiresVariantSelection(item)) {
-      setVariantParentItem(item);
+      openOptions(item);
       return;
     }
 
-    // Legacy parent_id children without variant_axes / is_purchasable=false
+    // Legacy parents with purchasable children but no variant_axes metadata
     if (navigator.onLine && !item.parent_id) {
       const supabase = createClient();
       const { count } = await supabase
@@ -128,7 +195,7 @@ export function usePosAddItem({
         .eq("status", "active")
         .eq("is_purchasable", true);
       if ((count || 0) > 0) {
-        setVariantParentItem(item);
+        openOptions(item);
         return;
       }
     }
@@ -146,15 +213,22 @@ export function usePosAddItem({
       return;
     }
 
+    // Simple SKU with modifier groups → options dialog (extras only)
+    if (await hasModifierGroups(item, siteId, modifierGroupsByHostId)) {
+      openOptions(item);
+      return;
+    }
+
     addItemToCart(item);
   };
 
   return {
-    variantParentItem,
-    setVariantParentItem,
+    optionsParentItem,
+    setOptionsParentItem,
     dynamicQuoteItem,
     setDynamicQuoteItem,
     dynamicQuoteLoading,
+    confirmOptions,
     addToCart,
     requestQuote,
   };

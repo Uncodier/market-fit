@@ -7,6 +7,10 @@ import {
 } from "@/app/commerce/checkout-client"
 import { clearCart } from "@/app/commerce/cart-storage"
 import { rememberDeviceOrder } from "@/app/commerce/device-order-storage"
+import {
+  toCheckoutModifiers,
+  type CartModifier,
+} from "@/app/commerce/cart-modifiers"
 import type { CatalogItem } from "@/app/types"
 
 type CartItem = CatalogItem & {
@@ -14,6 +18,8 @@ type CartItem = CatalogItem & {
   cartPrice: number
   reservationStart?: string
   reservationEnd?: string
+  modifiers?: CartModifier[]
+  lineKey?: string
 }
 
 type SessionLike = {
@@ -67,6 +73,7 @@ export async function runShopCheckout(params: {
   paymentMethod: string
   orderTiming: "now" | "scheduled"
   scheduledFor: Date | null
+  orderNotes?: string
   isOpen: boolean
   nextOpenSlot: { at: Date; label: string } | null
   payableTotal: number
@@ -92,6 +99,7 @@ export async function runShopCheckout(params: {
     paymentMethod,
     orderTiming,
     scheduledFor,
+    orderNotes,
     isOpen,
     nextOpenSlot,
     payableTotal,
@@ -184,6 +192,9 @@ export async function runShopCheckout(params: {
       quantity: c.cartQty,
       reservationStart: c.reservationStart,
       reservationEnd: c.reservationEnd,
+      clientLineKey: c.lineKey || c.id,
+      unitPriceOverride: c.cartPrice,
+      modifiers: toCheckoutModifiers(c.modifiers),
     }))
 
     const res = await checkoutCartRequest({
@@ -199,6 +210,7 @@ export async function runShopCheckout(params: {
       promotionCode: promotionCode || undefined,
       promotionId: !promotionCode && promotionId ? promotionId : undefined,
       scheduledFor: finalScheduledFor,
+      notes: orderNotes?.trim() || undefined,
       source: "shop",
       paymentMethod:
         paymentMethod === "cash_on_pickup"

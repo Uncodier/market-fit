@@ -21,6 +21,7 @@ import { LocaleSelector } from "../LocaleSelector"
 import { CurrencySelector } from "../CurrencySelector"
 import { CommerceShareControl } from "../CommerceShareControl"
 import { getCartItems } from "@/app/commerce/cart-storage"
+import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
 
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { PdpExperience } from "./pdp-experience"
@@ -56,7 +57,7 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
       const cart = getCartItems('cart', cartSource, cartSource === 'shop' ? cartSiteId : null)
         .filter((c: any) => cartSource !== 'shop' || !cartSiteId || !c.site_id || c.site_id === cartSiteId)
       const count = cart.reduce((s: number, c: any) => s + (c.cartQty || 0), 0)
-      const sub = cart.reduce((s: number, c: any) => s + ((c.cartPrice || 0) * (c.cartQty || 0)), 0)
+      const sub = cart.reduce((s: number, c: any) => s + cartLineExtendedTotal(c), 0)
       setCartCount(count)
       setSubtotal(sub)
     }

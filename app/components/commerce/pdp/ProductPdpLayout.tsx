@@ -9,12 +9,22 @@ import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { PdpCtaButton } from "./PdpCtaButton"
 import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
 import { PdpMetricChips } from "./PdpMetricChips"
 import { VariantPicker } from "./VariantPicker"
+import {
+  ModifierPickerPanel,
+  isModifierSelectionValid,
+} from "@/app/components/commerce/ModifierPickerPanel"
+import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
+import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
+import {
+  modifiersUnitTotal,
+  type CartModifier,
+} from "@/app/commerce/cart-modifiers"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 import {
   DynamicQuoteMobileBar,
@@ -37,6 +47,8 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   const children = item._shop?.children || []
   
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
+  const [modifierGroups, setModifierGroups] = useState<ModifierGroupWithItems[]>([])
+  const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([])
   
   // Resolve selected child
   const resolvedChild = useMemo(() => {
@@ -56,17 +68,40 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   const { addToCartStorage, startBuyNow } = usePdpCart(item.site_id)
 
   const activeItem = resolvedChild || item
+
+  // Load modifier groups for the host (parent) — children inherit via server action
+  useEffect(() => {
+    let cancelled = false
+    const hostId = item.id
+    getModifierGroupsForCatalogItem(hostId).then((res) => {
+      if (cancelled) return
+      setModifierGroups(res.data || [])
+      setSelectedModifiers([])
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [item.id])
   
   // Display price: if no variant selected, maybe show min price or parent price
   // But for now, activeItem has the target_sale_price.
   // Actually, if resolvedChild is null but hasVariants is true, we should show a range or parent price.
   const isDynamic = isDynamicPricedItem(item)
   const dynamicConfig = isDynamic ? getDynamicPricingConfig(item) : null
-  const displayPrice = isDynamic
+  const basePrice = isDynamic
     ? (dynamicConfig?.min_price ?? item.lowest_sale_price ?? 0)
     : (activeItem.target_sale_price || item.target_sale_price || 0)
+  const displayPrice = basePrice + modifiersUnitTotal(selectedModifiers)
   const isSelectionComplete = !hasVariants || !!resolvedChild
-  const isSellable = isSelectionComplete && (hasVariants ? activeItem.availability_status !== 'sold_out' && activeItem.status === 'active' : item._shop?.sellable !== false)
+  const modifiersValid =
+    modifierGroups.length === 0 ||
+    isModifierSelectionValid(modifierGroups, selectedModifiers).ok
+  const isSellable =
+    isSelectionComplete &&
+    modifiersValid &&
+    (hasVariants
+      ? activeItem.availability_status !== "sold_out" && activeItem.status === "active"
+      : item._shop?.sellable !== false)
 
   const galleryEntries = useMemo(
     () =>
@@ -76,7 +111,33 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
       }),
     [item, children]
   )
-  const displayImageUrl = galleryEntries[0]?.url || resolveItemImage(activeItem)
+  const imageContext = {
+    parentName: item.name,
+    parentDescription: item.description,
+    category:
+      item._shop?.categoryName ||
+      (typeof item.category === "object" && item.category?.name) ||
+      (typeof item.category === "string" ? item.category : null) ||
+      null,
+    siteDescription:
+      item._shop?.siteDescription || item.site?.description || null,
+    siteName: item.site?.name || null,
+  }
+  const displayImageUrl =
+    galleryEntries[0]?.url ||
+    resolveItemImage(
+      resolvedChild
+        ? {
+            ...activeItem,
+            parent: {
+              name: item.name,
+              description: item.description,
+            },
+            category: imageContext.category,
+            siteDescription: imageContext.siteDescription,
+          }
+        : item
+    )
   
   const customSpecsFromDB = (item.item_specs || []).filter(s => !s.category?.is_system);
   const specs = [
@@ -126,8 +187,12 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
     if (!resolvedChild && hasVariants) {
       return toast.error(t("pdp.selectOptions") || "Please select all options")
     }
+    const modCheck = isModifierSelectionValid(modifierGroups, selectedModifiers)
+    if (!modCheck.ok) {
+      return toast.error(modCheck.error)
+    }
 
-    addToCartStorage(activeItem)
+    addToCartStorage(activeItem, 1, undefined, undefined, selectedModifiers)
     toast.success(`${activeItem.name} ${t('marketplace.addedToCart') || 'added to cart'}`)
     router.push(`${backUrl}?cart=1`)
   }
@@ -136,7 +201,11 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
     if (!resolvedChild && hasVariants) {
       return toast.error(t("pdp.selectOptions") || "Please select all options")
     }
-    startBuyNow(activeItem, 1, backUrl)
+    const modCheck = isModifierSelectionValid(modifierGroups, selectedModifiers)
+    if (!modCheck.ok) {
+      return toast.error(modCheck.error)
+    }
+    startBuyNow(activeItem, 1, backUrl, undefined, undefined, selectedModifiers)
   }
 
   const safeImageIdx =
@@ -305,8 +374,11 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-16 pb-32 lg:pb-16">
+      {/* Sticky gallery only while the options column scrolls; details sit below. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20">
-        {galleryBlock}
+        <div>
+          <div className="lg:sticky lg:top-28">{galleryBlock}</div>
+        </div>
 
         <div className="flex flex-col py-0 sm:py-4 lg:py-8">
           <div className="mb-8 sm:mb-10">
@@ -344,10 +416,26 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
               presentation="pdp"
               currency={item.currency || "USD"}
               fallbackImageUrl={item.image_url || galleryEntries[0]?.url || null}
+              imageContext={imageContext}
             />
           )}
 
-          <div className="hidden lg:block p-8 bg-card border border-border/50 rounded-3xl shadow-2xl shadow-black/5 mb-12 relative overflow-hidden">
+          {modifierGroups.length > 0 && (
+            <div className="mb-8 sm:mb-10">
+              <h3 className="text-lg font-bold mb-4">
+                {t("pos.modifiers.title") || "Add extras"}
+              </h3>
+              <ModifierPickerPanel
+                groups={modifierGroups}
+                value={selectedModifiers}
+                onChange={setSelectedModifiers}
+                imageContext={imageContext}
+                currency={item.currency || "USD"}
+              />
+            </div>
+          )}
+
+          <div className="hidden lg:block p-8 bg-card border border-border/50 rounded-3xl shadow-2xl shadow-black/5 relative overflow-hidden">
             <div className="space-y-3">
               <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable}>
                 {!isSellable
@@ -366,15 +454,17 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
               <span>{t("pdp.fastShipping") || "Fast Shipping"}</span>
             </div>
           </div>
-
-          {detailsBelow}
-
-          {_experience?.kind === "subscription" && _experience.subscription && (
-            <div className="pt-8 mt-8 border-t">
-              <SubscriptionManagePanel subscription={_experience.subscription} />
-            </div>
-          )}
         </div>
+      </div>
+
+      <div className="mt-12 sm:mt-16 lg:mt-20 max-w-3xl">
+        {detailsBelow}
+
+        {_experience?.kind === "subscription" && _experience.subscription && (
+          <div className="pt-8 mt-8 border-t">
+            <SubscriptionManagePanel subscription={_experience.subscription} />
+          </div>
+        )}
       </div>
 
       <PdpMobileBuyBar price={displayPrice} fullWidthCta={true}>

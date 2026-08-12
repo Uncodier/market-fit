@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { getCartItems, clearCart, CartMode } from "@/app/commerce/cart-storage"
+import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
 import { rememberDeviceOrder, getDeviceOrders } from "@/app/commerce/device-order-storage"
 import { CheckoutLine } from "@/app/commerce/checkout"
 import { checkoutCartRequest, createStripeOrderCheckout } from "@/app/commerce/checkout-client"
@@ -90,6 +91,7 @@ export default function CheckoutClient({
   // Order Timing
   const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
+  const [orderNotes, setOrderNotes] = useState("")
 
   const businessHours = siteSettings?.business_hours || []
   const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
@@ -225,7 +227,7 @@ export default function CheckoutClient({
 
   const copyMode = React.useMemo(() => resolveCheckoutCopyMode(items), [items])
 
-  const subtotal = items.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0)
+  const subtotal = items.reduce((sum, item) => sum + cartLineExtendedTotal(item), 0)
 
   const shippingCost = React.useMemo(() => {
     return resolveOrderShippingCost(
@@ -353,14 +355,22 @@ export default function CheckoutClient({
     }
 
     try {
-      const lines: CheckoutLine[] = items.map(c => ({
+      const lines: CheckoutLine[] = items.map((c: any) => ({
         catalogItemId: c.id,
         quantity: c.cartQty,
         reservationStart: c.reservationStart,
         reservationEnd: c.reservationEnd,
-        ...(quotationId && c.cartPrice != null
-          ? { unitPriceOverride: Number(c.cartPrice) }
-          : {}),
+        clientLineKey: c.lineKey || c.id,
+        unitPriceOverride:
+          c.cartPrice != null ? Number(c.cartPrice) : undefined,
+        modifiers: Array.isArray(c.modifiers)
+          ? c.modifiers.map((m: any) => ({
+              catalogItemId: m.catalogItemId,
+              quantity: m.cartQty,
+              unitPriceOverride: m.cartPrice,
+              groupId: m.groupId,
+            }))
+          : undefined,
       }))
 
       const res = await checkoutCartRequest({
@@ -375,6 +385,7 @@ export default function CheckoutClient({
         shippingAddress: fulfillment === 'ship' ? shippingAddress : undefined,
         promotionCode: promotionCode || undefined,
         scheduledFor: finalScheduledFor,
+        notes: orderNotes.trim() || undefined,
         source: quotationId ? 'quote' : (source as 'shop' | 'marketplace'),
         quotationId: quotationId || undefined,
         publicAccessToken: publicAccessToken || undefined,
@@ -587,6 +598,8 @@ export default function CheckoutClient({
                 setOrderTiming={setOrderTiming}
                 scheduledFor={scheduledFor}
                 setScheduledFor={setScheduledFor}
+                orderNotes={orderNotes}
+                setOrderNotes={setOrderNotes}
                 businessHours={businessHours}
                 isOpen={isOpen}
                 nextOpenSlot={nextOpenSlot}

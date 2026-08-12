@@ -59,6 +59,7 @@ export type PosCartSession = {
   promoCode: string;
   activeOrderId: string;
   buyerUserId: string | null;
+  orderNotes?: string;
   updatedAt: string;
 };
 
@@ -66,6 +67,8 @@ export type PosMeta = {
   siteId: string;
   lastPulledAt: string | null;
   schemaVersion: number;
+  /** host catalog_item_id → modifier groups with options (from last POS pull). */
+  modifierGroupsByHostId?: Record<string, any[]>;
 };
 
 export type LocalPriceList = {

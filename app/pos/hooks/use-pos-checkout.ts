@@ -39,6 +39,7 @@ type UsePosCheckoutArgs = {
   } | null;
   activeOrderId: string;
   buyerUserId: string | null;
+  orderNotes?: string;
   router: { push: (href: string) => void };
   onCleared: () => void;
   t: (key: string) => string;
@@ -58,6 +59,7 @@ export function usePosCheckout({
   appliedPromo = null,
   activeOrderId,
   buyerUserId,
+  orderNotes = "",
   router,
   onCleared,
   t,
@@ -91,6 +93,13 @@ export function usePosCheckout({
         unitPriceOverride: c.cartPrice,
         reservationStart: c.reservationStart,
         reservationEnd: c.reservationEnd,
+        clientLineKey: c.lineKey || c.id,
+        modifiers: (c.modifiers || []).map((m) => ({
+          catalogItemId: m.catalogItemId,
+          quantity: m.cartQty,
+          unitPriceOverride: m.cartPrice,
+          groupId: m.groupId,
+        })),
       }));
 
   const enqueueAndMaybeNavigate = async (params: {
@@ -135,6 +144,7 @@ export function usePosCheckout({
             ? activeOrderId
             : undefined,
       intent: params.intent,
+      notes: orderNotes.trim(),
       clientMutationId,
     });
 

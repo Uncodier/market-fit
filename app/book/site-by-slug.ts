@@ -53,7 +53,13 @@ async function loadSiteSettings(supabase: Awaited<ReturnType<typeof createServic
 
 export async function resolveSiteInfoBySlug(
   siteSlug: string,
-): Promise<{ id: string; name: string; logo_url: string | null; settings?: any } | null> {
+): Promise<{
+  id: string
+  name: string
+  logo_url: string | null
+  description?: string | null
+  settings?: any
+} | null> {
   const supabase = await createServiceClient(true);
 
   const isUUID =
@@ -66,7 +72,7 @@ export async function resolveSiteInfoBySlug(
       () =>
         supabase
           .from("sites")
-          .select("id, name, logo_url")
+          .select("id, name, logo_url, description")
           .eq("id", siteSlug)
           .maybeSingle(),
       "getSiteInfoBySlug/uuid",
@@ -89,7 +95,7 @@ export async function resolveSiteInfoBySlug(
     () =>
       supabase
         .from("sites")
-        .select("id, name, logo_url")
+        .select("id, name, logo_url, description")
         .ilike("name", likePattern)
         .limit(50),
     "getSiteInfoBySlug/slug",

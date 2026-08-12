@@ -24,6 +24,9 @@ export function usePosCatalog(siteId: string | undefined) {
   const [hasLocalData, setHasLocalData] = useState(false);
   const [lastPulledAt, setLastPulledAt] = useState<string | null>(null);
   const [priceListItems, setPriceListItems] = useState<any[]>([]);
+  const [modifierGroupsByHostId, setModifierGroupsByHostId] = useState<
+    Record<string, any[]>
+  >({});
 
   const reload = useCallback(async () => {
     if (!siteId) return;
@@ -41,6 +44,7 @@ export function usePosCatalog(siteId: string | undefined) {
     setPendingOrders(orders);
     setPromotions(promos);
     setPriceListItems(pli);
+    setModifierGroupsByHostId(local.modifierGroupsByHostId || {});
     setHasLocalData(local.hasLocalData);
     setLastPulledAt(local.lastPulledAt);
     setHydrated(true);
@@ -79,6 +83,7 @@ export function usePosCatalog(siteId: string | undefined) {
     leads,
     priceLists,
     priceListItems,
+    modifierGroupsByHostId,
     pendingOrders: pendingOrders.map((o) => o.raw || o),
     promotions,
     hydrated,

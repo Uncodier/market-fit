@@ -16,6 +16,7 @@ import {
   listPromotionRequiredCategories,
 } from "@/app/promotions/actions";
 import { isPromotionAllowedForChannel } from "@/app/promotions/promotion-channels";
+import { listAllModifierGroupsForPos } from "@/app/catalog/modifier-actions";
 
 export type PosSnapshot = {
   catalogItems: any[];
@@ -32,6 +33,7 @@ export type PosSnapshot = {
   taxesByItem: Record<string, any[]>;
   promotions: any[];
   pendingOrders: any[];
+  modifierGroupsByHostId: Record<string, any[]>;
   pulledAt: string;
 };
 
@@ -136,6 +138,8 @@ export async function pullPosSnapshot(siteId: string): Promise<
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
+    const modifiersRes = await listAllModifierGroupsForPos(siteId);
+
     return {
       data: {
         catalogItems,
@@ -147,6 +151,7 @@ export async function pullPosSnapshot(siteId: string): Promise<
         taxesByItem: taxesRes?.data || {},
         promotions,
         pendingOrders,
+        modifierGroupsByHostId: modifiersRes.data || {},
         pulledAt: new Date().toISOString(),
       },
     };

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
+import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
 import { getDeviceOrders } from "@/app/commerce/device-order-storage"
 import { buildPublicDocPath } from "@/app/documents/public-token"
 import { withInternalFrom } from "@/app/documents/internal-back"
@@ -138,6 +139,7 @@ export function MarketplaceClient({
   const [customerName, setCustomerName] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<string>("")
+  const [orderNotes, setOrderNotes] = useState("")
   
   // Settings & Locations for current seller
   const [siteSettings, setSiteSettings] = useState<any>(null)
@@ -327,12 +329,16 @@ export function MarketplaceClient({
   const updateQty = (id: string, delta: number) => {
     setCart(
       cart
-        .map((c) => (c.id === id ? { ...c, cartQty: Math.max(0, c.cartQty + delta) } : c))
+        .map((c) =>
+          cartLineKey(c) === id
+            ? { ...c, cartQty: Math.max(0, c.cartQty + delta) }
+            : c,
+        )
         .filter((c) => c.cartQty > 0)
     )
   }
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0)
+  const subtotal = cart.reduce((sum, item) => sum + cartLineExtendedTotal(item), 0)
   const payableTotal = Math.max(0, subtotal - promoDiscount)
   const cartCount = cart.reduce((s, c) => s + c.cartQty, 0)
 
@@ -349,6 +355,7 @@ export function MarketplaceClient({
       paymentMethod,
       orderTiming,
       scheduledFor,
+      orderNotes,
       isOpen,
       nextOpenSlot,
       isLocationAvailable,
@@ -499,6 +506,8 @@ export function MarketplaceClient({
           setOrderTiming={setOrderTiming}
           scheduledFor={scheduledFor}
           setScheduledFor={setScheduledFor}
+          orderNotes={orderNotes}
+          setOrderNotes={setOrderNotes}
           isOpen={isOpen}
           nextOpenSlot={nextOpenSlot}
           locationAvailable={isLocationAvailable}

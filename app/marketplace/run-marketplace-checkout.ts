@@ -66,6 +66,7 @@ export async function runMarketplaceCheckout(params: {
   paymentMethod: string
   orderTiming: "now" | "scheduled"
   scheduledFor: Date | null
+  orderNotes?: string
   isOpen: boolean
   nextOpenSlot: { at: Date; label: string } | null
   isLocationAvailable: boolean
@@ -91,6 +92,7 @@ export async function runMarketplaceCheckout(params: {
     paymentMethod,
     orderTiming,
     scheduledFor,
+    orderNotes,
     isOpen,
     nextOpenSlot,
     isLocationAvailable,
@@ -200,6 +202,7 @@ export async function runMarketplaceCheckout(params: {
       promotionCode: promotionCode || undefined,
       promotionId: !promotionCode && promotionId ? promotionId : undefined,
       scheduledFor: finalScheduledFor,
+      notes: orderNotes?.trim() || undefined,
       source: "marketplace",
       paymentMethod:
         paymentMethod === "cash_on_pickup"

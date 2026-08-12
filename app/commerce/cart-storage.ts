@@ -50,6 +50,18 @@ export function slimCartItem(item: Record<string, any>): Record<string, any> {
     cartPrice: item.cartPrice,
     reservationStart: item.reservationStart,
     reservationEnd: item.reservationEnd,
+    ...(Array.isArray(item.modifiers) && item.modifiers.length > 0
+      ? {
+          modifiers: item.modifiers.map((m: any) => ({
+            groupId: m.groupId,
+            catalogItemId: m.catalogItemId,
+            name: m.name,
+            cartQty: m.cartQty,
+            cartPrice: m.cartPrice,
+          })),
+        }
+      : {}),
+    ...(item.lineKey ? { lineKey: item.lineKey } : {}),
     ...(slimMeta && Object.keys(slimMeta).length > 0 ? { metadata: slimMeta } : {}),
     ...(slimSite ? { site: slimSite } : {}),
   };

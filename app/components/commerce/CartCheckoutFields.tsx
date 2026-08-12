@@ -2,6 +2,7 @@
 
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
+import { Textarea } from "@/app/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Truck, Store, CreditCard, MapPin, MonitorSmartphone, Banknote } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -28,6 +29,8 @@ interface CartCheckoutFieldsProps {
   isOpen?: boolean
   nextOpenSlot?: { at: Date, label: string } | null
   deliveryTimeLabel?: string | null
+  notes?: string
+  setNotes?: (val: string) => void
   t?: (key: string) => string | undefined
   copyMode?: CheckoutCopyMode
 }
@@ -84,6 +87,8 @@ export function CartCheckoutFields({
   isOpen = true,
   nextOpenSlot,
   deliveryTimeLabel,
+  notes,
+  setNotes,
   t: propT,
   copyMode = 'retail'
 }: CartCheckoutFieldsProps) {
@@ -238,6 +243,27 @@ export function CartCheckoutFields({
             <Input placeholder={t('checkout.zipCode') || "ZIP Code"} value={shippingAddress.zip} onChange={e => setShippingAddress({...shippingAddress, zip: e.target.value})} required className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
             <Input placeholder={t('checkout.country') || "Country"} value={shippingAddress.country} onChange={e => setShippingAddress({...shippingAddress, country: e.target.value})} className="h-12 rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800" />
           </div>
+        </div>
+      )}
+
+      {setNotes && (
+        <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <Label
+            htmlFor="checkout-special-instructions"
+            className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 block"
+          >
+            {t('checkout.specialInstructions') || 'Special instructions'}
+          </Label>
+          <Textarea
+            id="checkout-special-instructions"
+            value={notes || ''}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={
+              t('checkout.specialInstructionsPlaceholder') ||
+              'Any special requests for this order? (optional)'
+            }
+            className="resize-none min-h-[80px] rounded-xl bg-gray-50 dark:bg-gray-950 dark:border-gray-800"
+          />
         </div>
       )}
 

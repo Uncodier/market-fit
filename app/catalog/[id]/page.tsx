@@ -43,6 +43,7 @@ import { VariantsCard } from "../components/VariantsCard"
 import { CatalogItemPricingSection } from "../components/CatalogItemPricingSection"
 import { MarketplaceTab } from "../components/MarketplaceTab"
 import { ChannelsTab } from "../components/ChannelsTab"
+import { ModifiersTab } from "../components/ModifiersTab"
 
 export default function CatalogItemDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -172,6 +173,9 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
             <TabsList>
               <TabsTrigger value="details">{t('catalog.tabs.details') || 'Details'}</TabsTrigger>
               <TabsTrigger value="variants">{t('catalog.tabs.variants') || 'Variants'}</TabsTrigger>
+              {item && formData.is_purchasable !== false && (
+                <TabsTrigger value="modifiers">{t('catalog.tabs.modifiers') || 'Modifiers'}</TabsTrigger>
+              )}
               <TabsTrigger value="delivery">{t('catalog.tabs.delivery') || 'Delivery'}</TabsTrigger>
               <TabsTrigger value="marketplace">{t('catalog.tabs.marketplace') || 'Marketplace'}</TabsTrigger>
               <TabsTrigger value="channels">{t('catalog.tabs.channels') || 'Channels'}</TabsTrigger>
@@ -392,6 +396,14 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               )}
             </div>
           </TabsContent>
+
+          {item && formData.is_purchasable !== false && (
+            <TabsContent value="modifiers" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+              <div className="mx-auto max-w-[800px]">
+                <ModifiersTab catalogItemId={item.id} />
+              </div>
+            </TabsContent>
+          )}
 
           <TabsContent value="delivery" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
             <div className="mx-auto max-w-[800px] space-y-6">

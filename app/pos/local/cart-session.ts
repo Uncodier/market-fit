@@ -17,6 +17,7 @@ const DEFAULT_SESSION = (
   promoCode: "",
   activeOrderId: "new",
   buyerUserId: null,
+  orderNotes: "",
 });
 
 export async function loadCartSession(

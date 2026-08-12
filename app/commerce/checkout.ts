@@ -25,6 +25,15 @@ import {
   generatePublicAccessToken,
   isValidPublicAccessToken,
 } from "@/app/documents/public-token";
+import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items";
+
+export interface CheckoutLineModifier {
+  catalogItemId: string;
+  /** Quantity per host unit (multiplied by host quantity when writing order lines). */
+  quantity: number;
+  unitPriceOverride?: number;
+  groupId?: string;
+}
 
 export interface CheckoutLine {
   catalogItemId: string;
@@ -32,6 +41,9 @@ export interface CheckoutLine {
   unitPriceOverride?: number; // Used for quotes to honor the quoted price
   reservationStart?: string; // ISO
   reservationEnd?: string;   // ISO
+  /** Stable cart line id for matching on order updates (POS modifiers). */
+  clientLineKey?: string;
+  modifiers?: CheckoutLineModifier[];
 }
 
 export interface CheckoutCartParams {
@@ -62,6 +74,8 @@ export interface CheckoutCartParams {
   quotationId?: string;
   /** Public share token from /q/[token] — allows guest checkout for that quote. */
   publicAccessToken?: string;
+  /** Customer special instructions for the order (sale_orders.notes). */
+  notes?: string;
 }
 
 export async function checkoutCart({
@@ -88,6 +102,7 @@ export async function checkoutCart({
   clientMutationId,
   quotationId,
   publicAccessToken,
+  notes,
 }: CheckoutCartParams) {
   try {
     if (clientMutationId && inputSource === "pos") {
@@ -326,8 +341,23 @@ export async function checkoutCart({
 
     // 3. Process Lines (Verify Stock & Resolve Prices)
     let orderSubtotal = 0;
-    const processedLines = [];
+    const processedLines: any[] = [];
     const catalogItemsForShipping: Partial<import("@/app/types").CatalogItem>[] = [];
+
+    const resolveLinePrice = async (
+      catalogItemId: string,
+      unitPriceOverride: number | undefined,
+    ) => {
+      if (unitPriceOverride !== undefined) return unitPriceOverride;
+      const { price: resolvedPrice } = await resolveUnitPrice(
+        siteId,
+        catalogItemId,
+        finalPriceListId,
+        isAdmin,
+        priceListChannel,
+      );
+      return resolvedPrice || 0;
+    };
     
     for (const line of lines) {
       // Assert can sell
@@ -358,25 +388,17 @@ export async function checkoutCart({
         );
       }
       
-      // Resolve price (channel-gated for shop / marketplace / pos)
-      let price = line.unitPriceOverride;
-      if (price === undefined) {
-        const { price: resolvedPrice } = await resolveUnitPrice(
-          siteId,
-          line.catalogItemId,
-          finalPriceListId,
-          isAdmin,
-          priceListChannel
-        );
-        price = resolvedPrice || 0;
-      }
-      
+      const price = await resolveLinePrice(line.catalogItemId, line.unitPriceOverride);
       const subtotal = price * line.quantity;
       orderSubtotal += subtotal;
       
       if (catalogItem) {
         catalogItemsForShipping.push(catalogItem as any);
       }
+
+      const clientLineKey =
+        line.clientLineKey ||
+        `${line.catalogItemId}:${processedLines.length}`;
       
       processedLines.push({
         site_id: siteId,
@@ -389,8 +411,50 @@ export async function checkoutCart({
         subtotal: subtotal,
         is_reservation_dropin: catalogItem?.is_reservation && !isAccessOnly,
         reservationStart: line.reservationStart,
-        reservationEnd: line.reservationEnd
+        reservationEnd: line.reservationEnd,
+        client_line_key: clientLineKey,
+        parent_client_line_key: null as string | null,
+        modifier_group_id: null as string | null,
       });
+
+      for (const mod of line.modifiers || []) {
+        if (!mod.catalogItemId || !(mod.quantity > 0)) continue;
+        const modQty = mod.quantity * line.quantity;
+        await assertCanSell(
+          siteId,
+          mod.catalogItemId,
+          modQty,
+          originLocationId,
+          isAdmin,
+        );
+        const { data: modItem } = await (isAdmin ? supabaseAdmin : supabase)
+          .from("catalog_items")
+          .select("name, description, currency")
+          .eq("id", mod.catalogItemId)
+          .single();
+        const modPrice = await resolveLinePrice(
+          mod.catalogItemId,
+          mod.unitPriceOverride,
+        );
+        const modSubtotal = modPrice * modQty;
+        orderSubtotal += modSubtotal;
+        processedLines.push({
+          site_id: siteId,
+          catalog_item_id: mod.catalogItemId,
+          name: modItem?.name || "Extra",
+          description: modItem?.description,
+          currency: modItem?.currency || catalogItem?.currency || "USD",
+          quantity: modQty,
+          unit_price: modPrice,
+          subtotal: modSubtotal,
+          is_reservation_dropin: false,
+          reservationStart: undefined,
+          reservationEnd: undefined,
+          client_line_key: `${clientLineKey}:mod:${mod.groupId || "g"}:${mod.catalogItemId}`,
+          parent_client_line_key: clientLineKey,
+          modifier_group_id: mod.groupId || null,
+        });
+      }
     }
 
     const { data: taxesByItem } = await getTaxesByCatalogItemIds(
@@ -501,9 +565,22 @@ export async function checkoutCart({
       const { data: items } = await (isAdmin ? supabaseAdmin : supabase).from("sale_order_items").select("*").eq("sale_order_id", existingOrderId);
       if (items) existingItems = items;
 
-      // Diff lines to detect new/changed
+      // Diff lines to detect new/changed (prefer client_line_key for modifier carts)
       for (const pl of processedLines) {
-        const existingItem = existingItems.find(ei => ei.catalog_item_id === pl.catalog_item_id);
+        const existingItem = existingItems.find((ei: any) => {
+          if (pl.client_line_key && ei.metadata?.client_line_key === pl.client_line_key) {
+            return true;
+          }
+          if (
+            !pl.parent_client_line_key &&
+            !ei.parent_sale_order_item_id &&
+            !ei.metadata?.client_line_key &&
+            ei.catalog_item_id === pl.catalog_item_id
+          ) {
+            return true;
+          }
+          return false;
+        });
         if (!existingItem) {
           hasNewOrChangedLines = true;
           break;
@@ -596,8 +673,15 @@ export async function checkoutCart({
           quantity: pl.quantity,
           unitPrice: pl.unit_price,
           subtotal: pl.subtotal,
-          metadata: { is_new: intent === 'send' } // For backwards compatibility
-        }))
+          metadata: {
+            is_new: intent === 'send',
+            client_line_key: pl.client_line_key,
+            parent_client_line_key: pl.parent_client_line_key,
+            is_modifier: !!pl.parent_client_line_key,
+            modifier_group_id: pl.modifier_group_id,
+          }
+        })),
+        ...(notes !== undefined ? { notes: notes.trim() || null } : {}),
       };
 
       const { data: updatedOrder, error: orderError } = await (isAdmin ? supabaseAdmin : supabase)
@@ -669,13 +753,20 @@ export async function checkoutCart({
         status: orderInitialStatus,
         order_number: `ORD-${Date.now().toString().slice(-6)}`,
         user_id: resolvedUserId,
+        notes: notes?.trim() || null,
         items: processedLines.map(pl => ({
           id: pl.catalog_item_id,
           name: pl.name,
           quantity: pl.quantity,
           unitPrice: pl.unit_price,
           subtotal: pl.subtotal,
-          metadata: { is_new: intent === 'send' }
+          metadata: {
+            is_new: intent === 'send',
+            client_line_key: pl.client_line_key,
+            parent_client_line_key: pl.parent_client_line_key,
+            is_modifier: !!pl.parent_client_line_key,
+            modifier_group_id: pl.modifier_group_id,
+          }
         }))
       };
 
@@ -689,94 +780,20 @@ export async function checkoutCart({
       order = newOrder;
     }
 
-    // 6. Manage Order Items (Diff and Upsert)
-    const itemsToUpsert = [];
-    const processedCatalogItemIds = new Set(processedLines.map(pl => pl.catalog_item_id));
-
-    // Delete lines that were removed from the cart, BUT ONLY if they are still 'draft'
-    if (existingOrderId && existingItems.length > 0) {
-      for (const ei of existingItems) {
-        if (!processedCatalogItemIds.has(ei.catalog_item_id)) {
-          if (ei.status === 'draft') {
-            await (isAdmin ? supabaseAdmin : supabase).from("sale_order_items").delete().eq("id", ei.id);
-            await supabaseAdmin.from("reservations").delete().eq("sale_order_item_id", ei.id);
-          } else {
-            // Re-add to processedLines since it's completed/preparing and shouldn't be deleted from cart logic?
-            // Actually, if it's removed from cart but was already sent/completed, maybe we just ignore and keep it in DB.
-            // (We don't add it to itemsToUpsert, so it stays untouched in the DB).
-          }
-        }
-      }
-    }
-
-    for (const pl of processedLines) {
-      const existingItem = existingItems.find(ei => ei.catalog_item_id === pl.catalog_item_id);
-      
-      let newStatus = 'draft';
-      let sentAt = null;
-
-      if (intent === 'complete' || (intent === 'pay' && isFullyPaid)) {
-        newStatus = 'completed';
-      } else if (intent === 'send') {
-        if (!existingItem || pl.quantity > existingItem.quantity) {
-           newStatus = 'new';
-           sentAt = new Date().toISOString();
-        } else {
-           // Unchanged, keep previous
-           newStatus = existingItem.status === 'draft' ? 'new' : existingItem.status;
-           sentAt = existingItem.sent_at || (newStatus === 'new' ? new Date().toISOString() : null);
-        }
-      } else {
-        // intent is draft or undefined
-        newStatus = existingItem ? existingItem.status : 'draft';
-        sentAt = existingItem ? existingItem.sent_at : null;
-      }
-
-      itemsToUpsert.push({
-        id: existingItem ? existingItem.id : undefined, // If id is undefined, Supabase insert/upsert will auto-generate it if omitted or error, wait, it's better to omit id if it's new.
-        sale_order_id: order.id,
-        site_id: siteId,
-        catalog_item_id: pl.catalog_item_id,
-        name: pl.name,
-        description: pl.description,
-        quantity: pl.quantity,
-        unit_price: pl.unit_price,
-        subtotal: pl.subtotal,
-        status: newStatus,
-        sent_at: sentAt,
-        metadata: { is_new: newStatus === 'new' },
-        _is_reservation_dropin: pl.is_reservation_dropin,
-        _reservationStart: pl.reservationStart,
-        _reservationEnd: pl.reservationEnd
-      });
-    }
-
-    const upsertedItems = [];
-
-    for (const item of itemsToUpsert) {
-       let dbItem;
-       const { _is_reservation_dropin, _reservationStart, _reservationEnd, ...dbPayload } = item;
-       if (dbPayload.id) {
-         const { data, error } = await (isAdmin ? supabaseAdmin : supabase)
-           .from("sale_order_items")
-           .update(dbPayload)
-           .eq("id", dbPayload.id)
-           .select()
-           .single();
-         if (error) throw new Error(`Sale order item update error: ${error.message}`);
-         dbItem = data;
-       } else {
-         delete dbPayload.id; // Remove undefined id
-         const { data, error } = await (isAdmin ? supabaseAdmin : supabase)
-           .from("sale_order_items")
-           .insert(dbPayload)
-           .select()
-           .single();
-         if (error) throw new Error(`Sale order item insert error: ${error.message}`);
-         dbItem = data;
-       }
-       upsertedItems.push({ ...dbItem, _is_reservation_dropin, _reservationStart, _reservationEnd });
-    }
+    // 6. Manage Order Items (Diff and Upsert) — supports nested modifier lines
+    const upsertedItems = await upsertSaleOrderItemsWithModifiers({
+      supabase,
+      supabaseAdmin,
+      isAdmin,
+      siteId,
+      orderId: order.id,
+      existingOrderId,
+      existingItems,
+      processedLines,
+      lines,
+      intent,
+      isFullyPaid,
+    });
 
     // 6.a Handle reservations
     for (const item of upsertedItems) {

@@ -16,8 +16,9 @@ import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import { ShoppingCart } from "@/app/components/ui/icons";
 import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal";
 import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialog";
-import { PosVariantPickerDialog } from "./components/PosVariantPickerDialog";
+import { PosOptionsDialog } from "./components/PosOptionsDialog";
 import { CartPanel } from "./components/CartPanel";
+import { resolveUnitPriceLocal } from "./local/resolve-unit-price-local";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
 import { PosSyncBadge } from "./components/PosSyncBadge";
 import { PosSyncIssues } from "./components/PosSyncIssues";
@@ -76,6 +77,7 @@ export default function POSPage() {
     appliedPromo: cartApi.appliedPromo,
     activeOrderId: cartApi.activeOrderId,
     buyerUserId: cartApi.buyerUserId,
+    orderNotes: cartApi.orderNotes,
     router,
     onCleared: () => {
       void cartApi.resetToNewOrder();
@@ -91,6 +93,7 @@ export default function POSPage() {
     addItemToCart: cartApi.addItemToCart,
     router,
     t,
+    modifierGroupsByHostId: catalog.modifierGroupsByHostId,
   });
 
   useEffect(() => {
@@ -265,6 +268,8 @@ export default function POSPage() {
     pendingOrders: catalog.pendingOrders,
     handleOrderSelect: cartApi.handleOrderSelect,
     allowedFulfillments: cartApi.allowedFulfillments,
+    orderNotes: cartApi.orderNotes,
+    setOrderNotes: cartApi.setOrderNotes,
     siteId,
     onLeadUpdated: handleLeadUpdated,
     t,
@@ -409,13 +414,32 @@ export default function POSPage() {
         hasCustomer={!!cartApi.leadValue}
       />
 
-      <PosVariantPickerDialog
-        item={addApi.variantParentItem}
-        open={!!addApi.variantParentItem}
-        onOpenChange={(o) => !o && addApi.setVariantParentItem(null)}
-        onConfirm={(childItem) => {
-          addApi.setVariantParentItem(null);
-          void addApi.addToCart(childItem);
+      <PosOptionsDialog
+        item={addApi.optionsParentItem}
+        open={!!addApi.optionsParentItem}
+        onOpenChange={(o) => {
+          if (!o) addApi.setOptionsParentItem(null);
+        }}
+        onConfirm={({ item, modifiers }) => {
+          addApi.confirmOptions(item, modifiers);
+        }}
+        siteId={siteId}
+        modifierGroupsByHostId={catalog.modifierGroupsByHostId}
+        resolvePrice={(catalogItemId, fallbackPrice) => {
+          const catalogItem = catalog.catalogItems.find(
+            (c: any) => c.id === catalogItemId,
+          );
+          return resolveUnitPriceLocal({
+            catalogItemId,
+            targetSalePrice:
+              catalogItem?.target_sale_price ?? fallbackPrice,
+            priceListId:
+              cartApi.priceListId === "none"
+                ? undefined
+                : cartApi.priceListId,
+            priceLists: catalog.priceLists,
+            priceListItems: catalog.priceListItems,
+          }).price;
         }}
       />
 

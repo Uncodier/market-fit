@@ -25,7 +25,9 @@ function applyShopCatalogOrder<T extends { order: (...args: any[]) => T }>(query
       nullsFirst: false,
     })
     .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
+    .order("name", { ascending: true })
+    // Stable tiebreaker so range() pages cannot skip/duplicate rows.
+    .order("id", { ascending: true });
 }
 
 export async function getShopSite(slug: string) {
@@ -45,7 +47,7 @@ function categoryNameFromJoin(category: unknown): string | null {
 }
 
 async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<ReturnType<typeof createServiceClient>>) {
-  const [priceData, levelsRes, settingsRes, variantPreviews] = await Promise.all([
+  const [priceData, levelsRes, settingsRes, variantPreviews, siteRes] = await Promise.all([
     loadChannelPriceMap(supabase, [siteId], "shop"),
     supabase.from("inventory_levels").select("catalog_item_id, quantity").eq("site_id", siteId),
     supabase.from("settings").select("commerce").eq("site_id", siteId).single(),
@@ -53,6 +55,7 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
       supabase,
       items.map((item) => ({ id: item.id, name: item.name }))
     ),
+    supabase.from("sites").select("description").eq("id", siteId).maybeSingle(),
   ]);
 
   const inventoryMap = new Map<string, number>();
@@ -64,6 +67,7 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
   }
 
   const policy = (settingsRes.data?.commerce as any)?.stock_shortage_policy || "allow";
+  const siteDescription = siteRes.data?.description || null;
 
   return items.map((item) => {
     let sellable = true;
@@ -93,6 +97,7 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
       target_sale_price: mappedPrice ?? item.target_sale_price,
       _shop: {
         categoryName: categoryNameFromJoin(item.category),
+        siteDescription,
         sellable,
         availableQty,
         hasVariants,
@@ -125,8 +130,8 @@ export async function getShopCategoryOffsets(siteId: string): Promise<ShopCatego
       );
       return buildShopCategoryOffsets(names);
     },
-    // v2: order by category.sort_order so sections are contiguous
-    ["shop-category-offsets-v2", siteId],
+    // v3: stable id tiebreaker + full per-category counts
+    ["shop-category-offsets-v3", siteId],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],
@@ -222,8 +227,8 @@ export async function getShopCatalog(
         offset,
       };
     },
-    // v2: order by category.sort_order so sections are contiguous
-    ["shop-catalog-v2", siteId, String(offset), String(pageSize), search, category],
+    // v3: stable id tiebreaker for range pagination
+    ["shop-catalog-v3", siteId, String(offset), String(pageSize), search, category],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],

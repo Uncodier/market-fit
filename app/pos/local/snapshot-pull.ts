@@ -22,6 +22,7 @@ export async function readLocalCatalog(siteId: string) {
     locations,
     leads,
     priceLists,
+    modifierGroupsByHostId: meta?.modifierGroupsByHostId || {},
     lastPulledAt: meta?.lastPulledAt ?? null,
     hasLocalData: catalogItems.length > 0,
   };
@@ -195,6 +196,7 @@ export async function applyPosSnapshot(siteId: string, snapshot: PosSnapshot) {
         siteId,
         lastPulledAt: snapshot.pulledAt,
         schemaVersion: SCHEMA_VERSION,
+        modifierGroupsByHostId: snapshot.modifierGroupsByHostId || {},
       });
     },
   );

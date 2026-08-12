@@ -43,7 +43,8 @@ export function ShopHeroTrust({
                 shop?.hero_image_url ||
                 resolveItemImage({
                   name: shop?.hero_title || site.name,
-                  description: shop?.hero_subtitle || "store hero",
+                  description: shop?.hero_subtitle || site.description || "store hero",
+                  siteDescription: site.description,
                 })
               }
               alt="Hero"

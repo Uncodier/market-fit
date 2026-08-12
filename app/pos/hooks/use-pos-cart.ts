@@ -5,6 +5,12 @@ import type { CatalogItem } from "@/app/types";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import {
+  cartLineKey,
+  mergeItemIntoCart,
+  modifiersUnitTotal,
+} from "@/app/pos/cart-line-utils";
+import { buildCartFromSaleOrderItems } from "@/app/pos/populate-cart-from-order";
+import {
   getItemDeliveryOptions,
   intersectDeliveryOptions,
   defaultFulfillment,
@@ -61,6 +67,7 @@ export function usePosCart({
   );
   const [activeOrderId, setActiveOrderId] = useState("new");
   const [buyerUserId, setBuyerUserId] = useState<string | null>(null);
+  const [orderNotes, setOrderNotes] = useState("");
   const [taxesByItem, setTaxesByItem] = useState<Record<string, any[]>>({});
   const [sessionReady, setSessionReady] = useState(false);
   const [loadingOrder, setLoadingOrder] = useState(false);
@@ -99,6 +106,7 @@ export function usePosCart({
       setPromoCode(session.promoCode || "");
       setActiveOrderId(session.activeOrderId || "new");
       setBuyerUserId(session.buyerUserId);
+      setOrderNotes(session.orderNotes || "");
       setSessionReady(true);
     })();
     return () => {
@@ -121,6 +129,7 @@ export function usePosCart({
         promoCode,
         activeOrderId,
         buyerUserId,
+        orderNotes,
       });
     }, 200);
     return () => {
@@ -137,6 +146,7 @@ export function usePosCart({
     promoCode,
     activeOrderId,
     buyerUserId,
+    orderNotes,
   ]);
 
   useEffect(() => {
@@ -171,21 +181,26 @@ export function usePosCart({
     }
   }, [allowedFulfillments, fulfillment]);
 
-  const cartTaxKey = useMemo(
-    () =>
-      cart
-        .map((c) => c.id)
-        .sort()
-        .join(","),
-    [cart],
-  );
+  const cartTaxKey = useMemo(() => {
+    const ids = new Set<string>();
+    for (const c of cart) {
+      ids.add(c.id);
+      for (const m of c.modifiers || []) ids.add(m.catalogItemId);
+    }
+    return Array.from(ids).sort().join(",");
+  }, [cart]);
 
   useEffect(() => {
     if (!siteId || cart.length === 0) {
       setTaxesByItem({});
       return;
     }
-    void getTaxesForCart(cart.map((c) => c.id)).then(setTaxesByItem);
+    const ids = new Set<string>();
+    for (const c of cart) {
+      ids.add(c.id);
+      for (const m of c.modifiers || []) ids.add(m.catalogItemId);
+    }
+    void getTaxesForCart(Array.from(ids)).then(setTaxesByItem);
   }, [siteId, cartTaxKey, cart, getTaxesForCart]);
 
   const resolvePrice = useCallback(
@@ -209,39 +224,32 @@ export function usePosCart({
 
   const addItemToCart = useCallback(
     (item: CatalogItem, extras?: Partial<PosCartItem>) => {
+      let selectedKey = item.id;
       setCart((prev) => {
-        const existing = prev.find(
-          (c) =>
-            c.id === item.id &&
-            c.reservationStart === extras?.reservationStart &&
-            c.reservationEnd === extras?.reservationEnd,
+        const { next, lineKey } = mergeItemIntoCart(
+          prev,
+          item,
+          extras,
+          resolvePrice,
         );
-        if (existing && !extras?.reservationStart) {
-          return prev.map((c) =>
-            c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c,
-          );
-        }
-        const price = extras?.cartPrice ?? resolvePrice(item);
-        return [
-          {
-            ...item,
-            cartQty: extras?.cartQty ?? 1,
-            cartPrice: price,
-            ...extras,
-          },
-          ...prev,
-        ];
+        selectedKey = lineKey;
+        return next;
       });
-      setSelectedCartItemId(item.id);
+      setSelectedCartItemId(selectedKey);
     },
     [resolvePrice],
   );
+
+  const lineMatches = (c: PosCartItem, key: string) =>
+    cartLineKey(c) === key;
 
   const updateQty = (id: string, delta: number) => {
     setCart((prev) =>
       prev
         .map((c) =>
-          c.id === id ? { ...c, cartQty: Math.max(0, c.cartQty + delta) } : c,
+          lineMatches(c, id)
+            ? { ...c, cartQty: Math.max(0, c.cartQty + delta) }
+            : c,
         )
         .filter((c) => c.cartQty > 0),
     );
@@ -250,7 +258,7 @@ export function usePosCart({
   const setItemQty = (id: string, qty: number) => {
     setCart((prev) =>
       prev.map((c) =>
-        c.id === id ? { ...c, cartQty: Math.max(0, qty) } : c,
+        lineMatches(c, id) ? { ...c, cartQty: Math.max(0, qty) } : c,
       ),
     );
   };
@@ -258,44 +266,59 @@ export function usePosCart({
   const setItemPrice = (id: string, price: number) => {
     setCart((prev) =>
       prev.map((c) =>
-        c.id === id ? { ...c, cartPrice: Math.max(0, price) } : c,
+        lineMatches(c, id) ? { ...c, cartPrice: Math.max(0, price) } : c,
       ),
     );
   };
 
   const handlePriceListChange = (newId: string) => {
     setPriceListId(newId);
+    const listId = newId === "none" ? undefined : newId;
     setCart((prev) =>
       prev.map((c) => ({
         ...c,
         cartPrice: resolveUnitPriceLocal({
           catalogItemId: c.id,
           targetSalePrice: c.target_sale_price,
-          priceListId: newId === "none" ? undefined : newId,
+          priceListId: listId,
           priceLists,
           priceListItems,
         }).price,
+        modifiers: (c.modifiers || []).map((m) => ({
+          ...m,
+          cartPrice: resolveUnitPriceLocal({
+            catalogItemId: m.catalogItemId,
+            targetSalePrice: m.cartPrice,
+            priceListId: listId,
+            priceLists,
+            priceListItems,
+          }).price,
+        })),
       })),
     );
   };
 
   const subtotal = cart.reduce(
-    (sum, item) => sum + item.cartPrice * item.cartQty,
+    (sum, item) =>
+      sum + (item.cartPrice + modifiersUnitTotal(item.modifiers)) * item.cartQty,
     0,
   );
-  const taxTotal = useMemo(
-    () =>
-      calculateOrderTaxTotal(
-        cart
-          .filter((c) => c.cartQty > 0)
-          .map((c) => ({
-            catalogItemId: c.id,
-            subtotal: c.cartPrice * c.cartQty,
-          })),
-        taxesByItem || {},
-      ),
-    [cart, taxesByItem],
-  );
+  const taxTotal = useMemo(() => {
+    const lines: { catalogItemId: string; subtotal: number }[] = [];
+    for (const c of cart.filter((x) => x.cartQty > 0)) {
+      lines.push({
+        catalogItemId: c.id,
+        subtotal: c.cartPrice * c.cartQty,
+      });
+      for (const m of c.modifiers || []) {
+        lines.push({
+          catalogItemId: m.catalogItemId,
+          subtotal: m.cartPrice * m.cartQty * c.cartQty,
+        });
+      }
+    }
+    return calculateOrderTaxTotal(lines, taxesByItem || {});
+  }, [cart, taxesByItem]);
   const shippingTotal = useMemo(
     () =>
       resolveOrderShippingCost(
@@ -319,6 +342,7 @@ export function usePosCart({
     setLeadValue(null);
     setPriceListId("none");
     setFulfillment("dine_in");
+    setOrderNotes("");
     resetPromo();
     if (siteId) await clearCartSession(siteId);
   }, [siteId, resetPromo]);
@@ -342,22 +366,11 @@ export function usePosCart({
       setLeadValue(null);
     }
     setPriceListId(order.price_list_id || "none");
+    setOrderNotes(typeof order.notes === "string" ? order.notes : "");
     if (order?.sale_order_items) {
-      const loadedCart: PosCartItem[] = order.sale_order_items.map(
-        (oi: any) => {
-          const catalogItem = catalogItems.find(
-            (c) => c.id === oi.catalog_item_id,
-          );
-          return {
-            ...(catalogItem as CatalogItem),
-            id: oi.catalog_item_id,
-            name: oi.name || catalogItem?.name,
-            cartQty: oi.quantity,
-            cartPrice: oi.unit_price,
-          } as PosCartItem;
-        },
+      setCart(
+        buildCartFromSaleOrderItems(order.sale_order_items, catalogItems),
       );
-      setCart(loadedCart);
     }
     return true;
   };
@@ -447,6 +460,8 @@ export function usePosCart({
     setActiveOrderId,
     buyerUserId,
     setBuyerUserId,
+    orderNotes,
+    setOrderNotes,
     allowedFulfillments,
     addItemToCart,
     updateQty,

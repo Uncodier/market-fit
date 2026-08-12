@@ -107,6 +107,19 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
               childrenItems={children}
               presentation="compact"
               currency={item.currency || "USD"}
+              imageContext={
+                item
+                  ? {
+                      parentName: item.name,
+                      parentDescription: item.description,
+                      category: (item as any)._shop?.categoryName || null,
+                      siteDescription:
+                        (item as any)._shop?.siteDescription ||
+                        (item as any).site?.description ||
+                        null,
+                    }
+                  : null
+              }
             />
           )}
         </div>

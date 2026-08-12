@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { CatalogItem } from "@/app/types"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
+import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
 import { getDeviceOrders } from "@/app/commerce/device-order-storage"
 import type { DeviceOrder } from "@/app/commerce/device-order-storage"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
@@ -95,6 +96,7 @@ export default function ShopClient({
   const [customerName, setCustomerName] = useState("")
   const [customerEmail, setCustomerEmail] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<string>("")
+  const [orderNotes, setOrderNotes] = useState("")
   
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [orderSuccess, setOrderSuccess] = useState(false)
@@ -344,16 +346,17 @@ export default function ShopClient({
   }, [cart, site.id, orderSuccess, isCartLoaded])
 
   const updateQty = (id: string, delta: number) => {
-    setCart(cart.map(c => {
-      if (c.id === id) {
-        const newQty = Math.max(0, c.cartQty + delta)
-        return { ...c, cartQty: newQty }
-      }
-      return c
-    }).filter(c => c.cartQty > 0))
+    setCart(
+      cart
+        .map((c) => {
+          if (cartLineKey(c) !== id) return c
+          return { ...c, cartQty: Math.max(0, c.cartQty + delta) }
+        })
+        .filter((c) => c.cartQty > 0),
+    )
   }
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0)
+  const subtotal = cart.reduce((sum, item) => sum + cartLineExtendedTotal(item), 0)
   const payableTotal = Math.max(0, subtotal - promoDiscount)
   const cartCount = cart.reduce((s, c) => s + c.cartQty, 0)
 
@@ -372,6 +375,7 @@ export default function ShopClient({
       paymentMethod,
       orderTiming,
       scheduledFor,
+      orderNotes,
       isOpen,
       nextOpenSlot,
       payableTotal,
@@ -467,6 +471,8 @@ export default function ShopClient({
         setOrderTiming={setOrderTiming}
         scheduledFor={scheduledFor}
         setScheduledFor={setScheduledFor}
+        orderNotes={orderNotes}
+        setOrderNotes={setOrderNotes}
         isOpen={isOpen}
         nextOpenSlot={nextOpenSlot}
         locationAvailable={locationAvailable}

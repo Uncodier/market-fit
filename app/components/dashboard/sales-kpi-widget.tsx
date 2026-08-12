@@ -46,7 +46,7 @@ export function SalesKpiWidget({
 
       const response = await fetchWithRetry(
         fetch,
-        `/api/sales?${params}`,
+        `/api/performance/sales?${params}`,
         { maxRetries: 3 }
       );
 

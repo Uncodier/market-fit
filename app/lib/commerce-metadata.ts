@@ -63,6 +63,7 @@ function firstShareImageSource(
 export function resolveShopShareVisual(site: {
   name: string
   logo_url?: string | null
+  description?: string | null
   settings?: { shop?: {
     hero_title?: string
     hero_subtitle?: string
@@ -84,7 +85,11 @@ export function resolveShopShareVisual(site: {
   return {
     source: {
       kind: "url",
-      url: resolveItemImage({ name: site.name, description: subtitle }),
+      url: resolveItemImage({
+        name: site.name,
+        description: subtitle || site.description,
+        siteDescription: site.description,
+      }),
     },
     fit: "cover",
     title: site.name,
@@ -97,11 +102,17 @@ export function resolveCatalogItemShareImageSource(item: {
   description?: string | null
   image_url?: string | null
   metadata?: { gallery?: string[] } | null
+  category?: string | { name?: string | null } | null
+  site?: { description?: string | null } | null
+  _shop?: {
+    categoryName?: string | null
+    siteDescription?: string | null
+  } | null
 }): ShareImageSource {
   return (
     firstShareImageSource(item.image_url, item.metadata?.gallery?.[0]) || {
       kind: "url",
-      url: resolveItemImage({ name: item.name, description: item.description }),
+      url: resolveItemImage(item),
     }
   )
 }

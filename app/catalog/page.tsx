@@ -13,7 +13,8 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Plus, Archive, DatabaseIcon } from "@/app/components/ui/icons"
+import Link from "next/link"
+import { Plus, Archive, DatabaseIcon, Sliders } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -216,6 +217,12 @@ export default function CatalogPage() {
               </div>
               
               <div className="flex items-center gap-2 w-full md:w-auto md:ml-auto">
+                <Button variant="outline" size="sm" asChild className="gap-2">
+                  <Link href="/catalog/modifier-groups">
+                    <Sliders className="h-4 w-4" />
+                    {t("catalog.modifiers.groupsTitle") || "Modifiers"}
+                  </Link>
+                </Button>
                 <div className="hidden md:flex ml-2">
                   <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>

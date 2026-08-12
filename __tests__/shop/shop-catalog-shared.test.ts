@@ -1,5 +1,6 @@
 import {
   buildShopCategoryOffsets,
+  countItemsByCategory,
   groupItemsByCategory,
   SHOP_UNCATEGORIZED_NAME,
   uniqueCategoryNames,
@@ -81,5 +82,19 @@ describe("uniqueCategoryNames", () => {
       "Coffee",
       "Pigs",
     ])
+  })
+})
+
+describe("countItemsByCategory", () => {
+  it("counts items per category name", () => {
+    const counts = countItemsByCategory([
+      { _shop: { categoryName: "Brews" } },
+      { _shop: { categoryName: "Brews" } },
+      { _shop: { categoryName: "Coffee" } },
+      {},
+    ])
+    expect(counts.get("Brews")).toBe(2)
+    expect(counts.get("Coffee")).toBe(1)
+    expect(counts.get(SHOP_UNCATEGORIZED_NAME)).toBe(1)
   })
 })

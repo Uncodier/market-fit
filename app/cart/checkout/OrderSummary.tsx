@@ -7,6 +7,7 @@ import { ShieldCheck } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCodeField"
 import { checkoutLabelKey, CheckoutCopyMode } from "@/app/commerce/checkout-labels"
+import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
 
 interface OrderSummaryProps {
   items: any[]
@@ -54,7 +55,7 @@ export function OrderSummary({
   const promoCartLines = useMemo(() => {
     return items.map((item: any) => ({
       catalogItemId: item.id,
-      subtotal: (item.cartPrice ?? item.target_sale_price ?? 0) * (item.cartQty || 1),
+      subtotal: cartLineExtendedTotal(item),
       quantity: item.cartQty || 1,
     }))
   }, [items])
@@ -79,16 +80,25 @@ export function OrderSummary({
       
       <div className="space-y-4 mb-8 max-h-[40vh] overflow-y-auto pr-2 no-scrollbar">
         {items.map((item, idx) => (
-          <div key={item.id + idx} className="flex gap-4 p-3 bg-muted/30 rounded-2xl border border-border/40">
+          <div key={(item.lineKey || item.id) + idx} className="flex gap-4 p-3 bg-muted/30 rounded-2xl border border-border/40">
             <div className="relative w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0 shadow-sm border border-border/50">
               <img src={resolveItemImage(item)} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <h4 className="font-bold truncate text-sm">{item.name}</h4>
               <div className="text-xs text-muted-foreground mt-1 font-medium tracking-wide">{t('qty') || 'QTY:'} {item.cartQty}</div>
+              {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
+                <ul className="mt-1 space-y-0.5">
+                  {item.modifiers.map((m: any) => (
+                    <li key={`${m.groupId}:${m.catalogItemId}`} className="text-xs text-muted-foreground truncate">
+                      + {m.name}{m.cartQty > 1 ? ` ×${m.cartQty}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="font-black text-sm flex items-center shrink-0">
-              {formatMoney(item.cartPrice * item.cartQty)}
+              {formatMoney(cartLineExtendedTotal(item))}
             </div>
           </div>
         ))}

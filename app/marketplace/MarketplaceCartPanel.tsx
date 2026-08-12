@@ -46,6 +46,8 @@ export function MarketplaceCartPanel({
   setOrderTiming,
   scheduledFor,
   setScheduledFor,
+  orderNotes,
+  setOrderNotes,
   isOpen,
   nextOpenSlot,
   locationAvailable,
@@ -93,11 +95,19 @@ export function MarketplaceCartPanel({
   const promoSiteId = cart[0]?.site_id || ""
 
   const promoCartLines = useMemo(() => {
-    return cart.map((item: any) => ({
-      catalogItemId: item.id,
-      subtotal: (item.cartPrice ?? item.target_sale_price ?? 0) * (item.cartQty || 1),
-      quantity: item.cartQty || 1,
-    }))
+    return cart.map((item: any) => {
+      const modTotal = (item.modifiers || []).reduce(
+        (s: number, m: any) =>
+          s + Number(m.cartPrice || 0) * Number(m.cartQty || 0),
+        0,
+      )
+      const unit = (item.cartPrice ?? item.target_sale_price ?? 0) + modTotal
+      return {
+        catalogItemId: item.id,
+        subtotal: unit * (item.cartQty || 1),
+        quantity: item.cartQty || 1,
+      }
+    })
   }, [cart])
 
   const discount = appliedPromo?.discount ?? promoDiscount ?? 0
@@ -173,7 +183,7 @@ export function MarketplaceCartPanel({
             <div className="space-y-6">
               {cart.map((item: any) => (
                 <CartItem 
-                  key={item.id} 
+                  key={item.lineKey || item.id} 
                   item={item} 
                   updateQty={updateQty} 
                   showSeller={true} 
@@ -214,6 +224,8 @@ export function MarketplaceCartPanel({
               isOpen={isOpen}
               nextOpenSlot={nextOpenSlot}
               deliveryTimeLabel={deliveryTimeLabel}
+              notes={orderNotes}
+              setNotes={setOrderNotes}
               t={t}
               copyMode={copyMode}
             />

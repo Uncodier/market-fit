@@ -50,6 +50,18 @@ export function groupItemsByCategory<T extends { id: string; _shop?: { categoryN
   return order.map((name) => ({ name, items: byName.get(name)! }))
 }
 
+/** Count loaded listing items per category name. */
+export function countItemsByCategory(
+  items: { _shop?: { categoryName?: string | null } }[]
+): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const item of items) {
+    const name = item._shop?.categoryName || SHOP_UNCATEGORIZED_NAME
+    counts.set(name, (counts.get(name) || 0) + 1)
+  }
+  return counts
+}
+
 /** Preserve first-seen order while dropping duplicate category names. */
 export function uniqueCategoryNames(names: string[]): string[] {
   const seen = new Set<string>()

@@ -36,12 +36,18 @@ export function usePosPromo({
   const promoLines = useMemo((): LocalPromoLine[] => {
     return cart
       .filter((c) => c.cartQty > 0)
-      .map((c) => ({
-        catalogItemId: c.id,
-        categoryId: c.category_id,
-        subtotal: c.cartPrice * c.cartQty,
-        quantity: c.cartQty,
-      }));
+      .map((c) => {
+        const extras = (c.modifiers || []).reduce(
+          (sum, m) => sum + m.cartPrice * m.cartQty,
+          0,
+        );
+        return {
+          catalogItemId: c.id,
+          categoryId: c.category_id,
+          subtotal: (c.cartPrice + extras) * c.cartQty,
+          quantity: c.cartQty,
+        };
+      });
   }, [cart]);
 
   // Keep applied promo in sync with cart; auto-apply codeless condition promos

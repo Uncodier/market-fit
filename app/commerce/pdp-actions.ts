@@ -11,7 +11,7 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
     .from("catalog_items")
     .select(`
       *,
-      site:sites(id, name, logo_url),
+      site:sites(id, name, logo_url, description),
       category:catalog_categories(name),
       raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
     `)
@@ -106,11 +106,20 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
     }
   }
 
-  const siteRow = item.site as { id: string; name: string; logo_url: string | null } | null | undefined
+  const siteRow = item.site as {
+    id: string
+    name: string
+    logo_url: string | null
+    description?: string | null
+  } | null | undefined
   const defaultLocale =
     (settings as { default_locale?: string } | null)?.default_locale || undefined
 
   const hasVariants = children.length > 0 || variantAxes.length > 0
+  const categoryName = Array.isArray(item.category)
+    ? item.category[0]?.name
+    : item.category?.name
+  const siteDescription = siteRow?.description || null
 
   const withSpecs = {
     ...item,
@@ -129,7 +138,8 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
     item_specs: ((item as any).raw_specs || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((cis: any) => cis.item_spec).filter(Boolean),
     target_sale_price: finalPrice,
     _shop: {
-      categoryName: Array.isArray(item.category) ? item.category[0]?.name : item.category?.name,
+      categoryName,
+      siteDescription,
       sellable: hasVariants ? false : sellable,
       availableQty,
       children,

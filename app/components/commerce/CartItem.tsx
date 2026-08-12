@@ -3,6 +3,12 @@ import { Button } from "@/app/components/ui/button"
 import { X } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
+import {
+  cartLineExtendedTotal,
+  cartLineKey,
+  cartLineUnitTotal,
+  type CartModifier,
+} from "@/app/commerce/cart-modifiers"
 
 interface CartItemProps {
   item: any
@@ -12,6 +18,10 @@ interface CartItemProps {
 
 export function CartItem({ item, updateQty, showSeller = false }: CartItemProps) {
   const { formatPrice } = useDisplayCurrency()
+  const key = cartLineKey(item)
+  const modifiers: CartModifier[] = Array.isArray(item.modifiers) ? item.modifiers : []
+  const unit = cartLineUnitTotal(item)
+  const currency = item.currency || "USD"
 
   return (
     <div className="flex gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
@@ -22,7 +32,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
         <div>
           <div className="flex justify-between items-start gap-2">
             <h4 className="font-bold text-gray-900 dark:text-gray-100 leading-tight truncate">{item.name}</h4>
-            <button onClick={() => updateQty(item.id, -item.cartQty)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <button onClick={() => updateQty(key, -item.cartQty)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -30,23 +40,39 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.site.name}</p>
           ) : (
             <div className="text-gray-500 dark:text-gray-400 text-sm mt-1 font-medium">
-              {formatPrice(item.cartPrice, item.currency || 'USD')}
+              {formatPrice(unit, currency)}
             </div>
+          )}
+          {modifiers.length > 0 && (
+            <ul className="mt-1.5 space-y-0.5">
+              {modifiers.map((m) => (
+                <li
+                  key={`${m.groupId}:${m.catalogItemId}`}
+                  className="text-xs text-gray-500 dark:text-gray-400 truncate"
+                >
+                  + {m.name}
+                  {m.cartQty > 1 ? ` ×${m.cartQty}` : ""}
+                  {m.cartPrice > 0
+                    ? ` (${formatPrice(m.cartPrice * m.cartQty, currency)})`
+                    : ""}
+                </li>
+              ))}
+            </ul>
           )}
         </div>
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md text-lg hover:bg-gray-200 dark:hover:bg-gray-700" onClick={() => updateQty(item.id, -1)}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md text-lg hover:bg-gray-200 dark:hover:bg-gray-700" onClick={() => updateQty(key, -1)}>
               -
             </Button>
             <span className="w-6 text-center text-sm font-bold text-gray-900 dark:text-gray-100">{item.cartQty}</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md bg-white dark:bg-gray-700 shadow-sm text-lg hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => updateQty(item.id, 1)}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md bg-white dark:bg-gray-700 shadow-sm text-lg hover:bg-gray-50 dark:hover:bg-gray-600" onClick={() => updateQty(key, 1)}>
               +
             </Button>
           </div>
           <div className="text-right shrink-0">
             <span className="font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
-              {formatPrice(item.cartPrice * item.cartQty, item.currency || 'USD')}
+              {formatPrice(cartLineExtendedTotal(item), currency)}
             </span>
           </div>
         </div>

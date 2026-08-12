@@ -240,6 +240,13 @@ export function ServicePdpLayout({
                     presentation="pdp"
                     currency={item.currency || "USD"}
                     fallbackImageUrl={item.image_url || null}
+                    imageContext={{
+                      parentName: item.name,
+                      parentDescription: item.description,
+                      category: item._shop?.categoryName || null,
+                      siteDescription:
+                        item._shop?.siteDescription || item.site?.description || null,
+                    }}
                   />
                 )}
 

@@ -20,6 +20,13 @@ interface VariantPickerProps {
   currency?: string
   /** Parent product image when a child SKU has no image of its own. */
   fallbackImageUrl?: string | null
+  /** Extra context for AI placeholder images (parent / category / site). */
+  imageContext?: {
+    parentName?: string | null
+    parentDescription?: string | null
+    category?: string | null
+    siteDescription?: string | null
+  } | null
 }
 
 export function VariantPicker({
@@ -30,6 +37,7 @@ export function VariantPicker({
   presentation = "pdp",
   currency = "USD",
   fallbackImageUrl = null,
+  imageContext = null,
 }: VariantPickerProps) {
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
@@ -65,11 +73,31 @@ export function VariantPicker({
     const child = childForValue(axisId, valueId)
     const childUrl = typeof child?.image_url === "string" ? child.image_url.trim() : ""
     if (childUrl) return childUrl
+    const promptBase = {
+      image_url: null as string | null,
+      parent: imageContext?.parentName
+        ? {
+            name: imageContext.parentName,
+            description: imageContext.parentDescription,
+          }
+        : undefined,
+      category: imageContext?.category,
+      siteDescription: imageContext?.siteDescription,
+    }
     // No upload: AI image for this variant (not the parent photo).
-    if (child) return resolveItemImage({ name: child.name || label, image_url: null })
+    if (child) {
+      return resolveItemImage({
+        ...promptBase,
+        name: child.name || label,
+        description: child.description,
+      })
+    }
     const parentUrl = typeof fallbackImageUrl === "string" ? fallbackImageUrl.trim() : ""
     if (parentUrl) return parentUrl
-    return resolveItemImage({ name: label, image_url: null })
+    return resolveItemImage({
+      ...promptBase,
+      name: label,
+    })
   }
 
   const resolveAxisLabel = (axis: VariantAxis) => {

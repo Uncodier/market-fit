@@ -2,6 +2,7 @@
 
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
+import { Textarea } from "@/app/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Truck, Store, CreditCard, Package } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -37,6 +38,8 @@ interface CheckoutFormProps {
   setOrderTiming?: (val: 'now' | 'scheduled') => void
   scheduledFor?: Date | null
   setScheduledFor?: (val: Date | null) => void
+  orderNotes?: string
+  setOrderNotes?: (val: string) => void
   businessHours?: any[]
   isOpen?: boolean
   nextOpenSlot?: { at: Date, label: string } | null
@@ -51,6 +54,7 @@ export function CheckoutForm({
   handleCheckout, lockedDestination, locations = [], pickupLocationId, setPickupLocationId,
   paymentMethod, setPaymentMethod, availablePaymentMethods = [],
   orderTiming = 'now', setOrderTiming, scheduledFor, setScheduledFor,
+  orderNotes, setOrderNotes,
   businessHours = [], isOpen = true, nextOpenSlot, deliveryTimeLabel,
   copyMode = 'retail'
 }: CheckoutFormProps) {
@@ -303,6 +307,24 @@ export function CheckoutForm({
                   <Input placeholder={t('checkout.country') || 'Country'} value={shippingAddress?.country} onChange={e => setShippingAddress({...shippingAddress, country: e.target.value})} className="h-12 rounded-xl" />
                 </div>
               </div>
+            </div>
+          )}
+
+          {setOrderNotes && (
+            <div className="space-y-4 pt-6 border-t mt-6">
+              <h3 className="text-xl font-bold">
+                {t('checkout.specialInstructions') || 'Special instructions'}
+              </h3>
+              <Textarea
+                id="checkout-special-instructions"
+                value={orderNotes || ''}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder={
+                  t('checkout.specialInstructionsPlaceholder') ||
+                  'Any special requests for this order? (optional)'
+                }
+                className="resize-none min-h-[100px] rounded-xl"
+              />
             </div>
           )}
 
