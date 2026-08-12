@@ -4,14 +4,21 @@ import { useEffect, useState, useRef } from "react"
 import { getImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
 import { imprentaVideoManager } from "@/app/lib/imprenta-video-playback"
 
+/** Show the original asset if the downscaled blob is still pending after this. */
+const PROGRESSIVE_FALLBACK_MS = 1000
+
 /**
- * Resolve a downscaled display URL for a media asset via the shared thumb cache.
+ * Resolve a display URL for a media asset via the shared thumb cache.
  *
- * Cards render the compressed ~1024px object URL instead of the original 2-4K
- * asset, which is what keeps Safari from resampling huge bitmaps on every paint.
- * Falls back to the original URL when the cache cannot process it (e.g. CORS).
+ * Prefers the compressed object URL when ready; otherwise paints the original
+ * URL after decode completes (toBlob gap) or after a short loading timeout so
+ * completed RESULT cards are not stuck on a grey skeleton.
  */
-function useImprentaDisplayUrl(url: string, enabled = true): string | null {
+function useImprentaDisplayUrl(
+  url: string,
+  enabled = true,
+  priority = false
+): string | null {
   const [displayUrl, setDisplayUrl] = useState<string | null>(() => {
     if (!enabled || !url) return null
     return getImprentaThumbCache().getDisplayUrl(url)
@@ -25,23 +32,47 @@ function useImprentaDisplayUrl(url: string, enabled = true): string | null {
     const cache = getImprentaThumbCache()
 
     const resolve = () => {
+      const blob = cache.getDisplayUrl(url)
+      if (blob) return blob
       const status = cache.status(url)
-      if (status === "error") return url
-      return cache.getDisplayUrl(url)
+      // Ready but toBlob still pending, or terminal error: paint original ASAP.
+      if (status === "ready" || status === "error") return url
+      return null
     }
 
     const initial = resolve()
     setDisplayUrl(initial)
-    if (initial) return
 
-    cache.request(url)
+    if (priority) cache.requestPriority(url)
+    else cache.request(url)
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    if (!cache.getDisplayUrl(url) && cache.status(url) !== "error") {
+      timeoutId = setTimeout(() => {
+        setDisplayUrl((current) => {
+          const blob = cache.getDisplayUrl(url)
+          if (blob) return blob
+          return current ?? url
+        })
+      }, PROGRESSIVE_FALLBACK_MS)
+    }
+
     const unsub = cache.onDecoded((decodedUrl) => {
       if (decodedUrl !== url) return
+      const blob = cache.getDisplayUrl(url)
+      if (blob) {
+        setDisplayUrl(blob)
+        return
+      }
       const next = resolve()
       if (next) setDisplayUrl(next)
     })
-    return unsub
-  }, [url, enabled])
+
+    return () => {
+      unsub()
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [url, enabled, priority])
 
   return displayUrl
 }
@@ -63,7 +94,7 @@ export function ImprentaLazyPreviewImage({
 }) {
   const [loaded, setLoaded] = useState(false)
   const [useOriginal, setUseOriginal] = useState(false)
-  const displayUrl = useImprentaDisplayUrl(url)
+  const displayUrl = useImprentaDisplayUrl(url, true, priority)
   const src = useOriginal ? url : displayUrl
 
   useEffect(() => {
@@ -124,7 +155,11 @@ export function ImprentaLazyPreviewVideo({
 
   // Poster: downscaled first frame from the thumb cache. The real <video> mounts
   // only on play intent so Safari never holds dozens of decoders at once.
-  const rawPosterUrl = useImprentaDisplayUrl(url, inViewport && !shouldMountVideo)
+  const rawPosterUrl = useImprentaDisplayUrl(
+    url,
+    inViewport && !shouldMountVideo,
+    priority
+  )
   const [posterFailed, setPosterFailed] = useState(false)
   // A video URL can't render inside <img>; only use blob/object URLs as poster.
   const posterUrl = !posterFailed && rawPosterUrl && rawPosterUrl !== url ? rawPosterUrl : null
@@ -240,7 +275,8 @@ export function ImprentaLazyCardImage({
   const [loaded, setLoaded] = useState(false)
   const [useOriginal, setUseOriginal] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
-  const displayUrl = useImprentaDisplayUrl(url)
+  // Full cards are few and visible — prioritize ahead of lite background previews.
+  const displayUrl = useImprentaDisplayUrl(url, true, true)
   const src = useOriginal ? url : displayUrl
 
   useEffect(() => {

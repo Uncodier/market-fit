@@ -257,7 +257,9 @@ function drawThumbOrSkeleton(
       strokeRounded(ctx, x, y, w, h, r, theme.skeletonBlockBorder, 1)
       return
     }
-    thumbs.request(url)
+    // Viewport covers only reach this path while being painted — prioritize them
+    // ahead of background FIFO so lite shells do not stay grey behind full cards.
+    thumbs.requestPriority(url)
   }
   fillAndStrokeRounded(ctx, x, y, w, h, r, theme.skeletonMedia, theme.skeletonBlockBorder, 1)
 }

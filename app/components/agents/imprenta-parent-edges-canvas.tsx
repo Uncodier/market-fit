@@ -197,13 +197,13 @@ export function ImprentaParentEdgesCanvas({
       rafId = null
       const snap = lastSnapshot
       if (!snap.canvasWidth || !snap.canvasHeight) {
-        const ctx = canvas.getContext("2d")
+        const ctx = canvas.getContext("2d", { alpha: true })
         if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
         return
       }
 
       const dpr = resizeToViewport(snap)
-      const ctx = canvas.getContext("2d")
+      const ctx = canvas.getContext("2d", { alpha: true })
       if (!ctx) return
 
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -392,7 +392,7 @@ export function ImprentaParentEdgesCanvas({
     <canvas
       ref={canvasRef}
       className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: 0, width: "100%", height: "100%" }}
+      style={{ zIndex: 0, width: "100%", height: "100%", transform: "translateZ(0)" }}
       aria-hidden
     />
   )

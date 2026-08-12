@@ -13,6 +13,8 @@ import { ZoomableCanvas, type ZoomableViewportInfo } from "./zoomable-canvas"
 import { ImprentaParentEdgesCanvas } from "./imprenta-parent-edges-canvas"
 import { ImprentaNodesCanvas, readCachedIdsAndGrid, type GridCacheEntry } from "./imprenta-nodes-canvas"
 import { ImprentaContextEdges } from "./imprenta-context-edges"
+import { ImprentaTempConnectionLine, ImprentaLoadingRouteEdges } from "./imprenta-world-svg"
+import { sizedAncestorRect, screenToWorld } from "@/app/lib/imprenta-world-svg"
 import {
   worldViewportFromCanvas,
   bboxIntersects,
@@ -3085,27 +3087,27 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   const handleConnectionMove = useCallback((e: MouseEvent) => {
     if (!drawingConnectionRef.current) return;
-    
-    let scale = 1;
+
     const snap = viewportStore.get();
-    if (snap) {
-       scale = snap.scale;
-    }
-    
-    // Instead of forcing layout on contentDiv on every frame, 
-    // we can use the position from the viewport snapshot to convert coordinates.
-    const canvasEl = document.getElementById('imprenta-canvas-content');
-    if (canvasEl && canvasEl.parentElement) {
-       const rect = canvasEl.getBoundingClientRect();
-       const currentX = (e.clientX - rect.left) / scale;
-       const currentY = (e.clientY - rect.top) / scale;
-       
-       setTempConnection({
-         fromNode: drawingConnectionRef.current.fromNode,
-         currentX,
-         currentY
-       });
-    }
+    const contentDiv = document.getElementById("imprenta-canvas-content");
+    // Graph content is 0×0 (all nodes are absolute); Chrome's rect on that
+    // node is not a reliable origin. Use the sized zoomable-canvas ancestor.
+    const rect = sizedAncestorRect(contentDiv);
+    if (!rect) return;
+
+    const { x: currentX, y: currentY } = screenToWorld(
+      e.clientX,
+      e.clientY,
+      rect,
+      snap?.position || { x: 0, y: 0 },
+      snap?.scale || 1
+    );
+
+    setTempConnection({
+      fromNode: drawingConnectionRef.current.fromNode,
+      currentX,
+      currentY,
+    });
   }, [viewportStore]);
 
   const handleConnectionCancel = useCallback(() => {
@@ -3122,14 +3124,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     if (drawingConnectionRef.current && drawingConnectionRef.current.fromNode === nodeId) {
       handleConnectionCancel();
       return;
-    }
-    
-    let scale = 1;
-    const contentDiv = document.getElementById('imprenta-canvas-content');
-    if (contentDiv && contentDiv.parentElement) {
-       const transform = contentDiv.parentElement.style.transform;
-       const match = transform.match(/scale\(([^)]+)\)/);
-       if (match) scale = parseFloat(match[1]) || 1;
     }
     
     const startPos = positionsRef.current[nodeId] || {x: 0, y: 0};
@@ -4080,15 +4074,12 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     const fromPos = resolveNodePosition(tempConnection.fromNode)
                     const fromCy = (nodeHeightsRef.current[tempConnection.fromNode] || ROW_H) / 2
                     return (
-                      <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 50, overflow: 'visible' }} shapeRendering="optimizeSpeed">
-                        <path
-                          d={`M ${fromPos.x + NODE_W} ${fromPos.y + fromCy} C ${fromPos.x + NODE_W + 50} ${fromPos.y + fromCy}, ${tempConnection.currentX - 50} ${tempConnection.currentY}, ${tempConnection.currentX} ${tempConnection.currentY}`}
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          className="text-primary"
-                        />
-                      </svg>
+                      <ImprentaTempConnectionLine
+                        fromX={fromPos.x + NODE_W}
+                        fromY={fromPos.y + fromCy}
+                        toX={tempConnection.currentX}
+                        toY={tempConnection.currentY}
+                      />
                     )
                   })()}
                   
@@ -4199,36 +4190,14 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                   })}
                   </TooltipProvider>
 
-                  {/* Loading-route edges: same geometry as the graph above, but must render *above*
-                      node cards (z-10). Otherwise only segments in empty gutter (often action→result)
-                      are visible; parent→action was drawn under cards. */}
-                  {loadingRouteEdges.length > 0 && (
-                    <svg
-                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                      style={{ zIndex: 12, overflow: "visible" }}
-                    >
-                      {loadingRouteEdges.map(({ parentId, childId }) => {
-                        if (visibleNodeIds && !visibleNodeIds.has(parentId) && !visibleNodeIds.has(childId)) return null
-                        if (!positions[parentId] || !positions[childId]) return null
-                        const start = resolveNodePosition(parentId)
-                        const end = resolveNodePosition(childId)
-                        const startCy = (nodeHeightsRef.current[parentId] || ROW_H) / 2
-                        const endCy = (nodeHeightsRef.current[childId] || ROW_H) / 2
-                        const x1 = start.x + NODE_W
-                        const y1 = start.y + startCy
-                        const x2 = end.x
-                        const y2 = end.y + endCy
-                        const d = `M ${x1} ${y1} C ${x1 + 50} ${y1}, ${x2 - 50} ${y2}, ${x2} ${y2}`
-                        return (
-                          <path
-                            key={`loading-edge-${parentId}-${childId}`}
-                            d={d}
-                            className="imprenta-loading-edge"
-                          />
-                        )
-                      })}
-                    </svg>
-                  )}
+                  <ImprentaLoadingRouteEdges
+                    edges={loadingRouteEdges}
+                    positions={positions}
+                    nodeHeights={nodeHeightsSnapshot}
+                    nodeW={NODE_W}
+                    rowH={ROW_H}
+                    visibleNodeIds={visibleNodeIds}
+                  />
             </div>
             </ZoomableCanvas>
           </div>

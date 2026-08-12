@@ -1,5 +1,7 @@
 "use client"
 
+import { loadImageThumb, loadVideoThumb } from "@/app/lib/imprenta-thumb-loaders"
+
 /**
  * LRU cache of decoded HTMLImageElements for canvas drawing.
  *
@@ -29,13 +31,20 @@ type CacheEntry = {
   lastUsed: number
 }
 
+export type ImprentaThumbRequestOptions = {
+  /** Prefer this URL ahead of the FIFO background queue (visible full cards). */
+  priority?: boolean
+}
+
 export type ImprentaThumbCache = {
   get: (url: string) => HTMLCanvasElement | null
   /** Downscaled object URL for DOM <img> usage; null until encoded. */
   getDisplayUrl: (url: string) => string | null
   status: (url: string) => ThumbCacheStatus
   /** Kick off a decode if not already loading/ready. No-op server-side. */
-  request: (url: string) => void
+  request: (url: string, options?: ImprentaThumbRequestOptions) => void
+  /** Same as request({ priority: true }) — bumps ahead of background previews. */
+  requestPriority: (url: string) => void
   /** Mark a set of URLs as currently visible; releases decoded images outside the set when the cache is full. */
   touch: (urls: Iterable<string>) => void
   /** Fires when an entry reaches a terminal state (ready or error) and again when its displayUrl becomes available. */
@@ -216,207 +225,9 @@ export function createImprentaThumbCache(
       }, 15000)
 
       if (countsAsVideo) {
-        const TARGET = Math.round(512 * (window.devicePixelRatio || 1))
-        const video = document.createElement("video")
-        video.crossOrigin = "anonymous"
-        video.muted = true
-        video.playsInline = true
-        // "metadata" + seek on loadedmetadata: Safari then range-requests just the
-        // frame we need. preload="auto" made Safari download entire files, saturating
-        // the per-host connection limit and starving image fetches.
-        video.preload = "metadata"
-
-        let handled = false
-        let seeked = false
-        const cleanup = () => {
-          video.removeAttribute("src")
-          video.load()
-        }
-        const handleVideoError = () => {
-          if (handled) return
-          handled = true
-          cleanup()
-          done(false, null)
-        }
-
-        const extractFrame = () => {
-          if (handled) return
-          // Safari can fire `seeked` before the frame is actually decodable; drawing
-          // then produces a black poster. Wait until we have current-frame data.
-          if (video.readyState < 2) return
-          handled = true
-          try {
-            const vw = video.videoWidth || 640
-            const vh = video.videoHeight || 360
-            const scale = Math.min(1, TARGET / vw)
-            const canvas = document.createElement("canvas")
-            canvas.width = Math.max(1, Math.round(vw * scale))
-            canvas.height = Math.max(1, Math.round(vh * scale))
-            const ctx = canvas.getContext("2d")
-            if (ctx) {
-              ctx.imageSmoothingEnabled = true
-              ;(ctx as any).imageSmoothingQuality = "medium"
-              ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-              done(true, canvas)
-            } else {
-              done(false, null)
-            }
-          } catch (e) {
-            done(false, null)
-          }
-          cleanup()
-        }
-
-        const trySeek = () => {
-          if (handled || seeked) return
-          if (video.readyState < 1) return
-          seeked = true
-          try {
-            video.currentTime = 0.001
-          } catch {
-            /* extract on canplay instead */
-          }
-        }
-
-        setStage(url, "video-load")
-        video.addEventListener("error", handleVideoError)
-        video.addEventListener("loadedmetadata", () => {
-          setStage(url, "video-seek")
-          trySeek()
-        })
-        video.addEventListener("loadeddata", () => {
-          trySeek()
-          extractFrame()
-        })
-        video.addEventListener("seeked", extractFrame)
-        video.addEventListener("canplay", extractFrame)
-        // Timeout to prevent hanging
-        setTimeout(() => {
-          if (!handled) handleVideoError()
-        }, 8000)
-
-        video.src = url
-        video.load()
+        loadVideoThumb(url, setStage, done)
       } else {
-        const TARGET = Math.round(512 * (window.devicePixelRatio || 1))
-        
-        const processWithImageFallback = () => {
-          setStage(url, "img-fallback")
-          const img = new Image()
-          img.crossOrigin = "anonymous"
-          img.decoding = "async"
-          ;(img as unknown as { fetchPriority?: string }).fetchPriority = "low"
-          
-          img.onload = async () => {
-            setStage(url, "img-fallback-decode")
-            if (typeof createImageBitmap === "function") {
-              try {
-                const bitmap = await createImageBitmap(img)
-                const scale = Math.min(1, TARGET / bitmap.width)
-                const canvas = document.createElement("canvas")
-                canvas.width = bitmap.width * scale
-                canvas.height = bitmap.height * scale
-                const ctx = canvas.getContext("2d")
-                if (ctx) {
-                  ctx.imageSmoothingEnabled = true
-                  ;(ctx as any).imageSmoothingQuality = "medium"
-                  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-                  done(true, canvas)
-                } else {
-                  done(false, null)
-                }
-                bitmap.close()
-                img.src = ""
-                return
-              } catch (e) {
-                // fall through to fallback
-              }
-            }
-            
-            // Fallback a dibujar a un canvas offscreen directo
-            const iw = img.naturalWidth || 1
-            const ih = img.naturalHeight || 1
-            const scale = Math.min(1, TARGET / iw)
-            const canvas = document.createElement("canvas")
-            canvas.width = iw * scale
-            canvas.height = ih * scale
-            const ctx = canvas.getContext("2d")
-            if (ctx) {
-              ctx.imageSmoothingEnabled = true
-              ;(ctx as any).imageSmoothingQuality = "medium"
-              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-              img.src = ""
-              done(true, canvas)
-            } else {
-              img.src = ""
-              done(false, null)
-            }
-          }
-          img.onerror = () => done(false, null)
-          try {
-            img.src = url
-          } catch {
-            done(false, null)
-          }
-        }
-
-        if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
-          // Intentar fetch -> blob -> createImageBitmap. Abort after 10s so a hung
-          // connection falls back to the <img> path instead of wedging the slot.
-          setStage(url, "fetch")
-          const controller = typeof AbortController !== "undefined" ? new AbortController() : null
-          const abortTimer = controller ? setTimeout(() => controller.abort(), 10000) : null
-          // Distinguish HTTP errors (404 etc.) from CORS/network failures: retrying a
-          // missing object via the <img> fallback just repeats the same 404.
-          let httpStatusFailed = false
-          fetch(url, { mode: 'cors', signal: controller?.signal })
-            .then(res => {
-              if (!res.ok) {
-                httpStatusFailed = true
-                throw new Error(`HTTP ${res.status}`)
-              }
-              setStage(url, "blob")
-              return res.blob()
-            })
-            .then(blob => {
-              if (abortTimer) clearTimeout(abortTimer)
-              setStage(url, "decode")
-              if (typeof createImageBitmap === 'function') {
-                return createImageBitmap(blob).then(bitmap => {
-                  setStage(url, "draw")
-                  const scale = Math.min(1, TARGET / bitmap.width)
-                  const canvas = document.createElement("canvas")
-                  canvas.width = bitmap.width * scale
-                  canvas.height = bitmap.height * scale
-                  const ctx = canvas.getContext("2d")
-                  if (ctx) {
-                    ctx.imageSmoothingEnabled = true
-                    ;(ctx as any).imageSmoothingQuality = "medium"
-                    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-                    done(true, canvas)
-                  } else {
-                    done(false, null)
-                  }
-                  bitmap.close()
-                })
-              } else {
-                throw new Error('createImageBitmap not available')
-              }
-            })
-            .catch((err) => {
-              if (abortTimer) clearTimeout(abortTimer)
-              if (DEBUG) console.warn(`[imprenta-thumb] fetch path failed (${err?.message ?? err?.name ?? err}): ${url.slice(-60)}`)
-              if (httpStatusFailed) {
-                // The object does not exist (404/403); no fallback will fix that.
-                done(false, null)
-                return
-              }
-              // CORS failure, timeout, or createImageBitmap unsupported
-              processWithImageFallback()
-            })
-        } else {
-          processWithImageFallback()
-        }
+        loadImageThumb(url, setStage, done, DEBUG)
       }
     }
   }
@@ -451,6 +262,32 @@ export function createImprentaThumbCache(
     }
   }
 
+  const enqueueRequest = (url: string, options?: ImprentaThumbRequestOptions) => {
+    if (typeof window === "undefined") return
+    if (!url) return
+    const priority = !!options?.priority
+    const bumpToFront = () => {
+      const idx = queue.indexOf(url)
+      if (idx > 0) {
+        queue.splice(idx, 1)
+        queue.unshift(url)
+      }
+    }
+    const existing = entries.get(url)
+    if (existing) {
+      existing.lastUsed = ++tick
+      if (priority && existing.status === "loading") {
+        bumpToFront()
+        pump()
+      }
+      return
+    }
+    entries.set(url, { url, status: "loading", image: null, displayUrl: null, lastUsed: ++tick })
+    if (priority) queue.unshift(url)
+    else queue.push(url)
+    pump()
+  }
+
   return {
     get(url) {
       const e = entries.get(url)
@@ -467,17 +304,11 @@ export function createImprentaThumbCache(
     status(url) {
       return entries.get(url)?.status ?? "idle"
     },
-    request(url) {
-      if (typeof window === "undefined") return
-      if (!url) return
-      const existing = entries.get(url)
-      if (existing) {
-        existing.lastUsed = ++tick
-        return
-      }
-      entries.set(url, { url, status: "loading", image: null, displayUrl: null, lastUsed: ++tick })
-      queue.push(url)
-      pump()
+    request(url, options) {
+      enqueueRequest(url, options)
+    },
+    requestPriority(url) {
+      enqueueRequest(url, { priority: true })
     },
     touch(urls) {
       const protectedSet = new Set<string>()
