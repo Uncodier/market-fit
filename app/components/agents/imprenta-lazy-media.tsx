@@ -266,11 +266,14 @@ export function ImprentaLazyCardImage({
   className,
   onOpen,
   alt = "Generated media",
+  aspectRatio = "1/1",
 }: {
   url: string
   className?: string
   onOpen: () => void
   alt?: string
+  /** CSS aspect-ratio so the card footprint stays stable as the bitmap loads. */
+  aspectRatio?: string
 }) {
   const [loaded, setLoaded] = useState(false)
   const [useOriginal, setUseOriginal] = useState(false)
@@ -292,7 +295,10 @@ export function ImprentaLazyCardImage({
   }, [url, src])
 
   return (
-    <div className="relative w-full overflow-hidden rounded-xl bg-black/10">
+    <div
+      className="relative w-full overflow-hidden rounded-xl bg-black/10"
+      style={{ aspectRatio }}
+    >
       <div
         className={`absolute inset-0 z-0 flex animate-pulse items-center justify-center bg-muted/70 dark:bg-muted/55 transition-opacity duration-300 ${
           loaded ? "pointer-events-none opacity-0" : "opacity-100"
@@ -302,8 +308,6 @@ export function ImprentaLazyCardImage({
       >
         <span className="sr-only">Loading image</span>
       </div>
-      {/* Reserve a square while the display bitmap is generated so layout doesn't jump. */}
-      {!src && <div className="w-full aspect-square" />}
       {src && (
         <img
           ref={imgRef}
@@ -320,7 +324,7 @@ export function ImprentaLazyCardImage({
             e.stopPropagation()
             onOpen()
           }}
-          className={`relative z-[1] w-full h-auto max-h-[800px] object-contain cursor-pointer transition-opacity duration-300 ${
+          className={`absolute inset-0 z-[1] h-full w-full object-cover cursor-pointer transition-opacity duration-300 ${
             loaded ? "opacity-100" : "opacity-0"
           } ${className ?? ""}`}
         />

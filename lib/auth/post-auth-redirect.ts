@@ -1,6 +1,8 @@
 /** Default landing for authenticated users leaving the sign-in page. */
 export const DEFAULT_POST_AUTH_PATH = '/robots'
 
+const SHOP_AUTH_PATH_PREFIXES = ['/shop', '/marketplace', '/buyer', '/cart'] as const
+
 /**
  * Accept only same-origin relative paths that are not auth flows
  * (prevents open redirects and auth loops).
@@ -11,6 +13,18 @@ export function isSafeInternalPath(path: string | null | undefined): path is str
   if (path.startsWith('//')) return false
   if (path.startsWith('/auth')) return false
   return true
+}
+
+/**
+ * Shop/buyer login copy when returnTo points at a storefront, marketplace,
+ * buyer portal, or cart. Marketing and workspace entry stay on product copy.
+ */
+export function isShopAuthContext(returnTo?: string | null): boolean {
+  if (!isSafeInternalPath(returnTo)) return false
+  const path = returnTo.split('?')[0].split('#')[0]
+  return SHOP_AUTH_PATH_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`)
+  )
 }
 
 /** Prefer returnTo, otherwise fall back to robots. */

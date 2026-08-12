@@ -52,9 +52,11 @@ export function ShopHeroTrust({
                       "full",
                     )
               }
-              alt="Hero"
+              alt=""
+              decoding="async"
+              fetchPriority="high"
               onError={(e) => {
-                e.currentTarget.style.opacity = "0"
+                e.currentTarget.style.display = "none"
               }}
               className="absolute inset-0 h-full w-full object-cover object-center"
             />

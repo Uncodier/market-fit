@@ -11,7 +11,7 @@ import { GitHubIcon } from "@/app/components/ui/social-icons"
 import { siteConfig } from "@/config"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { createClient } from "@/lib/supabase/client"
-import { resolveAuthenticatedSignInRedirect } from "@/lib/auth/post-auth-redirect"
+import { isShopAuthContext, resolveAuthenticatedSignInRedirect } from "@/lib/auth/post-auth-redirect"
 
 export function AuthLandingClient() {
   const { theme } = useTheme()
@@ -131,19 +131,33 @@ export function AuthLandingClient() {
   }, [])
 
   const isDark = theme === 'dark'
+  const shopAuth = isShopAuthContext(returnTo)
 
   const getTitle = () => {
-    if (authType === "signin") {
-      return t('auth.welcomeBack') || "Makinari is the Revenue Operations Platform with Agents that actually perform tasks for you"
+    if (authType === "reset") {
+      return t('auth.resetTitle') || "Reset your password"
     }
-    return t('auth.welcomeAboard') || "Welcome aboard"
+    if (authType === "signin") {
+      return t('auth.welcomeBack') || "Welcome back"
+    }
+    if (shopAuth) {
+      return t('auth.welcomeAboard') || "Create your account"
+    }
+    return t('auth.workspace.signUpTitle') || "Get started"
   }
 
   const getDescription = () => {
-    if (authType === "signin") {
-      return t('auth.signInDesc') || "Sign in to manage your AI sales agents"
+    if (authType === "reset") {
+      return t('auth.resetDesc') || "We'll email you a link to choose a new one."
     }
-    return t('auth.signUpDesc') || "Get started with AI-powered sales automation"
+    if (authType === "signin") {
+      return shopAuth
+        ? (t('auth.signInDesc') || "Sign in to view your orders and continue shopping.")
+        : (t('auth.workspace.signInDesc') || "Sign in to your workspace.")
+    }
+    return shopAuth
+      ? (t('auth.signUpDesc') || "Track orders, access purchases, and check out faster.")
+      : (t('auth.workspace.signUpDesc') || "Create your workspace and start selling.")
   }
 
   // Handle auth type changes from AuthForm
@@ -219,6 +233,7 @@ export function AuthLandingClient() {
           />
           
           {/* Feature Chips wrapped in AI stamp + Open Source outside */}
+          {!shopAuth && (
           <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
             <div className="inline-flex items-center gap-3 rounded-sm border dark:border-white/40 border-black/40 dark:bg-white/5 bg-black/5 px-3 py-2">
               <span className="shrink-0 rounded border dark:border-white/30 border-black/30 dark:bg-white/10 bg-black/10 px-2.5 py-1 text-[10px] font-bold tracking-widest uppercase dark:text-white/95 text-slate-500 font-inter">
@@ -255,6 +270,7 @@ export function AuthLandingClient() {
               {t('auth.chip.openSource') || 'Open Source'}
             </a>
           </div>
+          )}
         </div>
 
         {/* Custom CSS for animations */}
@@ -325,6 +341,7 @@ export function AuthLandingClient() {
                 signupData={signupData}
                 onAuthTypeChange={handleAuthTypeChange}
                 initialError={authError}
+                isShopContext={shopAuth}
               />
             </div>
           </div>

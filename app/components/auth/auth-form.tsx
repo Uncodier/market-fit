@@ -29,6 +29,7 @@ interface AuthFormProps {
   }
   onAuthTypeChange?: (authType: string) => void
   initialError?: string | null
+  isShopContext?: boolean
 }
 
 // Create schema with conditional validation for referral code
@@ -48,7 +49,7 @@ const resetPasswordSchema = z.object({
 type AuthFormValues = z.infer<typeof authFormSchema>
 type ResetPasswordValues = z.infer<typeof resetPasswordSchema>
 
-export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData, onAuthTypeChange, initialError }: AuthFormProps) {
+export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData, onAuthTypeChange, initialError, isShopContext = false }: AuthFormProps) {
   const supabase = createClient()
   const { theme } = useTheme()
   const { t } = useLocalization()
@@ -676,7 +677,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
             )}
 
             {/* Referral code field - Full width */}
-            {authMode === 'sign_up' && (
+            {authMode === 'sign_up' && !isShopContext && (
               <>
                 <FormField
                   control={form.control}
@@ -851,11 +852,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
                     : (t('auth.creating') || "Creating account...")
                   : authMode === 'sign_in' 
                     ? (t('auth.signInBtn') || "Sign In") 
-                    : referralCodeStatus === 'valid'
-                      ? (t('auth.signUpBtn') || "Create Account")
-                      : referralCodeStatus === 'unchecked'
-                        ? (t('auth.getStarted') || "Get Started")
-                        : (t('auth.signUpBtn') || "Create Account")
+                    : (!isShopContext && referralCodeStatus === 'unchecked')
+                      ? (t('auth.getStarted') || "Get Started")
+                      : (t('auth.signUpBtn') || "Create Account")
                 }
               </Button>
             )}
@@ -864,7 +863,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
       )}
       
       {/* Divider */}
-      {!waitlistSuccess && authMode !== 'reset_password' && (
+      {!isShopContext && !waitlistSuccess && authMode !== 'reset_password' && (
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <Separator className="w-full" />
@@ -876,7 +875,7 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
       )}
 
       {/* WhatsApp CTA */}
-      {!waitlistSuccess && authMode !== 'reset_password' && (
+      {!isShopContext && !waitlistSuccess && authMode !== 'reset_password' && (
           <Button 
             type="button" 
             className="whatsapp-btn neu-auth-whatsapp-btn w-full font-medium hover:opacity-90 transition-opacity font-inter"

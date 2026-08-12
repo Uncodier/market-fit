@@ -1,6 +1,7 @@
 import {
   DEFAULT_POST_AUTH_PATH,
   isSafeInternalPath,
+  isShopAuthContext,
   resolveAuthenticatedSignInRedirect,
   resolvePostAuthRedirect,
 } from '@/lib/auth/post-auth-redirect'
@@ -55,5 +56,22 @@ describe('post-auth-redirect', () => {
       configurable: true,
       value: original,
     })
+  })
+
+  it('treats storefront returnTo as shop auth context', () => {
+    expect(isShopAuthContext('/shop/acme')).toBe(true)
+    expect(isShopAuthContext('/shop/acme?tab=orders')).toBe(true)
+    expect(isShopAuthContext('/marketplace')).toBe(true)
+    expect(isShopAuthContext('/buyer')).toBe(true)
+    expect(isShopAuthContext('/cart/checkout')).toBe(true)
+  })
+
+  it('keeps marketing and workspace entry on product copy', () => {
+    expect(isShopAuthContext(null)).toBe(false)
+    expect(isShopAuthContext(undefined)).toBe(false)
+    expect(isShopAuthContext('/robots')).toBe(false)
+    expect(isShopAuthContext('/leads')).toBe(false)
+    expect(isShopAuthContext('/shopping')).toBe(false)
+    expect(isShopAuthContext('/auth')).toBe(false)
   })
 })

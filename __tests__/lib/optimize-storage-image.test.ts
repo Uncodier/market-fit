@@ -57,11 +57,18 @@ describe("optimizeStorageImageUrl", () => {
     expect(optimizeStorageImageUrl("not a url", { width: 128 })).toBe("not a url")
   })
 
-  it("fail-opens when host is not the configured project", () => {
+  it("still rewrites *.supabase.co when the configured URL is another project", () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://other.supabase.co"
-    expect(optimizeStorageImageUrl(STORAGE_OBJECT, { width: 128 })).toBe(
-      STORAGE_OBJECT,
-    )
+    const out = optimizeStorageImageUrl(STORAGE_OBJECT, { width: 128 })
+    expect(out).toContain("/render/image/public/")
+    expect(out).toContain("width=128")
+  })
+
+  it("rewrites *.supabase.co when NEXT_PUBLIC_SUPABASE_URL is a custom domain", () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://db.makinari.com"
+    const out = optimizeStorageImageUrl(STORAGE_OBJECT, { width: 128 })
+    expect(out).toContain("https://abcd.supabase.co/storage/v1/render/image/public/")
+    expect(out).toContain("width=128")
   })
 
   it("allows *.supabase.co when NEXT_PUBLIC_SUPABASE_URL is unset", () => {

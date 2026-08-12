@@ -32,15 +32,19 @@ export type OptimizeStorageImageOpts = {
 }
 
 function isAllowedStorageHost(hostname: string): boolean {
+  // Same-host rewrite only. Always allow Storage on *.supabase.co so a custom
+  // API domain (e.g. db.makinari.com) does not skip transformation and leave
+  // the browser to decode a multi-thousand-px original.
+  if (hostname.endsWith(".supabase.co")) return true
   const configured = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (configured) {
     try {
       return hostname === new URL(configured).hostname
     } catch {
-      // Fall through to suffix check when env URL is invalid.
+      return false
     }
   }
-  return hostname.endsWith(".supabase.co")
+  return false
 }
 
 /**

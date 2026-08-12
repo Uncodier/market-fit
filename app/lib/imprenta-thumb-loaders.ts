@@ -1,6 +1,6 @@
 "use client"
 
-import { optimizeForPreset } from "@/app/lib/optimize-storage-image"
+import { IMAGE_SIZE_PX, IMAGE_SIZE_QUALITY, optimizeStorageImageUrl } from "@/app/lib/optimize-storage-image"
 
 export type ThumbLoadDone = (ok: boolean, resultImage: HTMLCanvasElement | null) => void
 export type ThumbSetStage = (url: string, stage: string) => void
@@ -145,7 +145,12 @@ export function loadImageThumb(
   debug = false
 ): void {
   const TARGET = Math.round(512 * (window.devicePixelRatio || 1))
-  const fetchUrl = optimizeForPreset(url, "card")
+  // Contain (not card/cover): keep the generated aspect so CSS can frame it.
+  const fetchUrl = optimizeStorageImageUrl(url, {
+    width: IMAGE_SIZE_PX.card,
+    quality: IMAGE_SIZE_QUALITY.card,
+    resize: "contain",
+  })
 
   const processWithImageFallback = (src = fetchUrl) => {
     setStage(url, "img-fallback")

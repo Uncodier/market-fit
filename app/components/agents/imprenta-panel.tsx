@@ -16,6 +16,10 @@ import { ImprentaContextEdges } from "./imprenta-context-edges"
 import { ImprentaTempConnectionLine, ImprentaLoadingRouteEdges } from "./imprenta-world-svg"
 import { sizedAncestorRect, screenToWorld } from "@/app/lib/imprenta-world-svg"
 import {
+  imprentaMediaBoxHeight,
+  imprentaNodeMediaAspectCss,
+} from "@/app/lib/imprenta-media-aspect"
+import {
   worldViewportFromCanvas,
   bboxIntersects,
   buildNodeCellGrid,
@@ -333,6 +337,9 @@ function collectImprentaLiteVideoPreviewUrls(node: InstanceNode, max = 2): strin
   return urls.slice(0, max)
 }
 
+/** Inner width of a 480px card with `p-5` padding. */
+const IMPRENTA_CARD_CONTENT_W = 440
+
 /** When the full card has never been measured, approximate its height from prompt + result shape (media, text, etc.). */
 function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): number {
   let extra = 0
@@ -342,6 +349,10 @@ function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): nu
       : ""
   const promptLines = Math.min(28, Math.max(0, Math.ceil(promptText.length / 70)))
   extra += promptLines * 20
+  const mediaH = imprentaMediaBoxHeight(
+    IMPRENTA_CARD_CONTENT_W,
+    imprentaNodeMediaAspectCss(node)
+  )
 
   const res = node.result as Record<string, unknown> | undefined
   if (!res || Object.keys(res).length === 0) {
@@ -358,22 +369,22 @@ function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): nu
   const text = res.text as string | undefined
 
   if (Array.isArray(outputs) && outputs.length > 0) {
-    extra += Math.min(420, 120 + outputs.length * 95)
+    extra += mediaH
   } else if (Array.isArray(media) && media.length > 0) {
-    extra += Math.min(440, 100 + media.length * 110)
+    extra += mediaH
   } else if (Array.isArray(images) && images.length > 0) {
-    extra += Math.min(480, 90 + images.length * 220)
+    extra += mediaH
   } else if (image?.url) {
-    extra += 300
+    extra += mediaH
   } else if (video?.url) {
-    extra += 320
+    extra += mediaH
   } else if (audio?.url) {
     extra += 140
   } else if (typeof text === "string" && text.length > 0) {
     const tl = Math.min(48, Math.ceil(text.length / 62))
     extra += tl * 22 + 48
     if (/https?:\/\/[^\s"'<>()]+\.(jpg|jpeg|png|gif|webp|svg)/i.test(text) || /!\[.*?\]\(https?:\/\/[^\s"'<>()]+\)/i.test(text)) {
-      extra += 300 // Add height for inline markdown images
+      extra += mediaH
     }
   } else if (res.audience_leads != null) {
     extra += 220
@@ -505,6 +516,7 @@ function ImprentaLiteSkeletonBody({ node, zoomScale }: { node: InstanceNode; zoo
   const type = node.type ?? "prompt"
   const rich = band === "rich"
   const micro = band === "micro"
+  const mediaAspect = imprentaNodeMediaAspectCss(node)
   const imageUrls = useMemo(() => collectImprentaLiteImagePreviewUrls(node, 4), [node.id, node.result])
   const videoUrls = useMemo(() => collectImprentaLiteVideoPreviewUrls(node, 2), [node.id, node.result])
   const cover = imageUrls[0]
@@ -604,9 +616,8 @@ function ImprentaLiteSkeletonBody({ node, zoomScale }: { node: InstanceNode; zoo
         {header}
         {cover || coverVideo ? (
           <div
-            className={`${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border ${
-              videoLayout ? "aspect-video" : "aspect-square"
-            }`}
+            className={`${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border`}
+            style={{ aspectRatio: mediaAspect }}
           >
             {cover ? (
               <ImprentaLazyPreviewImage
@@ -667,9 +678,8 @@ function ImprentaLiteSkeletonBody({ node, zoomScale }: { node: InstanceNode; zoo
       {segmented}
       {showMedia ? (
         <div
-          className={`${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border ${
-            videoLayout ? "aspect-video" : "aspect-square"
-          }`}
+          className={`${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border`}
+          style={{ aspectRatio: mediaAspect }}
         >
           {cover ? (
             <ImprentaLazyPreviewImage
@@ -778,20 +788,7 @@ const ImprentaDummyCardInner = memo(({
 }) => {
   const mediaTypeForDummy = (node.settings as any)?.media_type || node.type.replace('generate-', '')
   const isMediaDummy = mediaTypeForDummy === 'image' || mediaTypeForDummy === 'video' || mediaTypeForDummy === 'audio'
-  const isVideoDummy = mediaTypeForDummy === 'video'
-  
-  const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio
-  let aspectStyle = "1/1"
-  if (isVideoDummy) aspectStyle = "16/9"
-  
-  if (aspectRatioParam) {
-    if (aspectRatioParam === "16:9") aspectStyle = "16/9"
-    else if (aspectRatioParam === "9:16") aspectStyle = "9/16"
-    else if (aspectRatioParam === "4:3") aspectStyle = "4/3"
-    else if (aspectRatioParam === "3:4") aspectStyle = "3/4"
-    else if (aspectRatioParam === "1:1") aspectStyle = "1/1"
-    else aspectStyle = String(aspectRatioParam).replace(':', '/')
-  }
+  const aspectStyle = imprentaNodeMediaAspectCss(node)
 
   return (
 <div 
@@ -922,6 +919,7 @@ const ImprentaNodeCardInner = memo(({
     handleCreateActionFromContext: (ctx: any) => void
   }
 }) => {
+  const mediaAspect = imprentaNodeMediaAspectCss(node, actions.getParentNode(node))
   return (
 <div 
                         key={node.id}
@@ -1403,8 +1401,8 @@ const ImprentaNodeCardInner = memo(({
                                       const rawUrl = outputItem.data?.url || outputItem.url;
                                       if (!rawUrl) return null;
                                       const url = extractUrl(rawUrl);
-                                      if (outputItem.type === 'image') return renderMediaWithZoom(url, 'image', idx);
-                                      if (outputItem.type === 'video') return renderMediaWithZoom(url, 'video', idx);
+                                      if (outputItem.type === 'image') return renderMediaWithZoom(url, 'image', idx, mediaAspect);
+                                      if (outputItem.type === 'video') return renderMediaWithZoom(url, 'video', idx, mediaAspect);
                                       if (outputItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
                                       return null;
                                     })}
@@ -1415,8 +1413,8 @@ const ImprentaNodeCardInner = memo(({
                                     {(node.result as any).media.map((mediaItem: any, idx: number) => {
                                       if (!mediaItem.url) return null;
                                       const url = extractUrl(mediaItem.url);
-                                      if (mediaItem.type === 'image') return renderMediaWithZoom(url, 'image', idx);
-                                      if (mediaItem.type === 'video') return renderMediaWithZoom(url, 'video', idx);
+                                      if (mediaItem.type === 'image') return renderMediaWithZoom(url, 'image', idx, mediaAspect);
+                                      if (mediaItem.type === 'video') return renderMediaWithZoom(url, 'video', idx, mediaAspect);
                                       if (mediaItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
                                       return null;
                                     })}
@@ -1425,15 +1423,15 @@ const ImprentaNodeCardInner = memo(({
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).images && Array.isArray((node.result as any).images) && (
                                   <div className="flex flex-col gap-2">
                                     {(node.result as any).images.map((img: any, idx: number) => (
-                                      img.url && renderMediaWithZoom(extractUrl(img.url), 'image', idx)
+                                      img.url && renderMediaWithZoom(extractUrl(img.url), 'image', idx, mediaAspect)
                                     ))}
                                   </div>
                                 )}
                                 {!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && (node.result as any).image && (node.result as any).image.url && (
-                                  renderMediaWithZoom(extractUrl((node.result as any).image.url), 'image', 'single-img')
+                                  renderMediaWithZoom(extractUrl((node.result as any).image.url), 'image', 'single-img', mediaAspect)
                                 )}
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).video && (node.result as any).video.url && (
-                                  renderMediaWithZoom(extractUrl((node.result as any).video.url), 'video', 'single-vid')
+                                  renderMediaWithZoom(extractUrl((node.result as any).video.url), 'video', 'single-vid', mediaAspect)
                                 )}
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).audio && (node.result as any).audio.url && (
                                   <AudioPlayer key={extractUrl((node.result as any).audio.url)} src={extractUrl((node.result as any).audio.url)} className="w-full" />
@@ -1471,12 +1469,12 @@ const ImprentaNodeCardInner = memo(({
                                       if (imgMatchMarkdown) extractedUrl = imgMatchMarkdown[1];
                                       else if (imgMatchUrl) extractedUrl = imgMatchUrl[0];
                                       
-                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'image', 'extracted-img');
+                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'image', 'extracted-img', mediaAspect);
                                     } else if (expectedMediaType === 'video') {
                                       const vidMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp4|webm|mov|mkv)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
                                       if (vidMatchUrl) extractedUrl = vidMatchUrl[0];
                                       
-                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'video', 'extracted-vid');
+                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'video', 'extracted-vid', mediaAspect);
                                     } else if (expectedMediaType === 'audio') {
                                       const audioMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp3|wav|ogg|m4a|aac|flac)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
                                       if (audioMatchUrl) extractedUrl = audioMatchUrl[0];
@@ -1486,23 +1484,10 @@ const ImprentaNodeCardInner = memo(({
 
                                     // If no URL could be extracted yet and it's still running, show a placeholder
                                     if (!extractedUrl && (node.status === 'running' || node.status === 'pending')) {
-                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio || (parentNode?.settings as any)?.parameters?.aspectRatio;
-                                      let aspectStyle = "1/1";
-                                      if (expectedMediaType === 'video') aspectStyle = "16/9";
-                                      
-                                      if (aspectRatioParam) {
-                                        if (aspectRatioParam === "16:9") aspectStyle = "16/9";
-                                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16";
-                                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3";
-                                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4";
-                                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1";
-                                        else aspectStyle = String(aspectRatioParam).replace(':', '/');
-                                      }
-
                                       return (
                                         <div 
                                           className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center`}
-                                          style={{ aspectRatio: aspectStyle }}
+                                          style={{ aspectRatio: mediaAspect }}
                                         >
                                           <div className="relative w-full h-full">
                                             <div className="absolute inset-0 flex items-center justify-center">
@@ -1516,22 +1501,10 @@ const ImprentaNodeCardInner = memo(({
                                     // If completed and no media could be extracted (e.g. error message from agent),
                                     // we replace the text with an error placeholder and a retry button.
                                     if (!extractedUrl && (node.status === 'completed' || node.status === 'failed')) {
-                                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio || (parentNode?.settings as any)?.parameters?.aspectRatio;
-                                      let aspectStyle = "1/1";
-                                      if (expectedMediaType === 'video') aspectStyle = "16/9";
-                                      if (aspectRatioParam) {
-                                        if (aspectRatioParam === "16:9") aspectStyle = "16/9";
-                                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16";
-                                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3";
-                                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4";
-                                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1";
-                                        else aspectStyle = String(aspectRatioParam).replace(':', '/');
-                                      }
-
                                       return (
                                         <div 
                                           className={`w-full overflow-hidden rounded-xl bg-muted/10 border border-destructive/20 flex flex-col items-center justify-center gap-3 p-6 text-center`}
-                                          style={{ aspectRatio: aspectStyle }}
+                                          style={{ aspectRatio: mediaAspect }}
                                         >
                                           <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mb-2">
                                             <AlertCircle className="w-6 h-6" />
@@ -3298,20 +3271,27 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     }
   }
 
-  const renderMediaWithZoom = (url: string, type: 'image' | 'video', key: React.Key) => (
-    <div key={key} className="relative group w-full h-full flex items-center justify-center">
+  const renderMediaWithZoom = (
+    url: string,
+    type: 'image' | 'video',
+    key: React.Key,
+    aspectRatio = "1/1"
+  ) => (
+    <div key={key} className="relative group w-full">
       {type === 'image' ? (
         <ImprentaLazyCardImage
           url={url}
           alt="Generated media"
+          aspectRatio={aspectRatio}
           onOpen={() => setZoomedMedia({ url, type: "image" })}
         />
       ) : (
         <div 
           className="relative w-full overflow-hidden rounded-xl bg-black/10 flex items-center justify-center cursor-pointer group/video"
+          style={{ aspectRatio }}
           onClick={(e) => { e.stopPropagation(); setZoomedMedia({ url, type }); }}
         >
-          <ImprentaLazyPreviewVideo url={url} priority={true} className="w-full h-auto max-h-[800px] object-contain relative z-[1] m-auto" />
+          <ImprentaLazyPreviewVideo url={url} priority={true} className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute inset-0 bg-black/10 group-hover/video:bg-black/30 transition-colors z-[2] flex items-center justify-center pointer-events-none">
             <div className="bg-background/80 backdrop-blur text-foreground w-12 h-12 flex items-center justify-center rounded-full shadow-lg transform group-hover/video:scale-110 transition-transform">
               <Play className="h-6 w-6 translate-x-[2px]" />
@@ -3651,9 +3631,9 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
             const currNodeX = pos[currNodeId].x;
             const xOverlap = Math.abs(currNodeX - prevNodeX) < NODE_W + H_GAP / 2;
             
-            if (pos[currNodeId].y < prevBottom && !hasUserPos && xOverlap) {
-              // Only bump if they are actually colliding, but ignore exact same Y overlaps 
-              // if it's a dummy vs real node, since that indicates a replacement in progress
+            if (pos[currNodeId].y < prevBottom && xOverlap) {
+              // Always unstack collisions (saved ui_position must not keep cards overlapping
+              // after media height changes). Ignore exact same-Y dummy/real replacements.
               const isPrevDummy = prevNodeId.startsWith('dummy-');
               const isCurrDummy = currNodeId.startsWith('dummy-');
               const isReplacement = (isPrevDummy && !isCurrDummy) || (!isPrevDummy && isCurrDummy);
@@ -4094,24 +4074,6 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
                     if (isEffectivelyDummy) {
                       /** Below full-detail zoom, strip expensive composites from the dummy card (animate-pulse gradient, etc). */
                       const liteDummy = !showFullNodeDetail
-                      
-                      const mediaTypeForDummy = (node.settings as any)?.media_type || node.type.replace('generate-', '')
-                      const isMediaDummy = mediaTypeForDummy === 'image' || mediaTypeForDummy === 'video' || mediaTypeForDummy === 'audio'
-                      const isVideoDummy = mediaTypeForDummy === 'video'
-                      
-                      // Calculate the appropriate aspect ratio from node parameters
-                      const aspectRatioParam = (node.settings as any)?.parameters?.aspectRatio
-                      let aspectStyle = "1/1"
-                      if (isVideoDummy) aspectStyle = "16/9"
-                      
-                      if (aspectRatioParam) {
-                        if (aspectRatioParam === "16:9") aspectStyle = "16/9"
-                        else if (aspectRatioParam === "9:16") aspectStyle = "9/16"
-                        else if (aspectRatioParam === "4:3") aspectStyle = "4/3"
-                        else if (aspectRatioParam === "3:4") aspectStyle = "3/4"
-                        else if (aspectRatioParam === "1:1") aspectStyle = "1/1"
-                        else aspectStyle = String(aspectRatioParam).replace(':', '/')
-                      }
 
                       return (
                         <ImprentaDummyCardInner
