@@ -5,6 +5,7 @@ import { getSiteInfoBySlug } from "@/app/book/actions";
 import { listPublicLocations } from "@/app/inventory/actions";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
+  buildShopCategoryOffsets,
   SHOP_CACHE_REVALIDATE_SECONDS,
   SHOP_PAGE_SIZE,
   SHOP_UNCATEGORIZED_NAME,
@@ -13,6 +14,19 @@ import {
   type ShopCategoryOffset,
 } from "./shop-catalog-shared";
 import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
+import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve";
+
+/** Keep getShopCatalog + getShopCategoryOffsets on the same key order. */
+function applyShopCatalogOrder<T extends { order: (...args: any[]) => T }>(query: T): T {
+  return query
+    .order("sort_order", {
+      foreignTable: "category",
+      ascending: true,
+      nullsFirst: false,
+    })
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+}
 
 export async function getShopSite(slug: string) {
   return unstable_cache(
@@ -31,10 +45,14 @@ function categoryNameFromJoin(category: unknown): string | null {
 }
 
 async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<ReturnType<typeof createServiceClient>>) {
-  const [priceData, levelsRes, settingsRes] = await Promise.all([
+  const [priceData, levelsRes, settingsRes, variantPreviews] = await Promise.all([
     loadChannelPriceMap(supabase, [siteId], "shop"),
     supabase.from("inventory_levels").select("catalog_item_id, quantity").eq("site_id", siteId),
     supabase.from("settings").select("commerce").eq("site_id", siteId).single(),
+    loadVariantListingPreviews(
+      supabase,
+      items.map((item) => ({ id: item.id, name: item.name }))
+    ),
   ]);
 
   const inventoryMap = new Map<string, number>();
@@ -58,6 +76,11 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
       sellable = availableQty > 0 || policy !== "block";
     }
 
+    const preview = variantPreviews.get(item.id)
+    const hasVariants =
+      Boolean(preview?.hasVariants) ||
+      Boolean(item.metadata?.variant_axes?.length && item.is_purchasable === false);
+
     const mappedPrice = priceData.priceByItemId.get(item.id);
     return {
       ...item,
@@ -72,6 +95,8 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
         categoryName: categoryNameFromJoin(item.category),
         sellable,
         availableQty,
+        hasVariants,
+        variantLabels: preview?.labels || [],
       },
     };
   });
@@ -82,42 +107,26 @@ export async function getShopCategoryOffsets(siteId: string): Promise<ShopCatego
     async () => {
       const supabase = await createServiceClient(true);
 
-      // Walk the same order as getShopCatalog so offsets match range() jumps.
-      const { data: rows, error } = await supabase
-        .from("catalog_items")
-        .select("category:catalog_categories(name)")
-        .eq("site_id", siteId)
-        .eq("status", "active")
-        .eq("is_marketplace_listed", true)
-        .is("parent_id", null)
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true });
+      // Same order as getShopCatalog so range() jumps land on category starts.
+      const { data: rows, error } = await applyShopCatalogOrder(
+        supabase
+          .from("catalog_items")
+          .select("category:catalog_categories(name, sort_order)")
+          .eq("site_id", siteId)
+          .eq("status", "active")
+          .eq("is_marketplace_listed", true)
+          .is("parent_id", null)
+      );
 
       if (error || !rows) return [];
 
-      const offsets: ShopCategoryOffset[] = [];
-      let currentName: string | null = null;
-
-      for (let i = 0; i < rows.length; i++) {
-        const name = categoryNameFromJoin((rows[i] as any).category) || SHOP_UNCATEGORIZED_NAME;
-        if (name !== currentName) {
-          if (currentName !== null) {
-            const prev = offsets[offsets.length - 1];
-            prev.count = i - prev.offset;
-          }
-          offsets.push({ name, offset: i, count: 0 });
-          currentName = name;
-        }
-      }
-
-      if (offsets.length > 0) {
-        const last = offsets[offsets.length - 1];
-        last.count = rows.length - last.offset;
-      }
-
-      return offsets;
+      const names = rows.map(
+        (row) => categoryNameFromJoin((row as any).category) || SHOP_UNCATEGORIZED_NAME
+      );
+      return buildShopCategoryOffsets(names);
     },
-    ["shop-category-offsets", siteId],
+    // v2: order by category.sort_order so sections are contiguous
+    ["shop-category-offsets-v2", siteId],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],
@@ -162,7 +171,7 @@ export async function getShopCatalog(
         .select(
           `
       *,
-      category:catalog_categories(name),
+      category:catalog_categories(name, sort_order),
       raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
     `,
           { count: "exact" }
@@ -194,10 +203,7 @@ export async function getShopCatalog(
       const from = offset;
       const to = offset + pageSize - 1;
 
-      query = query
-        .range(from, to)
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true });
+      query = applyShopCatalogOrder(query).range(from, to);
 
       const { data: items, count, error } = await query;
 
@@ -216,7 +222,8 @@ export async function getShopCatalog(
         offset,
       };
     },
-    ["shop-catalog", siteId, String(offset), String(pageSize), search, category],
+    // v2: order by category.sort_order so sections are contiguous
+    ["shop-catalog-v2", siteId, String(offset), String(pageSize), search, category],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],

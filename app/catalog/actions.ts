@@ -286,6 +286,19 @@ export async function getCatalogAvailability(
     return { sellable: false, reason: "Item requires variant selection", policy: 'block' };
   }
 
+  // Legacy parent_id links may leave is_purchasable=true without variant_axes
+  if (!item.parent_id) {
+    const { count: childCount } = await supabase
+      .from("catalog_items")
+      .select("id", { count: "exact", head: true })
+      .eq("parent_id", catalogItemId)
+      .eq("status", "active")
+      .eq("is_purchasable", true);
+    if ((childCount || 0) > 0) {
+      return { sellable: false, reason: "Item requires variant selection", policy: "block" };
+    }
+  }
+
   // 1. Check status
   if (item.status !== 'active') {
     return { sellable: false, reason: "Item is archived", policy };

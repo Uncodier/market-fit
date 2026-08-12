@@ -10,7 +10,8 @@ import {
   hasDynamicQuoteFields,
   isDynamicPricedItem,
 } from "@/app/catalog/dynamic-pricing";
-import { isAccessOnlyItem } from "@/app/catalog/product-details";
+import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/product-details";
+import { createClient } from "@/lib/supabase/client";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 
 type Args = {
@@ -112,13 +113,24 @@ export function usePosAddItem({
       return;
     }
 
-    if (
-      item.metadata?.variant_axes &&
-      item.metadata.variant_axes.length > 0 &&
-      !item.is_purchasable
-    ) {
+    if (requiresVariantSelection(item)) {
       setVariantParentItem(item);
       return;
+    }
+
+    // Legacy parent_id children without variant_axes / is_purchasable=false
+    if (navigator.onLine && !item.parent_id) {
+      const supabase = createClient();
+      const { count } = await supabase
+        .from("catalog_items")
+        .select("id", { count: "exact", head: true })
+        .eq("parent_id", item.id)
+        .eq("status", "active")
+        .eq("is_purchasable", true);
+      if ((count || 0) > 0) {
+        setVariantParentItem(item);
+        return;
+      }
     }
 
     if (

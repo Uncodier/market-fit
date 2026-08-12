@@ -18,6 +18,7 @@ import {
   categoryDomId,
   groupItemsByCategory,
   SHOP_UNCATEGORIZED_NAME,
+  uniqueCategoryNames,
 } from "./shop-catalog-shared"
 import {
   matchShopCategory,
@@ -52,7 +53,7 @@ interface ShopCatalogMainProps {
   isJumping: boolean
   hasMoreBelow: boolean
   loadMoreBelow: () => void
-  jumpToCategory: (offset: number, categoryName: string) => void
+  jumpToCategory: (offset: number, categoryName: string, categoryCount?: number) => void
   pendingScrollCategory: string | null
   clearPendingScrollCategory: () => void
   addToCart: (item: CatalogItem) => void
@@ -106,7 +107,7 @@ export function ShopCatalogMain({
   const chipCategories = useMemo(() => {
     const names = categoryOffsets.map((o) => o.name)
     // Prefer ordered offsets; fall back to categories prop
-    return names.length > 0 ? names : categories
+    return uniqueCategoryNames(names.length > 0 ? names : categories)
   }, [categoryOffsets, categories])
 
   const useSections = !isSearching && chipCategories.length > 0
@@ -184,15 +185,26 @@ export function ShopCatalogMain({
       return
     }
 
-    const scrolled = scrollToCategory(cat)
-    if (scrolled) return
-
     const offsetEntry = categoryOffsets.find((o) => o.name === cat)
+    const expected = offsetEntry?.count ?? 0
+    const loadedInCategory = sellableCatalogItems.filter(
+      (item) => (item as any)._shop?.categoryName === cat
+    ).length
+    const sectionComplete =
+      !!document.getElementById(categoryDomId(cat)) &&
+      (expected === 0 || loadedInCategory >= expected)
+
+    // Only scroll if this category is already fully loaded; otherwise a partial
+    // section (e.g. 2 of 12 teas) would hide the rest forever.
+    if (sectionComplete) {
+      scrollToCategory(cat)
+      return
+    }
+
     if (!offsetEntry) return
 
-    // Far category: jump load + backfill
     setActiveCategory(cat, 1500)
-    jumpToCategory(offsetEntry.offset, cat)
+    jumpToCategory(offsetEntry.offset, cat, offsetEntry.count)
   }
 
   // Restore category from ?category= on first load
@@ -204,13 +216,20 @@ export function ShopCatalogMain({
 
     const matched = matchShopCategory(urlCategoryRef.current, chipCategories)
     if (matched) {
-      const scrolled = scrollToCategory(matched)
-      if (!scrolled) {
-        const offsetEntry = categoryOffsets.find((o) => o.name === matched)
-        if (offsetEntry) {
-          setActiveCategory(matched, 1500)
-          jumpToCategory(offsetEntry.offset, matched)
-        }
+      const offsetEntry = categoryOffsets.find((o) => o.name === matched)
+      const expected = offsetEntry?.count ?? 0
+      const loadedInCategory = sellableCatalogItems.filter(
+        (item) => (item as any)._shop?.categoryName === matched
+      ).length
+      const sectionComplete =
+        !!document.getElementById(categoryDomId(matched)) &&
+        (expected === 0 || loadedInCategory >= expected)
+
+      if (sectionComplete) {
+        scrollToCategory(matched)
+      } else if (offsetEntry) {
+        setActiveCategory(matched, 1500)
+        jumpToCategory(offsetEntry.offset, matched, offsetEntry.count)
       }
     }
     setCategoryUrlReady(true)
@@ -220,6 +239,7 @@ export function ShopCatalogMain({
     isLoading,
     chipCategories,
     categoryOffsets,
+    sellableCatalogItems,
     scrollToCategory,
     setActiveCategory,
     jumpToCategory,
@@ -430,7 +450,7 @@ export function ShopCatalogMain({
             </div>
           ) : useSections ? (
             <div className="space-y-12">
-              {isJumping || (isLoading && sellableCatalogItems.length === 0) ? (
+              {(isJumping || isLoading) && sellableCatalogItems.length === 0 ? (
                 <CommerceProductGrid
                   totalCount={catalogCount}
                   isLoading

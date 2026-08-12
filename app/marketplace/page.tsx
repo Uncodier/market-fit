@@ -6,6 +6,7 @@ import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 import { buildShareMetadata } from "@/app/lib/commerce-metadata"
 import { getMarketplaceMerchandising } from "@/app/promotions/storefront-promotions"
 import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-prices"
+import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve"
 
 export const dynamic = "force-dynamic"
 
@@ -41,6 +42,23 @@ export default async function MarketplacePage() {
     itemsWithSettings,
     "marketplace"
   )
+  const variantPreviews = await loadVariantListingPreviews(
+    supabase,
+    pricedItems.map((item) => ({ id: item.id, name: item.name }))
+  )
+  const itemsWithVariants = pricedItems.map((item) => {
+    const preview = variantPreviews.get(item.id)
+    return {
+      ...item,
+      _shop: {
+        ...(item as any)._shop,
+        hasVariants:
+          Boolean(preview?.hasVariants) ||
+          Boolean(item.metadata?.variant_axes?.length && item.is_purchasable === false),
+        variantLabels: preview?.labels || [],
+      },
+    }
+  })
   const initialTotalPages = count ? Math.ceil(count / 20) : 0;
   const buyerGeo = await getBuyerGeoApprox();
   const merchandising = await getMarketplaceMerchandising({})
@@ -48,7 +66,7 @@ export default async function MarketplacePage() {
   return (
     <Suspense fallback={<div className="flex-1 min-h-screen bg-muted/30" />}>
       <MarketplaceClient 
-        initialItems={pricedItems} 
+        initialItems={itemsWithVariants} 
         initialCount={count || 0}
         initialTotalPages={initialTotalPages}
         buyerGeo={buyerGeo}

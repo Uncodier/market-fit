@@ -4,11 +4,13 @@ import { Metadata } from "next"
 import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 import { buildShopShareMetadata } from "@/app/lib/commerce-metadata"
 import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstrap"
-import { SHOP_CACHE_REVALIDATE_SECONDS, SHOP_PAGE_SIZE, SHOP_UNCATEGORIZED_NAME } from "./shop-catalog-shared"
+import { SHOP_PAGE_SIZE, SHOP_UNCATEGORIZED_NAME, uniqueCategoryNames } from "./shop-catalog-shared"
 import { getShopMerchandising } from "@/app/promotions/storefront-promotions"
 import { ShopSlugNotFound } from "./ShopSlugNotFound"
 
-export const revalidate = SHOP_CACHE_REVALIDATE_SECONDS;
+// Literal required: Next.js cannot statically analyze imported segment config values.
+// Keep in sync with SHOP_CACHE_REVALIDATE_SECONDS in ./shop-catalog-shared
+export const revalidate = 60;
 
 export async function generateMetadata({ params }: { params: Promise<{ siteSlug: string }> | { siteSlug: string } }): Promise<Metadata> {
   const resolvedParams = await params;
@@ -44,9 +46,11 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
     getShopMerchandising({ siteId: site.id, siteSlug, timezone }),
   ])
 
-  const categories = categoryOffsets
-    .map((o) => o.name)
-    .filter((name) => name !== SHOP_UNCATEGORIZED_NAME)
+  const categories = uniqueCategoryNames(
+    categoryOffsets
+      .map((o) => o.name)
+      .filter((name) => name !== SHOP_UNCATEGORIZED_NAME)
+  )
 
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-gray-900 selection:bg-gray-900 selection:text-white">

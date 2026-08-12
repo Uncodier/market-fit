@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Checkbox } from "@/app/components/ui/checkbox"
+import { Skeleton } from "@/app/components/ui/skeleton"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listLocations } from "@/app/inventory/actions"
 import type { Location, PromotionChannel } from "@/app/types"
@@ -251,10 +252,11 @@ export function PromotionChannelsFields({
                 "If none are selected, the promotion applies at every active location."}
             </p>
             {loadingLocations && (
-              <p className="text-sm text-muted-foreground italic">
-                {t("promotions.detail.channels.loadingLocations") ||
-                  "Loading locations…"}
-              </p>
+              <div className="space-y-2 py-1">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-5 w-52" />
+              </div>
             )}
             {!loadingLocations && locations.length === 0 && (
               <p className="text-sm text-muted-foreground italic">

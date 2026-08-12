@@ -2,7 +2,7 @@
 
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { resolveItemImage } from "@/app/lib/image-utils"
+import { buildPdpGalleryEntries, resolveItemImage } from "@/app/lib/image-utils"
 import { resolveItemSpecDisplay } from "@/app/catalog/product-details"
 import { getAttributeFieldsForItem } from "@/app/catalog/product-details"
 import { usePdpCart } from "./usePdpCart"
@@ -68,9 +68,15 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   const isSelectionComplete = !hasVariants || !!resolvedChild
   const isSellable = isSelectionComplete && (hasVariants ? activeItem.availability_status !== 'sold_out' && activeItem.status === 'active' : item._shop?.sellable !== false)
 
-  const gallery = [resolveItemImage(activeItem), resolveItemImage(item), ...(Array.isArray(metadata.gallery) ? metadata.gallery : [])].filter(Boolean)
-  // unique gallery items
-  const uniqueGallery = Array.from(new Set(gallery))
+  const galleryEntries = useMemo(
+    () =>
+      buildPdpGalleryEntries({
+        parent: item,
+        children,
+      }),
+    [item, children]
+  )
+  const displayImageUrl = galleryEntries[0]?.url || resolveItemImage(activeItem)
   
   const customSpecsFromDB = (item.item_specs || []).filter(s => !s.category?.is_system);
   const specs = [
@@ -85,51 +91,100 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   
   const [activeImageIdx, setActiveImageIdx] = useState(0)
 
+  const selectChildInGallery = (child: CatalogItem) => {
+    const opts = child.metadata?.option_values
+    if (!opts || typeof opts !== "object") return
+    setSelectedOptions({ ...opts })
+    const idx = galleryEntries.findIndex((e) => e.catalogItemId === child.id)
+    if (idx >= 0) setActiveImageIdx(idx)
+  }
+
   const handleOptionSelect = (axisId: string, valueId: string) => {
-    setSelectedOptions(prev => ({ ...prev, [axisId]: valueId }))
+    const next = { ...selectedOptions, [axisId]: valueId }
+    setSelectedOptions(next)
+
+    if (Object.keys(next).length !== axes.length) return
+    const child = children.find((c: CatalogItem) => {
+      const childOpts = c.metadata?.option_values
+      if (!childOpts) return false
+      return Object.entries(next).every(([aId, vId]) => childOpts[aId] === vId)
+    })
+    if (!child) return
+    const idx = galleryEntries.findIndex((e) => e.catalogItemId === child.id)
+    if (idx >= 0) setActiveImageIdx(idx)
+  }
+
+  const handleGalleryThumbClick = (index: number) => {
+    setActiveImageIdx(index)
+    const entry = galleryEntries[index]
+    if (!entry?.catalogItemId) return
+    const child = children.find((c: CatalogItem) => c.id === entry.catalogItemId)
+    if (child) selectChildInGallery(child)
   }
 
   const handleAdd = () => {
-    if (!resolvedChild && hasVariants) return toast.error("Please select all options")
-    
+    if (!resolvedChild && hasVariants) {
+      return toast.error(t("pdp.selectOptions") || "Please select all options")
+    }
+
     addToCartStorage(activeItem)
     toast.success(`${activeItem.name} ${t('marketplace.addedToCart') || 'added to cart'}`)
     router.push(`${backUrl}?cart=1`)
   }
 
   const handleBuyNow = () => {
-    if (!resolvedChild && hasVariants) return toast.error("Please select all options")
+    if (!resolvedChild && hasVariants) {
+      return toast.error(t("pdp.selectOptions") || "Please select all options")
+    }
     startBuyNow(activeItem, 1, backUrl)
   }
 
+  const safeImageIdx =
+    galleryEntries.length > 0 ? Math.min(activeImageIdx, galleryEntries.length - 1) : 0
+  const mainGallerySrc = galleryEntries[safeImageIdx]?.url || displayImageUrl
+
   const galleryBlock = (
     <div className="space-y-4">
-      {gallery.length > 0 ? (
-        <div className="relative aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden border shadow-sm">
+      <div className="relative aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden border shadow-sm">
+        {mainGallerySrc ? (
           <img
-            src={uniqueGallery[activeImageIdx] || uniqueGallery[0]}
+            src={mainGallerySrc}
             alt={item.name}
             className="absolute inset-0 h-full w-full object-cover object-center hover:scale-105 transition-transform duration-700"
           />
-        </div>
-      ) : (
-        <div className="aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden border shadow-sm flex items-center justify-center">
-          <span className="text-muted-foreground font-medium">No Image</span>
-        </div>
-      )}
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-muted-foreground font-medium">No Image</span>
+          </div>
+        )}
+      </div>
 
-      {uniqueGallery.length > 1 && (
-        <div className="flex gap-4 overflow-x-auto pb-2 snap-x">
-          {uniqueGallery.map((url, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setActiveImageIdx(i)}
-              className={`relative aspect-square w-20 sm:w-24 shrink-0 bg-muted rounded-2xl overflow-hidden cursor-pointer shadow-sm snap-start transition-all ${activeImageIdx === i ? "ring-2 ring-primary ring-offset-2" : "border hover:border-primary/50"}`}
-            >
-              <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover object-center" />
-            </button>
-          ))}
+      {galleryEntries.length > 1 && (
+        <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-1 snap-x">
+          {galleryEntries.map((entry, i) => {
+            const selected = safeImageIdx === i
+            return (
+              <button
+                key={`${entry.catalogItemId || "extra"}-${i}`}
+                type="button"
+                onClick={() => handleGalleryThumbClick(i)}
+                aria-pressed={selected}
+                className={`relative aspect-square w-20 sm:w-24 shrink-0 rounded-2xl p-[3px] snap-start transition-colors ${
+                  selected
+                    ? "bg-foreground"
+                    : "bg-border/60 hover:bg-foreground/40"
+                }`}
+              >
+                <span className="relative block h-full w-full overflow-hidden rounded-[0.85rem] bg-muted">
+                  <img
+                    src={entry.url}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover object-center"
+                  />
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
@@ -213,9 +268,9 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
             <div className="lg:col-span-7 xl:col-span-8 order-1 space-y-8">
               <div className="max-w-md">
                 <div className="relative h-36 sm:h-44 bg-muted rounded-2xl overflow-hidden border shadow-sm">
-                  {uniqueGallery[0] ? (
+                  {mainGallerySrc ? (
                     <img
-                      src={uniqueGallery[activeImageIdx] || uniqueGallery[0]}
+                      src={mainGallerySrc}
                       alt={item.name}
                       className="absolute inset-0 h-full w-full object-cover object-center"
                     />
@@ -286,6 +341,9 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
               selectedOptions={selectedOptions}
               onOptionSelect={handleOptionSelect}
               childrenItems={children}
+              presentation="pdp"
+              currency={item.currency || "USD"}
+              fallbackImageUrl={item.image_url || galleryEntries[0]?.url || null}
             />
           )}
 

@@ -24,7 +24,7 @@ import type {
   StorefrontPromoCard,
 } from "@/app/promotions/promotion-merchandising"
 import { readPendingStorefrontPromo } from "@/app/components/commerce/PromoBundleExperience"
-import { isAccessOnlyItem } from "@/app/catalog/product-details"
+import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/product-details"
 import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
 import { formatDeliveryTime } from "@/app/commerce/delivery-time"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
@@ -199,7 +199,9 @@ export default function ShopClient({
   const categories = initialCategories || [];
   const ownedAccessMap = new Map(ownedItemIdsState.map(o => [o.catalogItemId, o.canBook]))
   const ownedItems = ownedItemsDataState
-  const sellableCatalogItems = catalogItems.filter((i: any) => i._shop?.sellable !== false)
+  // Keep unavailable items visible (sold-out CTA); hiding them made whole
+  // categories look empty when stock/availability flipped.
+  const sellableCatalogItems = catalogItems
 
   const addToCart = (item: CatalogItem) => {
     if (ownedAccessMap.has(item.id)) {
@@ -208,6 +210,11 @@ export default function ShopClient({
     }
 
     if (item.is_dynamic_price) {
+      router.push(`/shop/${siteSlug}/${item.id}`)
+      return
+    }
+
+    if (requiresVariantSelection(item)) {
       router.push(`/shop/${siteSlug}/${item.id}`)
       return
     }

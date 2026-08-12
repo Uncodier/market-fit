@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { CatalogItem } from "@/app/types";
 import { mergeParentIntoCatalogItem } from "@/app/catalog/product-details";
+import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve";
 import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
 
 export async function getPdpCatalogItem(itemId: string, options?: { siteId?: string, requireMarketplace?: boolean }) {
@@ -60,19 +61,26 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
     sellable = (availableQty ?? 0) > 0 || policy !== 'block';
   }
 
-  // Fetch children if it's a parent
+  // Load child SKUs for any parent listing (axes may be missing on legacy data)
   let children: CatalogItem[] = [];
-  if (item.metadata?.variant_axes?.length) {
+  let variantAxes = item.metadata?.variant_axes || [];
+  if (!item.parent_id) {
     const { data: childrenData } = await supabase
       .from("catalog_items")
       .select("*")
       .eq("parent_id", item.id)
       .eq("status", "active")
       .eq("is_purchasable", true);
-    
-    if (childrenData) {
-      children = childrenData as CatalogItem[];
-    }
+
+    const pricedChildren = ((childrenData || []) as CatalogItem[]).map((child) => ({
+      ...child,
+      target_sale_price:
+        priceData.priceByItemId.get(child.id) ?? child.target_sale_price,
+    }));
+
+    const resolved = resolveVariantAxesForDisplay(item as CatalogItem, pricedChildren);
+    children = resolved.children;
+    variantAxes = resolved.axes;
   }
 
   // Inherit display fields from parent service / product when this is a child variant
@@ -102,8 +110,14 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
   const defaultLocale =
     (settings as { default_locale?: string } | null)?.default_locale || undefined
 
+  const hasVariants = children.length > 0 || variantAxes.length > 0
+
   const withSpecs = {
     ...item,
+    metadata: {
+      ...(item.metadata || {}),
+      variant_axes: variantAxes,
+    },
     site: siteRow
       ? {
           ...siteRow,
@@ -116,9 +130,10 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
     target_sale_price: finalPrice,
     _shop: {
       categoryName: Array.isArray(item.category) ? item.category[0]?.name : item.category?.name,
-      sellable,
+      sellable: hasVariants ? false : sellable,
       availableQty,
-      children
+      children,
+      hasVariants,
     }
   };
 

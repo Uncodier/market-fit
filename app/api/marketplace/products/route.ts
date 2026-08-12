@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import { attachSiteSettings } from "@/app/marketplace/attach-site-settings"
 import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-prices"
+import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -56,10 +57,24 @@ export async function GET(request: Request) {
 
     const withSettings = await attachSiteSettings(supabase, data || [])
     const priced = await applyChannelPricesToItems(supabase, withSettings, "marketplace")
-    const enrichedData = priced.map(item => ({
-      ...item,
-      item_specs: (item.raw_specs || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((cis: any) => cis.item_spec).filter(Boolean),
-    }))
+    const variantPreviews = await loadVariantListingPreviews(
+      supabase,
+      priced.map((item) => ({ id: item.id, name: item.name }))
+    )
+    const enrichedData = priced.map(item => {
+      const preview = variantPreviews.get(item.id)
+      return {
+        ...item,
+        item_specs: (item.raw_specs || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((cis: any) => cis.item_spec).filter(Boolean),
+        _shop: {
+          ...(item as any)._shop,
+          hasVariants:
+            Boolean(preview?.hasVariants) ||
+            Boolean(item.metadata?.variant_axes?.length && item.is_purchasable === false),
+          variantLabels: preview?.labels || [],
+        },
+      }
+    })
 
     return NextResponse.json({
       data: enrichedData,

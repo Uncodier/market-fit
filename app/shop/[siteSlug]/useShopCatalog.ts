@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { CatalogItem } from "@/app/types"
 import { getShopCatalog } from "./actions"
-import { SHOP_PAGE_SIZE, type ShopCategoryOffset } from "./shop-catalog-shared"
+import {
+  SHOP_PAGE_SIZE,
+  SHOP_UNCATEGORIZED_NAME,
+  type ShopCategoryOffset,
+} from "./shop-catalog-shared"
 
 function dedupeById(items: CatalogItem[]): CatalogItem[] {
   const seen = new Set<string>()
@@ -14,6 +18,39 @@ function dedupeById(items: CatalogItem[]): CatalogItem[] {
     out.push(item)
   }
   return out
+}
+
+/** Fetch every listed parent in a category (paginated). Does not use global offsets. */
+async function fetchAllCategoryItems(
+  siteId: string,
+  categoryName: string,
+  isCurrent: () => boolean
+): Promise<CatalogItem[]> {
+  const pageSize = 100
+  let offset = 0
+  let total = Number.POSITIVE_INFINITY
+  let items: CatalogItem[] = []
+
+  while (offset < total) {
+    if (!isCurrent()) return items
+    const result = await getShopCatalog(siteId, {
+      offset,
+      pageSize,
+      search: "",
+      category: categoryName,
+    })
+    if (!isCurrent()) return items
+
+    const batch = (result.data || []) as CatalogItem[]
+    if (typeof result.count === "number") total = result.count
+    if (batch.length === 0) break
+
+    items = dedupeById([...items, ...batch])
+    offset += batch.length
+    if (batch.length < pageSize) break
+  }
+
+  return items
 }
 
 export function useShopCatalog(
@@ -122,8 +159,8 @@ export function useShopCatalog(
       if (result.data) {
         const next = result.data as CatalogItem[]
         if (next.length === 0) {
-          setTotalCount(windowEndRef.current)
-          totalCountRef.current = windowEndRef.current
+          // Empty page — stop paging this window without shrinking totalCount
+          // (a transient empty response used to hide later categories forever).
           return
         }
         setCatalogItems((curr) => dedupeById([...curr, ...next]))
@@ -145,7 +182,7 @@ export function useShopCatalog(
   }, [isLoadingMore, isJumping, isLoading, siteId])
 
   const jumpToCategory = useCallback(
-    async (offset: number, categoryName: string) => {
+    async (offset: number, categoryName: string, _categoryCount = 0) => {
       const gen = ++requestGen.current
       backfillActiveRef.current = false
       setIsJumping(true)
@@ -154,30 +191,29 @@ export function useShopCatalog(
       setPendingScrollCategory(categoryName)
 
       try {
-        const result = await getShopCatalog(siteId, {
-          offset,
-          pageSize: SHOP_PAGE_SIZE,
-          search: "",
-        })
+        // Category-scoped fetch (not global offset/pageSize) so far categories
+        // like Teas / Tisanes always load every listed parent.
+        const data = await fetchAllCategoryItems(
+          siteId,
+          categoryName || SHOP_UNCATEGORIZED_NAME,
+          () => gen === requestGen.current
+        )
         if (gen !== requestGen.current) return
 
-        const data = (result.data || []) as CatalogItem[]
         setCatalogItems(data)
+        // Keep the global window aligned to this category's catalog position so
+        // backfill/load-more still walk the full shop feed around it.
         setWindowStart(offset)
         setWindowEnd(offset + data.length)
         windowStartRef.current = offset
         windowEndRef.current = offset + data.length
-        if (typeof result.count === "number") {
-          setTotalCount(result.count)
-          totalCountRef.current = result.count
-        }
+        // Do NOT overwrite totalCount with the category-scoped count.
 
         if (data.length === 0) {
           setPendingScrollCategory(null)
           return
         }
 
-        // Keep pending so UI can scroll once the section mounts
         setPendingScrollCategory(categoryName)
 
         if (offset > 0) {

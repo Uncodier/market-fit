@@ -1,13 +1,14 @@
 "use client"
 
 import React, { useState, useMemo, useEffect } from "react"
-import { CatalogItem } from "@/app/types"
+import { CatalogItem, VariantAxis } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { VariantPicker } from "@/app/components/commerce/pdp/VariantPicker"
 import { createClient } from "@/lib/supabase/client"
+import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve"
 
 interface PosVariantPickerDialogProps {
   item: CatalogItem | null
@@ -19,47 +20,49 @@ interface PosVariantPickerDialogProps {
 export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: PosVariantPickerDialogProps) {
   const { t } = useLocalization()
   const [children, setChildren] = useState<CatalogItem[]>([])
+  const [axes, setAxes] = useState<VariantAxis[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
 
-  const axes = item?.metadata?.variant_axes || []
-  const hasVariants = axes.length > 0
-
   useEffect(() => {
-    if (open && item && hasVariants) {
-      setLoading(true)
-      setSelectedOptions({})
-      
-      const supabase = createClient()
-      supabase
-        .from("catalog_items")
-        .select("*")
-        .eq("parent_id", item.id)
-        .eq("status", "active")
-        .eq("is_purchasable", true)
-        .then(({ data, error }) => {
-          if (data && !error) {
-            setChildren(data as CatalogItem[])
-          }
-          setLoading(false)
-        })
-    }
-  }, [open, item, hasVariants])
+    if (!open || !item) return
+
+    setLoading(true)
+    setSelectedOptions({})
+    setChildren([])
+    setAxes([])
+
+    const supabase = createClient()
+    supabase
+      .from("catalog_items")
+      .select("*")
+      .eq("parent_id", item.id)
+      .eq("status", "active")
+      .eq("is_purchasable", true)
+      .then(({ data, error }) => {
+        if (data && !error) {
+          const resolved = resolveVariantAxesForDisplay(item, data as CatalogItem[])
+          setChildren(resolved.children)
+          setAxes(resolved.axes)
+        }
+        setLoading(false)
+      })
+  }, [open, item])
 
   const handleOptionSelect = (axisId: string, valueId: string) => {
     setSelectedOptions(prev => ({ ...prev, [axisId]: valueId }))
   }
 
   const resolvedChild = useMemo(() => {
-    if (!hasVariants) return null
+    if (!axes.length) return null
     if (Object.keys(selectedOptions).length !== axes.length) return null
-    
+
     return children.find((c: CatalogItem) => {
       const childOpts = c.metadata?.option_values
       if (!childOpts) return false
       return Object.entries(selectedOptions).every(([aId, vId]) => childOpts[aId] === vId)
     }) || null
-  }, [selectedOptions, hasVariants, axes.length, children])
+  }, [selectedOptions, axes.length, children])
 
   const handleConfirm = () => {
     if (resolvedChild) {
@@ -97,11 +100,13 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
               </div>
             </div>
           ) : (
-            <VariantPicker 
+            <VariantPicker
               axes={axes}
               selectedOptions={selectedOptions}
               onOptionSelect={handleOptionSelect}
               childrenItems={children}
+              presentation="compact"
+              currency={item.currency || "USD"}
             />
           )}
         </div>

@@ -9,6 +9,7 @@ import {
   PopoverTrigger,
 } from "@/app/components/ui/popover"
 import { Input } from "@/app/components/ui/input"
+import { Skeleton } from "@/app/components/ui/skeleton"
 
 export type RelationSelectValue =
   | { mode: "existing"; id: string; label: string }
@@ -80,6 +81,14 @@ export function RelationSelect({
 
   const showCreate = allowCreate && searchQuery.trim().length > 0 && !exactMatch
 
+  // Existing selection whose display name is still resolving — show skeleton, not "Loading..." / blank.
+  // Empty label only counts as pending while options have not loaded yet (avoids stuck skeleton
+  // when the referenced entity was deleted).
+  const isResolvingLabel =
+    value?.mode === "existing" &&
+    (value.label === "Loading..." ||
+      (value.label.trim() === "" && options.length === 0))
+
   const handleClear = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     onValueChange(null)
@@ -134,6 +143,8 @@ export function RelationSelect({
     }
     if (!value) {
       setSearchQuery("")
+    } else if (value.label === "Loading..." || value.label.trim() === "") {
+      setSearchQuery("")
     } else {
       setSearchQuery(value.label)
     }
@@ -147,48 +158,58 @@ export function RelationSelect({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <div className="relative w-full">
-            <Input
-              ref={inputRef}
-              value={searchQuery}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              disabled={disabled}
-              className={cn(
-                "w-full font-inter cursor-pointer",
-                endAction ? "pr-28" : "pr-9",
-                icon && "pl-9",
-                className
-              )}
-              onClick={() => setOpen(true)}
-            />
-            {icon && (
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-muted-foreground">
-                {icon}
-              </div>
-            )}
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              {endAction && (
-                <div
-                  className="flex items-center"
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
-                >
-                  {endAction}
+            {isResolvingLabel && !open ? (
+              <Skeleton
+                className={cn("h-10 w-full rounded-md cursor-pointer", className)}
+                aria-label="Loading selection"
+                onClick={() => setOpen(true)}
+              />
+            ) : (
+              <>
+                <Input
+                  ref={inputRef}
+                  value={isResolvingLabel ? "" : searchQuery}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={placeholder}
+                  disabled={disabled}
+                  className={cn(
+                    "w-full font-inter cursor-pointer",
+                    endAction ? "pr-28" : "pr-9",
+                    icon && "pl-9",
+                    className
+                  )}
+                  onClick={() => setOpen(true)}
+                />
+                {icon && (
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-muted-foreground">
+                    {icon}
+                  </div>
+                )}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {endAction && (
+                    <div
+                      className="flex items-center"
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      {endAction}
+                    </div>
+                  )}
+                  {clearable && !clearAfterSelect && value && !disabled && !isResolvingLabel && (
+                    <button
+                      type="button"
+                      className="h-3.5 w-3.5 flex items-center justify-center rounded-full font-inter text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring"
+                      onClick={handleClear}
+                      aria-label="Clear selection"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground pointer-events-none" aria-hidden={true} />
                 </div>
-              )}
-              {clearable && !clearAfterSelect && value && !disabled && (
-                <button
-                  type="button"
-                  className="h-3.5 w-3.5 flex items-center justify-center rounded-full font-inter text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring"
-                  onClick={handleClear}
-                  aria-label="Clear selection"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground pointer-events-none" aria-hidden={true} />
-            </div>
+              </>
+            )}
           </div>
         </PopoverTrigger>
         <PopoverContent 

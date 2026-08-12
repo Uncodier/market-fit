@@ -97,7 +97,9 @@ export function ServicePdpLayout({
       toast.error(t("pdp.selectOptions") || "Please select all options")
       return
     }
-    router.push(`${pathname}/book`)
+    const bookItemId = resolvedChild?.id || item.id
+    const bookPath = pathname.replace(/\/[^/]+\/?$/, `/${bookItemId}`)
+    router.push(`${bookPath}/book`)
   }
 
   const handleAdd = () => {
@@ -235,6 +237,9 @@ export function ServicePdpLayout({
                       setSelectedOptions((prev) => ({ ...prev, [axisId]: valueId }))
                     }
                     childrenItems={children}
+                    presentation="pdp"
+                    currency={item.currency || "USD"}
+                    fallbackImageUrl={item.image_url || null}
                   />
                 )}
 

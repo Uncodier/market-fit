@@ -18,7 +18,13 @@ import {
 interface CatalogListingCardProps {
   item: CatalogItem & { 
     site?: { id: string; name: string; logo_url?: string | null };
-    _shop?: { availableQty?: number; sellable?: boolean; categoryName?: string };
+    _shop?: {
+      availableQty?: number
+      sellable?: boolean
+      categoryName?: string
+      hasVariants?: boolean
+      variantLabels?: string[]
+    };
   }
   href: string
   onPrimaryAction: (item: any) => void
@@ -181,6 +187,24 @@ export function CatalogListingCard({
             </span>
           )}
         </div>
+
+        {!!item._shop?.variantLabels?.length && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {item._shop.variantLabels.slice(0, 3).map((label) => (
+              <span
+                key={label}
+                className="inline-flex max-w-[7.5rem] truncate rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-muted-foreground"
+              >
+                {label}
+              </span>
+            ))}
+            {item._shop.variantLabels.length > 3 && (
+              <span className="text-[10px] font-semibold text-muted-foreground">
+                +{item._shop.variantLabels.length - 3}
+              </span>
+            )}
+          </div>
+        )}
 
         {item.description && descriptionLineClamp !== "none" && (
           <p className={`text-xs text-muted-foreground mt-1 ${descClamp || "line-clamp-1"}`}>

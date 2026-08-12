@@ -15,7 +15,7 @@ import {
   parseMarketplaceSubtype,
 } from "./marketplace-category-url"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { isAccessOnlyItem } from "@/app/catalog/product-details"
+import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/product-details"
 import { shouldUseCompactMobileListing } from "@/app/components/commerce/CommerceProductGrid"
 import { CommerceOrderSuccess } from "@/app/components/commerce/CommerceOrderSuccess"
 import { getSiteInfoBySlug } from "@/app/book/actions"
@@ -303,6 +303,10 @@ export function MarketplaceClient({
 
   const addToCart = (item: MarketplaceItem) => {
     if (item.is_dynamic_price) {
+      router.push(`/marketplace/${item.id}`)
+      return
+    }
+    if (requiresVariantSelection(item)) {
       router.push(`/marketplace/${item.id}`)
       return
     }

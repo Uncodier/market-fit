@@ -65,6 +65,18 @@ export function isAccessOnlyItem(item: CatalogItem) {
   return Boolean(item.is_recurring || (item.kind === 'digital_asset' && item.digital_subtype === 'pass'));
 }
 
+/** Parent listing that must resolve a child SKU before add-to-cart / book / buy. */
+export function requiresVariantSelection(
+  item: CatalogItem & { _shop?: { hasVariants?: boolean; children?: unknown[] } }
+): boolean {
+  if (item._shop?.hasVariants) return true
+  if (item._shop?.children && item._shop.children.length > 0) return true
+  return Boolean(
+    item.metadata?.variant_axes?.length &&
+    item.is_purchasable === false
+  )
+}
+
 export function hasProductDetails(item: CatalogItem): boolean {
   const m = item.metadata ?? {};
   const gallery = Array.isArray(m.gallery) ? m.gallery.filter(Boolean) : [];

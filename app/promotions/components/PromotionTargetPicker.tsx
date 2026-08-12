@@ -5,6 +5,7 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { Skeleton } from "@/app/components/ui/skeleton"
 import { Plus, Trash2 } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listCatalogCategories, listCatalogItems } from "@/app/catalog/actions"
@@ -123,9 +124,13 @@ function ExpandingSelectSection({
       <div className="flex flex-col gap-2">
         {slots.map((slotId, index) => {
           const selected = options.find((o) => o.id === slotId)
+          // Keep selected id while options load so RelationSelect can show a skeleton
+          // instead of an empty field / placeholder label.
           const value: RelationSelectValue = selected
             ? { mode: "existing", id: selected.id, label: selected.label }
-            : null
+            : slotId
+              ? { mode: "existing", id: slotId, label: "" }
+              : null
           const availableOptions = options.filter(
             (option) => option.id === slotId || !selectedIds.includes(option.id)
           )
@@ -195,14 +200,19 @@ export function PromotionTargetPicker({
   const { t } = useLocalization()
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([])
   const [catalogCategories, setCatalogCategories] = useState<CatalogCategory[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const minQtyLabel =
     t("promotions.detail.restrictions.minQty") || "Min Qty"
 
   useEffect(() => {
     let cancelled = false
     async function load() {
-      if (!siteId) return
+      if (!siteId) {
+        setCatalogItems([])
+        setCatalogCategories([])
+        setLoading(false)
+        return
+      }
       setLoading(true)
       const [itemsRes, catsRes] = await Promise.all([
         listCatalogItems({ siteId, pageSize: 1000 }),
@@ -222,9 +232,20 @@ export function PromotionTargetPicker({
 
   if (loading) {
     return (
-      <div className="space-y-3">
-        <div className="h-16 bg-muted/40 rounded-lg animate-pulse" />
-        <div className="h-16 bg-muted/40 rounded-lg animate-pulse" />
+      <div className="space-y-6">
+        {!hideCategories && (
+          <div className="space-y-3">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        )}
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-10 w-full" />
+          {(selectedItemIds.length > 1 ? selectedItemIds.slice(1) : []).map((id) => (
+            <Skeleton key={id} className="h-10 w-full" />
+          ))}
+        </div>
       </div>
     )
   }
