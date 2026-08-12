@@ -1,3 +1,18 @@
+import {
+  IMAGE_SIZE_PX,
+  optimizeForPreset,
+  type ImageSizePreset,
+} from "@/app/lib/optimize-storage-image"
+
+export type { ImageSizePreset } from "@/app/lib/optimize-storage-image"
+export {
+  IMAGE_SIZE_PX,
+  IMAGE_SIZE_QUALITY,
+  IMAGE_SIZE_RESIZE,
+  optimizeStorageImageUrl,
+  optimizeForPreset,
+} from "@/app/lib/optimize-storage-image"
+
 /** Max raw prompt length before URL-encoding (avoids backend 403s on long paths). */
 const MAX_PROMPT_CHARS = 220
 
@@ -110,12 +125,16 @@ export function buildItemImagePrompt(item: ItemImagePromptInput): string {
   return prompt
 }
 
-export function resolveItemImage(item: ItemImagePromptInput): string {
-  const uploaded = realImageUrl(item.image_url);
+export function resolveItemImage(
+  item: ItemImagePromptInput,
+  size?: ImageSizePreset,
+): string {
+  const uploaded = realImageUrl(item.image_url)
   if (uploaded) {
-    return uploaded;
+    return size ? optimizeForPreset(uploaded, size) : uploaded
   }
-  return publicPromptImageUrl(buildItemImagePrompt(item));
+  const px = size ? IMAGE_SIZE_PX[size] : 1024
+  return publicPromptImageUrl(buildItemImagePrompt(item), px)
 }
 
 /** Real uploaded URLs only (skips AI prompt placeholders). */
@@ -152,8 +171,10 @@ type GalleryChild = {
 export function buildPdpGalleryEntries(params: {
   parent: GalleryParent
   children?: GalleryChild[]
+  size?: ImageSizePreset
 }): PdpGalleryEntry[] {
   const children = params.children || []
+  const size = params.size
   const entries: PdpGalleryEntry[] = []
   const seen = new Set<string>()
   const parentContext = {
@@ -171,6 +192,9 @@ export function buildPdpGalleryEntries(params: {
     _shop: params.parent._shop,
   }
 
+  const sizedUrl = (url: string) =>
+    size ? optimizeForPreset(url, size) : url
+
   const push = (url: string, catalogItemId?: string) => {
     if (!url || seen.has(url)) return
     seen.add(url)
@@ -180,14 +204,17 @@ export function buildPdpGalleryEntries(params: {
   if (children.length > 0) {
     // Parent photo first when it has a real upload (distinct from child AI thumbs).
     const parentReal = realImageUrl(params.parent.image_url)
-    if (parentReal) push(parentReal, params.parent.id)
+    if (parentReal) push(sizedUrl(parentReal), params.parent.id)
 
     for (const child of children) {
       // Own upload, otherwise AI image for this variant with parent/site context.
-      const url = resolveItemImage({
-        ...child,
-        ...parentContext,
-      })
+      const url = resolveItemImage(
+        {
+          ...child,
+          ...parentContext,
+        },
+        size,
+      )
       // Allow same URL for multiple variants (shared upload) — key by item, not URL.
       if (!url) continue
       const alreadyForChild = entries.some((e) => e.catalogItemId === child.id)
@@ -196,7 +223,7 @@ export function buildPdpGalleryEntries(params: {
       seen.add(url)
     }
   } else {
-    push(resolveItemImage(params.parent), params.parent.id)
+    push(resolveItemImage(params.parent, size), params.parent.id)
   }
 
   const gallery = params.parent.metadata?.gallery
@@ -204,7 +231,7 @@ export function buildPdpGalleryEntries(params: {
     for (const entry of gallery) {
       if (typeof entry !== "string") continue
       const url = realImageUrl(entry)
-      if (url) push(url)
+      if (url) push(sizedUrl(url))
     }
   }
 
@@ -215,18 +242,27 @@ export function buildPdpGalleryEntries(params: {
 export function buildPdpGalleryUrls(params: {
   parent: GalleryParent
   children?: GalleryChild[]
+  size?: ImageSizePreset
 }): string[] {
   return buildPdpGalleryEntries({
     parent: params.parent,
     children: params.children,
+    size: params.size,
   }).map((e) => e.url)
 }
 
 /** Same dynamic AI image API as catalog when a promotion has no uploaded image. */
-export function resolvePromotionImage(promo: {
-  image_url?: string | null;
-  name?: string | null;
-}): string {
-  if (promo.image_url) return promo.image_url;
-  return publicPromptImageUrl(promo.name?.trim() || "Promotion");
+export function resolvePromotionImage(
+  promo: {
+    image_url?: string | null
+    name?: string | null
+  },
+  size?: ImageSizePreset,
+): string {
+  const uploaded = realImageUrl(promo.image_url)
+  if (uploaded) {
+    return size ? optimizeForPreset(uploaded, size) : uploaded
+  }
+  const px = size ? IMAGE_SIZE_PX[size] : 1024
+  return publicPromptImageUrl(promo.name?.trim() || "Promotion", px)
 }

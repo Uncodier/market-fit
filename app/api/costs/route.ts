@@ -23,6 +23,7 @@ interface Transaction {
 const CATEGORY_GROUPS: Record<string, string> = {
   // Marketing expenses
   advertising: "Marketing",
+  promotions: "Marketing",
   content: "Marketing",
   adspend: "Marketing",
   seo: "Marketing",

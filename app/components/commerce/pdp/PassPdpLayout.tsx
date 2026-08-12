@@ -54,7 +54,7 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
   const metadata = item.metadata || {}
   const attributes = metadata.attributes || {}
   const isRecurring = item.is_recurring
-  const imageUrl = resolveItemImage(item)
+  const imageUrl = resolveItemImage(item, "full")
 
   const venueLocation = resolveVenueLocation(item)
   const organizer = resolveItemSpecDisplay(item, 'instructor') || resolveItemSpecDisplay(item, 'organizer') || resolveItemSpecDisplay(item, 'host')

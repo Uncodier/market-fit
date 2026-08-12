@@ -104,7 +104,7 @@ export function CatalogListingCard({
       >
         <Link href={href} className="absolute inset-0 z-0" aria-label={item.name}>
           <img
-            src={resolveItemImage(item)}
+            src={resolveItemImage(item, "hero")}
             alt=""
             onError={(e) => { e.currentTarget.style.opacity = '0' }}
             className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"

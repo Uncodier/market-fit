@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { resolveItemImage } from "@/app/lib/image-utils"
+import { optimizeForPreset, resolveItemImage } from "@/app/lib/image-utils"
 import { resolveItemSpecDisplay, resolveVenueLocation } from "@/app/catalog/product-details"
 import { VenueLocationDetails } from "./VenueLocationDetails"
 import { VenueLocationSection } from "./VenueLocationSection"
@@ -127,7 +127,9 @@ export function ServicePdpLayout({
       reservation?.entitlement?.catalog_item?.image_url ||
       reservation?.entitlement?.subscription?.catalog_item?.image_url
     )
-  const heroImageUrl = passImageUrl || resolveItemImage(item)
+  const heroImageUrl = passImageUrl
+    ? optimizeForPreset(passImageUrl, "full")
+    : resolveItemImage(item, "full")
 
   const bookedDateLabel = reservation
     ? new Date(reservation.start_time).toLocaleDateString(undefined, {

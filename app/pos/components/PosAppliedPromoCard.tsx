@@ -34,10 +34,13 @@ export function PosAppliedPromoCard({
     >
       <div className="h-full aspect-square rounded-l-lg bg-green-500/15 overflow-hidden flex-shrink-0">
         <img
-          src={resolvePromotionImage({
-            image_url: promo.imageUrl,
-            name: promo.promotionName,
-          })}
+          src={resolvePromotionImage(
+            {
+              image_url: promo.imageUrl,
+              name: promo.promotionName,
+            },
+            "hero",
+          )}
           alt={promo.promotionName}
           className="w-full h-full object-cover"
           onError={(e) => {

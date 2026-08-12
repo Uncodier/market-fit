@@ -30,7 +30,7 @@ export function ServiceDynamicQuoteLayout({
   const attributes = metadata.attributes || {}
   const instructor = resolveItemSpecDisplay(item, "instructor") || resolveItemSpecDisplay(item, "host")
   const venueLocation = resolveVenueLocation(item)
-  const heroImageUrl = resolveItemImage(item)
+  const heroImageUrl = resolveItemImage(item, "full")
 
   return (
     <DynamicQuotePdpProvider item={item} backUrl={backUrl}>

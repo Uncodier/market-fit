@@ -34,7 +34,7 @@ export function PromoListingCard({
   const router = useRouter()
   const [applying, setApplying] = useState(false)
   const label = promoBadgeLabel(promo, t)
-  const imageSrc = resolvePromotionImage(promo)
+  const imageSrc = resolvePromotionImage(promo, "hero")
 
   const handleApply = async (e: React.MouseEvent) => {
     e.preventDefault()

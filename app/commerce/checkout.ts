@@ -5,7 +5,7 @@ import { assertCanSell } from "@/app/catalog/actions";
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
 import { resolveUnitPrice } from "@/app/price-lists/actions";
 import { toPriceListChannel } from "@/app/price-lists/price-list-channels";
-import { applyPromotionToOrder } from "@/app/promotions/actions";
+import { applyPromotionToOrder } from "@/app/promotions/apply-promotion-to-order";
 import { resolvePromotionDiscount } from "@/app/promotions/resolve-promotion";
 import { createShipment } from "@/app/shipments/actions";
 import { assertReservationSlot } from "@/app/reservations/availability";

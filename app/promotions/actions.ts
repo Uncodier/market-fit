@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { PromotionParams, PromotionWithCampaign } from "./types";
 import { Promotion } from "@/app/types";
 import {
@@ -397,100 +397,3 @@ export async function previewPromotionForCart(params: {
   };
 }
 
-export async function applyPromotionToOrder(
-  siteId: string,
-  saleOrderId: string,
-  promotionCode: string | null | undefined,
-  forceServiceRole: boolean = false,
-  promotionId?: string | null,
-) {
-  try {
-    const supabase = forceServiceRole ? await createServiceClient(true) : await createClient();
-
-    const { data: items } = await supabase
-      .from("sale_order_items")
-      .select("catalog_item_id, subtotal, quantity")
-      .eq("sale_order_id", saleOrderId);
-    if (!items || items.length === 0) throw new Error("Order has no items");
-
-    const { data: order } = await supabase
-      .from("sale_orders")
-      .select("id, sale_id, tax_total, buyer_user_id, origin_location_id, sales(source, lead_id)")
-      .eq("id", saleOrderId)
-      .single();
-    if (!order) throw new Error("Order not found");
-
-    // lead_id lives on sales (not sale_orders)
-    const saleRel = Array.isArray((order as any).sales)
-      ? (order as any).sales[0]
-      : (order as any).sales;
-    const saleSource = saleRel?.source ?? null;
-    const saleLeadId = saleRel?.lead_id ?? null;
-
-    const resolved = await resolvePromotionDiscount({
-      siteId,
-      code: promotionCode,
-      promotionId,
-      lines: items.map((item: any) => ({
-        catalogItemId: item.catalog_item_id,
-        subtotal: Number(item.subtotal),
-        quantity: Number(item.quantity) || 1,
-      })),
-      buyerUserId: order.buyer_user_id,
-      leadId: saleLeadId,
-      source: saleSource,
-      locationId: order.origin_location_id || null,
-      excludeOrderId: saleOrderId,
-      forceServiceRole,
-    });
-
-    if ("error" in resolved) throw new Error(resolved.error);
-
-    const { promotionId: resolvedPromoId, discount, orderSubtotal } = resolved.data;
-    const taxTotal = Number(order.tax_total) || 0;
-    const total = Math.max(0, orderSubtotal - discount + taxTotal);
-
-    const { error: updateError } = await supabase
-      .from("sale_orders")
-      .update({
-        promotion_id: resolvedPromoId,
-        discount_total: discount,
-        total: total,
-      })
-      .eq("id", saleOrderId);
-
-    if (updateError) throw new Error(updateError.message);
-
-    const { data: promo } = await supabase
-      .from("promotions")
-      .select("usage_count, campaign_id")
-      .eq("id", resolvedPromoId)
-      .single();
-
-    await supabase
-      .from("promotions")
-      .update({ usage_count: (promo?.usage_count ?? 0) + 1 })
-      .eq("id", resolvedPromoId);
-
-    // Attribute sale + lead to the promotion's campaign (any channel)
-    const campaignId = promo?.campaign_id || null;
-    if (order.sale_id) {
-      const saleUpdate: Record<string, unknown> = {
-        amount: total,
-        amount_due: total,
-      };
-      if (campaignId) saleUpdate.campaign_id = campaignId;
-      await supabase.from("sales").update(saleUpdate).eq("id", order.sale_id);
-    }
-    if (campaignId && saleLeadId) {
-      await supabase
-        .from("leads")
-        .update({ campaign_id: campaignId })
-        .eq("id", saleLeadId);
-    }
-
-    return { success: true, discount, total };
-  } catch (error: any) {
-    return { error: error.message };
-  }
-}

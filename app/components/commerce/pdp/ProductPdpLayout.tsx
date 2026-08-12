@@ -108,6 +108,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
       buildPdpGalleryEntries({
         parent: item,
         children,
+        size: "full",
       }),
     [item, children]
   )
@@ -136,7 +137,8 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
             category: imageContext.category,
             siteDescription: imageContext.siteDescription,
           }
-        : item
+        : item,
+      "full",
     )
   
   const customSpecsFromDB = (item.item_specs || []).filter(s => !s.category?.is_system);

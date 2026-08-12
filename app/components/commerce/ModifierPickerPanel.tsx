@@ -61,23 +61,26 @@ function optionImageUrl(
   opt: ModifierGroupWithItems["items"][number],
   imageContext?: ModifierImageContext | null,
 ): string {
-  return resolveItemImage({
-    name: opt.name,
-    description: opt.description,
-    image_url: opt.image_url,
-    category: opt.categoryName || imageContext?.category || null,
-    siteDescription: imageContext?.siteDescription || null,
-    site: imageContext?.siteName
-      ? { name: imageContext.siteName, description: imageContext.siteDescription }
-      : undefined,
-    parent: imageContext?.parentName
-      ? {
-          name: imageContext.parentName,
-          description: imageContext.parentDescription,
-        }
-      : undefined,
-    parentRelation: "addon",
-  })
+  return resolveItemImage(
+    {
+      name: opt.name,
+      description: opt.description,
+      image_url: opt.image_url,
+      category: opt.categoryName || imageContext?.category || null,
+      siteDescription: imageContext?.siteDescription || null,
+      site: imageContext?.siteName
+        ? { name: imageContext.siteName, description: imageContext.siteDescription }
+        : undefined,
+      parent: imageContext?.parentName
+        ? {
+            name: imageContext.parentName,
+            description: imageContext.parentDescription,
+          }
+        : undefined,
+      parentRelation: "addon",
+    },
+    "thumb",
+  )
 }
 
 export function ModifierPickerPanel({

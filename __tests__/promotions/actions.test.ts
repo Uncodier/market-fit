@@ -1,4 +1,4 @@
-import { applyPromotionToOrder } from "../../app/promotions/actions";
+import { applyPromotionToOrder } from "../../app/promotions/apply-promotion-to-order";
 import { createClient, createServiceClient } from "../../lib/supabase/server";
 import { TextEncoder, TextDecoder } from 'util';
 global.TextEncoder = TextEncoder;
@@ -7,6 +7,10 @@ global.TextDecoder = TextDecoder as any;
 // Mock next/cache
 jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
+}));
+
+jest.mock("../../app/promotions/promo-discount-expense", () => ({
+  upsertPromotionDiscountExpense: jest.fn().mockResolvedValue({ skipped: false }),
 }));
 
 // Mock Supabase Server

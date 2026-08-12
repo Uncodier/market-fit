@@ -56,7 +56,7 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
                 onClick={() => isAvailable && onAdd(item)}
               >
                 <img
-                  src={resolveItemImage(item)}
+                  src={resolveItemImage(item, "card")}
                   alt={item.name}
                   className="absolute inset-0 w-full h-full object-cover z-0"
                 />

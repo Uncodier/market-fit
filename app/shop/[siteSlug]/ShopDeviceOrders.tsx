@@ -36,7 +36,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
   if (count === 1) {
     return (
       <img
-        src={resolveItemImage({ name: thumbs[0].name, image_url: thumbs[0].imageUrl })}
+        src={resolveItemImage({ name: thumbs[0].name, image_url: thumbs[0].imageUrl }, "card")}
         alt=""
         onError={(e) => {
           e.currentTarget.style.opacity = "0"
@@ -52,7 +52,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
         {thumbs.map((item, i) => (
           <img
             key={`${item.name}-${i}`}
-            src={resolveItemImage({ name: item.name, image_url: item.imageUrl })}
+            src={resolveItemImage({ name: item.name, image_url: item.imageUrl }, "card")}
             alt=""
             onError={(e) => {
               e.currentTarget.style.opacity = "0"
@@ -68,7 +68,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
     return (
       <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5">
         <img
-          src={resolveItemImage({ name: thumbs[0].name, image_url: thumbs[0].imageUrl })}
+          src={resolveItemImage({ name: thumbs[0].name, image_url: thumbs[0].imageUrl }, "card")}
           alt=""
           onError={(e) => {
             e.currentTarget.style.opacity = "0"
@@ -76,7 +76,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
           className="row-span-2 h-full w-full object-cover object-center"
         />
         <img
-          src={resolveItemImage({ name: thumbs[1].name, image_url: thumbs[1].imageUrl })}
+          src={resolveItemImage({ name: thumbs[1].name, image_url: thumbs[1].imageUrl }, "card")}
           alt=""
           onError={(e) => {
             e.currentTarget.style.opacity = "0"
@@ -84,7 +84,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
           className="h-full w-full object-cover object-center"
         />
         <img
-          src={resolveItemImage({ name: thumbs[2].name, image_url: thumbs[2].imageUrl })}
+          src={resolveItemImage({ name: thumbs[2].name, image_url: thumbs[2].imageUrl }, "card")}
           alt=""
           onError={(e) => {
             e.currentTarget.style.opacity = "0"
@@ -100,7 +100,7 @@ function OrderThumbMosaic({ items }: { items: DeviceOrderItem[] }) {
       {thumbs.slice(0, 4).map((item, i) => (
         <img
           key={`${item.name}-${i}`}
-          src={resolveItemImage({ name: item.name, image_url: item.imageUrl })}
+          src={resolveItemImage({ name: item.name, image_url: item.imageUrl }, "card")}
           alt=""
           onError={(e) => {
             e.currentTarget.style.opacity = "0"

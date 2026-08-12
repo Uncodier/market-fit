@@ -110,7 +110,7 @@ export function PromoBundleExperience({
 
   const promoCurrency = resolvePromotionCurrency(promo, siteCurrency)
   const label = promoBadgeLabel(promo, t)
-  const imageSrc = resolvePromotionImage(promo)
+  const imageSrc = resolvePromotionImage(promo, "hero")
   const requiredItems = promo.required_items || []
   const pickItems = promo.category_pick_items || []
   const hasConcreteRequired = requiredItems.length > 0
@@ -356,7 +356,7 @@ export function PromoBundleExperience({
                           <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted flex-shrink-0">
                             {row.item && (
                               <img
-                                src={resolveItemImage(row.item as any)}
+                                src={resolveItemImage(row.item as any, "hero")}
                                 alt=""
                                 className="h-full w-full object-cover"
                               />
@@ -397,7 +397,7 @@ export function PromoBundleExperience({
                         >
                           <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted flex-shrink-0">
                             <img
-                              src={resolveItemImage(item as any)}
+                              src={resolveItemImage(item as any, "thumb")}
                               alt=""
                               className="h-full w-full object-cover"
                             />

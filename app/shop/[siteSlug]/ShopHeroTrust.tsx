@@ -2,7 +2,7 @@
 
 import { Button } from "@/app/components/ui/button"
 import { ShieldCheck, Truck, RotateCcw } from "@/app/components/ui/icons"
-import { resolveItemImage } from "@/app/lib/image-utils"
+import { optimizeForPreset, resolveItemImage } from "@/app/lib/image-utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 function badgeIcon(icon?: string) {
@@ -40,12 +40,17 @@ export function ShopHeroTrust({
           <div className="absolute inset-0 z-0">
             <img
               src={
-                shop?.hero_image_url ||
-                resolveItemImage({
-                  name: shop?.hero_title || site.name,
-                  description: shop?.hero_subtitle || site.description || "store hero",
-                  siteDescription: site.description,
-                })
+                shop?.hero_image_url
+                  ? optimizeForPreset(shop.hero_image_url, "full")
+                  : resolveItemImage(
+                      {
+                        name: shop?.hero_title || site.name,
+                        description:
+                          shop?.hero_subtitle || site.description || "store hero",
+                        siteDescription: site.description,
+                      },
+                      "full",
+                    )
               }
               alt="Hero"
               onError={(e) => {

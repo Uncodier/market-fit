@@ -82,7 +82,7 @@ export function OrderSummary({
         {items.map((item, idx) => (
           <div key={(item.lineKey || item.id) + idx} className="flex gap-4 p-3 bg-muted/30 rounded-2xl border border-border/40">
             <div className="relative w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0 shadow-sm border border-border/50">
-              <img src={resolveItemImage(item)} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+              <img src={resolveItemImage(item, "card")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <h4 className="font-bold truncate text-sm">{item.name}</h4>

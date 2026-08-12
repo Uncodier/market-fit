@@ -119,7 +119,7 @@ export function CoursePdpLayout({ item, backUrl, experience }: { item: CatalogIt
       </div>
 
       <div className="aspect-[16/10] sm:aspect-[21/9] bg-muted rounded-[2rem] overflow-hidden shadow-xl mb-10 sm:mb-16 relative">
-        <img src={resolveItemImage(item)} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+        <img src={resolveItemImage(item, "full")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
       </div>
 

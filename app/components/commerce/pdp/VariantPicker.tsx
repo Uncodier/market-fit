@@ -6,7 +6,7 @@ import { getVariantWidgetForKind } from "@/app/catalog/variant-axes"
 import { FALLBACK_VARIANT_AXIS_ID } from "@/app/catalog/variant-resolve"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
-import { resolveItemImage } from "@/app/lib/image-utils"
+import { optimizeForPreset, resolveItemImage } from "@/app/lib/image-utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Check } from "@/app/components/ui/icons"
 
@@ -72,7 +72,7 @@ export function VariantPicker({
   const imageForValue = (axisId: string, valueId: string, label: string): string | null => {
     const child = childForValue(axisId, valueId)
     const childUrl = typeof child?.image_url === "string" ? child.image_url.trim() : ""
-    if (childUrl) return childUrl
+    if (childUrl) return optimizeForPreset(childUrl, "card")
     const promptBase = {
       image_url: null as string | null,
       parent: imageContext?.parentName
@@ -86,18 +86,24 @@ export function VariantPicker({
     }
     // No upload: AI image for this variant (not the parent photo).
     if (child) {
-      return resolveItemImage({
-        ...promptBase,
-        name: child.name || label,
-        description: child.description,
-      })
+      return resolveItemImage(
+        {
+          ...promptBase,
+          name: child.name || label,
+          description: child.description,
+        },
+        "card",
+      )
     }
     const parentUrl = typeof fallbackImageUrl === "string" ? fallbackImageUrl.trim() : ""
-    if (parentUrl) return parentUrl
-    return resolveItemImage({
-      ...promptBase,
-      name: label,
-    })
+    if (parentUrl) return optimizeForPreset(parentUrl, "card")
+    return resolveItemImage(
+      {
+        ...promptBase,
+        name: label,
+      },
+      "card",
+    )
   }
 
   const resolveAxisLabel = (axis: VariantAxis) => {

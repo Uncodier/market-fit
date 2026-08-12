@@ -21,6 +21,7 @@ export const DEFAULT_CHART: ChartSeedAccount[] = [
   // Default expense accounts (keyed to match current expense categories)
   { code: '5100', type: 'expense', label: 'Content Creation', system: false, key: 'content' },
   { code: '5200', type: 'expense', label: 'Advertising', system: false, key: 'advertising' },
+  { code: '5210', type: 'expense', label: 'Promotions', system: false, key: 'promotions' },
   { code: '5300', type: 'expense', label: 'Software & Tools', system: false, key: 'software' },
   { code: '5400', type: 'expense', label: 'Freelancers', system: false, key: 'freelancers' },
   { code: '5500', type: 'expense', label: 'Events & PR', system: false, key: 'events' },

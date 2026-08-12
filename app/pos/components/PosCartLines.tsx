@@ -45,7 +45,7 @@ export function PosCartLines({
             >
               <div className="h-full aspect-square rounded-l-lg bg-muted/30 overflow-hidden flex-shrink-0">
                 <img
-                  src={resolveItemImage(item)}
+                  src={resolveItemImage(item, "thumb")}
                   alt={item.name}
                   className="w-full h-full object-cover"
                 />

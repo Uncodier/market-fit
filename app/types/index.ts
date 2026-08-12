@@ -93,6 +93,7 @@ export interface Transaction {
   catalogItemId?: string | null;
   catalogCategoryId?: string | null;
   companyId?: string | null;
+  saleOrderId?: string | null;
   accountingState?: 'pending' | 'posted' | 'unpublished';
   createdAt: string;
   updatedAt: string;
