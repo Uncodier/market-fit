@@ -228,17 +228,23 @@ export async function checkoutCart({
       throw new Error("You must be logged in to purchase digital assets or subscriptions.");
     }
 
-    // Validate fulfillment against allowed options (same defaults as shop UI)
+    // Validate fulfillment against allowed options (same defaults as shop UI).
+    // POS cart always offers dine_in / none; keep checkout in sync so outbox drain succeeds.
     const {
       getItemDeliveryOptions,
       isFulfillmentAllowed,
       intersectPickupLocationIds,
+      POS_ALWAYS_ALLOWED_FULFILLMENTS,
     } = await import('./delivery-options');
     const siteDefaultDelivery = siteSettings?.shop?.default_delivery_options;
     const itemsWithOptions = catItemsForCheck.map((item: any) => ({
       allowed: getItemDeliveryOptions(item, siteDefaultDelivery),
     }));
-    if (!isFulfillmentAllowed(fulfillment as any, itemsWithOptions)) {
+    if (!isFulfillmentAllowed(
+      fulfillment as any,
+      itemsWithOptions,
+      source === 'pos' ? POS_ALWAYS_ALLOWED_FULFILLMENTS : [],
+    )) {
       throw new Error(`Fulfillment method '${fulfillment}' is not allowed for the items in this cart.`);
     }
 

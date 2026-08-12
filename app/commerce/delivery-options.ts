@@ -103,11 +103,36 @@ export function defaultFulfillment(options: CheckoutFulfillmentMethod[]): Checko
 }
 
 /**
- * Validates if a chosen fulfillment method is allowed for the given cart items.
+ * POS always allows walk-in / consume-here, even when catalog items only
+ * expose online methods (pickup/ship). Checkout must use the same extras
+ * or outbox sync fails with "fulfillment is not allowed".
  */
-export function isFulfillmentAllowed(method: CheckoutFulfillmentMethod, items: { allowed: CheckoutFulfillmentMethod[] }[]): boolean {
+export const POS_ALWAYS_ALLOWED_FULFILLMENTS: CheckoutFulfillmentMethod[] = [
+  'dine_in',
+  'none',
+];
+
+export function withPosFulfillmentOptions(
+  options: CheckoutFulfillmentMethod[]
+): CheckoutFulfillmentMethod[] {
+  const set = new Set<CheckoutFulfillmentMethod>(options);
+  for (const method of POS_ALWAYS_ALLOWED_FULFILLMENTS) {
+    set.add(method);
+  }
+  return Array.from(set);
+}
+
+/**
+ * Validates if a chosen fulfillment method is allowed for the given cart items.
+ * `extraAllowed` is used by POS so dine_in / none match the cart UI.
+ */
+export function isFulfillmentAllowed(
+  method: CheckoutFulfillmentMethod,
+  items: { allowed: CheckoutFulfillmentMethod[] }[],
+  extraAllowed: CheckoutFulfillmentMethod[] = []
+): boolean {
   const allowed = intersectDeliveryOptions(items);
-  return allowed.includes(method);
+  return allowed.includes(method) || extraAllowed.includes(method);
 }
 
 /**

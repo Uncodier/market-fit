@@ -14,6 +14,7 @@ import {
   getItemDeliveryOptions,
   intersectDeliveryOptions,
   defaultFulfillment,
+  withPosFulfillmentOptions,
   type CheckoutFulfillmentMethod,
 } from "@/app/commerce/delivery-options";
 import { calculateOrderTaxTotal, roundMoney } from "@/app/commerce/taxes";
@@ -157,16 +158,14 @@ export function usePosCart({
   }, [locations, originLocationId]);
 
   const allowedFulfillments = useMemo((): CheckoutFulfillmentMethod[] => {
-    if (cart.length === 0) return ["dine_in", "none"];
-    const baseOptions = intersectDeliveryOptions(
-      cart.map((i) => ({
-        allowed: getItemDeliveryOptions(i, shopSettings?.default_delivery_options),
-      })),
+    if (cart.length === 0) return withPosFulfillmentOptions([]);
+    return withPosFulfillmentOptions(
+      intersectDeliveryOptions(
+        cart.map((i) => ({
+          allowed: getItemDeliveryOptions(i, shopSettings?.default_delivery_options),
+        })),
+      ),
     );
-    const posOptions = new Set(baseOptions);
-    posOptions.add("dine_in");
-    posOptions.add("none");
-    return Array.from(posOptions) as CheckoutFulfillmentMethod[];
   }, [cart, shopSettings]);
 
   useEffect(() => {

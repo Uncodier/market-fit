@@ -6,6 +6,8 @@ import {
   intersectPickupLocationIds,
   itemHasDelivery,
   resolveOrderShippingCost,
+  withPosFulfillmentOptions,
+  POS_ALWAYS_ALLOWED_FULFILLMENTS,
   CheckoutFulfillmentMethod
 } from '../../app/commerce/delivery-options';
 import { CatalogItem } from '../../app/types';
@@ -22,9 +24,9 @@ describe('delivery-options helpers', () => {
       expect(getItemDeliveryOptions(item)).toEqual(['pickup']);
     });
 
-    it('defaults to pickup and ship for product kind when missing', () => {
+    it('defaults to pickup, ship and dine_in for product kind when missing', () => {
       const item: Partial<CatalogItem> = { kind: 'product' };
-      expect(getItemDeliveryOptions(item)).toEqual(['pickup', 'ship']);
+      expect(getItemDeliveryOptions(item)).toEqual(['pickup', 'ship', 'dine_in']);
     });
 
     it('defaults to none for digital_asset kind when missing', () => {
@@ -105,6 +107,39 @@ describe('delivery-options helpers', () => {
         { allowed: ['pickup'] },
       ];
       expect(isFulfillmentAllowed('ship', items)).toBe(false);
+    });
+
+    it('rejects dine_in when items only allow pickup/ship', () => {
+      const items: { allowed: CheckoutFulfillmentMethod[] }[] = [
+        { allowed: ['pickup', 'ship'] },
+      ];
+      expect(isFulfillmentAllowed('dine_in', items)).toBe(false);
+    });
+
+    it('allows dine_in for POS extras even when catalog items omit it', () => {
+      const items: { allowed: CheckoutFulfillmentMethod[] }[] = [
+        { allowed: ['pickup', 'ship'] },
+      ];
+      expect(
+        isFulfillmentAllowed('dine_in', items, POS_ALWAYS_ALLOWED_FULFILLMENTS)
+      ).toBe(true);
+      expect(
+        isFulfillmentAllowed('none', items, POS_ALWAYS_ALLOWED_FULFILLMENTS)
+      ).toBe(true);
+      expect(
+        isFulfillmentAllowed('ship', items, POS_ALWAYS_ALLOWED_FULFILLMENTS)
+      ).toBe(true);
+    });
+  });
+
+  describe('withPosFulfillmentOptions', () => {
+    it('always includes dine_in and none', () => {
+      expect(withPosFulfillmentOptions([])).toEqual(
+        expect.arrayContaining(['dine_in', 'none'])
+      );
+      expect(withPosFulfillmentOptions(['pickup', 'ship'])).toEqual(
+        expect.arrayContaining(['pickup', 'ship', 'dine_in', 'none'])
+      );
     });
   });
 
