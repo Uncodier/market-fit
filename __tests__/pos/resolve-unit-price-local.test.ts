@@ -92,4 +92,48 @@ describe("resolveUnitPriceLocal", () => {
     });
     expect(res.price).toBe(20);
   });
+
+  it("falls back to catalog price when price list unit_price is zero", () => {
+    const res = resolveUnitPriceLocal({
+      catalogItemId: "item-1",
+      targetSalePrice: 45,
+      priceLists,
+      priceListItems: [
+        {
+          id: "pli-zero",
+          price_list_id: "pl-default",
+          catalog_item_id: "item-1",
+          unit_price: 0,
+        },
+      ],
+    });
+    expect(res.price).toBe(45);
+    expect(res.priceListId).toBe("pl-default");
+  });
+
+  it("ignores price lists that are not enabled for POS", () => {
+    const res = resolveUnitPriceLocal({
+      catalogItemId: "item-1",
+      targetSalePrice: 20,
+      priceLists: [
+        {
+          id: "pl-shop-only",
+          site_id: "site-1",
+          name: "Shop only",
+          is_active: true,
+          is_default: true,
+          channels: ["shop"],
+        },
+      ],
+      priceListItems: [
+        {
+          id: "pli-shop",
+          price_list_id: "pl-shop-only",
+          catalog_item_id: "item-1",
+          unit_price: 7,
+        },
+      ],
+    });
+    expect(res.price).toBe(20);
+  });
 });

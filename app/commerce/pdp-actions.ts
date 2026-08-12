@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { CatalogItem } from "@/app/types";
 import { mergeParentIntoCatalogItem } from "@/app/catalog/product-details";
+import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
 
 export async function getPdpCatalogItem(itemId: string, options?: { siteId?: string, requireMarketplace?: boolean }) {
   const supabase = await createServiceClient(true);
@@ -28,14 +29,10 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
   
   if (error || !item) return null;
   
-  // Get price and inventory for single item
-  const [{ data: defaultList }, { data: inventoryLevels }, { data: settings }] = await Promise.all([
-    supabase
-      .from("price_lists")
-      .select("id")
-      .eq("site_id", item.site_id)
-      .eq("is_default", true)
-      .single(),
+  const channel = options?.requireMarketplace ? "marketplace" : "shop";
+
+  const [priceData, { data: inventoryLevels }, { data: settings }] = await Promise.all([
+    loadChannelPriceMap(supabase, [item.site_id], channel),
     supabase
       .from("inventory_levels")
       .select("quantity")
@@ -47,18 +44,8 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
       .single()
   ]);
 
-  let finalPrice = item.target_sale_price;
-  if (defaultList) {
-    const { data: price } = await supabase
-      .from("price_list_items")
-      .select("unit_price")
-      .eq("price_list_id", defaultList.id)
-      .eq("catalog_item_id", item.id)
-      .single();
-    if (price && price.unit_price !== undefined && price.unit_price !== null && price.unit_price !== 0) {
-      finalPrice = price.unit_price;
-    }
-  }
+  const finalPrice =
+    priceData.priceByItemId.get(item.id) ?? item.target_sale_price;
 
   let sellable = true;
   let availableQty: number | undefined = undefined;

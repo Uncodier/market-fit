@@ -1446,6 +1446,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
               name: "Standard",
               is_default: true,
               is_active: true,
+              channels: ["pos"],
             });
           }
         } catch (commerceSeedError) {

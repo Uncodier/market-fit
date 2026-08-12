@@ -56,6 +56,7 @@ import {
   Globe,
   Folder,
   Eye,
+  Edit,
   ShoppingCart,
   Settings,
   Ticket,
@@ -2400,6 +2401,19 @@ The success of this experiment will be measured by:
                 onCheckedChange={() => window.dispatchEvent(new CustomEvent("price-list:toggle-active"))} 
              />
           </div>
+          <Button
+            variant="outline"
+            className="min-w-0 md:min-w-[120px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("price-list:edit"))
+            }
+            title={t("priceLists.editAction") || "Edit list"}
+          >
+            <Edit className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">
+              {t("priceLists.editAction") || "Edit list"}
+            </span>
+          </Button>
           <Button
             className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() =>

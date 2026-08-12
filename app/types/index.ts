@@ -938,6 +938,8 @@ export interface InventoryLevel {
   updated_at: string;
 }
 
+export type PriceListChannel = "marketplace" | "shop" | "pos";
+
 export interface PriceList {
   id: string;
   site_id: string;
@@ -946,6 +948,8 @@ export interface PriceList {
   currency: string;
   is_default: boolean;
   is_active: boolean;
+  /** Channels where this list may apply. Defaults to POS-only. */
+  channels?: PriceListChannel[];
   created_at: string;
   updated_at: string;
 }

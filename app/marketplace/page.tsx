@@ -5,6 +5,7 @@ import { attachSiteSettings } from "./attach-site-settings"
 import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 import { buildShareMetadata } from "@/app/lib/commerce-metadata"
 import { getMarketplaceMerchandising } from "@/app/promotions/storefront-promotions"
+import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-prices"
 
 export const dynamic = "force-dynamic"
 
@@ -35,6 +36,11 @@ export default async function MarketplacePage() {
   }
 
   const itemsWithSettings = await attachSiteSettings(supabase, catalogItems || [])
+  const pricedItems = await applyChannelPricesToItems(
+    supabase,
+    itemsWithSettings,
+    "marketplace"
+  )
   const initialTotalPages = count ? Math.ceil(count / 20) : 0;
   const buyerGeo = await getBuyerGeoApprox();
   const merchandising = await getMarketplaceMerchandising({})
@@ -42,7 +48,7 @@ export default async function MarketplacePage() {
   return (
     <Suspense fallback={<div className="flex-1 min-h-screen bg-muted/30" />}>
       <MarketplaceClient 
-        initialItems={itemsWithSettings} 
+        initialItems={pricedItems} 
         initialCount={count || 0}
         initialTotalPages={initialTotalPages}
         buyerGeo={buyerGeo}

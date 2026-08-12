@@ -7,6 +7,7 @@ import { listLocations } from "@/app/inventory/actions";
 import { getLeads } from "@/app/leads/actions";
 import { listOrders } from "@/app/orders/actions";
 import { listPriceLists } from "@/app/price-lists/actions";
+import { isPriceListAllowedForChannel } from "@/app/price-lists/price-list-channels";
 import {
   listPromotions,
   listPromotionItems,
@@ -81,7 +82,8 @@ export async function pullPosSnapshot(siteId: string): Promise<
     const taxesRes = await getTaxesByCatalogItemIds(siteId, catalogIds);
 
     const activePriceLists = (priceListsRes?.data || []).filter(
-      (pl: any) => pl.is_active,
+      (pl: any) =>
+        pl.is_active && isPriceListAllowedForChannel(pl.channels, "pos"),
     );
     const priceListIds = activePriceLists.map((pl: any) => pl.id);
 

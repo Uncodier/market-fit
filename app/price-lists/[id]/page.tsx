@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { PriceListDialog } from "../components/PriceListDialog"
 
 export default function PriceListDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -49,6 +50,7 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
   const [editItem, setEditItem] = useState<PriceListItemWithCatalog | null>(null)
   const [editPrice, setEditPrice] = useState<string>('')
   const [editing, setEditing] = useState(false)
+  const [isListEditOpen, setIsListEditOpen] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -162,13 +164,16 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
   useEffect(() => {
     const handleAddPrice = () => setIsAddOpen(true);
     const handleToggleActiveEvent = () => handleToggleActive();
+    const handleEditList = () => setIsListEditOpen(true);
 
     window.addEventListener('price-list:add-price', handleAddPrice);
     window.addEventListener('price-list:toggle-active', handleToggleActiveEvent);
+    window.addEventListener('price-list:edit', handleEditList);
 
     return () => {
       window.removeEventListener('price-list:add-price', handleAddPrice);
       window.removeEventListener('price-list:toggle-active', handleToggleActiveEvent);
+      window.removeEventListener('price-list:edit', handleEditList);
     };
   }, [list, currentSite]);
 
@@ -393,6 +398,19 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {isListEditOpen && list && (
+        <PriceListDialog
+          open={isListEditOpen}
+          onOpenChange={setIsListEditOpen}
+          list={list}
+          onSuccess={() => {
+            void getPriceList(params.id).then((res) => {
+              if (res.data) setList(res.data)
+            })
+          }}
+        />
+      )}
     </div>
   )
 }

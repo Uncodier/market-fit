@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { PriceList, PriceListItem } from "@/app/types";
 import { PriceListParams, PriceListItemWithCatalog } from "./types";
+import {
+  isPriceListAllowedForChannel,
+  normalizePriceListChannels,
+  type PriceListChannel,
+} from "./price-list-channels";
 
 export async function listPriceLists({ siteId, page = 1, pageSize = 50 }: PriceListParams) {
   try {
@@ -53,16 +58,25 @@ export async function upsertPriceList(list: Partial<PriceList>) {
         .eq("site_id", list.site_id)
         .eq("is_default", true);
     }
+
+    const payload: Partial<PriceList> & { updated_at: string } = {
+      ...list,
+      updated_at: new Date().toISOString(),
+    };
+    if (list.channels !== undefined) {
+      payload.channels = normalizePriceListChannels(list.channels);
+    }
     
     const { data, error } = await supabase
       .from("price_lists")
-      .upsert({ ...list, updated_at: new Date().toISOString() })
+      .upsert(payload)
       .select()
       .single();
 
     if (error) throw new Error(error.message);
 
     revalidatePath(`/price-lists`);
+    if (data?.id) revalidatePath(`/price-lists/${data.id}`);
     return { data: data as PriceList };
   } catch (error: any) {
     return { error: error.message };
@@ -145,14 +159,21 @@ export async function removePriceListItem(id: string) {
 }
 
 /**
- * Resolves the unit price for a catalog item given an optional price list.
- * 1. Uses explicit priceListId if provided
- * 2. Uses lead.default_price_list_id (not passed here, caller should pass it as priceListId)
- * 3. Fallback to site default price list
- * 4. Checks price_list_items for the list
- * 5. Fallback to catalog_item.target_sale_price
+ * Resolves unit price using a price list when the list allows the channel.
+ * 1. Uses explicit priceListId if provided (and channel-allowed)
+ * 2. Fallback to site default price list that allows the channel
+ * 3. Checks price_list_items (zero treated as missing)
+ * 4. Fallback to catalog_item.target_sale_price
+ *
+ * Pass `channel` for shop / marketplace / pos. Omit for sales/quote (no channel gate).
  */
-export async function resolveUnitPrice(siteId: string, catalogItemId: string, priceListId?: string, forceServiceRole: boolean = false) {
+export async function resolveUnitPrice(
+  siteId: string,
+  catalogItemId: string,
+  priceListId?: string,
+  forceServiceRole: boolean = false,
+  channel?: PriceListChannel | null
+) {
   const supabase = forceServiceRole ? await createServiceClient(true) : await createClient();
   
   // Get item to check fallback
@@ -164,22 +185,31 @@ export async function resolveUnitPrice(siteId: string, catalogItemId: string, pr
   if (!resolvedListId) {
     const { data: defaultList } = await supabase
       .from("price_lists")
-      .select("id")
+      .select("id, channels")
       .eq("site_id", siteId)
       .eq("is_default", true)
       .eq("is_active", true)
-      .single();
+      .maybeSingle();
     
-    if (defaultList) {
+    if (
+      defaultList &&
+      isPriceListAllowedForChannel(defaultList.channels, channel ?? undefined)
+    ) {
       resolvedListId = defaultList.id;
     }
   }
 
   if (resolvedListId) {
-    // Verify list is active
-    const { data: listData } = await supabase.from("price_lists").select("is_active").eq("id", resolvedListId).single();
+    const { data: listData } = await supabase
+      .from("price_lists")
+      .select("is_active, channels")
+      .eq("id", resolvedListId)
+      .single();
     
-    if (listData?.is_active) {
+    if (
+      listData?.is_active &&
+      isPriceListAllowedForChannel(listData.channels, channel ?? undefined)
+    ) {
       const { data: pli } = await supabase
         .from("price_list_items")
         .select("unit_price")
@@ -187,8 +217,9 @@ export async function resolveUnitPrice(siteId: string, catalogItemId: string, pr
         .eq("catalog_item_id", catalogItemId)
         .single();
         
-      if (pli) {
-        return { price: pli.unit_price, priceListId: resolvedListId };
+      // Treat zero as missing so stale PLI rows do not override catalog price.
+      if (pli && pli.unit_price != null && Number(pli.unit_price) !== 0) {
+        return { price: Number(pli.unit_price), priceListId: resolvedListId };
       }
     }
   }

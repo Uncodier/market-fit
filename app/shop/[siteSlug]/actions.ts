@@ -12,6 +12,7 @@ import {
   shopSlugCacheTag,
   type ShopCategoryOffset,
 } from "./shop-catalog-shared";
+import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
 
 export async function getShopSite(slug: string) {
   return unstable_cache(
@@ -30,27 +31,11 @@ function categoryNameFromJoin(category: unknown): string | null {
 }
 
 async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<ReturnType<typeof createServiceClient>>) {
-  const [levelsRes, settingsRes, defaultList] = await Promise.all([
+  const [priceData, levelsRes, settingsRes] = await Promise.all([
+    loadChannelPriceMap(supabase, [siteId], "shop"),
     supabase.from("inventory_levels").select("catalog_item_id, quantity").eq("site_id", siteId),
     supabase.from("settings").select("commerce").eq("site_id", siteId).single(),
-    supabase.from("price_lists").select("id, currency").eq("site_id", siteId).eq("is_default", true).maybeSingle(),
   ]);
-
-  let priceMap = new Map<string, number>();
-  if (defaultList.data) {
-    const { data: prices } = await supabase
-      .from("price_list_items")
-      .select("catalog_item_id, unit_price")
-      .eq("price_list_id", defaultList.data.id);
-    if (prices?.length) {
-      priceMap = new Map(
-        prices.map((p: { catalog_item_id: string; unit_price: number }) => [
-          p.catalog_item_id,
-          p.unit_price,
-        ])
-      );
-    }
-  }
 
   const inventoryMap = new Map<string, number>();
   for (const level of levelsRes.data || []) {
@@ -73,10 +58,11 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
       sellable = availableQty > 0 || policy !== "block";
     }
 
-    const mappedPrice = priceMap.get(item.id);
+    const mappedPrice = priceData.priceByItemId.get(item.id);
     return {
       ...item,
-      currency: item.currency || defaultList.data?.currency || 'USD',
+      currency:
+        item.currency || priceData.currencyBySiteId.get(siteId) || "USD",
       item_specs: ((item as any).raw_specs || [])
         .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
         .map((cis: any) => cis.item_spec)

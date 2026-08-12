@@ -74,6 +74,7 @@ export type LocalPriceList = {
   name: string;
   is_active: boolean;
   is_default?: boolean;
+  channels?: string[] | null;
 };
 
 export type LocalPriceListItem = {

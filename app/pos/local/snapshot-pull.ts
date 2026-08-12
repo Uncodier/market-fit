@@ -169,6 +169,7 @@ export async function applyPosSnapshot(siteId: string, snapshot: PosSnapshot) {
       if (snapshot.priceLists.length) {
         await db.priceLists.bulkPut(
           snapshot.priceLists.map((pl: any) => ({
+            channels: pl.channels ?? ["pos"],
             id: pl.id,
             site_id: siteId,
             name: pl.name,

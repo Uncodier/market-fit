@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { assertCanSell } from "@/app/catalog/actions";
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
 import { resolveUnitPrice } from "@/app/price-lists/actions";
+import { toPriceListChannel } from "@/app/price-lists/price-list-channels";
 import { applyPromotionToOrder } from "@/app/promotions/actions";
 import { resolvePromotionDiscount } from "@/app/promotions/resolve-promotion";
 import { createShipment } from "@/app/shipments/actions";
@@ -292,6 +293,9 @@ export async function checkoutCart({
       }
     }
 
+    // Storefront sources only honor lists whose channels include that source.
+    const priceListChannel = toPriceListChannel(source);
+
     // 2. Resolve default price list and dims if lead has one
     let finalPriceListId = priceListId;
     let leadCampaignId = null;
@@ -306,7 +310,12 @@ export async function checkoutCart({
         .single();
       
       if (lead) {
-        if (!finalPriceListId && lead.default_price_list_id) {
+        // Lead default list is for POS/sales; shop/marketplace resolve via site default + channels.
+        if (
+          !finalPriceListId &&
+          lead.default_price_list_id &&
+          (priceListChannel === null || priceListChannel === "pos")
+        ) {
           finalPriceListId = lead.default_price_list_id;
         }
         leadCampaignId = lead.campaign_id;
@@ -326,7 +335,7 @@ export async function checkoutCart({
 
       const { data: catalogItem } = await (isAdmin ? supabaseAdmin : supabase)
         .from("catalog_items")
-        .select("name, description, is_recurring, kind, digital_subtype, is_reservation, currency, metadata")
+        .select("name, description, is_recurring, kind, digital_subtype, is_reservation, currency, metadata, target_sale_price")
         .eq("id", line.catalogItemId)
         .single();
         
@@ -349,10 +358,16 @@ export async function checkoutCart({
         );
       }
       
-      // Resolve price
+      // Resolve price (channel-gated for shop / marketplace / pos)
       let price = line.unitPriceOverride;
       if (price === undefined) {
-        const { price: resolvedPrice } = await resolveUnitPrice(siteId, line.catalogItemId, finalPriceListId, isAdmin);
+        const { price: resolvedPrice } = await resolveUnitPrice(
+          siteId,
+          line.catalogItemId,
+          finalPriceListId,
+          isAdmin,
+          priceListChannel
+        );
         price = resolvedPrice || 0;
       }
       

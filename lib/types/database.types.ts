@@ -66,6 +66,7 @@ export interface Database {
           currency: string
           is_default: boolean
           is_active: boolean
+          channels: string[]
           created_at: string
           updated_at: string
         }

@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import { attachSiteSettings } from "@/app/marketplace/attach-site-settings"
+import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-prices"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -54,7 +55,8 @@ export async function GET(request: Request) {
     if (error) throw error
 
     const withSettings = await attachSiteSettings(supabase, data || [])
-    const enrichedData = withSettings.map(item => ({
+    const priced = await applyChannelPricesToItems(supabase, withSettings, "marketplace")
+    const enrichedData = priced.map(item => ({
       ...item,
       item_specs: (item.raw_specs || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((cis: any) => cis.item_spec).filter(Boolean),
     }))
