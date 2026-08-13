@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Input } from "@/app/components/ui/input";
+import { Button } from "@/app/components/ui/button";
 import { PosOrderNotesDialog } from "./PosOrderNotesDialog";
 
 export function PosOrderNotesField({
@@ -23,7 +24,7 @@ export function PosOrderNotesField({
         <label className="text-xs font-medium text-muted-foreground">
           {getTrans("pos.cart.orderNotes", "Order notes")}
         </label>
-        <div className="flex items-center gap-1.5">
+        <div className="relative">
           <Input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -31,15 +32,17 @@ export function PosOrderNotesField({
               "pos.cart.orderNotesPlaceholder",
               "Any special requests for this order?",
             )}
-            className="bg-card h-9"
+            className="bg-card h-9 pr-20"
           />
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setOpen(true)}
-            className="h-9 shrink-0 px-2.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border bg-card transition-colors"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs"
           >
             {getTrans("details", "Details")}
-          </button>
+          </Button>
         </div>
       </div>
 
