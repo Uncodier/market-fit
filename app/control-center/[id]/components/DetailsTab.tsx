@@ -2,7 +2,14 @@
 
 import { useState, useEffect, RefObject } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -257,14 +264,14 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       {/* Task ID Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Task Identification</CardTitle>
-          <CardDescription>
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>Task Identification</SectionCardTitle>
+          <SectionCardDescription>
             Unique identifiers for this task
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Serial ID</Label>
@@ -279,18 +286,18 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
 
       {/* Basic Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-          <CardDescription>
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>Basic Information</SectionCardTitle>
+          <SectionCardDescription>
             Edit the basic details of your task
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input
@@ -307,7 +314,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Enter task description"
-              className="min-h-[100px]"
+              className="min-h-[72px]"
             />
           </div>
           <div className="space-y-2">
@@ -333,28 +340,27 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
+        </SectionCardContent>
         <ActionFooter>
-          <Button
+          <Button variant="outline" size="sm"
             type="button"
-            variant="outline"
             onClick={() => handleSaveSection('basic')}
             disabled={savingSection === 'basic'}
           >
             {savingSection === 'basic' ? "Saving..." : "Save Basic Information"}
           </Button>
         </ActionFooter>
-      </Card>
+      </SectionCard>
 
       {/* Status and Stage */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Status and Stage</CardTitle>
-          <CardDescription>
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>Status and Stage</SectionCardTitle>
+          <SectionCardDescription>
             Update the current status and stage of your task
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
             <Select 
@@ -392,18 +398,18 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
 
       {/* Schedule and Assignment */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Schedule and Assignment</CardTitle>
-          <CardDescription>
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>Schedule and Assignment</SectionCardTitle>
+          <SectionCardDescription>
             Set when the task is scheduled and who it's assigned to
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="scheduled_date">
               <div className="flex items-center gap-2">
@@ -463,28 +469,27 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
+        </SectionCardContent>
         <ActionFooter>
-          <Button
+          <Button variant="outline" size="sm"
             type="button"
-            variant="outline"
             onClick={() => handleSaveSection('schedule')}
             disabled={savingSection === 'schedule'}
           >
             {savingSection === 'schedule' ? "Saving..." : "Save Schedule & Assignment"}
           </Button>
         </ActionFooter>
-      </Card>
+      </SectionCard>
 
       {/* Danger Zone */}
-      <Card className="border-destructive">
-        <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
-          <CardDescription>
+      <SectionCard className="border-destructive">
+        <SectionCardHeader>
+          <SectionCardTitle className="text-destructive">Danger Zone</SectionCardTitle>
+          <SectionCardDescription>
             Actions in this section cannot be undone
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent>
           <Button
             variant="destructive"
             type="button"
@@ -494,8 +499,8 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
             <Trash2 className="h-4 w-4 mr-2" />
             Delete Task
           </Button>
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

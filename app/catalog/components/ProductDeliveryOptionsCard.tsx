@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { CatalogItem, Location } from "@/app/types"
-import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Button } from "@/app/components/ui/button"
@@ -102,13 +109,13 @@ export function ProductDeliveryOptionsCard({ formData, setFormData, handleSave, 
   };
 
   return (
-    <Card id="product-delivery-options" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+    <SectionCard id="product-delivery-options">
+      <SectionCardHeader className="flex flex-row items-center justify-between">
+        <SectionCardTitle className="flex items-center gap-2">
           <Truck className="h-5 w-5" /> {t('catalog.deliveryOptions.title') || 'Delivery Options'}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-6 md:px-8 pb-8 space-y-6">
+        </SectionCardTitle>
+      </SectionCardHeader>
+      <SectionCardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           {t('catalog.deliveryOptions.description') || 'Configure whether this item can be shipped or picked up in store.'}
         </p>
@@ -329,12 +336,12 @@ export function ProductDeliveryOptionsCard({ formData, setFormData, handleSave, 
             {t('catalog.deliveryOptions.noneHint') || 'This item is treated as digital/service with no shipping or pickup.'}
           </p>
         )}
-      </CardContent>
+      </SectionCardContent>
       <ActionFooter>
-        <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
+        <Button variant="outline" type="button" onClick={handleSave} disabled={saving} size="sm">
           {saving ? (t('common.saving') || 'Saving...') : (t('common.saveChanges') || 'Save Changes')}
         </Button>
       </ActionFooter>
-    </Card>
+    </SectionCard>
   )
 }

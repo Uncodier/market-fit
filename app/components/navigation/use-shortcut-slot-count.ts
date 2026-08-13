@@ -23,7 +23,7 @@ export function useShortcutSlotCount(containerRef: React.RefObject<HTMLElement |
       // Get available height. Subtract some buffer for robots / apps link.
       // This is a heuristic based on the typical layout.
       const availableHeight = scrollContainer.clientHeight
-      const buffer = 150 // robots nav items, apps link, margins
+      const buffer = 190 // pinned nav items (overview, agents, content creator), apps link, margins
       
       const calculatedSlots = Math.floor((availableHeight - buffer) / ITEM_HEIGHT)
       const clampedSlots = Math.max(MIN_SLOTS, Math.min(MAX_SLOTS, calculatedSlots))

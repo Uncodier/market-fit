@@ -15,8 +15,15 @@ import { Archive, DatabaseIcon } from "@/app/components/ui/icons"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Badge } from "@/app/components/ui/badge"
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
+import { formatCurrency } from "@/app/lib/formatters"
+import {
+  DocumentListHead,
+  DocumentListRow,
+  EntityCell,
+  MoneyCell,
+  documentListShellClassName,
+} from "@/app/components/documents/document-list"
 import { toast } from "sonner"
 import { ChevronLeft, Save, Trash2, Plus, Tag, Edit, MoreHorizontal } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -253,55 +260,55 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
       </StickyHeader>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
-        <div className="w-full">
-          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Target Sale Price</TableHead>
-                  <TableHead>List Price ({list?.currency})</TableHead>
-                  <TableHead className="w-16"></TableHead>
+        {filteredItems.length === 0 ? (
+          <EmptyCard
+            icon={<Tag className="h-6 w-6" />}
+            title={t("priceLists.items.empty.title") || "No prices configured"}
+            description={t("priceLists.items.empty.description") || "Map a catalog item to a specific price for this list."}
+            actionButton={
+              <Button onClick={() => setIsAddOpen(true)} variant="outline">
+                <Plus className="mr-2 h-4 w-4" />
+                {t("priceLists.items.add") || "Add Price"}
+              </Button>
+            }
+          />
+        ) : (
+          <div className={documentListShellClassName()}>
+            <Table className="min-w-[640px]">
+              <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+                <TableRow className="hover:bg-transparent">
+                  <DocumentListHead className="w-[40%]">{t("priceLists.items.item") || "Item"}</DocumentListHead>
+                  <DocumentListHead className="w-[22%]">{t("priceLists.items.target") || "Target sale price"}</DocumentListHead>
+                  <DocumentListHead className="w-[26%]" align="right">
+                    {t("priceLists.items.listPrice") || "List price"}{list?.currency ? ` (${list.currency})` : ""}
+                  </DocumentListHead>
+                  <DocumentListHead className="w-[12%]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredItems.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-48 p-0">
-                      <EmptyCard
-                        icon={<Tag className="h-6 w-6" />}
-                        title="No prices configured"
-                        description="Map a catalog item to a specific price for this list."
-                        actionButton={
-                          <Button onClick={() => setIsAddOpen(true)} variant="outline">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Price
-                          </Button>
-                        }
-                        showShadow={false}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredItems.map(item => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div className="font-medium text-foreground">{item.catalog_item?.name}</div>
-                        {item.catalog_item?.sku && <div className="text-xs text-muted-foreground font-mono">{item.catalog_item.sku}</div>}
+                {filteredItems.map((item) => {
+                  const currency = list?.currency || "USD"
+                  return (
+                    <DocumentListRow key={item.id} accent="none">
+                      <TableCell className="py-3.5">
+                        <EntityCell
+                          name={item.catalog_item?.name || (t("priceLists.items.untitled") || "Untitled item")}
+                          secondary={item.catalog_item?.sku || null}
+                        />
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {item.catalog_item?.target_sale_price != null 
-                          ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.catalog_item.target_sale_price) 
-                          : '-'}
+                      <TableCell className="py-3.5 text-sm text-muted-foreground tabular-nums">
+                        {item.catalog_item?.target_sale_price != null
+                          ? formatCurrency(item.catalog_item.target_sale_price, currency)
+                          : "—"}
                       </TableCell>
-                      <TableCell className="font-semibold">
-                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.unit_price)}
+                      <TableCell className="py-3.5">
+                        <MoneyCell amountLabel={formatCurrency(item.unit_price, currency)} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-3.5 text-right" onClick={(event) => event.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
+                            <Button variant="ghost" className="h-8 w-8 p-0 opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100">
+                              <span className="sr-only">{t("common.openMenu") || "Open menu"}</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -312,22 +319,22 @@ export default function PriceListDetail(props: { params: Promise<{ id: string }>
                               setIsEditOpen(true)
                             }}>
                               <Edit className="mr-2 h-4 w-4" />
-                              <span>Edit Price</span>
+                              <span>{t("priceLists.items.edit") || "Edit Price"}</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => handleRemoveItem(item.id)}>
                               <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Delete</span>
+                              <span>{t("common.delete") || "Delete"}</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                    </DocumentListRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
-        </div>
+        )}
       </div>
       
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>

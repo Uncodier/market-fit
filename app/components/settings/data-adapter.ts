@@ -530,6 +530,9 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       payment_methods: site.settings?.shop?.payment_methods || ['card', 'cash_on_pickup'],
       default_delivery_options: site.settings?.shop?.default_delivery_options || ['pickup', 'ship', 'dine_in'],
       bank_transfer: site.settings?.shop?.bank_transfer || {}
+    },
+    printers: {
+      devices: site.settings?.printers?.devices || []
     }
   }
   

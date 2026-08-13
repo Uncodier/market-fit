@@ -1,7 +1,14 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group"
@@ -79,6 +86,7 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving activities:", error)
     } finally {
@@ -93,7 +101,7 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
       {/* Header Section */}
       <div>
         <h2 className="text-2xl font-semibold">{sectionTitle}</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Activity schedules and days adapt to your company working days and industry best practices. Configure company business hours in 
           {" "}
           <NavigationLink href="/context" className="text-primary underline underline-offset-4">Context</NavigationLink>
@@ -114,21 +122,20 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
         const isDependencyInactive = isAssignLeads && coldOutreachStatus === 'inactive'
         
         return (
-          <Card 
+          <SectionCard 
             key={key} 
             id={`activity-${key}`}
             className={cn(
-              "border shadow-sm hover:shadow-md transition-shadow duration-200",
-              isInactive 
-                ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-600" 
-                : "dark:border-white/5 border-black/5"
+              isInactive
+                ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-600"
+                : undefined
             )}
           >
-            <CardHeader className="px-8 py-6">
+            <SectionCardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-xl font-semibold">{title}</CardTitle>
+                    <SectionCardTitle>{title}</SectionCardTitle>
                     {key === "supervise_conversations" && (
                       <Badge variant="secondary" className="text-xs">
                         Beta
@@ -143,8 +150,8 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                   )}
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="px-8 pb-8">
+            </SectionCardHeader>
+            <SectionCardContent>
               <FormField
                 control={form.control}
                 name={`activities.${key}.status` as const}
@@ -242,17 +249,16 @@ export function ActivitiesSection({ active, onSave }: ActivitiesSectionProps) {
                   )
                 }}
               />
-            </CardContent>
-            <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-              <Button 
-                variant="outline"
+            </SectionCardContent>
+            <SectionCardFooter>
+              <Button variant="outline" size="sm"
                 onClick={() => handleSave(key)}
-                disabled={savingCard === key}
+                disabled={savingCard === key || !form.formState.isDirty}
               >
                 {savingCard === key ? "Saving..." : "Save"}
               </Button>
-            </CardFooter>
-          </Card>
+            </SectionCardFooter>
+          </SectionCard>
         )
       })}
     </div>

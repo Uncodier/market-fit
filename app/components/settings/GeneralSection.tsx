@@ -5,7 +5,14 @@ import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Trash2, UploadCloud, AppWindow, Globe, Tag } from "../ui/icons"
 import {
@@ -44,6 +51,7 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving general settings:", error)
     } finally {
@@ -73,11 +81,11 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
   if (!active) return null
 
   return (
-    <Card id="site-information" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold">Site Information</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-8 px-8 pb-8">
+    <SectionCard id="site-information">
+      <SectionCardHeader>
+        <SectionCardTitle>Site Information</SectionCardTitle>
+      </SectionCardHeader>
+      <SectionCardContent className="space-y-4">
         <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
           <div className="min-w-[240px] flex-shrink-0">
             <FormField
@@ -217,7 +225,7 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
                 <div className="relative">
                   <Tag className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
                   <Textarea 
-                    className="pl-12 resize-none min-h-[120px] text-base"
+                    className="pl-12 resize-none min-h-[72px] text-base"
                     placeholder="Describe your site..."
                     {...field}
                     value={field.value || ""}
@@ -228,16 +236,15 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
             </FormItem>
           )}
         />
-      </CardContent>
-      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-        <Button 
-          variant="outline"
+      </SectionCardContent>
+      <SectionCardFooter>
+        <Button variant="outline" size="sm"
           onClick={() => handleSave('site-information')}
-          disabled={savingCard === 'site-information'}
+          disabled={savingCard === 'site-information' || !form.formState.isDirty}
         >
           {savingCard === 'site-information' ? "Saving..." : "Save"}
         </Button>
-      </CardFooter>
-    </Card>
+      </SectionCardFooter>
+    </SectionCard>
   )
 } 

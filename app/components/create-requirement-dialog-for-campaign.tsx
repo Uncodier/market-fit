@@ -1,20 +1,11 @@
 import { Button } from "@/app/components/ui/button"
 import {
-  ModalFooter,
-  ModalFooterActions,
-  ModalFooterInfo,
-} from "@/app/components/ui/modal-footer"
-import {
-  ModalHeader,
-  ModalHeaderTitle,
-  ModalHeaderDescription,
-} from "@/app/components/ui/modal-header"
-import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -198,28 +189,15 @@ export function CampaignRequirementDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent 
-        className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden" 
-        onEscapeKeyDown={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onPointerDownOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onInteractOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-      >
-        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef} className="flex flex-col flex-1 overflow-hidden h-full">
-          <ModalHeader className="shrink-0">
-            <div>
-              <ModalHeaderTitle>Add New Requirement</ModalHeaderTitle>
-              <ModalHeaderDescription>
-                Create a new requirement for this campaign
-              </ModalHeaderDescription>
-            </div>
-          </ModalHeader>
-          <div className="grid gap-6 p-6 overflow-y-auto flex-1">
+      <DialogContent size="lg" busy={isLoading}>
+        <DialogForm onSubmit={form.handleSubmit(onSubmit)} ref={formRef}>
+          <DialogHeader>
+            <DialogTitle>New requirement</DialogTitle>
+            <DialogDescription>
+              Create a requirement for this campaign.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-6">
               <div className="grid gap-3">
                 <Label>Title</Label>
                 <div className="p-[3px]">
@@ -237,7 +215,7 @@ export function CampaignRequirementDialog({
                 )}
               </div>
               <div className="grid gap-3">
-                <Label>Tipo de entregable</Label>
+                <Label>Deliverable type</Label>
                 <div className="relative p-[3px]">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none z-10">
                     <Tag className="h-4 w-4 text-muted-foreground" />
@@ -247,22 +225,22 @@ export function CampaignRequirementDialog({
                     defaultValue={form.getValues("type") || "task"}
                   >
                     <SelectTrigger className="h-12 pl-10">
-                      <SelectValue placeholder="Selecciona el tipo de entregable" />
+                      <SelectValue placeholder="Select deliverable type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="app">Apps</SelectItem>
-                      <SelectItem value="automation">Automatización</SelectItem>
-                      <SelectItem value="presentation">Presentación</SelectItem>
-                      <SelectItem value="document">Documento</SelectItem>
-                      <SelectItem value="campaign">Campaña</SelectItem>
-                      <SelectItem value="image">Imagen</SelectItem>
+                      <SelectItem value="automation">Automation</SelectItem>
+                      <SelectItem value="presentation">Presentation</SelectItem>
+                      <SelectItem value="document">Document</SelectItem>
+                      <SelectItem value="campaign">Campaign</SelectItem>
+                      <SelectItem value="image">Image</SelectItem>
                       <SelectItem value="video">Video</SelectItem>
                       <SelectItem value="audio">Audio</SelectItem>
-                      <SelectItem value="report">Reporte</SelectItem>
-                      <SelectItem value="message">Mensaje</SelectItem>
-                      <SelectItem value="segment">Segmento</SelectItem>
-                      <SelectItem value="task">Tarea</SelectItem>
-                      <SelectItem value="website">Sitio web</SelectItem>
+                      <SelectItem value="report">Report</SelectItem>
+                      <SelectItem value="message">Message</SelectItem>
+                      <SelectItem value="segment">Segment</SelectItem>
+                      <SelectItem value="task">Task</SelectItem>
+                      <SelectItem value="website">Website</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -396,40 +374,24 @@ export function CampaignRequirementDialog({
                   )}
                 </div>
             </div>
-          </div>
-          <ModalFooter className="shrink-0">
-            <ModalFooterInfo>
-            </ModalFooterInfo>
-            <ModalFooterActions>
+          </DialogBody>
+          <DialogFooter>
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={handleClose}
                 disabled={isLoading}
-                className="mr-2"
               >
                 Cancel
               </Button>
               <Button 
                 type="submit"
                 disabled={isLoading}
-                className="gap-1"
               >
-                {isLoading ? (
-                  <>
-                    <LoadingSkeleton variant="button" size="sm" />
-                    <span>Creating...</span>
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle className="mr-1 h-4 w-4" />
-                    Create Requirement
-                  </>
-                )}
+                {isLoading ? "Creating..." : "Create requirement"}
               </Button>
-            </ModalFooterActions>
-          </ModalFooter>
-        </form>
+          </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

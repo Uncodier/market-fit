@@ -1,10 +1,13 @@
+"use client"
+
 import { Button } from "@/app/components/ui/button"
-import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -123,26 +126,15 @@ export function AddSubtaskDialog({ campaignId, onAddSubtask, trigger }: AddSubta
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent 
-        className="sm:max-w-[500px]" 
-        onEscapeKeyDown={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onPointerDownOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onInteractOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-      >
-        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef}>
+      <DialogContent size="md" busy={isLoading}>
+        <DialogForm onSubmit={form.handleSubmit(onSubmit)} ref={formRef}>
           <DialogHeader>
             <DialogTitle>Add New Task</DialogTitle>
             <DialogDescription>
               Create a new task for this campaign.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-6 py-4">
+          <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label>Title</Label>
               <Input
@@ -184,7 +176,7 @@ export function AddSubtaskDialog({ campaignId, onAddSubtask, trigger }: AddSubta
                 </p>
               )}
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button 
               type="button" 
@@ -194,25 +186,11 @@ export function AddSubtaskDialog({ campaignId, onAddSubtask, trigger }: AddSubta
             >
               Cancel
             </Button>
-            <Button 
-              type="submit"
-              disabled={isLoading}
-              className="gap-1"
-            >
-              {isLoading ? (
-                <>
-                  <LoadingSkeleton variant="button" size="sm" />
-                  <span>Adding...</span>
-                </>
-              ) : (
-                <>
-                  <PlusCircle className="mr-1 h-4 w-4" />
-                  Add Task
-                </>
-              )}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Adding..." : "Add Task"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

@@ -1,9 +1,11 @@
 import { Button } from "@/app/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -13,34 +15,22 @@ import { Label } from "@/app/components/ui/label"
 import { 
   PlusCircle, 
   FileText, 
-  Users, 
   XCircle, 
   ClipboardList, 
   Tag,
+  Users,
   CheckCircle2,
-  Archive,
-  LayoutGrid
+  LayoutGrid,
 } from "@/app/components/ui/icons"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState, useEffect, useRef } from "react"
-import {
-  ModalFooter,
-  ModalFooterActions,
-  ModalFooterInfo,
-} from "@/app/components/ui/modal-footer"
-import {
-  ModalHeader,
-  ModalHeaderTitle,
-  ModalHeaderDescription,
-} from "@/app/components/ui/modal-header"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Textarea } from "./ui/textarea"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
-import { Checkbox } from "@/app/components/ui/checkbox"
 import { Switch } from "@/app/components/ui/switch"
 import {
   Select,
@@ -180,28 +170,15 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent 
-        className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden" 
-        onEscapeKeyDown={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onPointerDownOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onInteractOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-      >
-        <form onSubmit={form.handleSubmit(onSubmit)} ref={formRef} className="flex flex-col flex-1 overflow-hidden h-full">
-          <ModalHeader className="shrink-0">
-            <div>
-              <ModalHeaderTitle>Create New Requirement</ModalHeaderTitle>
-              <ModalHeaderDescription>
-                Create a new product requirement aligned with specific segments.
-              </ModalHeaderDescription>
-            </div>
-          </ModalHeader>
-          <div className="grid gap-6 p-6 overflow-y-auto flex-1">
+      <DialogContent size="lg" busy={isLoading}>
+        <DialogForm onSubmit={form.handleSubmit(onSubmit)} ref={formRef}>
+          <DialogHeader>
+            <DialogTitle>New requirement</DialogTitle>
+            <DialogDescription>
+              Create a product requirement aligned with specific segments.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-6">
             <div className="grid gap-2">
               <Label>Title</Label>
               <Input
@@ -217,7 +194,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
               )}
             </div>
             <div className="grid gap-2">
-              <Label>Tipo de entregable</Label>
+              <Label>Deliverable type</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                   <Tag className="h-4 w-4 text-muted-foreground" />
@@ -227,22 +204,22 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                   defaultValue={form.getValues("type") || "task"}
                 >
                   <SelectTrigger className="h-12 pl-10">
-                    <SelectValue placeholder="Selecciona el tipo de entregable" />
+                    <SelectValue placeholder="Select deliverable type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="app">Apps</SelectItem>
-                    <SelectItem value="automation">Automatización</SelectItem>
-                    <SelectItem value="presentation">Presentación</SelectItem>
-                    <SelectItem value="document">Documento</SelectItem>
-                    <SelectItem value="campaign">Campaña</SelectItem>
-                    <SelectItem value="image">Imagen</SelectItem>
+                    <SelectItem value="automation">Automation</SelectItem>
+                    <SelectItem value="presentation">Presentation</SelectItem>
+                    <SelectItem value="document">Document</SelectItem>
+                    <SelectItem value="campaign">Campaign</SelectItem>
+                    <SelectItem value="image">Image</SelectItem>
                     <SelectItem value="video">Video</SelectItem>
                     <SelectItem value="audio">Audio</SelectItem>
-                    <SelectItem value="report">Reporte</SelectItem>
-                    <SelectItem value="message">Mensaje</SelectItem>
-                    <SelectItem value="segment">Segmento</SelectItem>
-                    <SelectItem value="task">Tarea</SelectItem>
-                    <SelectItem value="website">Sitio web</SelectItem>
+                    <SelectItem value="report">Report</SelectItem>
+                    <SelectItem value="message">Message</SelectItem>
+                    <SelectItem value="segment">Segment</SelectItem>
+                    <SelectItem value="task">Task</SelectItem>
+                    <SelectItem value="website">Website</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -489,11 +466,8 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                 </p>
               )}
             </div>
-          </div>
-          <ModalFooter className="shrink-0">
-            <ModalFooterInfo>
-            </ModalFooterInfo>
-            <ModalFooterActions>
+          </DialogBody>
+          <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -503,16 +477,10 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                    <span>Creating</span>
-                  </div>
-                ) : "Create Requirement"}
+                {isLoading ? "Creating..." : "Create requirement"}
               </Button>
-            </ModalFooterActions>
-          </ModalFooter>
-        </form>
+          </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

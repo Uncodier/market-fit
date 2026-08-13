@@ -36,7 +36,6 @@ export async function applyPromotionToOrder(
       : (order as any).sales;
     const saleSource = saleRel?.source ?? null;
     const saleLeadId = saleRel?.lead_id ?? null;
-    const hadPromotionAlready = !!order.promotion_id;
 
     const resolved = await resolvePromotionDiscount({
       siteId,
@@ -79,12 +78,18 @@ export async function applyPromotionToOrder(
       .eq("id", resolvedPromoId)
       .single();
 
-    if (!hadPromotionAlready) {
-      await supabase
-        .from("promotions")
-        .update({ usage_count: (promo?.usage_count ?? 0) + 1 })
-        .eq("id", resolvedPromoId);
-    }
+    const { count: usageCount, error: usageCountError } = await supabase
+      .from("sale_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("promotion_id", resolvedPromoId)
+      .not("status", "in", "(cancelled,canceled)");
+    if (usageCountError) throw new Error(usageCountError.message);
+
+    const { error: usageError } = await supabase
+      .from("promotions")
+      .update({ usage_count: usageCount ?? 0 })
+      .eq("id", resolvedPromoId);
+    if (usageError) throw new Error(usageError.message);
 
     const campaignId = promo?.campaign_id || null;
     if (order.sale_id) {

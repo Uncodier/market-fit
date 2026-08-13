@@ -3,7 +3,14 @@
 import { useState, useEffect } from "react"
 import { UseFormReturn } from "react-hook-form"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
 import { Switch } from "../ui/switch"
@@ -575,6 +582,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving WhatsApp settings:", error)
     } finally {
@@ -928,17 +936,17 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
   const dbMessagingServiceSid = ((currentSite?.settings?.channels?.whatsapp as any)?.messaging_service_sid || "") as string
 
   return (
-    <Card id="whatsapp-channel" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+    <SectionCard id="whatsapp-channel">
+      <SectionCardHeader>
+        <SectionCardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
           WhatsApp Business Channel
-        </CardTitle>
+        </SectionCardTitle>
         <p className="text-sm text-muted-foreground mt-1">
           Connect with WhatsApp Business API to enable messaging with your customers
         </p>
-      </CardHeader>
-      <CardContent className="px-8 pb-4 space-y-6">
+      </SectionCardHeader>
+      <SectionCardContent className="pb-4 space-y-4">
         {/* Enable/Disable Toggle */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
@@ -1038,7 +1046,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Choose the city where you'd like your new WhatsApp & SMS number
                     </p>
                   </div>
@@ -1112,7 +1120,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                       onChange={(e) => handleApiTokenChange(e.target.value)}
                       type="password"
                     />
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Your Twilio Auth Token for WhatsApp & SMS messaging (stored securely)
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -1140,7 +1148,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                       {showAccountSid ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Your Twilio Account SID identifier (starts with AC)
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1155,7 +1163,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                     value={localState.messagingServiceSid || ""}
                     onChange={(e) => handleMessagingServiceSidChange(e.target.value)}
                   />
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Twilio Messaging Service SID for inbound routing (starts with MG)
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1184,7 +1192,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                     type="tel"
                     className={!phoneValidation.isValid ? "border-red-500 focus:border-red-500" : ""}
                   />
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     The phone number from your Twilio account in international format with country code
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -1249,7 +1257,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                   {showAccountSid ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Your Twilio Account SID identifier (starts with AC)
               </p>
             </div>
@@ -1285,7 +1293,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     <span className="font-mono">{localState.existingNumber}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     This number is configured for WhatsApp Business messaging
                   </p>
                 </div>
@@ -1309,7 +1317,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                       {showAccountSid ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Your configured Twilio Account SID
                   </p>
                 </div>
@@ -1331,7 +1339,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                       {showMessagingServiceSid ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Your configured Twilio Messaging Service SID
                   </p>
                 </div>
@@ -1405,7 +1413,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
             </div>
           </div>
         )}
-      </CardContent>
+      </SectionCardContent>
 
       {/* Action Footer */}
       {localState.enabled && (
@@ -1429,7 +1437,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
 
             <div className="flex gap-2">
               {!isConfigurationSaved && !isSetupPending && canSaveConfiguration() && (
-                <Button
+                <Button variant="outline" size="sm"
                   onClick={handleSaveConfiguration}
                   disabled={isRequesting}
                 >
@@ -1453,7 +1461,7 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
                   type="button"
                   variant="outline"
                   onClick={() => handleSave('whatsapp-channel')}
-                  disabled={savingCard === 'whatsapp-channel'}
+                  disabled={savingCard === 'whatsapp-channel' || !form.formState.isDirty}
                 >
                   {savingCard === 'whatsapp-channel' ? "Saving..." : "Save"}
                 </Button>
@@ -1463,17 +1471,16 @@ export function WhatsAppSection({ active, form, siteId, onSave }: WhatsAppSectio
         </ActionFooter>
       )}
       {!localState.enabled && onSave && (
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             type="button"
-            variant="outline"
             onClick={() => handleSave('whatsapp-channel')}
-            disabled={savingCard === 'whatsapp-channel'}
+            disabled={savingCard === 'whatsapp-channel' || !form.formState.isDirty}
           >
             {savingCard === 'whatsapp-channel' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
+        </SectionCardFooter>
       )}
-    </Card>
+    </SectionCard>
   )
 } 

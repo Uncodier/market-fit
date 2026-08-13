@@ -9,10 +9,11 @@ import { buildPublicDocPath } from "@/app/documents/public-token"
 import { withInternalFrom } from "@/app/documents/internal-back"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { CommerceProductGrid } from "@/app/components/commerce/CommerceProductGrid"
-import { getOrderByPublicToken } from "@/app/orders/send-actions"
+import { getDeviceOrderSnapshots } from "@/app/commerce/device-order-snapshots"
+import { applyDeviceOrderSnapshots } from "@/app/commerce/device-order-sync"
 import type { DeviceOrder, DeviceOrderItem } from "@/app/commerce/device-order-storage"
 import {
-  rememberDeviceOrder,
+  setDeviceOrders,
   sortDeviceOrderItemsForDisplay,
 } from "@/app/commerce/device-order-storage"
 
@@ -201,59 +202,30 @@ export function ShopDeviceOrders({
     setDisplayOrders(orders)
   }, [orders])
 
-  // Backfill thumbs for device orders cached before item snapshots existed
+  // Refresh live status (including cancelled) and backfill missing thumbs
   useEffect(() => {
-    if (!siteId) return
+    if (!siteId || orders.length === 0) return
     let cancelled = false
-    async function hydrate() {
-      const need = displayOrders.filter((o) => !o.items?.length)
-      if (need.length === 0) return
 
-      const next = [...displayOrders]
-      let changed = false
-
-      await Promise.all(
-        need.map(async (order) => {
-          const res = await getOrderByPublicToken(order.publicAccessToken)
-          if (cancelled || res.error || !res.data) return
-          const lines = (res.data.items || []) as Array<{
-            name?: string
-            unit_price?: number
-            catalog_item?: { image_url?: string | null; name?: string }
-          }>
-          const items: DeviceOrderItem[] = lines.map((line) => ({
-            name: line.name || line.catalog_item?.name || "Item",
-            imageUrl: line.catalog_item?.image_url ?? null,
-            unitPrice: typeof line.unit_price === "number" ? line.unit_price : null,
-          }))
-          if (items.length === 0) return
-          const idx = next.findIndex((o) => o.orderId === order.orderId)
-          if (idx < 0) return
-          const updated = {
-            ...next[idx],
-            items,
-            status: res.data.status ?? next[idx].status,
-            total: res.data.total ?? next[idx].total,
-            orderNumber: res.data.order_number ?? next[idx].orderNumber,
-          }
-          next[idx] = updated
-          rememberDeviceOrder(siteId, updated)
-          changed = true
-        })
+    async function refresh() {
+      const res = await getDeviceOrderSnapshots(
+        orders.map((o) => o.publicAccessToken)
       )
-
-      if (!cancelled && changed) {
-        setDisplayOrders(next)
-        onOrdersHydrated?.(next)
-      }
+      if (cancelled || res.error || !res.data) return
+      const { orders: next, changed } = applyDeviceOrderSnapshots(orders, res.data)
+      if (!changed) return
+      setDeviceOrders(siteId, next)
+      setDisplayOrders(next)
+      onOrdersHydrated?.(next)
     }
-    void hydrate()
+
+    void refresh()
     return () => {
       cancelled = true
     }
-    // Only when order ids / missing items change
+    // Refresh when the cached order set changes, not on every local status write
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteId, displayOrders.map((o) => `${o.orderId}:${o.items?.length || 0}`).join("|")])
+  }, [siteId, orders.map((o) => o.orderId).join("|")])
 
   if (displayOrders.length === 0) return null
 

@@ -280,10 +280,10 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
                           isSelected ? "shadow-md" : "hover:border-primary/30 hover:bg-accent"
                         )}
                         onClick={() => {
+                          setSelectedSlot(slot)
                           if (hideDetailsStep) {
                             onSelect(slot.start, slot.end, {})
                           } else {
-                            setSelectedSlot(slot)
                             setActiveStep("details")
                           }
                         }}

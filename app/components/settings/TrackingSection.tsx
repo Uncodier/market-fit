@@ -6,7 +6,14 @@ import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Switch } from "../ui/switch"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Code, Copy, Check } from "../ui/icons"
 import { Textarea } from "../ui/textarea"
@@ -113,14 +120,14 @@ export function TrackingSection({ active, siteName, siteId, codeCopied, copyTrac
 
   return (
     <>
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Tracking Settings</CardTitle>
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>Tracking Settings</SectionCardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Configure how your site tracks visitor behavior
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <FormField
             control={form.control}
             name="tracking.track_visitors"
@@ -181,17 +188,17 @@ export function TrackingSection({ active, siteName, siteId, codeCopied, copyTrac
               </FormItem>
             )}
           />
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
 
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Tracking Code</CardTitle>
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>Tracking Code</SectionCardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Add this code to your site to enable tracking
           </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent>
           <div className="space-y-4">
             <div className="relative">
               <div className="rounded-md bg-gray-900 p-4 overflow-x-auto">
@@ -252,8 +259,8 @@ export function TrackingSection({ active, siteName, siteId, codeCopied, copyTrac
               Place this code in the <code>&lt;head&gt;</code> section of every page you want to track.
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
     </>
   )
 } 

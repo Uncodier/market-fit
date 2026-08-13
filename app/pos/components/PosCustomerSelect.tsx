@@ -23,9 +23,11 @@ export function PosCustomerSelect({
   siteId,
   onLeadUpdated,
   t,
+  clearable = true,
+  placeholder,
 }: {
   leads: any[];
-  leadValue: RelationSelectValue | string;
+  leadValue: RelationSelectValue | string | null;
   setLeadValue: (value: RelationSelectValue) => void;
   siteId?: string;
   onLeadUpdated?: (lead: {
@@ -35,6 +37,8 @@ export function PosCustomerSelect({
     phone?: string | null;
   }) => void;
   t: (key: string) => string;
+  clearable?: boolean;
+  placeholder?: string;
 }) {
   const [leadDetailsOpen, setLeadDetailsOpen] = useState(false);
   const selectedLeadId = getSelectedLeadId(leadValue);
@@ -62,7 +66,10 @@ export function PosCustomerSelect({
         })}
         value={typeof leadValue === "string" ? null : leadValue}
         onValueChange={setLeadValue}
-        placeholder={t("pos.cart.walkIn") || "Walk-in Customer"}
+        clearable={clearable}
+        placeholder={
+          placeholder || t("pos.cart.walkIn") || "Walk-in Customer"
+        }
         searchPlaceholder={
           t("pos.cart.searchCustomer") ||
           "Search by name, email, or phone..."

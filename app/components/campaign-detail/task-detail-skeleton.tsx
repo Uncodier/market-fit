@@ -1,125 +1,77 @@
 import React from "react"
-import { Card, CardContent } from "@/app/components/ui/card"
-import { SkeletonCard } from "@/app/components/ui/skeleton-card"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { StickyHeader } from "@/app/components/ui/sticky-header"
 
 export function TaskDetailSkeleton() {
   return (
-    <div className="flex-1 p-0 bg-background text-foreground">
-      <Tabs defaultValue="summary">
+    <div className="flex-1 p-0">
+      <Tabs defaultValue="overview">
         <StickyHeader>
-          <div className="px-16 pt-0 w-full">
-            <div className="flex items-center justify-between w-full">
+          <div className="pt-0 flex-1">
+            <div className="flex items-center justify-between w-full gap-4">
               <TabsList>
-                <TabsTrigger value="summary">Campaign Summary</TabsTrigger>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="financials">Finances</TabsTrigger>
-                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="promotions">Promotions</TabsTrigger>
               </TabsList>
-              <Skeleton className="h-9 w-32 rounded-md" />
+              <div className="flex items-center gap-2 shrink-0">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton key={index} className="h-6 w-16 rounded-full" />
+                ))}
+              </div>
             </div>
           </div>
         </StickyHeader>
-        
-        <div className="px-16 py-8">
-          <div className="grid grid-cols-5 gap-8">
-            {/* Left side: Requirements, Leads, Clients - 60% */}
-            <div className="col-span-3 space-y-8">
-              {/* Requirements Card */}
-              <SkeletonCard 
-                className="mb-6"
-                headerClassName="flex justify-between items-center mb-4"
-                contentClassName="space-y-4"
-                titleSize="lg"
-                showContent={true}
-                contentLines={2}
-              />
-              
-              {/* Generated Leads Card */}
-              <SkeletonCard 
-                className="mb-6"
-                headerClassName="flex justify-between items-center mb-4"
-                titleSize="lg"
-                showContent={true}
-                contentHeight="h-32"
-              />
-              
-              {/* Converted Clients Card */}
-              <SkeletonCard 
-                className="mb-6"
-                titleSize="lg"
-                showContent={true}
-                contentHeight="h-32"
-              />
+
+        <div className="px-4 lg:px-8 py-5">
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <Skeleton className="h-11 w-11 rounded-full" />
+                <div>
+                  <Skeleton className="h-6 w-44 mb-2" />
+                  <Skeleton className="h-4 w-36 mb-1" />
+                  <Skeleton className="h-3 w-64" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-8 w-20 rounded-md" />
+                <Skeleton className="h-8 w-28 rounded-md" />
+                <Skeleton className="h-8 w-28 rounded-md" />
+              </div>
             </div>
-            
-            {/* Right side: Campaign Overview - 40% */}
-            <div className="col-span-2">
-              <Card>
-                <CardContent className="p-6">
-                  {/* Title and Priority */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-6 w-48" />
-                      <Skeleton className="h-5 w-24 rounded-full" />
-                    </div>
-                  </div>
+          </div>
 
-                  {/* Campaign Type */}
-                  <div className="mt-2">
-                    <Skeleton className="h-4 w-32" />
-                  </div>
-
-                  {/* Description */}
-                  <div className="mt-6">
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-3/4" />
+          <div className="mt-5 flex flex-col lg:flex-row border-t border-border/50">
+            <div className="w-full lg:flex-1 pt-5 lg:pr-8 space-y-1">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center justify-between py-3 border-b border-border/40">
+                  <div className="flex items-center">
+                    <Skeleton className="h-8 w-8 rounded-md mr-3" />
+                    <div>
+                      <Skeleton className="h-4 w-28 mb-1" />
+                      <Skeleton className="h-3 w-40" />
                     </div>
                   </div>
-
-                  {/* Target Segments */}
-                  <div className="mt-6">
-                    <Skeleton className="h-4 w-32 mb-2" />
-                    <div className="flex flex-wrap gap-2">
-                      <Skeleton className="h-6 w-24 rounded-full" />
-                      <Skeleton className="h-6 w-28 rounded-full" />
-                      <Skeleton className="h-6 w-20 rounded-full" />
-                    </div>
-                  </div>
-
-                  {/* Outsource Section */}
-                  <div className="mt-8">
-                    <div className="bg-muted/40 rounded-lg p-4 border dark:border-white/5 border-black/5/30">
-                      <Skeleton className="h-4 w-40 mb-4" />
-                      <div className="space-y-4">
-                        <div className="bg-primary/10 p-3 rounded-md border border-primary/20">
-                          <Skeleton className="h-4 w-24 mb-2" />
-                          <Skeleton className="h-6 w-32 mx-auto" />
-                        </div>
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-[150px] w-full rounded-md" />
-                        </div>
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-16 w-full rounded-md" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <Skeleton className="h-9 w-full rounded-md" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  <Skeleton className="h-4 w-4" />
+                </div>
+              ))}
             </div>
+            <aside className="w-full lg:w-[340px] xl:w-[380px] shrink-0 pt-5 lg:pl-8 lg:border-l border-border/50">
+              <Skeleton className="h-3 w-16 mb-3" />
+              <Skeleton className="h-8 w-full rounded-full mb-4" />
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-2 py-1.5">
+                  <Skeleton className="h-4 w-4 rounded" />
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 flex-1" />
+                </div>
+              ))}
+            </aside>
           </div>
         </div>
       </Tabs>
     </div>
-  );
-} 
+  )
+}

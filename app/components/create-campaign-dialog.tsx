@@ -1,90 +1,47 @@
+"use client"
+
 import { Button } from "@/app/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/app/components/ui/dialog"
-import { Input } from "@/app/components/ui/input"
-import { Label } from "@/app/components/ui/label"
-import { 
-  PlusCircle, 
-  FileText, 
-  Ban,
-  CheckCircle2,
-  Clock,
-  CalendarIcon,
-  Tag,
-  BarChart,
-  ShoppingCart
-} from "@/app/components/ui/icons"
+import { PlusCircle } from "@/app/components/ui/icons"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState } from "react"
-import { Textarea } from "./ui/textarea"
 import { toast } from "sonner"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/components/ui/select"
-import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { Switch } from "@/app/components/ui/switch"
-import { cn } from "@/lib/utils"
 import { campaignFormSchema, type CampaignFormValues } from "../campaigns/schema"
 import * as z from "zod"
 import { useLocalization } from "@/app/context/LocalizationContext"
-
-interface Segment {
-  id: string
-  name: string
-  description: string
-}
-
-interface Requirement {
-  id: string
-  title: string
-  description: string
-}
+import { useRouter } from "next/navigation"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { useDirtyDialogClose } from "@/app/components/ui/use-dirty-dialog-close"
+import { CreateCampaignFields } from "@/app/components/create-campaign-fields"
 
 interface CreateCampaignDialogProps {
-  segments: Segment[]
-  requirements: Requirement[]
+  segments?: Array<{ id: string; name: string; description: string }>
+  requirements?: Array<{ id: string; title: string; description: string }>
   onCreateCampaign: (values: CampaignFormValues) => Promise<{ data?: any; error?: string }>
   trigger?: React.ReactNode
 }
 
-const CAMPAIGN_TYPES = [
-  { value: "inbound", label: "Inbound Marketing" },
-  { value: "outbound", label: "Outbound Marketing" },
-  { value: "branding", label: "Branding" },
-  { value: "product", label: "Product Marketing" },
-  { value: "events", label: "Events" },
-  { value: "success", label: "Customer Success" },
-  { value: "account", label: "Account-Based Marketing" },
-  { value: "community", label: "Community Marketing" },
-  { value: "guerrilla", label: "Guerrilla Marketing" },
-  { value: "affiliate", label: "Affiliate Marketing" },
-  { value: "experiential", label: "Experiential Marketing" },
-  { value: "programmatic", label: "Programmatic Advertising" },
-  { value: "performance", label: "Performance Marketing" },
-  { value: "publicRelations", label: "Public Relations" }
-]
-
-export function CreateCampaignDialog({ 
-  segments, 
-  requirements, 
+export function CreateCampaignDialog({
+  segments = [],
+  requirements = [],
   onCreateCampaign,
-  trigger 
+  trigger,
 }: CreateCampaignDialogProps) {
   const { t } = useLocalization()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { user } = useAuth()
@@ -99,28 +56,22 @@ export function CreateCampaignDialog({
       type: "inbound",
       segments: [],
       requirements: [],
-      budget: {
-        allocated: 0,
-        remaining: 0,
-        currency: "USD"
-      },
-      revenue: {
-        actual: 0,
-        projected: 0,
-        estimated: 0,
-        currency: "USD"
-      },
+      budget: { allocated: 0, remaining: 0, currency: "USD" },
+      revenue: { actual: 0, projected: 0, estimated: 0, currency: "USD" },
       site_id: currentSite?.id || "",
-      user_id: user?.id || ""
-    }
+      user_id: user?.id || "",
+    },
   })
 
-  const handleClose = () => {
-    if (!isLoading) {
-      form.reset()
-      setIsOpen(false)
-    }
-  }
+  const { discardOpen, setDiscardOpen, handleOpenChange, confirmDiscard } =
+    useDirtyDialogClose({
+      dirty: form.formState.isDirty,
+      busy: isLoading,
+      onOpenChange: (open) => {
+        if (!open) form.reset()
+        setIsOpen(open)
+      },
+    })
 
   const onSubmit = async (values: z.infer<typeof campaignFormSchema>) => {
     if (!user || !currentSite) {
@@ -130,27 +81,20 @@ export function CreateCampaignDialog({
 
     try {
       setIsLoading(true)
-      
-      // Add site_id to values
       values.site_id = currentSite.id
       values.user_id = user.id
-      
-      const payload = { ...values }
-      
-      // Override status to 'active' if they just created it
-      if (payload.status === 'draft') {
-          payload.status = 'active';
-      }
-
-      const response = await onCreateCampaign(payload)
+      const response = await onCreateCampaign(values)
 
       if (response.error) {
         toast.error(response.error)
         return
       }
 
-      toast.success("Campaign created successfully")
-      handleClose()
+      toast.success("Campaign created")
+      const id = response.data?.id
+      form.reset()
+      setIsOpen(false)
+      if (id) router.push(`/campaigns/${id}`)
     } catch (error) {
       toast.error("An error occurred while creating the campaign")
       console.error(error)
@@ -160,15 +104,7 @@ export function CreateCampaignDialog({
   }
 
   return (
-    <Dialog 
-      open={isOpen}
-      modal={true}
-      onOpenChange={(open) => {
-        if (!isLoading) {
-          setIsOpen(open)
-        }
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
           <Button>
@@ -177,312 +113,49 @@ export function CreateCampaignDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent 
-        className="sm:max-w-[600px]" 
-        onEscapeKeyDown={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onPointerDownOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onInteractOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-      >
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+      <DialogContent size="lg" busy={isLoading}>
+        <DialogForm onSubmit={form.handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>{t('campaigns.create.title') || 'Create New Campaign'}</DialogTitle>
+            <DialogTitle>{t("campaigns.create.title") || "New campaign"}</DialogTitle>
             <DialogDescription>
-              {t('campaigns.create.description') || 'Create a new marketing campaign to organize your marketing activities.'}
+              {t("campaigns.create.description") ||
+                "Create a marketing campaign to organize your activities."}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-6 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="title">{t('campaigns.create.titleLabel') || 'Title'}</Label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <Input
-                  id="title"
-                  placeholder={t('campaigns.create.titlePlaceholder') || 'Campaign title'}
-                  className="h-12 pl-10"
-                  {...form.register("title")}
-                />
-              </div>
-              {form.formState.errors.title && (
-                <p className="text-sm text-red-500 flex items-center gap-1">
-                  <Ban className="h-4 w-4" />
-                  {form.formState.errors.title.message}
-                </p>
-              )}
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="description">{t('campaigns.create.descriptionLabel') || 'Description'}</Label>
-              <div className="relative">
-                <div className="absolute left-3 top-3 flex items-center pointer-events-none">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <Textarea
-                  id="description"
-                  placeholder={t('campaigns.create.descriptionPlaceholder') || 'Describe the campaign objectives and goals'}
-                  className="min-h-[100px] pl-10 pt-2"
-                  {...form.register("description")}
-                />
-              </div>
-              {form.formState.errors.description && (
-                <p className="text-sm text-red-500 flex items-center gap-1">
-                  <Ban className="h-4 w-4" />
-                  {form.formState.errors.description.message}
-                </p>
-              )}
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="type">{t('campaigns.create.typeLabel') || 'Campaign Type'}</Label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    <Tag className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <Select 
-                    onValueChange={(value) => form.setValue("type", value)}
-                    defaultValue={form.getValues("type")}
-                  >
-                    <SelectTrigger id="type" className="h-12 pl-10">
-                      <SelectValue placeholder={t('campaigns.create.selectType') || 'Select type'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CAMPAIGN_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {form.formState.errors.type && (
-                  <p className="text-sm text-red-500 flex items-center gap-1">
-                    <Ban className="h-4 w-4" />
-                    {form.formState.errors.type.message}
-                  </p>
-                )}
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="priority">{t('campaigns.create.priorityLabel') || 'Priority'}</Label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    <BarChart className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <Select 
-                    onValueChange={(value) => form.setValue("priority", value as "high" | "medium" | "low")}
-                    defaultValue={form.getValues("priority")}
-                  >
-                    <SelectTrigger id="priority" className="h-12 pl-10">
-                      <SelectValue placeholder={t('campaigns.create.selectPriority') || 'Select priority'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="high">{t('campaigns.create.priorityHigh') || 'High Priority'}</SelectItem>
-                      <SelectItem value="medium">{t('campaigns.create.priorityMedium') || 'Medium Priority'}</SelectItem>
-                      <SelectItem value="low">{t('campaigns.create.priorityLow') || 'Low Priority'}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {form.formState.errors.priority && (
-                  <p className="text-sm text-red-500 flex items-center gap-1">
-                    <Ban className="h-4 w-4" />
-                    {form.formState.errors.priority.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="dueDate">{t('campaigns.create.dueDateLabel') || 'Due Date'}</Label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <Input
-                    id="dueDate"
-                    type="date"
-                    className="h-12 pl-10"
-                    {...form.register("dueDate")}
-                  />
-                </div>
-                {form.formState.errors.dueDate && (
-                  <p className="text-sm text-red-500 flex items-center gap-1">
-                    <Ban className="h-4 w-4" />
-                    {form.formState.errors.dueDate.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="budget">{t('campaigns.create.budgetLabel') || 'Budget'}</Label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <Input
-                    id="budget"
-                    type="number"
-                    placeholder={t('campaigns.create.budgetPlaceholder') || 'Budget amount'}
-                    className="h-12 pl-10"
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value)
-                      if (!isNaN(value)) {
-                        form.setValue("budget.allocated", value)
-                        form.setValue("budget.remaining", value)
-                      }
-                    }}
-                  />
-                </div>
-                {form.formState.errors.budget?.allocated && (
-                  <p className="text-sm text-red-500 flex items-center gap-1">
-                    <Ban className="h-4 w-4" />
-                    {form.formState.errors.budget.allocated.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>{t('campaigns.create.targetSegments') || 'Target Segments'}</Label>
-              <ScrollArea className="h-[150px] rounded-md border">
-                <div className="p-4">
-                  {segments.length > 0 ? (
-                    segments.map((segment) => {
-                      // Check if segment is already selected
-                      const currentSegments = form.getValues("segments") || [];
-                      const isSelected = currentSegments.includes(segment.id);
-                      
-                      return (
-                        <div 
-                          key={segment.id} 
-                          className={cn(
-                            "flex items-center justify-between space-x-3 space-y-0 rounded-lg border p-4 mb-2 last:mb-0",
-                            "transition-colors hover:bg-muted/50",
-                            isSelected ? "border-primary/50 bg-primary/5" : ""
-                          )}
-                        >
-                          <div className="grid gap-1.5 leading-none">
-                            <label
-                              htmlFor={`segment-${segment.id}`}
-                              className="text-sm font-medium leading-none cursor-pointer"
-                            >
-                              {segment.name}
-                            </label>
-                            <p className="text-sm text-muted-foreground">
-                              {segment.description}
-                            </p>
-                          </div>
-                          <Switch
-                            id={`segment-${segment.id}`}
-                            checked={isSelected}
-                            onCheckedChange={(checked) => {
-                              const currentSegments = form.getValues("segments") || []
-                              if (checked) {
-                                form.setValue("segments", [...currentSegments, segment.id])
-                              } else {
-                                form.setValue(
-                                  "segments",
-                                  currentSegments.filter((id: string) => id !== segment.id)
-                                )
-                              }
-                            }}
-                          />
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">{t('campaigns.create.noSegments') || 'No segments available'}</p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>{t('campaigns.create.relatedRequirements') || 'Related Requirements'}</Label>
-              <ScrollArea className="h-[150px] rounded-md border">
-                <div className="p-4">
-                  {requirements.length > 0 ? (
-                    requirements.map((requirement) => {
-                      // Check if requirement is already selected
-                      const currentRequirements = form.getValues("requirements") || [];
-                      const isSelected = currentRequirements.includes(requirement.id);
-                      
-                      return (
-                        <div 
-                          key={requirement.id} 
-                          className={cn(
-                            "flex items-center justify-between space-x-3 space-y-0 rounded-lg border p-4 mb-2 last:mb-0",
-                            "transition-colors hover:bg-muted/50",
-                            isSelected ? "border-primary/50 bg-primary/5" : ""
-                          )}
-                        >
-                          <div className="grid gap-1.5 leading-none">
-                            <label
-                              htmlFor={`requirement-${requirement.id}`}
-                              className="text-sm font-medium leading-none cursor-pointer"
-                            >
-                              {requirement.title}
-                            </label>
-                            <p className="text-sm text-muted-foreground">
-                              {requirement.description}
-                            </p>
-                          </div>
-                          <Switch
-                            id={`requirement-${requirement.id}`}
-                            checked={isSelected}
-                            onCheckedChange={(checked) => {
-                              const currentRequirements = form.getValues("requirements") || []
-                              if (checked) {
-                                form.setValue("requirements", [...currentRequirements, requirement.id])
-                              } else {
-                                form.setValue(
-                                  "requirements",
-                                  currentRequirements.filter((id: string) => id !== requirement.id)
-                                )
-                              }
-                            }}
-                          />
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">{t('campaigns.create.noRequirements') || 'No requirements available'}</p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-          </div>
+          <DialogBody className="grid gap-6">
+            <CreateCampaignFields
+              form={form}
+              segments={segments}
+              requirements={requirements}
+              t={t}
+            />
+          </DialogBody>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={handleClose}
+              onClick={() => handleOpenChange(false)}
               disabled={isLoading}
-              className="h-12"
             >
-              {t('campaigns.create.cancel') || 'Cancel'}
+              {t("campaigns.create.cancel") || "Cancel"}
             </Button>
-            <Button type="submit" disabled={isLoading} className="h-12">
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                  <span>{t('campaigns.create.creating') || 'Creating'}</span>
-                </div>
-              ) : (t('campaigns.create.submit') || 'Create Campaign')}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading
+                ? t("campaigns.create.creating") || "Creating..."
+                : t("campaigns.create.submit") || "Create campaign"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard changes?"
+        description="Your changes will be lost."
+        confirmLabel="Discard"
+        variant="destructive"
+        onConfirm={confirmDiscard}
+      />
     </Dialog>
   )
-} 
+}

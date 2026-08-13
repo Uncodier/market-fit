@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogForm, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Key, Copy, CheckCircle2, AlertCircle, PlusCircle } from "@/app/components/ui/icons"
@@ -151,7 +151,11 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
           Add API Key
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent size="lg" busy={isSubmitting}>
+        <div
+          data-slot="dialog-form"
+          className="flex min-h-0 max-h-[inherit] flex-1 flex-col overflow-hidden"
+        >
         <DialogHeader>
           <DialogTitle>
             {showResult ? "Your API Key" : "Create API Key"}
@@ -159,7 +163,8 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
         </DialogHeader>
         
         {showResult ? (
-          <div className="space-y-6 pt-4">
+          <>
+          <DialogBody className="grid gap-6">
             <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
@@ -204,15 +209,16 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
                 Authorization: Bearer {newApiKey.substring(0, 20)}...
               </code>
             </div>
-
-            <div className="flex justify-end gap-3">
-              <Button onClick={handleClose}>
-                I've Saved My Key
-              </Button>
-            </div>
-          </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={handleClose}>
+              I've Saved My Key
+            </Button>
+          </DialogFooter>
+          </>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          <DialogForm onSubmit={handleSubmit}>
+            <DialogBody className="grid gap-6">
             <div className="space-y-2">
               <Label htmlFor="name">Key Name</Label>
               <Input
@@ -356,22 +362,18 @@ export function CreateKeyDialog({ onSuccess }: CreateKeyDialogProps) {
                 />
               </div>
             </div>
-
-            <div className="flex justify-end gap-3">
+            </DialogBody>
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                    <span>Creating</span>
-                  </div>
-                ) : "Create Key"}
+                {isSubmitting ? "Creating..." : "Create Key"}
               </Button>
-            </div>
-          </form>
+            </DialogFooter>
+          </DialogForm>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   )

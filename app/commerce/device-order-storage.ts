@@ -84,10 +84,17 @@ export function rememberDeviceOrder(siteId: string, order: DeviceOrder): void {
 export function setDeviceOrders(siteId: string, orders: DeviceOrder[]): void {
   if (typeof window === "undefined") return
   try {
-    localStorage.setItem(
-      getDeviceOrdersKey(siteId),
-      JSON.stringify(orders.slice(0, MAX_ORDERS))
-    )
+    const next = orders.slice(0, MAX_ORDERS).map((order) => ({
+      orderId: order.orderId,
+      publicAccessToken: order.publicAccessToken,
+      orderNumber: order.orderNumber ?? null,
+      status: order.status ?? null,
+      total: order.total ?? null,
+      currency: order.currency ?? null,
+      createdAt: order.createdAt ?? null,
+      items: slimItems(order.items),
+    }))
+    localStorage.setItem(getDeviceOrdersKey(siteId), JSON.stringify(next))
     window.dispatchEvent(new Event("storage"))
   } catch (e) {
     console.error("Error writing device orders", e)

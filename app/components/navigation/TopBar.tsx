@@ -26,7 +26,6 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   }>
   breadcrumb?: React.ReactNode
   hideBreadcrumb?: boolean
-  isExperimentDetailPage?: boolean
   onCreateSale?: () => void
   onCreateDeal?: () => void
   onMobileToggle?: () => void
@@ -46,7 +45,6 @@ export function TopBar({
   segments: propSegments,
   breadcrumb,
   hideBreadcrumb,
-  isExperimentDetailPage = false,
   onCreateSale,
   onCreateDeal,
   onMobileToggle,
@@ -57,8 +55,6 @@ export function TopBar({
   const pathname = usePathname()
   const { currentSite } = useSite()
   const [segments, setSegments] = useState<Array<{ id: string; name: string; description: string }>>([])
-  
-  const [isProcessing, setIsProcessing] = useState(false);
   const [requirements, setRequirements] = useState<Array<{ id: string; title: string; description: string }>>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description: string }>>([])
   
@@ -75,7 +71,6 @@ export function TopBar({
     openAIModal: (type: 'analysis' | 'icp' | 'topics') => void;
   } | null>(null);
 
-  // States for requirement detail page
   const [requirementData, setRequirementData] = useState<{
     id: string;
     isBuilding: boolean;
@@ -91,9 +86,6 @@ export function TopBar({
 
   // Reset states when pathname changes
   useEffect(() => {
-    setIsProcessing(false);
-    
-    // Clear page-specific data when navigating away from those pages
     if (!pathname.startsWith('/segments/')) {
       setSegmentData(null);
     }
@@ -108,10 +100,8 @@ export function TopBar({
     }
   }, [pathname]);
 
-  // Escuchar eventos de actualización del segmento y requirement
   useEffect(() => {
     const handleBreadcrumbUpdate = (event: any) => {
-      console.log('TopBar received breadcrumb:update event:', event.detail);
       if (event.detail) {
         if (event.detail.segmentData) {
           setSegmentData(event.detail.segmentData);
@@ -120,7 +110,6 @@ export function TopBar({
           setRequirementData(event.detail.requirementData);
         }
         if (event.detail.contentData) {
-          console.log('TopBar updating contentData state:', event.detail.contentData.title);
           setContentData(event.detail.contentData);
         }
         if (event.detail.priceListData) {
@@ -129,7 +118,6 @@ export function TopBar({
       }
     };
     
-    // Escuchar cambios de estado en requirement
     const handleRequirementUpdate = (event: any) => {
       if (event.detail) {
         setRequirementData(prevData => {
@@ -140,20 +128,18 @@ export function TopBar({
         });
       }
     };
-    
-    // Escuchar cambios de pestaña en la página de detalle del segmento
+
     const handleSegmentTabChange = (event: any) => {
-      if (event.detail && segmentData) {
-        setSegmentData(prevData => {
-          if (!prevData) return null;
-          return {
-            ...prevData,
-            activeTab: event.detail.activeTab,
-            isAnalyzing: event.detail.isAnalyzing,
-            isGeneratingTopics: event.detail.isGeneratingTopics
-          };
-        });
-      }
+      if (!event.detail) return;
+      setSegmentData(prevData => {
+        if (!prevData) return null;
+        return {
+          ...prevData,
+          activeTab: event.detail.activeTab,
+          isAnalyzing: event.detail.isAnalyzing,
+          isGeneratingTopics: event.detail.isGeneratingTopics
+        };
+      });
     };
     
     window.addEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
@@ -165,7 +151,7 @@ export function TopBar({
       window.removeEventListener('segment:tabchange', handleSegmentTabChange as EventListener);
       window.removeEventListener('requirement:update', handleRequirementUpdate as EventListener);
     };
-  }, [segmentData]);
+  }, []);
   
   // Cargar segmentos y requisitos cuando se está en ciertas páginas
   useEffect(() => {
@@ -296,8 +282,6 @@ export function TopBar({
         
         <div className="flex items-center justify-end flex-1 min-w-0">
           <TopBarActions
-            isProcessing={isProcessing}
-            setIsProcessing={setIsProcessing}
             isPosPage={pathname === "/pos"}
             isDashboardPage={pathname === "/dashboard"}
             isSegmentsPage={pathname === "/segments"}
@@ -316,7 +300,6 @@ export function TopBar({
             isFinancePage={pathname === "/finance"}
             isJournalEntriesPage={pathname === "/accounting/entries"}
             isSettingsPage={pathname === "/settings" || pathname.startsWith("/settings/")}
-            isExperimentDetailPage={isExperimentDetailPage}
             segmentData={segmentData}
             requirementData={requirementData}
             contentData={contentData}

@@ -10,7 +10,14 @@ import { CreateKeyDialog } from "./create-key-dialog"
 import { Badge } from "@/app/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import {
   AlertDialog,
@@ -49,15 +56,14 @@ function ApiKeyCard({
   isSubmitting: boolean;
 }) {
   return (
-    <Card id={`api-key-${index}`} className="border dark:border-white/5 border-black/5">
+    <SectionCard id={`api-key-${index}`} className="border dark:border-white/5 border-black/5">
       {/* Collapsible Header */}
-      <CardHeader 
-        className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"
+      <SectionCardHeader className="cursor-pointer hover:bg-muted/50 transition-colors"
         onClick={() => onToggle(apiKey.id)}
       >
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-lg font-semibold truncate">{apiKey.name}</CardTitle>
+            <SectionCardTitle className="text-lg font-semibold truncate">{apiKey.name}</SectionCardTitle>
             <p className="text-sm text-muted-foreground truncate mt-1">
               <span className="font-mono">{apiKey.prefix}***</span> • Created {formatDate(apiKey.created_at)}
             </p>
@@ -84,12 +90,12 @@ function ApiKeyCard({
             </div>
           </div>
         </div>
-      </CardHeader>
+      </SectionCardHeader>
 
       {/* Collapsible Content */}
       {isExpanded && (
         <>
-        <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t">
+        <SectionCardContent className="space-y-4 border-t">
           {/* API Key Info */}
           <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/50 rounded-lg p-4">
             <div className="flex items-start gap-3">
@@ -200,7 +206,7 @@ function ApiKeyCard({
               <span className="font-mono">{apiKey.id}</span>
             </div>
           </div>
-        </CardContent>
+        </SectionCardContent>
 
         {/* Card Footer with individual buttons */}
         <ActionFooter>
@@ -239,7 +245,7 @@ function ApiKeyCard({
         </ActionFooter>
         </>
       )}
-    </Card>
+    </SectionCard>
   )
 }
 

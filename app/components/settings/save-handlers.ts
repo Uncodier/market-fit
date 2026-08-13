@@ -920,6 +920,35 @@ export const handleSaveShop = async (data: SiteFormValues, options: SaveOptions)
   }
 }
 
+export const handleSavePrinters = async (data: SiteFormValues, options: SaveOptions) => {
+  const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving } = options
+  if (!currentSite) return
+
+  try {
+    setIsSaving(true)
+    const printers = data.printers || { devices: [] }
+    const settingsUpdate: any = {
+      site_id: currentSite.id,
+      printers,
+    }
+    if (currentSite.settings?.id) {
+      settingsUpdate.id = currentSite.settings.id
+    }
+    await updateSettings(currentSite.id, settingsUpdate)
+    if (shouldPreventRefresh()) {
+      updateSiteLocally(currentSite, {}, settingsUpdate, updateSite)
+    } else {
+      await refreshSites()
+    }
+    toast.success("Printer settings saved")
+  } catch (error) {
+    console.error("Error saving printer settings:", error)
+    toast.error(error instanceof Error ? error.message : "Error saving printer settings")
+  } finally {
+    setIsSaving(false)
+  }
+}
+
 export const handleSaveCompany = async (data: SiteFormValues, options: SaveOptions) => {
   const { currentSite, updateSite, updateSettings, refreshSites, setIsSaving, t } = options
 

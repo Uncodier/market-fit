@@ -3,9 +3,11 @@
 import React from "react"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle
 } from "@/app/components/ui/dialog"
@@ -204,7 +206,8 @@ export function TaskFilterModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent size="md">
+        <DialogForm onSubmit={(e) => { e.preventDefault(); handleApplyFilters() }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
@@ -219,8 +222,8 @@ export function TaskFilterModal({
             )}
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-2">
+        <DialogBody className="grid gap-4">
+        <div className="space-y-4">
           {/* Stage Filter */}
           <div className="border rounded-lg">
             <div 
@@ -439,8 +442,8 @@ export function TaskFilterModal({
             )}
           </div>
         </div>
-
-        <DialogFooter className="flex justify-between">
+        </DialogBody>
+        <DialogFooter className="sm:justify-between">
           {getTotalActiveFilters() > 0 ? (
             <Button 
               variant="outline" 
@@ -458,11 +461,12 @@ export function TaskFilterModal({
             <Button variant="outline" onClick={onClose}>
               {t('controlCenter.filter.cancel') || 'Cancel'}
             </Button>
-            <Button onClick={handleApplyFilters}>
+            <Button type="submit">
               {t('controlCenter.filter.apply') || 'Apply Filters'}
             </Button>
           </div>
         </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

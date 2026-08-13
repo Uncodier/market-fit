@@ -3,7 +3,16 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import useSWR from "swr"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogForm,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -129,67 +138,68 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Create Subscription</DialogTitle>
-          <DialogDescription>
-            Create a manual subscription record for a customer.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="catalog_item_value">Service / Product</Label>
-            <RelationSelect 
-              options={items.map((i: any) => ({ id: i.id, label: i.name }))}
-              value={catalogItemValue} 
-              onValueChange={(val) => setValue('catalog_item_value', val, { shouldValidate: true })}
-              placeholder="Select a recurring plan..."
-              emptyMessage="No recurring plans found"
-            />
-          </div>
-          <div className="space-y-2">
-            <BuyerUserEmailField 
-              value={buyerUser}
-              onChange={setBuyerUser}
-              disabled={isSubmitting}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lead_value">Customer</Label>
-            <RelationSelect 
-              options={leads.map((l: any) => ({ id: l.id, label: l.name || l.email }))}
-              value={leadValue} 
-              onValueChange={(val) => setValue('lead_value', val, { shouldValidate: true })}
-              placeholder={buyerUser ? "Optional: Customer will be auto-created" : "Select customer..."}
-              emptyMessage="No customers found"
-              disabled={!!buyerUser}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="start_date">Start Date</Label>
-              <Input type="date" id="start_date" {...register("start_date", { required: true })} />
+      <DialogContent size="md" busy={isSubmitting}>
+        <DialogForm onSubmit={handleSubmit(onSubmit)}>
+          <DialogHeader>
+            <DialogTitle>Create Subscription</DialogTitle>
+            <DialogDescription>
+              Create a manual subscription record for a customer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="catalog_item_value">Service / Product</Label>
+              <RelationSelect
+                options={items.map((i: any) => ({ id: i.id, label: i.name }))}
+                value={catalogItemValue}
+                onValueChange={(val) => setValue('catalog_item_value', val, { shouldValidate: true })}
+                placeholder="Select a recurring plan..."
+                emptyMessage="No recurring plans found"
+              />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="end_date">End Date</Label>
-              <Input type="date" id="end_date" {...register("end_date")} />
+            <div className="grid gap-2">
+              <Label>Buyer</Label>
+              <BuyerUserEmailField
+                value={buyerUser}
+                onChange={setBuyerUser}
+                disabled={isSubmitting}
+              />
             </div>
-            <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label htmlFor="amount">Billing Amount</Label>
-              <Input type="number" step="0.01" id="amount" {...register("amount", { required: true })} />
+            <div className="grid gap-2">
+              <Label htmlFor="lead_value">Customer</Label>
+              <RelationSelect
+                options={leads.map((l: any) => ({ id: l.id, label: l.name || l.email }))}
+                value={leadValue}
+                onValueChange={(val) => setValue('lead_value', val, { shouldValidate: true })}
+                placeholder={buyerUser ? "Optional: Customer will be auto-created" : "Select customer..."}
+                emptyMessage="No customers found"
+                disabled={!!buyerUser}
+              />
             </div>
-          </div>
-
-          <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="start_date">Start date</Label>
+                <Input type="date" id="start_date" className="h-12" {...register("start_date", { required: true })} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="end_date">End date</Label>
+                <Input type="date" id="end_date" className="h-12" {...register("end_date")} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="amount">Billing amount</Label>
+              <Input type="number" step="0.01" id="amount" className="h-12" {...register("amount", { required: true })} />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

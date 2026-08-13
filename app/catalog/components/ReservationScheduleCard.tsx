@@ -4,7 +4,14 @@ import React, { useEffect, useState, useCallback } from "react"
 import { useForm, FormProvider, Controller } from "react-hook-form"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -257,7 +264,7 @@ function ScheduleForm({
         </div>
 
         <div className="mt-6">
-          <ActionFooter className="rounded-b-lg -mx-6 md:-mx-8 border-x-0 border-b-0 mb-0 flex justify-between">
+          <ActionFooter className="flex justify-between">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
@@ -290,7 +297,7 @@ function ScheduleForm({
             </AlertDialog>
 
             <div className="flex gap-2">
-              <Button type="submit" variant="outline" disabled={isSubmitting || isDeleting}>
+              <Button variant="outline" type="submit" disabled={isSubmitting || isDeleting} size="sm">
                 {isSubmitting
                   ? (t("common.saving") || "Saving...")
                   : schedule.id
@@ -420,17 +427,16 @@ export function ReservationScheduleCard({ catalogItemId }: { catalogItemId: stri
           const activeDays = schedule.days ? Object.values(schedule.days).filter((d: any) => d.enabled).length : 0
 
           return (
-            <Card key={schedule.id || index} className="border dark:border-white/5 border-black/5 shadow-sm overflow-hidden">
-              <CardHeader 
-                className="px-6 md:px-8 py-6 flex flex-row items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
+            <SectionCard key={schedule.id || index} className="border dark:border-white/5 border-black/5 shadow-sm overflow-hidden">
+              <SectionCardHeader className="flex flex-row items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => toggleExpansion(index)}
               >
                 <div className="flex flex-col gap-1 w-full md:flex-row md:items-center justify-between">
                   <div className="flex flex-col gap-1">
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    <SectionCardTitle className="text-lg font-semibold flex items-center gap-2">
                       <CalendarIcon className="h-5 w-5 text-muted-foreground" />
                       {schedule.name || t("catalog.schedules.newSchedule") || "New Schedule"}
-                    </CardTitle>
+                    </SectionCardTitle>
                     {schedule.id ? (
                       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-2 md:mt-1">
                         <span>{t("catalog.schedules.daysActive", { count: activeDays }) || `${activeDays} days active`}</span>
@@ -453,19 +459,19 @@ export function ReservationScheduleCard({ catalogItemId }: { catalogItemId: stri
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   )}
                 </div>
-              </CardHeader>
+              </SectionCardHeader>
 
               {isExpanded && (
-                <CardContent className="px-6 md:px-8 pb-0 pt-6 border-t">
+                <SectionCardContent className="pb-0 pt-4 border-t">
                   <ScheduleForm 
                     schedule={schedule} 
                     catalogItemId={catalogItemId}
                     onSaved={(s) => handleSaved(index, s)}
                     onDeleted={() => handleDeleted(index)}
                   />
-                </CardContent>
+                </SectionCardContent>
               )}
-            </Card>
+            </SectionCard>
           )
         })
       )}

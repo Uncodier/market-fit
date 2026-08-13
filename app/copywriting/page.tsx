@@ -39,7 +39,7 @@ import React from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/app/components/ui/sheet"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { ViewSelector, ViewType } from "@/app/components/view-selector"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogForm, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
@@ -228,14 +228,15 @@ function CreateCopywritingDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Create New Copy</DialogTitle>
-          <DialogDescription>
-            Create a new piece of copywriting content
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <DialogContent size="lg">
+        <DialogForm onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create New Copy</DialogTitle>
+            <DialogDescription>
+              Create a new piece of copywriting content
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="title">Title</Label>
@@ -313,7 +314,7 @@ function CreateCopywritingDialog({
               rows={8}
             />
           </div>
-
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
@@ -322,7 +323,7 @@ function CreateCopywritingDialog({
               Create Copy
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

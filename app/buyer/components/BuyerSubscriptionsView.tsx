@@ -3,27 +3,20 @@
 import React, { useState, useEffect } from "react"
 import useSWR from "swr"
 import { listBuyerSubscriptions, getUserSites } from "../actions"
-import { Badge } from "@/app/components/ui/badge"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { LayoutGrid, CheckCircle2, Repeat, Play, Pause, Plus, Archive, Video, Ticket, File as FileIcon } from "@/app/components/ui/icons"
+import { LayoutGrid, CheckCircle2, Repeat, Play, Pause, Archive, Video, Ticket, File as FileIcon } from "@/app/components/ui/icons"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Button } from "@/app/components/ui/button"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { resolveItemImage } from "@/app/lib/image-utils"
-
-const STATUS_STYLES: Record<string, string> = {
-  active: "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20",
-  paused: "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/20",
-  cancelled: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
-  expired: "bg-muted text-muted-foreground border-border",
-}
+import { formatCurrency } from "@/app/lib/formatters"
+import { StatusDot } from "@/app/components/documents/document-list"
 
 const SUBTYPE_ICONS: Record<string, any> = {
   course: <Video size={16} className="text-blue-500" />,
@@ -197,34 +190,32 @@ export function BuyerSubscriptionsView({
               {data.data.map((sub: any) => (
                 <div 
                   key={sub.id} 
-                  className="bg-card rounded-xl border shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-all cursor-pointer"
+                  className="overflow-hidden rounded-xl border border-border/70 bg-card flex flex-col group hover:bg-muted/20 transition-colors cursor-pointer"
                   onClick={() => router.push(`/shop/${sub.site?.id || sub.owner_site_id}/${sub.catalog_item?.id || sub.catalog_item_id}`)}
                 >
                   <div className="aspect-video bg-muted relative">
                     <img src={resolveItemImage(sub.catalog_item || { name: 'Unknown' })} alt={sub.catalog_item?.name || 'Subscription'} className="w-full h-full object-cover" />
-                    <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold shadow-sm flex items-center gap-1.5 capitalize">
-                      <Repeat size={12} className="text-blue-500" />
-                      {t('buyer.subscriptions.plan') || 'Subscription Plan'}
-                    </div>
                   </div>
                   
                   <div className="p-5 flex flex-col flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{sub.site?.name}</span>
-                        {scope === 'personal' && sub.owner_site_id && (
-                          <>
-                            <span className="w-1 h-1 rounded-full bg-border" />
-                            <span className="font-medium">{t('buyer.subscriptions.business') || 'Business'}</span>
-                          </>
-                        )}
-                      </div>
-                      <Badge variant="outline" className={STATUS_STYLES[sub.status?.toLowerCase()] || ""}>
-                        {sub.status ? (t(`status.${sub.status.toLowerCase()}`) || sub.status) : (t('status.unknown') || 'Unknown')}
-                      </Badge>
+                    <div className="flex items-center justify-between mb-2 gap-2">
+                      <p className="truncate text-xs text-muted-foreground">
+                        {sub.site?.name}
+                        {scope === "personal" && sub.owner_site_id
+                          ? ` · ${t("buyer.subscriptions.business") || "Business"}`
+                          : ""}
+                      </p>
+                      <StatusDot
+                        status={(sub.status || "unknown").toLowerCase()}
+                        label={
+                          sub.status
+                            ? (t(`status.${sub.status.toLowerCase()}`) || sub.status)
+                            : (t("status.unknown") || "Unknown")
+                        }
+                      />
                     </div>
                     
-                    <h3 className="font-bold text-lg mb-1 line-clamp-2">{sub.catalog_item?.name || t('buyer.subscriptions.unknownPlan') || 'Unknown Plan'}</h3>
+                    <h3 className="font-medium text-base mb-1 line-clamp-2">{sub.catalog_item?.name || t('buyer.subscriptions.unknownPlan') || 'Unknown Plan'}</h3>
                     <div className="text-xs text-muted-foreground mb-4 flex flex-col gap-1">
                       <span>{t('buyer.subscriptions.startedPrefix') || 'Started'} {sub.start_date && !isNaN(new Date(sub.start_date).getTime()) ? format(new Date(sub.start_date), 'MMM d, yyyy') : '-'}</span>
                       {sub.end_date && !isNaN(new Date(sub.end_date).getTime()) && (
@@ -232,19 +223,18 @@ export function BuyerSubscriptionsView({
                       )}
                     </div>
                     
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t">
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/50">
                       <div className="flex flex-col">
-                        <span className="text-xs text-muted-foreground">{t('buyer.subscriptions.table.nextBilling') || 'Next Billing'}</span>
-                        <span className="text-sm font-medium">
+                        <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{t('buyer.subscriptions.table.nextBilling') || 'Next Billing'}</span>
+                        <span className="text-sm text-muted-foreground">
                           {sub.next_billing_date && !isNaN(new Date(sub.next_billing_date).getTime()) ? format(new Date(sub.next_billing_date), 'MMM d, yyyy') : '-'}
                         </span>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-xs text-muted-foreground">{t('buyer.subscriptions.table.amount') || 'Amount'}</span>
-                        <span className="text-sm font-bold text-primary">
-                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: sub.catalog_item?.currency || 'USD' }).format(sub.amount)}
-                          <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                        <span className="text-[15px] font-semibold tabular-nums tracking-tight">
+                          {formatCurrency(Number(sub.amount) || 0, sub.catalog_item?.currency || 'USD')}
                         </span>
+                        <span className="text-[11px] text-muted-foreground">/mo</span>
                       </div>
                     </div>
 
@@ -265,7 +255,7 @@ export function BuyerSubscriptionsView({
                             {SUBTYPE_ICONS[e.catalog_item?.digital_subtype || ''] || <Archive size={14} />}
                             <span className="flex-1 truncate">{e.catalog_item?.name}</span>
                             {e.catalog_item?.digital_subtype === 'pass' && (
-                               <span className="text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded whitespace-nowrap">
+                               <span className="text-xs tabular-nums text-muted-foreground whitespace-nowrap">
                                  {e.uses_remaining !== null ? `${e.uses_remaining} uses` : '∞'}
                                </span>
                             )}

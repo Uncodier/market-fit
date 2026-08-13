@@ -184,13 +184,19 @@ function SortableShortcutItem({
   )
 }
 
-// Get all possible items except contentCreator (which is statically shown)
+const PINNED_NAV_KEYS = new Set(["contentCreator", "reportOverview"])
+
+function isPinnedShortcutKey(key: string): boolean {
+  return PINNED_NAV_KEYS.has(key)
+}
+
+// Get all possible items except pinned sidebar items (always visible at the top)
 type AreaNavItemWithArea = AreaNavItem & { area: WorkspaceArea }
 const ALL_ITEMS: AreaNavItemWithArea[] = []
 Object.entries(NAVIGATION_AREAS).forEach(([areaKey, area]: [string, any]) => {
   if (area && area.items) {
     area.items.forEach((item: AreaNavItem) => {
-      if (item.key !== "contentCreator") {
+      if (!PINNED_NAV_KEYS.has(item.key)) {
         ALL_ITEMS.push({ ...item, area: areaKey as WorkspaceArea })
       }
     })
@@ -205,6 +211,10 @@ export interface CustomShortcutItem {
 }
 
 export type ShortcutEntry = string | CustomShortcutItem;
+
+function withoutPinnedShortcuts(entries: ShortcutEntry[]): ShortcutEntry[] {
+  return entries.filter((entry) => typeof entry !== "string" || !isPinnedShortcutKey(entry))
+}
 
 export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const { t } = useLocalization()
@@ -253,7 +263,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         }
 
         if (isMounted) {
-          setShortcuts(loadedShortcuts)
+          setShortcuts(withoutPinnedShortcuts(loadedShortcuts))
           setIsLoaded(true)
         }
       } catch (e) {
@@ -267,7 +277,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     const handleLocalSync = () => {
       const saved = localStorage.getItem("navigationShortcuts_v3")
       if (saved) {
-        setShortcuts(JSON.parse(saved))
+        setShortcuts(withoutPinnedShortcuts(JSON.parse(saved)))
       }
     }
     
@@ -336,6 +346,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         pathname !== "/" && 
         pathname !== "/robots" && 
         !pathname.startsWith("/robots/") &&
+        !(pathname.startsWith("/dashboard") && navSearchParams.get("tab") === "overview") &&
         pathname !== "/notifications" &&
         !pathname.startsWith("/notifications/") &&
         !pathname.startsWith("/profile") &&

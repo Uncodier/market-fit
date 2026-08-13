@@ -4,16 +4,14 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 export function PublicDocumentViewSkeleton() {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-[#030303] print:bg-white">
-      <div className="print:hidden">
-        <div className="h-4 w-full shrink-0" />
-        <div className="sticky top-4 z-40 w-full mb-4 md:mb-8 shrink-0">
-          <div className="px-4 md:px-8 w-full max-w-7xl mx-auto">
-            <div className="rounded-full border border-black/5 dark:border-white/10 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md shadow-sm flex items-center justify-between px-3 md:px-6 py-2 w-full min-h-[56px] gap-3">
-              <Skeleton className="h-6 w-28 rounded-full" />
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-9 w-9 rounded-full" />
-                <Skeleton className="h-9 w-20 rounded-full hidden md:block" />
-              </div>
+      <div className="h-4 w-full shrink-0 print:hidden" />
+      <div className="sticky top-4 z-40 w-full mb-4 md:mb-8 shrink-0 print:hidden">
+        <div className="px-4 md:px-8 w-full max-w-7xl mx-auto">
+          <div className="rounded-full border border-black/5 dark:border-white/10 bg-white/80 dark:bg-[#030303]/80 backdrop-blur-md shadow-sm flex items-center justify-between px-3 md:px-6 py-2 w-full min-h-[56px] gap-3">
+            <Skeleton className="h-6 w-28 rounded-full" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-9 rounded-full" />
+              <Skeleton className="h-9 w-20 rounded-full hidden md:block" />
             </div>
           </div>
         </div>

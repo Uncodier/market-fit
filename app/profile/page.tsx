@@ -6,7 +6,14 @@ import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -271,11 +278,11 @@ export default function ProfilePage() {
         
         <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
           <TabsContent value="profile" className="space-y-12 mt-0 border-0 p-0 focus-visible:ring-0">
-            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Personal Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>Personal Information</SectionCardTitle>
+              </SectionCardHeader>
+              <SectionCardContent className="space-y-8">
                 <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
                   <div className="min-w-[240px] flex-shrink-0">
                     <label className="block text-sm font-medium mb-2">Profile Picture</label>
@@ -377,25 +384,23 @@ export default function ProfilePage() {
                   <div className="relative">
                     <FileText className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
                     <Textarea 
-                      className="pl-12 resize-none min-h-[120px] text-base transition-colors duration-200"
+                      className="pl-12 resize-none min-h-[72px] text-base transition-colors duration-200"
                       placeholder="Tell us about yourself..."
                       value={formData.bio}
                       onChange={(e) => handleInputChange('bio', e.target.value)}
                     />
                   </div>
                 </div>
-              </CardContent>
+              </SectionCardContent>
               <ActionFooter>
-                <Button
+                <Button variant="outline"
                   type="button"
-                  variant="outline"
                   onClick={handleSavePersonalInfo}
-                  disabled={isUpdating}
-                >
+                  disabled={isUpdating} size="sm">
                   {isUpdating ? "Saving..." : "Save Personal Information"}
                 </Button>
               </ActionFooter>
-            </Card>
+            </SectionCard>
 
             <EmailSecurityCard
               email={email}
@@ -404,11 +409,11 @@ export default function ProfilePage() {
               isUpdating={isUpdating}
             />
 
-            <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold">Preferences</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>Preferences</SectionCardTitle>
+              </SectionCardHeader>
+              <SectionCardContent className="space-y-8">
                 <div>
                   <label className="block text-sm font-medium mb-2">Language</label>
                   <div className="relative">
@@ -452,18 +457,16 @@ export default function ProfilePage() {
                     </Select>
                   </div>
                 </div>
-              </CardContent>
+              </SectionCardContent>
               <ActionFooter>
-                <Button
+                <Button variant="outline"
                   type="button"
-                  variant="outline"
                   onClick={handleSavePreferences}
-                  disabled={isUpdating}
-                >
+                  disabled={isUpdating} size="sm">
                   {isUpdating ? "Saving..." : "Save Preferences"}
                 </Button>
               </ActionFooter>
-            </Card>
+            </SectionCard>
           </TabsContent>
 
           <TabsContent value="calendar" className="mt-0 border-0 p-0 focus-visible:ring-0">

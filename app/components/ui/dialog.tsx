@@ -2,8 +2,16 @@
 
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "@/app/components/ui/icons"
+import { buttonVariants } from "@/app/components/ui/button"
 import { cn } from "@/lib/utils"
+import {
+  dialogSizeClassName,
+  overlayClassName,
+  preventDismissFromFloatingLayer,
+  type DialogSize,
+} from "@/app/components/ui/overlay-styles"
 
 const Dialog = DialogPrimitive.Root
 
@@ -19,37 +27,119 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className={cn(
-      "fixed inset-0 z-[99998] bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
+    className={cn(overlayClassName, className)}
     {...props}
   />
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+const dialogContentVariants = cva(
+  [
+    "fixed z-[99999] flex w-full flex-col overflow-y-auto border bg-background shadow-lg outline-none duration-200",
+    "max-h-[min(90vh,720px)] p-0",
+    "inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 rounded-t-2xl",
+    "data-[state=open]:animate-in data-[state=closed]:animate-out",
+    "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+    "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+    "sm:inset-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-xl",
+    "sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%]",
+    "sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]",
+    "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
+  ],
+  {
+    variants: {
+      flush: {
+        true: "",
+        false: "[&>:not([data-slot])]:px-6 [&>:not([data-slot])]:py-4",
+      },
+    },
+    defaultVariants: {
+      flush: false,
+    },
+  }
+)
+
+interface DialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>,
+    VariantProps<typeof dialogContentVariants> {
+  size?: DialogSize
+  showClose?: boolean
+  busy?: boolean
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-[99999] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-))
+  DialogContentProps
+>(
+  (
+    {
+      className,
+      children,
+      size = "md",
+      showClose = true,
+      busy = false,
+      flush = false,
+      onEscapeKeyDown,
+      onPointerDownOutside,
+      onFocusOutside,
+      onInteractOutside,
+      ...props
+    },
+    ref
+  ) => {
+    const guardDismiss = (
+      event: { target: EventTarget | null; preventDefault: () => void }
+    ) => {
+      if (busy) event.preventDefault()
+      preventDismissFromFloatingLayer(event)
+    }
+
+    return (
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            dialogContentVariants({ flush }),
+            dialogSizeClassName(size),
+            className
+          )}
+          onEscapeKeyDown={(event) => {
+            if (busy) event.preventDefault()
+            onEscapeKeyDown?.(event)
+          }}
+          onPointerDownOutside={(event) => {
+            guardDismiss(event)
+            onPointerDownOutside?.(event)
+          }}
+          onFocusOutside={(event) => {
+            guardDismiss(event)
+            onFocusOutside?.(event)
+          }}
+          onInteractOutside={(event) => {
+            guardDismiss(event)
+            onInteractOutside?.(event)
+          }}
+          {...props}
+        >
+          {children}
+          {showClose ? (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                "absolute right-3 top-3 opacity-70 hover:opacity-100"
+              )}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          ) : null}
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    )
+  }
+)
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({
@@ -57,8 +147,9 @@ const DialogHeader = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
+    data-slot="dialog-header"
     className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left",
+      "flex shrink-0 flex-col space-y-1.5 border-b bg-background px-6 py-4 pr-12 text-left",
       className
     )}
     {...props}
@@ -66,19 +157,54 @@ const DialogHeader = ({
 )
 DialogHeader.displayName = "DialogHeader"
 
+const DialogBody = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    data-slot="dialog-body"
+    className={cn("min-h-0 flex-1 overflow-y-auto px-6 py-4", className)}
+    {...props}
+  />
+)
+DialogBody.displayName = "DialogBody"
+
 const DialogFooter = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
+    data-slot="dialog-footer"
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      "flex shrink-0 flex-col-reverse gap-2 border-t bg-background px-6 py-4 sm:flex-row sm:justify-end",
       className
     )}
     {...props}
   />
 )
 DialogFooter.displayName = "DialogFooter"
+
+const DialogForm = React.forwardRef<
+  HTMLFormElement,
+  React.FormHTMLAttributes<HTMLFormElement>
+>(({ className, onKeyDown, ...props }, ref) => (
+  <form
+    ref={ref}
+    data-slot="dialog-form"
+    className={cn(
+      "flex min-h-0 max-h-[inherit] flex-1 flex-col overflow-hidden",
+      className
+    )}
+    onKeyDown={(event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.currentTarget.requestSubmit()
+      }
+      onKeyDown?.(event)
+    }}
+    {...props}
+  />
+))
+DialogForm.displayName = "DialogForm"
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
@@ -87,7 +213,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
+      "text-base font-semibold leading-none tracking-tight",
       className
     )}
     {...props}
@@ -115,7 +241,9 @@ export {
   DialogTrigger,
   DialogContent,
   DialogHeader,
+  DialogBody,
+  DialogForm,
   DialogFooter,
   DialogTitle,
   DialogDescription,
-} 
+}

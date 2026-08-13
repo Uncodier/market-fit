@@ -2,7 +2,6 @@ import React from "react"
 import type { Segment } from "../page"
 import { ContentIdeasKanban } from "./ContentIdeasKanban"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { Button } from "@/app/components/ui/button"
 import { FileText } from "@/app/components/ui/icons"
 
 interface SegmentThemesTabProps {
@@ -21,15 +20,6 @@ export function SegmentThemesTab({ segment }: SegmentThemesTabProps) {
         icon={<FileText className="h-12 w-12 text-primary/60" />}
         title="No Content Topics Available"
         description="There are no content topics for this segment yet. Generate topics to get ideas for blog posts, newsletters, and other content formats."
-        action={
-          <Button 
-            variant="default" 
-            className="flex items-center gap-2"
-          >
-            <FileText className="h-4 w-4" />
-            Generate Content Topics with AI
-          </Button>
-        }
       />
     );
   }

@@ -5,7 +5,14 @@ import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { ColorInput } from "../ui/color-input"
 import { 
@@ -29,8 +36,6 @@ import {
   XCircle,
   Trash2
 } from "../ui/icons"
-
-import { type SiteFormValues } from "./form-schema"
 
 interface BrandingSectionProps {
   active: boolean
@@ -74,6 +79,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving branding:", error)
     } finally {
@@ -97,26 +103,26 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Brand Essence */}
-      <Card id="brand-essence" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
+      <SectionCard id="brand-essence">
+        <SectionCardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
               <Target className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+              <SectionCardTitle className="flex items-center gap-2">
                 Brand Essence
                 <Badge variant="secondary" className="text-xs">Core</Badge>
-              </CardTitle>
+              </SectionCardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 The core essence of your brand - Who are you?
               </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent>
           <FormField
             control={form.control}
             name="branding.brand_essence"
@@ -124,7 +130,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               <FormItem>
                 <FormControl>
                   <Textarea 
-                    className="resize-none min-h-[100px] text-base"
+                    className="resize-none min-h-[72px] text-base"
                     placeholder="We are..."
                     {...field}
                     value={field.value || ""}
@@ -134,33 +140,33 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               </FormItem>
             )}
           />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('brand-essence')} disabled={savingCard === 'brand-essence'}>
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm" onClick={() => handleSave('brand-essence')} disabled={savingCard === 'brand-essence' || !form.formState.isDirty}>
             {savingCard === 'brand-essence' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Brand Personality */}
-      <Card id="brand-personality" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
+      <SectionCard id="brand-personality">
+        <SectionCardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
               <Heart className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+              <SectionCardTitle className="flex items-center gap-2">
                 Brand Personality
                 <Badge variant="secondary" className="text-xs">Identity</Badge>
-              </CardTitle>
+              </SectionCardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 If your brand were a person, what would they be like?
               </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent>
           <FormField
             control={form.control}
             name="branding.brand_personality"
@@ -168,7 +174,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               <FormItem>
                 <FormControl>
                   <Textarea 
-                    className="resize-none min-h-[100px] text-base"
+                    className="resize-none min-h-[72px] text-base"
                     placeholder="We are confident, innovative, approachable..."
                     {...field}
                     value={field.value || ""}
@@ -178,33 +184,33 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               </FormItem>
             )}
           />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('brand-personality')} disabled={savingCard === 'brand-personality'}>
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm" onClick={() => handleSave('brand-personality')} disabled={savingCard === 'brand-personality' || !form.formState.isDirty}>
             {savingCard === 'brand-personality' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Brand Benefits */}
-      <Card id="brand-benefits" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
+      <SectionCard id="brand-benefits">
+        <SectionCardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
               <Lightbulb className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+              <SectionCardTitle className="flex items-center gap-2">
                 Brand Benefits
                 <Badge variant="secondary" className="text-xs">Value</Badge>
-              </CardTitle>
+              </SectionCardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 What emotional and functional benefits do you provide?
               </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent>
           <FormField
             control={form.control}
             name="branding.brand_benefits"
@@ -212,7 +218,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               <FormItem>
                 <FormControl>
                   <Textarea 
-                    className="resize-none min-h-[100px] text-base"
+                    className="resize-none min-h-[72px] text-base"
                     placeholder="Peace of mind, increased efficiency, better results..."
                     {...field}
                     value={field.value || ""}
@@ -222,33 +228,33 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               </FormItem>
             )}
           />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('brand-benefits')} disabled={savingCard === 'brand-benefits'}>
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm" onClick={() => handleSave('brand-benefits')} disabled={savingCard === 'brand-benefits' || !form.formState.isDirty}>
             {savingCard === 'brand-benefits' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Brand Attributes */}
-      <Card id="brand-attributes" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
+      <SectionCard id="brand-attributes">
+        <SectionCardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
               <CheckCircle className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+              <SectionCardTitle className="flex items-center gap-2">
                 Brand Attributes
                 <Badge variant="secondary" className="text-xs">Features</Badge>
-              </CardTitle>
+              </SectionCardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 What are the key features and characteristics of your offering?
               </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent>
           <FormField
             control={form.control}
             name="branding.brand_attributes"
@@ -256,7 +262,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               <FormItem>
                 <FormControl>
                   <Textarea 
-                    className="resize-none min-h-[100px] text-base"
+                    className="resize-none min-h-[72px] text-base"
                     placeholder="24/7 support, advanced analytics, user-friendly interface..."
                     {...field}
                     value={field.value || ""}
@@ -266,33 +272,33 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               </FormItem>
             )}
           />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('brand-attributes')} disabled={savingCard === 'brand-attributes'}>
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm" onClick={() => handleSave('brand-attributes')} disabled={savingCard === 'brand-attributes' || !form.formState.isDirty}>
             {savingCard === 'brand-attributes' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Brand Values */}
-      <Card id="brand-values" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
+      <SectionCard id="brand-values">
+        <SectionCardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
               <Heart className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+              <SectionCardTitle className="flex items-center gap-2">
                 Brand Values
                 <Badge variant="secondary" className="text-xs">Principles</Badge>
-              </CardTitle>
+              </SectionCardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 What core values drive your brand?
               </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent>
           <FormField
             control={form.control}
             name="branding.brand_values"
@@ -300,7 +306,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               <FormItem>
                 <FormControl>
                   <Textarea 
-                    className="resize-none min-h-[100px] text-base"
+                    className="resize-none min-h-[72px] text-base"
                     placeholder="Innovation, transparency, customer-centricity..."
                     {...field}
                     value={field.value || ""}
@@ -310,33 +316,33 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               </FormItem>
             )}
           />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('brand-values')} disabled={savingCard === 'brand-values'}>
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm" onClick={() => handleSave('brand-values')} disabled={savingCard === 'brand-values' || !form.formState.isDirty}>
             {savingCard === 'brand-values' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Brand Promise & Archetype */}
-      <Card id="brand-promise" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
+      <SectionCard id="brand-promise">
+        <SectionCardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
               <MessageSquare className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+              <SectionCardTitle className="flex items-center gap-2">
                 Brand Promise
                 <Badge variant="secondary" className="text-xs">Commitment</Badge>
-              </CardTitle>
+              </SectionCardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 What do you promise to deliver to your customers?
               </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="px-8 pb-8 space-y-6">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <FormField
             control={form.control}
             name="branding.brand_promise"
@@ -344,7 +350,7 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               <FormItem>
                 <FormControl>
                   <Textarea 
-                    className="resize-none min-h-[100px] text-base"
+                    className="resize-none min-h-[72px] text-base"
                     placeholder="We promise to..."
                     {...field}
                     value={field.value || ""}
@@ -388,26 +394,26 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               </FormItem>
             )}
           />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button variant="outline" onClick={() => handleSave('brand-promise')} disabled={savingCard === 'brand-promise'}>
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm" onClick={() => handleSave('brand-promise')} disabled={savingCard === 'brand-promise' || !form.formState.isDirty}>
             {savingCard === 'brand-promise' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Color Palette */}
-      <Card id="color-palette" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard id="color-palette">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
             Color Palette
-          </CardTitle>
+          </SectionCardTitle>
           <p className="text-sm text-muted-foreground">
             Define your brand's color system
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <FormField
               control={form.control}
@@ -553,30 +559,29 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               )}
             />
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('color-palette')}
-            disabled={savingCard === 'color-palette'}
+            disabled={savingCard === 'color-palette' || !form.formState.isDirty}
           >
             {savingCard === 'color-palette' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Typography */}
-      <Card id="typography" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard id="typography">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <Type className="h-5 w-5" />
             Typography
-          </CardTitle>
+          </SectionCardTitle>
           <p className="text-sm text-muted-foreground">
             Define your brand's typography system
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               control={form.control}
@@ -649,30 +654,29 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               </FormItem>
             )}
           />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('typography')}
-            disabled={savingCard === 'typography'}
+            disabled={savingCard === 'typography' || !form.formState.isDirty}
           >
             {savingCard === 'typography' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Voice and Tone */}
-      <Card id="voice-tone" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard id="voice-tone">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
             Voice and Tone
-          </CardTitle>
+          </SectionCardTitle>
           <p className="text-sm text-muted-foreground">
             Define how your brand communicates with your audience
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <FormField
             control={form.control}
             name="branding.communication_style"
@@ -850,30 +854,29 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               ))}
             </div>
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('voice-tone')}
-            disabled={savingCard === 'voice-tone'}
+            disabled={savingCard === 'voice-tone' || !form.formState.isDirty}
           >
             {savingCard === 'voice-tone' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Brand Guidelines */}
-      <Card id="brand-guidelines" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard id="brand-guidelines">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <Lightbulb className="h-5 w-5" />
             Brand Guidelines
-          </CardTitle>
+          </SectionCardTitle>
           <p className="text-sm text-muted-foreground">
             Define what your brand should and shouldn't do
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           {/* Do's */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -1176,17 +1179,16 @@ export function BrandingSection({ active, onSave }: BrandingSectionProps) {
               </div>
             </div>
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('brand-guidelines')}
-            disabled={savingCard === 'brand-guidelines'}
+            disabled={savingCard === 'brand-guidelines' || !form.formState.isDirty}
           >
             {savingCard === 'brand-guidelines' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
 
     </div>

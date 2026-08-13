@@ -7,9 +7,11 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/app/components/ui/dialog"
@@ -96,52 +98,55 @@ export function RegisterPurchasePaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            {t("bills.payment.title") || "Register payment"}
-          </DialogTitle>
-          <DialogDescription>
-            {t("bills.payment.desc") || "Record a payment against this vendor bill."}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="rounded-md bg-muted/50 p-3 text-sm">
-            <div className="text-muted-foreground">{t("bills.field.amountDue") || "Amount due"}</div>
-            <div className="font-medium text-primary">
-              {purchase ? formatCurrency(purchase.amountDue) : "$0.00"} {purchase?.currency}
+      <DialogContent size="sm" busy={loading}>
+        <DialogForm onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              {t("bills.payment.title") || "Register payment"}
+            </DialogTitle>
+            <DialogDescription>
+              {t("bills.payment.desc") || "Record a payment against this vendor bill."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
+            <div className="rounded-md bg-muted/50 p-3 text-sm">
+              <div className="text-muted-foreground">{t("bills.field.amountDue") || "Amount due"}</div>
+              <div className="font-medium text-primary">
+                {purchase ? formatCurrency(purchase.amountDue) : "$0.00"} {purchase?.currency}
+              </div>
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>{t("bills.field.amount") || "Amount"}</Label>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              max={purchase?.amountDue || 0}
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t("bills.field.method") || "Method"}</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger className="h-12">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>{t("bills.field.notes") || "Notes"}</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
+            <div className="grid gap-2">
+              <Label>{t("bills.field.amount") || "Amount"}</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                max={purchase?.amountDue || 0}
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                required
+                className="h-12"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("bills.field.method") || "Method"}</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger className="h-12">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("bills.field.notes") || "Notes"}</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               {t("common.cancel") || "Cancel"}
@@ -152,7 +157,7 @@ export function RegisterPurchasePaymentDialog({
                 : (t("bills.payment.submit") || "Register payment")}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

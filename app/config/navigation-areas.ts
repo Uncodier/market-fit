@@ -77,14 +77,15 @@ export const NAVIGATION_AREAS: Record<
       { key: "visits", href: "/visits" },
       { key: "checkIn", href: "/pos/check-in" },
       { key: "inventory", href: "/inventory" },
+      { key: "printers", href: "/settings", settingsTab: "printers" },
     ],
   },
   buying: {
     categoryKey: "layout.category.buying",
     items: [
-      { key: "purchasesOrders", href: "/purchases/orders" },
       { key: "bills", href: "/bills" },
       { key: "transactions", href: "/transactions" },
+      { key: "purchasesOrders", href: "/purchases/orders" },
       { key: "purchasesSubscriptions", href: "/purchases/subscriptions" },
       { key: "purchasesQuotes", href: "/purchases/quotes" },
       { key: "purchasesLibrary", href: "/purchases/library" },

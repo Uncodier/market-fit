@@ -7,6 +7,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -106,14 +107,14 @@ export function PosModifierPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] max-h-[85vh] flex flex-col">
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
             {titleName} - {t("pos.modifiers.title") || "Add extras"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto py-4 pr-1">
+        <DialogBody>
           <ModifierPickerPanel
             groups={groups}
             value={selectedModifiers}
@@ -122,7 +123,7 @@ export function PosModifierPickerDialog({
             imageContext={imageContext}
             currency={currency}
           />
-        </div>
+        </DialogBody>
 
         <DialogFooter className="gap-2 sm:gap-2">
           {allOptional && (

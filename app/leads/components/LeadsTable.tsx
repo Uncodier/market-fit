@@ -1,13 +1,21 @@
+"use client"
+
 import React from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Badge } from "@/app/components/ui/badge"
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Button } from "@/app/components/ui/button"
-import { Card } from "@/app/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { ChevronLeft, ChevronRight, Mail, Phone } from "@/app/components/ui/icons"
+import { Mail, Phone, Users } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
-import { Lead, STATUS_STYLES } from "@/app/leads/types"
-import { Segment } from "@/app/leads/types"
+import { EmptyCard } from "@/app/components/ui/empty-card"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { Lead, Segment } from "@/app/leads/types"
+import {
+  DocumentListHead,
+  DocumentListRow,
+  EntityCell,
+  StatusDot,
+  documentListShellClassName,
+} from "@/app/components/documents/document-list"
 
 interface LeadsTableProps {
   leads: Lead[]
@@ -20,7 +28,19 @@ interface LeadsTableProps {
   segments: Segment[]
 }
 
-export function LeadsTable({ 
+function statusLabel(status: string) {
+  if (status === "not_qualified") return "Not qualified"
+  return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ")
+}
+
+function companyName(lead: Lead) {
+  if (lead.companies?.name) return lead.companies.name
+  if (lead.company && typeof lead.company === "object") return lead.company.name || null
+  if (typeof lead.company === "string") return lead.company
+  return null
+}
+
+export function LeadsTable({
   leads,
   currentPage,
   itemsPerPage,
@@ -28,135 +48,114 @@ export function LeadsTable({
   onPageChange,
   onItemsPerPageChange,
   onLeadClick,
-  segments
+  segments,
 }: LeadsTableProps) {
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalLeads / itemsPerPage)
-  
-  // Función para obtener el nombre del segmento
+
   const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return "No Segment"
-    const segment = segments.find(s => s.id === segmentId)
-    return segment?.name || "Unknown Segment"
+    if (!segmentId) return null
+    return segments.find((segment) => segment.id === segmentId)?.name || null
   }
 
-  // Función para truncar texto largo - ya no se necesita para nombres
-  const truncateText = (text: string, maxLength: number = 15) => {
-    if (!text || text.length <= maxLength) return text
-    return `${text.substring(0, maxLength)}...`
+  if (leads.length === 0) {
+    return (
+      <EmptyCard
+        icon={<Users className="h-16 w-16 text-muted-foreground" />}
+        title="No leads found"
+        description="There are no leads to display."
+      />
+    )
   }
-  
+
   return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="min-w-[200px]">Name</TableHead>
-            <TableHead className="w-[120px] min-w-[120px] max-w-[120px]">Phone</TableHead>
-            <TableHead className="w-[140px] min-w-[140px] max-w-[140px]">Company</TableHead>
-            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Segment</TableHead>
-            <TableHead className="w-[130px] min-w-[130px] max-w-[130px]">Status</TableHead>
-            <TableHead className="w-[120px] min-w-[120px] max-w-[120px] text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-            {leads.length > 0 ? (
-              leads.map((lead) => (
-            <TableRow 
-              key={lead.id}
-                  className="group hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => onLeadClick(lead)}
-            >
-              <TableCell>
-                <div className="space-y-0.5">
-                  <p className="font-medium text-sm line-clamp-2" title={lead.name}>{lead.name}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-2" title={lead.email}>{lead.email}</p>
-                </div>
-              </TableCell>
-              <TableCell className="font-medium">
-                {lead.phone || "-"}
-              </TableCell>
-              <TableCell className="font-medium">
-                <div className="line-clamp-2" title={typeof lead.company === 'string' ? lead.company : (lead.company?.name || "-")}>
-                  {typeof lead.company === 'string' ? lead.company : (lead.company?.name || "-")}
-                </div>
-              </TableCell>
-              <TableCell className="font-medium">
-                <div className="line-clamp-2" title={getSegmentName(lead.segment_id)}>
-                  {getSegmentName(lead.segment_id)}
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge className={`${STATUS_STYLES[lead.status]}`}>
-                  {lead.status}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      window.open(`mailto:${lead.email}`)
-                    }}
-                  >
-                    <Mail className="h-4 w-4" />
-                    <span className="sr-only">Email</span>
-                  </Button>
-                  {lead.phone && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        window.open(`tel:${lead.phone}`)
-                      }}
-                    >
-                      <Phone className="h-4 w-4" />
-                      <span className="sr-only">Call</span>
-                    </Button>
-                  )}
-                </div>
-              </TableCell>
+    <TooltipProvider delayDuration={200}>
+      <div className={documentListShellClassName()}>
+        <Table className="min-w-[760px]">
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <DocumentListHead className="w-[34%]">Lead</DocumentListHead>
+              <DocumentListHead className="w-[22%]">Company</DocumentListHead>
+              <DocumentListHead className="w-[16%]">Status</DocumentListHead>
+              <DocumentListHead className="w-[16%]">Segment</DocumentListHead>
+              <DocumentListHead className="w-[12%]" align="right">Actions</DocumentListHead>
             </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={6} className="h-24 text-center">
-              No leads found.
-            </TableCell>
-          </TableRow>
-        )}
-        </TableBody>
-      </Table>
-      <div className="flex items-center justify-between px-6 py-4 border-t">
-        <div className="flex items-center gap-4">
-          <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{Math.min(indexOfFirstItem + 1, totalLeads)}</span> to <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalLeads)}</span> of <span className="font-medium">{totalLeads}</span> leads
-          </p>
-          <Select
-            value={itemsPerPage.toString()}
-            onValueChange={onItemsPerPageChange}
-          >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={itemsPerPage.toString()} />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {[5, 10, 20, 50].map((value) => (
-                <SelectItem key={value} value={value.toString()}>
-                  {value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          </TableHeader>
+          <TableBody>
+            {leads.map((lead) => (
+              <DocumentListRow key={lead.id} onClick={() => onLeadClick(lead)}>
+                <TableCell className="py-3.5">
+                  <EntityCell
+                    name={lead.name}
+                    secondary={lead.email || lead.phone}
+                    meta={lead.position}
+                    secondaryMono={false}
+                  />
+                </TableCell>
+                <TableCell className="py-3.5 text-sm text-muted-foreground">
+                  {companyName(lead) || "—"}
+                </TableCell>
+                <TableCell className="py-3.5">
+                  <StatusDot status={lead.status} label={statusLabel(lead.status)} />
+                </TableCell>
+                <TableCell className="py-3.5 text-sm text-muted-foreground">
+                  {getSegmentName(lead.segment_id) || "—"}
+                </TableCell>
+                <TableCell className="py-3.5 text-right" onClick={(event) => event.stopPropagation()}>
+                  <div className="flex justify-end gap-0.5">
+                    {lead.email && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(`mailto:${lead.email}`)}>
+                            <Mail className="h-4 w-4" />
+                            <span className="sr-only">Email</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Email</TooltipContent>
+                      </Tooltip>
+                    )}
+                    {lead.phone && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(`tel:${lead.phone}`)}>
+                            <Phone className="h-4 w-4" />
+                            <span className="sr-only">Call</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Call</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                </TableCell>
+              </DocumentListRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="flex items-center justify-between border-t border-border/60 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-muted-foreground">
+              Showing <span className="font-medium text-foreground">{Math.min(indexOfFirstItem + 1, totalLeads)}</span>
+              {" – "}
+              <span className="font-medium text-foreground">{Math.min(indexOfFirstItem + itemsPerPage, totalLeads)}</span>
+              {" of "}
+              <span className="font-medium text-foreground">{totalLeads}</span> leads
+            </p>
+            <Select value={itemsPerPage.toString()} onValueChange={onItemsPerPageChange}>
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={itemsPerPage.toString()} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[5, 10, 20, 50].map((value) => (
+                  <SelectItem key={value} value={value.toString()}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
         </div>
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={onPageChange}
-        />
       </div>
-    </Card>
+    </TooltipProvider>
   )
-} 
+}

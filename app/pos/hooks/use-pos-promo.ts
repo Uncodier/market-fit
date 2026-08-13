@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   findMatchingConditionPromotionLocal,
+  promotionRequiresIdentifiableBuyer,
   resolvePromotionDiscountLocal,
   type LocalPromoLine,
   type LocalPromoMatch,
@@ -18,6 +19,8 @@ type UsePosPromoArgs = {
   promotions: LocalPromotion[];
   originLocationId: string;
   siteTimezone?: string | null;
+  hasLead?: boolean;
+  onRequireLead?: () => void;
   t: (key: string) => string;
 };
 
@@ -26,6 +29,8 @@ export function usePosPromo({
   promotions,
   originLocationId,
   siteTimezone = null,
+  hasLead = false,
+  onRequireLead,
   t,
 }: UsePosPromoArgs) {
   const [promoCode, setPromoCode] = useState("");
@@ -50,6 +55,30 @@ export function usePosPromo({
       });
   }, [cart]);
 
+  const applyMatch = useCallback(
+    (match: LocalPromoMatch, leadPresent: boolean): boolean => {
+      if (
+        promotionRequiresIdentifiableBuyer(match.usageLimitPerUser) &&
+        !leadPresent
+      ) {
+        if (onRequireLead) {
+          onRequireLead();
+        } else {
+          toast.error(
+            t("pos.cart.requireLeadTitle") ||
+              "Promotion requires an identifiable buyer",
+          );
+        }
+        return false;
+      }
+      setPromoCode(match.code || "");
+      setAppliedPromo(match);
+      toast.success(t("pos.cart.promoApplied") || "Promotion applied");
+      return true;
+    },
+    [onRequireLead, t],
+  );
+
   // Keep applied promo in sync with cart; auto-apply codeless condition promos
   useEffect(() => {
     if (promoLines.length === 0) {
@@ -68,6 +97,12 @@ export function usePosPromo({
           timezone: siteTimezone,
         });
         if ("error" in res) return null;
+        if (
+          promotionRequiresIdentifiableBuyer(res.data.usageLimitPerUser) &&
+          !hasLead
+        ) {
+          return null;
+        }
         if (
           res.data.discount === current.discount &&
           res.data.promotionId === current.promotionId
@@ -93,6 +128,12 @@ export function usePosPromo({
 
       if (!match) return null;
       if (
+        promotionRequiresIdentifiableBuyer(match.usageLimitPerUser) &&
+        !hasLead
+      ) {
+        return null;
+      }
+      if (
         current &&
         current.promotionId === match.promotionId &&
         current.discount === match.discount
@@ -101,7 +142,14 @@ export function usePosPromo({
       }
       return match;
     });
-  }, [promoLines, promotions, originLocationId, siteTimezone, promoCode]);
+  }, [
+    promoLines,
+    promotions,
+    originLocationId,
+    siteTimezone,
+    promoCode,
+    hasLead,
+  ]);
 
   const clearAppliedPromo = useCallback(() => {
     setAppliedPromo(null);
@@ -112,62 +160,70 @@ export function usePosPromo({
     setAppliedPromo(null);
   }, []);
 
-  const validatePromotion = useCallback(() => {
-    if (promoLines.length === 0) {
-      toast.error(t("pos.errorCartEmpty") || "Cart is empty");
-      return;
-    }
+  const validatePromotion = useCallback(
+    (opts?: { leadPresent?: boolean }) => {
+      const leadPresent = opts?.leadPresent ?? hasLead;
+      if (promoLines.length === 0) {
+        toast.error(t("pos.errorCartEmpty") || "Cart is empty");
+        return;
+      }
 
-    const trimmed = promoCode.trim();
-    if (trimmed) {
-      const res = resolvePromotionDiscountLocal({
-        code: trimmed,
+      const trimmed = promoCode.trim();
+      if (trimmed) {
+        const res = resolvePromotionDiscountLocal({
+          code: trimmed,
+          promotions,
+          lines: promoLines,
+          locationId: originLocationId || null,
+          timezone: siteTimezone,
+        });
+        if ("error" in res) {
+          setAppliedPromo(null);
+          toast.error(res.error);
+          return;
+        }
+        applyMatch(res.data, leadPresent);
+        return;
+      }
+
+      const match = findMatchingConditionPromotionLocal({
         promotions,
         lines: promoLines,
         locationId: originLocationId || null,
         timezone: siteTimezone,
       });
-      if ("error" in res) {
+      if (!match) {
         setAppliedPromo(null);
-        toast.error(res.error);
+        toast.error(
+          t("pos.cart.noMatchingPromo") ||
+            "No matching promotion for this order",
+        );
         return;
       }
-      setPromoCode(res.data.code || trimmed.toUpperCase());
-      setAppliedPromo(res.data);
-      toast.success(t("pos.cart.promoApplied") || "Promotion applied");
-      return;
-    }
-
-    const match = findMatchingConditionPromotionLocal({
+      applyMatch(match, leadPresent);
+    },
+    [
+      promoLines,
+      promoCode,
       promotions,
-      lines: promoLines,
-      locationId: originLocationId || null,
-      timezone: siteTimezone,
-    });
-    if (!match) {
-      setAppliedPromo(null);
-      toast.error(
-        t("pos.cart.noMatchingPromo") ||
-          "No matching promotion for this order",
-      );
-      return;
-    }
-    setAppliedPromo(match);
-    toast.success(t("pos.cart.promoApplied") || "Promotion applied");
-  }, [
-    promoLines,
-    promoCode,
-    promotions,
-    originLocationId,
-    siteTimezone,
-    t,
-  ]);
+      originLocationId,
+      siteTimezone,
+      hasLead,
+      applyMatch,
+      t,
+    ],
+  );
+
+  const appliedPromoRequiresLead = promotionRequiresIdentifiableBuyer(
+    appliedPromo?.usageLimitPerUser,
+  );
 
   return {
     promoCode,
     setPromoCode,
     appliedPromo,
     promoDiscount: appliedPromo?.discount ?? 0,
+    appliedPromoRequiresLead,
     validatePromotion,
     clearAppliedPromo,
     resetPromo,

@@ -3,7 +3,14 @@
 import React, { useState, useEffect } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -209,18 +216,18 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
   )
 
   return (
-    <Card>
-      <CardHeader>
+    <SectionCard>
+      <SectionCardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>{t('marketplace.catalogDetails.entities') || 'Entities & Collections'}</CardTitle>
+          <SectionCardTitle>{t('marketplace.catalogDetails.entities') || 'Entities & Collections'}</SectionCardTitle>
           {!loading && (
             <Button variant="outline" size="sm" onClick={handleAddCustomCategory}>
               <Plus className="w-4 h-4 mr-2" /> Add Custom Category
             </Button>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
+      </SectionCardHeader>
+      <SectionCardContent>
         {loading ? (
           <div className="space-y-8">
             {[0, 1].map((i) => (
@@ -341,12 +348,12 @@ export function ItemSpecsEditor({ catalogItemId, item, handleSave, saving }: Pro
             )
           })
         )}
-      </CardContent>
+      </SectionCardContent>
       <ActionFooter>
-        <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
+        <Button variant="outline" type="button" onClick={handleSave} disabled={saving} size="sm">
           {saving ? "Saving..." : "Save Behaviors"}
         </Button>
       </ActionFooter>
-    </Card>
+    </SectionCard>
   )
 }

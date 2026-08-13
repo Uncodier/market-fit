@@ -5,7 +5,14 @@ import { CatalogItem } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { ProductPaymentOptionsCard } from "./ProductPaymentOptionsCard"
 import { ItemSpecsEditor } from "./ItemSpecsEditor"
@@ -45,11 +52,11 @@ export function MarketplaceTab({
         />
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Marketplace Listing</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>Marketplace Listing</SectionCardTitle>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="is_marketplace_listed" className="text-base cursor-pointer">List in Marketplace</Label>
@@ -61,11 +68,11 @@ export function MarketplaceTab({
               onCheckedChange={(checked) => setFormData({...formData, is_marketplace_listed: checked as boolean})}
             />
           </div>
-        </CardContent>
+        </SectionCardContent>
         <ActionFooter>
-          <Button variant="outline" onClick={handleSave} disabled={saving}>Save Listing</Button>
+          <Button variant="outline" onClick={handleSave} disabled={saving} size="sm">Save Listing</Button>
         </ActionFooter>
-      </Card>
+      </SectionCard>
     </div>
   )
 }

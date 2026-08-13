@@ -4,58 +4,39 @@ import React, { useState, useEffect } from "react"
 import useSWR from "swr"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { listShipments } from "./actions"
+import { listShipments, updateShipmentStatus } from "./actions"
 import { ShipmentParams } from "./types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Badge } from "@/app/components/ui/badge"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Pagination } from "@/app/components/ui/pagination"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { Button } from "@/app/components/ui/button"
-import { Send, Search, Eye, ExternalLink, LayoutGrid, Clock, Package, Truck, CheckCircle2, Ban, XCircle, ListOrdered, Check, ChevronDown, Filter } from "@/app/components/ui/icons"
-import Link from "next/link"
-import { format, formatDistanceToNow } from "date-fns"
+import { Send, LayoutGrid, Clock, Package, Truck, CheckCircle2 } from "@/app/components/ui/icons"
 import { toast } from "sonner"
-import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { KanbanView } from "./components/KanbanView"
-import { updateShipmentStatus } from "./actions"
+import { ShipmentsTable, ShipmentsTableSkeleton } from "./components/ShipmentsTable"
 import { listLocations } from "@/app/inventory/actions"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { navigateToOrder } from "@/app/hooks/use-navigation-history"
+import { navigateToShipment } from "@/app/hooks/use-navigation-history"
 import { useRouter } from "next/navigation"
-
 import { CreateShipmentDialog } from "./components/CreateShipmentDialog"
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-muted text-foreground hover:bg-muted/50 border-none",
-  preparing: "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300 border-yellow-200 dark:border-yellow-900/50",
-  shipped: "bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-900/50",
-  in_transit: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900/50",
-  delivered: "bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-green-200 dark:border-green-900/50",
-  cancelled: "bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-900/50",
-  failed: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-300 dark:border-red-900/50",
-}
+import { EmptyCard } from "@/app/components/ui/empty-card"
 
 export default function ShipmentsPage() {
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const router = useRouter()
-  
+
   const [page, setPage] = useState(1)
   const pageSize = 50
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [locationFilter, setLocationFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [locationFilter, setLocationFilter] = useState("all")
   const [viewType, setViewType] = useMobileView("table")
 
   const { data: locationsData } = useSWR(
-    currentSite?.id ? ['locations', currentSite.id] : null,
+    currentSite?.id ? ["locations", currentSite.id] : null,
     () => listLocations(currentSite!.id)
   )
   const locations = locationsData?.data || []
@@ -74,13 +55,13 @@ export default function ShipmentsPage() {
   )
 
   useEffect(() => {
-    const event = new CustomEvent('breadcrumb:update', {
+    const event = new CustomEvent("breadcrumb:update", {
       detail: {
-        title: t('layout.sidebar.shipments') || 'Shipments'
-      }
-    });
-    window.dispatchEvent(event);
-  }, [t]);
+        title: t("layout.sidebar.shipments") || "Shipments",
+      },
+    })
+    window.dispatchEvent(event)
+  }, [t])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,7 +71,7 @@ export default function ShipmentsPage() {
 
   const handleUpdateShipmentStatus = async (shipmentId: string, newStatus: string) => {
     if (!currentSite?.id) return
-    
+
     try {
       const result = await updateShipmentStatus(currentSite.id, shipmentId, newStatus)
       if (result.error) {
@@ -145,20 +126,20 @@ export default function ShipmentsPage() {
                     onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
                   >
                     <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
-                      <SelectValue placeholder={t('allLocations') || 'All Locations'} />
+                      <SelectValue placeholder={t("allLocations") || "All Locations"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t('allLocations') || 'All Locations'}</SelectItem>
+                      <SelectItem value="all">{t("allLocations") || "All Locations"}</SelectItem>
                       {locations.map((loc) => (
                         <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
-                
+
                 <form onSubmit={handleSearch} className="w-full md:w-auto">
-                  <SearchInput 
-                    placeholder={t('shipments.search') || "Search tracking or customer..."} 
+                  <SearchInput
+                    placeholder={t("shipments.search") || "Search tracking or customer..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     alwaysExpanded={false}
@@ -172,7 +153,6 @@ export default function ShipmentsPage() {
                 </div>
               </div>
             </div>
-            {/* Mobile View Selector */}
             <div className="md:hidden flex justify-end mt-2">
               <ViewSelector currentView={viewType} onViewChange={setViewType} />
             </div>
@@ -180,155 +160,37 @@ export default function ShipmentsPage() {
         </StickyHeader>
 
         <div className="flex-1 p-4 md:p-6 overflow-auto">
-          <div className="flex flex-col gap-6">
-            <div className={cn(viewType === 'table' ? "bg-card rounded-xl shadow-sm border border-border overflow-hidden" : "")}>
-              {isLoading ? (
-                <div className="p-6 space-y-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
-                </div>
+          <div className={cn(viewType === "kanban" ? "overflow-x-auto -mx-4 md:-mx-6" : "")}>
+            <div className={cn(viewType === "kanban" ? "px-4 md:px-6" : "")}>
+              {!currentSite || isLoading ? (
+                <ShipmentsTableSkeleton />
               ) : error ? (
                 <div className="p-6 text-center text-red-500">
                   Failed to load shipments. {error.message}
                 </div>
+              ) : viewType === "kanban" ? (
+                data?.data && data.data.length > 0 ? (
+                  <KanbanView
+                    shipments={data.data}
+                    onUpdateShipmentStatus={handleUpdateShipmentStatus}
+                  />
+                ) : (
+                  <EmptyCard
+                    icon={<Send className="h-6 w-6 text-muted-foreground" />}
+                    title={t("shipments.empty.title") || "No shipments found"}
+                    description={t("shipments.empty.description") || (searchQuery ? "No shipments match your search criteria." : "Shipments will appear here once an order is created with shipping.")}
+                  />
+                )
               ) : (
-                <>
-                  {viewType === 'table' ? (
-                    <>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Order</TableHead>
-                            <TableHead>Customer</TableHead>
-                            <TableHead>Tracking</TableHead>
-                            <TableHead>Courier</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead className="w-16"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {data?.data && data.data.length > 0 ? (
-                            data.data.map((shipment) => (
-                              <TableRow key={shipment.id}>
-                                <TableCell>
-                                  <div className="font-medium text-foreground">
-                                    {shipment.sale_order_id ? (
-                                      <button 
-                                        onClick={() => navigateToOrder({ orderId: shipment.sale_order_id!, orderNumber: shipment.sale_orders?.order_number, router })} 
-                                        className="hover:underline text-blue-600 text-left"
-                                      >
-                                        {shipment.sale_orders?.order_number || 'Unknown Order'}
-                                      </button>
-                                    ) : (
-                                      shipment.sale_orders?.order_number || 'Unknown Order'
-                                    )}
-                                  </div>
-                                  {shipment.locations?.name && (
-                                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center">
-                                      <Send className="h-3 w-3 mr-1" /> From: {shipment.locations.name}
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="font-medium">{shipment.leads?.name || 'Unknown'}</div>
-                                  {shipment.leads?.email && <div className="text-xs text-muted-foreground">{shipment.leads.email}</div>}
-                                </TableCell>
-                                <TableCell>
-                                  {shipment.tracking_number ? (
-                                    <div className="text-sm">
-                                      <div className="font-mono">{shipment.tracking_number}</div>
-                                      <div className="text-xs text-muted-foreground">{shipment.carrier || 'Unknown Carrier'}</div>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground text-sm">Not assigned</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {shipment.assignee_profile ? (
-                                    <div className="text-sm flex flex-col">
-                                      <span className="font-medium">{shipment.assignee_profile.name}</span>
-                                      {shipment.last_located_at && (
-                                        <span className="text-[10px] text-muted-foreground">
-                                          Seen {formatDistanceToNow(new Date(shipment.last_located_at), { addSuffix: true })}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground text-sm text-center">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className={STATUS_STYLES[shipment.status] || ''}>
-                                    {shipment.status.replace('_', ' ').toUpperCase()}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="text-sm text-foreground">
-                                    {format(new Date(shipment.created_at), 'MMM d, yyyy')}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {format(new Date(shipment.created_at), 'h:mm a')}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Link 
-                                    href={`/shipments/${shipment.id}`} 
-                                    className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                  </Link>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">
-                                <EmptyCard
-                                  icon={<Send className="h-6 w-6 text-muted-foreground" />}
-                                  title={t('shipments.empty.title') || "No shipments found"}
-                                  description={t('shipments.empty.description') || (searchQuery ? "No shipments match your search criteria." : "Shipments will appear here once an order is created with shipping.")}
-                                  className="border-0 shadow-none bg-transparent"
-                                />
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                      
-                      {(data?.count ?? 0) > pageSize && (
-                        <div className="p-4 border-t flex justify-center bg-muted/30">
-                          <Pagination 
-                            currentPage={page}
-                            totalPages={Math.ceil(data.count / pageSize)}
-                            onPageChange={setPage}
-                          />
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className={viewType === 'kanban' ? "overflow-x-auto -mx-4 md:-mx-6" : ""}>
-                      <div className={viewType === 'kanban' ? "px-4 md:px-6" : ""}>
-                        {data?.data && data.data.length > 0 ? (
-                          <KanbanView 
-                            shipments={data.data} 
-                            onUpdateShipmentStatus={handleUpdateShipmentStatus} 
-                          />
-                        ) : (
-                          <div className="pt-4">
-                            <EmptyCard
-                              icon={<Send className="h-6 w-6 text-muted-foreground" />}
-                              title={t('shipments.empty.title') || "No shipments found"}
-                              description={t('shipments.empty.description') || (searchQuery ? "No shipments match your search criteria." : "Shipments will appear here once an order is created with shipping.")}
-                              className="border-0 shadow-none bg-transparent"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
+                <ShipmentsTable
+                  shipments={data?.data || []}
+                  page={page}
+                  pageSize={pageSize}
+                  totalCount={data?.count ?? 0}
+                  searchQuery={searchQuery}
+                  onPageChange={setPage}
+                  onShipmentClick={(shipment) => navigateToShipment({ shipmentId: shipment.id, router })}
+                />
               )}
             </div>
           </div>

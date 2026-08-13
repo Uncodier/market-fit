@@ -6,7 +6,9 @@ import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -165,12 +167,12 @@ export function CreateShipmentDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent size="md" busy={saving}>
+        <DialogForm onSubmit={(e) => { e.preventDefault(); void handleSave() }}>
         <DialogHeader>
           <DialogTitle>{t("shipments.createTitle") || "Create Shipment"}</DialogTitle>
         </DialogHeader>
-
-        <div className="grid gap-4 py-4">
+        <DialogBody className="grid gap-4">
           <div className="space-y-2">
             <Label>{t("shipments.order") || "Order"}</Label>
             <RelationSelect
@@ -280,16 +282,16 @@ export function CreateShipmentDialog() {
               </div>
             </div>
           </div>
-        </div>
-
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
             {t("common.cancel") || "Cancel"}
           </Button>
-          <Button onClick={handleSave} disabled={saving || !orderValue || !selectedLocation}>
+          <Button type="submit" disabled={saving || !orderValue || !selectedLocation}>
             {saving ? t("common.saving") || "Saving..." : t("common.create") || "Create"}
           </Button>
         </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

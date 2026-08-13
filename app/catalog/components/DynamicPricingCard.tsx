@@ -9,7 +9,14 @@ import {
   getDynamicPricingConfig,
   slugifyFieldKey,
 } from "@/app/catalog/dynamic-pricing"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -130,17 +137,17 @@ export function DynamicPricingCard({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
+    <SectionCard>
+      <SectionCardHeader>
+        <SectionCardTitle>
           {t("catalog.dynamicPricing.title") || "Dynamic pricing"}
-        </CardTitle>
-        <CardDescription>
+        </SectionCardTitle>
+        <SectionCardDescription>
           {t("catalog.dynamicPricing.description") ||
             "Configure AI-assisted quotations with custom fields and pricing rules."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+        </SectionCardDescription>
+      </SectionCardHeader>
+      <SectionCardContent className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <Label htmlFor="is_dynamic_price" className="text-base cursor-pointer">
@@ -450,12 +457,12 @@ export function DynamicPricingCard({
             </div>
           </div>
         )}
-      </CardContent>
+      </SectionCardContent>
       <ActionFooter>
-        <Button variant="outline" onClick={onSave} disabled={saving}>
+        <Button variant="outline" onClick={onSave} disabled={saving} size="sm">
           {t("catalog.dynamicPricing.save") || "Save dynamic pricing"}
         </Button>
       </ActionFooter>
-    </Card>
+    </SectionCard>
   )
 }

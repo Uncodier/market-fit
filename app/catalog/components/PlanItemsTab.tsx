@@ -11,7 +11,14 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import {
   Dialog,
   DialogContent,
@@ -97,22 +104,22 @@ export function PlanItemsTab({ planItemId, isReservation }: { planItemId: string
 
   if (loading) {
     return (
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm">
-        <CardContent className="p-6 space-y-4">
+      <SectionCard className="border dark:border-white/5 border-black/5 shadow-sm">
+        <SectionCardContent className="p-6 space-y-4">
           <Skeleton className="h-10 w-full"/>
           <Skeleton className="h-20 w-full"/>
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
     )
   }
 
   return (
-    <Card id="plan-items" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
+    <SectionCard id="plan-items">
+      <SectionCardHeader className="flex flex-row items-center justify-between">
         <div className="space-y-2">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+          <SectionCardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" /> {t('catalog.planItems.title') || 'Plan Items'}
-          </CardTitle>
+          </SectionCardTitle>
           {isReservation && !items.some(i => i.digital_catalog_item?.digital_subtype === 'pass') && (
             <div className="text-sm text-destructive font-medium flex items-center gap-2 mt-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -160,9 +167,9 @@ export function PlanItemsTab({ planItemId, isReservation }: { planItemId: string
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </CardHeader>
+      </SectionCardHeader>
 
-      <CardContent className="px-6 md:px-8 pb-8">
+      <SectionCardContent>
         {items.length > 0 ? (
           <div className="border rounded-lg overflow-x-auto">
             <table className="w-full min-w-[500px]">
@@ -202,7 +209,7 @@ export function PlanItemsTab({ planItemId, isReservation }: { planItemId: string
             className="border-0 shadow-none bg-transparent"
           />
         )}
-      </CardContent>
-    </Card>
+      </SectionCardContent>
+    </SectionCard>
   )
 }

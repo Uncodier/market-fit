@@ -23,12 +23,18 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { ActionFooter } from "@/app/components/ui/card-footer"
-import { EmptyCard } from "@/app/components/ui/empty-card"
 import { toast } from "sonner"
-import { Trash2, Activity } from "@/app/components/ui/icons"
+import { Trash2 } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { PromotionChannelsCard } from "../components/PromotionChannelsCard"
 import { PromotionRestrictionsCard } from "../components/PromotionRestrictionsCard"
@@ -45,6 +51,7 @@ import { formatBogoLabel } from "../bogo-discount"
 import { PromotionMerchandisingFields } from "../components/PromotionMerchandisingFields"
 import { PromotionCurrencyField } from "../components/PromotionCurrencyField"
 import { resolvePromotionCurrency } from "../promotion-currency"
+import { PromotionPerformanceTab } from "../components/PromotionPerformanceTab"
 
 export default function PromotionDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -260,13 +267,13 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
         <div className="flex-1 p-4 md:p-6 overflow-auto">
           <TabsContent value="details" className="m-0 border-0 p-0">
             <div className="mx-auto max-w-[800px] space-y-6">
-              <Card>
-            <CardHeader>
-              <CardTitle>
+              <SectionCard>
+            <SectionCardHeader>
+              <SectionCardTitle>
                 {t("promotions.detail.configuration") || "Configuration"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </SectionCardTitle>
+            </SectionCardHeader>
+            <SectionCardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t("promotions.detail.name") || "Name"}</Label>
@@ -383,13 +390,13 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
                   siteName={currentSite?.name}
                 />
               </div>
-            </CardContent>
+            </SectionCardContent>
             <ActionFooter>
-              <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
+              <Button variant="outline" type="button" onClick={handleSave} disabled={saving} size="sm">
                 {saveLabel}
               </Button>
             </ActionFooter>
-          </Card>
+          </SectionCard>
 
           {currentSite && (
             <PromotionChannelsCard
@@ -466,16 +473,19 @@ export default function PromotionDetail(props: { params: Promise<{ id: string }>
         </TabsContent>
 
         <TabsContent value="performance" className="m-0 border-0 p-0 h-full flex flex-col">
-          <div className="flex-1 flex items-center justify-center p-6">
-            <EmptyCard 
-              icon={<Activity className="h-10 w-10" />}
-              title={t("promotions.detail.performanceTitle") || "Performance Metrics"}
-              description={
-                t("promotions.detail.performanceDescription") ||
-                "Performance data for this promotion will appear here once it has been used."
-              }
-              variant="fancy"
-            />
+          <div className="flex-1 p-4 md:p-6">
+            {currentSite && (
+              <PromotionPerformanceTab
+                siteId={currentSite.id}
+                promotionId={promo.id}
+                usageCount={promo.usage_count}
+                usageLimit={promo.usage_limit}
+                currency={resolvePromotionCurrency(
+                  promo,
+                  currentSite?.settings?.currency,
+                )}
+              />
+            )}
           </div>
         </TabsContent>
       </div>

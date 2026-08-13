@@ -44,8 +44,14 @@ export function ReservationRowActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0" disabled={updating}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+          disabled={updating}
+        >
           <MoreHorizontal className="h-4 w-4" />
+          <span className="sr-only">{t("reservations.table.actions") || "Actions"}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

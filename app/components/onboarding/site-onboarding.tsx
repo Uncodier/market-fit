@@ -9,7 +9,14 @@ import { useRouter } from "next/navigation"
 
 // UI Components
 import { Button } from "../ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "../ui/card-footer"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
@@ -657,12 +664,12 @@ export function SiteOnboarding({
 
             {/* Main Content skeleton */}
             <div className="lg:col-span-2">
-              <Card className="h-[600px]">
-                <CardHeader>
+              <SectionCard className="h-[600px]">
+                <SectionCardHeader>
                   <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mb-2" />
                   <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                </CardHeader>
-                <CardContent className="space-y-6">
+                </SectionCardHeader>
+                <SectionCardContent className="space-y-4">
                   <div className="space-y-4">
                     <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                     <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
@@ -675,14 +682,14 @@ export function SiteOnboarding({
                     <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                     <div className="h-24 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                   </div>
-                </CardContent>
+                </SectionCardContent>
                 <ActionFooter>
                   <div className="flex justify-between">
                     <div className="h-10 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                     <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
                   </div>
                 </ActionFooter>
-              </Card>
+              </SectionCard>
             </div>
           </div>
 
@@ -817,20 +824,20 @@ export function SiteOnboarding({
           {/* Right Column - Form Content */}
           <div className="lg:col-span-2">
             <Form {...form}>
-              <Card className="bg-card rounded-xl border shadow-lg overflow-hidden">
+              <SectionCard className="bg-card rounded-xl border shadow-lg overflow-hidden">
                 {/* Step Header */}
-                <CardHeader className="p-8 pb-6">
+                <SectionCardHeader className="p-8 pb-6">
                   <div className="mb-2">
-                    <CardTitle className="text-2xl font-semibold mb-3">
+                    <SectionCardTitle className="text-2xl font-semibold mb-3">
                       {steps[currentStep - 1].title}
-                    </CardTitle>
+                    </SectionCardTitle>
                     <p className="text-muted-foreground text-lg">
                       {steps[currentStep - 1].description}
                     </p>
                   </div>
-                </CardHeader>
+                </SectionCardHeader>
 
-                <CardContent className="px-8 pb-12">
+                <SectionCardContent className="pb-12">
                   {currentStep === 1 && (
                     <BasicInfoStep form={form} />
                   )}
@@ -1085,7 +1092,7 @@ export function SiteOnboarding({
                       )}
                     </>
                   )}
-                </CardContent>
+                </SectionCardContent>
 
                 <ActionFooter>
                   {currentStep < 8 && (
@@ -1148,7 +1155,7 @@ export function SiteOnboarding({
                     </div>
                   )}
                 </ActionFooter>
-              </Card>
+              </SectionCard>
             </Form>
           </div>
         </div>

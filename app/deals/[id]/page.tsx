@@ -1,122 +1,50 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Deal, DEAL_STATUSES } from "@/app/deals/types"
-import { getDealById, updateDeal } from "@/app/deals/actions"
-import { getTasksByDealId } from "@/app/tasks/actions"
-import { JourneyTimeline } from "@/app/leads/components/JourneyTimeline"
-import { TasksProvider } from "@/app/leads/context/TasksContext"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { Deal } from "@/app/deals/types"
+import { getDealById, updateDeal } from "@/app/deals/actions"
 import { Button } from "@/app/components/ui/button"
-import { DealDetail } from "@/app/deals/components/DealDetail"
-import { Skeleton } from "@/app/components/ui/skeleton"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
-import { Badge } from "@/app/components/ui/badge"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { ClipboardList } from "@/app/components/ui/icons"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/app/components/ui/alert-dialog"
-import { useLocalization } from "@/app/context/LocalizationContext"
+import { JourneyView } from "@/app/leads/components/JourneyView"
+import { DealStageBar, stageToStatus } from "@/app/deals/components/DealStageBar"
+import { DealIdentityHeader } from "@/app/deals/components/DealIdentityHeader"
+import { DealAboutPanel } from "@/app/deals/components/DealAboutPanel"
+import { DealSalesOrder } from "@/app/deals/components/DealSalesOrder"
+import { DealQualifyTab } from "@/app/deals/components/DealQualifyTab"
+import { DealDetailSkeleton } from "@/app/deals/components/DealDetailSkeleton"
+import { DEAL_STAGE_TO_JOURNEY } from "@/app/deals/components/deal-format"
 
-// Deal status component
-interface DealStatusBarProps {
-  currentStatus: string;
-  onStatusChange: (status: string) => void;
-}
-
-const DEAL_STATUS_STYLES = {
-  open: "bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200",
-  won: "bg-green-100 text-green-800 hover:bg-green-200 border-green-200",
-  lost: "bg-red-100 text-red-800 hover:bg-red-200 border-red-200"
-};
-
-function DealStatusBar({ currentStatus, onStatusChange }: DealStatusBarProps) {
-  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
-  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
-  
-  const handleStatusClick = (status: string) => {
-    if ((status === "won" || status === "lost") && currentStatus !== status) {
-      setPendingStatus(status);
-      setShowCompletionDialog(true);
-    } else {
-      onStatusChange(status);
-    }
-  };
-  
-  const handleConfirmStatus = () => {
-    if (pendingStatus) {
-      onStatusChange(pendingStatus);
-      setPendingStatus(null);
-    }
-    setShowCompletionDialog(false);
-  };
-  
-  return (
-    <div className="flex items-center gap-3 w-full sm:w-auto">
-      <div className="flex space-x-2 overflow-x-auto hide-scrollbar pb-1">
-        {DEAL_STATUSES.map((status) => (
-          <Badge 
-            key={status.id} 
-            className={`px-3 py-1 text-sm cursor-pointer whitespace-nowrap transition-colors duration-200 shrink-0 ${
-              currentStatus === status.id 
-                ? DEAL_STATUS_STYLES[status.id as keyof typeof DEAL_STATUS_STYLES] || 'bg-primary text-primary-foreground'
-                : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border border border-transparent'
-            }`}
-            onClick={() => handleStatusClick(status.id)}
-          >
-            {status.name}
-          </Badge>
-        ))}
-      </div>
-      
-      <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark deal as {pendingStatus}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to mark this deal as {pendingStatus}? This will update the deal metrics and pipeline.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmStatus}
-              className={pendingStatus === "won" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"}
-            >
-              Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
+function mergeDeal(previous: Deal | null, next: Deal): Deal {
+  if (!previous) return next
+  return {
+    ...previous,
+    ...next,
+    contacts: next.contacts ?? previous.contacts,
+    owners: next.owners ?? previous.owners,
+    company: next.company ?? previous.company,
+    companies: next.companies ?? previous.companies,
+  }
 }
 
 export default function DealPage(props: { params: Promise<{ id: string }> }) {
-  const unwrappedParams = React.use(props.params);
-  const { t } = useLocalization()
+  const unwrappedParams = React.use(props.params)
   const router = useRouter()
   const [deal, setDeal] = useState<Deal | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("summary")
 
   const id = unwrappedParams.id as string
-  const [tasks, setTasks] = useState<any[]>([])
+
+  const handleUpdate = (updated: Deal) => {
+    setDeal((previous) => mergeDeal(previous, updated))
+  }
 
   useEffect(() => {
     async function loadDeal() {
       if (!id) return
-      
+
       setLoading(true)
       try {
         const result = await getDealById(id)
@@ -125,26 +53,18 @@ export default function DealPage(props: { params: Promise<{ id: string }> }) {
           router.push("/deals")
           return
         }
-        
+
         if (result.deal) {
           setDeal(result.deal)
-          
-          // Load tasks in parallel (non-blocking)
-          getTasksByDealId(id).then(tasksResult => {
-            if (tasksResult.data) {
-              setTasks(tasksResult.data)
-            }
-          }).catch(e => console.error("Failed to load tasks:", e))
-
-          // Update breadcrumb
-          const event = new CustomEvent('breadcrumb:update', {
-            detail: {
-              title: result.deal.name,
-              path: `/deals/${id}`,
-              section: 'deals'
-            }
-          });
-          window.dispatchEvent(event);
+          window.dispatchEvent(
+            new CustomEvent("breadcrumb:update", {
+              detail: {
+                title: result.deal.name,
+                path: `/deals/${id}`,
+                section: "deals",
+              },
+            })
+          )
         }
       } catch (error) {
         console.error("Error loading deal:", error)
@@ -154,62 +74,48 @@ export default function DealPage(props: { params: Promise<{ id: string }> }) {
       }
     }
 
-    loadDeal()
-    
-    // Cleanup breadcrumb on unmount
+    void loadDeal()
+
     return () => {
-      const resetEvent = new CustomEvent('breadcrumb:update', {
-        detail: {
-          title: null,
-          path: null,
-          section: 'deals'
-        }
-      });
-      window.dispatchEvent(resetEvent);
-    };
+      window.dispatchEvent(
+        new CustomEvent("breadcrumb:update", {
+          detail: { title: null, path: null, section: "deals" },
+        })
+      )
+    }
   }, [id, router])
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!deal) return;
-    
+  const handleStageChange = async (stage: Deal["stage"]) => {
+    if (!deal) return
     try {
-      const result = await updateDeal({ id: deal.id, status: newStatus as Deal["status"] })
+      const result = await updateDeal({
+        id: deal.id,
+        stage,
+        status: stageToStatus(stage),
+      })
       if (result.error) {
         toast.error(result.error)
-      } else if (result.deal) {
-        toast.success(`Status updated to ${newStatus}`)
-        setDeal(result.deal)
+        return
       }
-    } catch (e) {
-      toast.error("Failed to update status")
+      if (result.deal) {
+        toast.success(`Stage updated to ${stage.replace(/_/g, " ")}`)
+        handleUpdate(result.deal)
+      }
+    } catch {
+      toast.error("Failed to update stage")
     }
   }
 
   if (loading) {
-    return (
-      <div className="flex-1 p-0">
-        <StickyHeader>
-          <div className="flex items-center justify-between px-4 md:px-16 w-full">
-            <Skeleton className="h-10 w-64 mb-2" />
-          </div>
-        </StickyHeader>
-        <div className="py-8 pb-16">
-          <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-            <div className="flex-1 max-w-[880px] px-4 md:px-16 space-y-6">
-              <Skeleton className="h-[400px] w-full" />
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    return <DealDetailSkeleton />
   }
 
   if (!deal) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">{t('deals.notFound') || 'Deal not found'}</h2>
-          <Button onClick={() => router.push("/deals")}>{t('deals.backToDeals') || 'Back to Deals'}</Button>
+          <h2 className="text-2xl font-bold">Deal not found</h2>
+          <Button onClick={() => router.push("/deals")}>Back to Deals</Button>
         </div>
       </div>
     )
@@ -217,44 +123,43 @@ export default function DealPage(props: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="flex-1 p-0">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="activity">
         <StickyHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-8 md:px-16 w-full gap-4 sm:gap-0">
-            <TabsList className="w-full sm:w-auto justify-start overflow-x-auto hide-scrollbar">
-              <TabsTrigger value="summary">Deal Summary</TabsTrigger>
-              <TabsTrigger value="details">Details & Notes</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-            </TabsList>
-            <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar w-full sm:w-auto justify-start sm:justify-end">
-              {deal && (
-                <DealStatusBar 
-                  currentStatus={deal.status}
-                  onStatusChange={handleStatusChange}
-                />
-              )}
+          <div className="pt-0 flex-1 w-full">
+            <div className="flex items-center justify-between w-full gap-4">
+              <TabsList>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="sales">Sales</TabsTrigger>
+                <TabsTrigger value="qualify">Qualify</TabsTrigger>
+              </TabsList>
+              <div className="flex items-center overflow-x-auto shrink-0">
+                <DealStageBar currentStage={deal.stage} onStageChange={(stage) => void handleStageChange(stage)} />
+              </div>
             </div>
           </div>
         </StickyHeader>
-        
-        <div className="py-8 pb-16">
-          <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-            <div className="flex-1 max-w-[880px] px-0 sm:px-4 md:px-16">
-              <TabsContent value="summary" className="mt-0 p-0">
-                <DealDetail deal={deal} onUpdate={(updatedDeal) => setDeal(updatedDeal)} tab="summary" onTabChange={setActiveTab} />
-              </TabsContent>
-              <TabsContent value="details" className="mt-0 p-0">
-                <DealDetail deal={deal} onUpdate={(updatedDeal) => setDeal(updatedDeal)} tab="details" onTabChange={setActiveTab} />
-              </TabsContent>
+
+        <div className="px-4 lg:px-8 py-5">
+          <DealIdentityHeader deal={deal} onUpdate={handleUpdate} />
+
+          <div className="mt-5 flex flex-col lg:flex-row border-t border-border/50">
+            <div className="w-full lg:min-w-0 lg:flex-1 pt-5 lg:pr-8">
               <TabsContent value="activity" className="mt-0 pt-0">
-                <TasksProvider leadId={id}>
-                  <div className="w-full pb-6 flex flex-col h-full overflow-auto pt-6">
-                    <div className="mt-0">
-                      <JourneyTimeline leadId={id} />
-                    </div>
-                  </div>
-                </TasksProvider>
+                <JourneyView leadId={deal.id} currentStage={DEAL_STAGE_TO_JOURNEY[deal.stage]} />
+              </TabsContent>
+              <TabsContent value="sales" className="mt-0 pt-0">
+                <DealSalesOrder deal={deal} onUpdate={handleUpdate} />
+              </TabsContent>
+              <TabsContent value="qualify" className="mt-0 pt-0">
+                <DealQualifyTab deal={deal} onUpdate={handleUpdate} />
               </TabsContent>
             </div>
+
+            <aside className="w-full lg:w-[340px] xl:w-[380px] shrink-0 pt-5 lg:pl-8 lg:border-l border-border/50">
+              <div className="lg:sticky lg:top-[calc(var(--topbar-height,64px)+71px+16px)] lg:max-h-[calc(100vh-var(--topbar-height,64px)-96px)] lg:overflow-y-auto">
+                <DealAboutPanel deal={deal} onUpdate={handleUpdate} />
+              </div>
+            </aside>
           </div>
         </div>
       </Tabs>

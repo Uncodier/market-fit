@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
 import { listOutbox } from "@/app/pos/local/outbox";
@@ -32,13 +34,13 @@ export function PosSyncIssues({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>
             {t("pos.sync.error") || "Sync issues"}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 max-h-80 overflow-auto">
+        <DialogBody className="space-y-3">
           {rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {t("pos.sync.synced") || "Synced"}
@@ -61,7 +63,8 @@ export function PosSyncIssues({
               </div>
             ))
           )}
-        </div>
+        </DialogBody>
+        <DialogFooter>
         <Button
           onClick={() => {
             if (siteId) void drainPosOutbox(siteId);
@@ -70,6 +73,7 @@ export function PosSyncIssues({
         >
           {t("pos.sync.syncing") || "Retry sync"}
         </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

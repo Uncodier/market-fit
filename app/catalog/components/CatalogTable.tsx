@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import { CatalogItem, CatalogRelatedItem, CatalogCategory } from "@/app/types"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
@@ -14,11 +14,12 @@ import { resolveItemImage } from "@/app/lib/image-utils"
 import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { Accordion, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from "@/app/components/ui/accordion"
-
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Button } from "@/app/components/ui/button"
 import { cn } from "@/lib/utils"
+import { formatCurrency } from "@/app/lib/formatters"
 import { EditCatalogCategoryDialog } from "./EditCatalogCategoryDialog"
+import { DocumentListHead, StatusDot } from "@/app/components/documents/document-list"
 
 interface CatalogTableProps {
   items: CatalogItem[]
@@ -54,29 +55,30 @@ function RelatedChips({
   if (items.length === 0) return null
   const visible = items.slice(0, 3)
   const remaining = items.length - visible.length
+  const names = visible.map((related) => related.name)
+  if (remaining > 0) names.push(`+${remaining}`)
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-1 max-w-[280px]">
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-0.5">
-        {label}
-      </span>
-      {visible.map((related) => (
-        <NavigationLink key={related.id} href={`/catalog/${related.id}`}>
-          <Badge
-            variant="outline"
-            className="text-[10px] font-normal px-1.5 py-0 h-5 hover:bg-muted/80 cursor-pointer"
-          >
-            {related.name}
-          </Badge>
-        </NavigationLink>
-      ))}
-      {remaining > 0 && (
-        <Badge variant="outline" className="text-[10px] font-normal px-1.5 py-0 h-5">
-          +{remaining}
-        </Badge>
-      )}
-    </div>
+    <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground/80">
+      {label} {names.join(" · ")}
+    </p>
   )
+}
+
+function catalogAccent(item: CatalogItem): boolean {
+  return item.status === "archived" || item.availability_status === "unavailable"
+}
+
+function availabilityStatus(item: CatalogItem): { status: string; label: string } {
+  if (item.status === "archived") return { status: "archived", label: "Archived" }
+  if (item.availability_mode === "always") return { status: "always", label: "Always sellable" }
+  if (item.availability_mode === "inventory") return { status: "active", label: "Inventory" }
+  const map: Record<string, string> = {
+    available: "Available",
+    sold_out: "Sold out",
+    unavailable: "Unavailable",
+  }
+  return { status: item.availability_status || "available", label: map[item.availability_status] || item.availability_status }
 }
 
 export function CatalogTable({ 
@@ -251,14 +253,11 @@ export function CatalogTable({
                                   <Table>
                                     <TableHeader>
                                       <TableRow className="hover:bg-transparent">
-                                        {isDragEnabled && <TableHead className="w-8"></TableHead>}
-                                        <TableHead className="w-10"></TableHead>
-                                        <TableHead>{t('catalog.name') || 'Name & SKU'}</TableHead>
-                                        <TableHead>{t('catalog.description') || 'Description'}</TableHead>
-                                        <TableHead>{t('catalog.price') || 'Target Price'}</TableHead>
-                                        <TableHead>{t('catalog.mode') || 'Availability Mode'}</TableHead>
-                                        <TableHead>{t('catalog.status') || 'Sellable Status'}</TableHead>
-                                        <TableHead className="w-16"></TableHead>
+                                        {isDragEnabled && <DocumentListHead className="w-8"></DocumentListHead>}
+                                        <DocumentListHead className="w-[42%]">{t("catalog.name") || "Name"}</DocumentListHead>
+                                        <DocumentListHead className="w-[22%]">{t("catalog.status") || "Availability"}</DocumentListHead>
+                                        <DocumentListHead className="w-[22%]" align="right">{t("catalog.price") || "Price"}</DocumentListHead>
+                                        <DocumentListHead className="w-[14%]" />
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -267,6 +266,18 @@ export function CatalogTable({
                                           const typeLabel = itemTypeLabel(item, t)
                                           const planIncludes = item.plan_includes || []
                                           const passRedeems = item.pass_redeems || []
+                                          const avail = availabilityStatus(item)
+                                          const priceLabel = item.is_dynamic_price
+                                            ? (item.lowest_sale_price != null || item.metadata?.dynamic_pricing?.min_price != null
+                                              ? `From ${formatCurrency(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price), item.currency || "USD")}`
+                                              : (t("catalog.dynamicPricing.quote") || "Quote"))
+                                            : item.target_sale_price != null
+                                              ? formatCurrency(item.target_sale_price, item.currency || "USD")
+                                              : "—"
+                                          const metaParts = [
+                                            typeLabel,
+                                            item.track_inventory ? (t("catalog.tracksStock") || "Tracks stock") : null,
+                                          ].filter(Boolean)
 
                                           return (
                                             <Draggable 
@@ -281,12 +292,13 @@ export function CatalogTable({
                                                   {...providedRow.draggableProps}
                                                   style={providedRow.draggableProps.style}
                                                   className={cn(
-                                                    item.status === 'archived' && 'opacity-60',
+                                                    "group border-b border-border/50 transition-colors hover:bg-muted/40",
+                                                    catalogAccent(item) && "opacity-70",
                                                     snapshotRow.isDragging && "bg-background shadow-md ring-1 ring-primary/20 z-50 relative table-row"
                                                   )}
                                                 >
                                                   {isDragEnabled && (
-                                                    <TableCell className="w-8 px-2 py-3">
+                                                    <TableCell className="w-8 px-2 py-3.5">
                                                       <div
                                                         {...providedRow.dragHandleProps}
                                                         className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-foreground"
@@ -295,108 +307,73 @@ export function CatalogTable({
                                                       </div>
                                                     </TableCell>
                                                   )}
-                                                  <TableCell className="py-3">
-                                                    <div className="h-8 w-8 rounded overflow-hidden flex-shrink-0 bg-muted">
-                                                      <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
+                                                  <TableCell className="py-3.5">
+                                                    <div className="flex min-w-0 items-center gap-3">
+                                                      <div className="h-9 w-9 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                                                        <img src={resolveItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
+                                                      </div>
+                                                      <div className="min-w-0 space-y-0.5">
+                                                        <p className="truncate text-sm font-medium leading-tight text-foreground">{item.name}</p>
+                                                        {item.sku ? (
+                                                          <p className="truncate font-mono text-[11px] leading-tight text-muted-foreground">{item.sku}</p>
+                                                        ) : null}
+                                                        {metaParts.length > 0 ? (
+                                                          <p className="truncate text-[11px] leading-tight text-muted-foreground/80">{metaParts.join(" · ")}</p>
+                                                        ) : null}
+                                                        {item.is_recurring && (
+                                                          <RelatedChips
+                                                            label={t("catalog.relations.includes") || "Includes"}
+                                                            items={planIncludes}
+                                                          />
+                                                        )}
+                                                        {item.digital_subtype === "pass" && (
+                                                          <RelatedChips
+                                                            label={t("catalog.relations.redeems") || "Redeems"}
+                                                            items={passRedeems}
+                                                          />
+                                                        )}
+                                                      </div>
                                                     </div>
                                                   </TableCell>
-                                                  <TableCell className="py-3">
-                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                      <div className="font-medium text-foreground">{item.name}</div>
-                                                      {typeLabel && (
-                                                        <Badge variant="secondary" className="text-[10px] font-normal px-1.5 py-0 h-5 capitalize">
-                                                          {typeLabel}
-                                                        </Badge>
-                                                      )}
-                                                    </div>
-                                                    {item.sku && <div className="text-xs text-muted-foreground font-mono mt-0.5">{item.sku}</div>}
-                                                    {item.is_recurring && (
-                                                      <RelatedChips
-                                                        label={t('catalog.relations.includes') || 'Includes'}
-                                                        items={planIncludes}
-                                                      />
-                                                    )}
-                                                    {item.digital_subtype === 'pass' && (
-                                                      <RelatedChips
-                                                        label={t('catalog.relations.redeems') || 'Redeems'}
-                                                        items={passRedeems}
-                                                      />
-                                                    )}
-                                                  </TableCell>
-                                                  <TableCell className="py-3">
-                                                    <div className="text-sm text-muted-foreground line-clamp-2 max-w-[200px]" title={item.description || ''}>
-                                                      {item.description || <span className="text-muted-foreground/50">-</span>}
-                                                    </div>
-                                                  </TableCell>
-                                                  <TableCell className="py-3">
-                                                    <div className="text-foreground">
-                                                      {item.is_dynamic_price ? (
-                                                        <span className="text-sm">
-                                                          {item.lowest_sale_price != null || item.metadata?.dynamic_pricing?.min_price != null
-                                                            ? `From ${new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price))}`
-                                                            : (t('catalog.dynamicPricing.quote') || 'Quote')}
-                                                        </span>
-                                                      ) : item.target_sale_price != null 
-                                                        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(item.target_sale_price)
-                                                        : <span className="text-muted-foreground">-</span>
-                                                      }
-                                                    </div>
-                                                  </TableCell>
-                                                  <TableCell className="py-3">
-                                                    <Badge variant="secondary" className="capitalize">
-                                                      {item.availability_mode}
-                                                    </Badge>
-                                                    {item.track_inventory && (
-                                                      <Badge variant="outline" className="ml-2 text-xs">
-                                                        Tracks Stock
-                                                      </Badge>
-                                                    )}
-                                                  </TableCell>
-                                                  <TableCell className="py-3">
-                                                    {item.availability_mode === 'manual' ? (
+                                                  <TableCell className="py-3.5" onClick={(event) => event.stopPropagation()}>
+                                                    {item.availability_mode === "manual" && item.status !== "archived" ? (
                                                       <Select 
                                                         value={item.availability_status} 
                                                         onValueChange={(val) => handleAvailabilityChange(item, val)}
-                                                        disabled={item.status === 'archived'}
                                                       >
-                                                        <SelectTrigger className="h-8 w-[130px] text-xs">
+                                                        <SelectTrigger className="h-8 w-[140px] text-xs border-0 bg-transparent px-0 shadow-none">
                                                           <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                           <SelectItem value="available">
-                                                            <div className="flex items-center gap-2">
-                                                              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                                                              <span>{t('catalog.status.available') || 'Available'}</span>
-                                                            </div>
+                                                            <StatusDot status="available" label={t("catalog.status.available") || "Available"} />
                                                           </SelectItem>
                                                           <SelectItem value="sold_out">
-                                                            <div className="flex items-center gap-2">
-                                                              <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
-                                                              <span>{t('catalog.status.soldOut') || 'Sold Out'}</span>
-                                                            </div>
+                                                            <StatusDot status="sold_out" label={t("catalog.status.soldOut") || "Sold Out"} />
                                                           </SelectItem>
                                                           <SelectItem value="unavailable">
-                                                            <div className="flex items-center gap-2">
-                                                              <div className="h-2 w-2 rounded-full bg-red-500"></div>
-                                                              <span>{t('catalog.status.unavailable') || 'Unavailable'}</span>
-                                                            </div>
+                                                            <StatusDot status="unavailable" label={t("catalog.status.unavailable") || "Unavailable"} />
                                                           </SelectItem>
                                                         </SelectContent>
                                                       </Select>
-                                                    ) : item.availability_mode === 'always' ? (
-                                                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none">
-                                                        Always Sellable
-                                                      </Badge>
                                                     ) : (
-                                                      <Badge variant="outline">
-                                                        Auto (Inventory)
-                                                      </Badge>
+                                                      <StatusDot status={avail.status} label={avail.label} />
                                                     )}
                                                   </TableCell>
-                                                  <TableCell className="py-3">
+                                                  <TableCell className="py-3.5">
+                                                    <div className="flex justify-end">
+                                                      <span className={cn(
+                                                        "text-[15px] font-semibold tabular-nums tracking-tight",
+                                                        catalogAccent(item) && "text-muted-foreground"
+                                                      )}>
+                                                        {priceLabel}
+                                                      </span>
+                                                    </div>
+                                                  </TableCell>
+                                                  <TableCell className="py-3.5 text-right">
                                                     <NavigationLink 
                                                       href={`/catalog/${item.id}`} 
-                                                      className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                                                      className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100"
                                                     >
                                                       <Edit className="h-4 w-4" />
                                                     </NavigationLink>
@@ -408,7 +385,7 @@ export function CatalogTable({
                                         })
                                       ) : (
                                         <TableRow>
-                                          <TableCell colSpan={isDragEnabled ? 8 : 7} className="h-24 text-center">
+                                          <TableCell colSpan={isDragEnabled ? 5 : 4} className="h-24 text-center">
                                             <span className="text-muted-foreground/50 text-sm">
                                               {t('catalog.emptyCategory') || "No items in this category."}
                                             </span>

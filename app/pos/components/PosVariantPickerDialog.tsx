@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { CatalogItem, VariantAxis } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { VariantPicker } from "@/app/components/commerce/pdp/VariantPicker"
@@ -75,12 +75,12 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>{item.name} - Options</DialogTitle>
         </DialogHeader>
 
-        <div className="py-4">
+        <DialogBody>
           {loading ? (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
@@ -122,7 +122,7 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
               }
             />
           )}
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

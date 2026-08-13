@@ -4,7 +4,14 @@ import { useState, useEffect } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { assignShipmentCourier } from "@/app/shipments/actions"
-import { Card, CardContent } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { User } from "@/app/components/ui/icons"
@@ -56,8 +63,8 @@ export function AssigneeCard({ shipmentId, initialAssignee, onUpdate }: Assignee
   const isDirty = (initialAssignee || "unassigned") !== assignee
 
   return (
-    <Card>
-      <CardContent className="p-4 space-y-4">
+    <SectionCard>
+      <SectionCardContent className="p-4 space-y-4">
         <div>
           <div className="text-xs text-muted-foreground font-medium mb-2 flex items-center justify-between">
             {t("shipments.assignedTo") || "COURIER"}
@@ -90,7 +97,7 @@ export function AssigneeCard({ shipmentId, initialAssignee, onUpdate }: Assignee
             </Select>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </SectionCardContent>
+    </SectionCard>
   )
 }

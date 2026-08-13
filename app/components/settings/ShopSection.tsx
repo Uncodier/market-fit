@@ -6,7 +6,14 @@ import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Switch } from "../ui/switch"
 import { Store, Image as ImageIcon, Truck, ShieldCheck, RotateCcw, PlusCircle, Trash2, CreditCard, Loader } from "../ui/icons"
@@ -52,6 +59,7 @@ export function ShopSection({ active, onSave }: ShopSectionProps) {
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving shop settings:", error)
     } finally {
@@ -102,15 +110,15 @@ export function ShopSection({ active, onSave }: ShopSectionProps) {
   return (
     <div className="space-y-6">
       {/* Hero Section */}
-      <Card id="shop-hero" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard id="shop-hero">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <Store className="h-5 w-5 text-gray-500" />
             Storefront Hero
-          </CardTitle>
+          </SectionCardTitle>
           <p className="text-sm text-gray-500 mt-1">Configure the main banner of your shop. Leave empty to hide.</p>
-        </CardHeader>
-        <CardContent className="space-y-8 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               control={form.control}
@@ -152,7 +160,7 @@ export function ShopSection({ active, onSave }: ShopSectionProps) {
                 <FormControl>
                   <Textarea 
                     placeholder="Discover our latest arrivals designed to elevate your everyday experience."
-                    className="min-h-[100px]"
+                    className="min-h-[72px]"
                     {...field}
                     value={field.value || ""}
                   />
@@ -196,29 +204,28 @@ export function ShopSection({ active, onSave }: ShopSectionProps) {
               </FormItem>
             )}
           />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            type="button" 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm" 
+            type="button"
             onClick={() => handleSave('shop-hero')}
-            disabled={savingCard === 'shop-hero'}
+            disabled={savingCard === 'shop-hero' || !form.formState.isDirty}
           >
             {savingCard === 'shop-hero' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Trust & Shipping */}
-      <Card id="shop-trust" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard id="shop-trust">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-gray-500" />
             Trust & Policies
-          </CardTitle>
+          </SectionCardTitle>
           <p className="text-sm text-gray-500 mt-1">Configure shipping thresholds and trust signals to boost conversions.</p>
-        </CardHeader>
-        <CardContent className="space-y-8 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
@@ -440,29 +447,28 @@ export function ShopSection({ active, onSave }: ShopSectionProps) {
               )}
             </div>
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            type="button" 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm" 
+            type="button"
             onClick={() => handleSave('shop-trust')}
-            disabled={savingCard === 'shop-trust'}
+            disabled={savingCard === 'shop-trust' || !form.formState.isDirty}
           >
             {savingCard === 'shop-trust' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
       {/* Payment & Delivery Policy */}
-      <Card id="shop-payments" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard id="shop-payments">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-gray-500" />
             Payment & Delivery Policy
-          </CardTitle>
+          </SectionCardTitle>
           <p className="text-sm text-gray-500 mt-1">Configure default payment methods and delivery options for your marketplace items. Products can still override these settings.</p>
-        </CardHeader>
-        <CardContent className="space-y-8 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-8">
             <div className="space-y-4">
               <h4 className="text-sm font-semibold">Accepted Payment Methods</h4>
@@ -730,18 +736,17 @@ export function ShopSection({ active, onSave }: ShopSectionProps) {
               </div>
             </div>
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            type="button" 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm" 
+            type="button"
             onClick={() => handleSave('shop-payments')}
-            disabled={savingCard === 'shop-payments'}
+            disabled={savingCard === 'shop-payments' || !form.formState.isDirty}
           >
             {savingCard === 'shop-payments' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
     </div>
   )
 }

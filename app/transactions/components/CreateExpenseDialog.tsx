@@ -5,7 +5,16 @@ import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogForm,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { RelationSelectValue } from "@/app/components/ui/relation-select"
@@ -289,8 +298,8 @@ export function CreateExpenseDialog({ siteId, open, onOpenChange, onSuccess, exp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
+      <DialogContent size="md" busy={loading || publishing}>
+        <DialogForm onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
               {isEditing
@@ -303,11 +312,10 @@ export function CreateExpenseDialog({ siteId, open, onOpenChange, onSuccess, exp
                 : (t('expenses.create.desc') || "Add a new expense for your site.")}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">{t('expenses.field.amount') || "Amount"}</Label>
-              <div className="col-span-3">
+          <DialogBody className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="amount">{t('expenses.field.amount') || "Amount"}</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -317,15 +325,15 @@ export function CreateExpenseDialog({ siteId, open, onOpenChange, onSuccess, exp
                   onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
                   required
                   placeholder="0.00"
+                  className="h-12"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="currency" className="text-right">{t('expenses.field.currency') || "Currency"}</Label>
-              <div className="col-span-3">
+              <div className="grid gap-2">
+                <Label htmlFor="currency">{t('expenses.field.currency') || "Currency"}</Label>
                 <Select value={formData.currency} onValueChange={(val) => setFormData(prev => ({ ...prev, currency: val }))}>
-                  <SelectTrigger id="currency"><SelectValue placeholder={t('expenses.placeholder.currency') || "Select currency"} /></SelectTrigger>
+                  <SelectTrigger id="currency" className="h-12">
+                    <SelectValue placeholder={t('expenses.placeholder.currency') || "Select currency"} />
+                  </SelectTrigger>
                   <SelectContent>
                     {COMMON_CURRENCIES.map(opt => (
                       <SelectItem key={opt.code} value={opt.code}>{opt.label}</SelectItem>
@@ -335,34 +343,47 @@ export function CreateExpenseDialog({ siteId, open, onOpenChange, onSuccess, exp
               </div>
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">{t('expenses.field.type') || "Type"}</Label>
-              <div className="col-span-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="type">{t('expenses.field.type') || "Type"}</Label>
                 <Select value={formData.type} onValueChange={(val) => setFormData(prev => ({ ...prev, type: val }))}>
-                  <SelectTrigger id="type"><SelectValue placeholder={t('expenses.placeholder.selectType') || "Select type"} /></SelectTrigger>
+                  <SelectTrigger id="type" className="h-12">
+                    <SelectValue placeholder={t('expenses.placeholder.selectType') || "Select type"} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="fixed">{t('expenses.type.fixed') || "Fixed"}</SelectItem>
                     <SelectItem value="variable">{t('expenses.type.variable') || "Variable"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="date">{t('expenses.field.date') || "Date"}</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                  required
+                  className="h-12"
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category" className="text-right">{t('expenses.field.account') || "Account"}</Label>
-              <div className="col-span-3 space-y-1">
-                <Select value={formData.category} onValueChange={(val) => setFormData(prev => ({ ...prev, category: val }))}>
-                  <SelectTrigger id="category"><SelectValue placeholder={t('expenses.placeholder.selectAccount') || "Select account"} /></SelectTrigger>
-                  <SelectContent>
-                    {expenseCategories.map(cat => (
-                      <SelectItem key={cat.key || cat.code} value={cat.key || cat.code}>{cat.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {t('expenses.field.effectiveAccount') || "Effective account"}: {effectiveAccountLabel}
-                </p>
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="category">{t('expenses.field.account') || "Account"}</Label>
+              <Select value={formData.category} onValueChange={(val) => setFormData(prev => ({ ...prev, category: val }))}>
+                <SelectTrigger id="category" className="h-12">
+                  <SelectValue placeholder={t('expenses.placeholder.selectAccount') || "Select account"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {expenseCategories.map(cat => (
+                    <SelectItem key={cat.key || cat.code} value={cat.key || cat.code}>{cat.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t('expenses.field.effectiveAccount') || "Effective account"}: {effectiveAccountLabel}
+              </p>
             </div>
 
             <ExpenseAttributionFields
@@ -377,34 +398,18 @@ export function CreateExpenseDialog({ siteId, open, onOpenChange, onSuccess, exp
               campaignEmpty={t('expenses.empty.campaign') || "No campaigns found"}
             />
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="date" className="text-right">{t('expenses.field.date') || "Date"}</Label>
-              <div className="col-span-3">
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  required
-                />
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="notes">{t('expenses.field.notes') || "Notes"}</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder={t('expenses.placeholder.notes') || "Optional description"}
+                className="min-h-[80px]"
+              />
             </div>
-
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="notes" className="text-right mt-2">{t('expenses.field.notes') || "Notes"}</Label>
-              <div className="col-span-3">
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder={t('expenses.placeholder.notes') || "Optional description"}
-                  className="h-20"
-                />
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
+          </DialogBody>
+          <DialogFooter className="sm:justify-between">
             <div className="flex gap-2">
               {isEditing && accountingState !== 'posted' && (
                 <Button type="button" variant="outline" onClick={handlePublish} disabled={loading || publishing}>
@@ -413,7 +418,7 @@ export function CreateExpenseDialog({ siteId, open, onOpenChange, onSuccess, exp
               )}
               {isEditing && accountingState === 'posted' && (
                 <Button type="button" variant="outline" onClick={handleUnpublish} disabled={loading || publishing}>
-                  {publishing ? (t('common.saving') || "Saving...") : (t('common.cancel') || "Cancel")}
+                  {publishing ? (t('common.saving') || "Saving...") : (t('common.unpublish') || "Unpublish")}
                 </Button>
               )}
             </div>
@@ -426,7 +431,7 @@ export function CreateExpenseDialog({ siteId, open, onOpenChange, onSuccess, exp
               </Button>
             </div>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

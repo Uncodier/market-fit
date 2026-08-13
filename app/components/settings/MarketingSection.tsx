@@ -6,7 +6,14 @@ import { type SiteFormValues, type MarketingChannel, getFocusModeConfig } from "
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, Tag, Link, Globe, AppWindow, ChevronDown, ChevronRight } from "../ui/icons"
 import { Slider } from "../ui/slider"
@@ -31,6 +38,7 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving marketing:", error)
     } finally {
@@ -89,14 +97,14 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
 
   return (
     <>
-      <Card id="ai-focus-mode" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">AI Focus Mode</CardTitle>
+      <SectionCard id="ai-focus-mode">
+        <SectionCardHeader>
+          <SectionCardTitle>AI Focus Mode</SectionCardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Adjust the focus balance between sales conversion and user growth
           </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent>
           <div className="space-y-6">
             <FormField
               control={form.control}
@@ -154,26 +162,25 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               )}
             />
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('ai-focus-mode')}
-            disabled={savingCard === 'ai-focus-mode'}
+            disabled={savingCard === 'ai-focus-mode' || !form.formState.isDirty}
           >
             {savingCard === 'ai-focus-mode' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
-      <Card id="business-model" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Business Model</CardTitle>
+      <SectionCard id="business-model">
+        <SectionCardHeader>
+          <SectionCardTitle>Business Model</SectionCardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Select your business model focus areas. You can enable multiple models.
           </p>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent>
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <FormField
@@ -238,23 +245,22 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               />
             </div>
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('business-model')}
-            disabled={savingCard === 'business-model'}
+            disabled={savingCard === 'business-model' || !form.formState.isDirty}
           >
             {savingCard === 'business-model' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
-      <Card id="marketing-budget" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Marketing Budget (in USD)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+      <SectionCard id="marketing-budget">
+        <SectionCardHeader>
+          <SectionCardTitle>Marketing Budget (in USD)</SectionCardTitle>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               control={form.control}
@@ -301,24 +307,23 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               )}
             />
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('marketing-budget')}
-            disabled={savingCard === 'marketing-budget'}
+            disabled={savingCard === 'marketing-budget' || !form.formState.isDirty}
           >
             {savingCard === 'marketing-budget' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
 
-      <Card id="catalog-redirect" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
+      <SectionCard id="catalog-redirect">
+        <SectionCardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <CardTitle className="text-xl font-semibold">Products & Services</CardTitle>
+              <SectionCardTitle>Products & Services</SectionCardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Products and services have moved to the new dedicated Catalog module.
               </p>
@@ -334,14 +339,14 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               </Button>
             </a>
           </div>
-        </CardHeader>
-      </Card>
+        </SectionCardHeader>
+      </SectionCard>
 
-      <Card id="competitors" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
+      <SectionCard id="competitors">
+        <SectionCardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xl font-semibold">Competitors</CardTitle>
+              <SectionCardTitle>Competitors</SectionCardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Add your main competitors for market analysis
               </p>
@@ -356,8 +361,8 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               Add Competitor
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           {(!competitorList || competitorList.length === 0) ? (
             <EmptyCard 
               icon={<AppWindow className="h-10 w-10" />}
@@ -430,23 +435,22 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               </Button>
             </div>
           )))}
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('competitors')}
-            disabled={savingCard === 'competitors'}
+            disabled={savingCard === 'competitors' || !form.formState.isDirty}
           >
             {savingCard === 'competitors' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
-      <Card id="marketing-channels" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
+      <SectionCard id="marketing-channels">
+        <SectionCardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-xl font-semibold">Marketing Channels</CardTitle>
+              <SectionCardTitle>Marketing Channels</SectionCardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Add your marketing channels and platforms
               </p>
@@ -461,8 +465,8 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               Add Channel
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           {(!channelsList || channelsList.length === 0) ? (
             <EmptyCard 
               icon={<Globe className="h-10 w-10" />}
@@ -512,17 +516,16 @@ export function MarketingSection({ active, onSave }: MarketingSectionProps) {
               </Button>
             </div>
           )))}
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('marketing-channels')}
-            disabled={savingCard === 'marketing-channels'}
+            disabled={savingCard === 'marketing-channels' || !form.formState.isDirty}
           >
             {savingCard === 'marketing-channels' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
 
     </>
   )

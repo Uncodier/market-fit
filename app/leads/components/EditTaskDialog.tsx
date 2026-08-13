@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogForm, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
@@ -93,13 +93,12 @@ export function EditTaskDialog({ isOpen, onOpenChange, task }: EditTaskDialogPro
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Edit Task</DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+      <DialogContent size="md" busy={submitting}>
+        <DialogForm onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
             <div className="grid grid-cols-1 gap-2">
               <Label htmlFor="title" className="text-sm font-medium">Title <span className="text-red-500">*</span></Label>
               <Input
@@ -207,8 +206,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, task }: EditTaskDialogPro
                 placeholder="Enter additional notes"
               />
             </div>
-          </div>
-          
+          </DialogBody>
           <DialogFooter>
             <Button 
               type="button" 
@@ -222,7 +220,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, task }: EditTaskDialogPro
               {submitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

@@ -21,6 +21,7 @@ import { calculateOrderTaxTotal, roundMoney } from "@/app/commerce/taxes";
 import { resolveOrderShippingCost } from "@/app/commerce/delivery-options";
 import { resolveUnitPriceLocal } from "@/app/pos/local/resolve-unit-price-local";
 import { usePosPromo } from "@/app/pos/hooks/use-pos-promo";
+import { hasPosCustomer } from "@/app/pos/lead-utils";
 import {
   clearCartSession,
   loadCartSession,
@@ -40,6 +41,7 @@ type UsePosCartArgs = {
   priceListItems: any[];
   promotions?: any[];
   getTaxesForCart: (ids: string[]) => Promise<Record<string, any[]>>;
+  onRequireLead?: () => void;
   t: (key: string) => string;
 };
 
@@ -53,6 +55,7 @@ export function usePosCart({
   priceListItems,
   promotions = [],
   getTaxesForCart,
+  onRequireLead,
   t,
 }: UsePosCartArgs) {
   const [cart, setCart] = useState<PosCartItem[]>([]);
@@ -75,11 +78,14 @@ export function usePosCart({
   const restoredRef = useRef(false);
   const persistTimer = useRef<number | null>(null);
 
+  const hasLead = hasPosCustomer(leadValue);
+
   const {
     promoCode,
     setPromoCode,
     appliedPromo,
     promoDiscount,
+    appliedPromoRequiresLead,
     validatePromotion,
     clearAppliedPromo,
     resetPromo,
@@ -88,6 +94,8 @@ export function usePosCart({
     promotions,
     originLocationId,
     siteTimezone,
+    hasLead,
+    onRequireLead,
     t,
   });
 
@@ -451,6 +459,7 @@ export function usePosCart({
     setPromoCode,
     appliedPromo,
     promoDiscount,
+    appliedPromoRequiresLead,
     validatePromotion,
     clearAppliedPromo,
     selectedCartItemId,

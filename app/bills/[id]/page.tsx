@@ -276,7 +276,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
         </div>
       </StickyHeader>
 
-      <div className="px-6 py-6 max-w-5xl mx-auto w-full">
+      <div className="px-6 py-6 max-w-[800px] mx-auto w-full">
         {loading || !purchase ? (
           <div className="space-y-4">
             <Skeleton className="h-40 w-full" />

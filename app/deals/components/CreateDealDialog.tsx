@@ -8,20 +8,19 @@ import {
   PlusCircle, 
   Briefcase, 
   DollarSign, 
-  Globe,
-  Calendar,
   FileText,
-  User
 } from "@/app/components/ui/icons"
-import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { Label } from "@/app/components/ui/label"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogForm,
 } from "@/app/components/ui/dialog"
 import {
   Select,
@@ -115,7 +114,8 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
     setInternalOpen(newOpen)
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!currentSite?.id) {
       setError("Please select a site first")
       return
@@ -161,7 +161,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
         return
       }
       
-      // Limpiar el formulario
+      // Reset the form
       setName("")
       setAmount("")
       setCurrency("USD")
@@ -210,37 +210,25 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent 
-        className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto" 
-        onEscapeKeyDown={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onPointerDownOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onInteractOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>Create New Deal</DialogTitle>
-          <DialogDescription>
-            Add a new deal to your pipeline. Fill in the details below.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-5 py-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-              {error}
-            </div>
-          )}
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2 col-span-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                Deal Name <span className="text-red-500">*</span>
-              </label>
+      <DialogContent size="md" busy={isLoading}>
+        <DialogForm onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create New Deal</DialogTitle>
+            <DialogDescription>
+              Add a new deal to your pipeline. Fill in the details below.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="name">
+                Deal name <span className="text-destructive">*</span>
+              </Label>
               <div className="relative">
                 <Briefcase className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -253,31 +241,26 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
                 />
               </div>
             </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="amount" className="text-sm font-medium">
-                Amount
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="amount"
-                  type="number"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="h-12 pl-9"
-                  min="0"
-                  step="0.01"
-                />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="amount">Amount</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="amount"
+                    type="number"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="h-12 pl-9"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="currency" className="text-sm font-medium">
-                Currency
-              </label>
-              <div className="relative">
+              <div className="grid gap-2">
+                <Label htmlFor="currency">Currency</Label>
                 <Select value={currency} onValueChange={setCurrency}>
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select currency" />
@@ -291,14 +274,10 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
                 </Select>
               </div>
             </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="stage" className="text-sm font-medium">
-                Stage
-              </label>
-              <div className="relative">
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="stage">Stage</Label>
                 <Select value={stage} onValueChange={setStage}>
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select stage" />
@@ -312,87 +291,68 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="company">Company</Label>
+                <RelationSelect
+                  options={companiesList.map(c => ({ id: c.value, label: c.label }))}
+                  value={companyValue}
+                  onValueChange={setCompanyValue}
+                  placeholder="Search company..."
+                  emptyMessage="No companies found"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label htmlFor="company" className="text-sm font-medium">
-                Company
-              </label>
-              <RelationSelect
-                options={companiesList.map(c => ({ id: c.value, label: c.label }))}
-                value={companyValue}
-                onValueChange={setCompanyValue}
-                placeholder="Search company..."
-                emptyMessage="No companies found"
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="lead" className="text-sm font-medium">
-                Primary Contact (Lead)
-              </label>
-              <RelationSelect
-                options={leadsList.map(l => ({ id: l.value, label: l.label }))}
-                value={leadValue}
-                onValueChange={setLeadValue}
-                placeholder="Search lead..."
-                emptyMessage="No leads found"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="lead">Primary contact</Label>
+                <RelationSelect
+                  options={leadsList.map(l => ({ id: l.value, label: l.label }))}
+                  value={leadValue}
+                  onValueChange={setLeadValue}
+                  placeholder="Search lead..."
+                  emptyMessage="No leads found"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="expectedCloseDate">Expected close date</Label>
+                <DatePicker
+                  date={expectedCloseDate as Date}
+                  setDate={setExpectedCloseDate as any}
+                  className="w-full h-12"
+                  placeholder="Select close date"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2 flex flex-col justify-end">
-              <label htmlFor="expectedCloseDate" className="text-sm font-medium">
-                Expected Close Date
-              </label>
-              <DatePicker
-                date={expectedCloseDate as Date}
-                setDate={setExpectedCloseDate as any}
-                className="w-full h-12"
-                placeholder="Select close date"
-              />
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes</Label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Textarea
+                  id="notes"
+                  placeholder="Add any additional notes about this deal"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="min-h-[100px] pl-9 pt-2"
+                />
+              </div>
             </div>
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="notes" className="text-sm font-medium">
-              Notes
-            </label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Textarea
-                id="notes"
-                placeholder="Add any additional notes about this deal"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="min-h-[100px] pl-9 pt-2"
-              />
-            </div>
-          </div>
-        </div>
-        
-        <DialogFooter className="flex justify-between border-t pt-4">
-          <Button 
-            variant="outline" 
-            onClick={handleCancel}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={isLoading || !name}
-          >
-            {isLoading ? (
-              <>
-                <LoadingSkeleton variant="button" size="sm" className="text-white" />
-                Creating...
-              </>
-            ) : (
-              'Create Deal'
-            )}
-          </Button>
-        </DialogFooter>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading || !name}>
+              {isLoading ? "Creating..." : "Create deal"}
+            </Button>
+          </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

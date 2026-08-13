@@ -5,12 +5,11 @@ import { Button } from "@/app/components/ui/button"
 import { PlusCircle } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Card, CardContent } from "@/app/components/ui/card"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { createWebhookEndpoint, upsertSubscription, type WebhookEventType } from "@/lib/webhooks"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { Dialog, DialogTrigger, DialogBody, DialogContent, DialogForm, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Checkbox } from "@/app/components/ui/checkbox"
 
 const EVENT_OPTIONS = [
@@ -85,11 +84,12 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
           <PlusCircle className="h-4 w-4 mr-2" /> {triggerLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Create Webhook Endpoint</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 pt-2">
+      <DialogContent size="lg" busy={isSubmitting}>
+        <DialogForm onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create Webhook Endpoint</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
           <div className="space-y-1">
             <Label>Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="CRM endpoint" />
@@ -123,11 +123,12 @@ export function CreateEndpointDialog({ onSuccess, triggerLabel = "Create endpoin
             <p className="text-xs text-muted-foreground">Select which events this endpoint will listen to (Tasks CUD, Messages CUD, Leads CUD).</p>
           </div>
 
-          <div className="flex items-center gap-2 justify-end">
+          </DialogBody>
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={() => { reset(); setOpen(false) }}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Creating..." : "Create endpoint"}</Button>
-          </div>
-        </form>
+          </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

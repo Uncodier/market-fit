@@ -14,15 +14,16 @@ import {
   Tag,
   Target
 } from "@/app/components/ui/icons"
-import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/app/components/ui/dialog"
 import {
   Select,
@@ -35,6 +36,8 @@ import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relatio
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { useDirtyDialogClose } from "@/app/components/ui/use-dirty-dialog-close"
 
 interface CreateLeadDialogProps {
   segments?: Array<{
@@ -79,6 +82,24 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
   const [origin, setOrigin] = useState("")
   const [error, setError] = useState<string | null>(null)
   const { currentSite } = useSite()
+  const isDirty = Boolean(
+    name ||
+      email ||
+      personalEmail ||
+      phone ||
+      company ||
+      position ||
+      notes ||
+      origin ||
+      segmentValue ||
+      campaignValue
+  )
+  const { discardOpen, setDiscardOpen, handleOpenChange, confirmDiscard } =
+    useDirtyDialogClose({
+      dirty: isDirty,
+      busy: isLoading,
+      onOpenChange: setIsOpen,
+    })
 
   const handleSubmit = async () => {
     // Validar que exista un sitio seleccionado
@@ -159,12 +180,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
   return (
     <Dialog 
       open={isOpen}
-      modal={true}
-      onOpenChange={(open) => {
-        if (!isLoading) {
-          setIsOpen(open)
-        }
-      }}
+      onOpenChange={handleOpenChange}
     >
       <DialogTrigger asChild>
         {trigger || (
@@ -174,33 +190,28 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent 
-        className="sm:max-w-[550px]" 
-        onEscapeKeyDown={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onPointerDownOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onInteractOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-      >
+      <DialogContent size="md" busy={isLoading}>
+        <DialogForm
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleSubmit()
+          }}
+        >
         <DialogHeader>
-          <DialogTitle>Add New Lead</DialogTitle>
+          <DialogTitle>New lead</DialogTitle>
           <DialogDescription>
-            Add a new lead to your database. Fill in the details below.
+            Add someone to this site.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-5 py-4">
+        <DialogBody className="space-y-5">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
               {error}
             </div>
           )}
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">
                 Name <span className="text-red-500">*</span>
@@ -237,7 +248,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="personalEmail" className="text-sm font-medium">
                 Personal Email
@@ -256,7 +267,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="phone" className="text-sm font-medium">
                 Phone
@@ -291,7 +302,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="position" className="text-sm font-medium">
                 Position
@@ -323,7 +334,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="campaign" className="text-sm font-medium flex justify-between">
                 <span>Campaign Attribution</span>
@@ -395,46 +406,33 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
               />
             </div>
           </div>
-        </div>
+        </DialogBody>
         
-        <DialogFooter className="flex justify-between border-t pt-4">
+        <DialogFooter>
           <Button 
             variant="outline" 
-            onClick={() => {
-              if (!isLoading) {
-                setName("")
-                setEmail("")
-                setPersonalEmail("")
-                setPhone("")
-                setCompany("")
-                setPosition("")
-                setSegmentId("")
-                setCampaignId("")
-                setStatus("new")
-                setNotes("")
-                setOrigin("")
-                setError(null)
-                setIsOpen(false)
-              }
-            }}
+            onClick={() => handleOpenChange(false)}
           >
             Cancel
           </Button>
           <Button 
-            onClick={handleSubmit} 
+            type="submit"
             disabled={isLoading || !name || !email}
           >
-            {isLoading ? (
-              <>
-                <LoadingSkeleton variant="button" size="sm" className="text-white" />
-                Creating...
-              </>
-            ) : (
-              'Add Lead'
-            )}
+            {isLoading ? "Creating..." : "Create lead"}
           </Button>
         </DialogFooter>
+        </DialogForm>
       </DialogContent>
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard changes?"
+        description="Your changes will be lost."
+        confirmLabel="Discard"
+        variant="destructive"
+        onConfirm={confirmDiscard}
+      />
     </Dialog>
   )
 } 

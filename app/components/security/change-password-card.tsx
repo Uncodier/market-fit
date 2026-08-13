@@ -12,7 +12,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/app/components/ui/form"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { createClient } from "@/lib/supabase/client"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { cn } from "@/lib/utils"
@@ -88,11 +95,11 @@ export function ChangePasswordCard({
   };
 
   return (
-    <Card id="change-password" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold">Change Password</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-8 px-8">
+    <SectionCard id="change-password">
+      <SectionCardHeader>
+        <SectionCardTitle>Change Password</SectionCardTitle>
+      </SectionCardHeader>
+      <SectionCardContent className="space-y-8">
         <FormField
           control={passwordForm.control}
           name="currentPassword"
@@ -229,7 +236,7 @@ export function ChangePasswordCard({
             </FormItem>
           )}
         />
-      </CardContent>
+      </SectionCardContent>
       <ActionFooter>
         <Button
           type="button"
@@ -240,6 +247,6 @@ export function ChangePasswordCard({
           {isSaving ? "Saving..." : "Save Password"}
         </Button>
       </ActionFooter>
-    </Card>
+    </SectionCard>
   )
 }

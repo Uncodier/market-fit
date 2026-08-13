@@ -2,8 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { v4 as uuidv4 } from "uuid";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider";
@@ -11,7 +9,6 @@ import { StickyHeader } from "@/app/components/ui/sticky-header";
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { Button } from "@/app/components/ui/button";
 import { SearchInput } from "@/app/components/ui/search-input";
-import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import { ShoppingCart } from "@/app/components/ui/icons";
 import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal";
@@ -21,15 +18,16 @@ import { CartPanel } from "./components/CartPanel";
 import { resolveUnitPriceLocal } from "./local/resolve-unit-price-local";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
 import { PosSyncBadge } from "./components/PosSyncBadge";
+import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge";
 import { PosSyncIssues } from "./components/PosSyncIssues";
 import { usePosCatalog } from "./hooks/use-pos-catalog";
 import { usePosCart } from "./hooks/use-pos-cart";
 import { usePosCheckout } from "./hooks/use-pos-checkout";
 import { usePosSyncStatus } from "./hooks/use-pos-sync-status";
 import { usePosAddItem } from "./hooks/use-pos-add-item";
-import { enqueueCreateLead } from "./local/outbox";
-import { getPosDb } from "./local/db";
+import { usePosLead } from "./hooks/use-pos-lead";
 import { drainPosOutbox } from "./local/sync-engine";
+import { PosRequireLeadDialog } from "./components/PosRequireLeadDialog";
 
 export default function POSPage() {
   const { currentSite } = useSite();
@@ -42,6 +40,9 @@ export default function POSPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [syncIssuesOpen, setSyncIssuesOpen] = useState(false);
+  const [leadGate, setLeadGate] = useState<null | "promo" | "checkout" | "send">(
+    null,
+  );
 
   const { status: syncStatus, retrySync } = usePosSyncStatus(siteId);
   const catalog = usePosCatalog(siteId);
@@ -55,13 +56,20 @@ export default function POSPage() {
     priceListItems: catalog.priceListItems,
     promotions: catalog.promotions,
     getTaxesForCart: catalog.getTaxesForCart,
+    onRequireLead: () => setLeadGate("promo"),
     t,
   });
 
-  const leadRelationValue: RelationSelectValue =
-    typeof cartApi.leadValue === "string"
-      ? { mode: "existing", id: cartApi.leadValue, label: cartApi.leadValue }
-      : cartApi.leadValue;
+  const leadApi = usePosLead({
+    siteId,
+    leads: catalog.leads,
+    setLeads: catalog.setLeads,
+    reloadLeads: catalog.reload,
+    leadValue: cartApi.leadValue,
+    setLeadValue: cartApi.setLeadValue,
+    setBuyerUserId: cartApi.setBuyerUserId,
+    t,
+  });
 
   const checkout = usePosCheckout({
     siteId,
@@ -69,7 +77,7 @@ export default function POSPage() {
     cart: cartApi.cart,
     total: cartApi.total,
     leadValue: cartApi.leadValue,
-    leadRelationValue,
+    leadRelationValue: leadApi.leadRelationValue,
     fulfillment: cartApi.fulfillment,
     originLocationId: cartApi.originLocationId,
     priceListId: cartApi.priceListId,
@@ -78,10 +86,14 @@ export default function POSPage() {
     activeOrderId: cartApi.activeOrderId,
     buyerUserId: cartApi.buyerUserId,
     orderNotes: cartApi.orderNotes,
+    subtotal: cartApi.subtotal,
+    taxTotal: cartApi.taxTotal,
     router,
     onCleared: () => {
       void cartApi.resetToNewOrder();
     },
+    appliedPromoRequiresLead: cartApi.appliedPromoRequiresLead,
+    onRequireLead: (reason) => setLeadGate(reason),
     t,
   });
 
@@ -89,95 +101,12 @@ export default function POSPage() {
     siteId,
     userId: user?.id,
     leadValue: cartApi.leadValue,
-    leadRelationValue,
+    leadRelationValue: leadApi.leadRelationValue,
     addItemToCart: cartApi.addItemToCart,
     router,
     t,
     modifierGroupsByHostId: catalog.modifierGroupsByHostId,
   });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const leadIdParam = params.get("leadId");
-    const buyerUserParam = params.get("buyerUserId");
-    if (leadIdParam) cartApi.setLeadValue(leadIdParam);
-    if (buyerUserParam) cartApi.setBuyerUserId(buyerUserParam);
-    if (leadIdParam || buyerUserParam) {
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (typeof cartApi.leadValue !== "string") return;
-    const lead = catalog.leads.find((l: any) => l.id === cartApi.leadValue);
-    if (!lead) return;
-    const parts = [lead.name, lead.email, lead.phone].filter(Boolean);
-    cartApi.setLeadValue({
-      mode: "existing",
-      id: lead.id,
-      label: parts.length > 0 ? parts.join(" · ") : lead.name || lead.email,
-    });
-  }, [cartApi.leadValue, catalog.leads]);
-
-  const handleLeadUpdated = (lead: {
-    id: string;
-    name: string;
-    email: string;
-    phone?: string | null;
-  }) => {
-    const parts = [lead.name, lead.email, lead.phone].filter(Boolean);
-    cartApi.setLeadValue({
-      mode: "existing",
-      id: lead.id,
-      label: parts.length > 0 ? parts.join(" · ") : lead.name || lead.email,
-    });
-    void catalog.reload();
-  };
-
-  const handleLeadValueChange = async (value: RelationSelectValue) => {
-    if (!siteId || !value) {
-      cartApi.setLeadValue(value);
-      return;
-    }
-    if (value.mode === "create" && !navigator.onLine) {
-      const localLeadId = `local_${uuidv4()}`;
-      const clientMutationId = uuidv4();
-      await getPosDb().leads.put({
-        id: localLeadId,
-        site_id: siteId,
-        name: value.label.trim(),
-        is_local: true,
-      });
-      await enqueueCreateLead(siteId, {
-        siteId,
-        localLeadId,
-        name: value.label.trim(),
-        clientMutationId,
-      });
-      catalog.setLeads((prev) => [
-        {
-          id: localLeadId,
-          site_id: siteId,
-          name: value.label.trim(),
-          is_local: true,
-        },
-        ...prev,
-      ]);
-      cartApi.setLeadValue({
-        mode: "existing",
-        id: localLeadId,
-        label: value.label.trim(),
-      });
-      toast.message(
-        t("pos.sync.pendingLead") ||
-          "Customer saved locally. Will sync when online.",
-      );
-      return;
-    }
-    cartApi.setLeadValue(value);
-  };
 
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -246,7 +175,7 @@ export default function POSPage() {
     selectedCartItemId: cartApi.selectedCartItemId,
     setSelectedCartItemId: cartApi.setSelectedCartItemId,
     leadValue: cartApi.leadValue as any,
-    setLeadValue: handleLeadValueChange,
+    setLeadValue: leadApi.handleLeadValueChange,
     fulfillment: cartApi.fulfillment,
     setFulfillment: cartApi.setFulfillment,
     originLocationId: cartApi.originLocationId,
@@ -271,7 +200,7 @@ export default function POSPage() {
     orderNotes: cartApi.orderNotes,
     setOrderNotes: cartApi.setOrderNotes,
     siteId,
-    onLeadUpdated: handleLeadUpdated,
+    onLeadUpdated: leadApi.handleLeadUpdated,
     t,
   };
 
@@ -333,6 +262,7 @@ export default function POSPage() {
               />
 
               <div className="flex-1 flex justify-end items-center gap-2 pr-1">
+                <PrinterSyncBadge module="pos" />
                 <PosSyncBadge
                   status={syncStatus}
                   onRetry={() => {
@@ -455,6 +385,46 @@ export default function POSPage() {
             fieldValues,
             quantity,
           );
+        }}
+      />
+
+      <PosRequireLeadDialog
+        open={!!leadGate}
+        onOpenChange={(open) => {
+          if (!open) setLeadGate(null);
+        }}
+        leads={catalog.leads}
+        siteId={siteId}
+        t={t}
+        oncePerUser={
+          Number(
+            cartApi.appliedPromo?.usageLimitPerUser ??
+              catalog.promotions.find(
+                (p: any) =>
+                  String(p.code || "").trim().toUpperCase() ===
+                  cartApi.promoCode.trim().toUpperCase(),
+              )?.usage_limit_per_user,
+          ) === 1
+        }
+        onLeadUpdated={leadApi.handleLeadUpdated}
+        onConfirm={async (value) => {
+          const action = leadGate;
+          const committed = await leadApi.handleLeadValueChange(value);
+          setLeadGate(null);
+          if (action === "promo") {
+            cartApi.validatePromotion({ leadPresent: true });
+            return;
+          }
+          if (action === "checkout") {
+            checkout.initiateCheckout({ customerConfirmed: true });
+            return;
+          }
+          if (action === "send" && committed) {
+            await checkout.handleSendOrder({
+              customerConfirmed: true,
+              leadOverride: committed,
+            });
+          }
         }}
       />
     </div>

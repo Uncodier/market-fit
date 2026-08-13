@@ -5,21 +5,21 @@ import { useForm } from "react-hook-form"
 import useSWR from "swr"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
-import { Label } from "@/app/components/ui/label"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { BuyerUserEmailField, BuyerUser } from "@/app/components/commerce/BuyerUserEmailField"
-import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { BuyerUser } from "@/app/components/commerce/BuyerUserEmailField"
+import { RelationSelectValue } from "@/app/components/ui/relation-select"
 import { isPendingCreate } from "@/app/commerce/resolve-relation"
 import { getLeads } from "@/app/leads/actions"
 import { listCatalogItems } from "@/app/catalog/actions"
@@ -35,7 +35,7 @@ import {
   CreateQuotationQuoteStep,
   QuoteFieldDraft,
 } from "./CreateQuotationQuoteStep"
-import { CreateQuotationLineItems } from "./CreateQuotationLineItems"
+import { CreateQuotationDetailsFields } from "./CreateQuotationDetailsFields"
 import {
   CreateQuotationFormData,
   CreateQuotationLine,
@@ -318,177 +318,146 @@ export function CreateQuotationDialog({
         ? t("quotations.create.continue") || "Continue"
         : t("quotations.create.submit") || "Create Quotation"
 
+  const activeConfig = activeDynamicStep
+    ? getDynamicPricingConfig(activeDynamicStep.item)
+    : null
+  const quoteStepValid = activeConfig
+    ? !validateDynamicQuoteFields(
+        activeConfig,
+        fieldDrafts[activeDynamicStep?.lineKey ?? ""]?.values || {},
+        t
+      )
+    : true
+
+  const onFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isDetailsStep) {
+      e.preventDefault()
+      void handleFieldStepNext()
+      return
+    }
+    void goToFieldStepsOrSubmit(e)
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing
-              ? t("quotations.edit.title") || "Edit Quotation"
-              : t("quotations.create.title") || "Create New Quotation"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? t("quotations.edit.desc") ||
-                "Update the basic details for this draft quotation."
-              : isDetailsStep
-                ? t("quotations.create.desc") ||
-                  "This will create a new quotation and its associated deal."
-                : t("quotations.create.quoteAssistantDesc") ||
-                  "Fill quote fields for each dynamic pricing item."}
-          </DialogDescription>
-        </DialogHeader>
-
-        {!isEditing && totalSteps > 1 && (
-          <div className="flex items-center gap-2 pb-1">
-            {Array.from({ length: totalSteps }).map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "h-1.5 flex-1 rounded-full transition-colors",
-                  i <= stepIndex ? "bg-primary" : "bg-muted"
-                )}
-              />
-            ))}
-          </div>
-        )}
-
-        {isDetailsStep ? (
-          <form onSubmit={goToFieldStepsOrSubmit} className="space-y-4 py-2">
-            <BuyerUserEmailField
-              value={buyerUser}
-              onChange={setBuyerUser}
-              disabled={isSubmitting}
-            />
-
-            <div className="space-y-2">
-              <Label htmlFor="name">
-                {t("quotations.create.fields.name") || "Quotation / Project Name"}
-              </Label>
-              <Input
-                id="name"
-                placeholder={
-                  t("quotations.create.fields.namePlaceholder") || "e.g. Website Redesign"
-                }
-                {...register("name", {
-                  required:
-                    t("quotations.create.errors.nameRequired") || "Name is required",
-                })}
-              />
-              {errors.name && (
-                <p className="text-xs text-red-500">{errors.name.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("quotations.create.fields.clientName") || "Client Name"}</Label>
-              <RelationSelect
-                options={leadOptions}
-                value={leadValue}
-                onValueChange={(val) =>
-                  setValue("lead_value", val, { shouldValidate: true })
-                }
-                placeholder={
-                  t("quotations.create.fields.clientNamePlaceholder") ||
-                  "Select or create client..."
-                }
-                disabled={!!buyerUser}
-                emptyMessage="No clients found"
-              />
-            </div>
-
-            {!buyerUser && (isCreateLead || !leadValue) && (
-              <div className="space-y-2">
-                <Label htmlFor="clientEmail">
-                  {t("quotations.create.fields.clientEmail") || "Client Email"}
-                </Label>
-                <Input
-                  id="clientEmail"
-                  type="email"
-                  placeholder={
-                    t("quotations.create.fields.clientEmailPlaceholder") ||
-                    "e.g. john@example.com"
-                  }
-                  {...register("clientEmail", {
-                    required:
-                      isCreateLead && !buyerUser
-                        ? t("quotations.create.errors.clientEmailRequired") ||
-                          "Client email is required"
-                        : false,
-                  })}
-                  disabled={!!buyerUser}
-                />
-                {errors.clientEmail && (
-                  <p className="text-xs text-red-500">{errors.clientEmail.message}</p>
-                )}
+      <DialogContent size="md" busy={isSubmitting}>
+        <DialogForm onSubmit={onFormSubmit}>
+          <DialogHeader>
+            <DialogTitle>
+              {isEditing
+                ? t("quotations.edit.title") || "Edit Quotation"
+                : t("quotations.create.title") || "Create New Quotation"}
+            </DialogTitle>
+            <DialogDescription>
+              {isEditing
+                ? t("quotations.edit.desc") ||
+                  "Update the basic details for this draft quotation."
+                : isDetailsStep
+                  ? t("quotations.create.desc") ||
+                    "This will create a new quotation and its associated deal."
+                  : t("quotations.create.quoteAssistantDesc") ||
+                    "Fill quote fields for each dynamic pricing item."}
+            </DialogDescription>
+            {!isEditing && totalSteps > 1 && (
+              <div className="flex items-center gap-2 pt-1">
+                {Array.from({ length: totalSteps }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "h-1.5 flex-1 rounded-full transition-colors",
+                      i <= stepIndex ? "bg-primary" : "bg-muted"
+                    )}
+                  />
+                ))}
               </div>
             )}
-
-            {!isEditing && (
-              <CreateQuotationLineItems
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
+            {isDetailsStep ? (
+              <CreateQuotationDetailsFields
+                register={register}
+                errors={errors}
+                setValue={setValue}
+                buyerUser={buyerUser}
+                setBuyerUser={setBuyerUser}
+                isSubmitting={isSubmitting}
+                isEditing={isEditing}
+                isCreateLead={isCreateLead}
+                leadValue={leadValue}
+                leadOptions={leadOptions}
                 lineItems={lineItems}
                 catalogOptions={catalogOptions}
                 dynamicStepsCount={dynamicSteps.length}
-                onAdd={() =>
+                onAddLine={() =>
                   setLineItems((prev) => [...prev, { key: newLineKey(), value: null }])
                 }
-                onUpdate={updateLineValue}
-                onRemove={removeLine}
+                onUpdateLine={updateLineValue}
+                onRemoveLine={removeLine}
               />
+            ) : activeDynamicStep ? (
+              <CreateQuotationQuoteStep
+                item={activeDynamicStep.item}
+                stepNumber={stepIndex}
+                totalFieldSteps={dynamicSteps.length}
+                draft={
+                  fieldDrafts[activeDynamicStep.lineKey] || { values: {}, quantity: 1 }
+                }
+                onDraftChange={(draft) =>
+                  setFieldDrafts((prev) => ({
+                    ...prev,
+                    [activeDynamicStep.lineKey]: draft,
+                  }))
+                }
+                error={stepError}
+                submitting={isSubmitting}
+              />
+            ) : null}
+          </DialogBody>
+          <DialogFooter>
+            {isDetailsStep ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleOpenChange(false)}
+                  disabled={isSubmitting}
+                >
+                  {t("common.cancel") || "Cancel"}
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {submitLabel}
+                </Button>
+              </>
+            ) : (
+              <>
+                {!quoteStepValid && !isSubmitting && (
+                  <p className="text-sm text-amber-600 sm:mr-auto self-center font-medium">
+                    {t("pdp.dynamicQuote.fillFormToQuote") || "Fill the form to get your quote."}
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    setStepError(null)
+                    setStepIndex((s) => Math.max(0, s - 1))
+                  }}
+                >
+                  {t("common.back") || "Back"}
+                </Button>
+                <Button type="submit" disabled={isSubmitting || !quoteStepValid}>
+                  {isSubmitting
+                    ? t("quotations.create.creating") || "Creating..."
+                    : stepIndex >= totalSteps - 1
+                      ? t("quotations.create.submit") || "Create Quotation"
+                      : t("common.next") || "Next"}
+                </Button>
+              </>
             )}
-
-            <div className="space-y-2">
-              <Label htmlFor="amount">
-                {t("quotations.create.fields.amount") || "Estimated Amount (Optional)"}
-              </Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                {...register("amount")}
-              />
-            </div>
-
-            <DialogFooter className="pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                {t("common.cancel") || "Cancel"}
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {submitLabel}
-              </Button>
-            </DialogFooter>
-          </form>
-        ) : activeDynamicStep ? (
-          <CreateQuotationQuoteStep
-            item={activeDynamicStep.item}
-            stepNumber={stepIndex}
-            totalFieldSteps={dynamicSteps.length}
-            draft={
-              fieldDrafts[activeDynamicStep.lineKey] || { values: {}, quantity: 1 }
-            }
-            onDraftChange={(draft) =>
-              setFieldDrafts((prev) => ({
-                ...prev,
-                [activeDynamicStep.lineKey]: draft,
-              }))
-            }
-            error={stepError}
-            submitting={isSubmitting}
-            isLast={stepIndex >= totalSteps - 1}
-            onBack={() => {
-              setStepError(null)
-              setStepIndex((s) => Math.max(0, s - 1))
-            }}
-            onNext={handleFieldStepNext}
-          />
-        ) : null}
+          </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

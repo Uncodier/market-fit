@@ -12,7 +12,6 @@ import {
   RegionalDistributionComponent
 } from "./analysisComponents/index"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { Button } from "@/app/components/ui/button"
 import { BarChart } from "@/app/components/ui/icons"
 
 interface SegmentAnalysisTabProps {
@@ -285,15 +284,6 @@ export default function SegmentAnalysisTab({ segment, selectedAdPlatform }: Segm
         icon={<BarChart className="h-12 w-12 text-primary/60" />}
         title="No Analysis Available"
         description="There's no analysis data for this segment yet. Run an analysis to understand your audience better."
-        action={
-          <Button 
-            variant="default" 
-            className="flex items-center gap-2"
-          >
-            <BarChart className="h-4 w-4" />
-            Analyze with AI
-          </Button>
-        }
       />
     );
   }

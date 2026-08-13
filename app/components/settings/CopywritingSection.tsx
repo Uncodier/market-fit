@@ -7,7 +7,14 @@ import { type SiteFormValues, type CopywritingItem } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
 import { Textarea } from "../ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { toast } from "sonner"
 import { copywritingService } from "../../context/copywriting-actions"
@@ -275,7 +282,7 @@ export function CopywritingSection({ active, onSave }: CopywritingSectionProps) 
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold">{t('copywriting.section.title') || 'Copy Sequences'}</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {t('copywriting.section.subtitle') || 'Manage your marketing copy, scripts, and content templates'}
           </p>
         </div>
@@ -307,19 +314,18 @@ export function CopywritingSection({ active, onSave }: CopywritingSectionProps) 
                 const isExpanded = expandedItems.has(index)
                 
                 return (
-                  <Card key={index} className="border dark:border-white/5 border-black/5">
+                  <SectionCard key={index} >
                     {/* Collapsible Header */}
-                    <CardHeader 
-                      className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"
+                    <SectionCardHeader className="cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => toggleExpanded(index)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <IconComponent className="h-5 w-5 text-muted-foreground" />
                           <div>
-                            <CardTitle className="text-lg font-semibold pt-1">
+                            <SectionCardTitle className="pt-1">
                               {item.title || (t('copywriting.section.untitled') || 'Untitled Copy')}
-                            </CardTitle>
+                            </SectionCardTitle>
                             {item.copy_type && (
                               <p className="text-sm text-muted-foreground capitalize">
                                 {copyType?.label} • {item.status || "draft"}
@@ -335,12 +341,12 @@ export function CopywritingSection({ active, onSave }: CopywritingSectionProps) 
                           )}
                         </div>
                       </div>
-                    </CardHeader>
+                    </SectionCardHeader>
                     
                     {/* Collapsible Content */}
                     {isExpanded && (
                       <>
-                      <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t">
+                      <SectionCardContent className="space-y-4 border-t">
                       {/* Title */}
                       <FormField
                         control={form.control}
@@ -444,7 +450,7 @@ export function CopywritingSection({ active, onSave }: CopywritingSectionProps) 
                                   field.onChange(e)
                                   updateCopywritingItem(index, 'content', e.target.value)
                                 }}
-                                className="min-h-[120px] resize-y"
+                                className="min-h-[72px] resize-y"
                               />
                             </FormControl>
                             <FormMessage />
@@ -521,10 +527,10 @@ export function CopywritingSection({ active, onSave }: CopywritingSectionProps) 
                           </FormItem>
                         )}
                       />
-                      </CardContent>
+                      </SectionCardContent>
                       
                       {/* Card Footer with individual Save Button */}
-                      <CardFooter className="px-8 py-6 bg-muted/30 border-t">
+                      <SectionCardFooter>
                         <div className="flex items-center justify-between w-full">
                           <div className="text-sm text-muted-foreground">
                             {item.status && (
@@ -564,17 +570,18 @@ export function CopywritingSection({ active, onSave }: CopywritingSectionProps) 
                             <Button 
                               type="button"
                               variant="outline"
+                              size="sm"
                               onClick={() => handleSaveCopywritingItem(index)}
-                              disabled={savingCard === index}
+                              disabled={savingCard === index || !form.formState.isDirty}
                             >
                               {savingCard === index ? (t('copywriting.form.saving') || 'Saving...') : (t('copywriting.form.saveCopy') || 'Save Copy')}
                             </Button>
                           </div>
                         </div>
-                      </CardFooter>
+                      </SectionCardFooter>
                       </>
                     )}
-                  </Card>
+                  </SectionCard>
                 )
               })}
         </div>

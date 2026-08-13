@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { subDays, subMonths, format, startOfMonth, endOfMonth, subQuarters, subYears } from 'date-fns';
-import { createApiClient, createServiceApiClient } from "@/lib/supabase/server-client";
+import { createServiceApiClient } from "@/lib/supabase/server-client";
+import { selectLiveCampaigns } from "@/lib/dashboard/active-campaigns";
 import crypto from 'crypto';
 
 interface KpiData {
@@ -290,64 +291,23 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     
-    // First, let's check if there are ANY campaigns for this site
-    console.log(`[ActiveCampaignsAPI] Checking if site has any campaigns at all...`);
-    const { data: allCampaigns, error: allCampaignsError } = await supabase
+    const { data: allCampaigns, error: campaignsError } = await supabase
       .from('campaigns')
       .select('id, title, created_at, metadata, status')
       .eq('site_id', siteId)
-      .eq('status', 'active') // Only get active campaigns
-      .order('created_at', { ascending: false })
-      .limit(10);
-    
-    if (allCampaignsError) {
-      console.error('[ActiveCampaignsAPI] Error checking all campaigns:', allCampaignsError);
-    } else {
-      console.log(`[ActiveCampaignsAPI] Found ${allCampaigns?.length || 0} active campaigns for site`);
-      if (allCampaigns && allCampaigns.length > 0) {
-        console.log(`[ActiveCampaignsAPI] Sample active campaigns:`, allCampaigns.slice(0, 3));
-        console.log(`[ActiveCampaignsAPI] Oldest active campaign:`, allCampaigns[allCampaigns.length - 1]);
-        console.log(`[ActiveCampaignsAPI] Newest active campaign:`, allCampaigns[0]);
-      }
-    }
-    
-    // Query active campaigns in current period for comparison
-    console.log(`[ActiveCampaignsAPI] Querying active campaigns during ${periodStart.toISOString()} to ${periodEnd.toISOString()}`);
-    const { data: currentCampaigns, error: currentError } = await supabase
-      .from('campaigns')
-      .select('id, title, created_at, metadata, status')
-      .eq('site_id', siteId)
-      .eq('status', 'active') // Only count active campaigns
-      .gte('created_at', periodStart.toISOString())
-      .lte('created_at', periodEnd.toISOString());
-    
-    if (currentError) {
-      console.error('[ActiveCampaignsAPI] Error fetching current campaigns:', currentError);
+      .order('created_at', { ascending: false });
+
+    if (campaignsError) {
+      console.error('[ActiveCampaignsAPI] Error fetching campaigns:', campaignsError);
       return NextResponse.json({ error: 'Failed to fetch current campaigns' }, { status: 500 });
     }
-    
-    console.log(`[ActiveCampaignsAPI] Found ${currentCampaigns?.length || 0} active campaigns created in current period`);
-    
-    // Query active campaigns for previous period
-    const { data: previousCampaigns, error: previousError } = await supabase
-      .from('campaigns')
-      .select('id, title, created_at, metadata, status')
-      .eq('site_id', siteId)
-      .eq('status', 'active') // Only count active campaigns
-      .gte('created_at', previousPeriodStart.toISOString())
-      .lte('created_at', previousPeriodEnd.toISOString());
-    
-    if (previousError) {
-      console.error('[ActiveCampaignsAPI] Error fetching previous campaigns:', previousError);
-      return NextResponse.json({ error: 'Failed to fetch previous campaigns' }, { status: 500 });
-    }
-    
-    const currentCount = currentCampaigns?.length || 0;
-    const previousCount = previousCampaigns?.length || 0;
-    
-    console.log(`[ActiveCampaignsAPI] Previous period: ${previousCount} campaigns created`);
-    
-    console.log(`[ActiveCampaignsAPI] Current campaigns: ${currentCount}, Previous campaigns: ${previousCount}`);
+
+    const currentCampaigns = selectLiveCampaigns(allCampaigns || []);
+    const previousCampaigns = selectLiveCampaigns(allCampaigns || [], periodStart);
+    const currentCount = currentCampaigns.length;
+    const previousCount = previousCampaigns.length;
+
+    console.log(`[ActiveCampaignsAPI] Live campaigns: ${currentCount}, previous period: ${previousCount}`);
     
     // Calculate trend
     const percentChange = calculateTrend(currentCount, previousCount);

@@ -6,7 +6,14 @@ import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, User, Mail, FileText, CheckCircle2, Clock, Save, RotateCcw, Loader, ChevronDown, ChevronUp } from "../ui/icons"
 import { EmptyCard } from "../ui/empty-card"
@@ -553,7 +560,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold">Team Members</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Invite team members to collaborate on your site
           </p>
         </div>
@@ -588,23 +595,22 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
             />
           ) : (
             teamList.map((member, index) => (
-              <Card 
+              <SectionCard 
                 key={index} 
               id={`team-member-${index}`}
-              className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200"
             >
-              <CardHeader className="px-8 py-6">
+              <SectionCardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full font-inter font-bold bg-primary/10 flex items-center justify-center">
                       <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl font-semibold">
+                      <SectionCardTitle>
                         {member.name || member.email || "New Member"}
-                      </CardTitle>
+                      </SectionCardTitle>
                       {member.position && (
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           {member.position}
                         </p>
                       )}
@@ -644,9 +650,9 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                     )}
                   </div>
                 </div>
-              </CardHeader>
+              </SectionCardHeader>
               
-              <CardContent className="px-8 pb-8">
+              <SectionCardContent>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -794,9 +800,9 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                     </div>
                   )}
                 </div>
-              </CardContent>
+              </SectionCardContent>
               
-              <CardFooter className="px-8 py-6 bg-muted/30 border-t">
+              <SectionCardFooter>
                 <div className="flex items-center justify-between w-full">
                   <div className="text-sm text-muted-foreground">
                     {member.id ? (
@@ -860,19 +866,18 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
                       </Button>
                     )}
                     {!member.id && (
-                      <Button
+                      <Button variant="outline"
                         type="button"
-                        variant="outline"
                         onClick={handleSaveTeamMembers}
                         disabled={isSaving || isLoading || !member.email}
-                      >
+                       size="sm">
                         {isSaving ? "Saving..." : "Save & Invite"}
                       </Button>
                     )}
                   </div>
                 </div>
-              </CardFooter>
-            </Card>
+              </SectionCardFooter>
+            </SectionCard>
           )))}
         </>
       )}

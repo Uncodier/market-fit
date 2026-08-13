@@ -12,7 +12,14 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Switch } from "@/app/components/ui/switch"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -166,7 +173,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))]">
       <Tabs defaultValue="details" className="flex-1 flex flex-col">
         <StickyHeader>
           <div className="w-full pt-0 flex justify-between items-center">
@@ -194,11 +201,11 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
         <div className="flex-1 overflow-auto">
           <TabsContent value="details" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
             <div className="mx-auto max-w-[800px] space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('catalog.form.basicDetails') || 'Basic Details'}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <SectionCard>
+                <SectionCardHeader>
+                  <SectionCardTitle>{t('catalog.form.basicDetails') || 'Basic Details'}</SectionCardTitle>
+                </SectionCardHeader>
+                <SectionCardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>{t('catalog.form.image') || 'Image'}</Label>
                 <ImageUpload 
@@ -278,13 +285,13 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   placeholder="Optional unique identifier"
                 />
               </div>
-                </CardContent>
+                </SectionCardContent>
                 <ActionFooter>
-                  <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
+                  <Button variant="outline" type="button" onClick={handleSave} disabled={saving} size="sm">
                     {saving ? (t('common.saving') || 'Saving...') : (t('common.saveChanges') || 'Save Changes')}
                   </Button>
                 </ActionFooter>
-              </Card>
+              </SectionCard>
 
               <CatalogItemPricingSection
                 item={item}
@@ -294,11 +301,11 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                 saving={saving}
               />
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('catalog.form.availabilityInventory') || 'Availability & Inventory'}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
+              <SectionCard>
+                <SectionCardHeader>
+                  <SectionCardTitle>{t('catalog.form.availabilityInventory') || 'Availability & Inventory'}</SectionCardTitle>
+                </SectionCardHeader>
+                <SectionCardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>{t('catalog.form.availabilityMode') || 'Availability Mode'}</Label>
                     <Select 
@@ -335,7 +342,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                     <div className="flex items-center justify-between">
                       <div>
                         <Label htmlFor="track_inventory" className="text-base cursor-pointer">{t('catalog.form.trackInventory') || 'Track inventory levels'}</Label>
-                        <p className="text-sm text-muted-foreground">Keep counts per location</p>
+                        <p className="text-sm text-muted-foreground">{t('catalog.form.trackInventoryHint') || 'Keep counts per location'}</p>
                       </div>
                       <Switch 
                         id="track_inventory" 
@@ -344,11 +351,11 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                       />
                     </div>
                   </div>
-                </CardContent>
+                </SectionCardContent>
                 <ActionFooter>
-                  <Button variant="outline" onClick={handleSave} disabled={saving}>{saving ? (t('common.saving') || 'Saving...') : (t('common.saveSettings') || 'Save Settings')}</Button>
+                  <Button variant="outline" onClick={handleSave} disabled={saving} size="sm">{saving ? (t('common.saving') || 'Saving...') : (t('common.saveChanges') || 'Save Changes')}</Button>
                 </ActionFooter>
-              </Card>
+              </SectionCard>
 
               {item && <ProductTaxesCard catalogItemId={item.id} />}
               {item && (
@@ -361,14 +368,14 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               )}
 
               {item && (
-                <Card className="border-destructive/20 bg-destructive/5">
-                  <CardHeader>
-                    <CardTitle className="text-destructive">{t('catalog.form.dangerZone') || 'Danger Zone'}</CardTitle>
-                    <CardDescription className="text-destructive/80">
+                <SectionCard className="border-destructive/20 bg-destructive/5">
+                  <SectionCardHeader>
+                    <SectionCardTitle className="text-destructive">{t('catalog.form.dangerZone') || 'Danger Zone'}</SectionCardTitle>
+                    <SectionCardDescription className="text-destructive/80">
                       {t('catalog.form.dangerDescription') || 'Irreversible actions for this product.'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                    </SectionCardDescription>
+                  </SectionCardHeader>
+                  <SectionCardContent>
                     <Button
                       variant="destructive"
                       size="sm"
@@ -377,8 +384,8 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                     >
                       <Trash2 size={16} /> {t('catalog.form.archive') || 'Archive Product'}
                     </Button>
-                  </CardContent>
-                </Card>
+                  </SectionCardContent>
+                </SectionCard>
               )}
             </div>
           </TabsContent>

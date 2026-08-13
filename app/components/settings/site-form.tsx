@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { Button } from "../ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { siteFormSchema, type SiteFormValues, getFocusModeConfig } from "./form-schema"
 import { GeneralSection } from "./GeneralSection"
 import { WebResourcesSection } from "./WebResourcesSection"
@@ -13,6 +12,7 @@ import { CompanySection } from "./CompanySection"
 import { BrandingSection } from "./BrandingSection"
 import { MarketingSection } from "./MarketingSection"
 import { ShopSection } from "./ShopSection"
+import { PrintersSection } from "./PrintersSection"
 import { VisitsSection } from "./VisitsSection"
 import { CustomerJourneySection } from "./CustomerJourneySection"
 import { SocialSection } from "./SocialSection"
@@ -71,6 +71,7 @@ interface SiteFormProps {
   onSaveChannels?: (data: SiteFormValues) => void
   onSaveActivities?: (data: SiteFormValues) => void
   onSaveShop?: (data: SiteFormValues) => void
+  onSavePrinters?: (data: SiteFormValues) => void
   onDeleteSite?: () => void
   activeSegment: string
   siteId?: string
@@ -88,6 +89,7 @@ export function SiteForm({
   onSaveChannels,
   onSaveActivities,
   onSaveShop,
+  onSavePrinters,
   onDeleteSite,
   activeSegment,
   siteId 
@@ -255,7 +257,8 @@ export function SiteForm({
         payment_methods: ['card', 'cash_on_pickup'],
         default_delivery_options: ['pickup', 'ship', 'dine_in'],
         bank_transfer: {}
-      }
+      },
+      printers: initialData?.printers || { devices: [] }
     }
   })
 
@@ -485,6 +488,10 @@ export function SiteForm({
 
           {renderCard("marketplace",
             <ShopSection active={true} onSave={onSaveShop} />
+          )}
+
+          {renderCard("printers",
+            <PrintersSection active={true} onSave={onSavePrinters} />
           )}
 
           {renderCard("visits",

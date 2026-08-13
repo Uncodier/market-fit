@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Button } from "@/app/components/ui/button"
@@ -161,8 +168,8 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
   return (
     <div className="space-y-12">
       {/* Global Enable Switch */}
-      <Card className="border border-border shadow-sm overflow-hidden">
-        <CardContent className="p-6">
+      <SectionCard className="border border-border shadow-sm overflow-hidden">
+        <SectionCardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base font-medium">Global Calendar Enabled</Label>
@@ -173,21 +180,19 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
               onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))} 
             />
           </div>
-        </CardContent>
+        </SectionCardContent>
         <ActionFooter>
           <div className="flex items-center justify-end w-full">
-            <Button
+            <Button variant="outline"
               type="button"
-              variant="outline"
               onClick={handleSave}
               disabled={isUpdating}
-              className="rounded-full px-6 border-foreground/20 font-medium"
-            >
+              className="rounded-full px-6 border-foreground/20 font-medium" size="sm">
               {isUpdating ? "Saving..." : "Save Preferences"}
             </Button>
           </div>
         </ActionFooter>
-      </Card>
+      </SectionCard>
 
       {/* Business Hours Section */}
       <div className="space-y-6">
@@ -204,8 +209,8 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
           </Button>
         </div>
 
-        <Card className="border border-border shadow-sm overflow-hidden">
-          <CardHeader className="p-4 border-b border-border bg-background flex flex-row items-center gap-4 space-y-0">
+        <SectionCard className="border border-border shadow-sm overflow-hidden">
+          <SectionCardHeader className="p-4 border-b border-border bg-background flex flex-row items-center gap-4 space-y-0">
             <Input 
               className="flex-1 max-w-[300px]" 
               value={formData.schedule_name || ""}
@@ -229,8 +234,8 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
             <Button variant="ghost" size="icon">
               <ChevronDown className="h-5 w-5 text-muted-foreground" />
             </Button>
-          </CardHeader>
-          <CardContent className="space-y-8 p-8">
+          </SectionCardHeader>
+          <SectionCardContent className="space-y-8 p-8">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-base font-semibold">Respect Holidays</Label>
@@ -287,7 +292,7 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                 </div>
               ))}
             </div>
-          </CardContent>
+          </SectionCardContent>
           <ActionFooter>
             <div className="flex items-center justify-end gap-4 w-full">
               <Button
@@ -298,18 +303,16 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                 <Trash2 className="h-4 w-4 mr-2" />
                 Remove Schedule
               </Button>
-              <Button
+              <Button variant="outline"
                 type="button"
-                variant="outline"
                 onClick={handleSave}
                 disabled={isUpdating}
-                className="rounded-full px-6 border-foreground/20 font-medium"
-              >
+                className="rounded-full px-6 border-foreground/20 font-medium" size="sm">
                 {isUpdating ? "Saving..." : "Save Schedule"}
               </Button>
             </div>
           </ActionFooter>
-        </Card>
+        </SectionCard>
       </div>
 
       <div id="event-types" className="space-y-6 pt-4">
@@ -334,11 +337,11 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
         <div className="space-y-6">
           {/* New Event Type Form */}
           {editingEventType && !formData.event_types?.some(et => et.id === editingEventType.id) && (
-            <Card className="border dark:border-white/5 border-black/5 shadow-none overflow-hidden mb-4">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-lg font-semibold">New Event Type</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t border-border">
+            <SectionCard className="border dark:border-white/5 border-black/5 shadow-none overflow-hidden mb-4">
+              <SectionCardHeader>
+                <SectionCardTitle className="text-lg font-semibold">New Event Type</SectionCardTitle>
+              </SectionCardHeader>
+              <SectionCardContent className="space-y-4 border-t border-border">
                 <div className="grid gap-5 md:grid-cols-2">
                   <div className="grid gap-2">
                     <Label className="text-xs font-semibold text-muted-foreground">Title</Label>
@@ -419,16 +422,16 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                   />
                   <Label htmlFor="new-et-enabled" className="text-sm cursor-pointer">Enabled</Label>
                 </div>
-              </CardContent>
+              </SectionCardContent>
               <ActionFooter>
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" onClick={() => setEditingEventType(null)}>Cancel</Button>
-                  <Button variant="outline" onClick={handleSaveEventType} disabled={isUpdating}>
+                  <Button variant="outline" onClick={handleSaveEventType} disabled={isUpdating} size="sm">
                     {isUpdating ? "Saving..." : "Create Event Type"}
                   </Button>
                 </div>
               </ActionFooter>
-            </Card>
+            </SectionCard>
           )}
 
           {formData.event_types?.length === 0 && !editingEventType ? (
@@ -456,13 +459,12 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                         const bookingUrl = getBookingUrl(et)
                         
                         return (
-                          <Card 
+                          <SectionCard 
                             key={et.id} 
                             className="border dark:border-white/5 border-black/5 shadow-none overflow-hidden"
                           >
                             {/* Summary View */}
-                            <CardHeader 
-                              className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors group"
+                            <SectionCardHeader className="cursor-pointer hover:bg-muted/50 transition-colors group"
                               onClick={() => isEditing ? setEditingEventType(null) : setEditingEventType(et)}
                             >
                               <div className="flex items-center justify-between">
@@ -470,7 +472,7 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                                   <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                      <CardTitle className="text-lg font-semibold truncate">{et.title}</CardTitle>
+                                      <SectionCardTitle className="text-lg font-semibold truncate">{et.title}</SectionCardTitle>
                                       {!et.enabled && (
                                         <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground uppercase font-bold tracking-tighter">
                                           Disabled
@@ -504,12 +506,12 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                                   )}
                                 </div>
                               </div>
-                            </CardHeader>
+                            </SectionCardHeader>
 
                             {/* Edit Form (Expanded) */}
                             {isEditing && (
                               <>
-                                <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t border-border">
+                                <SectionCardContent className="space-y-4 border-t border-border">
                                   <div className="grid gap-5 md:grid-cols-2">
                                     <div className="grid gap-2">
                                       <Label className="text-xs font-semibold text-muted-foreground">Title</Label>
@@ -590,7 +592,7 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                                     />
                                       <Label htmlFor={`et-enabled-${et.id}`} className="text-sm cursor-pointer">Enabled</Label>
                                   </div>
-                                </CardContent>
+                                </SectionCardContent>
                                 
                                 <ActionFooter>
                                   <div className="flex items-center gap-2">
@@ -603,9 +605,8 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                                       <Trash2 className="h-4 w-4 mr-2" />
                                       Remove Event
                                     </Button>
-                                      <Button 
-                                        type="button"
-                                        variant="outline" 
+                                      <Button variant="outline" size="sm" 
+                                        type="button" 
                                         onClick={() => handleSaveEventType()}
                                         disabled={isUpdating}
                                       >
@@ -615,7 +616,7 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                                 </ActionFooter>
                               </>
                             )}
-                          </Card>
+                          </SectionCard>
                         )
                       })}
                     </div>

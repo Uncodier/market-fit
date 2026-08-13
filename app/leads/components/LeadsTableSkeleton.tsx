@@ -1,78 +1,59 @@
+"use client"
+
 import React from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Card } from "@/app/components/ui/card"
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { DocumentListHead, documentListShellClassName } from "@/app/components/documents/document-list"
+import { cn } from "@/lib/utils"
 
 export function LeadsTableSkeleton() {
   return (
-    <Card>
+    <div className={documentListShellClassName()}>
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead className="whitespace-nowrap">
-              <Skeleton className="h-4 w-24" />
-            </TableHead>
-            <TableHead className="whitespace-nowrap">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="whitespace-nowrap">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[150px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead className="w-[120px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
+          <TableRow className="hover:bg-transparent">
+            {Array.from({ length: 7 }).map((_, index) => (
+              <DocumentListHead key={index} align={index === 6 ? "right" : "left"}>
+                <Skeleton className={cn("h-3 w-16", index === 6 && "ml-auto")} />
+              </DocumentListHead>
+            ))}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {Array(5).fill(0).map((_, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                <div className="space-y-1.5">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-48" />
+          {Array.from({ length: 6 }).map((_, index) => (
+            <TableRow key={index} className="hover:bg-transparent">
+              <TableCell className="py-3.5"><Skeleton className="h-4 w-4" /></TableCell>
+              <TableCell className="py-3.5">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
                 </div>
               </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
+              <TableCell className="py-3.5">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-36" />
+                  </div>
+                </div>
               </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
+              <TableCell className="py-3.5"><Skeleton className="h-4 w-16" /></TableCell>
+              <TableCell className="py-3.5"><Skeleton className="h-4 w-20" /></TableCell>
+              <TableCell className="py-3.5">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-7 w-7 rounded-full" />
+                  <Skeleton className="h-3 w-10" />
+                </div>
               </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-24 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-20 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
+              <TableCell className="py-3.5"><Skeleton className="ml-auto h-8 w-8 rounded-md" /></TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-      <div className="flex items-center justify-between px-6 py-4 border-t">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8 rounded" />
-          <Skeleton className="h-8 w-24 rounded" />
-          <Skeleton className="h-8 w-8 rounded" />
-        </div>
-      </div>
-    </Card>
+    </div>
   )
-} 
+}

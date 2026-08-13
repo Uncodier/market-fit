@@ -57,6 +57,32 @@ const nextConfig = {
     // Nota: Esto no es recomendable para producción, solo para desarrollo
     ignoreBuildErrors: true,
   },
+  // Keep in sync with commercial-site/next.config.js (www → app proxy).
+  // Only active when MARKET_FIT_ORIGIN is set so this app deploy does not
+  // proxy to itself.
+  async rewrites() {
+    const app = process.env.MARKET_FIT_ORIGIN
+    if (!app) return []
+    const page = (route) => [
+      { source: route, destination: `${app}${route}` },
+      { source: `${route}/:path*`, destination: `${app}${route}/:path*` },
+    ]
+    return [
+      ...page('/auth'),
+      ...page('/shop'),
+      ...page('/marketplace'),
+      ...page('/cart'),
+      ...page('/buyer'),
+      ...page('/book'),
+      ...page('/so'),
+      ...page('/q'),
+      ...page('/i'),
+      ...page('/vb'),
+      { source: '/api/stripe/checkout/order', destination: `${app}/api/stripe/checkout/order` },
+      { source: '/api/fx/rates', destination: `${app}/api/fx/rates` },
+      { source: '/api/geocode', destination: `${app}/api/geocode` },
+    ]
+  },
   // Next 16 reads serverActions from experimental (top-level is ignored).
   // www proxies shop/commerce to the app deployment; Origin is www while
   // x-forwarded-host is app — allow www so Server Actions are not aborted.

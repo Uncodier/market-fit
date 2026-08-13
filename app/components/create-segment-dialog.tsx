@@ -14,12 +14,14 @@ import {
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogForm,
 } from "@/app/components/ui/dialog"
 import {
   Select,
@@ -121,16 +123,15 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
   const paramSiteId = searchParams?.get('siteId')
   const effectiveSiteId = currentSite?.id || paramSiteId
 
-  const handleSubmit = async () => {
-    // Validar que exista un sitio seleccionado
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!effectiveSiteId) {
-      setError("Por favor, selecciona un sitio primero")
+      setError("Please select a site first")
       return
     }
 
-    // Validar campos requeridos
     if (!name || !description || !audience || !language) {
-      setError("Por favor, completa todos los campos")
+      setError("Please complete all fields")
       return
     }
     
@@ -146,7 +147,6 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
         site_id: effectiveSiteId
       })
       
-      // Limpiar el formulario y cerrar el modal
       setName("")
       setDescription("")
       setAudience("")
@@ -154,7 +154,7 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
       setIsOpen(false)
     } catch (err) {
       console.error("Error creating segment:", err)
-      setError(err instanceof Error ? err.message : "Error al crear el segmento")
+      setError(err instanceof Error ? err.message : "Failed to create segment")
     } finally {
       setIsSubmitting(false)
     }
@@ -170,14 +170,15 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent size="md" busy={isSubmitting}>
+        <DialogForm onSubmit={handleSubmit}>
         <DialogHeader>
           <DialogTitle>Create New Segment</DialogTitle>
           <DialogDescription>
             Create a new segment to target specific audiences. Additional details will be filled automatically.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-6 py-4">
+        <DialogBody className="grid gap-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
               {error}
@@ -249,13 +250,13 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
               </Select>
             </div>
           </div>
-        </div>
-        <DialogFooter className="flex justify-between border-t pt-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting} className="rounded-full">
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button 
-            onClick={handleSubmit} 
+            type="submit"
             disabled={isSubmitting || !name || !description || !audience || !language}
             className="rounded-full"
           >
@@ -269,6 +270,7 @@ export function CreateSegmentDialog({ onCreateSegment, trigger }: CreateSegmentD
             )}
           </Button>
         </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

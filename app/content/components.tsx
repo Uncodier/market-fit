@@ -8,7 +8,7 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogForm, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { toast } from "sonner"
 import { createContent } from "./actions"
 import { useSite } from "@/app/context/SiteContext"
@@ -160,15 +160,15 @@ export function CreateContentDialog({
           {trigger}
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Create New Content</DialogTitle>
-          <DialogDescription>
-            Add a new content item to your content library.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+      <DialogContent size="md" busy={isCreating}>
+        <DialogForm onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create New Content</DialogTitle>
+            <DialogDescription>
+              Add a new content item to your content library.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="title" className="flex items-center gap-2">
                 <Type className="h-4 w-4 text-muted-foreground" />
@@ -301,18 +301,13 @@ export function CreateContentDialog({
                 </Button>
               </div>
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button type="submit" disabled={isCreating}>
-              {isCreating ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                  <span>{t('layout.nav.content.creating') || 'Creating'}</span>
-                </div>
-              ) : t('layout.nav.content.create') || "Create Content"}
+              {isCreating ? (t('layout.nav.content.creating') || 'Creating...') : t('layout.nav.content.create') || "Create Content"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

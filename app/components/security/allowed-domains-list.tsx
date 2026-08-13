@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react"
 import { useAllowedDomains } from "@/app/hooks/use-allowed-domains"
 import { useSite } from "@/app/context/SiteContext"
-import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Button } from "@/app/components/ui/button"
 import { AddDomainDialog } from "@/app/components/domains/add-domain-dialog"
@@ -73,15 +80,15 @@ export function AllowedDomainsList() {
         <div className="space-y-6">
           {/* Domain Cards */}
           {domains.map((domain, index) => (
-            <Card key={domain.id} id={`allowed-domain-${index}`} className="border border-border">
-              <CardHeader className="px-8 py-6">
+            <SectionCard key={domain.id} id={`allowed-domain-${index}`} className="border border-border">
+              <SectionCardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Globe className="h-5 w-5 text-muted-foreground" />
-                    <CardTitle className="text-lg font-semibold">{domain.domain}</CardTitle>
+                    <SectionCardTitle className="text-lg font-semibold">{domain.domain}</SectionCardTitle>
                   </div>
                 </div>
-              </CardHeader>
+              </SectionCardHeader>
 
               {/* Card Footer with individual buttons */}
               <ActionFooter>
@@ -118,7 +125,7 @@ export function AllowedDomainsList() {
                   </AlertDialog>
                 </div>
               </ActionFooter>
-            </Card>
+            </SectionCard>
           ))}
         </div>
       )}

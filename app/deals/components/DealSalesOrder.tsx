@@ -2,21 +2,19 @@
 
 import { useState, useEffect } from "react"
 import { Deal } from "@/app/deals/types"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
-import { Input } from "@/app/components/ui/input"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { ShoppingCart, CreditCard, ExternalLink, PlusCircle, FileText, DollarSign, Calendar } from "@/app/components/ui/icons"
-import { toast } from "sonner"
-import { createSale, getSaleById } from "@/app/sales/actions"
-import { updateDeal } from "@/app/deals/actions"
-import { createQuotationFromDeal } from "@/app/quotations/actions"
+import { Skeleton } from "@/app/components/ui/skeleton"
+import { CreditCard, ExternalLink, FileText, Plus } from "@/app/components/ui/icons"
+import { getSaleById } from "@/app/sales/actions"
 import { Sale } from "@/app/types"
 import { useRouter } from "next/navigation"
 import { navigateToSale } from "@/app/hooks/use-navigation-history"
 import { RegisterPaymentDialog } from "@/app/sales/components/RegisterPaymentDialog"
 import { format } from "date-fns"
+import { createClient } from "@/lib/supabase/client"
+import { formatDealCurrency } from "./deal-format"
+import { useDealCommerce } from "./use-deal-commerce"
 
 interface DealSalesOrderProps {
   deal: Deal
@@ -25,282 +23,174 @@ interface DealSalesOrderProps {
 
 export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
   const router = useRouter()
+  const commerce = useDealCommerce(deal, onUpdate)
   const [sale, setSale] = useState<Sale | null>(null)
   const [quotations, setQuotations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [isCreatingSale, setIsCreatingSale] = useState(false)
-  const [isCreatingQuote, setIsCreatingQuote] = useState(false)
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
 
   const loadData = async () => {
     try {
       setLoading(true)
-      const supabase = (await import("@/lib/supabase/client")).createClient()
-      
-      const promises: any[] = [
-        supabase.from('quotations').select('*').eq('deal_id', deal.id).order('created_at', { ascending: false })
+      const supabase = createClient()
+      const promises: Promise<any>[] = [
+        supabase.from("quotations").select("*").eq("deal_id", deal.id).order("created_at", { ascending: false }),
       ]
-
       if (deal.sales_order_id) {
         promises.push(getSaleById(deal.site_id, deal.sales_order_id))
       }
-
       const [quoteRes, saleRes] = await Promise.all(promises)
-      
       if (!quoteRes.error && quoteRes.data) setQuotations(quoteRes.data)
       if (saleRes && saleRes.sale) setSale(saleRes.sale)
-
-    } catch (e) {
-      console.error("Failed to load deal sales data", e)
+      else setSale(null)
+    } catch (error) {
+      console.error("Failed to load deal sales data", error)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadData()
+    void loadData()
   }, [deal.sales_order_id, deal.site_id, deal.id])
-
-  const handleCreateSale = async () => {
-    setIsCreatingSale(true)
-    try {
-      const result = await createSale({
-        siteId: deal.site_id,
-        title: deal.name,
-        amount: deal.amount || 0,
-        amount_due: deal.amount || 0,
-        status: "pending",
-        source: "retail",
-        saleDate: new Date().toISOString()
-      })
-
-      if (result.error) {
-        toast.error(result.error)
-      } else if (result.sale) {
-        const updateResult = await updateDeal({
-          id: deal.id,
-          sales_order_id: result.sale.id
-        })
-
-        if (updateResult.error) {
-          toast.error(updateResult.error)
-        } else if (updateResult.deal) {
-          toast.success("Sales order created successfully")
-          onUpdate(updateResult.deal)
-        }
-      }
-    } catch (e) {
-      toast.error("Failed to create sales order")
-    } finally {
-      setIsCreatingSale(false)
-    }
-  }
-
-  const handleCreateQuotation = async () => {
-    setIsCreatingQuote(true)
-    try {
-      const supabase = (await import("@/lib/supabase/client")).createClient()
-      let leadId = null
-      
-      if (deal.company_id) {
-        const { data: leads } = await supabase.from('leads').select('id').eq('company_id', deal.company_id).limit(1)
-        if (leads && leads.length > 0) leadId = leads[0].id
-      }
-      
-      if (!leadId) {
-        toast.error("Please ensure the deal's company has at least one lead (contact) before creating a quote.")
-        setIsCreatingQuote(false)
-        return
-      }
-
-      const result = await createQuotationFromDeal(deal.site_id, deal.id, leadId)
-
-      if (result.error) {
-        toast.error(result.error)
-      } else if (result.data) {
-        toast.success("Quotation created successfully")
-        router.push(`/quotations/${result.data.id}`)
-      }
-    } catch (e) {
-      toast.error("Failed to create quotation")
-    } finally {
-      setIsCreatingQuote(false)
-    }
-  }
-
-  const formatCurrency = (amount: number | string | null, currency: string = 'USD') => {
-    if (amount === null || amount === undefined || amount === "") return "-"
-    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
-    if (isNaN(numAmount)) return "-"
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(numAmount)
-  }
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Not set"
-    return new Date(dateString).toLocaleDateString()
-  }
 
   if (loading) {
     return (
-      <div className="space-y-6 md:space-y-8 animate-pulse">
-        <div className="h-64 bg-muted/20 rounded-xl border"></div>
-        <div className="h-64 bg-muted/20 rounded-xl border"></div>
+      <div className="space-y-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="flex items-center justify-between py-3 border-b border-border/40">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        ))}
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 md:space-y-12">
-      {/* Quotations Card */}
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
-            <FileText className="h-5 w-5" /> Quotations
-          </CardTitle>
-          <Button variant="outline" size="sm" onClick={handleCreateQuotation} disabled={isCreatingQuote}>
-            <PlusCircle className="mr-2 h-4 w-4" /> {isCreatingQuote ? "Creating..." : "Create Quote"}
+    <div className="space-y-8">
+      <section>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-sm font-medium">Quotations</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8"
+            onClick={() => void commerce.handleCreateQuotation()}
+            disabled={commerce.isCreatingQuote}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            {commerce.isCreatingQuote ? "Creating..." : "Create Quote"}
           </Button>
-        </CardHeader>
-        <CardContent className="px-6 md:px-8 pb-8">
-          {quotations.length === 0 ? (
-            <EmptyCard
-              variant="fancy"
-              icon={<FileText />}
-              title="No Quotations"
-              description="Create a quotation to send pricing details to your prospect."
-              className="min-h-[200px] border border-dashed rounded-lg bg-muted/5"
-              showShadow={false}
-            />
-          ) : (
-            <div className="space-y-3">
-              {quotations.map(q => (
-                <div 
-                  key={q.id} 
-                  className={`flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer ${deal.accepted_quotation_id === q.id ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}
-                  onClick={() => router.push(`/quotations/${q.id}`)}
-                >
-                  <div className="flex flex-col gap-1">
-                    <div className="font-semibold flex items-center gap-2">
-                      Quote {q.id.substring(0, 8)}
-                      {deal.accepted_quotation_id === q.id && <Badge variant="default" className="text-[10px]">Accepted</Badge>}
-                    </div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-3 w-3" /> {format(new Date(q.created_at), 'MMM d, yyyy')}
-                    </div>
-                  </div>
-                  <div className="text-right flex flex-col items-end gap-1">
-                    <div className="font-bold">{formatCurrency(q.total, q.currency)}</div>
-                    <Badge variant="outline" className="text-xs uppercase">{q.status}</Badge>
-                  </div>
+        </div>
+        {quotations.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-3">No quotations yet.</p>
+        ) : (
+          quotations.map((quote) => (
+            <button
+              key={quote.id}
+              type="button"
+              className="flex w-full items-center justify-between py-3 border-b border-border/40 last:border-0 hover:bg-muted/40 -mx-1 px-1 rounded-md text-left"
+              onClick={() => router.push(`/quotations/${quote.id}`)}
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium truncate">Quote {quote.id.substring(0, 8)}</span>
+                  {deal.accepted_quotation_id === quote.id && (
+                    <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
+                      Accepted
+                    </Badge>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {format(new Date(quote.created_at), "MMM d, yyyy")}
+                </p>
+              </div>
+              <div className="text-right shrink-0 ml-3">
+                <p className="text-sm font-medium">{formatDealCurrency(quote.total, quote.currency) || "-"}</p>
+                <p className="text-xs text-muted-foreground uppercase">{quote.status}</p>
+              </div>
+            </button>
+          ))
+        )}
+      </section>
 
-      {/* Sales Order Card */}
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" /> Sales Order
-          </CardTitle>
+      <section>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-sm font-medium">Sales order</h3>
           {sale ? (
-            <Button variant="outline" size="sm" onClick={() => navigateToSale({
-              saleId: sale.id,
-              saleName: sale.title || `Sale ${sale.id.substring(0, 8)}`,
-              router
-            })}>
-              <ExternalLink className="mr-2 h-4 w-4" /> View Order
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() =>
+                navigateToSale({
+                  saleId: sale.id,
+                  saleName: sale.title || `Sale ${sale.id.substring(0, 8)}`,
+                  router,
+                })
+              }
+            >
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+              View Order
             </Button>
           ) : (
-            <Button variant="outline" size="sm" onClick={handleCreateSale} disabled={isCreatingSale}>
-              <PlusCircle className="mr-2 h-4 w-4" /> {isCreatingSale ? "Creating..." : "Create Sales Order"}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => void commerce.handleCreateSale()}
+              disabled={commerce.isCreatingSale}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              {commerce.isCreatingSale ? "Creating..." : "Create Sale"}
             </Button>
           )}
-        </CardHeader>
-        <CardContent className="px-6 md:px-8 pb-8">
-          {sale ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground">Title</label>
-                <div className="relative">
-                  <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    className="pl-12 h-12 text-base bg-muted/10 border-transparent focus-visible:ring-0 cursor-default"
-                    value={sale.title}
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground">Status</label>
-                <div className="relative flex items-center h-12 px-4 rounded-md bg-muted/10">
-                  <Badge 
-                    variant="outline" 
-                    className={
-                      sale.status === 'completed' ? 'bg-green-100 text-green-800 border-green-200 px-3 py-1 text-sm' :
-                      sale.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-200 px-3 py-1 text-sm' :
-                      sale.status === 'refunded' ? 'bg-purple-100 text-purple-800 border-purple-200 px-3 py-1 text-sm' :
-                      'bg-red-100 text-red-800 border-red-200 px-3 py-1 text-sm'
-                    }
-                  >
-                    {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground">Amount</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    className="pl-12 h-12 text-base bg-muted/10 border-transparent focus-visible:ring-0 cursor-default"
-                    value={formatCurrency(sale.amount, sale.currency)}
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-foreground">Amount Due</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    className={`pl-12 h-12 text-base bg-muted/10 border-transparent focus-visible:ring-0 cursor-default font-semibold ${sale.amount_due > 0 ? "text-red-500" : "text-green-500"}`}
-                    value={formatCurrency(sale.amount_due, sale.currency)}
-                    readOnly
-                  />
-                </div>
-              </div>
+        </div>
+        {sale ? (
+          <div>
+            <div className="flex items-center justify-between py-2.5 border-b border-border/40">
+              <span className="text-xs text-muted-foreground">Title</span>
+              <span className="text-sm truncate ml-4">{sale.title}</span>
             </div>
-          ) : (
-            <EmptyCard
-              variant="fancy"
-              icon={<ShoppingCart />}
-              title="No Sales Order"
-              description="Create a sales order for this deal to track revenue, products and payments."
-              className="min-h-[200px] border border-dashed rounded-lg bg-muted/5"
-              showShadow={false}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Sales Payments Card */}
-      {sale && (
-        <Card className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
-            <CardTitle className="text-xl font-semibold flex items-center gap-2">
-              <CreditCard className="h-5 w-5" /> Sales Payments
-            </CardTitle>
-            <Button variant="outline" size="sm" onClick={() => setIsPaymentOpen(true)} disabled={sale.amount_due <= 0}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Register Payment
-            </Button>
-          </CardHeader>
-        </Card>
-      )}
+            <div className="flex items-center justify-between py-2.5 border-b border-border/40">
+              <span className="text-xs text-muted-foreground">Status</span>
+              <Badge variant="outline" className="text-xs capitalize">
+                {sale.status}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between py-2.5 border-b border-border/40">
+              <span className="text-xs text-muted-foreground">Amount</span>
+              <span className="text-sm">{formatDealCurrency(sale.amount, sale.currency) || "-"}</span>
+            </div>
+            <div className="flex items-center justify-between py-2.5">
+              <span className="text-xs text-muted-foreground">Amount due</span>
+              <span className={`text-sm font-medium ${sale.amount_due > 0 ? "text-red-500" : "text-green-600"}`}>
+                {formatDealCurrency(sale.amount_due, sale.currency) || "-"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between pt-3">
+              <span className="text-sm font-medium flex items-center gap-1.5">
+                <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                Payments
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => setIsPaymentOpen(true)}
+                disabled={sale.amount_due <= 0}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                Register Payment
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-3">No sales order yet.</p>
+        )}
+      </section>
 
       {sale && isPaymentOpen && (
         <RegisterPaymentDialog
@@ -308,7 +198,7 @@ export function DealSalesOrder({ deal, onUpdate }: DealSalesOrderProps) {
           open={isPaymentOpen}
           onOpenChange={setIsPaymentOpen}
           onSuccess={() => {
-            loadData()
+            void loadData()
             setIsPaymentOpen(false)
           }}
         />

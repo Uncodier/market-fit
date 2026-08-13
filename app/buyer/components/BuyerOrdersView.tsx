@@ -3,29 +3,23 @@
 import React, { useState, useEffect } from "react"
 import useSWR from "swr"
 import { listBuyerOrders, getUserSites } from "../actions"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Badge } from "@/app/components/ui/badge"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { LayoutGrid, Clock, CheckCircle2, ListOrdered, Plus, Search } from "@/app/components/ui/icons"
+import { LayoutGrid, Clock, CheckCircle2, ListOrdered, Search } from "@/app/components/ui/icons"
 import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { resolveItemImage } from "@/app/lib/image-utils"
+import { formatCurrency } from "@/app/lib/formatters"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useRouter } from "next/navigation"
 import { navigateToPurchaseOrder } from "@/app/hooks/use-navigation-history"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/20",
-  completed: "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20",
-  cancelled: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
-}
+import { StatusDot } from "@/app/components/documents/document-list"
 
 export function BuyerOrdersView({
   scope = "personal",
@@ -197,20 +191,37 @@ export function BuyerOrdersView({
               <>
                 <div className="space-y-6">
                   {data?.data && data.data.length > 0 ? (
-                    data.data.map((order: any) => (
-                      <div key={order.id} className="bg-card rounded-xl shadow-sm border overflow-hidden">
-                        <div className="bg-muted/30 px-5 py-3 border-b flex flex-col md:flex-row md:items-center justify-between gap-2 text-sm">
-                          <div className="font-semibold text-foreground">
-                            {format(new Date(order.created_at), 'MMMM d')}
+                    data.data.map((order: any) => {
+                      const status = (order.status || "").toLowerCase()
+                      const statusLabel = status
+                        ? (t(`status.${status}`) || status.replace(/_/g, " "))
+                        : (t("status.unknown") || "Unknown")
+                      const cancelled = status === "cancelled" || status === "canceled"
+                      return (
+                      <div key={order.id} className="overflow-hidden rounded-xl border border-border/70 bg-card">
+                        <div className="flex flex-col gap-2 border-b border-border/50 px-5 py-3 text-sm md:flex-row md:items-center md:justify-between">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <StatusDot status={status || "pending"} label={statusLabel} />
+                            <span className="text-muted-foreground">
+                              {format(new Date(order.created_at), "MMM d, yyyy")}
+                            </span>
                           </div>
-                            <div className="flex items-center gap-4 text-muted-foreground">
-                              {scope === 'personal' && order.owner_site_id && (
-                                <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">{t('buyer.orders.business') || 'Business'}</Badge>
-                              )}
-                              <span className="font-medium text-foreground">{order.site?.name || t('buyer.orders.unknown') || 'Unknown'}</span>
-                              <span className="hidden md:inline-block border-l h-4"></span>
-                              <span className="font-mono text-xs uppercase tracking-wider">{order.order_number}</span>
-                            </div>
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <span className="truncate font-medium text-foreground">
+                              {order.site?.name || t("buyer.orders.unknown") || "Unknown"}
+                              {scope === "personal" && order.owner_site_id
+                                ? ` · ${t("buyer.orders.business") || "Business"}`
+                                : ""}
+                            </span>
+                            <span className="font-mono text-[11px] uppercase tracking-wider">
+                              {order.order_number}
+                            </span>
+                            <span
+                              className={`text-[15px] font-semibold tabular-nums tracking-tight text-foreground ${cancelled ? "text-muted-foreground line-through decoration-muted-foreground/60" : ""}`}
+                            >
+                              {formatCurrency(Number(order.total) || 0, order.currency || "USD")}
+                            </span>
+                          </div>
                         </div>
 
                         <div className="divide-y">
@@ -228,21 +239,12 @@ export function BuyerOrdersView({
                                 </div>
                                 
                                 <div className="flex-1 space-y-1.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`text-sm font-medium ${order.status === 'completed' ? 'text-green-600 dark:text-green-500' : ''}`}>
-                                      {order.status ? (t(`status.${order.status.toLowerCase()}`) || order.status.toUpperCase()) : 'UNKNOWN'}
-                                    </span>
-                                    {order.status === 'completed' && (
-                                      <span className="text-sm text-muted-foreground hidden md:inline">
-                                        {t('buyer.orders.arrivedOn') || 'Arrived on'} {format(new Date(order.created_at), 'MMMM d')}
-                                      </span>
-                                    )}
-                                  </div>
                                   <div className="font-medium text-foreground text-base leading-tight">
                                     {item.name}
                                   </div>
                                   <div className="text-sm text-muted-foreground">
                                     {item.quantity} {item.quantity === 1 ? (t('buyer.orders.unit') || 'unit') : (t('buyer.orders.units') || 'units')}
+                                    {status === 'completed' ? ` · ${t('buyer.orders.arrivedOn') || 'Arrived on'} ${format(new Date(order.created_at), 'MMM d')}` : ''}
                                   </div>
                                 </div>
 
@@ -276,7 +278,7 @@ export function BuyerOrdersView({
                                   {order.items?.length || 0} {order.items?.length === 1 ? (t('buyer.orders.item') || 'item') : (t('buyer.orders.items') || 'items')}
                                 </div>
                                 <div className="text-sm text-muted-foreground mt-1">
-                                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(Number(order.total) || 0)}
+                                  {formatCurrency(Number(order.total) || 0, order.currency || "USD")}
                                 </div>
                               </div>
                               <div className="flex flex-col gap-2 md:w-56">
@@ -297,7 +299,8 @@ export function BuyerOrdersView({
                           )}
                         </div>
                       </div>
-                    ))
+                      )
+                    })
                   ) : (
                     <div className="bg-card rounded-xl border shadow-sm p-8 flex items-center justify-center min-h-[300px]">
                       <EmptyCard 

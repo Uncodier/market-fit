@@ -4,9 +4,11 @@ import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/app/components/ui/dialog"
@@ -179,23 +181,23 @@ export function PriceListDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit
-              ? t("priceLists.editTitle") || "Edit Price List"
-              : t("priceLists.createTitle") || "Create Price List"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEdit
-              ? t("priceLists.editDescription") ||
-                "Update this pricing tier and where it applies."
-              : t("priceLists.createDescription") ||
-                "Add a new pricing tier for your catalog items."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
+      <DialogContent size="md" busy={isSubmitting}>
+        <DialogForm onSubmit={handleSubmit(onSubmit)}>
+          <DialogHeader>
+            <DialogTitle>
+              {isEdit
+                ? t("priceLists.editTitle") || "Edit Price List"
+                : t("priceLists.createTitle") || "Create Price List"}
+            </DialogTitle>
+            <DialogDescription>
+              {isEdit
+                ? t("priceLists.editDescription") ||
+                  "Update this pricing tier and where it applies."
+                : t("priceLists.createDescription") ||
+                  "Add a new pricing tier for your catalog items."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
           <div className="space-y-2">
             <Label htmlFor="price-list-name">
               {t("priceLists.name") || "Name"}
@@ -302,7 +304,8 @@ export function PriceListDialog({
             </div>
           </div>
 
-          <DialogFooter className="pt-2">
+          </DialogBody>
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
@@ -320,7 +323,7 @@ export function PriceListDialog({
                   : t("priceLists.addList") || "Create List"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

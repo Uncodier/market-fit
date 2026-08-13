@@ -152,7 +152,6 @@ function LayoutClientInner({
   breadcrumbFromEvent,
   customTitle,
   fetchError,
-  isExperimentDetailPage,
 }: {
   children: React.ReactNode
   pathname: string
@@ -160,7 +159,6 @@ function LayoutClientInner({
   breadcrumbFromEvent: React.ReactNode
   customTitle: string | null
   fetchError: string | null
-  isExperimentDetailPage: boolean
 }) {
   const searchParams = useSearchParams()
   const isArtifact = searchParams.get("artifact") === "true"
@@ -530,7 +528,6 @@ function LayoutClientInner({
                 className="fixed top-0 right-0 left-0"
                 style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
                 breadcrumb={customBreadcrumb}
-                isExperimentDetailPage={isExperimentDetailPage}
                 onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
                 onCreateDeal={pathname === "/deals" ? handleCreateDealClick : undefined}
                 viewMode={robotsViewMode}
@@ -573,9 +570,6 @@ export default function LayoutClient({
 
   // Use the page refresh prevention hook
   const { shouldPreventRefresh, isCreateEditRoute } = usePageRefreshPrevention()
-
-  // Determine if we're on an experiment detail page
-  const isExperimentDetailPage = pathname ? /^\/experiments\/[a-zA-Z0-9-]+$/.test(pathname) : false;
 
   // Inicialización crítica (ejecutar inmediatamente)
   useEffect(() => {
@@ -664,7 +658,6 @@ export default function LayoutClient({
         breadcrumbFromEvent={breadcrumbFromEvent}
         customTitle={customTitle}
         fetchError={fetchError}
-        isExperimentDetailPage={isExperimentDetailPage}
       >
         {children}
       </LayoutClientInner>

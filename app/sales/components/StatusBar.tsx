@@ -1,48 +1,43 @@
-"use client";
+"use client"
 
-import React from "react";
-import { Badge } from "@/app/components/ui/badge";
-import { useLocalization } from "@/app/context/LocalizationContext";
+import { ProgressiveStatusBar } from "@/app/components/ui/progressive-status-bar"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
-const SALE_STATUSES = [
-  { id: 'pending' as const, key: 'sales.status.pending', fallback: 'Pending' },
-  { id: 'completed' as const, key: 'sales.status.completed', fallback: 'Completed' },
-  { id: 'cancelled' as const, key: 'sales.status.cancelled', fallback: 'Cancelled' },
-  { id: 'refunded' as const, key: 'sales.status.refunded', fallback: 'Refunded' },
-];
+type SaleStatus = "pending" | "completed" | "cancelled" | "refunded"
 
-const STATUS_STYLES = {
+const FORWARD_PATH: SaleStatus[] = ["pending", "completed"]
+const OUTCOMES: SaleStatus[] = ["cancelled", "refunded"]
+
+const STATUS_STYLES: Record<SaleStatus, string> = {
   pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200",
   completed: "bg-green-50 text-green-700 hover:bg-green-100 border-green-200",
   cancelled: "bg-red-50 text-red-700 hover:bg-red-100 border-red-200",
-  refunded: "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200"
-};
+  refunded: "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200",
+}
+
+const STATUS_KEYS: Record<SaleStatus, { key: string; fallback: string }> = {
+  pending: { key: "sales.status.pending", fallback: "Pending" },
+  completed: { key: "sales.status.completed", fallback: "Completed" },
+  cancelled: { key: "sales.status.cancelled", fallback: "Cancelled" },
+  refunded: { key: "sales.status.refunded", fallback: "Refunded" },
+}
 
 interface StatusBarProps {
-  currentStatus: "pending" | "completed" | "cancelled" | "refunded";
-  onStatusChange: (status: "pending" | "completed" | "cancelled" | "refunded") => void;
+  currentStatus: SaleStatus
+  onStatusChange: (status: SaleStatus) => void
 }
 
 export function StatusBar({ currentStatus, onStatusChange }: StatusBarProps) {
-  const { t } = useLocalization();
+  const { t } = useLocalization()
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex space-x-2">
-        {SALE_STATUSES.map((status) => (
-          <Badge
-            key={status.id}
-            className={`px-3 py-1 text-sm cursor-pointer transition-colors duration-200 ${
-              currentStatus === status.id
-                ? STATUS_STYLES[status.id]
-                : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border border border-transparent'
-            }`}
-            onClick={() => onStatusChange(status.id)}
-          >
-            {t(status.key) || status.fallback}
-          </Badge>
-        ))}
-      </div>
-    </div>
-  );
+    <ProgressiveStatusBar
+      current={currentStatus}
+      forwardPath={FORWARD_PATH}
+      outcomes={OUTCOMES}
+      styles={STATUS_STYLES}
+      labels={(status) => t(STATUS_KEYS[status].key) || STATUS_KEYS[status].fallback}
+      onChange={onStatusChange}
+    />
+  )
 }

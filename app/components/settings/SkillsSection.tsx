@@ -2,7 +2,14 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Badge } from "../ui/badge"
 import { Button } from "../ui/button"
 import { ChevronDown, ChevronRight, Copy, Check, ExternalLink } from "../ui/icons"
@@ -472,7 +479,7 @@ export function SkillsSection({ active }: SkillsSectionProps) {
     <div id="skills" className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold">{t('settings.skills.title') || 'Code agent skills'}</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           {t('settings.skills.description') || 'Skill bundles for coding agents: copy into your CLI or IDE to steer behavior, constraints, and workflows for autonomous code agents.'}
         </p>
       </div>
@@ -482,17 +489,16 @@ export function SkillsSection({ active }: SkillsSectionProps) {
         const isCopied = copiedId === skill.id
 
         return (
-          <Card
+          <SectionCard
             key={skill.id}
             id={`skill-${skill.id}`}
-            className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200"
           >
-            <CardHeader className="px-8 py-6">
+            <SectionCardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-2">
-                  <CardTitle className="text-xl font-semibold">
+                  <SectionCardTitle>
                     {skill.name}
-                  </CardTitle>
+                  </SectionCardTitle>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {skill.description}
                   </p>
@@ -517,19 +523,19 @@ export function SkillsSection({ active }: SkillsSectionProps) {
                   )}
                 </button>
               </div>
-            </CardHeader>
+            </SectionCardHeader>
 
             {isExpanded && (
-              <CardContent className="px-8 pb-0 pt-0">
+              <SectionCardContent className="pb-0 pt-0">
                 <div className="border dark:border-white/5 border-black/5 rounded-lg bg-muted/30 p-6 overflow-auto max-h-[500px]">
                   <pre className="text-sm leading-relaxed whitespace-pre-wrap font-mono text-muted-foreground">
                     {skill.content}
                   </pre>
                 </div>
-              </CardContent>
+              </SectionCardContent>
             )}
 
-            <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end gap-3">
+            <SectionCardFooter>
               {skill.docsUrl && (
                 <Button
                   type="button"
@@ -557,8 +563,8 @@ export function SkillsSection({ active }: SkillsSectionProps) {
                   </>
                 )}
               </Button>
-            </CardFooter>
-          </Card>
+            </SectionCardFooter>
+          </SectionCard>
         )
       })}
     </div>

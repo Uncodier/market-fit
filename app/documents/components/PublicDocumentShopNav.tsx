@@ -62,9 +62,10 @@ export function PublicDocumentShopNav({
   }, [siteId, currency])
 
   return (
-    <div className="print:hidden">
-      <div className="h-4 w-full shrink-0" />
+    <>
+      <div className="h-4 w-full shrink-0 print:hidden" />
       <CommerceShellHeader
+        className="print:hidden"
         brand={
           <div className="flex items-center min-w-0">
             {backHref ? (
@@ -165,6 +166,6 @@ export function PublicDocumentShopNav({
           </div>
         }
       />
-    </div>
+    </>
   )
 }

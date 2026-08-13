@@ -541,6 +541,38 @@ export const siteFormSchema = z.object({
     default_delivery_options: ['pickup', 'ship', 'dine_in'],
     bank_transfer: {}
   }),
+  printers: z.object({
+    devices: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      transport: z.enum(["usb", "bluetooth", "system"]),
+      paperWidthMm: z.number().refine((n) => n === 58 || n === 80),
+      copies: z.number().min(1).max(5),
+      enabled: z.boolean().optional().default(true),
+      modules: z.object({
+        pos: z.boolean(),
+        orders: z.boolean(),
+        inventory: z.boolean(),
+      }),
+      autoPrint: z.object({
+        posReceipt: z.boolean(),
+        kitchenTicket: z.boolean(),
+        orderDelta: z.boolean(),
+        inventoryLabel: z.boolean(),
+      }),
+      station: z.object({
+        workstationId: z.string(),
+        workstationName: z.string(),
+        hardwareName: z.string().optional(),
+        bluetoothDeviceId: z.string().optional(),
+        usbVendorId: z.number().optional(),
+        usbProductId: z.number().optional(),
+        usbKind: z.enum(["serial", "webusb"]).optional(),
+        usbSerialNumber: z.string().optional(),
+        boundAt: z.string().optional(),
+      }).optional(),
+    })).optional().default([]),
+  }).optional().default({ devices: [] }),
   
   // Customer Journey Configuration
   customer_journey: z.object({

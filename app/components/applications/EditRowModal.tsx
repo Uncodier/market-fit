@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -235,18 +237,17 @@ export function EditRowModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent size="lg" busy={loading}>
+        <DialogForm onSubmit={(e) => { e.preventDefault(); void handleSave() }}>
         <DialogHeader>
           <DialogTitle>{row ? "Edit Row" : "Add Row"} - {table.name}</DialogTitle>
         </DialogHeader>
-        
-        {error && (
-          <div className="p-3 text-sm bg-destructive/10 text-destructive rounded-md">
-            {error}
-          </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto py-4 space-y-4 px-1">
+        <DialogBody className="grid gap-4">
+          {error && (
+            <div className="p-3 text-sm bg-destructive/10 text-destructive rounded-md">
+              {error}
+            </div>
+          )}
           {table.columns.map(col => {
             const isPrimaryKey = col.name === table.primaryKey
             const isBoolean = col.type.toLowerCase().includes("boolean")
@@ -262,16 +263,16 @@ export function EditRowModal({
               </div>
             )
           })}
-        </div>
-
-        <DialogFooter className="pt-4 border-t">
+        </DialogBody>
+        <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={loading || (!!row && !table.primaryKey)}>
+          <Button type="submit" disabled={loading || (!!row && !table.primaryKey)}>
             {loading ? "Saving..." : "Save Changes"}
           </Button>
         </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

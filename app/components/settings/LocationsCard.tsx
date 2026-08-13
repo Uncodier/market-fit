@@ -11,7 +11,7 @@ interface LocationsCardProps {
 
 export function LocationsCard({ onSave }: LocationsCardProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <OfficeLocationsSection onSave={onSave} />
       <ServiceAvailableRestrictionsSection onSave={onSave} />
       <ServiceExclusionsAddressesSection onSave={onSave} />

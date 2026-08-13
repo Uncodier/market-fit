@@ -1,18 +1,16 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
 import { getLeadById, updateLead, deleteLead } from "@/app/leads/actions"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
-import { Lead, Segment, LEAD_STATUSES, STATUS_STYLES, AttributionData } from "@/app/leads/types"
+import { Lead, Segment, AttributionData } from "@/app/leads/types"
 import { Campaign } from "@/app/types"
-import { Button } from "@/app/components/ui/button"
-import { ChevronLeft } from "@/app/components/ui/icons"
-import { Card, CardContent } from "@/app/components/ui/card"
 import { LeadDetail } from "@/app/leads/components/LeadDetail"
+import { LeadIdentityHeader } from "@/app/leads/components/LeadIdentityHeader"
 import { JourneyView } from "@/app/leads/components/JourneyView"
 import { ConversationsView } from "@/app/leads/components/ConversationsView"
 import { SalesView } from "@/app/leads/components/SalesView"
@@ -21,9 +19,6 @@ import { DealsView } from "@/app/leads/components/DealsView"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { LeadDetailSkeleton } from "@/app/leads/components/LeadDetailSkeleton"
-import { Input } from "@/app/components/ui/input"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { Badge } from "@/app/components/ui/badge"
 import { StatusSegmentBar } from "@/app/leads/components/StatusSegmentBar"
 import { AttributionModal } from "@/app/leads/components/AttributionModal"
 
@@ -37,6 +32,7 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(true)
   const [showAttributionModal, setShowAttributionModal] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<"new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified" | null>(null)
+  const [revealEmpty, setRevealEmpty] = useState(false)
   
   // Extract id safely from params
   const leadId = Array.isArray(unwrappedParams.id) ? unwrappedParams.id[0] : unwrappedParams.id
@@ -220,10 +216,6 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
       toast.error("Error deleting lead")
     }
   }
-
-  const handleGoBack = () => {
-    router.push("/leads")
-  }
   
   // Handler for status change
   const handleStatusChange = (status: "new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified") => {
@@ -271,7 +263,7 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
       <Tabs defaultValue="journey">
         <StickyHeader>
           <div className="pt-0 flex-1 w-full">
-            <div className="flex items-center justify-between w-full">
+            <div className="flex items-center justify-between w-full gap-4">
               <TabsList>
                 <TabsTrigger value="journey">Customer Journey</TabsTrigger>
                 <TabsTrigger value="conversations">Conversations</TabsTrigger>
@@ -279,10 +271,9 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
                 <TabsTrigger value="sales">Sales</TabsTrigger>
                 <TabsTrigger value="digital-behavior">Digital Behavior</TabsTrigger>
               </TabsList>
-              
               {lead && (
-                <div className="flex items-center">
-                  <StatusSegmentBar 
+                <div className="flex items-center overflow-x-auto shrink-0">
+                  <StatusSegmentBar
                     currentStatus={lead.status}
                     onStatusChange={handleStatusChange}
                   />
@@ -292,13 +283,19 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
           </div>
         </StickyHeader>
 
-        <div className="px-4 lg:px-8" style={{ paddingTop: "32px" }}>
-          {lead && (
-            <div className="flex flex-row space-x-6">
-              {/* Tab Content - Left Side (60%) */}
-              <div className="w-[60%] min-w-0">
+        {lead && (
+          <div className="px-4 lg:px-8 py-5">
+            <LeadIdentityHeader
+              lead={lead}
+              onUpdateLead={handleUpdateLead}
+              onDeleteLead={handleDeleteLead}
+              onRevealFields={() => setRevealEmpty(true)}
+            />
+
+            <div className="mt-5 flex flex-col lg:flex-row border-t border-border/50">
+              <div className="w-full lg:min-w-0 lg:flex-1 pt-5 lg:pr-8">
                 <TabsContent value="journey" className="mt-0 pt-0">
-                  <JourneyView leadId={lead.id} />
+                  <JourneyView leadId={lead.id} leadStatus={lead.status} />
                 </TabsContent>
                 <TabsContent value="conversations" className="mt-0 pt-0">
                   <ConversationsView leadId={lead.id} />
@@ -313,27 +310,21 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
                   <DigitalBehaviorView leadId={lead.id} />
                 </TabsContent>
               </div>
-              
-              {/* Lead Details - Right Side (40%) - Always visible */}
-              <div className="w-[40%] min-w-0">
-                <Card className="h-fit">
-                  <CardContent className="p-0 min-w-0">
-                    <LeadDetail 
-                      lead={lead} 
-                      segments={segments}
-                      campaigns={campaigns}
-                      onUpdateLead={handleUpdateLead}
-                      onClose={() => {}} 
-                      onDeleteLead={handleDeleteLead}
-                      hideStatus={true}
-                      onStatusChange={handleStatusChange}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
+
+              <aside className="w-full lg:w-[340px] xl:w-[380px] shrink-0 pt-5 lg:pl-8 lg:border-l border-border/50">
+                <div className="lg:sticky lg:top-[calc(var(--topbar-height,64px)+71px+16px)] lg:max-h-[calc(100vh-var(--topbar-height,64px)-96px)] lg:overflow-y-auto">
+                  <LeadDetail
+                    lead={lead}
+                    segments={segments}
+                    campaigns={campaigns}
+                    onUpdateLead={handleUpdateLead}
+                    revealEmpty={revealEmpty}
+                  />
+                </div>
+              </aside>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </Tabs>
 
       {/* Attribution Modal */}

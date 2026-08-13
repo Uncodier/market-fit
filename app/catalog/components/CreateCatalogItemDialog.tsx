@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogForm, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Switch } from "@/app/components/ui/switch"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { useDirtyDialogClose } from "@/app/components/ui/use-dirty-dialog-close"
 import { useSite } from "@/app/context/SiteContext"
 import { upsertCatalogItem, listCatalogCategories } from "../actions"
 import { CatalogCategory } from "@/app/types"
@@ -50,7 +52,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [image, setImage] = useState<string>('')
   
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isDirty } } = useForm<FormData>({
     defaultValues: {
       kind: 'product',
       digital_subtype: 'none',
@@ -66,6 +68,13 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
       is_reservation: false,
     }
   })
+
+  const { discardOpen, setDiscardOpen, handleOpenChange, confirmDiscard } =
+    useDirtyDialogClose({
+      dirty: isDirty || Boolean(image),
+      busy: isSubmitting,
+      onOpenChange,
+    })
 
   useEffect(() => {
     if (open && currentSite) {
@@ -133,8 +142,8 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent size="lg" busy={isSubmitting}>
         <DialogHeader>
           <DialogTitle>{t("catalog.create.title") || "Add to Catalog"}</DialogTitle>
           <DialogDescription>
@@ -142,7 +151,8 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
+        <DialogForm onSubmit={handleSubmit(onSubmit)}>
+          <DialogBody className="space-y-6">
           <div className="space-y-2">
             <Label>{t("catalog.create.image") || "Image"}</Label>
             <ImageUpload 
@@ -152,7 +162,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2 md:col-span-1">
               <Label htmlFor="kind">{t("catalog.create.type") || "Type"}</Label>
               <Select 
@@ -204,7 +214,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2 md:col-span-1">
               <Label htmlFor="name">{t("catalog.create.name") || "Name"}</Label>
               <Input 
@@ -365,16 +375,27 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          </DialogBody>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (t("common.creating") || "Creating...") : (t("catalog.create.submit") || "Create Item")}
+              {isSubmitting ? (t("common.creating") || "Creating...") : (t("catalog.create.submit") || "Create item")}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard changes?"
+        description="Your changes will be lost."
+        confirmLabel="Discard"
+        variant="destructive"
+        onConfirm={confirmDiscard}
+      />
     </Dialog>
   )
 }

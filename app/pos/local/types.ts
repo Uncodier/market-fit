@@ -44,6 +44,9 @@ export type PosOutboxRow = {
   lastError?: string | null;
   resultSaleId?: string | null;
   resultOrderId?: string | null;
+  resultOrderNumber?: string | null;
+  resultKitchenDelta?: import("@/lib/printer/core/types").KitchenDelta | null;
+  resultFulfillment?: string | null;
   resultLeadId?: string | null;
   createdAt: string;
   updatedAt: string;

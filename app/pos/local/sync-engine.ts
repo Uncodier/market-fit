@@ -190,6 +190,9 @@ async function applyOutboxItem(row: PosOutboxRow): Promise<void> {
       status: "synced",
       resultSaleId: res.saleId || null,
       resultOrderId: res.orderId || null,
+      resultOrderNumber: (res as any).orderNumber || null,
+      resultKitchenDelta: (res as any).kitchenDelta || null,
+      resultFulfillment: (res as any).fulfillment || null,
       lastError: null,
     });
   }

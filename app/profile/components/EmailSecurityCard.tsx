@@ -1,7 +1,14 @@
 "use client"
 
 import React, { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Shield, MessageSquare, AlertCircle } from "@/app/components/ui/icons"
@@ -27,14 +34,14 @@ export function EmailSecurityCard({
 
   return (
     <>
-      <Card className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
             Email & Security
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+          </SectionCardTitle>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">Email Address</label>
@@ -71,7 +78,7 @@ export function EmailSecurityCard({
               </div>
             )}
           </div>
-        </CardContent>
+        </SectionCardContent>
         <ActionFooter>
           <Button
             asChild
@@ -90,7 +97,7 @@ export function EmailSecurityCard({
             Change Email
           </Button>
         </ActionFooter>
-      </Card>
+      </SectionCard>
 
       <ChangeEmailModal
         isOpen={isModalOpen}

@@ -1,5 +1,8 @@
-export { CampaignSummary, type CampaignSummaryProps, type TaskDetailContextType } from './campaign-summary';
-export { FinancialDetails } from './financial-details';
-export { TaskDetailSkeleton } from './task-detail-skeleton';
-export { CampaignSales } from './campaign-sales';
-export { CampaignDetailTabs } from './campaign-detail-tabs'; 
+export { CampaignSummary, type CampaignSummaryProps } from "./campaign-summary"
+export { FinancialDetails } from "./financial-details"
+export { TaskDetailSkeleton } from "./task-detail-skeleton"
+export { CampaignSales } from "./campaign-sales"
+export { CampaignPromotions } from "./campaign-promotions"
+export { CampaignStatusBar } from "./campaign-status-bar"
+export { CampaignIdentityHeader } from "./campaign-identity-header"
+export { CampaignAboutPanel } from "./campaign-about-panel"

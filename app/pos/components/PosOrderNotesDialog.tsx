@@ -4,6 +4,7 @@ import { Button } from "@/app/components/ui/button";
 import { Textarea } from "@/app/components/ui/textarea";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -29,7 +30,7 @@ export function PosOrderNotesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
             {getTrans("pos.cart.orderNotes", "Order notes")}
@@ -41,6 +42,7 @@ export function PosOrderNotesDialog({
             )}
           </DialogDescription>
         </DialogHeader>
+        <DialogBody>
         <Textarea
           value={notes}
           onChange={(e) => onChange(e.target.value)}
@@ -51,6 +53,7 @@ export function PosOrderNotesDialog({
           className="min-h-[160px] resize-none"
           autoFocus
         />
+        </DialogBody>
         <DialogFooter>
           <Button type="button" onClick={() => onOpenChange(false)}>
             {getTrans("done", "Done")}

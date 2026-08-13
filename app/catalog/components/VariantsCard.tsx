@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect } from "react"
 import { CatalogItem, VariantAxis, VariantAxisValue, VariantAxisKind } from "@/app/types"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
@@ -176,15 +183,15 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("catalog.variants.title") || "Variants"}</CardTitle>
-          <CardDescription>
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>{t("catalog.variants.title") || "Variants"}</SectionCardTitle>
+          <SectionCardDescription>
             {t("catalog.variants.description") ||
               "Define options like size or color. This item becomes the presentation parent; each combination is a sellable SKU."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+          </SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           {axes.length > 0 ? (
             <div className="space-y-6">
               {axes.map((axis, i) => (
@@ -249,10 +256,10 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
               </div>
             </div>
           )}
-        </CardContent>
+        </SectionCardContent>
         <ActionFooter>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={handleSaveAxes} disabled={saving}>
+            <Button variant="outline" type="button" onClick={handleSaveAxes} disabled={saving} size="sm">
               {saving
                 ? t("common.saving") || "Saving..."
                 : t("catalog.variants.saveOptions") || "Save Options"}
@@ -271,18 +278,18 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
             </Button>
           </div>
         </ActionFooter>
-      </Card>
+      </SectionCard>
 
       {(children.length > 0 || loadingChildren) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("catalog.variants.skusTitle") || "Variant SKUs"}</CardTitle>
-            <CardDescription>
+        <SectionCard>
+          <SectionCardHeader>
+            <SectionCardTitle>{t("catalog.variants.skusTitle") || "Variant SKUs"}</SectionCardTitle>
+            <SectionCardDescription>
               {t("catalog.variants.skusDescription") ||
                 "Each row is a sellable unit with its own price and SKU."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </SectionCardDescription>
+          </SectionCardHeader>
+          <SectionCardContent>
             {loadingChildren ? (
               <div className="space-y-3">
                 <div className="flex justify-between items-center px-4 py-3 border-b">
@@ -316,8 +323,8 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
                 </TableBody>
               </Table>
             )}
-          </CardContent>
-        </Card>
+          </SectionCardContent>
+        </SectionCard>
       )}
     </div>
   )

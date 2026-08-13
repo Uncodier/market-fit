@@ -27,7 +27,15 @@ export type LocalPromoMatch = {
   /** True when promo has no coupon code and activates via conditions. */
   byConditions: boolean;
   imageUrl?: string | null;
+  usageLimitPerUser?: number | null;
 };
+
+/** True when the promotion can only be redeemed by an identifiable customer. */
+export function promotionRequiresIdentifiableBuyer(
+  usageLimitPerUser?: number | null,
+): boolean {
+  return Number(usageLimitPerUser) > 0;
+}
 
 function normalizeCode(code: string): string {
   return code.trim().toUpperCase();
@@ -166,6 +174,7 @@ export function evaluatePromotionLocal(params: {
       orderSubtotal,
       byConditions: !hasCode(promo),
       imageUrl: promo.image_url || null,
+      usageLimitPerUser: promo.usage_limit_per_user ?? null,
     },
   };
 }

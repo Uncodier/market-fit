@@ -8,7 +8,14 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { ReservationScheduleCard } from "./ReservationScheduleCard"
 
@@ -35,11 +42,11 @@ export function ChannelsTab({
 
   return (
     <div className="mx-auto max-w-[800px] space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("catalog.channels.title") || "Channels & Behavior"}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>{t("catalog.channels.title") || "Channels & Behavior"}</SectionCardTitle>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="is_pos_available" className="text-base cursor-pointer">
@@ -114,13 +121,13 @@ export function ChannelsTab({
               </div>
             </div>
           )}
-        </CardContent>
+        </SectionCardContent>
         <ActionFooter>
-          <Button variant="outline" onClick={handleSave} disabled={saving}>
+          <Button variant="outline" onClick={handleSave} disabled={saving} size="sm">
             {t("catalog.channels.saveBehaviors") || "Save Behaviors"}
           </Button>
         </ActionFooter>
-      </Card>
+      </SectionCard>
 
       {formData.is_reservation && item && (
         <div className="space-y-4">

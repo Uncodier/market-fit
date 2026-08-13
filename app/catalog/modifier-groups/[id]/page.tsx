@@ -18,7 +18,14 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -193,7 +200,7 @@ export default function ModifierGroupDetailPage(props: {
   const usedIds = new Set(items.map((i) => i.catalog_item_id))
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))]">
       <StickyHeader>
         <div className="w-full pt-0 flex justify-between items-center">
           <h1 className="text-lg font-semibold">{name}</h1>
@@ -207,13 +214,13 @@ export default function ModifierGroupDetailPage(props: {
 
       <div className="flex-1 overflow-auto p-4 md:p-6">
         <div className="mx-auto max-w-[800px] space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>
+          <SectionCard>
+            <SectionCardHeader>
+              <SectionCardTitle>
                 {t("catalog.modifiers.detailsTitle") || "Group details"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </SectionCardTitle>
+            </SectionCardHeader>
+            <SectionCardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>{t("catalog.modifiers.name") || "Name"}</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -249,26 +256,26 @@ export default function ModifierGroupDetailPage(props: {
                   />
                 </div>
               </div>
-            </CardContent>
+            </SectionCardContent>
             <ActionFooter>
-              <Button variant="outline" onClick={handleSave} disabled={saving}>
+              <Button variant="outline" onClick={handleSave} disabled={saving} size="sm">
                 {saving
                   ? t("common.saving") || "Saving..."
                   : t("common.saveChanges") || "Save Changes"}
               </Button>
             </ActionFooter>
-          </Card>
+          </SectionCard>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <SectionCard>
+            <SectionCardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>
+                <SectionCardTitle>
                   {t("catalog.modifiers.optionsTitle") || "Products in group"}
-                </CardTitle>
-                <CardDescription>
+                </SectionCardTitle>
+                <SectionCardDescription>
                   {t("catalog.modifiers.optionsDesc") ||
                     "These catalog products can be added as extras when the group is attached to a host item."}
-                </CardDescription>
+                </SectionCardDescription>
               </div>
               <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                 <DialogTrigger asChild>
@@ -320,8 +327,8 @@ export default function ModifierGroupDetailPage(props: {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            </CardHeader>
-            <CardContent>
+            </SectionCardHeader>
+            <SectionCardContent>
               {items.length > 0 ? (
                 <div className="border rounded-lg overflow-hidden">
                   <table className="w-full">
@@ -371,20 +378,20 @@ export default function ModifierGroupDetailPage(props: {
                   className="border-0 shadow-none bg-transparent"
                 />
               )}
-            </CardContent>
-          </Card>
+            </SectionCardContent>
+          </SectionCard>
 
-          <Card className="border-destructive/20 bg-destructive/5">
-            <CardHeader>
-              <CardTitle className="text-destructive">
+          <SectionCard className="border-destructive/20 bg-destructive/5">
+            <SectionCardHeader>
+              <SectionCardTitle className="text-destructive">
                 {t("catalog.form.dangerZone") || "Danger Zone"}
-              </CardTitle>
-              <CardDescription className="text-destructive/80">
+              </SectionCardTitle>
+              <SectionCardDescription className="text-destructive/80">
                 {t("catalog.modifiers.deleteWarning") ||
                   "Deleting this group removes it from all products."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </SectionCardDescription>
+            </SectionCardHeader>
+            <SectionCardContent>
               <Button
                 variant="destructive"
                 size="sm"
@@ -394,8 +401,8 @@ export default function ModifierGroupDetailPage(props: {
                 <Trash2 size={16} />
                 {t("catalog.modifiers.delete") || "Delete group"}
               </Button>
-            </CardContent>
-          </Card>
+            </SectionCardContent>
+          </SectionCard>
         </div>
       </div>
 

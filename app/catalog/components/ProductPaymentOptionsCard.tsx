@@ -1,7 +1,14 @@
 "use client"
 
 import { CatalogItem } from "@/app/types"
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
@@ -53,17 +60,17 @@ export function ProductPaymentOptionsCard({ formData, setFormData, handleSave, s
   };
 
   return (
-    <Card className="border dark:border-white/5 border-black/5 shadow-sm">
-      <CardHeader>
+    <SectionCard className="border dark:border-white/5 border-black/5 shadow-sm">
+      <SectionCardHeader>
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <SectionCardTitle className="text-lg flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-gray-500" />
               {t('catalog.paymentOptions.override') || 'Payment Override'}
-            </CardTitle>
-            <CardDescription>
+            </SectionCardTitle>
+            <SectionCardDescription>
               {t('catalog.paymentOptions.overrideDesc') || 'Override site default payment methods for this product.'}
-            </CardDescription>
+            </SectionCardDescription>
           </div>
           <Switch 
             checked={isOverride} 
@@ -71,9 +78,9 @@ export function ProductPaymentOptionsCard({ formData, setFormData, handleSave, s
             aria-label="Override site payment methods"
           />
         </div>
-      </CardHeader>
+      </SectionCardHeader>
 
-      <CardContent className="space-y-4">
+      <SectionCardContent className="space-y-4">
         {isOverride ? (
           <>
             <div className="flex items-center justify-between border rounded-lg p-3">
@@ -127,12 +134,12 @@ export function ProductPaymentOptionsCard({ formData, setFormData, handleSave, s
             {t('catalog.paymentOptions.usingSiteDefaults') || 'Using site default payment methods. Enable override to customize for this product.'}
           </p>
         )}
-      </CardContent>
+      </SectionCardContent>
       <ActionFooter>
-        <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
+        <Button variant="outline" type="button" onClick={handleSave} disabled={saving} size="sm">
           {saving ? (t('common.saving') || 'Saving...') : (t('common.saveChanges') || 'Save Changes')}
         </Button>
       </ActionFooter>
-    </Card>
+    </SectionCard>
   )
 }

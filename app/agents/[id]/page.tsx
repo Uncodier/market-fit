@@ -7,7 +7,14 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Label } from "@/app/components/ui/label"
@@ -1848,14 +1855,14 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
         </StickyHeader>
         <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
           <TabsContent value="basic" className="space-y-4">
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-                <CardDescription>
+            <SectionCard className="mb-8">
+              <SectionCardHeader>
+                <SectionCardTitle>Basic Information</SectionCardTitle>
+                <SectionCardDescription>
                   Configure the basic details of your agent
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent className="space-y-4">
                 <div className="flex items-center justify-between border-b pb-4 mb-4">
                   <div>
                     <h3 className="font-medium text-base">Agent Status</h3>
@@ -1888,27 +1895,25 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     rows={3}
                   />
                 </div>
-              </CardContent>
+              </SectionCardContent>
               <ActionFooter>
-                <Button
+                <Button variant="outline"
                   type="button"
-                  variant="outline"
                   onClick={handleSaveBasicInfo}
-                  disabled={isSaving}
-                >
+                  disabled={isSaving} size="sm">
                   {isSaving ? "Saving..." : "Save Basic Information"}
                 </Button>
               </ActionFooter>
-            </Card>
+            </SectionCard>
             
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Agent Prompt</CardTitle>
-                <CardDescription>
+            <SectionCard className="mb-8">
+              <SectionCardHeader>
+                <SectionCardTitle>Agent Prompt</SectionCardTitle>
+                <SectionCardDescription>
                   Define the system prompt that sets the behavior and capabilities of your agent
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <Textarea 
                   value={prompt} 
                   onChange={(e) => setPrompt(e.target.value)} 
@@ -1916,57 +1921,53 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                   rows={10}
                   className="font-mono text-sm"
                 />
-              </CardContent>
+              </SectionCardContent>
               <ActionFooter>
-                <Button
+                <Button variant="outline"
                   type="button"
-                  variant="outline"
                   onClick={handleSavePrompt}
-                  disabled={isSaving}
-                >
+                  disabled={isSaving} size="sm">
                   {isSaving ? "Saving..." : "Save Prompt"}
                 </Button>
               </ActionFooter>
-            </Card>
+            </SectionCard>
             
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Agent Backstory</CardTitle>
-                <CardDescription>
+            <SectionCard className="mb-8">
+              <SectionCardHeader>
+                <SectionCardTitle>Agent Backstory</SectionCardTitle>
+                <SectionCardDescription>
                   Create a compelling backstory to give your agent more personality and context
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <Textarea 
                   value={backstory} 
                   onChange={(e) => setBackstory(e.target.value)} 
                   placeholder="Enter a backstory for this agent (e.g., professional background, experience, expertise)"
                   rows={6}
                 />
-              </CardContent>
+              </SectionCardContent>
               <ActionFooter>
-                <Button
+                <Button variant="outline"
                   type="button"
-                  variant="outline"
                   onClick={handleSaveBackstory}
-                  disabled={isSaving}
-                >
+                  disabled={isSaving} size="sm">
                   {isSaving ? "Saving..." : "Save Backstory"}
                 </Button>
               </ActionFooter>
-            </Card>
+            </SectionCard>
           </TabsContent>
 
           <TabsContent value="tools" className="space-y-4">
             {/* Favorites Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Favorites</CardTitle>
-                <CardDescription>
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>Favorites</SectionCardTitle>
+                <SectionCardDescription>
                   Your most used tools
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <div className="space-y-3">
                   {tools.slice(0, 2).map(tool => (
                     <AgentTool 
@@ -1979,18 +1980,18 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     />
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
 
             {/* All Tools Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>All Tools</CardTitle>
-                <CardDescription>
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>All Tools</SectionCardTitle>
+                <SectionCardDescription>
                   Enable or disable tools that your agent can use
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <div className="space-y-3">
                   {tools
                     .filter(tool => 
@@ -2008,20 +2009,20 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                       />
                     ))}
                 </div>
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
           </TabsContent>
 
           <TabsContent value="triggers" className="space-y-4">
             {/* Favorites Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Favorites</CardTitle>
-                <CardDescription>
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>Favorites</SectionCardTitle>
+                <SectionCardDescription>
                   Your most used triggers
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <div className="space-y-3">
                   {triggers.slice(0, 2).map(trigger => (
                     <AgentTrigger 
@@ -2034,18 +2035,18 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     />
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
 
             {/* All Triggers Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>All Triggers</CardTitle>
-                <CardDescription>
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>All Triggers</SectionCardTitle>
+                <SectionCardDescription>
                   Configure when and how your agent should be activated
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <div className="space-y-3">
                   {triggers
                     .filter(trigger => 
@@ -2063,20 +2064,20 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                       />
                     ))}
                 </div>
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
           </TabsContent>
 
           <TabsContent value="integrations" className="space-y-4">
             {/* Favorites Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Favorites</CardTitle>
-                <CardDescription>
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>Favorites</SectionCardTitle>
+                <SectionCardDescription>
                   Your most used integrations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <div className="space-y-3">
                   {integrations.slice(0, 2).map(integration => (
                     <AgentIntegration 
@@ -2089,18 +2090,18 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     />
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
 
             {/* All Integrations Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>All Integrations</CardTitle>
-                <CardDescription>
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>All Integrations</SectionCardTitle>
+                <SectionCardDescription>
                   Connect your agent to external services
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <div className="space-y-3">
                   {integrations
                     .filter(integration => 
@@ -2118,19 +2119,19 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                       />
                     ))}
                 </div>
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
           </TabsContent>
 
           <TabsContent value="context" className="space-y-4">
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Context Files</CardTitle>
-                <CardDescription>
+            <SectionCard className="mb-8">
+              <SectionCardHeader>
+                <SectionCardTitle>Context Files</SectionCardTitle>
+                <SectionCardDescription>
                   Add files that provide context for your agent
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 {isContextFilesLoading ? (
                   <ContextFilesSkeleton />
                 ) : contextFiles.length > 0 ? (
@@ -2160,7 +2161,7 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     className="flex flex-col items-center justify-center py-8"
                   />
                 )}
-              </CardContent>
+              </SectionCardContent>
               <ActionFooter>
                 <UploadFileDialog 
                   agentId={agentId} 
@@ -2168,19 +2169,19 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                   buttonLabel="Add File"
                 />
               </ActionFooter>
-            </Card>
+            </SectionCard>
             
             {/* Compatible Assets Section */}
-            <Card>
-              <CardHeader>
+            <SectionCard>
+              <SectionCardHeader>
                 <div>
-                  <CardTitle>Available Assets</CardTitle>
-                  <CardDescription>
+                  <SectionCardTitle>Available Assets</SectionCardTitle>
+                  <SectionCardDescription>
                     Compatible files from your site that can be attached to this agent
-                  </CardDescription>
+                  </SectionCardDescription>
                 </div>
-              </CardHeader>
-              <CardContent>
+              </SectionCardHeader>
+              <SectionCardContent>
                 {isAssetsLoading ? (
                   <div className="space-y-2">
                     {Array.from({ length: 3 }).map((_, index) => (
@@ -2295,19 +2296,19 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     className="flex flex-col items-center justify-center py-8"
                   />
                 )}
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
           </TabsContent>
 
           <TabsContent value="activities" className="space-y-4">
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Activities</CardTitle>
-                <CardDescription>
+            <SectionCard className="mb-8">
+              <SectionCardHeader>
+                <SectionCardTitle>Activities</SectionCardTitle>
+                <SectionCardDescription>
                   Configure the activities this agent can perform
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
                 {isActivitiesLoading ? (
                   <ActivitiesSkeleton />
                 ) : activities.length > 0 ? (
@@ -2337,18 +2338,16 @@ function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> })
                     className="flex flex-col items-center justify-center py-8"
                   />
                 )}
-              </CardContent>
+              </SectionCardContent>
               <ActionFooter>
-                <Button
+                <Button variant="outline"
                   type="button"
-                  variant="outline"
                   onClick={handleSaveActivities}
-                  disabled={isSaving}
-                >
+                  disabled={isSaving} size="sm">
                   {isSaving ? "Saving..." : "Save Activities"}
                 </Button>
               </ActionFooter>
-            </Card>
+            </SectionCard>
           </TabsContent>
         </div>
       </Tabs>

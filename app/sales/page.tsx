@@ -1,367 +1,35 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Badge } from "@/app/components/ui/badge"
-import { ShoppingCart, Printer, CreditCard, Filter, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
-import { Pagination } from "@/app/components/ui/pagination"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
+import { Filter, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
+import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
-import { getSales, deleteSale, updateSale } from "./actions"
+import { getSales, updateSale } from "./actions"
 import { listLocations } from "@/app/inventory/actions"
 import { toast } from "sonner"
 import { getSegments } from "@/app/segments/actions"
-import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
-import React from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { Separator } from "@/app/components/ui/separator"
-import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
-import { format, subDays, startOfMonth, isWithinInterval, parseISO } from "date-fns"
+import { subDays, isWithinInterval, parseISO } from "date-fns"
 import { Sale } from "@/app/types"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
-import { Label } from "@/app/components/ui/label"
 import { useRouter } from "next/navigation"
 import { navigateToSale } from "@/app/hooks/use-navigation-history"
 import { RegisterPaymentDialog } from "./components/RegisterPaymentDialog"
-import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { KanbanView } from "./components/KanbanView"
 import { CreateSaleDialog } from "./components/CreateSaleDialog"
+import { SalesTable, SalesTableSkeleton } from "./components/SalesTable"
 import { useCommandK } from "@/app/hooks/use-command-k"
-import { EmptyCard } from "@/app/components/ui/empty-card"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-
-// Constants
-const NO_SEGMENT = "no_segment"
-
-// Status colors for sales
-const STATUS_STYLES = {
-  pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
-  completed: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
-  cancelled: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
-  refunded: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200"
-}
-
-// Source colors for sales
-const SOURCE_STYLES = {
-  retail: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
-  online: "bg-indigo-50 text-indigo-700 hover:bg-indigo-50 border-indigo-200"
-}
-
-interface SalesTableProps {
-  sales: Sale[]
-  currentPage: number
-  itemsPerPage: number
-  totalSales: number
-  onPageChange: (page: number) => void
-  onItemsPerPageChange: (value: string) => void
-  onSaleClick: (sale: Sale) => void
-  onPrintSale: (sale: Sale) => void
-  onRegisterPayment: (sale: Sale) => void
-}
-
-function SalesTable({ 
-  sales,
-  currentPage,
-  itemsPerPage,
-  totalSales,
-  onPageChange,
-  onItemsPerPageChange,
-  onSaleClick,
-  onPrintSale,
-  onRegisterPayment
-}: SalesTableProps) {
-  const { t } = useLocalization()
-  const indexOfFirstItem = (currentPage - 1) * itemsPerPage
-  const totalPages = Math.ceil(totalSales / itemsPerPage)
-  const { segments } = useSalesContext()
-  const { currentSite } = useSite()
-  
-  // Function to get segment name from its ID
-  const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return t('sales.noSegment') || "No Segment"
-    if (!segments || !Array.isArray(segments)) return t('sales.unknownSegment') || "Unknown Segment"
-    const segment = segments.find(s => s.id === segmentId)
-    return segment?.name || t('sales.unknownSegment') || "Unknown Segment"
-  }
-
-  // Function to truncate text
-  const truncateText = (text: any, maxLength: number = 15) => {
-    if (!text) return "-"
-    if (typeof text === 'object') {
-      if (text.name) return String(text.name)
-      return "-"
-    }
-    const stringValue = String(text)
-    if (stringValue.length <= maxLength) return stringValue
-    return `${stringValue.substring(0, maxLength)}...`
-  }
-
-  // Function to format date
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString)
-      return format(date, 'MMM d, yyyy')
-    } catch (error) {
-      return dateString
-    }
-  }
-
-  // Calculate total amount and total amount due for footer
-  const totalAmount = sales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
-  const totalAmountDue = sales.reduce((sum, sale) => sum + (sale.amount_due || 0), 0);
-  
-  return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[250px]">{t('sales.table.product') || 'Product'}</TableHead>
-            <TableHead>{t('sales.table.amount') || 'Amount'}</TableHead>
-            <TableHead>{t('sales.table.amountDue') || 'Amount Due'}</TableHead>
-            <TableHead>{t('sales.table.customer') || 'Customer'}</TableHead>
-            <TableHead>{t('sales.table.segment') || 'Segment'}</TableHead>
-            <TableHead>{t('sales.table.status') || 'Status'}</TableHead>
-            <TableHead>{t('sales.table.source') || 'Source'}</TableHead>
-            <TableHead>{t('sales.table.date') || 'Date'}</TableHead>
-            <TableHead className="text-right">{t('sales.table.actions') || 'Actions'}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-            {sales.length > 0 ? (
-              sales.map((sale) => (
-                <TableRow 
-                  key={sale.id}
-                  className="group hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => onSaleClick(sale)}
-                >
-                  <TableCell>
-                    <div className="space-y-0.5">
-                      <p className="font-medium text-sm">{String(sale.title || '')}</p>
-                      <p className="text-xs text-muted-foreground">{String(sale.productName || '')}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(sale.amount)}
-                  </TableCell>
-                  <TableCell className="font-medium text-primary">
-                    {formatCurrency(sale.amount_due)}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {sale.leadName || t('sales.table.anonymousCustomer') || "Anonymous Customer"}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {truncateText(getSegmentName(sale.segmentId))}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`${STATUS_STYLES[sale.status as keyof typeof STATUS_STYLES] || STATUS_STYLES.pending}`}>
-                      {sale.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`${SOURCE_STYLES[sale.source]}`}>
-                      {sale.source}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatDate(sale.saleDate)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {sale.amount_due > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onRegisterPayment(sale)
-                          }}
-                        >
-                          <CreditCard className="h-4 w-4" />
-                          <span className="sr-only">Register Payment</span>
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onPrintSale(sale)
-                        }}
-                      >
-                        <Printer className="h-4 w-4" />
-                        <span className="sr-only">Print</span>
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
-                  <EmptyCard
-                    icon={<ShoppingCart className="h-16 w-16 text-muted-foreground" />}
-                    title={t('sales.table.empty.title') || "No sales found"}
-                    description={t('sales.table.empty.desc') || "It seems like you haven't made any sales yet."}
-                  />
-                </TableCell>
-              </TableRow>
-            )}
-        </TableBody>
-        <tfoot className="border-t">
-          <tr>
-            <TableCell className="font-semibold">{t('sales.table.total') || 'Total'}</TableCell>
-            <TableCell className="font-semibold">{formatCurrency(totalAmount)}</TableCell>
-            <TableCell className="font-semibold text-primary">{formatCurrency(totalAmountDue)}</TableCell>
-            <TableCell colSpan={6}></TableCell>
-          </tr>
-        </tfoot>
-      </Table>
-      <div className="flex items-center justify-between px-6 py-4 border-t">
-        <div className="flex items-center gap-4">
-          <p className="text-sm text-muted-foreground">
-            {t('sales.table.showing') || 'Showing'} <span className="font-medium">{Math.min(indexOfFirstItem + 1, totalSales)}</span> {t('sales.table.to') || 'to'} <span className="font-medium">{Math.min(indexOfFirstItem + itemsPerPage, totalSales)}</span> {t('sales.table.of') || 'of'} <span className="font-medium">{totalSales}</span> {t('sales.table.sales') || 'sales'}
-          </p>
-          <Select
-            value={itemsPerPage.toString()}
-            onValueChange={onItemsPerPageChange}
-          >
-            <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={itemsPerPage.toString()} />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {[5, 10, 20, 50].map((value) => (
-                <SelectItem key={value} value={value.toString()}>
-                  {value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={onPageChange}
-        />
-      </div>
-    </Card>
-  )
-}
-
-// Context for segments
-interface SalesContextType {
-  segments: Array<{ id: string; name: string }>
-  campaigns: Array<{ id: string; title: string }>
-}
-
-const SalesContext = React.createContext<SalesContextType>({
-  segments: [],
-  campaigns: []
-})
-
-const useSalesContext = () => React.useContext(SalesContext)
-
-// Skeleton component for loading state
-function SalesTableSkeleton() {
-  return (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[250px]">
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead>
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead>
-              <Skeleton className="h-4 w-20" />
-            </TableHead>
-            <TableHead>
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead>
-              <Skeleton className="h-4 w-16" />
-            </TableHead>
-            <TableHead>
-              <Skeleton className="h-4 w-12" />
-            </TableHead>
-            <TableHead>
-              <Skeleton className="h-4 w-14" />
-            </TableHead>
-            <TableHead>
-              <Skeleton className="h-4 w-12" />
-            </TableHead>
-            <TableHead className="text-right">
-              <Skeleton className="h-4 w-16 ml-auto" />
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Array(5).fill(0).map((_, index) => (
-            <TableRow key={index}>
-              <TableCell>
-                <div className="space-y-1.5">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-16 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-14 rounded-full" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-20" />
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Skeleton className="h-8 w-8 rounded" />
-                  <Skeleton className="h-8 w-8 rounded" />
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <div className="flex items-center justify-between px-6 py-4 border-t">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-4 w-48" />
-          <Skeleton className="h-8 w-16 rounded" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8 rounded" />
-          <Skeleton className="h-8 w-8 rounded" />
-          <Skeleton className="h-8 w-8 rounded" />
-          <Skeleton className="h-8 w-8 rounded" />
-          <Skeleton className="h-8 w-8 rounded" />
-        </div>
-      </div>
-    </Card>
-  )
-}
 
 // PrintSaleDialog component
 interface PrintSaleDialogProps {
@@ -452,24 +120,11 @@ export default function SalesPage() {
     {}
   )
 
-  const { data: campaignsData, isLoading: isLoadingCampaigns } = useSWR(
-    currentSite?.id ? ['campaigns', currentSite.id] : null,
-    async ([_, siteId]) => {
-      const { data, error } = await getCampaigns(siteId)
-      if (error) throw new Error(error)
-      return data || []
-    },
-    {}
-  )
-
   const sales = salesData || []
   const segments = segmentsData || []
-  const campaigns = campaignsData || []
-  const loading = isLoadingSales || isLoadingSegments || isLoadingCampaigns
+  const loading = isLoadingSales || isLoadingSegments
 
   const loadSales = async () => { mutateSales() }
-  const loadSegments = async () => {} // Kept for compatibility if used
-  const loadCampaigns = async () => {} // Kept for compatibility if used
 
   // Search query change handler
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -633,11 +288,9 @@ export default function SalesPage() {
         return
       }
       
-      // Update local state
-      setSales(prevSales => 
-        prevSales.map(s => 
-          s.id === saleId ? { ...s, status: newStatus as any } : s
-        )
+      mutateSales(
+        (prev) => prev?.map((s) => s.id === saleId ? { ...s, status: newStatus as any } : s),
+        false
       )
       
       toast.success("Sale status updated successfully")
@@ -648,7 +301,6 @@ export default function SalesPage() {
   }
 
   return (
-    <SalesContext.Provider value={{ segments, campaigns }}>
       <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full min-h-0">
           <StickyHeader>
@@ -785,133 +437,28 @@ export default function SalesPage() {
               <div className={viewType === 'kanban' ? "min-w-fit px-8" : ""}>
               {loading ? (
                 <SalesTableSkeleton />
+              ) : viewType === "table" ? (
+                <SalesTable
+                  sales={currentSales}
+                  currentPage={currentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalSales={filteredSales.length}
+                  segments={segments}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onSaleClick={handleSaleClick}
+                  onPrintSale={handlePrintSale}
+                  onRegisterPayment={handleRegisterPayment}
+                />
               ) : (
-                <>
-                  <TabsContent value="all" className="mt-0 space-y-4">
-                    {viewType === "table" ? (
-                      <SalesTable
-                        sales={currentSales}
-                        currentPage={currentPage}
-                        itemsPerPage={itemsPerPage}
-                        totalSales={filteredSales.length}
-                        onPageChange={handlePageChange}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    ) : (
-                      <KanbanView 
-                        sales={filteredSales}
-                        onUpdateSaleStatus={handleUpdateSaleStatus}
-                        segments={segments}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="pending" className="mt-0 space-y-4">
-                    {viewType === "table" ? (
-                      <SalesTable
-                        sales={currentSales}
-                        currentPage={currentPage}
-                        itemsPerPage={itemsPerPage}
-                        totalSales={filteredSales.length}
-                        onPageChange={handlePageChange}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    ) : (
-                      <KanbanView 
-                        sales={filteredSales}
-                        onUpdateSaleStatus={handleUpdateSaleStatus}
-                        segments={segments}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="completed" className="mt-0 space-y-4">
-                    {viewType === "table" ? (
-                      <SalesTable
-                        sales={currentSales}
-                        currentPage={currentPage}
-                        itemsPerPage={itemsPerPage}
-                        totalSales={filteredSales.length}
-                        onPageChange={handlePageChange}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    ) : (
-                      <KanbanView 
-                        sales={filteredSales}
-                        onUpdateSaleStatus={handleUpdateSaleStatus}
-                        segments={segments}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="cancelled" className="mt-0 space-y-4">
-                    {viewType === "table" ? (
-                      <SalesTable
-                        sales={currentSales}
-                        currentPage={currentPage}
-                        itemsPerPage={itemsPerPage}
-                        totalSales={filteredSales.length}
-                        onPageChange={handlePageChange}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    ) : (
-                      <KanbanView 
-                        sales={filteredSales}
-                        onUpdateSaleStatus={handleUpdateSaleStatus}
-                        segments={segments}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="refunded" className="mt-0 space-y-4">
-                    {viewType === "table" ? (
-                      <SalesTable
-                        sales={currentSales}
-                        currentPage={currentPage}
-                        itemsPerPage={itemsPerPage}
-                        totalSales={filteredSales.length}
-                        onPageChange={handlePageChange}
-                        onItemsPerPageChange={handleItemsPerPageChange}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    ) : (
-                      <KanbanView 
-                        sales={filteredSales}
-                        onUpdateSaleStatus={handleUpdateSaleStatus}
-                        segments={segments}
-                        onSaleClick={handleSaleClick}
-                        onPrintSale={handlePrintSale}
-                        onRegisterPayment={handleRegisterPayment}
-                      />
-                    )}
-                  </TabsContent>
-                </>
+                <KanbanView
+                  sales={filteredSales}
+                  onUpdateSaleStatus={handleUpdateSaleStatus}
+                  segments={segments}
+                  onSaleClick={handleSaleClick}
+                  onPrintSale={handlePrintSale}
+                  onRegisterPayment={handleRegisterPayment}
+                />
               )}
               </div>
             </div>
@@ -941,6 +488,5 @@ export default function SalesPage() {
           onSuccess={handleCreateSuccess}
         />
       </div>
-    </SalesContext.Provider>
   )
 } 

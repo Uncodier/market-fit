@@ -2,9 +2,11 @@ import React from "react"
 import { Button } from "@/app/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -214,26 +216,15 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent 
-        className="sm:max-w-[600px]" 
-        onEscapeKeyDown={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onPointerDownOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onInteractOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-      >
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+      <DialogContent size="lg" busy={isLoading}>
+        <DialogForm onSubmit={form.handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Create New Experiment</DialogTitle>
             <DialogDescription>
               Create a new experiment to test your hypotheses with specific segments.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-6 py-4">
+          <DialogBody className="grid gap-6">
             <div className="grid gap-2">
               <div className="flex items-center gap-2">
                 <FlaskConical className="h-4 w-4 text-muted-foreground" />
@@ -362,76 +353,21 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
                 Link this experiment to a marketing campaign to track performance
               </p>
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
               disabled={isLoading}
-              className="h-12 rounded-full"
             >
               Cancel
             </Button>
-            <Button 
-              type="button" 
-              variant="secondary"
-              onClick={async () => {
-                try {
-                  // Verificar que hay al menos un segmento disponible
-                  if (segments.length === 0) {
-                    toast.error("No segments available for debugging")
-                    return
-                  }
-
-                  const debugData = {
-                    name: "Debug Test",
-                    description: "Debug description",
-                    hypothesis: "Debug hypothesis",
-                    segments: [segments[0].id], // Usar el ID del primer segmento disponible
-                    campaign_id: campaigns.length > 0 ? campaigns[0].id : null,
-                    status: "draft" as const,
-                    start_date: null,
-                    end_date: null,
-                    conversion: null,
-                    roi: null,
-                    preview_url: null,
-                    user_id: user?.id || "",
-                    site_id: currentSite?.id || "",
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  }
-                  
-                  console.log("Debug data:", debugData)
-                  const result = await onCreateExperiment(debugData)
-                  console.log("Debug result:", result)
-                  
-                  if (result.error) {
-                    toast.error(result.error)
-                    return
-                  }
-                  
-                  toast.success("Debug: Experiment created successfully")
-                  setIsOpen(false)
-                } catch (error) {
-                  console.error("Debug error:", error)
-                  toast.error("Debug error: " + (error instanceof Error ? error.message : "Unexpected error"))
-                }
-              }}
-              className="h-12 rounded-full"
-            >
-              Debug Create
-            </Button>
-            <Button type="submit" disabled={isLoading} className="h-12 rounded-full">
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                  <span>Creating</span>
-                </div>
-              ) : "Create Experiment"}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Creating..." : "Create Experiment"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

@@ -192,9 +192,11 @@ import {
 } from "@/app/components/ui/alert-dialog"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
 } from "@/app/components/ui/dialog"
@@ -2647,14 +2649,15 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
       {/* Publish Modal */}
       {publishingContent && (
         <Dialog open={!!publishingContent} onOpenChange={(open) => !open && closePublishModal()}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent size="sm">
+            <DialogForm onSubmit={submitPublish}>
             <DialogHeader>
               <DialogTitle>Publish to Social Media</DialogTitle>
               <DialogDescription>
                 Publish &quot;{publishingContent.title}&quot; to your connected social media accounts.
               </DialogDescription>
             </DialogHeader>
-          <form onSubmit={submitPublish} className="space-y-4">
+            <DialogBody className="grid gap-4">
             {socialMedia.length === 0 ? (
               <EmptyCard
                 icon={<Globe className="h-10 w-10 text-muted-foreground" />}
@@ -2766,13 +2769,14 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
                 </div>
               </div>
             )}
+            </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closePublishModal}>Cancel</Button>
               <Button type="submit" disabled={socialMedia.length === 0 || selectedNetworks.length === 0}>
                 {scheduleEnabled && scheduledDate ? "Schedule" : "Publish Now"}
               </Button>
             </DialogFooter>
-          </form>
+            </DialogForm>
         </DialogContent>
       </Dialog>
       )}

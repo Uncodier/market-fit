@@ -1,6 +1,13 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Badge } from "../ui/badge"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
@@ -164,6 +171,7 @@ export function CustomerJourneySection({ active, onSave }: CustomerJourneySectio
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving customer journey:", error)
     } finally {
@@ -174,21 +182,21 @@ export function CustomerJourneySection({ active, onSave }: CustomerJourneySectio
   if (!active) return null
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {customerJourneyStages.map((stage) => (
-        <Card key={stage.id} id={`journey-${stage.id}`} className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="px-8 py-6">
+        <SectionCard key={stage.id} id={`journey-${stage.id}`}>
+          <SectionCardHeader>
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-lg border flex items-center justify-center shrink-0 shadow-sm ${stage.color}`}>
                 {stage.icon}
               </div>
               <div className="flex-1">
-                <CardTitle className="text-xl font-semibold text-foreground">{stage.title}</CardTitle>
+                <SectionCardTitle className="text-foreground">{stage.title}</SectionCardTitle>
                 <p className="text-sm text-muted-foreground mt-1">{stage.description}</p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="px-8 pb-8">
+          </SectionCardHeader>
+          <SectionCardContent>
             <div className="space-y-6">
               <StageInputs
                 stageId={stage.id}
@@ -211,17 +219,16 @@ export function CustomerJourneySection({ active, onSave }: CustomerJourneySectio
                 placeholder="e.g., Blog posts, Video content, Email campaigns"
               />
             </div>
-          </CardContent>
-          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-            <Button 
-              variant="outline"
+          </SectionCardContent>
+          <SectionCardFooter>
+            <Button variant="outline" size="sm"
               onClick={() => handleSave(stage.id)}
-              disabled={savingCard === stage.id}
+              disabled={savingCard === stage.id || !form.formState.isDirty}
             >
               {savingCard === stage.id ? "Saving..." : "Save"}
             </Button>
-          </CardFooter>
-        </Card>
+          </SectionCardFooter>
+        </SectionCard>
       ))}
     </div>
   )

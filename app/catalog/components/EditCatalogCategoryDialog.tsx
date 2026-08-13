@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogForm, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
@@ -87,15 +87,15 @@ export function EditCatalogCategoryDialog({ siteId, category, open, onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
+      <DialogContent size="sm" busy={loading}>
+        <DialogForm onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Edit Category</DialogTitle>
             <DialogDescription>
               Update category name and accounting defaults.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -139,7 +139,7 @@ export function EditCatalogCategoryDialog({ siteId, category, open, onOpenChange
             <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
               <p>Items in this category will use these accounts as defaults when syncing journal entries.</p>
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
@@ -148,7 +148,7 @@ export function EditCatalogCategoryDialog({ siteId, category, open, onOpenChange
               {loading ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

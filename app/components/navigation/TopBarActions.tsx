@@ -9,12 +9,6 @@ import { createLead, importLeads } from "@/app/leads/actions";
 import { createDeal, addDealContact } from "@/app/deals/actions";
 import { Lead } from "@/app/leads/types";
 import { createCampaign } from "@/app/campaigns/actions/campaigns/create";
-import {
-  buildSegmentsWithAI,
-  buildExperimentsWithAI,
-  buildCampaignsWithAI,
-  buildContentWithAI,
-} from "@/app/services/ai-service";
 import { Button } from "../ui/button";
 import { CreateSegmentDialog } from "../create-segment-dialog";
 import { CreateExperimentDialog } from "../create-experiment-dialog";
@@ -28,7 +22,6 @@ import { CreateTaskDialog } from "../create-task-dialog";
 import { CalendarDateRangePicker } from "../ui/date-range-picker";
 import { CreateDealDialog } from "@/app/deals/components/CreateDealDialog";
 import { CreateQuotationDialog } from "@/app/quotations/components/CreateQuotationDialog";
-import { AIActionModal } from "@/app/components/ui/ai-action-modal";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { useRouter, usePathname } from "next/navigation";
@@ -37,13 +30,12 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useRobots } from "@/app/context/RobotsContext";
 import {
-  BarChart,
   PlusCircle,
-  FlaskConical,
   Download,
   Key,
   Users,
   FileText,
+  BarChart,
   UploadCloud,
   PlayCircle,
   StopCircle,
@@ -61,6 +53,7 @@ import {
   Settings,
   Ticket,
   Repeat,
+  Sliders,
 } from "@/app/components/ui/icons";
 
 import { subMonths, format } from "date-fns";
@@ -764,45 +757,7 @@ function RobotStartButton({
   );
 }
 
-// Cpu icon para representación de AI
-const Cpu = ({
-  className = "",
-  size = 20,
-  ...props
-}: {
-  className?: string;
-  size?: number;
-  [key: string]: any;
-}) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    {...props}
-  >
-    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-    <rect x="9" y="9" width="6" height="6"></rect>
-    <line x1="9" y1="1" x2="9" y2="4"></line>
-    <line x1="15" y1="1" x2="15" y2="4"></line>
-    <line x1="9" y1="20" x2="9" y2="23"></line>
-    <line x1="15" y1="20" x2="15" y2="23"></line>
-    <line x1="20" y1="9" x2="23" y2="9"></line>
-    <line x1="20" y1="14" x2="23" y2="14"></line>
-    <line x1="1" y1="9" x2="4" y2="9"></line>
-    <line x1="1" y1="14" x2="4" y2="14"></line>
-  </svg>
-);
-
 interface TopBarActionsProps {
-  isProcessing: boolean;
-  setIsProcessing: (value: boolean) => void;
   isPosPage?: boolean;
   isDashboardPage: boolean;
   isSegmentsPage: boolean;
@@ -820,9 +775,8 @@ interface TopBarActionsProps {
   isAccountingPage?: boolean;
   isFinancePage?: boolean;
   isJournalEntriesPage?: boolean;
-  isExperimentDetailPage?: boolean;
   dashboardActiveTab?: string;
-  segmentData: {
+  segmentData?: {
     id: string;
     activeTab: string;
     isAnalyzing: boolean;
@@ -856,8 +810,6 @@ interface TopBarActionsProps {
 }
 
 export function TopBarActions({
-  isProcessing,
-  setIsProcessing,
   isPosPage,
   isDashboardPage,
   isSegmentsPage,
@@ -875,7 +827,6 @@ export function TopBarActions({
   isAccountingPage,
   isFinancePage,
   isJournalEntriesPage,
-  isExperimentDetailPage = false,
   dashboardActiveTab,
   segmentData,
   requirementData,
@@ -940,17 +891,6 @@ export function TopBarActions({
       };
     }
   }, [isDashboardPage]);
-
-  // AI Action Modal state
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
-  const [isGeneratingExperiment, setIsGeneratingExperiment] = useState(false);
-  const [AIModalConfig, setAIModalConfig] = useState({
-    title: "",
-    description: "",
-    actionLabel: "",
-    estimatedTime: 0,
-    action: async (): Promise<any> => {},
-  });
 
   // Get current user
   const supabase = createClient();
@@ -1041,478 +981,6 @@ export function TopBarActions({
       return {
         error: error instanceof Error ? error.message : "Error inesperado",
       };
-    }
-  };
-
-  const handleBuildWithAI = () => {
-    // Avoid multiple clicks while processing
-    if (isProcessing) return;
-
-    // Configure the AI modal according to the current page
-    if (isSegmentsPage) {
-      setAIModalConfig({
-        title:
-          t("layout.modal.ai.titleSegments") || "Building Segments with AI",
-        description:
-          t("layout.modal.ai.descSegments") ||
-          "Our AI will analyze your site data and automatically create optimized audience segments based on your business goals and target market.",
-        actionLabel: t("layout.modal.ai.actionSegments") || "Build Segments",
-        estimatedTime: 120, // 2 minutes
-        action: handleBuildSegmentsWithAI,
-      });
-    } else if (isExperimentsPage) {
-      setAIModalConfig({
-        title:
-          t("layout.modal.ai.titleExperiments") ||
-          "Building Experiments with AI",
-        description:
-          t("layout.modal.ai.descExperiments") ||
-          "Our AI will analyze your site data and automatically create A/B test experiments designed to improve conversion rates and user experience.",
-        actionLabel:
-          t("layout.modal.ai.actionExperiments") || "Build Experiments",
-        estimatedTime: 120, // 2 minutes
-        action: handleBuildExperimentsWithAI,
-      });
-    } else if (isCampaignsPage) {
-      setAIModalConfig({
-        title:
-          t("layout.modal.ai.titleCampaigns") || "Building Campaigns with AI",
-        description:
-          t("layout.modal.ai.descCampaigns") ||
-          "Our AI will analyze your site data and automatically create optimized marketing campaigns tailored to your business objectives.",
-        actionLabel: t("layout.modal.ai.actionCampaigns") || "Build Campaigns",
-        estimatedTime: 120, // 2 minutes
-        action: handleBuildCampaignsWithAI,
-      });
-    } else if (isContentPage) {
-      setAIModalConfig({
-        title: t("layout.modal.ai.titleContent") || "Building Content with AI",
-        description:
-          t("layout.modal.ai.descContent") ||
-          "Our AI will analyze your site data and automatically create high-quality content pieces optimized for your target audience.",
-        actionLabel: t("layout.modal.ai.actionContent") || "Build Content",
-        estimatedTime: 120, // 2 minutes
-        action: handleBuildContentWithAI,
-      });
-    }
-
-    // Open the modal after configuring it
-    setTimeout(() => {
-      setIsAIModalOpen(true);
-    }, 0);
-  };
-
-  // Function to handle the AI segment building process
-  const handleBuildSegmentsWithAI = async (): Promise<any> => {
-    try {
-      // Mark as processing
-      setIsProcessing(true);
-
-      // Verify that there is a selected site
-      if (!currentSite) {
-        setIsProcessing(false);
-        toast.error("Please select a site first");
-        return {
-          success: false,
-          error: "No site selected",
-        };
-      }
-
-      // Verify that the site has a URL
-      if (!currentSite.url) {
-        setIsProcessing(false);
-        toast.error(
-          "The selected site doesn't have a URL. Please add a URL to your site in the settings.",
-        );
-        return {
-          success: false,
-          error: "Site URL is missing",
-        };
-      }
-
-      // Get the current user ID
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setIsProcessing(false);
-        toast.error("You must be logged in to use this feature");
-        return {
-          success: false,
-          error: "Authentication required",
-        };
-      }
-
-      console.log("Starting AI segment building with params:", {
-        user_id: user.id,
-        site_id: currentSite.id,
-        url: currentSite.url,
-        segmentCount: 3,
-      });
-
-      // Call the AI service to build segments
-      const result = await buildSegmentsWithAI({
-        user_id: user.id,
-        site_id: currentSite.id,
-        url: currentSite.url,
-        segmentCount: 3,
-      });
-
-      console.log("AI segment building result:", result);
-
-      if (result.success) {
-        toast.success("Segments created successfully!");
-        // Redirect to the segments page
-        router.push(`/segments/${result.data?.segmentId || ""}`);
-        return result;
-      } else {
-        // Instead of throwing an error, return the complete result
-        // so the modal can display the error and HTML response if it exists
-        console.error("Error building segments with AI:", result.error);
-        if (result.rawResponse) {
-          console.error(
-            "Raw response from server:",
-            result.rawResponse.substring(0, 200) + "...",
-          );
-        }
-        if (result.details) {
-          console.error("Error details:", result.details);
-        }
-        return result;
-      }
-    } catch (error) {
-      console.error("Unexpected error in handleBuildSegmentsWithAI:", error);
-
-      // Return an object with the format expected by the modal
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-        details: {
-          stack: error instanceof Error ? error.stack : undefined,
-          name: error instanceof Error ? error.name : "Unknown Error",
-        },
-      };
-    } finally {
-      // Always mark as not processing when finished
-      setIsProcessing(false);
-    }
-  };
-
-  // Function to handle the AI experiment building process
-  const handleBuildExperimentsWithAI = async (): Promise<any> => {
-    try {
-      // Mark as processing
-      setIsProcessing(true);
-
-      // Verify that there is a selected site
-      if (!currentSite) {
-        setIsProcessing(false);
-        toast.error("Please select a site first");
-        return {
-          success: false,
-          error: "No site selected",
-        };
-      }
-
-      // Verify that the site has a URL
-      if (!currentSite.url) {
-        setIsProcessing(false);
-        toast.error(
-          "The selected site doesn't have a URL. Please add a URL to your site in the settings.",
-        );
-        return {
-          success: false,
-          error: "Site URL is missing",
-        };
-      }
-
-      // Get the current user ID
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setIsProcessing(false);
-        toast.error("You must be logged in to use this feature");
-        return {
-          success: false,
-          error: "Authentication required",
-        };
-      }
-
-      console.log("Starting AI experiment building with params:", {
-        user_id: user.id,
-        site_id: currentSite.id,
-        url: currentSite.url,
-        experimentCount: 2,
-      });
-
-      // Call the AI service to build experiments
-      const result = await buildExperimentsWithAI({
-        user_id: user.id,
-        site_id: currentSite.id,
-        url: currentSite.url,
-        experimentCount: 2,
-      });
-
-      console.log("AI experiment building result:", result);
-
-      if (result.success) {
-        toast.success("Experiments created successfully!");
-        // Redirect to the experiments page
-        router.push(`/experiments/${result.data?.experimentId || ""}`);
-        return result;
-      } else {
-        // Instead of throwing an error, return the complete result
-        // so the modal can display the error and HTML response if it exists
-        console.error("Error building experiments with AI:", result.error);
-        if (result.rawResponse) {
-          console.error(
-            "Raw response from server:",
-            result.rawResponse.substring(0, 200) + "...",
-          );
-        }
-        if (result.details) {
-          console.error("Error details:", result.details);
-        }
-        return result;
-      }
-    } catch (error) {
-      console.error("Unexpected error in handleBuildExperimentsWithAI:", error);
-
-      // Return an object with the format expected by the modal
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-        details: {
-          stack: error instanceof Error ? error.stack : undefined,
-          name: error instanceof Error ? error.name : "Unknown Error",
-        },
-      };
-    } finally {
-      // Always mark as not processing when finished
-      setIsProcessing(false);
-    }
-  };
-
-  // Function to handle the AI campaign building process
-  const handleBuildCampaignsWithAI = async (): Promise<any> => {
-    try {
-      // Mark as processing
-      setIsProcessing(true);
-
-      // Verify that there is a selected site
-      if (!currentSite) {
-        setIsProcessing(false);
-        toast.error("Please select a site first");
-        return {
-          success: false,
-          error: "No site selected",
-        };
-      }
-
-      // Verify that the site has a URL
-      if (!currentSite.url) {
-        setIsProcessing(false);
-        toast.error(
-          "The selected site doesn't have a URL. Please add a URL to your site in the settings.",
-        );
-        return {
-          success: false,
-          error: "Site URL is missing",
-        };
-      }
-
-      // Get the current user ID
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setIsProcessing(false);
-        toast.error("You must be logged in to use this feature");
-        return {
-          success: false,
-          error: "Authentication required",
-        };
-      }
-
-      console.log("Starting AI campaign building with params:", {
-        user_id: user.id,
-        site_id: currentSite.id,
-        url: currentSite.url,
-        campaignCount: 3,
-      });
-
-      // Call the AI service to build campaigns
-      const result = await buildCampaignsWithAI({
-        user_id: user.id,
-        site_id: currentSite.id,
-        url: currentSite.url,
-        campaignCount: 3,
-      });
-
-      console.log("AI campaign building result:", result);
-
-      if (result.success) {
-        toast.success("Campaigns created successfully!");
-        // For campaigns page, manually refresh data instead of full page reload
-        if (isCampaignsPage) {
-          setTimeout(() => {
-            // Trigger a refresh of campaigns data without full page reload
-            safeReload(false, "AI campaigns created");
-          }, 1000);
-        }
-        return result;
-      } else {
-        // Instead of throwing an error, return the complete result
-        // so the modal can display the error and HTML response if it exists
-        console.error("Error building campaigns with AI:", result.error);
-        if (result.rawResponse) {
-          console.error(
-            "Raw response from server:",
-            result.rawResponse.substring(0, 200) + "...",
-          );
-        }
-        if (result.details) {
-          console.error("Error details:", result.details);
-        }
-        return result;
-      }
-    } catch (error) {
-      console.error("Unexpected error in handleBuildCampaignsWithAI:", error);
-
-      // Return an object with the format expected by the modal
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-        details: {
-          stack: error instanceof Error ? error.stack : undefined,
-          name: error instanceof Error ? error.name : "Unknown Error",
-        },
-      };
-    } finally {
-      // Always mark as not processing when finished
-      setIsProcessing(false);
-    }
-  };
-
-  // Function to handle the AI content building process
-  const handleBuildContentWithAI = async (): Promise<any> => {
-    try {
-      // Mark as processing
-      setIsProcessing(true);
-
-      // Verify that there is a selected site
-      if (!currentSite) {
-        setIsProcessing(false);
-        toast.error("Please select a site first");
-        return {
-          success: false,
-          error: "No site selected",
-        };
-      }
-
-      // Verify that the site has a URL
-      if (!currentSite.url) {
-        setIsProcessing(false);
-        toast.error(
-          "The selected site doesn't have a URL. Please add a URL to your site in the settings.",
-        );
-        return {
-          success: false,
-          error: "Site URL is missing",
-        };
-      }
-
-      // Get the current user ID
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setIsProcessing(false);
-        toast.error("You must be logged in to use this feature");
-        return {
-          success: false,
-          error: "Authentication required",
-        };
-      }
-
-      console.log("Starting AI content building with params:", {
-        user_id: user.id,
-        site_id: currentSite.id,
-        url: currentSite.url,
-        contentCount: 3,
-      });
-
-      // Call the AI service to build content
-      const result = await buildContentWithAI({
-        user_id: user.id,
-        site_id: currentSite.id,
-        url: currentSite.url,
-        contentCount: 3,
-      });
-
-      console.log("AI content building result:", result);
-
-      if (result.success) {
-        toast.success("Content created successfully!");
-        // For content page, manually refresh data instead of full page reload
-        if (isContentPage) {
-          setTimeout(() => {
-            // Trigger a refresh of content data without full page reload
-            safeReload(false, "AI content created");
-          }, 1000);
-        }
-        return result;
-      } else {
-        // Instead of throwing an error, return the complete result
-        // so the modal can display the error and HTML response if it exists
-        console.error("Error building content with AI:", result.error);
-        if (result.rawResponse) {
-          console.error(
-            "Raw response from server:",
-            result.rawResponse.substring(0, 200) + "...",
-          );
-        }
-        if (result.details) {
-          console.error("Error details:", result.details);
-        }
-        return result;
-      }
-    } catch (error) {
-      console.error("Unexpected error in handleBuildContentWithAI:", error);
-
-      // Return an object with the format expected by the modal
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-        details: {
-          stack: error instanceof Error ? error.stack : undefined,
-          name: error instanceof Error ? error.name : "Unknown Error",
-        },
-      };
-    } finally {
-      // Always mark as not processing when finished
-      setIsProcessing(false);
     }
   };
 
@@ -1641,12 +1109,6 @@ export function TopBarActions({
       if (response.error) {
         return { error: response.error };
       }
-
-      toast.success("Campaign created successfully");
-
-      // Reload the page to show the new campaign
-      safeReload(false, "New campaign created");
-
       return { data: response.data };
     } catch (error) {
       console.error("Error creating campaign:", error);
@@ -1657,50 +1119,6 @@ export function TopBarActions({
             : "An unexpected error occurred",
       };
     }
-  };
-
-  // Function to handle Build with AI for experiment detail page
-  const handleGenerateExperimentWithAI = () => {
-    setIsGeneratingExperiment(true);
-
-    // Simulate API call to generate experiment content
-    setTimeout(() => {
-      // In a real implementation, this would call an API to update the experiment
-      toast.success("Experiment content generated successfully");
-
-      // Trigger an event that the experiment detail page can listen for
-      window.dispatchEvent(
-        new CustomEvent("experiment:ai-generated", {
-          detail: {
-            content: `
-# AI Generated Experiment
-
-This is a sample experiment generated by AI based on your site data.
-
-## Hypothesis
-
-By implementing these changes, we expect to see an improvement in user engagement and conversion rates.
-
-## Changes to implement
-
-- Optimize the call-to-action buttons with more compelling copy
-- Simplify the checkout process by reducing form fields
-- Add social proof elements near conversion points
-
-## Success metrics
-
-The success of this experiment will be measured by:
-
-- Increased click-through rate on CTA buttons
-- Reduced cart abandonment
-- Higher overall conversion rate
-          `,
-          },
-        }),
-      );
-
-      setIsGeneratingExperiment(false);
-    }, 2000);
   };
 
   // Handle logout function
@@ -1831,33 +1249,6 @@ The success of this experiment will be measured by:
             )}
         </>
       ) : null}
-      {/* Experiment Detail Page AI Button */}
-      {isExperimentDetailPage && currentSite && (
-        <Button
-          variant="secondary"
-          size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-          onClick={handleGenerateExperimentWithAI}
-          disabled={isGeneratingExperiment}
-          title={t("layout.topbar.buildWithAI")}
-        >
-          {isGeneratingExperiment ? (
-            <>
-              <LoadingSkeleton variant="button" size="sm" />
-              <span className="hidden md:inline font-inter font-medium text-sm">
-                {t("layout.topbar.generating")}
-              </span>
-            </>
-          ) : (
-            <>
-              <Cpu className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline font-inter font-medium text-sm">
-                {t("layout.topbar.buildWithAI")}
-              </span>
-            </>
-          )}
-        </Button>
-      )}
 
       {/* Requirement Detail Page Build Button */}
       {requirementData && currentSite && (
@@ -1894,7 +1285,6 @@ The success of this experiment will be measured by:
           )}
         </Button>
       )}
-      {/* Segment Detail Page AI Buttons */}
       {segmentData && (
         <>
           {(segmentData.activeTab === "analysis" ||
@@ -1954,46 +1344,20 @@ The success of this experiment will be measured by:
       )}
       {isSegmentsPage &&
         (currentSite ? (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              onClick={handleBuildWithAI}
-              disabled={isProcessing}
-              title={t("layout.topbar.buildWithAI")}
-            >
-              {isProcessing ? (
-                <>
-                  <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">
-                    {t("layout.topbar.processing")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <FlaskConical className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">
-                    {t("layout.topbar.buildWithAI")}
-                  </span>
-                </>
-              )}
-            </Button>
-            <CreateSegmentDialog
-              onCreateSegment={handleCreateSegment}
-              trigger={
-                <Button
-                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-                  title={t("layout.topbar.newSegment")}
-                >
-                  <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">
-                    {t("layout.topbar.newSegment")}
-                  </span>
-                </Button>
-              }
-            />
-          </div>
+          <CreateSegmentDialog
+            onCreateSegment={handleCreateSegment}
+            trigger={
+              <Button
+                className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                title={t("layout.topbar.newSegment")}
+              >
+                <PlusCircle className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline ml-2">
+                  {t("layout.topbar.newSegment")}
+                </span>
+              </Button>
+            }
+          />
         ) : null)}
       {isExperimentsPage &&
         (currentSite ? (
@@ -2119,102 +1483,49 @@ The success of this experiment will be measured by:
         ) : null)}
       {isContentPage &&
         (currentSite ? (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              onClick={handleBuildWithAI}
-              disabled={isProcessing}
-              title={t("layout.topbar.buildWithAI")}
-            >
-              {isProcessing ? (
-                <>
-                  <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">
-                    {t("layout.topbar.processing")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <FlaskConical className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">
-                    {t("layout.topbar.buildWithAI")}
-                  </span>
-                </>
-              )}
-            </Button>
-
-            <CreateContentDialog
-              segments={segments.length > 0 ? segments : propSegments || []}
-              onSuccess={() => {
-                if (
-                  typeof window !== "undefined" &&
-                  (window as any).refreshContentList
-                ) {
-                  (window as any).refreshContentList();
-                } else {
-                  safeReload(false, "New content created");
-                }
-              }}
-              trigger={
-                <Button
-                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-                  title={t("layout.topbar.newContent")}
-                >
-                  <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">
-                    {t("layout.topbar.newContent")}
-                  </span>
-                </Button>
+          <CreateContentDialog
+            segments={segments.length > 0 ? segments : propSegments || []}
+            onSuccess={() => {
+              if (
+                typeof window !== "undefined" &&
+                (window as any).refreshContentList
+              ) {
+                (window as any).refreshContentList();
+              } else {
+                safeReload(false, "New content created");
               }
-            />
-          </div>
+            }}
+            trigger={
+              <Button
+                className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                title={t("layout.topbar.newContent")}
+              >
+                <PlusCircle className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline ml-2">
+                  {t("layout.topbar.newContent")}
+                </span>
+              </Button>
+            }
+          />
         ) : null)}
       {isCampaignsPage &&
         (currentSite ? (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-              onClick={handleBuildWithAI}
-              disabled={isProcessing}
-              title={t("layout.topbar.buildWithAI")}
-            >
-              {isProcessing ? (
-                <>
-                  <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">
-                    {t("layout.topbar.processing")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <FlaskConical className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">
-                    {t("layout.topbar.buildWithAI")}
-                  </span>
-                </>
-              )}
-            </Button>
-            <CreateCampaignDialog
-              segments={segments.length > 0 ? segments : propSegments || []}
-              requirements={requirements}
-              onCreateCampaign={handleCreateCampaign}
-              trigger={
-                <Button
-                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-                  title={t("layout.topbar.newCampaign")}
-                >
-                  <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">
-                    {t("layout.topbar.newCampaign")}
-                  </span>
-                </Button>
-              }
-            />
-          </div>
+          <CreateCampaignDialog
+            segments={segments.length > 0 ? segments : propSegments || []}
+            requirements={requirements}
+            onCreateCampaign={handleCreateCampaign}
+            trigger={
+              <Button
+                className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                title={t("layout.topbar.newCampaign")}
+              >
+                <PlusCircle className="h-4 w-4 shrink-0" />
+                <span className="hidden md:inline ml-2">
+                  {t("layout.topbar.newCampaign")}
+                </span>
+              </Button>
+            }
+          />
         ) : null)}
       {isSalesPage &&
         (currentSite ? (
@@ -2302,16 +1613,44 @@ The success of this experiment will be measured by:
       )}
 
       {pathname === "/catalog" && currentSite && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() => router.push("/catalog/modifier-groups")}
+            title={t("catalog.modifiers.groupsTitle") || "Modifier groups"}
+          >
+            <Sliders className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">
+              {t("catalog.modifiers.groupsTitle") || "Modifier groups"}
+            </span>
+          </Button>
+          <Button
+            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("catalog:create"))
+            }
+            title={t("catalog.addItem") || "Add Item"}
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">
+              {t("catalog.addItem") || "Add Item"}
+            </span>
+          </Button>
+        </div>
+      )}
+
+      {pathname === "/catalog/modifier-groups" && currentSite && (
         <Button
           className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
-            window.dispatchEvent(new CustomEvent("catalog:create"))
+            window.dispatchEvent(new CustomEvent("modifier-groups:create"))
           }
-          title={t("catalog.addItem") || "Add Item"}
+          title={t("catalog.modifiers.create") || "New group"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
           <span className="hidden md:inline ml-2">
-            {t("catalog.addItem") || "Add Item"}
+            {t("catalog.modifiers.create") || "New group"}
           </span>
         </Button>
       )}
@@ -2460,7 +1799,9 @@ The success of this experiment will be measured by:
       {pathname === "/reservations" && currentSite && (
         <Button
           className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-          onClick={() => router.push('/reservations/new')}
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("reservations:create"))
+          }
           title="Create Reservation"
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
@@ -2502,21 +1843,6 @@ The success of this experiment will be measured by:
         (currentSite ? (
           <RobotStartButton currentSite={currentSite} viewMode={viewMode} />
         ) : null)}
-
-      {/* AI Action Modal */}
-      <AIActionModal
-        isOpen={isAIModalOpen}
-        setIsOpen={setIsAIModalOpen}
-        title={AIModalConfig.title}
-        description={AIModalConfig.description}
-        actionLabel={AIModalConfig.actionLabel}
-        onAction={AIModalConfig.action}
-        creditsAvailable={10} // This would come from user's account data
-        creditsRequired={3} // Building segments might cost more credits
-        icon={<Cpu className="h-5 w-5 text-primary" />}
-        estimatedTime={AIModalConfig.estimatedTime}
-        refreshOnComplete={isSegmentsPage || isExperimentsPage} // Only refresh for segments and experiments
-      />
 
       {/* New Purchase button in toolbar */}
       {pathname.startsWith("/purchases/orders") && currentSite && (

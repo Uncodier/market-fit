@@ -6,7 +6,14 @@ import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
 import { Switch } from "../ui/switch"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
 import { Code, Copy, Check, Key, KeyRound, ShieldCheck, ExternalLink, ChevronDown, ChevronUp, Mail, Globe } from "../ui/icons"
@@ -148,6 +155,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving channels:", error)
     } finally {
@@ -643,17 +651,17 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
   return (
     <>
       {!excludeWebsite && (
-      <Card id="website-channel" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard id="website-channel">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5" />
             Website Channel
-          </CardTitle>
+          </SectionCardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Configure how your site tracks visitor behavior
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8 pb-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <FormField
             control={form.control}
             name="tracking.track_visitors"
@@ -947,18 +955,17 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
               </div>
             )}
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             type="button"
-            variant="outline"
             onClick={() => handleSave('website-channel')}
-            disabled={savingCard === 'website-channel'}
+            disabled={savingCard === 'website-channel' || !form.formState.isDirty}
           >
             {savingCard === 'website-channel' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
       )}
 
       {useAgentChannels ? (
@@ -978,17 +985,17 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
       ) : (
         <>
           {/* Original email card for integrations */}
-      <Card id="email-channel" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold flex items-center gap-2">
+      <SectionCard id="email-channel">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
             Email Channel
-          </CardTitle>
+          </SectionCardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             Configure email settings to send and receive messages
           </p>
-        </CardHeader>
-        <CardContent className="space-y-6 px-8">
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <FormField
             control={form.control}
             name="channels.email.enabled"
@@ -1300,7 +1307,7 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
               </div>
             </div>
           )}
-        </CardContent>
+        </SectionCardContent>
         {emailEnabled && (
           <ActionFooter>
             <Button 
@@ -1350,14 +1357,14 @@ export function ChannelsSection({ active, siteName, siteId, codeCopied, copyTrac
                 type="button"
                 variant="outline"
                 onClick={() => handleSave('email-channel')}
-                disabled={savingCard === 'email-channel'}
+                disabled={savingCard === 'email-channel' || !form.formState.isDirty}
               >
                 {savingCard === 'email-channel' ? "Saving..." : "Save"}
               </Button>
             )}
           </ActionFooter>
         )}
-      </Card>
+      </SectionCard>
 
       <WhatsAppSection 
         active={active} 

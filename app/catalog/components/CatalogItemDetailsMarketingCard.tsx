@@ -2,7 +2,14 @@
 
 import { useState } from "react"
 import { CatalogItem } from "@/app/types"
-import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
 import { Button } from "@/app/components/ui/button"
@@ -55,11 +62,11 @@ export function CatalogItemDetailsMarketingCard({ formData, setFormData, handleS
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('marketplace.catalogDetails.richDetails') || 'Rich Details & Marketing'}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-8">
+    <SectionCard>
+      <SectionCardHeader>
+        <SectionCardTitle>{t('marketplace.catalogDetails.richDetails') || 'Rich Details & Marketing'}</SectionCardTitle>
+      </SectionCardHeader>
+      <SectionCardContent className="space-y-8">
         {/* Gallery */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -227,12 +234,12 @@ export function CatalogItemDetailsMarketingCard({ formData, setFormData, handleS
             </div>
           </div>
         )}
-      </CardContent>
+      </SectionCardContent>
       <ActionFooter>
-        <Button type="button" variant="outline" onClick={handleSave} disabled={saving}>
+        <Button variant="outline" type="button" onClick={handleSave} disabled={saving} size="sm">
           {saving ? "Saving..." : "Save Changes"}
         </Button>
       </ActionFooter>
-    </Card>
+    </SectionCard>
   );
 }

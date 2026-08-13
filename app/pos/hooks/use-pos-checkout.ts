@@ -13,6 +13,9 @@ import { enqueueCheckout } from "@/app/pos/local/outbox";
 import { drainPosOutbox } from "@/app/pos/local/sync-engine";
 import { getPosDb } from "@/app/pos/local/db";
 import { navigateToOrder, navigateToSale } from "@/app/hooks/use-navigation-history";
+import { useSite } from "@/app/context/SiteContext";
+import { normalizePrintersSettings, ticketBrandFromSite } from "@/lib/printer";
+import { printAfterPosCheckout, receiptFromPosCart } from "@/app/pos/print-after-checkout";
 
 type Payment = {
   method: string;
@@ -42,7 +45,11 @@ type UsePosCheckoutArgs = {
   orderNotes?: string;
   router: { push: (href: string) => void };
   onCleared: () => void;
+  appliedPromoRequiresLead?: boolean;
+  onRequireLead?: (reason: "checkout" | "send") => void;
   t: (key: string) => string;
+  subtotal?: number;
+  taxTotal?: number;
 };
 
 export function usePosCheckout({
@@ -62,23 +69,36 @@ export function usePosCheckout({
   orderNotes = "",
   router,
   onCleared,
+  appliedPromoRequiresLead = false,
+  onRequireLead,
   t,
+  subtotal,
+  taxTotal,
 }: UsePosCheckoutArgs) {
+  const { currentSite } = useSite();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
-  const initiateCheckout = () => {
+  const initiateCheckout = (opts?: { customerConfirmed?: boolean }) => {
     const activeCartItems = cart.filter((c) => c.cartQty > 0);
     if (activeCartItems.length === 0) return;
     if (!originLocationId) {
       toast.error(t("pos.errorSelectOrigin") || "Select an origin location");
       return;
     }
-    if (fulfillment === "ship" && !leadValue) {
+    if (fulfillment === "ship" && !leadValue && !opts?.customerConfirmed) {
       toast.error(
         t("pos.errorSelectCustomerShipping") ||
           "Select a customer for shipping",
       );
+      return;
+    }
+    if (
+      appliedPromoRequiresLead &&
+      !leadValue &&
+      !opts?.customerConfirmed
+    ) {
+      onRequireLead?.("checkout");
       return;
     }
     setIsPaymentDialogOpen(true);
@@ -131,10 +151,11 @@ export function usePosCheckout({
         appliedPromo?.code ||
         promoCode ||
         undefined,
-      promotionId:
-        params.promo || appliedPromo?.code || promoCode
-          ? undefined
-          : appliedPromo?.promotionId || undefined,
+      // Always send the applied promo id so automatic (no-code) BOGO/condition
+      // promos are stored on the order. A typed payment-dialog code wins.
+      promotionId: params.promo
+        ? undefined
+        : appliedPromo?.promotionId || undefined,
       source: "pos",
       payments: params.payments,
       existingOrderId:
@@ -178,6 +199,20 @@ export function usePosCheckout({
         : t("pos.checkoutComplete") || "Checkout complete!",
     );
 
+    const receipt = receiptFromPosCart({
+      cart,
+      total,
+      payments: params.payments,
+      notes: orderNotes,
+      brand: ticketBrandFromSite(currentSite),
+      customerName: leadRelationValue?.label || null,
+      fulfillment,
+      currency: currentSite?.settings?.currency || "USD",
+      subtotal,
+      taxTotal,
+    });
+    const printersSettings = normalizePrintersSettings(currentSite?.settings?.printers);
+
     if (typeof navigator !== "undefined" && navigator.onLine) {
       void drainPosOutbox(siteId).then(async () => {
         const row = await getPosDb()
@@ -185,6 +220,20 @@ export function usePosCheckout({
           .equals(clientMutationId)
           .first();
         if (row?.status === "synced") {
+          try {
+            await printAfterPosCheckout({
+              settings: printersSettings,
+              siteId,
+              intent: params.intent,
+              orderId: row.resultOrderId,
+              orderNumber: row.resultOrderNumber,
+              kitchenDelta: row.resultKitchenDelta,
+              fulfillment: row.resultFulfillment,
+              receipt,
+            });
+          } catch (err) {
+            console.warn("[printer] POS print failed", err);
+          }
           if (params.intent === "send" && row.resultOrderId) {
             navigateToOrder({ orderId: row.resultOrderId, router });
           } else if (row.resultSaleId) {
@@ -235,6 +284,12 @@ export function usePosCheckout({
           "Select a customer to leave payment pending",
       );
       setIsPaymentDialogOpen(false);
+      return;
+    }
+
+    if (appliedPromoRequiresLead && !leadValue) {
+      setIsPaymentDialogOpen(false);
+      onRequireLead?.("checkout");
       return;
     }
 
@@ -292,7 +347,10 @@ export function usePosCheckout({
     }
   };
 
-  const handleSendOrder = useCallback(async () => {
+  const handleSendOrder = useCallback(async (opts?: {
+    customerConfirmed?: boolean;
+    leadOverride?: RelationSelectValue;
+  }) => {
     const activeItems = cart.filter((c) => c.cartQty > 0);
     if (activeItems.length === 0) {
       toast.error(t("pos.errorCartEmpty") || "Cart is empty");
@@ -302,11 +360,21 @@ export function usePosCheckout({
       toast.error(t("pos.errorSelectOrigin") || "Select an origin location");
       return;
     }
-    if (fulfillment === "ship" && !leadValue) {
+    const effectiveLeadValue = opts?.leadOverride ?? leadValue;
+    const effectiveLeadRelation = opts?.leadOverride ?? leadRelationValue;
+    if (fulfillment === "ship" && !effectiveLeadValue && !opts?.customerConfirmed) {
       toast.error(
         t("pos.errorSelectCustomerShipping") ||
           "Select a customer for shipping",
       );
+      return;
+    }
+    if (
+      appliedPromoRequiresLead &&
+      !effectiveLeadValue &&
+      !opts?.customerConfirmed
+    ) {
+      onRequireLead?.("send");
       return;
     }
     if (!siteId || !userId) return;
@@ -318,26 +386,26 @@ export function usePosCheckout({
       const online = typeof navigator === "undefined" ? true : navigator.onLine;
 
       if (
-        leadRelationValue &&
-        typeof leadRelationValue === "object" &&
-        leadRelationValue.mode === "existing" &&
-        leadRelationValue.id?.startsWith("local_")
+        effectiveLeadRelation &&
+        typeof effectiveLeadRelation === "object" &&
+        effectiveLeadRelation.mode === "existing" &&
+        effectiveLeadRelation.id?.startsWith("local_")
       ) {
-        localLeadId = leadRelationValue.id;
-      } else if (online && leadRelationValue) {
+        localLeadId = effectiveLeadRelation.id;
+      } else if (online && effectiveLeadRelation) {
         const { id, error: leadError } = await resolveRelationId(
           "lead",
-          leadRelationValue,
+          effectiveLeadRelation,
           siteId,
         );
         if (leadError) throw new Error(`Lead error: ${leadError}`);
         resolvedLeadId = id;
       } else if (
-        leadRelationValue &&
-        typeof leadRelationValue === "object" &&
-        leadRelationValue.mode === "existing"
+        effectiveLeadRelation &&
+        typeof effectiveLeadRelation === "object" &&
+        effectiveLeadRelation.mode === "existing"
       ) {
-        resolvedLeadId = leadRelationValue.id;
+        resolvedLeadId = effectiveLeadRelation.id;
       }
 
       await enqueueAndMaybeNavigate({
@@ -363,6 +431,8 @@ export function usePosCheckout({
     siteId,
     userId,
     leadRelationValue,
+    appliedPromoRequiresLead,
+    onRequireLead,
     t,
   ]);
 

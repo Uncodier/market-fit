@@ -5,7 +5,7 @@ import { CalendarIcon } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useCallback, useRef } from "react"
-import { format, startOfMonth, isSameDay, isFuture, subMonths, isValid } from "date-fns"
+import { format, startOfMonth, startOfDay, endOfDay, isSameDay, isFuture, subMonths, isValid } from "date-fns"
 import { DatePicker } from "@/app/components/ui/date-picker"
 
 export interface DateRangePickerProps {
@@ -33,36 +33,34 @@ export function CalendarDateRangePicker({
   // Validation function - moved outside of useEffect to prevent recreation
   const validateDates = useCallback((startDate: Date, endDate: Date) => {
     const now = new Date();
-    
-    let validStartDate = new Date(startDate);
-    let validEndDate = new Date(endDate);
-    
-    // Check if dates are actually in the future (beyond today)
-    if (validStartDate > now) {
-      validStartDate = subMonths(now, 1);
+    const todayEnd = endOfDay(now);
+
+    let validStartDate = startOfDay(startDate);
+    let validEndDate = endOfDay(endDate);
+
+    if (validStartDate > todayEnd) {
+      validStartDate = startOfDay(subMonths(now, 1));
     }
-    
-    if (validEndDate > now) {
-      validEndDate = now;
+
+    if (validEndDate > todayEnd) {
+      validEndDate = todayEnd;
     }
-    
-    // Ensure start date is not after end date
+
     if (validStartDate > validEndDate) {
-      validStartDate = subMonths(validEndDate, 1);
+      validStartDate = startOfDay(subMonths(validEndDate, 1));
     }
-    
-    // Final validation to ensure dates are reasonable (not more than 2 years in the past)
-    const twoYearsAgo = subMonths(now, 24);
+
+    const twoYearsAgo = startOfDay(subMonths(now, 24));
     if (validStartDate < twoYearsAgo) {
       validStartDate = twoYearsAgo;
     }
-    
+
     return { validStartDate, validEndDate };
   }, []);
   
   // Initialize state - use placeholder dates if not provided (but won't trigger callback)
   const defaultStartDate = React.useMemo(() => startOfMonth(new Date()), []);
-  const defaultEndDate = React.useMemo(() => new Date(), []);
+  const defaultEndDate = React.useMemo(() => endOfDay(new Date()), []);
   
   const initialValidDates = React.useMemo(() => {
     if (initialStartDate && initialEndDate) {

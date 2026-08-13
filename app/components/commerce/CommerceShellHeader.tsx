@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef, useState } from "react"
+import { cn } from "@/lib/utils"
 import { ExitDemoMode } from "./ExitDemoMode"
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
   hideCenterOnMobile?: boolean
   /** When set, replaces brand/center/actions on mobile (e.g. expanded search). */
   mobileExpanded?: React.ReactNode
+  className?: string
 }
 
 function HeaderColumns({
@@ -104,9 +106,10 @@ export function CommerceShellHeader({
   mobileLeading,
   hideCenterOnMobile = true,
   mobileExpanded,
+  className,
 }: Props) {
   return (
-    <div className="sticky top-4 z-40 w-full mb-4 md:mb-8 shrink-0">
+    <div className={cn("sticky top-4 z-40 w-full mb-4 md:mb-8 shrink-0", className)}>
       <ExitDemoMode />
       <div className="px-4 md:px-8 w-full max-w-7xl mx-auto pointer-events-none">
         <header

@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react"
 import { useForm, FormProvider, Controller } from "react-hook-form"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogForm, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -101,13 +101,13 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Schedule</DialogTitle>
-        </DialogHeader>
-        
+      <DialogContent size="md">
         <FormProvider {...methods}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
+          <DialogForm onSubmit={handleSubmit(onSubmit)}>
+            <DialogHeader>
+              <DialogTitle>Edit Schedule</DialogTitle>
+            </DialogHeader>
+            <DialogBody className="grid gap-4">
             <div className="space-y-2">
               <Label>Schedule Name</Label>
               <Controller
@@ -227,13 +227,14 @@ export function ScheduleEditorDialog({ open, onOpenChange, schedule, onSaved }: 
               ))}
             </div>
 
+            </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit">Save</Button>
             </DialogFooter>
-          </form>
+          </DialogForm>
         </FormProvider>
       </DialogContent>
     </Dialog>

@@ -1,7 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardContent,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { FileUp, Trash2, File as FileIcon, Loader2 } from "@/app/components/ui/icons"
@@ -71,14 +75,12 @@ export function ProductDownloadableFilesCard({ item }: { item: any }) {
   if (!isDownloadable) return null
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('catalog.digitalAssets.title') || 'Downloadable Files'}</CardTitle>
-        <CardDescription>
-          {t('catalog.digitalAssets.description') || 'Attach secure files that buyers can download after purchase.'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <SectionCard>
+      <SectionCardHeader
+        title={t('catalog.digitalAssets.title') || 'Downloadable Files'}
+        description={t('catalog.digitalAssets.description') || 'Attach secure files that buyers can download after purchase.'}
+      />
+      <SectionCardContent>
         
         {loading ? (
           <div className="flex justify-center p-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
@@ -140,7 +142,7 @@ export function ProductDownloadableFilesCard({ item }: { item: any }) {
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </SectionCardContent>
+    </SectionCard>
   )
 }

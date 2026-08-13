@@ -3,7 +3,14 @@
 import { useState, useEffect } from "react"
 import { useFormContext } from "react-hook-form"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
 import { Label } from "../ui/label"
@@ -356,6 +363,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving agent WhatsApp settings:", error)
     } finally {
@@ -468,17 +476,17 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
   if (!active) return null
 
   return (
-    <Card id="agent-whatsapp-channel" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+    <SectionCard id="agent-whatsapp-channel">
+      <SectionCardHeader>
+        <SectionCardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
           Agent WhatsApp Channel
-        </CardTitle>
+        </SectionCardTitle>
         <p className="text-sm text-muted-foreground mt-1">
           Request an agent WhatsApp number for automated customer communication
         </p>
-      </CardHeader>
-      <CardContent className="px-8 pb-4 space-y-6">
+      </SectionCardHeader>
+      <SectionCardContent className="pb-4 space-y-4">
         {isNotConfigured && (
           <div className="space-y-4">
             <div>
@@ -504,7 +512,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Region availability is subject to stock.
               </p>
             </div>
@@ -530,7 +538,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Choose the city where you'd like your new WhatsApp number. Region availability is subject to stock.
                 </p>
               </div>
@@ -561,7 +569,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
             </div>
           </div>
         )}
-      </CardContent>
+      </SectionCardContent>
 
       {isNotConfigured && (
         <ActionFooter>
@@ -579,7 +587,7 @@ export function AgentWhatsAppSection({ active, siteId, onSave }: AgentWhatsAppSe
           </div>
         </ActionFooter>
       )}
-    </Card>
+    </SectionCard>
   )
 }
 

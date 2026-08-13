@@ -342,6 +342,13 @@ const IMPRENTA_CARD_CONTENT_W = 440
 
 /** When the full card has never been measured, approximate its height from prompt + result shape (media, text, etc.). */
 function estimateImprentaNodeContentHeight(node: InstanceNode, rowH: number): number {
+  if (isImprentaVisualMediaResultCard(node)) {
+    return Math.min(
+      Math.max(imprentaMediaBoxHeight(IMPRENTA_NODE_W, imprentaNodeMediaAspectCss(node)), 120),
+      1600
+    )
+  }
+
   let extra = 0
   const promptText =
     typeof (node.prompt as { text?: string } | undefined)?.text === "string"
@@ -505,6 +512,17 @@ function normalizeImprentaNodeForResultMediaType(node: InstanceNode): InstanceNo
   }
 }
 
+/** Completed image/video results fill the card; chrome sits on top of the media. */
+function isImprentaVisualMediaResultCard(node: InstanceNode): boolean {
+  const mediaType = inferImprentaResultMediaType(node)
+  return mediaType === "image" || mediaType === "video"
+}
+
+/** Shop listing CTA: white pill that inverts to black on hover. */
+const IMPRENTA_SHOP_OVERLAY_BTN =
+  "h-10 gap-1.5 bg-white text-black font-bold shadow-[0_4px_14px_rgba(0,0,0,0.28)] ring-1 ring-black/10 hover:bg-black hover:text-white active:scale-95 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-black"
+const IMPRENTA_SHOP_OVERLAY_ICON = "h-4 w-4 shrink-0"
+
 /**
  * DOM twin of `drawLiteNode`: renders the exact structural silhouette of a
  * final card so when users drag or zoom the shell they see the same three-zone
@@ -543,7 +561,8 @@ function ImprentaLiteSkeletonBody({ node, zoomScale }: { node: InstanceNode; zoo
   )
 
   // Micro band: tiny 3-zone silhouette (label strip · body · button strip).
-  if (micro) {
+  // Image/video results skip this — they are edge-to-edge media at every zoom.
+  if (micro && !(hasResult && (cover || coverVideo))) {
     return (
       <div className="flex h-full w-full flex-col gap-2">
         <div className="flex items-center justify-between">
@@ -611,14 +630,11 @@ function ImprentaLiteSkeletonBody({ node, zoomScale }: { node: InstanceNode; zoo
   // --- Result state ----------------------------------------------------------
   if (hasResult) {
     const videoLayout = !cover && !!coverVideo
-    return (
-      <div className="flex-1 min-h-0 flex flex-col gap-3">
-        {header}
-        {cover || coverVideo ? (
-          <div
-            className={`${IMPRENTA_LITE_MEDIA_WIDTH} max-w-full shrink-0 min-h-0 overflow-hidden rounded-2xl border border-border`}
-            style={{ aspectRatio: mediaAspect }}
-          >
+    const bleedMedia = !!(cover || coverVideo)
+    if (bleedMedia) {
+      return (
+        <div className="relative h-full w-full min-h-0 overflow-hidden">
+          <div className="h-full w-full min-h-0" style={{ aspectRatio: mediaAspect }}>
             {cover ? (
               <ImprentaLazyPreviewImage
                 url={cover}
@@ -630,13 +646,17 @@ function ImprentaLiteSkeletonBody({ node, zoomScale }: { node: InstanceNode; zoo
               <ImprentaLazyPreviewVideo url={coverVideo!} priority={priorityPreviews} />
             )}
           </div>
-        ) : (
-          <div className={`flex-1 min-h-[60px] rounded-xl ${skBlock} p-3 space-y-2`}>
-            <div className={`h-2 w-[92%] ${skLine}`} />
-            <div className={`h-2 w-[80%] ${skLine}`} />
-            {rich && <div className={`h-2 w-[68%] ${skLine}`} />}
-          </div>
-        )}
+        </div>
+      )
+    }
+    return (
+      <div className="flex-1 min-h-0 flex flex-col gap-3">
+        {header}
+        <div className={`flex-1 min-h-[60px] rounded-xl ${skBlock} p-3 space-y-2`}>
+          <div className={`h-2 w-[92%] ${skLine}`} />
+          <div className={`h-2 w-[80%] ${skLine}`} />
+          {rich && <div className={`h-2 w-[68%] ${skLine}`} />}
+        </div>
         {footer}
       </div>
     )
@@ -743,6 +763,7 @@ const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
 }) {
   const h = Math.max(Math.round(height), IMPRENTA_ROW_H)
   const micro = imprentaLiteSkeletonBand(zoomScale) === "micro"
+  const bleedMedia = isImprentaVisualMediaResultCard(node)
   return (
     <div
       ref={registerRef}
@@ -754,7 +775,7 @@ const ImprentaLiteGraphNode = memo(function ImprentaLiteGraphNode({
       onMouseEnter={() => onHoverChange?.(node.id)}
       onMouseLeave={() => onHoverChange?.(null)}
     >
-      <div className={`flex-1 min-h-0 flex flex-col ${micro ? "p-3" : "p-5"}`}>
+      <div className={`flex-1 min-h-0 flex flex-col ${bleedMedia ? "p-0" : micro ? "p-3" : "p-5"}`}>
         <ImprentaLiteSkeletonBody node={node} zoomScale={zoomScale} />
       </div>
     </div>
@@ -788,6 +809,7 @@ const ImprentaDummyCardInner = memo(({
 }) => {
   const mediaTypeForDummy = (node.settings as any)?.media_type || node.type.replace('generate-', '')
   const isMediaDummy = mediaTypeForDummy === 'image' || mediaTypeForDummy === 'video' || mediaTypeForDummy === 'audio'
+  const isVisualDummy = mediaTypeForDummy === 'image' || mediaTypeForDummy === 'video'
   const aspectStyle = imprentaNodeMediaAspectCss(node)
 
   return (
@@ -812,7 +834,8 @@ const ImprentaDummyCardInner = memo(({
                               (liteDummy ? "" : "animate-pulse")
                             }
                           >
-                            <CardContent className="p-5 flex flex-col gap-3">
+                            <CardContent className={cn("flex flex-col", isVisualDummy ? "p-0 overflow-hidden rounded-[1.35rem]" : "p-5 gap-3")}>
+                              {!isVisualDummy && (
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground leading-none truncate">
                                   Result
@@ -821,10 +844,14 @@ const ImprentaDummyCardInner = memo(({
                                   {node.status === 'pending' ? 'pending' : 'running'}
                                 </Badge>
                               </div>
+                              )}
                               
                               {isMediaDummy ? (
                                 <div 
-                                  className={`w-full overflow-hidden rounded-xl bg-muted/30 border border-border/50 flex flex-col items-center justify-center pointer-events-none`}
+                                  className={cn(
+                                    "w-full overflow-hidden bg-muted/30 flex flex-col items-center justify-center pointer-events-none",
+                                    isVisualDummy ? "rounded-none border-0" : "rounded-xl border border-border/50"
+                                  )}
                                   style={{ aspectRatio: aspectStyle }}
                                 >
                                   {!liteDummy && (
@@ -847,6 +874,7 @@ const ImprentaDummyCardInner = memo(({
                                 </div>
                               )}
                               
+                              {!isVisualDummy && (
                               <div className="flex items-center justify-between pt-3 border-t border-white/5 opacity-50 pointer-events-none">
                                 <div className="flex gap-2 w-full">
                                   <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
@@ -855,6 +883,7 @@ const ImprentaDummyCardInner = memo(({
                                   <div className="h-8 flex-1 rounded-md bg-muted/50 border border-border/50" />
                                 </div>
                               </div>
+                              )}
                             </CardContent>
                           </Card>
                         </div>
@@ -920,6 +949,12 @@ const ImprentaNodeCardInner = memo(({
   }
 }) => {
   const mediaAspect = imprentaNodeMediaAspectCss(node, actions.getParentNode(node))
+  const isVisualMediaCard = isImprentaVisualMediaResultCard(node)
+  const renderResultMedia = (url: string, type: "image" | "video", key: React.Key) =>
+    renderMediaWithZoom(url, type, key, mediaAspect, isVisualMediaCard)
+  const resultBtnClass = cn("flex-1", isVisualMediaCard && IMPRENTA_SHOP_OVERLAY_BTN)
+  const resultIconClass = isVisualMediaCard ? IMPRENTA_SHOP_OVERLAY_ICON : "h-4 w-4 mr-2"
+  const resultBtnVariant = isVisualMediaCard ? "ghost" : "outline"
   return (
 <div 
                         key={node.id}
@@ -997,7 +1032,17 @@ const ImprentaNodeCardInner = memo(({
                             )}
                           </div>
 
-                          <CardContent className="p-5 relative">
+                          {hasResult && (
+                            <div 
+                              className="absolute top-1/2 -translate-y-1/2 -right-3 w-4 h-4 bg-background border-2 border-primary rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-20 hover:scale-125 transition-transform" 
+                              title="Drag to a context input"
+                              onClick={(e) => actions.handleConnectionStart(e, node.id)}
+                            >
+                              <div className="w-1.5 h-1.5 bg-primary rounded-full pointer-events-none" />
+                            </div>
+                          )}
+
+                          <CardContent className={cn("relative", isVisualMediaCard ? "p-0 overflow-hidden rounded-[1.35rem]" : "p-5")}>
                             {!hasResult &&
                               (node.type === "publish" ? (
                                 (() => {
@@ -1071,19 +1116,15 @@ const ImprentaNodeCardInner = memo(({
                               </div>
                               ))}
 
-                            {hasResult && (
-                              <div 
-                                className="absolute top-1/2 -translate-y-1/2 -right-3 w-4 h-4 bg-background border-2 border-primary rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing z-20 hover:scale-125 transition-transform" 
-                                title="Drag to a context input"
-                                onClick={(e) => actions.handleConnectionStart(e, node.id)}
-                              >
-                                <div className="w-1.5 h-1.5 bg-primary rounded-full pointer-events-none" />
-                              </div>
-                            )}
-
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-medium text-muted-foreground uppercase leading-none">
+                            <div className={isVisualMediaCard ? "relative" : "space-y-3"}>
+                              <div className={cn(
+                                "flex items-center justify-between",
+                                isVisualMediaCard && "absolute inset-x-0 top-0 z-10 px-5 pt-4 pointer-events-none transition-opacity bg-gradient-to-b from-black/50 to-transparent pb-8 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
+                              )}>
+                                <span className={cn(
+                                  "text-xs font-medium uppercase leading-none",
+                                  isVisualMediaCard ? "text-white/90 drop-shadow" : "text-muted-foreground"
+                                )}>
                                   {hasResult ? 'Result' : node.type}
                                 </span>
                                 {hasResult && (
@@ -1368,7 +1409,7 @@ const ImprentaNodeCardInner = memo(({
                                 };
 
                                 return (
-                                <div className="flex flex-col gap-2">
+                                <div className={isVisualMediaCard ? "relative" : "flex flex-col gap-2"}>
                                 {(() => {
                                   const allNodes = [...nodes, ...dummyNodes]
                                   const embeddedRaw = (node.result as { audience_leads?: unknown })?.audience_leads
@@ -1401,8 +1442,8 @@ const ImprentaNodeCardInner = memo(({
                                       const rawUrl = outputItem.data?.url || outputItem.url;
                                       if (!rawUrl) return null;
                                       const url = extractUrl(rawUrl);
-                                      if (outputItem.type === 'image') return renderMediaWithZoom(url, 'image', idx, mediaAspect);
-                                      if (outputItem.type === 'video') return renderMediaWithZoom(url, 'video', idx, mediaAspect);
+                                      if (outputItem.type === 'image') return renderResultMedia(url, 'image', idx);
+                                      if (outputItem.type === 'video') return renderResultMedia(url, 'video', idx);
                                       if (outputItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
                                       return null;
                                     })}
@@ -1413,8 +1454,8 @@ const ImprentaNodeCardInner = memo(({
                                     {(node.result as any).media.map((mediaItem: any, idx: number) => {
                                       if (!mediaItem.url) return null;
                                       const url = extractUrl(mediaItem.url);
-                                      if (mediaItem.type === 'image') return renderMediaWithZoom(url, 'image', idx, mediaAspect);
-                                      if (mediaItem.type === 'video') return renderMediaWithZoom(url, 'video', idx, mediaAspect);
+                                      if (mediaItem.type === 'image') return renderResultMedia(url, 'image', idx);
+                                      if (mediaItem.type === 'video') return renderResultMedia(url, 'video', idx);
                                       if (mediaItem.type === 'audio') return <AudioPlayer key={url || idx} src={url} className="w-full" />;
                                       return null;
                                     })}
@@ -1423,15 +1464,15 @@ const ImprentaNodeCardInner = memo(({
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).images && Array.isArray((node.result as any).images) && (
                                   <div className="flex flex-col gap-2">
                                     {(node.result as any).images.map((img: any, idx: number) => (
-                                      img.url && renderMediaWithZoom(extractUrl(img.url), 'image', idx, mediaAspect)
+                                      img.url && renderResultMedia(extractUrl(img.url), 'image', idx)
                                     ))}
                                   </div>
                                 )}
                                 {!(node.result as any).outputs && !(node.result as any).media && !(node.result as any).images && (node.result as any).image && (node.result as any).image.url && (
-                                  renderMediaWithZoom(extractUrl((node.result as any).image.url), 'image', 'single-img', mediaAspect)
+                                  renderResultMedia(extractUrl((node.result as any).image.url), 'image', 'single-img')
                                 )}
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).video && (node.result as any).video.url && (
-                                  renderMediaWithZoom(extractUrl((node.result as any).video.url), 'video', 'single-vid', mediaAspect)
+                                  renderResultMedia(extractUrl((node.result as any).video.url), 'video', 'single-vid')
                                 )}
                                 {!(node.result as any).outputs && !(node.result as any).media && (node.result as any).audio && (node.result as any).audio.url && (
                                   <AudioPlayer key={extractUrl((node.result as any).audio.url)} src={extractUrl((node.result as any).audio.url)} className="w-full" />
@@ -1469,12 +1510,12 @@ const ImprentaNodeCardInner = memo(({
                                       if (imgMatchMarkdown) extractedUrl = imgMatchMarkdown[1];
                                       else if (imgMatchUrl) extractedUrl = imgMatchUrl[0];
                                       
-                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'image', 'extracted-img', mediaAspect);
+                                      if (extractedUrl) return renderResultMedia(extractedUrl, 'image', 'extracted-img');
                                     } else if (expectedMediaType === 'video') {
                                       const vidMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp4|webm|mov|mkv)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
                                       if (vidMatchUrl) extractedUrl = vidMatchUrl[0];
                                       
-                                      if (extractedUrl) return renderMediaWithZoom(extractedUrl, 'video', 'extracted-vid', mediaAspect);
+                                      if (extractedUrl) return renderResultMedia(extractedUrl, 'video', 'extracted-vid');
                                     } else if (expectedMediaType === 'audio') {
                                       const audioMatchUrl = textContent.match(/https?:\/\/[^\s"'<>()]+\.(mp3|wav|ogg|m4a|aac|flac)/i) || textContent.match(/https?:\/\/[^\s"'<>()]+/);
                                       if (audioMatchUrl) extractedUrl = audioMatchUrl[0];
@@ -1552,15 +1593,25 @@ const ImprentaNodeCardInner = memo(({
                               })()
                             )}
                             
-                              <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                              <div className={cn(
+                                isVisualMediaCard
+                                  ? "absolute inset-x-0 bottom-0 z-10 transition-opacity opacity-100 pointer-events-auto [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-hover:pointer-events-auto"
+                                  : "flex items-center justify-between pt-3 border-t border-white/5"
+                              )}>
+                              {isVisualMediaCard && (
+                                <div
+                                  className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/55 via-black/20 to-transparent"
+                                  aria-hidden
+                                />
+                              )}
                               {(() => {
                                 const parentNode = actions.getParentNode(node);
                                 return hasResult ? (
-                                <div className="flex gap-2 w-full">
+                                <div className={cn("flex gap-2 w-full", isVisualMediaCard && "relative px-3 pb-3")}>
                                   <Button 
-                                    variant="outline" 
+                                    variant={resultBtnVariant} 
                                     size="sm"
-                                    className="flex-1"
+                                    className={resultBtnClass}
                                     disabled={
                                       node.status === 'running' || 
                                       node.status === 'pending' || 
@@ -1586,12 +1637,12 @@ const ImprentaNodeCardInner = memo(({
                                     }}
                                     title="New Variant"
                                   >
-                                    <GitFork className="w-4 h-4 mr-2" /> Variant
+                                    <GitFork className={resultIconClass} /> Variant
                                   </Button>
                                   <Button 
-                                    variant="outline" 
+                                    variant={resultBtnVariant} 
                                     size="sm"
-                                    className="flex-1"
+                                    className={resultBtnClass}
                                     disabled={
                                       node.status === 'running' || 
                                       node.status === 'pending' || 
@@ -1610,12 +1661,12 @@ const ImprentaNodeCardInner = memo(({
                                     }}
                                     title="New Action"
                                   >
-                                    <Plus className="w-4 h-4 mr-2" /> Action
+                                    <Plus className={resultIconClass} /> Action
                                   </Button>
                                   <Button
-                                    variant="outline"
+                                    variant={resultBtnVariant}
                                     size="sm"
-                                    className="flex-1"
+                                    className={resultBtnClass}
                                     disabled={
                                       node.status === 'running' || 
                                       node.status === 'pending' || 
@@ -1656,7 +1707,7 @@ const ImprentaNodeCardInner = memo(({
                                     }}
                                     title="Copy Result"
                                   >
-                                    <Copy className="h-4 w-4 mr-2" /> Copy
+                                    <Copy className={resultIconClass} /> Copy
                                   </Button>
                                   {(() => {
                                       const extractUrl = (text: any): string => {
@@ -1682,9 +1733,9 @@ const ImprentaNodeCardInner = memo(({
 
                                       return (
                                         <Button 
-                                          variant="outline" 
+                                          variant={resultBtnVariant} 
                                           size="sm"
-                                          className="flex-1"
+                                          className={resultBtnClass}
                                           disabled={
                                             node.status === 'running' || 
                                             node.status === 'pending' || 
@@ -1735,7 +1786,7 @@ const ImprentaNodeCardInner = memo(({
                                           }}
                                           title="Download Result"
                                         >
-                                          <Download className="w-4 h-4 mr-2" /> Download
+                                          <Download className={resultIconClass} /> Download
                                         </Button>
                                       );
                                   })()}
@@ -3275,7 +3326,8 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
     url: string,
     type: 'image' | 'video',
     key: React.Key,
-    aspectRatio = "1/1"
+    aspectRatio = "1/1",
+    bleed = false
   ) => (
     <div key={key} className="relative group w-full">
       {type === 'image' ? (
@@ -3283,11 +3335,15 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
           url={url}
           alt="Generated media"
           aspectRatio={aspectRatio}
+          bleed={bleed}
           onOpen={() => setZoomedMedia({ url, type: "image" })}
         />
       ) : (
         <div 
-          className="relative w-full overflow-hidden rounded-xl bg-black/10 flex items-center justify-center cursor-pointer group/video"
+          className={cn(
+            "relative w-full overflow-hidden bg-black/10 flex items-center justify-center cursor-pointer group/video",
+            bleed ? "rounded-none" : "rounded-xl"
+          )}
           style={{ aspectRatio }}
           onClick={(e) => { e.stopPropagation(); setZoomedMedia({ url, type }); }}
         >
@@ -3309,7 +3365,10 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       )}
       {type === 'image' && (
         <div 
-          className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-xl pointer-events-none flex items-center justify-center opacity-0 group-hover:opacity-100"
+          className={cn(
+            "absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none flex items-center justify-center opacity-0 group-hover:opacity-100",
+            bleed ? "rounded-none" : "rounded-xl"
+          )}
         >
           <div className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm shadow-sm">
             <ZoomIn className="h-5 w-5" />

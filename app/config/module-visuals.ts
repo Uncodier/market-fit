@@ -73,6 +73,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
     catalog: Package,
   priceLists: Tag,
   inventory: Boxes,
+  printers: Printer,
   orders: ListOrdered,
   shipments: Send,
   promotions: Ticket,
@@ -242,6 +243,7 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   visits: buildVariant(170, 185, 150, 74, 46, "mesh-1", false),
   checkIn: buildVariant(175, 190, 135, 80, 46, "mesh-2", true, true),
   inventory: buildVariant(160, 175, 160, 65, 42, "mesh-7", false),
+  printers: buildVariant(168, 155, 210, 70, 44, "mesh-3", false),
 
   // —— Buying (amber → gold → soft orange) ——
   purchasesOrders: buildVariant(34, 45, 135, 90, 48, "mesh-1", true, true),

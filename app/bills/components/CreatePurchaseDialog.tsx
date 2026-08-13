@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogForm,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -118,7 +126,8 @@ export function CreatePurchaseDialog({
     })
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!currentSite?.id) return
     const validLines = lines.filter((l) => l.name.trim() && Number(l.quantity) > 0)
     if (!validLines.length) {
@@ -194,48 +203,44 @@ export function CreatePurchaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing
-              ? (t("bills.edit.title") || "Edit vendor bill")
-              : (t("bills.create.title") || "New vendor bill")}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="grid gap-4 py-2">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">{t("bills.field.title") || "Title"}</Label>
-            <Input className="col-span-3" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">{t("bills.field.vendor") || "Vendor"}</Label>
-            <div className="col-span-3">
-              <Select value={vendorCompanyId || "none"} onValueChange={(v) => setVendorCompanyId(v === "none" ? "" : v)}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder={t("bills.placeholder.vendor") || "Select vendor"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t("bills.field.noVendor") || "No vendor"}</SelectItem>
-                  {companies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      <DialogContent size="lg" busy={loading}>
+        <DialogForm onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>
+              {isEditing
+                ? (t("bills.edit.title") || "Edit vendor bill")
+                : (t("bills.create.title") || "New vendor bill")}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
+            <div className="grid gap-2">
+              <Label>{t("bills.field.title") || "Title"}</Label>
+              <Input className="h-12" value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
-          </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">{t("bills.field.date") || "Date"}</Label>
-            <div className="col-span-3">
-              <DatePicker date={purchaseDate} setDate={(d) => setPurchaseDate(d)} className="h-12 w-full" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>{t("bills.field.vendor") || "Vendor"}</Label>
+                <Select value={vendorCompanyId || "none"} onValueChange={(v) => setVendorCompanyId(v === "none" ? "" : v)}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder={t("bills.placeholder.vendor") || "Select vendor"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("bills.field.noVendor") || "No vendor"}</SelectItem>
+                    {companies.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>{t("bills.field.date") || "Date"}</Label>
+                <DatePicker date={purchaseDate} setDate={(d) => setPurchaseDate(d)} className="h-12 w-full" />
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">{t("bills.field.location") || "Location"}</Label>
-            <div className="col-span-3">
+            <div className="grid gap-2">
+              <Label>{t("bills.field.location") || "Location"}</Label>
               <Select value={locationId || "none"} onValueChange={(v) => setLocationId(v === "none" ? "" : v)}>
                 <SelectTrigger className="h-12">
                   <SelectValue placeholder={t("bills.placeholder.location") || "Receive location"} />
@@ -248,7 +253,6 @@ export function CreatePurchaseDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
           <div className="border rounded-md p-3 space-y-3">
             <div className="flex items-center justify-between">
@@ -333,37 +337,37 @@ export function CreatePurchaseDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">{t("bills.field.amountDue") || "Amount due"}</Label>
-            <Input
-              className="col-span-3"
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder={String(total)}
-              value={amountDue}
-              onChange={(e) => setAmountDue(e.target.value)}
-            />
-          </div>
+            <div className="grid gap-2">
+              <Label>{t("bills.field.amountDue") || "Amount due"}</Label>
+              <Input
+                className="h-12"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder={String(total)}
+                value={amountDue}
+                onChange={(e) => setAmountDue(e.target.value)}
+              />
+            </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">{t("bills.field.notes") || "Notes"}</Label>
-            <Textarea className="col-span-3" value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            {t("common.cancel") || "Cancel"}
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading
-              ? (t("common.saving") || "Saving...")
-              : isEditing
-                ? (t("bills.edit.submit") || "Save changes")
-                : (t("bills.create.submit") || "Create bill")}
-          </Button>
-        </DialogFooter>
+            <div className="grid gap-2">
+              <Label>{t("bills.field.notes") || "Notes"}</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              {t("common.cancel") || "Cancel"}
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading
+                ? (t("common.saving") || "Saving...")
+                : isEditing
+                  ? (t("bills.edit.submit") || "Save changes")
+                  : (t("bills.create.submit") || "Create bill")}
+            </Button>
+          </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

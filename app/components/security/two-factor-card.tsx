@@ -9,7 +9,14 @@ import {
   FormLabel,
   FormDescription,
 } from "@/app/components/ui/form"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Switch } from "@/app/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 import { ActionFooter } from "@/app/components/ui/card-footer"
@@ -235,11 +242,11 @@ export function TwoFactorCard({ mfaForm, user }: TwoFactorCardProps) {
   };
 
   return (
-    <Card id="two-factor-authentication" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold">Two-Factor Authentication</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-8 px-8">
+    <SectionCard id="two-factor-authentication">
+      <SectionCardHeader>
+        <SectionCardTitle>Two-Factor Authentication</SectionCardTitle>
+      </SectionCardHeader>
+      <SectionCardContent className="space-y-8">
         <div className="flex flex-row items-center justify-between rounded-lg border border-border p-4 hover:bg-accent/5 transition-colors duration-200">
           <div className="space-y-0.5">
             <FormLabel className="text-base">
@@ -284,7 +291,7 @@ export function TwoFactorCard({ mfaForm, user }: TwoFactorCardProps) {
             </div>
           </div>
         )}
-      </CardContent>
+      </SectionCardContent>
       {setupStep === 'setup' && qrCodeUrl && (
         <ActionFooter>
           <Button
@@ -305,6 +312,6 @@ export function TwoFactorCard({ mfaForm, user }: TwoFactorCardProps) {
           </Button>
         </ActionFooter>
       )}
-    </Card>
+    </SectionCard>
   )
 }

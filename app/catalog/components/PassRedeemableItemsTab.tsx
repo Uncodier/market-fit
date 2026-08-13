@@ -12,7 +12,14 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import {
   Dialog,
   DialogContent,
@@ -106,23 +113,23 @@ export function PassRedeemableItemsTab({ passCatalogItemId }: { passCatalogItemI
 
   if (loading) {
     return (
-      <Card className="border dark:border-white/5 border-black/5 shadow-sm">
-        <CardContent className="p-6 space-y-4">
+      <SectionCard className="border dark:border-white/5 border-black/5 shadow-sm">
+        <SectionCardContent className="p-6 space-y-4">
           <Skeleton className="h-10 w-full"/>
           <Skeleton className="h-20 w-full"/>
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
     )
   }
 
   const currentItems = availableServices.filter(s => redeemableIds.includes(s.id))
 
   return (
-    <Card id="pass-items" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+    <SectionCard id="pass-items">
+      <SectionCardHeader className="flex flex-row items-center justify-between">
+        <SectionCardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" /> {t('catalog.passItems.title') || 'Pass Services'}
-        </CardTitle>
+        </SectionCardTitle>
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
@@ -163,9 +170,9 @@ export function PassRedeemableItemsTab({ passCatalogItemId }: { passCatalogItemI
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </CardHeader>
+      </SectionCardHeader>
 
-      <CardContent className="px-6 md:px-8 pb-8">
+      <SectionCardContent>
         {currentItems.length > 0 ? (
           <div className="border rounded-lg overflow-x-auto">
             <table className="w-full min-w-[500px]">
@@ -199,7 +206,7 @@ export function PassRedeemableItemsTab({ passCatalogItemId }: { passCatalogItemI
             className="border-0 shadow-none bg-transparent"
           />
         )}
-      </CardContent>
-    </Card>
+      </SectionCardContent>
+    </SectionCard>
   )
 }

@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { SiteForm } from "@/app/components/settings/site-form"
 import { type SiteFormValues } from "@/app/components/settings/form-schema"
 import { adaptSiteToForm, type AdaptedSiteFormValues } from "@/app/components/settings/data-adapter"
-import { handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities, handleSaveShop } from "@/app/components/settings/save-handlers"
+import { handleSaveGeneral, handleSaveCompany, handleSaveBranding, handleSaveMarketing, handleSaveCustomerJourney, handleSaveSocial, handleSaveChannels, handleSaveActivities, handleSaveShop, handleSavePrinters } from "@/app/components/settings/save-handlers"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -168,26 +168,6 @@ const getGeneralSections = (t: (key: string) => string): QuickNavSection[] => [
 const getCompanySections = (t: (key: string) => string): QuickNavSection[] => [
   { id: "company-profile", title: t('settings.nav.companyProfile') || "Company Profile" },
   {
-    id: "goals-quarterly",
-    title: t('settings.nav.goals') || "Business Goals",
-    children: [
-      { id: "goals-quarterly", title: t('settings.nav.goals.quarterly') || "Quarter Goals" },
-      { id: "goals-yearly", title: t('settings.nav.goals.yearly') || "Year Goals" },
-      { id: "goals-five-year", title: t('settings.nav.goals.fiveYear') || "5 Year Goals" },
-      { id: "goals-ten-year", title: t('settings.nav.goals.tenYear') || "10 Year Goals" },
-    ]
-  },
-  {
-    id: "swot-strengths",
-    title: t('settings.nav.swot') || "SWOT Analysis",
-    children: [
-      { id: "swot-strengths", title: t('settings.nav.swot.strengths') || "Strengths" },
-      { id: "swot-weaknesses", title: t('settings.nav.swot.weaknesses') || "Weaknesses" },
-      { id: "swot-opportunities", title: t('settings.nav.swot.opportunities') || "Opportunities" },
-      { id: "swot-threats", title: t('settings.nav.swot.threats') || "Threats" },
-    ]
-  },
-  {
     id: "office-locations",
     title: t('settings.nav.officeLocations') || "Office Locations",
     children: []
@@ -206,6 +186,26 @@ const getCompanySections = (t: (key: string) => string): QuickNavSection[] => [
     id: "business-hours",
     title: t('settings.nav.businessHours') || "Business Hours",
     children: []
+  },
+  {
+    id: "goals-quarterly",
+    title: t('settings.nav.goals') || "Business Goals",
+    children: [
+      { id: "goals-quarterly", title: t('settings.nav.goals.quarterly') || "Quarter Goals" },
+      { id: "goals-yearly", title: t('settings.nav.goals.yearly') || "Year Goals" },
+      { id: "goals-five-year", title: t('settings.nav.goals.fiveYear') || "5 Year Goals" },
+      { id: "goals-ten-year", title: t('settings.nav.goals.tenYear') || "10 Year Goals" },
+    ]
+  },
+  {
+    id: "swot-strengths",
+    title: t('settings.nav.swot') || "SWOT Analysis",
+    children: [
+      { id: "swot-strengths", title: t('settings.nav.swot.strengths') || "Strengths" },
+      { id: "swot-weaknesses", title: t('settings.nav.swot.weaknesses') || "Weaknesses" },
+      { id: "swot-opportunities", title: t('settings.nav.swot.opportunities') || "Opportunities" },
+      { id: "swot-threats", title: t('settings.nav.swot.threats') || "Threats" },
+    ]
   },
 ]
 
@@ -271,6 +271,14 @@ const getCalendarSections = (t: (key: string) => string): QuickNavSection[] => [
   { id: "calendars", title: t('settings.nav.calendars') || "Calendars" },
 ]
 
+const getPrintersSections = (t: (key: string) => string): QuickNavSection[] => [
+  {
+    id: "printers",
+    title: t("settings.nav.printers") || "Printers",
+    children: [],
+  },
+]
+
 export default function SettingsPage() {
   const { t } = useLocalization()
   const { currentSite, updateSite, deleteSite, isLoading, updateSettings, refreshSites } = useSite()
@@ -285,6 +293,7 @@ export default function SettingsPage() {
   const [copywritingSections, setCopywritingSections] = useState<QuickNavSection[]>(getInitialCopywritingSections(t))
   const [socialSections, setSocialSections] = useState<QuickNavSection[]>(getInitialSocialSections(t))
   const [companySectionsState, setCompanySectionsState] = useState<QuickNavSection[]>(getCompanySections(t))
+  const [printersSections, setPrintersSections] = useState<QuickNavSection[]>(getPrintersSections(t))
 
   // Keep company quick-nav labels in sync with locale
   useEffect(() => {
@@ -431,10 +440,29 @@ export default function SettingsPage() {
     };
   }, []);
 
+  // Listen for printers updates
+  useEffect(() => {
+    const handlePrintersUpdate = (event: CustomEvent) => {
+      const items = event.detail as { id: string; title: string }[];
+      setPrintersSections([
+        {
+          id: "printers",
+          title: t("settings.nav.printers") || "Printers",
+          children: items,
+        },
+      ]);
+    };
+
+    window.addEventListener("printersUpdated", handlePrintersUpdate as EventListener);
+    return () => {
+      window.removeEventListener("printersUpdated", handlePrintersUpdate as EventListener);
+    };
+  }, [t]);
+
   // Sync tab from URL (?tab=channels)
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('segment')
-    if (tab && ["general", "company", "channels", "team", "activities", "social", "calendar"].includes(tab)) {
+    if (tab && ["general", "company", "channels", "team", "activities", "social", "calendar", "marketplace", "visits", "printers"].includes(tab)) {
       setActiveSegment(tab)
     }
   }, [searchParams])
@@ -562,6 +590,11 @@ export default function SettingsPage() {
     await handleSaveShop(data, saveOptions)
   }
 
+  const onSavePrinters = async (data: SiteFormValues) => {
+    if (!currentSite) return
+    await handleSavePrinters(data, saveOptions)
+  }
+
   // Simple approach - just track when data changes
   const adaptedSiteData = useMemo(() => {
     if (!currentSite) return null;
@@ -589,6 +622,8 @@ export default function SettingsPage() {
         return socialSections
       case "calendar":
         return getCalendarSections(t)
+      case "printers":
+        return printersSections
       default:
         return []
     }
@@ -606,6 +641,7 @@ export default function SettingsPage() {
                 <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
                 <TabsTrigger value="calendar" className="text-xs rounded-full px-4">{t('settings.tabs.calendar') || 'Calendar'}</TabsTrigger>
+                <TabsTrigger value="printers" className="text-xs rounded-full px-4">{t('settings.tabs.printers') || 'Printers'}</TabsTrigger>
                 <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -647,6 +683,7 @@ export default function SettingsPage() {
                 <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
                 <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
                 <TabsTrigger value="calendar" className="text-xs rounded-full px-4">{t('settings.tabs.calendar') || 'Calendar'}</TabsTrigger>
+                <TabsTrigger value="printers" className="text-xs rounded-full px-4">{t('settings.tabs.printers') || 'Printers'}</TabsTrigger>
                 <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -669,6 +706,7 @@ export default function SettingsPage() {
             onSaveChannels={onSaveChannels}
             onSaveActivities={onSaveActivities}
             onSaveShop={onSaveShop}
+            onSavePrinters={onSavePrinters}
             activeSegment={activeSegment}
             siteId={currentSite.id}
           />

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogForm, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -178,7 +178,8 @@ export function AttributionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent size="md" busy={isLoading}>
+        <DialogForm onSubmit={(e) => { e.preventDefault(); void handleSubmit() }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {config.icon}
@@ -188,8 +189,7 @@ export function AttributionModal({
             {config.description}
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-6">
+        <DialogBody className="grid gap-4">
           {/* User Information */}
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
             <div className="bg-primary/10 rounded-md flex items-center justify-center w-10 h-10">
@@ -284,8 +284,7 @@ export function AttributionModal({
               <strong>Why this matters:</strong> {config.infoText}
             </p>
           </div>
-        </div>
-
+        </DialogBody>
         <DialogFooter>
           <Button
             variant="outline"
@@ -295,7 +294,7 @@ export function AttributionModal({
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit}
+            type="submit"
             disabled={isLoading}
             className="gap-2"
             variant={statusType === "converted" ? "default" : "destructive"}
@@ -313,6 +312,7 @@ export function AttributionModal({
             )}
           </Button>
         </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

@@ -8,6 +8,7 @@ import { Input } from "@/app/components/ui/input";
 import { Textarea } from "@/app/components/ui/textarea";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -181,7 +182,7 @@ export function PosLeadDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
+      <DialogContent size="md" busy={saving}>
         <DialogHeader>
           <DialogTitle>
             {getTrans("pos.leadDetails.title", "Customer details")}
@@ -207,6 +208,7 @@ export function PosLeadDetailsDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <DialogBody>
         {loading ? (
           <div className="space-y-3 py-2">
             <Skeleton className="h-10 w-full" />
@@ -341,6 +343,7 @@ export function PosLeadDetailsDialog({
             </div>
           </div>
         )}
+        </DialogBody>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button

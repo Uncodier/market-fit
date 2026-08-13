@@ -1,98 +1,59 @@
 # Card Components
 
-This directory contains standardized card components for consistent UI across the application.
+## Section cards (settings and details)
 
-## Available Components
-
-### Base Card Components
+Use `SectionCard` for settings pages and detail form sections. Do not use the base `Card` for those surfaces.
 
 ```tsx
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
-  CardContent, 
-  CardFooter 
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/cards";
+
+<SectionCard id="company-profile">
+  <SectionCardHeader
+    title="Company Profile"
+    description="Tell customers who you are."
+  />
+  <SectionCardContent>
+    {/* fields */}
+  </SectionCardContent>
+  <SectionCardFooter
+    dirty={dirty}
+    saving={saving}
+    onSave={handleSave}
+    saveLabel="Save"
+  />
+</SectionCard>
+```
+
+- Shell matches list tables: `rounded-xl border border-border/70`, no hover shadow.
+- Title is `text-lg`; description is `text-sm`.
+- Save is an outline `sm` button, disabled until dirty.
+
+`ActionFooter` is an alias of `SectionCardFooter` for existing detail pages.
+
+## Base Card (metrics, kanban, listings)
+
+```tsx
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
 } from "@/app/components/ui/cards";
 ```
 
-### Specialized Card Components
+Keep `Card` for dashboard KPIs, kanban cards, and listing cards.
+
+## Empty and loading states
 
 ```tsx
 import { EmptyCard, SkeletonCard } from "@/app/components/ui/cards";
 ```
 
-### Styling Constants
-
-```tsx
-import { CARD_PADDING, CARD_CONTENT_PADDING } from "@/app/components/ui/cards";
-```
-
-## Card Padding Standards
-
-To maintain consistent padding across all cards, use these standard padding values:
-
-```tsx
-// Default padding (recommended for most cards)
-<CardHeader>
-  <CardTitle>Card Title</CardTitle>
-</CardHeader>
-<CardContent>
-  Content here
-</CardContent>
-
-// Small padding (for compact cards)
-<CardHeader className={CARD_PADDING.SMALL}>
-  <CardTitle>Card Title</CardTitle>
-</CardHeader>
-<CardContent className="p-4 pt-0">
-  Content here
-</CardContent>
-
-// Large padding (for featured cards)
-<CardHeader className={CARD_PADDING.LARGE}>
-  <CardTitle>Card Title</CardTitle>
-</CardHeader>
-<CardContent className="p-8 pt-0">
-  Content here
-</CardContent>
-```
-
-## Using Empty Card States
-
-The `EmptyCard` component standardizes empty states across the application:
-
-```tsx
-<EmptyCard 
-  icon={<FileText className="h-10 w-10 text-muted-foreground" />}
-  title="No documents found"
-  description="There are no documents in this section yet."
-  actionButton={<Button size="sm">Add Document</Button>}
-/>
-```
-
-## Loading States
-
-The `SkeletonCard` component provides consistent loading states:
-
-```tsx
-// Basic usage
-<SkeletonCard />
-
-// With customizations
-<SkeletonCard 
-  titleSize="lg"
-  contentLines={5}
-/>
-
-// Content only (no header)
-<SkeletonCard 
-  showHeader={false}
-  contentHeight="h-40"
-/>
-```
-
-## Examples
-
-See `examples.tsx` for complete code examples of different card patterns. 
+See `examples.tsx` for complete patterns.

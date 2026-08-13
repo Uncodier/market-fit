@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { OrderParams, OrderWithRelations } from "./types";
 import { SaleOrderData } from "@/app/types";
+import { shouldCancelLinkedSale } from "./cancel-linked-sale";
 
 export async function listOrders({ siteId, status, paymentStatus, q, locationId, page = 1, pageSize = 50, startDate, endDate }: OrderParams) {
   try {
@@ -114,6 +115,16 @@ export async function getOrder(id: string) {
 export async function updateOrderStatus(siteId: string, orderId: string, status: string) {
   try {
     const supabase = await createClient();
+
+    const { data: currentOrder, error: fetchError } = await supabase
+      .from("sale_orders")
+      .select("id, status, sale_id")
+      .eq("site_id", siteId)
+      .eq("id", orderId)
+      .single();
+
+    if (fetchError) throw new Error(fetchError.message);
+
     const { data, error } = await supabase
       .from("sale_orders")
       .update({ status })
@@ -129,6 +140,25 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
         .from("sale_order_items")
         .update({ status: 'completed' })
         .eq("sale_order_id", orderId);
+    }
+
+    if (status === "cancelled" && currentOrder?.sale_id) {
+      const { data: sale } = await supabase
+        .from("sales")
+        .select("id, status, payments, amount, amount_due")
+        .eq("id", currentOrder.sale_id)
+        .eq("site_id", siteId)
+        .single();
+
+      if (sale && shouldCancelLinkedSale(currentOrder.status, sale)) {
+        await supabase
+          .from("sales")
+          .update({ status: "cancelled" })
+          .eq("id", sale.id)
+          .eq("site_id", siteId);
+        revalidatePath("/sales");
+        revalidatePath(`/sales/${sale.id}`);
+      }
     }
 
     revalidatePath(`/orders`);

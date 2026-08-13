@@ -12,6 +12,7 @@ import {
 } from "@/app/components/commerce/DynamicQuoteFieldsForm"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -69,14 +70,13 @@ export function DynamicQuoteFieldsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent size="md" busy={confirming}>
         <DialogHeader>
           <DialogTitle>
             {t("quotations.dynamicQuote.requestTitle") || "Quote assistant"} — {item.name}
           </DialogTitle>
         </DialogHeader>
-
-        <div className="py-2 space-y-3">
+        <DialogBody className="grid gap-3">
           {config.requires_advanced_compute && (
             <p className="text-sm text-muted-foreground">
               {t("pdp.dynamicQuote.computeMayTakeMinutes") ||
@@ -99,10 +99,9 @@ export function DynamicQuoteFieldsModal({
             showExpirationHint
             disabled={confirming}
           />
-          {error && <p className="text-sm text-destructive mt-3">{error}</p>}
-        </div>
-
-        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </DialogBody>
+        <DialogFooter>
           {!isFormValid && !confirming && (
             <p className="text-sm text-amber-600 sm:mr-auto self-center font-medium">
               {t("pdp.dynamicQuote.fillFormToQuote") || "Fill the form to get your quote."}

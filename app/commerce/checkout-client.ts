@@ -1,6 +1,8 @@
 import type { CheckoutCartParams } from '@/app/commerce/checkout'
 import { resolveAppApiUrl } from '@/app/commerce/app-api-url'
 
+import type { KitchenDelta } from "@/lib/printer/core/types"
+
 export type CheckoutCartSuccess = {
   success: true
   saleId: string
@@ -11,6 +13,9 @@ export type CheckoutCartSuccess = {
   total?: number | null
   currency?: string | null
   createdAt?: string | null
+  kitchenDelta?: KitchenDelta | null
+  notes?: string | null
+  fulfillment?: string | null
   error?: undefined
 }
 

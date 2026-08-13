@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { Badge } from "@/app/components/ui/badge"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
@@ -59,7 +58,6 @@ import { createClient } from "@/lib/supabase/client"
 import { startExperiment, stopExperiment, setExperimentStatus } from "../actions"
 import { Separator } from "@/app/components/ui/separator"
 import { useSite } from "@/app/context/SiteContext"
-import { cn } from "@/lib/utils"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,6 +80,7 @@ import "../styles/editor.css"
 
 import { Experiment } from "./types"
 import { MenuBar, ExperimentDetails } from "./components"
+import { ExperimentStatusBar } from "../components/ExperimentStatusBar"
 import { 
   handleExperimentSegmentChanges, 
   loadExperimentWithSegments, 
@@ -95,39 +94,6 @@ import {
   handleStartExperiment as handleStart,
   handleStopExperiment as handleStop
 } from "./utils/experiment-handlers"
-
-const ExperimentStatusBar = ({ 
-  currentStatus, 
-  onStatusChange 
-}: { 
-  currentStatus: "active" | "completed" | "draft";
-  onStatusChange: (newStatus: "active" | "completed" | "draft") => void;
-}) => {
-  return (
-    <div className="flex items-center">
-      <div className="flex space-x-2">
-        {["draft", "active", "completed"].map((status) => (
-          <Badge 
-            key={status}
-            className={cn(
-              "px-3 py-1 text-sm cursor-pointer transition-colors duration-200",
-              status === currentStatus 
-                ? (status === "draft" 
-                    ? "bg-secondary/20 text-secondary-foreground border-secondary/20"
-                    : status === "active" 
-                        ? "bg-success/20 text-success border-success/20"
-                        : "bg-info/20 text-info border-info/20")
-                : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border border border-transparent"
-            )}
-            onClick={() => onStatusChange(status as "active" | "completed" | "draft")}
-          >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </Badge>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 const ExperimentSkeleton = () => {
   return (
@@ -311,29 +277,6 @@ export default function ExperimentDetailPage(props: { params: Promise<{ id: stri
       window.removeEventListener('experiment:refresh', handleExperimentRefresh);
     };
   }, [currentSite, unwrappedParams.id]);
-
-  // Add event listener for AI-generated content
-  useEffect(() => {
-    const handleAIGenerated = (event: CustomEvent) => {
-      if (editor && event.detail && event.detail.content) {
-        // First, update the editor content with the AI-generated content
-        const formattedHTML = markdownToHTML(event.detail.content);
-        editor.commands.setContent(formattedHTML);
-        
-        // Also update the editedInstructions state to track the new content
-        setEditedInstructions(event.detail.content);
-        
-        // Save the changes to the database
-        handleSaveChanges();
-      }
-    };
-
-    window.addEventListener('experiment:ai-generated', handleAIGenerated as EventListener);
-    
-    return () => {
-      window.removeEventListener('experiment:ai-generated', handleAIGenerated as EventListener);
-    };
-  }, [editor]);
 
   // Add listener for segment changes
   useEffect(() => {

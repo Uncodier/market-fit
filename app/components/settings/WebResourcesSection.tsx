@@ -1,7 +1,14 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
@@ -37,6 +44,7 @@ export function WebResourcesSection({ active, onSave }: WebResourcesSectionProps
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving web resources:", error)
     } finally {
@@ -61,11 +69,11 @@ export function WebResourcesSection({ active, onSave }: WebResourcesSectionProps
   if (!active) return null
 
   return (
-    <Card id="web-resources" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
+    <SectionCard id="web-resources">
+      <SectionCardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-xl font-semibold">Web Resources</CardTitle>
+            <SectionCardTitle>Web Resources</SectionCardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               Add important web resources, documentation, or links related to your site
             </p>
@@ -80,8 +88,8 @@ export function WebResourcesSection({ active, onSave }: WebResourcesSectionProps
             Add Resource
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6 px-8 pb-8">
+      </SectionCardHeader>
+      <SectionCardContent className="space-y-4">
         {resourceList.map((resource, index) => (
           <div key={index} className="flex items-center space-x-2">
             <FormField
@@ -138,16 +146,15 @@ export function WebResourcesSection({ active, onSave }: WebResourcesSectionProps
             </Button>
           </div>
         ))}
-      </CardContent>
-      <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-        <Button 
-          variant="outline"
+      </SectionCardContent>
+      <SectionCardFooter>
+        <Button variant="outline" size="sm"
           onClick={() => handleSave('web-resources')}
-          disabled={savingCard === 'web-resources'}
+          disabled={savingCard === 'web-resources' || !form.formState.isDirty}
         >
           {savingCard === 'web-resources' ? "Saving..." : "Save"}
         </Button>
-      </CardFooter>
-    </Card>
+      </SectionCardFooter>
+    </SectionCard>
   )
 }

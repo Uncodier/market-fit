@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -11,18 +12,7 @@ import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Badge } from "@/app/components/ui/badge"
-import {
-  ModalFooter,
-  ModalFooterActions,
-  ModalFooterInfo,
-} from "@/app/components/ui/modal-footer"
-import {
-  ModalHeader,
-  ModalHeaderTitle,
-  ModalHeaderDescription,
-} from "@/app/components/ui/modal-header"
 import { 
-  Filter, 
   Tag, 
   CheckCircle2, 
   Ban, 
@@ -35,7 +25,6 @@ import {
   MessageSquare
 } from "@/app/components/ui/icons"
 
-// Define tipos para los filtros
 export interface LeadFilters {
   status: string[]
   segments: string[]
@@ -72,7 +61,6 @@ export function LeadFilterModal({
     { id: "referral", label: "Referral" }
   ]
 }: LeadFilterModalProps) {
-  // Estado local para los filtros
   const [localFilters, setLocalFilters] = useState<LeadFilters>({
     status: [...filters.status],
     segments: [...filters.segments],
@@ -80,7 +68,6 @@ export function LeadFilterModal({
     journeyStages: [...(filters.journeyStages || [])]
   })
   
-  // Estado para las secciones expandidas
   const [expandedSections, setExpandedSections] = useState({
     status: true,
     segments: true,
@@ -88,7 +75,6 @@ export function LeadFilterModal({
     journeyStages: true
   })
   
-  // Función para cambiar el estado de una sección
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -96,7 +82,6 @@ export function LeadFilterModal({
     }))
   }
   
-  // Función para manejar cambios en el estado
   const handleStatusChange = (value: string) => {
     setLocalFilters(prev => {
       if (prev.status.includes(value)) {
@@ -113,7 +98,6 @@ export function LeadFilterModal({
     })
   }
   
-  // Función para manejar cambios en el segmento
   const handleSegmentChange = (value: string) => {
     setLocalFilters(prev => {
       if (prev.segments.includes(value)) {
@@ -130,7 +114,6 @@ export function LeadFilterModal({
     })
   }
   
-  // Función para manejar cambios en el origen
   const handleOriginChange = (value: string) => {
     setLocalFilters(prev => {
       if (prev.origin.includes(value)) {
@@ -147,7 +130,6 @@ export function LeadFilterModal({
     })
   }
 
-  // Función para manejar cambios en el journey stage
   const handleJourneyStageChange = (value: string) => {
     setLocalFilters(prev => {
       if (prev.journeyStages.includes(value)) {
@@ -164,7 +146,6 @@ export function LeadFilterModal({
     })
   }
   
-  // Función para resetear los filtros
   const handleResetFilters = () => {
     setLocalFilters({
       status: [],
@@ -174,18 +155,15 @@ export function LeadFilterModal({
     })
   }
   
-  // Función para aplicar los filtros
   const handleApplyFilters = () => {
     onApplyFilters(localFilters)
     onClose()
   }
   
-  // Función para obtener el total de filtros activos
   const getTotalActiveFilters = () => {
     return localFilters.status.length + localFilters.segments.length + localFilters.origin.length + localFilters.journeyStages.length
   }
   
-  // Función para obtener el icono del estado
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "new":
@@ -207,7 +185,6 @@ export function LeadFilterModal({
     }
   }
   
-  // Función para obtener el icono del origen
   const getOriginIcon = (origin: string) => {
     switch (origin) {
       case "website":
@@ -225,7 +202,6 @@ export function LeadFilterModal({
     }
   }
   
-  // Función para obtener la clase del badge de estado
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case "new":
@@ -247,7 +223,6 @@ export function LeadFilterModal({
     }
   }
 
-  // Función para obtener el icono del journey stage
   const getJourneyStageIcon = (stage: string) => {
     switch (stage) {
       case "not_contacted":
@@ -269,7 +244,6 @@ export function LeadFilterModal({
     }
   }
 
-  // Función para obtener la clase del badge de journey stage
   const getJourneyStageBadgeClass = (stage: string) => {
     switch (stage) {
       case "not_contacted":
@@ -292,26 +266,21 @@ export function LeadFilterModal({
   }
   
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden flex flex-col max-h-[90vh]">
-        <ModalHeader className="shrink-0">
-          <div>
-            <ModalHeaderTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filter Leads
-            </ModalHeaderTitle>
-            <ModalHeaderDescription>
-              Apply filters to narrow down your leads list.
-              {getTotalActiveFilters() > 0 && (
-                <Badge variant="outline" className="ml-2">
-                  {getTotalActiveFilters()} active filters
-                </Badge>
-              )}
-            </ModalHeaderDescription>
-          </div>
-        </ModalHeader>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Filter leads</DialogTitle>
+          <DialogDescription>
+            Apply filters to narrow down your leads list.
+          </DialogDescription>
+          {getTotalActiveFilters() > 0 && (
+            <Badge variant="outline" className="w-fit">
+              {getTotalActiveFilters()} active
+            </Badge>
+          )}
+        </DialogHeader>
         
-        <div className="space-y-4 p-6 overflow-y-auto flex-1">
+        <DialogBody className="space-y-4">
           {/* Status Filter */}
           <div className="border rounded-lg">
             <div 
@@ -320,7 +289,7 @@ export function LeadFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Tag className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Estado</h3>
+                <h3 className="font-medium">Status</h3>
                 {localFilters.status.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.status.length}
@@ -366,7 +335,7 @@ export function LeadFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Segmentos</h3>
+                <h3 className="font-medium">Segments</h3>
                 {localFilters.segments.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.segments.length}
@@ -412,7 +381,7 @@ export function LeadFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Origen</h3>
+                <h3 className="font-medium">Origin</h3>
                 {localFilters.origin.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.origin.length}
@@ -458,7 +427,7 @@ export function LeadFilterModal({
             >
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-medium">Etapa del Viaje</h3>
+                <h3 className="font-medium">Journey stage</h3>
                 {localFilters.journeyStages.length > 0 && (
                   <Badge variant="outline" className="ml-2">
                     {localFilters.journeyStages.length}
@@ -495,12 +464,9 @@ export function LeadFilterModal({
               </div>
             )}
           </div>
-        </div>
+        </DialogBody>
         
-        <ModalFooter className="shrink-0">
-          <ModalFooterInfo>
-          </ModalFooterInfo>
-          <ModalFooterActions className="flex justify-between w-full">
+        <DialogFooter className="sm:justify-between">
             {getTotalActiveFilters() > 0 ? (
               <Button 
                 variant="outline" 
@@ -512,18 +478,17 @@ export function LeadFilterModal({
                 Reset
               </Button>
             ) : (
-              <div></div>
+              <span />
             )}
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
               <Button onClick={handleApplyFilters}>
-                Apply Filters
+                Apply
               </Button>
             </div>
-          </ModalFooterActions>
-        </ModalFooter>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

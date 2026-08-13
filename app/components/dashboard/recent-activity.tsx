@@ -5,39 +5,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
-import { Badge } from "@/app/components/ui/badge";
 import { EmptyCard } from "@/app/components/ui/empty-card";
-import { ClipboardList, Circle } from "@/app/components/ui/icons";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip";
+import { ClipboardList, ShoppingCart } from "@/app/components/ui/icons";
 import { format } from "date-fns";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useRouter } from "next/navigation";
-
-interface ActivityUser {
-  id: string;
-  name: string;
-  email: string;
-  imageUrl?: string | null;
-}
-
-interface Lead {
-  id: string;
-  name: string;
-}
-
-interface Activity {
-  id: string;
-  user: ActivityUser;
-  action: string;
-  date: string;
-  lead: Lead;
-  segment?: string | null;
-  title: string;
-  status?: string;
-  campaign?: string;
-  journeyStage?: string | null;
-  description?: string | null;
-}
+import type { Activity } from "@/app/api/recent-activity/format";
 
 interface RecentActivityProps {
   limit?: number;
@@ -45,29 +18,8 @@ interface RecentActivityProps {
   endDate?: Date;
 }
 
-// Colores para las etapas del journey
-const JOURNEY_STAGE_COLORS: Record<string, string> = {
-  awareness: 'bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200',
-  consideration: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200',
-  decision: 'bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200',
-  purchase: 'bg-green-50 text-green-700 hover:bg-green-50 border-green-200',
-  retention: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-50 border-indigo-200',
-  referral: 'bg-pink-50 text-pink-700 hover:bg-pink-50 border-pink-200',
-  default: 'bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200'
-};
-
-// Colores para los status
-const STATUS_COLORS: Record<string, string> = {
-  completed: 'bg-green-50 text-green-700 hover:bg-green-50 border-green-200',
-  in_progress: 'bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200',
-  pending: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200',
-  failed: 'bg-red-50 text-red-700 hover:bg-red-50 border-red-200',
-  default: 'bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200'
-};
-
-// Función auxiliar para obtener iniciales
 function getInitials(name: string | undefined | null): string {
-  if (!name) return 'U';
+  if (!name) return "U";
   return name
     .split(/\s+/)
     .slice(0, 2)
@@ -75,54 +27,89 @@ function getInitials(name: string | undefined | null): string {
     .join("");
 }
 
-// Format relative date; pass t for localized strings
 function formatDate(dateString: string, t: (key: string) => string): string {
   try {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
-    
-    if (diffMins < 1) return t('dashboard.recent.justNow') || 'Just now';
-    if (diffMins < 60) return (t('dashboard.recent.minutesAgo') || '{n}m ago').replace('{n}', String(diffMins));
-    
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return (t('dashboard.recent.hoursAgo') || '{n}h ago').replace('{n}', String(diffHours));
-    
-    if (date.getFullYear() === now.getFullYear()) {
-      return format(date, 'MMM d');
+
+    if (diffMins < 1) return t("dashboard.recent.justNow") || "Just now";
+    if (diffMins < 60) {
+      return (t("dashboard.recent.minutesAgo") || "{n}m ago").replace("{n}", String(diffMins));
     }
-    return format(date, 'MMM d, yyyy');
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) {
+      return (t("dashboard.recent.hoursAgo") || "{n}h ago").replace("{n}", String(diffHours));
+    }
+
+    if (date.getFullYear() === now.getFullYear()) {
+      return format(date, "MMM d");
+    }
+    return format(date, "MMM d, yyyy");
   } catch (e) {
-    console.error('Error formatting date:', e);
-    return 'Unknown date';
+    console.error("Error formatting date:", e);
+    return "Unknown date";
   }
 }
 
-// Función para obtener el color del journey stage
-function getJourneyStageColor(stage: string | null | undefined): string {
-  if (!stage) return JOURNEY_STAGE_COLORS.default;
-  const lowerStage = stage.toLowerCase();
-  return JOURNEY_STAGE_COLORS[lowerStage] || JOURNEY_STAGE_COLORS.default;
+function saleHeadline(
+  activity: Activity,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  const customer = activity.lead?.name || activity.user?.name || t("dashboard.recent.aCustomer");
+  if (activity.campaign && activity.amount) {
+    return t("dashboard.recent.campaignSold", {
+      campaign: activity.campaign,
+      amount: activity.amount,
+    });
+  }
+  return t("dashboard.recent.customerBought", {
+    customer,
+    products: activity.products || activity.amount || "",
+  });
 }
 
-// Función para obtener el color del status
-function getStatusColor(status: string | null | undefined): string {
-  if (!status) return STATUS_COLORS.default;
-  const lowerStatus = status.toLowerCase();
-  return STATUS_COLORS[lowerStatus] || STATUS_COLORS.default;
+function saleDescription(
+  activity: Activity,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string | null {
+  const customer = activity.lead?.name || activity.user?.name || t("dashboard.recent.aCustomer");
+  if (activity.campaign) {
+    if (activity.products) {
+      return t("dashboard.recent.customerBought", {
+        customer,
+        products: activity.products,
+      });
+    }
+    return customer;
+  }
+  if (activity.amount && activity.source) {
+    return t("dashboard.recent.saleAmountSource", {
+      amount: activity.amount,
+      source: activity.source,
+    });
+  }
+  return activity.amount || activity.description || null;
 }
 
-// Función para capitalizar el status
-function capitalizeStatus(status: string | null | undefined): string {
-  if (!status) return 'Unknown';
-  return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+function taskHeadline(
+  activity: Activity,
+  t: (key: string) => string,
+): string {
+  const action =
+    activity.action || activity.title || t("dashboard.recent.performedAction") || "Performed an action";
+  let text = `${activity.user.name} | ${action}`;
+  if (activity.segment) text += ` on ${activity.segment}`;
+  if (activity.campaign) text += ` in ${activity.campaign}`;
+  return text;
 }
 
-export function RecentActivity({ 
+export function RecentActivity({
   limit = 6,
   startDate,
-  endDate
+  endDate,
 }: RecentActivityProps) {
   const { t } = useLocalization();
   const { currentSite } = useSite();
@@ -131,115 +118,60 @@ export function RecentActivity({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Add loading placeholder state
-  const emptyActivities = Array(limit).fill(null).map((_, i) => ({ 
-    id: `placeholder-${i}`, 
-    user: { name: 'Loading...', email: 'loading@example.com' },
-    type: 'placeholder',
-    date: new Date().toISOString()
+  const emptyActivities = Array(limit).fill(null).map((_, i) => ({
+    id: `placeholder-${i}`,
   }));
 
   useEffect(() => {
     let isMounted = true;
-    
-    async function fetchActivities() {
-      // Debug logs - Current site
-      console.group("Recent Activity - Debug Info");
-      console.log("Current Site:", currentSite);
-      console.log("Current Site ID:", currentSite?.id);
-      console.log("Is currentSite loaded:", !!currentSite);
-      console.log("Is currentSite.id valid:", currentSite?.id !== "default" && !!currentSite?.id);
-      console.groupEnd();
 
+    async function fetchActivities() {
       if (!currentSite?.id || currentSite.id === "default") {
-        console.warn("Recent Activity: No valid site ID available");
         if (isMounted) {
           setActivities([]);
           setIsLoading(false);
         }
         return;
       }
-      
+
       if (isMounted) {
         setIsLoading(true);
         setError(null);
       }
-      
+
       try {
-        // Validate that we're only requesting with valid data
-        if (!currentSite.id || typeof currentSite.id !== 'string') {
-          console.error('Invalid site ID for recent activities request');
-          throw new Error('Invalid site ID');
-        }
-        
-        // Ensure limit is a valid number
-        const validLimit = typeof limit === 'number' && limit > 0 ? limit : 6;
-        
-        console.time("Recent Activity API Request");
+        const validLimit = typeof limit === "number" && limit > 0 ? limit : 6;
         const queryParams = new URLSearchParams();
-        queryParams.append('siteId', currentSite.id);
-        queryParams.append('limit', validLimit.toString());
-        
-        // Add date range params if provided
+        queryParams.append("siteId", currentSite.id);
+        queryParams.append("limit", validLimit.toString());
+
         if (startDate) {
-          queryParams.append('startDate', format(startDate, 'yyyy-MM-dd'));
+          queryParams.append("startDate", format(startDate, "yyyy-MM-dd"));
         }
         if (endDate) {
-          queryParams.append('endDate', format(endDate, 'yyyy-MM-dd'));
+          queryParams.append("endDate", format(endDate, "yyyy-MM-dd"));
         }
-        
-        const apiUrl = `/api/recent-activity?${queryParams.toString()}`;
-        console.log("Requesting recent activities from:", apiUrl);
-        
-        // Use the request controller with retry logic
+
         const response = await fetchWithRetry(
           fetch,
-          apiUrl,
-          { maxRetries: 3 }
+          `/api/recent-activity?${queryParams.toString()}`,
+          { maxRetries: 3 },
         );
-        
-        // If request was cancelled or component unmounted
-        if (!response || !isMounted) {
-          console.log("[RecentActivity] Request was cancelled or component unmounted");
-          return;
-        }
-        
-        // Get the response JSON
+
+        if (!response || !isMounted) return;
+
         const data = await response.json();
-        console.log("API returned activities count:", data.activities?.length || 0);
-        
         if (isMounted) {
           setActivities(data.activities || []);
         }
-        
-        console.timeEnd("Recent Activity API Request");
-      } catch (error) {
-        // Don't handle AbortError explicitly as it's handled in 
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          console.log("[RecentActivity] Request was aborted");
-          return;
-        }
-        
-        console.error('Error fetching activities:', error);
-        
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+
+        console.error("Error fetching activities:", err);
+
         if (isMounted) {
-          setError(error instanceof Error ? error.message : 'Unknown error occurred');
-          // Use fallback data when API fails after retries
-          setActivities([
-            {
-              id: "fallback-1",
-              user: { 
-                id: "system", 
-                name: "System", 
-                email: "system@example.com",
-                imageUrl: null 
-              },
-              date: new Date().toISOString(),
-              lead: { id: "unknown", name: "Unknown" },
-              title: "Recent activity temporarily unavailable",
-              action: "System notice"
-            }
-          ]);
+          setError(err instanceof Error ? err.message : "Unknown error occurred");
+          setActivities([]);
         }
       } finally {
         if (isMounted) {
@@ -247,10 +179,9 @@ export function RecentActivity({
         }
       }
     }
-    
+
     fetchActivities();
-    
-    // Clean up function to handle component unmount
+
     return () => {
       isMounted = false;
     };
@@ -280,7 +211,7 @@ export function RecentActivity({
       <div className="h-full flex items-center justify-center py-8">
         <EmptyCard
           icon={<ClipboardList className="h-10 w-10 text-muted-foreground" />}
-          title={t('dashboard.recent.errorLoading') || 'Error loading activities'}
+          title={t("dashboard.recent.errorLoading") || "Error loading activities"}
           description={error}
           showShadow={false}
           contentClassName="py-12"
@@ -294,8 +225,11 @@ export function RecentActivity({
       <div className="h-full flex items-center justify-center py-6">
         <EmptyCard
           icon={<ClipboardList className="h-6 w-6 text-muted-foreground" />}
-          title={t('dashboard.recent.noActivity') || 'No recent activity'}
-          description={t('dashboard.recent.noActivityDesc') || 'When leads complete tasks, they will appear here.'}
+          title={t("dashboard.recent.noActivity") || "No recent activity"}
+          description={
+            t("dashboard.recent.noActivityDesc") ||
+            "Sales and completed tasks will appear here."
+          }
           showShadow={false}
           contentClassName="py-12"
           className="flex-1 flex flex-col items-center justify-center"
@@ -304,48 +238,51 @@ export function RecentActivity({
     );
   }
 
-  // Handle activity click to navigate to control center
   const handleActivityClick = (activity: Activity) => {
-    router.push(`/control-center/${activity.id}`)
-  }
+    if (activity.href) router.push(activity.href);
+  };
 
   return (
     <div className="space-y-4">
-      {activities.map((activity) => (
-        <div 
-          key={activity.id} 
-          className="flex items-center cursor-pointer hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
-          onClick={() => handleActivityClick(activity)}
-        >
-          <Avatar>
-            <AvatarImage src={activity.user.imageUrl ?? ""} alt={activity.user.name || ""} />
-            <AvatarFallback>{getInitials(activity.user.name || activity.lead?.name || "")}</AvatarFallback>
-          </Avatar>
-          <div className="ml-4 space-y-1 flex-1 pr-4">
-            <div className="flex items-center gap-2 flex-wrap">
+      {activities.map((activity) => {
+        const isSale = activity.kind === "sale";
+        const headline = isSale ? saleHeadline(activity, t) : taskHeadline(activity, t);
+        const description = isSale ? saleDescription(activity, t) : activity.description;
+
+        return (
+          <div
+            key={activity.id}
+            className="flex items-center cursor-pointer hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
+            onClick={() => handleActivityClick(activity)}
+          >
+            <Avatar>
+              <AvatarImage src={activity.user.imageUrl ?? ""} alt={activity.user.name || ""} />
+              <AvatarFallback>
+                {isSale ? (
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  getInitials(activity.user.name || activity.lead?.name || "")
+                )}
+              </AvatarFallback>
+            </Avatar>
+            <div className="ml-4 space-y-1 flex-1 pr-4">
               <p className="text-sm font-medium text-foreground leading-snug line-clamp-1 overflow-hidden">
-                {activity.user.name} | {activity.action || activity.title || (t('dashboard.recent.performedAction') || 'Performed an action')}
-                {activity.segment && 
-                  <span> on <span className="font-medium">{activity.segment}</span></span>
-                }
-                {activity.campaign && 
-                  <span> in <span className="font-medium">{activity.campaign}</span></span>
-                }
+                {headline}
               </p>
+              {description && (
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-1 overflow-hidden">
+                  {description}
+                </p>
+              )}
             </div>
-            {activity.description && (
-              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-1 overflow-hidden">
-                {activity.description}
-              </p>
-            )}
+            <div className="ml-auto text-xs text-muted-foreground">
+              <span title={new Date(activity.date).toLocaleString()}>
+                {formatDate(activity.date, t)}
+              </span>
+            </div>
           </div>
-          <div className="ml-auto text-xs text-muted-foreground">
-            <span title={new Date(activity.date).toLocaleString()}>
-              {formatDate(activity.date, t)}
-            </span>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
-} 
+}

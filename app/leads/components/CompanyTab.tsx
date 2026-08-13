@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react"
+"use client"
+
+import { useState, useEffect } from "react"
+import { Globe, Tag, User } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
-import { Globe, Tag, User, ExternalLink } from "@/app/components/ui/icons"
 import { MapPin } from "./custom-icons"
 import { Lead } from "@/app/leads/types"
 import { Company, COMPANY_INDUSTRIES, COMPANY_SIZES, COMPANY_ANNUAL_REVENUES } from "@/app/companies/types"
@@ -8,360 +10,220 @@ import { CompanySelector } from "./CompanySelector"
 import { RelationSelectValue } from "@/app/components/ui/relation-select"
 import { getCompanyById, updateCompany } from "@/app/companies/actions"
 import { toast } from "sonner"
-
-type CompanyEditForm = Omit<Lead, "id" | "created_at"> & {
-  companyValue?: RelationSelectValue
-  segmentValue?: RelationSelectValue
-  campaignValue?: RelationSelectValue
-}
+import { PropertyRow, ShowEmptyFieldsToggle, hasPropertyValue } from "./PropertyRow"
+import { useSite } from "@/app/context/SiteContext"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 interface CompanyTabProps {
   lead: Lead
-  isEditing: boolean
-  editForm: CompanyEditForm
-  setEditForm: React.Dispatch<React.SetStateAction<CompanyEditForm>>
+  showEmpty: boolean
+  onToggleEmpty: () => void
+  onUpdateLead: (id: string, data: Partial<Lead>) => Promise<void>
 }
 
-export function CompanyTab({ 
-  lead, 
-  isEditing, 
-  editForm, 
-  setEditForm 
-}: CompanyTabProps) {
+function industryName(id?: string | null) {
+  if (!id) return ""
+  return COMPANY_INDUSTRIES.find((item) => item.id === id)?.name || id
+}
+
+function sizeName(id?: string | null) {
+  if (!id) return ""
+  return COMPANY_SIZES.find((item) => item.id === id)?.name || id
+}
+
+function revenueName(id?: string | null) {
+  if (!id) return ""
+  return COMPANY_ANNUAL_REVENUES.find((item) => item.id === id)?.name || id
+}
+
+function formatAddress(address?: Company["address"]) {
+  if (!address) return ""
+  return [address.street, address.city, address.state, address.zipcode, address.country]
+    .filter(Boolean)
+    .join(", ")
+}
+
+export function CompanyTab({ lead, showEmpty, onToggleEmpty, onUpdateLead }: CompanyTabProps) {
+  const { currentSite } = useSite()
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(false)
+  const [companyValue, setCompanyValue] = useState<RelationSelectValue>(
+    lead.company_id
+      ? { mode: "existing", id: lead.company_id, label: lead.company?.name || "Unknown" }
+      : null
+  )
 
-  // Load company data when component mounts or company_id changes
   useEffect(() => {
     const loadCompanyData = async () => {
-      const companyId = isEditing ? editForm.company_id : lead.company_id
-
-      // Pending passive create: show label-only placeholder, skip fetch
-      if (editForm.companyValue?.mode === "create") {
-        setSelectedCompany({ id: "", name: editForm.companyValue.label } as Company)
+      if (companyValue?.mode === "create") {
+        setSelectedCompany({ id: "", name: companyValue.label } as Company)
         return
       }
 
-      if (companyId) {
-        setLoading(true)
-        try {
-          const { company, error } = await getCompanyById(companyId)
-          if (error) {
-            console.error("Error loading company:", error)
-            return
-          }
-          setSelectedCompany(company)
-        } catch (error) {
-          console.error("Error loading company:", error)
-        } finally {
-          setLoading(false)
-        }
-      } else {
+      const companyId = lead.company_id
+      if (!companyId) {
         setSelectedCompany(null)
+        return
+      }
+
+      setLoading(true)
+      try {
+        const { company, error } = await getCompanyById(companyId)
+        if (error) {
+          console.error("Error loading company:", error)
+          return
+        }
+        setSelectedCompany(company)
+      } catch (error) {
+        console.error("Error loading company:", error)
+      } finally {
+        setLoading(false)
       }
     }
 
-    loadCompanyData()
-  }, [lead.company_id, editForm.company_id, editForm.companyValue, isEditing])
+    void loadCompanyData()
+  }, [lead.company_id, companyValue])
 
-  const handleCompanyChange = (company: Company | null) => {
-    setSelectedCompany(company)
-    setEditForm((prev) => ({
-      ...prev,
-      company_id: company?.id || null,
-    }))
+  const saveCompanyLink = async (value: RelationSelectValue) => {
+    if (!currentSite?.id) return
+    const { id, error } = await resolveRelationId("company", value, currentSite.id)
+    if (error) throw new Error(error)
+    await onUpdateLead(lead.id, { company_id: id || null })
+    setCompanyValue(value)
   }
 
-  const handleCompanyValueChange = (value: RelationSelectValue) => {
-    setEditForm((prev) => ({
-      ...prev,
-      companyValue: value,
-      company_id: value?.mode === "existing" ? value.id : null,
-    }))
-  }
-
-  const handleCompanyFieldUpdate = async (field: keyof Company, value: any) => {
-    if (!selectedCompany) return
-
+  const updateField = async (field: keyof Company, value: string) => {
+    if (!selectedCompany?.id) return
     try {
-      // Include required fields when updating
-      const updateData = { 
+      const { company: updatedCompany, error } = await updateCompany({
         id: selectedCompany.id,
-        name: selectedCompany.name, // Include required name field
-        [field]: value 
-      }
-      const { company: updatedCompany, error } = await updateCompany(updateData)
-      
+        name: selectedCompany.name,
+        [field]: value,
+      })
       if (error) {
         toast.error("Error updating company")
-        console.error(error)
         return
       }
-
-      if (updatedCompany) {
-        setSelectedCompany(updatedCompany)
-        toast.success("Company updated successfully")
-      }
+      if (updatedCompany) setSelectedCompany(updatedCompany)
     } catch (error) {
       console.error("Error updating company:", error)
       toast.error("Error updating company")
     }
   }
 
-  // If not editing, always show read-only view with individual fields
-  if (!isEditing) {
-    return (
-      <div className="grid gap-4 min-w-0">
-        {/* Company Name with View Profile Button */}
-        {selectedCompany ? (
-          <div 
-            className="flex items-center gap-3 p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors cursor-pointer group min-w-0"
-            onClick={() => window.open(`/companies/${selectedCompany.id}`, '_blank')}
-          >
-            <div className="bg-primary/10 rounded-md flex items-center justify-center flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-              <Globe className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground mb-[5px] truncate">Company</p>
-              <p className="text-sm font-medium text-primary group-hover:underline truncate" title={selectedCompany.name}>
-                {selectedCompany.name}
-              </p>
-            </div>
-            <div 
-              className="flex items-center gap-1 text-primary hover:underline cursor-pointer flex-shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(`/companies/${selectedCompany.id}`, '_blank');
-              }}
-            >
-              <ExternalLink className="h-4 w-4" />
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-              <Globe className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground mb-[5px] truncate">Company</p>
-              <p className="text-sm font-medium text-muted-foreground truncate">Not specified</p>
-            </div>
-          </div>
-        )}
+  const companyFields = [
+    hasPropertyValue(selectedCompany?.website),
+    hasPropertyValue(selectedCompany?.industry),
+    hasPropertyValue(selectedCompany?.size),
+    hasPropertyValue(selectedCompany?.description),
+    hasPropertyValue(formatAddress(selectedCompany?.address)),
+    hasPropertyValue(selectedCompany?.annual_revenue),
+    hasPropertyValue(selectedCompany?.founded),
+  ]
+  const hiddenCount = companyFields.filter((filled) => !filled).length
 
-        {/* Website */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-            <Globe className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-[5px] truncate">Website</p>
-            {selectedCompany?.website ? (
-              <div className="flex items-center gap-2 min-w-0">
-                <a 
-                  href={selectedCompany.website} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-primary hover:underline truncate flex-1"
-                  title={selectedCompany.website}
-                >
-                  {selectedCompany.website.replace(/^https?:\/\//, '')}
-                </a>
-                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-              </div>
-            ) : (
-              <p className="text-sm font-medium text-muted-foreground truncate">Not specified</p>
-            )}
-          </div>
-        </div>
-
-        {/* Industry */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-            <Tag className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-[5px] truncate">Industry</p>
-            <p className="text-sm font-medium truncate" title={selectedCompany?.industry ? 
-                COMPANY_INDUSTRIES.find(i => i.id === selectedCompany.industry)?.name || selectedCompany.industry 
-                : "Not specified"}>
-              {selectedCompany?.industry ? 
-                COMPANY_INDUSTRIES.find(i => i.id === selectedCompany.industry)?.name || selectedCompany.industry 
-                : "Not specified"
-              }
-            </p>
-          </div>
-        </div>
-
-        {/* Company Size */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-            <User className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-[5px] truncate">Company Size</p>
-            <p className="text-sm font-medium truncate" title={selectedCompany?.size ? 
-                COMPANY_SIZES.find(s => s.id === selectedCompany.size)?.name || selectedCompany.size 
-                : "Not specified"}>
-              {selectedCompany?.size ? 
-                COMPANY_SIZES.find(s => s.id === selectedCompany.size)?.name || selectedCompany.size 
-                : "Not specified"
-              }
-            </p>
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-            <Globe className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-[5px] truncate">Description</p>
-            <p className="text-sm font-medium break-words" 
-               style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-               title={selectedCompany?.description || "Not specified"}>
-              {selectedCompany?.description || "Not specified"}
-            </p>
-          </div>
-        </div>
-
-        {/* Address */}
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-            <MapPin className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-[5px] truncate">Address</p>
-            <p className="text-sm font-medium break-words" 
-               style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-               title={selectedCompany?.address ? 
-                [
-                  selectedCompany.address.street,
-                  selectedCompany.address.city,
-                  selectedCompany.address.state,
-                  selectedCompany.address.zipcode,
-                  selectedCompany.address.country
-                ].filter(Boolean).join(', ') || "Not specified"
-                : "Not specified"}>
-              {selectedCompany?.address ? 
-                [
-                  selectedCompany.address.street,
-                  selectedCompany.address.city,
-                  selectedCompany.address.state,
-                  selectedCompany.address.zipcode,
-                  selectedCompany.address.country
-                ].filter(Boolean).join(', ') || "Not specified"
-                : "Not specified"
-              }
-            </p>
-          </div>
-        </div>
-
-        {/* Annual Revenue */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-            <Globe className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-[5px] truncate">Annual Revenue</p>
-            <p className="text-sm font-medium truncate" title={selectedCompany?.annual_revenue ? 
-                COMPANY_ANNUAL_REVENUES.find(r => r.id === selectedCompany.annual_revenue)?.name || selectedCompany.annual_revenue 
-                : "Not specified"}>
-              {selectedCompany?.annual_revenue ? 
-                COMPANY_ANNUAL_REVENUES.find(r => r.id === selectedCompany.annual_revenue)?.name || selectedCompany.annual_revenue 
-                : "Not specified"
-              }
-            </p>
-          </div>
-        </div>
-
-        {/* Founded */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-            <Globe className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground mb-[5px] truncate">Founded</p>
-            <p className="text-sm font-medium truncate" title={selectedCompany?.founded || "Not specified"}>
-              {selectedCompany?.founded || "Not specified"}
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Show company details if a company is selected and we're editing
-  if (selectedCompany && isEditing) {
-    return (
-      <div className="grid gap-4 min-w-0">
-        {/* Company Selection */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-            <Globe className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <CompanySelector
-              selectedCompanyId={editForm.company_id}
-              onCompanyChange={handleCompanyChange}
-              onCompanyValueChange={handleCompanyValueChange}
-              isEditing={isEditing}
-            />
-          </div>
-        </div>
-
-        {/* Selected Company Card with Edit Profile Button */}
-        {selectedCompany.id ? (
-          <div className="flex items-center gap-3 p-3 border rounded-lg bg-card hover:bg-muted/50 transition-colors min-w-0">
-            <div className="bg-primary/10 rounded-md flex items-center justify-center flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-              <Globe className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground mb-[5px] truncate">Selected Company</p>
-              <p className="text-sm font-medium truncate" title={selectedCompany.name}>
-                {selectedCompany.name}
-              </p>
-              {selectedCompany.industry && (
-                <p className="text-xs text-muted-foreground truncate">
-                  {COMPANY_INDUSTRIES.find(i => i.id === selectedCompany.industry)?.name || selectedCompany.industry}
-                </p>
-              )}
-            </div>
-            <div
-              className="flex items-center gap-1 text-primary hover:underline cursor-pointer flex-shrink-0"
-              onClick={() => window.open(`/companies/${selectedCompany.id}`, '_blank')}
-            >
-              <ExternalLink className="h-4 w-4" />
-              <span className="text-sm font-medium hidden sm:inline">Edit Profile</span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Will create company &quot;{selectedCompany.name}&quot; when you save.
-          </p>
-        )}
-      </div>
-    )
-  }
-
-  // Show company selector if no company is selected or if we're editing and no company
   return (
-    <div className="grid gap-4 min-w-0">
-      {/* Company Selection */}
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px] flex-shrink-0" style={{ width: '48px', height: '48px' }}>
-          <Globe className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
+    <div className="grid min-w-0">
+      <PropertyRow
+        icon={<Globe />}
+        label="Company"
+        value={selectedCompany?.name || ""}
+        empty={!selectedCompany}
+        showEmpty
+        linkHref={selectedCompany?.id ? `/companies/${selectedCompany.id}` : undefined}
+        editValue={companyValue}
+        onCommit={(value) => saveCompanyLink(value)}
+        renderEditor={(draft, setDraft) => (
           <CompanySelector
-            selectedCompanyId={isEditing ? editForm.company_id : lead.company_id}
-            onCompanyChange={handleCompanyChange}
-            onCompanyValueChange={handleCompanyValueChange}
-            isEditing={isEditing}
+            selectedCompanyId={draft?.mode === "existing" ? draft.id : null}
+            initialCompany={
+              draft?.mode === "existing" ? { id: draft.id, name: draft.label } : undefined
+            }
+            onCompanyChange={(company) => {
+              setDraft(company ? { mode: "existing", id: company.id, label: company.name } : null)
+            }}
+            onCompanyValueChange={setDraft}
+            isEditing
+            hideLabel
           />
-        </div>
-      </div>
+        )}
+      />
+
+      {loading ? (
+        <p className="text-xs text-muted-foreground py-2">Loading company...</p>
+      ) : selectedCompany?.id ? (
+        <>
+          <PropertyRow
+            icon={<Globe />}
+            label="Website"
+            value={selectedCompany.website?.replace(/^https?:\/\//, "")}
+            empty={!hasPropertyValue(selectedCompany.website)}
+            showEmpty={showEmpty}
+            copyValue={selectedCompany.website || undefined}
+            linkHref={selectedCompany.website || undefined}
+            editValue={selectedCompany.website || ""}
+            onCommit={(value) => updateField("website", value)}
+            renderEditor={(draft, setDraft) => (
+              <Input
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                className="h-8 text-sm"
+              />
+            )}
+          />
+          <PropertyRow
+            icon={<Tag />}
+            label="Industry"
+            value={industryName(selectedCompany.industry)}
+            empty={!hasPropertyValue(selectedCompany.industry)}
+            showEmpty={showEmpty}
+            readOnly
+          />
+          <PropertyRow
+            icon={<User />}
+            label="Company Size"
+            value={sizeName(selectedCompany.size)}
+            empty={!hasPropertyValue(selectedCompany.size)}
+            showEmpty={showEmpty}
+            readOnly
+          />
+          <PropertyRow
+            icon={<Globe />}
+            label="Description"
+            value={selectedCompany.description}
+            empty={!hasPropertyValue(selectedCompany.description)}
+            showEmpty={showEmpty}
+            multiline
+            readOnly
+          />
+          <PropertyRow
+            icon={<MapPin size={14} />}
+            label="Address"
+            value={formatAddress(selectedCompany.address)}
+            empty={!hasPropertyValue(formatAddress(selectedCompany.address))}
+            showEmpty={showEmpty}
+            multiline
+            readOnly
+          />
+          <PropertyRow
+            icon={<Globe />}
+            label="Annual Revenue"
+            value={revenueName(selectedCompany.annual_revenue)}
+            empty={!hasPropertyValue(selectedCompany.annual_revenue)}
+            showEmpty={showEmpty}
+            readOnly
+          />
+          <PropertyRow
+            icon={<Globe />}
+            label="Founded"
+            value={selectedCompany.founded}
+            empty={!hasPropertyValue(selectedCompany.founded)}
+            showEmpty={showEmpty}
+            readOnly
+          />
+          <ShowEmptyFieldsToggle showEmpty={showEmpty} onToggle={onToggleEmpty} hiddenCount={hiddenCount} />
+        </>
+      ) : null}
     </div>
   )
-} 
+}

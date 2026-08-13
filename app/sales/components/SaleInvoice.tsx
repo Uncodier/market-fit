@@ -267,7 +267,7 @@ export function SaleInvoice({
             </div>
           )}
 
-          <div className={!saleOrder ? "" : "max-w-md"}>
+          <div>
             <h4 className="text-sm font-medium text-muted-foreground dark:text-muted-foreground mb-2">
               {t('sales.detail.paymentInfo') || "Payment Information"}
             </h4>

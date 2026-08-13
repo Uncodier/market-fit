@@ -7,8 +7,15 @@ import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2, ChevronDown, ChevronRight } from "../ui/icons"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
-import { ActionFooter } from "../ui/card-footer"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+  isSectionDirty,
+} from "@/app/components/ui/section-card"
 import { type SiteFormValues as SiteFormValuesType } from "./form-schema"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import {
@@ -44,6 +51,7 @@ interface FlatIncludedAddress {
 export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailableRestrictionsSectionProps) {
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
+  const { dirtyFields } = form.formState
   const [expandedAddresses, setExpandedAddresses] = useState<Set<string>>(new Set())
   const [isSavingAddress, setIsSavingAddress] = useState<string | null>(null)
 
@@ -211,6 +219,7 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving address:", error)
     } finally {
@@ -219,7 +228,7 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
   }
 
   return (
-    <div id="service-available-restrictions" className="space-y-6">
+    <div id="service-available-restrictions" className="space-y-4">
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
@@ -245,38 +254,35 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
         const isExpanded = expandedAddresses.has(key)
         
         return (
-          <Card key={key} id={`service-available-${index}`} className="border dark:border-white/5 border-black/5">
-            {/* Collapsible Header */}
-            <CardHeader 
-              className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"
+          <SectionCard key={key} id={`service-available-${index}`}>
+            <SectionCardHeader
+              className="cursor-pointer hover:bg-muted/40"
               onClick={() => toggleExpanded(key)}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="h-2 w-2 bg-muted-foreground rounded-full"></div>
+              <div className="flex items-center justify-between w-full gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full" />
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg font-semibold truncate">
+                    <SectionCardTitle className="truncate">
                       {item.address.name || t("settings.company.restrictions.addressN", { n: index + 1 })}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground truncate mt-1">
+                    </SectionCardTitle>
+                    <SectionCardDescription className="truncate mt-1">
                       {item.locationName} • {[item.address.city, item.address.state, item.address.country].filter(Boolean).join(', ') || t("settings.company.restrictions.noLocation")}
-                    </p>
+                    </SectionCardDescription>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
-                  {isExpanded ? (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
               </div>
-            </CardHeader>
+            </SectionCardHeader>
 
             {/* Collapsible Content */}
             {isExpanded && (
               <>
-              <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t bg-green-50/30 dark:bg-green-950/10">
+              <SectionCardContent className="border-t border-border/70 pt-4 bg-green-50/30 dark:bg-green-950/10">
                 <FormField
                   control={form.control}
                   name={`locations.${item.locationIndex}.restrictions.included_addresses.${item.addressIndex}.name`}
@@ -290,7 +296,7 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
                             field.onChange(e)
                             updateIncludedAddress(item.locationIndex, item.addressIndex, 'name', e.target.value)
                           }}
-                          className="bg-background h-12 text-base"
+                          className="bg-background"
                         />
                       </FormControl>
                       <FormMessage />
@@ -311,7 +317,7 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
                             field.onChange(e)
                             updateIncludedAddress(item.locationIndex, item.addressIndex, 'address', e.target.value)
                           }}
-                          className="bg-background h-12 text-base"
+                          className="bg-background"
                         />
                       </FormControl>
                       <FormMessage />
@@ -333,7 +339,7 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
                               field.onChange(e)
                               updateIncludedAddress(item.locationIndex, item.addressIndex, 'city', e.target.value)
                             }}
-                            className="bg-background h-12 text-base"
+                            className="bg-background"
                           />
                         </FormControl>
                         <FormMessage />
@@ -354,7 +360,7 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
                               field.onChange(e)
                               updateIncludedAddress(item.locationIndex, item.addressIndex, 'state', e.target.value)
                             }}
-                            className="bg-background h-12 text-base"
+                            className="bg-background"
                           />
                         </FormControl>
                         <FormMessage />
@@ -375,7 +381,7 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
                               field.onChange(e)
                               updateIncludedAddress(item.locationIndex, item.addressIndex, 'zip', e.target.value)
                             }}
-                            className="bg-background h-12 text-base"
+                            className="bg-background"
                           />
                         </FormControl>
                         <FormMessage />
@@ -397,62 +403,55 @@ export function ServiceAvailableRestrictionsSection({ onSave }: ServiceAvailable
                             field.onChange(e)
                             updateIncludedAddress(item.locationIndex, item.addressIndex, 'country', e.target.value)
                           }}
-                          className="bg-background h-12 text-base"
+                          className="bg-background"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </CardContent>
-
-              {/* Card Footer with individual buttons */}
-              <ActionFooter>
-                <div className="flex items-center gap-2">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              </SectionCardContent>
+              <SectionCardFooter
+                dirty={isSectionDirty(dirtyFields, `locations.${item.locationIndex}`)}
+                saving={isSavingAddress === key}
+                onSave={() => handleSaveAddress(item.locationIndex, item.addressIndex)}
+                saveLabel={t("settings.company.restrictions.save")}
+                savingLabel={t("settings.company.common.saving")}
+              >
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t("settings.company.restrictions.remove")}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("settings.company.restrictions.remove")}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("settings.company.restrictions.removeConfirm")}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("settings.company.common.cancel")}</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => removeIncludedAddress(item.locationIndex, item.addressIndex)}
+                        className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
                         {t("settings.company.restrictions.remove")}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{t("settings.company.restrictions.remove")}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {t("settings.company.restrictions.removeConfirm")}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>{t("settings.company.common.cancel")}</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => removeIncludedAddress(item.locationIndex, item.addressIndex)}
-                          className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
-                        >
-                          {t("settings.company.restrictions.remove")}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleSaveAddress(item.locationIndex, item.addressIndex)}
-                    disabled={isSavingAddress === key}
-                  >
-                    {isSavingAddress === key
-                      ? t("settings.company.common.saving")
-                      : t("settings.company.restrictions.save")}
-                  </Button>
-                </div>
-              </ActionFooter>
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </SectionCardFooter>
               </>
             )}
-          </Card>
+          </SectionCard>
         )
       })}
     </div>

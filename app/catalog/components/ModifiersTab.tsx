@@ -11,7 +11,12 @@ import {
   detachModifierGroupFromCatalogItem,
 } from "../modifier-actions"
 import { Button } from "@/app/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardContent,
+} from "@/app/components/ui/section-card"
 import {
   Dialog,
   DialogContent,
@@ -96,26 +101,26 @@ export function ModifiersTab({ catalogItemId }: { catalogItemId: string }) {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6 space-y-4">
+      <SectionCard>
+        <SectionCardContent>
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-20 w-full" />
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
     )
   }
 
   const attachedIds = new Set(links.map((l) => l.modifier_group_id))
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-4">
+    <SectionCard>
+      <SectionCardHeader className="flex flex-row items-center justify-between gap-4">
         <div className="space-y-1">
-          <CardTitle className="flex items-center gap-2">
+          <SectionCardTitle className="flex items-center gap-2">
             <Sliders className="h-5 w-5" />
             {t("catalog.modifiers.title") || "Modifiers"}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          </SectionCardTitle>
+          <p className="text-xs text-muted-foreground">
             {t("catalog.modifiers.tabDescription") ||
               "Attach reusable modifier groups (extras) offered when selling this item."}
           </p>
@@ -180,8 +185,8 @@ export function ModifiersTab({ catalogItemId }: { catalogItemId: string }) {
             </DialogContent>
           </Dialog>
         </div>
-      </CardHeader>
-      <CardContent>
+      </SectionCardHeader>
+      <SectionCardContent>
         {links.length > 0 ? (
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full">
@@ -242,7 +247,7 @@ export function ModifiersTab({ catalogItemId }: { catalogItemId: string }) {
             className="border-0 shadow-none bg-transparent"
           />
         )}
-      </CardContent>
-    </Card>
+      </SectionCardContent>
+    </SectionCard>
   )
 }

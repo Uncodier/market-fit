@@ -9,6 +9,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -227,14 +228,14 @@ export function PosOptionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] max-h-[85vh] flex flex-col">
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
             {item.name} - {t("pos.options.title") || "Options"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto py-4 pr-1 space-y-6">
+        <DialogBody className="space-y-6">
           {loading ? (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
@@ -295,7 +296,7 @@ export function PosOptionsDialog({
               )}
             </>
           )}
-        </div>
+        </DialogBody>
 
         <DialogFooter className="gap-2 sm:gap-2">
           {showModifiers &&

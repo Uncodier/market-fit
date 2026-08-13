@@ -1,13 +1,18 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
-import { Button } from "../ui/button"
 import { FormField, FormItem, FormControl, FormMessage } from "../ui/form"
 import { Textarea } from "../ui/textarea"
 import { type SiteFormValues } from "./form-schema"
 import { useState } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardContent,
+  SectionCardFooter,
+  isSectionDirty,
+} from "@/app/components/ui/section-card"
 
 interface GoalsSectionProps {
   active: boolean
@@ -52,6 +57,7 @@ const GOAL_CARDS = [
 export function GoalsSection({ active, onSave }: GoalsSectionProps) {
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
+  const { dirtyFields } = form.formState
   const [savingCard, setSavingCard] = useState<string | null>(null)
 
   const handleSave = async (cardId: string) => {
@@ -60,6 +66,7 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving goals:", error)
     } finally {
@@ -70,20 +77,14 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
   if (!active) return null
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {GOAL_CARDS.map((card) => (
-        <Card
-          key={card.id}
-          id={card.id}
-          className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200"
-        >
-          <CardHeader className="px-8 py-6">
-            <CardTitle className="text-xl font-semibold">{t(card.titleKey)}</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              {t(card.descriptionKey)}
-            </p>
-          </CardHeader>
-          <CardContent className="px-8 pb-8">
+        <SectionCard key={card.id} id={card.id}>
+          <SectionCardHeader
+            title={t(card.titleKey)}
+            description={t(card.descriptionKey)}
+          />
+          <SectionCardContent>
             <FormField
               control={form.control}
               name={card.field}
@@ -92,7 +93,7 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
                   <FormControl>
                     <Textarea
                       placeholder={t(card.placeholderKey)}
-                      className="min-h-[120px]"
+                      className="min-h-[72px]"
                       {...field}
                       value={field.value || ""}
                     />
@@ -101,19 +102,15 @@ export function GoalsSection({ active, onSave }: GoalsSectionProps) {
                 </FormItem>
               )}
             />
-          </CardContent>
-          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-            <Button
-              variant="outline"
-              onClick={() => handleSave(card.cardId)}
-              disabled={savingCard === card.cardId}
-            >
-              {savingCard === card.cardId
-                ? t("settings.company.common.saving")
-                : t("settings.company.common.save")}
-            </Button>
-          </CardFooter>
-        </Card>
+          </SectionCardContent>
+          <SectionCardFooter
+            dirty={isSectionDirty(dirtyFields, card.field)}
+            saving={savingCard === card.cardId}
+            onSave={() => handleSave(card.cardId)}
+            saveLabel={t("settings.company.common.save")}
+            savingLabel={t("settings.company.common.saving")}
+          />
+        </SectionCard>
       ))}
     </div>
   )

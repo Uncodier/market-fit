@@ -25,7 +25,8 @@ import {
   generatePublicAccessToken,
   isValidPublicAccessToken,
 } from "@/app/documents/public-token";
-import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items";
+import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items"
+import { kitchenDeltaForSend } from "./checkout-print-delta";
 
 export interface CheckoutLineModifier {
   catalogItemId: string;
@@ -671,6 +672,12 @@ export async function checkoutCart({
         shipping_cost: orderShippingCost,
         total: orderTotal,
         currency: orderCurrency,
+        ...(resolvedPromotionId || normalizedPromotionCode
+          ? {
+              discount_total: promoDiscount,
+              ...(resolvedPromotionId ? { promotion_id: resolvedPromotionId } : {}),
+            }
+          : {}),
         status: orderInitialStatus,
         user_id: resolvedUserId,
         items: processedLines.map(pl => ({
@@ -756,6 +763,7 @@ export async function checkoutCart({
         total: orderTotal,
         currency: orderCurrency,
         discount_total: promoDiscount,
+        ...(resolvedPromotionId ? { promotion_id: resolvedPromotionId } : {}),
         status: orderInitialStatus,
         order_number: `ORD-${Date.now().toString().slice(-6)}`,
         user_id: resolvedUserId,
@@ -842,21 +850,17 @@ export async function checkoutCart({
 
     // 6.b Update order JSONB items for backwards compatibility is already handled above in the update/insert.
 
-    // 7. Apply Promotion (if provided) — already validated above; persist discount + usage
+    // 7. Apply Promotion (if provided) — persist discount, promotion_id, and usage
     if (normalizedPromotionCode || resolvedPromotionId) {
-      const { data: orderWithPromo } = await (isAdmin ? supabaseAdmin : supabase).from("sale_orders").select("promotion_id").eq("id", order.id).single();
-      
-      if (!orderWithPromo?.promotion_id) {
-        const promoResult = await applyPromotionToOrder(
-          siteId,
-          order.id,
-          normalizedPromotionCode,
-          isAdmin,
-          resolvedPromotionId,
-        );
-        if (promoResult.error) {
-          throw new Error(`Promotion failed: ${promoResult.error}`);
-        }
+      const promoResult = await applyPromotionToOrder(
+        siteId,
+        order.id,
+        normalizedPromotionCode,
+        isAdmin,
+        resolvedPromotionId,
+      );
+      if (promoResult.error) {
+        throw new Error(`Promotion failed: ${promoResult.error}`);
       }
     }
 
@@ -943,6 +947,12 @@ export async function checkoutCart({
       }
     }
 
+    const kitchenDelta = kitchenDeltaForSend({
+      intent,
+      existingItems,
+      nextItems: upsertedItems,
+    });
+
     if (clientMutationId && source === "pos") {
       await recordPosClientMutation({
         siteId,
@@ -950,7 +960,7 @@ export async function checkoutCart({
         kind: "checkout",
         saleId: sale.id,
         orderId: order.id,
-        result: { success: true },
+        result: { success: true, kitchenDelta, intent: intent || null },
       });
     }
 
@@ -1003,6 +1013,9 @@ export async function checkoutCart({
       total: order.total ?? null,
       currency: order.currency ?? null,
       createdAt: order.created_at ?? null,
+      kitchenDelta,
+      notes: order.notes ?? notes ?? null,
+      fulfillment: order.fulfillment_method ?? fulfillment ?? null,
     };
   } catch (error: any) {
     return { error: error.message };

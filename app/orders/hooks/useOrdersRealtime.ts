@@ -26,12 +26,20 @@ export function useOrdersRealtime(siteId: string | undefined, onInvalidate: () =
 
     const supabase = createClient()
 
-    const handleEvent = (payload: { eventType?: string; table?: string }) => {
+    const handleEvent = (payload: {
+      eventType?: string
+      table?: string
+      new?: { id?: string; sale_order_id?: string; status?: string }
+    }) => {
       if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
 
       // Play alarm on new sale orders
       if (payload.eventType === "INSERT" && payload.table === "sale_orders") {
         playNewOrderAlarm()
+      }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("printer:order-event", { detail: payload }))
       }
 
       const delay = payload.eventType === "INSERT" ? 300 : 500

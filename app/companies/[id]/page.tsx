@@ -6,7 +6,14 @@ import { toast } from "sonner"
 import { getCompanyById, updateCompany, deleteCompany, getSubsidiaries } from "@/app/companies/actions"
 import { Company } from "@/app/companies/types"
 import { Button } from "@/app/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { CompanyLegalTab } from "@/app/leads/components/CompanyLegalTab"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Input } from "@/app/components/ui/input"
@@ -331,13 +338,13 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
           {/* Left Column - Main Content */}
           <div className="lg:col-span-3 space-y-6">
             {/* About Section */}
-            <Card className="transition-shadow hover:shadow-md">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-xl">
+            <SectionCard>
+              <SectionCardHeader className="pb-4">
+                <SectionCardTitle>
                   About
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </SectionCardTitle>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <div className="flex items-start gap-3">
                   <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
                     <User className="w-5 h-5 text-primary" />
@@ -348,7 +355,7 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
                       <Textarea
                         value={editForm?.description || ""}
                         onChange={(e) => handleFieldUpdate('description', e.target.value)}
-                        className="min-h-[120px] text-base resize-none transition-all focus:ring-2 focus:ring-blue-500 w-full"
+                        className="min-h-[72px] text-base resize-none transition-all focus:ring-2 focus:ring-blue-500 w-full"
                         placeholder="Tell us about this company..."
                       />
                     ) : (
@@ -362,21 +369,21 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
                     )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
 
             {/* Detailed Tabs */}
-            <Card className="transition-shadow hover:shadow-md">
+            <SectionCard>
               <Tabs defaultValue="details" className="w-full">
-                <CardHeader className="pb-4">
+                <SectionCardHeader className="pb-4">
                   <TabsList className="grid w-full grid-cols-3 bg-gray-100">
                     <TabsTrigger value="details" className="transition-all">Details</TabsTrigger>
                     <TabsTrigger value="location" className="transition-all">Location</TabsTrigger>
                     <TabsTrigger value="legal" className="transition-all">Legal</TabsTrigger>
                   </TabsList>
-                </CardHeader>
+                </SectionCardHeader>
 
-                <CardContent>
+                <SectionCardContent>
                   <TabsContent value="details" className="space-y-6 mt-0">
                     {/* Website */}
                     <div className="flex items-center gap-3">
@@ -628,25 +635,25 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
                       />
                     )}
                   </TabsContent>
-                </CardContent>
+                </SectionCardContent>
               </Tabs>
-            </Card>
+            </SectionCard>
           </div>
 
           {/* Right Sidebar */}
           <div className="space-y-6">
             {/* Subsidiaries */}
             {subsidiaries.length > 0 && (
-              <Card className="transition-shadow hover:shadow-md">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center justify-between">
+              <SectionCard>
+                <SectionCardHeader className="pb-4">
+                  <SectionCardTitle className="text-lg flex items-center justify-between">
                     <span>Subsidiaries</span>
                     <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
                       {subsidiaries.length}
                     </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                  </SectionCardTitle>
+                </SectionCardHeader>
+                <SectionCardContent className="space-y-3">
                   {subsidiaries.slice(0, 3).map((subsidiary) => (
                     <div 
                       key={subsidiary.id} 
@@ -672,19 +679,19 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
                       View all {subsidiaries.length} subsidiaries
                     </Button>
                   )}
-                </CardContent>
-              </Card>
+                </SectionCardContent>
+              </SectionCard>
             )}
 
             {/* Contact Info */}
             {(company?.phone || company?.email || company?.address) && (
-              <Card className="transition-shadow hover:shadow-md">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">
+              <SectionCard>
+                <SectionCardHeader className="pb-4">
+                  <SectionCardTitle className="text-lg">
                     Contact Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </SectionCardTitle>
+                </SectionCardHeader>
+                <SectionCardContent>
                   <div className="grid gap-4">
                     {company?.phone && (
                       <div className="flex items-center gap-3">
@@ -728,18 +735,18 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </SectionCardContent>
+              </SectionCard>
             )}
 
             {/* Company Overview */}
-            <Card className="transition-shadow hover:shadow-md">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg">
+            <SectionCard>
+              <SectionCardHeader className="pb-4">
+                <SectionCardTitle className="text-lg">
                   Company Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </SectionCardTitle>
+              </SectionCardHeader>
+              <SectionCardContent>
                 <div className="grid gap-4">
                   <div className="flex items-center gap-3">
                     <div className="bg-primary/10 rounded-md flex items-center justify-center mt-[22px]" style={{ width: '48px', height: '48px' }}>
@@ -789,8 +796,8 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
           </div>
         </div>
       </div>

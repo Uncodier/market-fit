@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -9,8 +9,6 @@ import { listModifierGroups, upsertModifierGroup } from "../modifier-actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Skeleton } from "@/app/components/ui/skeleton"
 import {
   Dialog,
   DialogContent,
@@ -21,12 +19,16 @@ import {
 } from "@/app/components/ui/dialog"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Plus, Sliders } from "@/app/components/ui/icons"
 import { toast } from "sonner"
+import {
+  ModifierGroupsTable,
+  ModifierGroupsTableSkeleton,
+} from "../components/ModifierGroupsTable"
 
 export default function ModifierGroupsPage() {
   const { currentSite } = useSite()
   const { t } = useLocalization()
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -54,6 +56,12 @@ export default function ModifierGroupsPage() {
     window.dispatchEvent(event)
   }, [t])
 
+  useEffect(() => {
+    const handleCreate = () => setIsCreateOpen(true)
+    window.addEventListener("modifier-groups:create", handleCreate)
+    return () => window.removeEventListener("modifier-groups:create", handleCreate)
+  }, [])
+
   const handleCreate = async () => {
     if (!currentSite || !newName.trim()) return
     setCreating(true)
@@ -68,7 +76,7 @@ export default function ModifierGroupsPage() {
       setNewName("")
       mutate()
       if (created?.id) {
-        window.location.href = `/catalog/modifier-groups/${created.id}`
+        router.push(`/catalog/modifier-groups/${created.id}`)
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to create group")
@@ -78,9 +86,9 @@ export default function ModifierGroupsPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))]">
       <StickyHeader>
-        <div className="w-full pt-0 flex flex-col md:flex-row md:items-center gap-2 justify-between">
+        <div className="w-full pt-0 flex flex-col md:flex-row md:items-center gap-2">
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -95,84 +103,22 @@ export default function ModifierGroupsPage() {
               alwaysExpanded={false}
             />
           </form>
-          <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            {t("catalog.modifiers.create") || "New group"}
-          </Button>
         </div>
       </StickyHeader>
 
       <div className="flex-1 p-4 md:p-6 overflow-auto">
         {!currentSite || isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full" />
-            ))}
-          </div>
+          <ModifierGroupsTableSkeleton />
         ) : error ? (
           <div className="text-center text-destructive py-8">
             {error.message}
           </div>
-        ) : !data?.length ? (
-          <EmptyCard
-            icon={<Sliders className="h-12 w-12 text-muted-foreground/50" />}
-            title={t("catalog.modifiers.emptyGroupsTitle") || "No modifier groups"}
-            description={
-              t("catalog.modifiers.emptyGroupsDesc") ||
-              "Create a group of extra products (shots, milks, toppings) to attach to menu items."
-            }
-            actionButton={
-              <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                {t("catalog.modifiers.create") || "New group"}
-              </Button>
-            }
-          />
         ) : (
-          <div className="border rounded-lg overflow-hidden bg-card">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-muted/50 border-b">
-                  <th className="px-4 py-3 text-sm font-semibold text-left">
-                    {t("catalog.modifiers.table.name") || "Group"}
-                  </th>
-                  <th className="px-4 py-3 text-sm font-semibold text-left">
-                    {t("catalog.modifiers.table.selection") || "Selection"}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((group: any) => {
-                  const min = group.min_select ?? 0
-                  const max = group.max_select
-                  const selectionLabel =
-                    max == null
-                      ? `${min}+`
-                      : min === max
-                        ? String(min)
-                        : `${min}–${max}`
-                  return (
-                    <tr
-                      key={group.id}
-                      className="border-b last:border-0 hover:bg-muted/20"
-                    >
-                      <td className="px-4 py-3 text-sm font-medium">
-                        <Link
-                          href={`/catalog/modifier-groups/${group.id}`}
-                          className="hover:underline"
-                        >
-                          {group.name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {selectionLabel}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ModifierGroupsTable
+            groups={data || []}
+            onOpen={(id) => router.push(`/catalog/modifier-groups/${id}`)}
+            onCreate={() => setIsCreateOpen(true)}
+          />
         )}
       </div>
 

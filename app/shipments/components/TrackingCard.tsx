@@ -4,7 +4,14 @@ import { useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { updateShipmentTracking, generateTrackingNumber } from "@/app/shipments/actions"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -51,11 +58,11 @@ export function TrackingCard({ shipmentId, initialCarrier, initialTracking, onUp
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-muted-foreground"/> {t('shipments.trackingInfo') || 'Tracking Info'}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <SectionCard>
+      <SectionCardHeader>
+        <SectionCardTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-muted-foreground"/> {t('shipments.trackingInfo') || 'Tracking Info'}</SectionCardTitle>
+      </SectionCardHeader>
+      <SectionCardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>{t('shipments.carrier') || 'Carrier'}</Label>
@@ -71,12 +78,12 @@ export function TrackingCard({ shipmentId, initialCarrier, initialTracking, onUp
             </div>
           </div>
         </div>
-      </CardContent>
+      </SectionCardContent>
       <ActionFooter>
-        <Button variant="outline" onClick={handleSaveTracking} disabled={savingTracking || (carrier === initialCarrier && tracking === initialTracking)}>
+        <Button variant="outline" onClick={handleSaveTracking} disabled={savingTracking || (carrier === initialCarrier && tracking === initialTracking)} size="sm">
           <Save className="h-4 w-4 mr-2" /> {t('common.save') || 'Save Tracking'}
         </Button>
       </ActionFooter>
-    </Card>
+    </SectionCard>
   )
 }

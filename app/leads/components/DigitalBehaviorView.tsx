@@ -3,15 +3,17 @@
 import React, { useState, useEffect } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { Card } from "@/app/components/ui/card"
-import { Button } from "@/app/components/ui/button"
-import { Badge } from "@/app/components/ui/badge"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Pagination } from "@/app/components/ui/pagination"
 import { format } from "date-fns"
+import {
+  DocumentListHead,
+  DocumentListRow,
+  StatusDot,
+} from "@/app/components/documents/document-list"
 
 interface SessionEvent {
   id: string
@@ -61,15 +63,6 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   scroll: "Scroll",
   engagement: "Engagement",
   session_recording: "Session Recording",
-}
-
-const EVENT_TYPE_COLORS: Record<string, string> = {
-  pageview: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  click: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  form_submission: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  scroll: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  engagement: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
-  session_recording: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
 }
 
 export function DigitalBehaviorView({ leadId }: DigitalBehaviorViewProps) {
@@ -203,35 +196,33 @@ export function DigitalBehaviorView({ leadId }: DigitalBehaviorViewProps) {
               <Skeleton className="h-6 w-32" />
               <Skeleton className="h-8 w-44" />
             </div>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Details</TableHead>
-                    <TableHead>Date</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <DocumentListHead>Type</DocumentListHead>
+                  <DocumentListHead>Details</DocumentListHead>
+                  <DocumentListHead align="right">Date</DocumentListHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    <TableCell className="py-3.5">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-9 w-9 rounded-full" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3.5">
+                      <Skeleton className="h-4 w-64" />
+                    </TableCell>
+                    <TableCell className="py-3.5">
+                      <Skeleton className="ml-auto h-4 w-24" />
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                                          <TableBody>
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <TableRow key={i}>
-                                <TableCell>
-                                  <div className="flex items-center space-x-2">
-                                    <Skeleton className="h-4 w-4 rounded" />
-                                    <Skeleton className="h-5 w-16" />
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-4 w-64" />
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-4 w-24" />
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-              </Table>
-            </div>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </Card>
       </div>
@@ -359,41 +350,43 @@ export function DigitalBehaviorView({ leadId }: DigitalBehaviorViewProps) {
           </Select>
         </div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.data.map((event) => (
-                <TableRow key={event.id}>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {EVENT_TYPE_ICONS[event.event_type] || <span className="text-base">📊</span>}
-                      <Badge 
-                        className={EVENT_TYPE_COLORS[event.event_type] || "bg-gray-100 text-gray-800"}
-                      >
-                        {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-md">
-                    <p className="text-sm text-muted-foreground truncate">
-                      {formatEventData(event) || "No additional data"}
-                    </p>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(event.created_at), "MMM d, h:mm a")}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <DocumentListHead className="w-[28%]">Type</DocumentListHead>
+              <DocumentListHead className="w-[48%]">Details</DocumentListHead>
+              <DocumentListHead className="w-[24%]" align="right">Date</DocumentListHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.data.map((event) => (
+              <DocumentListRow key={event.id} accent="none" className="cursor-default">
+                <TableCell className="py-3.5">
+                  <div className="flex items-center gap-2">
+                    {EVENT_TYPE_ICONS[event.event_type] || <span className="text-base">📊</span>}
+                    <StatusDot
+                      status={event.event_type}
+                      label={EVENT_TYPE_LABELS[event.event_type] || event.event_type}
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className="py-3.5 max-w-md">
+                  <p className="text-sm text-muted-foreground truncate">
+                    {formatEventData(event) || "No additional data"}
+                  </p>
+                </TableCell>
+                <TableCell className="py-3.5 text-right">
+                  <div className="text-sm text-muted-foreground whitespace-nowrap">
+                    {format(new Date(event.created_at), "MMM d, yyyy")}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground/80">
+                    {format(new Date(event.created_at), "h:mm a")}
+                  </div>
+                </TableCell>
+              </DocumentListRow>
+            ))}
+          </TableBody>
+        </Table>
 
         {/* Pagination */}
         {data.pagination.totalPages > 1 && (

@@ -1,19 +1,32 @@
 import React from "react"
 import { JourneyTimeline } from "./JourneyTimeline"
+import { JourneyProgressBar } from "./JourneyProgressBar"
 import { TasksProvider } from "../context/TasksContext"
+import { Lead } from "@/app/leads/types"
 
-interface JourneyViewProps {
-  leadId: string;
+const LEAD_STATUS_TO_STAGE: Record<Lead["status"], string> = {
+  new: "awareness",
+  contacted: "consideration",
+  qualified: "decision",
+  converted: "purchase",
+  cold: "consideration",
+  lost: "decision",
+  not_qualified: "awareness",
 }
 
-export function JourneyView({ leadId }: JourneyViewProps) {
+interface JourneyViewProps {
+  leadId: string
+  leadStatus?: Lead["status"]
+  currentStage?: string
+}
+
+export function JourneyView({ leadId, leadStatus, currentStage }: JourneyViewProps) {
+  const stage = currentStage ?? (leadStatus ? LEAD_STATUS_TO_STAGE[leadStatus] : undefined)
+
   return (
     <TasksProvider leadId={leadId}>
-      <div className="w-full pb-6 flex flex-col h-full overflow-auto">
-        <div className="mt-0">
-          <JourneyTimeline leadId={leadId} />
-        </div>
-      </div>
+      <JourneyProgressBar leadId={leadId} />
+      <JourneyTimeline leadId={leadId} currentStage={stage} />
     </TasksProvider>
   )
-} 
+}

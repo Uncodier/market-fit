@@ -6,14 +6,20 @@ import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getVisitsSettings, updateVisitsSettings } from "@/app/visits/actions"
 import type { VisitsSettings } from "@/app/types"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
-import { Button } from "@/app/components/ui/button"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+  snapshotsDiffer,
+} from "@/app/components/ui/section-card"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { toast } from "sonner"
-import { ActionFooter } from "@/app/components/ui/card-footer"
 import { PenTool } from "@/app/components/ui/icons"
 
 export function VisitsSection({ active }: { active: boolean }) {
@@ -37,19 +43,19 @@ export function VisitsSection({ active }: { active: boolean }) {
 
   if (!siteId || isLoading || !form) {
     return (
-      <Card id="visits-settings">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <SectionCard id="visits-settings">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <PenTool className="h-5 w-5" />
             {t("settings.visits.title")}
-          </CardTitle>
-          <CardDescription>{t("settings.visits.loading")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </SectionCardTitle>
+          <SectionCardDescription>{t("settings.visits.loading")}</SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="h-10 bg-muted/50 rounded-md animate-pulse" />
           <div className="h-40 bg-muted/50 rounded-md animate-pulse" />
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
     )
   }
 
@@ -70,16 +76,16 @@ export function VisitsSection({ active }: { active: boolean }) {
   }
 
   return (
-    <div className="space-y-8">
-      <Card id="visits-channels">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+    <div className="space-y-4">
+      <SectionCard id="visits-channels">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
             <PenTool className="h-5 w-5" />
             {t("settings.visits.channels.title")}
-          </CardTitle>
-          <CardDescription>{t("settings.visits.channels.description")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
+          </SectionCardTitle>
+          <SectionCardDescription>{t("settings.visits.channels.description")}</SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <Label>{t("settings.visits.channels.physical")}</Label>
@@ -125,20 +131,22 @@ export function VisitsSection({ active }: { active: boolean }) {
               onChange={(e) => set("default_duration_minutes", Math.max(1, Number(e.target.value) || 60))}
             />
           </div>
-        </CardContent>
-        <ActionFooter>
-          <Button type="button" variant="outline" onClick={save} disabled={saving}>
-            {saving ? t("common.saving") : t("common.save")}
-          </Button>
-        </ActionFooter>
-      </Card>
+        </SectionCardContent>
+        <SectionCardFooter
+          dirty={snapshotsDiffer(form, data?.data)}
+          saving={saving}
+          onSave={save}
+          saveLabel={t("common.save")}
+          savingLabel={t("common.saving")}
+        />
+      </SectionCard>
 
-      <Card id="visits-terms">
-        <CardHeader>
-          <CardTitle>{t("settings.visits.terms.title")}</CardTitle>
-          <CardDescription>{t("settings.visits.terms.description")}</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <SectionCard id="visits-terms">
+        <SectionCardHeader>
+          <SectionCardTitle>{t("settings.visits.terms.title")}</SectionCardTitle>
+          <SectionCardDescription>{t("settings.visits.terms.description")}</SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent>
           <Textarea
             id="visit-terms"
             value={form.terms_text}
@@ -149,13 +157,15 @@ export function VisitsSection({ active }: { active: boolean }) {
           <p className="text-xs text-muted-foreground mt-2">
             {t("settings.visits.terms.defaultHint")}
           </p>
-        </CardContent>
-        <ActionFooter>
-          <Button type="button" variant="outline" onClick={save} disabled={saving}>
-            {saving ? t("common.saving") : t("common.save")}
-          </Button>
-        </ActionFooter>
-      </Card>
+        </SectionCardContent>
+        <SectionCardFooter
+          dirty={snapshotsDiffer(form, data?.data)}
+          saving={saving}
+          onSave={save}
+          saveLabel={t("common.save")}
+          savingLabel={t("common.saving")}
+        />
+      </SectionCard>
     </div>
   )
 }

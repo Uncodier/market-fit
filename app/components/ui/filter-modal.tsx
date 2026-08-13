@@ -1,6 +1,7 @@
 import React from "react"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -11,24 +12,12 @@ import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { Badge } from "@/app/components/ui/badge"
-import {
-  ModalFooter,
-  ModalFooterActions,
-  ModalFooterInfo,
-} from "@/app/components/ui/modal-footer"
-import {
-  ModalHeader,
-  ModalHeaderTitle,
-  ModalHeaderDescription,
-} from "@/app/components/ui/modal-header"
 import { 
-  Filter, 
   Tag, 
   CheckCircle2, 
   Ban, 
   RotateCcw, 
   ChevronUp,
-  ChevronDown, 
   Users, 
   X
 } from "@/app/components/ui/icons"
@@ -231,19 +220,14 @@ export function FilterModal({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden flex flex-col max-h-[90vh]">
-        <ModalHeader className="shrink-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5 text-foreground" />
-              <ModalHeaderTitle>Filtrar Requisitos</ModalHeaderTitle>
-            </div>
-            <ModalHeaderDescription>
-              Select filters to narrow down your requirement list.
-            </ModalHeaderDescription>
-          </div>
-        </ModalHeader>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Filter requirements</DialogTitle>
+          <DialogDescription>
+            Select filters to narrow down your requirement list.
+          </DialogDescription>
+        </DialogHeader>
         
         {/* Contador de filtros activos */}
         {getTotalActiveFilters() > 0 && (
@@ -268,13 +252,13 @@ export function FilterModal({
           </div>
         )}
         
-        <div className="px-6 py-4 overflow-y-auto max-h-[60vh]">
+        <DialogBody>
           <div className="space-y-6">
             {/* Filtro de prioridad */}
             <div className="space-y-3">
               <div className="flex items-center">
                 <ChevronUp className="h-4 w-4 text-muted-foreground mr-2" />
-                <h3 className="font-medium text-sm text-foreground">Prioridad</h3>
+                <h3 className="font-medium text-sm text-foreground">Priority</h3>
               </div>
               <div className="flex flex-wrap gap-2">
                 {["high", "medium", "low"].map((priority) => (
@@ -305,7 +289,7 @@ export function FilterModal({
             <div className="space-y-3">
               <div className="flex items-center">
                 <CheckCircle2 className="h-4 w-4 text-muted-foreground mr-2" />
-                <h3 className="font-medium text-sm text-foreground">Estado de Finalización</h3>
+                <h3 className="font-medium text-sm text-foreground">Completion status</h3>
               </div>
               <div className="flex flex-wrap gap-2">
                 {completionStatusOptions.map((status) => (
@@ -336,7 +320,7 @@ export function FilterModal({
             <div className="space-y-3">
               <div className="flex items-center">
                 <RotateCcw className="h-4 w-4 text-muted-foreground mr-2" />
-                <h3 className="font-medium text-sm text-foreground">Estado</h3>
+                <h3 className="font-medium text-sm text-foreground">Status</h3>
               </div>
               <div className="flex flex-wrap gap-2">
                 {statusOptions.map((status) => (
@@ -369,7 +353,7 @@ export function FilterModal({
                 <div className="space-y-3">
                   <div className="flex items-center">
                     <Users className="h-4 w-4 text-muted-foreground mr-2" />
-                    <h3 className="font-medium text-sm text-foreground">Segmentos</h3>
+                    <h3 className="font-medium text-sm text-foreground">Segments</h3>
                   </div>
                   <div className="space-y-2">
                     {segments.map((segment) => (
@@ -395,30 +379,23 @@ export function FilterModal({
               </>
             )}
           </div>
-        </div>
+        </DialogBody>
         
-        <ModalFooter className="shrink-0">
-          <ModalFooterInfo>
-          </ModalFooterInfo>
-          <ModalFooterActions>
+        <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="gap-2"
             >
               Cancel
             </Button>
             <Button 
-              type="submit" 
+              type="button" 
               onClick={handleApplyFilters}
-              className="gap-2"
             >
-              <Filter className="h-4 w-4" />
-              Apply Filters
+              Apply
             </Button>
-          </ModalFooterActions>
-        </ModalFooter>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

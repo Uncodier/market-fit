@@ -6,7 +6,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { cancelBuyerReservation, rescheduleBuyerReservation } from "@/app/buyer/reservation-actions"
 import { Calendar, Clock, Download } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog"
 import { ReservationSlotPicker } from "@/app/components/commerce/ReservationSlotPicker"
 import QRCode from "react-qr-code"
 import { downloadAccessPass } from "@/app/lib/download-access-pass"
@@ -229,11 +229,15 @@ export function ReservationManagePanel({
 
       {/* Reschedule Dialog */}
       <Dialog open={showRescheduleDialog} onOpenChange={setShowRescheduleDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent size="lg" busy={isRescheduling}>
+          <div
+            data-slot="dialog-form"
+            className="flex min-h-0 max-h-[inherit] flex-1 flex-col overflow-hidden"
+          >
           <DialogHeader>
             <DialogTitle>{t("buyer.reservations.reschedule") || "Reschedule"}</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <DialogBody>
             <ReservationSlotPicker
               catalogItemId={reservation.catalog_item_id}
               quantity={reservation.quantity || 1}
@@ -241,7 +245,7 @@ export function ReservationManagePanel({
               selectedStartIso={selectedSlot?.startIso}
               hideDetailsStep={true}
             />
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowRescheduleDialog(false)} disabled={isRescheduling}>
               {t("common.back") || "Back"}
@@ -253,6 +257,7 @@ export function ReservationManagePanel({
               {isRescheduling ? "..." : t("buyer.reservations.save") || "Save Changes"}
             </Button>
           </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

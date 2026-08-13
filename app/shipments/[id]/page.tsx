@@ -11,7 +11,14 @@ import { TrackingCard } from "../components/TrackingCard"
 import { AssigneeCard } from "../components/AssigneeCard"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { ActionFooter } from "@/app/components/ui/card-footer"
@@ -177,13 +184,13 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                   }
                 />
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                <SectionCard>
+                  <SectionCardHeader>
+                    <SectionCardTitle className="flex items-center gap-2">
                       <ListOrdered className="h-5 w-5 text-muted-foreground" /> Line Items
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                    </SectionCardTitle>
+                  </SectionCardHeader>
+                  <SectionCardContent>
                     <div className="space-y-3">
                       {assignableLines.length === 0 ? (
                         <div className="text-sm text-muted-foreground">
@@ -212,25 +219,23 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                         ))
                       )}
                     </div>
-                  </CardContent>
+                  </SectionCardContent>
                   <ActionFooter>
-                    <Button
-                      variant="outline"
+                    <Button variant="outline"
                       onClick={handleSaveLineItems}
-                      disabled={savingLines || assignableLines.length === 0}
-                    >
+                      disabled={savingLines || assignableLines.length === 0} size="sm">
                       <Save className="h-4 w-4 mr-2" /> Save Items
                     </Button>
                   </ActionFooter>
-                </Card>
+                </SectionCard>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                <SectionCard>
+                  <SectionCardHeader>
+                    <SectionCardTitle className="flex items-center gap-2">
                       <MapPin className="h-5 w-5 text-muted-foreground" /> Destination Address
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                    </SectionCardTitle>
+                  </SectionCardHeader>
+                  <SectionCardContent>
                     <div className="bg-muted/30 rounded-lg border overflow-hidden">
                       {Object.keys(address).length > 0 ? (
                         <div className="p-4">
@@ -265,8 +270,8 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </SectionCardContent>
+                </SectionCard>
 
                 {(shipment.status === "pending" || shipment.status === "preparing") && (
                   <div className="rounded-lg border-destructive/50 border bg-destructive/5 p-6">
@@ -323,8 +328,8 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                   lastLocatedAt={shipment.last_located_at ?? null}
                 />
 
-                <Card>
-                  <CardContent className="p-4 space-y-4">
+                <SectionCard>
+                  <SectionCardContent className="p-4 space-y-4">
                     <div>
                       <div className="text-xs text-muted-foreground font-medium mb-1">CUSTOMER</div>
                       <div className="flex items-center gap-2">
@@ -375,19 +380,19 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                         </Badge>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </SectionCardContent>
+                </SectionCard>
               </div>
             </div>
           </TabsContent>
 
           <TabsContent value="timeline" className="m-0 border-0 p-0 h-full">
             <div className="mx-auto max-w-[800px] mt-6">
-              <Card>
-                <CardHeader className="py-4 px-6 border-b">
-                  <CardTitle className="text-lg font-medium">Timeline</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
+              <SectionCard>
+                <SectionCardHeader className="py-4 px-6 border-b">
+                  <SectionCardTitle className="text-lg font-medium">Timeline</SectionCardTitle>
+                </SectionCardHeader>
+                <SectionCardContent className="p-0">
                   <div className="divide-y text-sm">
                     <div className="p-4 px-6 flex justify-between items-center bg-muted/30">
                       <span className="text-muted-foreground">Created</span>
@@ -420,8 +425,8 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </SectionCardContent>
+              </SectionCard>
             </div>
           </TabsContent>
         </div>

@@ -4,28 +4,21 @@ import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { listInventoryLevels, listLocations, setInventoryLevel, upsertLocation, getCommerceSettings, updateCommerceSettings } from "./actions"
-import { listCatalogItems } from "@/app/catalog/actions"
-import { InventoryParams, InventoryLevelWithCatalog } from "./types"
-import { Location, CatalogItem } from "@/app/types"
+import { listLocations, getCommerceSettings, updateCommerceSettings } from "./actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Badge } from "@/app/components/ui/badge"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
-import { Pagination } from "@/app/components/ui/pagination"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
 import { toast } from "sonner"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
-import { Save, MapPin, DatabaseIcon, Settings, Edit, Plus, PlusCircle } from "@/app/components/ui/icons"
-
+import { Save, MapPin, DatabaseIcon, Settings } from "@/app/components/ui/icons"
 import { CreateInventoryStockDialog } from "./components/CreateInventoryStockDialog"
+import { InventoryLevelsTab } from "./components/InventoryLevelsTab"
+import { InventoryLocationsTable } from "./components/InventoryLocationsTable"
+import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge"
 
 export default function InventoryPage() {
   const { currentSite } = useSite()
@@ -112,6 +105,7 @@ export default function InventoryPage() {
             </div>
             
             <div className="flex items-center gap-2">
+              <PrinterSyncBadge module="inventory" />
               {activeTab === "levels" && (
                 <Select value={selectedLocation} onValueChange={(v) => { setSelectedLocation(v); setPage(1); }}>
                   <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
@@ -146,7 +140,7 @@ export default function InventoryPage() {
             </TabsContent>
             
             <TabsContent value="locations">
-              <LocationsTab siteId={currentSite?.id} />
+              <InventoryLocationsTable siteId={currentSite?.id} />
             </TabsContent>
 
             <TabsContent value="settings">
@@ -160,249 +154,6 @@ export default function InventoryPage() {
   )
 }
 
-function InventoryLevelsTab({ 
-  siteId, 
-  locations,
-  page, 
-  setPage, 
-  pageSize, 
-  q, 
-  selectedLocation 
-}: { 
-  siteId?: string;
-  locations: Location[];
-  page: number;
-  setPage: (p: number) => void;
-  pageSize: number;
-  q: string;
-  selectedLocation: string;
-}) {
-
-  const fetcher = async () => {
-    const res = await listInventoryLevels({ 
-      siteId: siteId!, 
-      page, 
-      pageSize, 
-      q,
-      locationId: selectedLocation === 'all' ? undefined : selectedLocation
-    })
-    return res
-  }
-
-  const { data, error, isLoading, mutate } = useSWR(
-    siteId ? ['inventory_levels', siteId, page, q, selectedLocation] : null,
-    fetcher
-  )
-
-  const handleUpdateQuantity = async (level: InventoryLevelWithCatalog, newQtyStr: string) => {
-    if (!siteId) return
-    const qty = parseInt(newQtyStr)
-    if (isNaN(qty)) return
-    
-    const promise = setInventoryLevel(siteId, level.location_id, level.catalog_item_id, qty)
-    toast.promise(promise, {
-      loading: 'Updating stock...',
-      success: 'Stock updated',
-      error: 'Failed to update stock'
-    })
-    await promise
-    mutate()
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-        {isLoading ? (
-          <div className="p-6 space-y-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : error ? (
-          <div className="p-6 text-center text-red-500">Error loading inventory</div>
-        ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Quantity</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data?.data.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="h-48 p-0">
-                      <EmptyCard
-                        icon={<DatabaseIcon className="h-6 w-6" />}
-                        title="No stock levels found"
-                        description="Stock is created when items are added to catalog with inventory tracking enabled."
-                        showShadow={false}
-                        actionButton={
-                          <Button onClick={() => window.dispatchEvent(new CustomEvent('inventory:create-stock'))} variant="outline">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Stock
-                          </Button>
-                        }
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data?.data.map((level) => {
-                    const loc = locations.find(l => l.id === level.location_id)
-                    return (
-                      <TableRow key={level.id}>
-                        <TableCell>
-                          <div className="font-medium text-foreground">{level.catalog_item?.name}</div>
-                          {level.catalog_item?.sku && <div className="text-xs text-muted-foreground font-mono">{level.catalog_item.sku}</div>}
-                        </TableCell>
-                        <TableCell>
-                          {loc?.name || 'Unknown'} {loc?.is_default && <Badge className="ml-2 text-[10px]">Default</Badge>}
-                        </TableCell>
-                        <TableCell>
-                          <Input 
-                            type="number" 
-                            defaultValue={level.quantity}
-                            onBlur={(e) => {
-                              if (e.target.value !== String(level.quantity)) {
-                                handleUpdateQuantity(level, e.target.value)
-                              }
-                            }}
-                            className="w-24 h-8"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })
-                )}
-              </TableBody>
-            </Table>
-            
-            {data && data.count > pageSize && (
-              <div className="p-4 border-t flex justify-center">
-                <Pagination 
-                  currentPage={page}
-                  totalPages={Math.ceil(data.count / pageSize)}
-                  onPageChange={setPage}
-                />
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function LocationsTab({ siteId }: { siteId?: string }) {
-  const { data, isLoading, mutate } = useSWR(siteId ? ['locations', siteId] : null, () => listLocations(siteId!))
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [newLocName, setNewLocName] = useState("")
-
-  useEffect(() => {
-    const handleOpen = () => setIsDialogOpen(true)
-    window.addEventListener('inventory:open-location-dialog-internal', handleOpen)
-    window.addEventListener('inventory:open-location-dialog', handleOpen)
-    return () => {
-      window.removeEventListener('inventory:open-location-dialog-internal', handleOpen)
-      window.removeEventListener('inventory:open-location-dialog', handleOpen)
-    }
-  }, [])
-
-  const handleCreate = async () => {
-    if (!newLocName.trim() || !siteId) return
-    setSaving(true)
-    const res = await upsertLocation({ site_id: siteId, name: newLocName.trim(), is_active: true, is_default: false })
-    setSaving(false)
-    if (res.error) {
-      toast.error(res.error)
-    } else {
-      toast.success("Location created")
-      setIsDialogOpen(false)
-      setNewLocName("")
-      mutate()
-    }
-  }
-  
-  if (isLoading) return <Skeleton className="h-32 w-full" />
-
-  return (
-      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-        <div className="p-4 border-b flex justify-between items-center bg-muted/30">
-          <div>
-            <h3 className="font-semibold text-lg">Physical Locations</h3>
-            <p className="text-sm text-muted-foreground">Manage store fronts, warehouses, and fulfillment centers.</p>
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4 mr-2" /> Add Location</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>New Location</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Location Name</Label>
-                  <Input value={newLocName} onChange={e => setNewLocName(e.target.value)} placeholder="e.g. Downtown Store" />
-                </div>
-                <Button onClick={handleCreate} disabled={saving} className="w-full">
-                  {saving ? "Saving..." : "Create Location"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-        <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Location Name</TableHead>
-            <TableHead>Code</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="w-16"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data?.data?.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="h-48 p-0">
-                <EmptyCard
-                  icon={<MapPin className="h-6 w-6" />}
-                  title="No locations found"
-                  description="Add a physical location to manage stock per store or warehouse."
-                  actionButton={
-                    <Button onClick={() => setIsDialogOpen(true)} variant="outline">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Location
-                    </Button>
-                  }
-                  showShadow={false}
-                />
-              </TableCell>
-            </TableRow>
-          ) : (
-            data?.data.map((loc: any) => (
-              <TableRow key={loc.id}>
-                <TableCell>
-                  <span className="font-medium">{loc.name}</span>
-                  {loc.is_default && <Badge className="ml-2 bg-blue-100 text-blue-700 border-none text-[10px]">Default</Badge>}
-                </TableCell>
-                <TableCell className="font-mono text-sm text-muted-foreground">{loc.code || '-'}</TableCell>
-                <TableCell>
-                  {loc.is_active ? <Badge variant="outline" className="text-green-700 bg-green-50 border-green-200">Active</Badge> : <Badge variant="outline">Inactive</Badge>}
-                </TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="icon" disabled><Edit className="h-4 w-4" /></Button>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  )
-}
 
 function CommerceSettingsTab({ siteId }: { siteId?: string }) {
   const { data, isLoading, mutate } = useSWR(siteId ? ['commerce_settings', siteId] : null, () => getCommerceSettings(siteId!))

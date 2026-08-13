@@ -10,10 +10,13 @@ import {
   CardFooter,
   EmptyCard,
   SkeletonCard,
-  CARD_PADDING
+  SectionCard,
+  SectionCardHeader,
+  SectionCardContent,
+  SectionCardFooter,
 } from "./index";
 import { Button } from "@/app/components/ui/button";
-import { FileText, Settings, BarChart } from "@/app/components/ui/icons";
+import { FileText, BarChart } from "@/app/components/ui/icons";
 
 /**
  * StandardCard Component
@@ -41,20 +44,22 @@ export function StandardCard() {
 }
 
 /**
- * CompactCard Component
- * 
- * Demonstrates a compact card with smaller padding.
+ * SettingsSectionCard Component
+ *
+ * Use SectionCard for settings pages and detail form sections.
  */
-export function CompactCard() {
+export function SettingsSectionCard() {
   return (
-    <Card>
-      <CardHeader className={CARD_PADDING.SMALL}>
-        <CardTitle className="text-base">Compact Card</CardTitle>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <p className="text-sm">This card uses smaller padding for compact layouts.</p>
-      </CardContent>
-    </Card>
+    <SectionCard>
+      <SectionCardHeader
+        title="Annual Goals"
+        description="What do you want to achieve this year?"
+      />
+      <SectionCardContent>
+        <p className="text-sm text-muted-foreground">Form fields go here.</p>
+      </SectionCardContent>
+      <SectionCardFooter dirty saving={false} onSave={() => undefined} saveLabel="Save" />
+    </SectionCard>
   );
 }
 

@@ -16,6 +16,9 @@ import type { ImprentaThumbCache } from "./imprenta-thumb-cache"
  *   ------------------------- separator -------------------------
  *   [ Generate button full width  |  Variant · Action · Copy · Download ]
  *
+ * Image/video RESULT cards are an exception: the cover fills the card edge-to-edge
+ * (action buttons live on the DOM card as a hover overlay).
+ *
  * No React dependencies; safe to call from any animation frame.
  */
 
@@ -234,7 +237,8 @@ function drawThumbOrSkeleton(
   r: number,
   theme: ImprentaCanvasTheme,
   url: string | null,
-  thumbs: ImprentaThumbCache | null
+  thumbs: ImprentaThumbCache | null,
+  stroke = true
 ) {
   if (url && thumbs) {
     const img = thumbs.get(url)
@@ -254,14 +258,18 @@ function drawThumbOrSkeleton(
         fillRounded(ctx, x, y, w, h, r, theme.skeletonMedia)
       }
       ctx.restore()
-      strokeRounded(ctx, x, y, w, h, r, theme.skeletonBlockBorder, 1)
+      if (stroke) strokeRounded(ctx, x, y, w, h, r, theme.skeletonBlockBorder, 1)
       return
     }
     // Viewport covers only reach this path while being painted — prioritize them
     // ahead of background FIFO so lite shells do not stay grey behind full cards.
     thumbs.requestPriority(url)
   }
-  fillAndStrokeRounded(ctx, x, y, w, h, r, theme.skeletonMedia, theme.skeletonBlockBorder, 1)
+  if (stroke) {
+    fillAndStrokeRounded(ctx, x, y, w, h, r, theme.skeletonMedia, theme.skeletonBlockBorder, 1)
+  } else {
+    fillRounded(ctx, x, y, w, h, r, theme.skeletonMedia)
+  }
 }
 
 /** Full-width segmented control with 6 equal-width pills (mirrors the media-type selector). */
@@ -427,6 +435,39 @@ function nodeHasResult(node: InstanceNode): boolean {
   return !!r && typeof r === "object" && Object.keys(r).length > 0
 }
 
+function isFullBleedMediaResult(
+  hasResult: boolean,
+  type: string,
+  coverImageUrl: string | null,
+  coverVideoUrl: string | null
+) {
+  return hasResult && type !== "publish" && !!(coverImageUrl || coverVideoUrl)
+}
+
+function drawFullBleedMediaCover(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  cornerR: number,
+  theme: ImprentaCanvasTheme,
+  coverImageUrl: string | null,
+  coverVideoUrl: string | null,
+  thumbs: ImprentaThumbCache | null
+) {
+  const inset = 2
+  const ix = x + inset
+  const iy = y + inset
+  const iw = Math.max(1, w - inset * 2)
+  const ih = Math.max(1, h - inset * 2)
+  const ir = Math.max(4, cornerR - inset)
+  drawThumbOrSkeleton(ctx, ix, iy, iw, ih, ir, theme, coverImageUrl || coverVideoUrl, thumbs, false)
+  if (coverVideoUrl) {
+    drawVideoGlyph(ctx, ix + iw / 2, iy + ih / 2, theme)
+  }
+}
+
 function segmentedActiveIndex(type: string): number {
   switch (type) {
     case "generate-image":
@@ -548,6 +589,10 @@ export function drawLiteNode(ctx: CanvasRenderingContext2D, p: DrawLiteNodeInput
   // body area so content stays readable at every zoom (no "it'll load any
   // second now" illusion).
   if (band === "micro") {
+    if (isFullBleedMediaResult(hasResult, type, coverImageUrl, coverVideoUrl)) {
+      drawFullBleedMediaCover(ctx, x, y, w, h, cornerR, theme, coverImageUrl, coverVideoUrl, thumbs)
+      return
+    }
     const ix = x + 18
     const iw = w - 36
     drawLine(ctx, ix, y + 18, 56, 6, theme.skeletonLine)
@@ -591,6 +636,11 @@ export function drawLiteNode(ctx: CanvasRenderingContext2D, p: DrawLiteNodeInput
   }
 
   const rich = band === "rich"
+
+  if (isFullBleedMediaResult(hasResult, type, coverImageUrl, coverVideoUrl)) {
+    drawFullBleedMediaCover(ctx, x, y, w, h, cornerR, theme, coverImageUrl, coverVideoUrl, thumbs)
+    return
+  }
 
   // --- Content layout --------------------------------------------------------
   //

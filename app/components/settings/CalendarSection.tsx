@@ -2,7 +2,14 @@
 
 import React, { useState } from "react"
 import { cn } from "@/lib/utils"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -152,7 +159,7 @@ export function CalendarSection() {
             <CalendarIcon className="h-6 w-6 text-foreground" />
             Calendars
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Create shared booking pages that assign meetings to team members.
           </p>
         </div>
@@ -167,11 +174,11 @@ export function CalendarSection() {
       <div className="grid gap-4">
         {/* New Calendar Form */}
         {editingCalendar && !calendars.some(c => c.id === editingCalendar.id) && (
-          <Card className="border dark:border-white/5 border-black/5 shadow-none overflow-hidden">
-            <CardHeader className="px-8 py-6">
-              <CardTitle className="text-lg font-semibold">New Calendar</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t border-border">
+          <SectionCard >
+            <SectionCardHeader>
+              <SectionCardTitle>New Calendar</SectionCardTitle>
+            </SectionCardHeader>
+            <SectionCardContent className="space-y-4 border-t border-border">
               <div className="grid gap-5 md:grid-cols-2">
                 <div className="grid gap-2">
                   <Label className="text-xs font-semibold text-muted-foreground" htmlFor="rr-name-new">Calendar Name</Label>
@@ -256,17 +263,17 @@ export function CalendarSection() {
                   )}
                 </div>
               </div>
-            </CardContent>
+            </SectionCardContent>
             
             <ActionFooter>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" onClick={() => setEditingCalendar(null)}>Cancel</Button>
-                <Button variant="outline" onClick={handleSaveCalendar} disabled={isUpdating}>
+                <Button variant="outline" size="sm" onClick={handleSaveCalendar} disabled={isUpdating}>
                   {isUpdating ? "Saving..." : "Create Calendar"}
                 </Button>
               </div>
             </ActionFooter>
-          </Card>
+          </SectionCard>
         )}
 
         {calendars.length === 0 && !editingCalendar ? (
@@ -283,20 +290,19 @@ export function CalendarSection() {
             const bookingUrl = `/book/${getSiteSlug()}/rr/${calendar.slug}`
             
             return (
-              <Card 
+              <SectionCard 
                 key={calendar.id} 
-                className="border dark:border-white/5 border-black/5 shadow-none overflow-hidden"
+                
               >
                 {/* Summary View */}
-                <CardHeader 
-                  className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors group"
+                <SectionCardHeader className="cursor-pointer hover:bg-muted/50 transition-colors group"
                   onClick={() => isEditing ? setEditingCalendar(null) : setEditingCalendar(calendar)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 flex-1">
                       <Users className="h-5 w-5 text-muted-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg font-semibold truncate">{calendar.name}</CardTitle>
+                        <SectionCardTitle className="truncate">{calendar.name}</SectionCardTitle>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                           <span className="flex items-center gap-1.5 shrink-0">
                             {calendar.member_ids?.length || 0} members
@@ -327,12 +333,12 @@ export function CalendarSection() {
                       )}
                     </div>
                   </div>
-                </CardHeader>
+                </SectionCardHeader>
 
                 {/* Edit Form (Expanded) */}
                 {isEditing && (
                   <>
-                    <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t border-border">
+                    <SectionCardContent className="space-y-4 border-t border-border">
                       <div className="grid gap-5 md:grid-cols-2">
                         <div className="grid gap-2">
                           <Label className="text-xs font-semibold text-muted-foreground" htmlFor={`rr-name-${calendar.id}`}>Calendar Name</Label>
@@ -417,7 +423,7 @@ export function CalendarSection() {
                           )}
                         </div>
                       </div>
-                    </CardContent>
+                    </SectionCardContent>
                     
                     <ActionFooter>
                       <div className="flex items-center gap-2">
@@ -442,7 +448,7 @@ export function CalendarSection() {
                     </ActionFooter>
                   </>
                 )}
-              </Card>
+              </SectionCard>
             )
           })
         )}

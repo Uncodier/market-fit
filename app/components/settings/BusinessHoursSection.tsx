@@ -9,8 +9,13 @@ import { PlusCircle, Trash2 } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Switch } from "../ui/switch"
 import { ChevronDown, ChevronRight } from "../ui/icons"
-import { Card, CardContent, CardHeader } from "../ui/card"
-import { ActionFooter } from "../ui/card-footer"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardContent,
+  SectionCardFooter,
+  snapshotsDiffer,
+} from "@/app/components/ui/section-card"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import {
   AlertDialog,
@@ -129,8 +134,15 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const businessHours = form.watch("business_hours") || []
+  const [savedHours, setSavedHours] = useState<any[]>([])
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
   const [savingSchedule, setSavingSchedule] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (savedHours.length === 0 && businessHours.length > 0) {
+      setSavedHours(businessHours)
+    }
+  }, [businessHours, savedHours.length])
 
   const toggleExpanded = useCallback((index: number) => {
     const newExpanded = new Set(expandedItems)
@@ -207,6 +219,8 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
+      setSavedHours(formData.business_hours || [])
     } catch (error) {
       console.error("Error saving business hours:", error)
     } finally {
@@ -215,7 +229,7 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
   }
 
   return (
-    <div id="business-hours" className="space-y-6">
+    <div id="business-hours" className="space-y-4">
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
@@ -240,14 +254,13 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
         const isExpanded = expandedItems.has(index)
         
         return (
-          <Card key={index} id={`business-hours-${index}`} className="border dark:border-white/5 border-black/5">
-            {/* Collapsible Header */}
-            <CardHeader 
-              className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"
+          <SectionCard key={index} id={`business-hours-${index}`}>
+            <SectionCardHeader
+              className="cursor-pointer hover:bg-muted/40"
               onClick={() => toggleExpanded(index)}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between w-full gap-3">
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div onClick={(e) => e.stopPropagation()}>
                     <Input
                       placeholder={t("settings.company.hours.placeholder.name")}
@@ -276,20 +289,18 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 ml-4">
-                  {isExpanded ? (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  )}
-                </div>
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
               </div>
-            </CardHeader>
+            </SectionCardHeader>
 
             {/* Collapsible Content */}
             {isExpanded && (
               <>
-              <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t">
+              <SectionCardContent className="border-t border-border/70 pt-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <label className="text-sm font-medium">{t("settings.company.hours.respectHolidays")}</label>
@@ -364,55 +375,48 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-
-              {/* Card Footer with individual buttons */}
-              <ActionFooter>
-                <div className="flex items-center gap-2">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              </SectionCardContent>
+              <SectionCardFooter
+                dirty={snapshotsDiffer(hours, savedHours[index])}
+                saving={savingSchedule === index}
+                onSave={() => handleSaveBusinessHours(index)}
+                saveLabel={t("settings.company.hours.save")}
+                savingLabel={t("settings.company.common.saving")}
+              >
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t("settings.company.hours.remove")}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("settings.company.hours.remove")}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("settings.company.hours.removeConfirm")}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("settings.company.common.cancel")}</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => removeBusinessHours(index)}
+                        className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
                         {t("settings.company.hours.remove")}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{t("settings.company.hours.remove")}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {t("settings.company.hours.removeConfirm")}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>{t("settings.company.common.cancel")}</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => removeBusinessHours(index)}
-                          className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
-                        >
-                          {t("settings.company.hours.remove")}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleSaveBusinessHours(index)}
-                    disabled={savingSchedule === index}
-                  >
-                    {savingSchedule === index
-                      ? t("settings.company.common.saving")
-                      : t("settings.company.hours.save")}
-                  </Button>
-                </div>
-              </ActionFooter>
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </SectionCardFooter>
               </>
             )}
-          </Card>
+          </SectionCard>
         )
       })}
     </div>

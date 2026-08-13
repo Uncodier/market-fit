@@ -2,9 +2,11 @@ import { useState, useEffect } from "react"
 import { Button } from "./ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogForm,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -225,15 +227,15 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] z-[99999]">
-        <form onSubmit={handleSubmit}>
+      <DialogContent size="md" busy={isSubmitting}>
+        <DialogForm onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create Task</DialogTitle>
             <DialogDescription>
               Add a new task to your project. Fill out the information below.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input
@@ -392,22 +394,24 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
                 />
               </div>
             </div>
-          </div>
+          </DialogBody>
           <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
             <Button
               type="submit"
               disabled={isSubmitting || !currentSite}
-              className="w-full"
             >
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                  <span>Creating</span>
-                </div>
-              ) : "Create Task"}
+              {isSubmitting ? "Creating..." : "Create task"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

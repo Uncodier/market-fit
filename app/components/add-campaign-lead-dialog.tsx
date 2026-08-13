@@ -13,15 +13,16 @@ import {
   Phone,
   Tag
 } from "@/app/components/ui/icons"
-import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogForm,
 } from "@/app/components/ui/dialog"
 import {
   Select,
@@ -63,7 +64,8 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
   const [error, setError] = useState<string | null>(null)
   const { currentSite } = useSite()
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     // Validate site selection
     if (!currentSite?.id) {
       setError("Please select a site first")
@@ -182,26 +184,15 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent 
-        className="sm:max-w-[550px]" 
-        onEscapeKeyDown={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onPointerDownOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-        onInteractOutside={(e) => {
-          if (isLoading) e.preventDefault()
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>Add New Lead to Campaign</DialogTitle>
-          <DialogDescription>
-            Add a new lead to this campaign. Fill in the details below.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-5 py-4">
+      <DialogContent size="md" busy={isLoading}>
+        <DialogForm onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Add New Lead to Campaign</DialogTitle>
+            <DialogDescription>
+              Add a new lead to this campaign. Fill in the details below.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
               {error}
@@ -387,44 +378,39 @@ export function AddCampaignLeadDialog({ campaignId, segments = [], trigger, onLe
               />
             </div>
           </div>
-        </div>
-        
-        <DialogFooter className="flex justify-between border-t pt-4">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              if (!isLoading) {
-                setName("")
-                setEmail("")
-                setPersonalEmail("")
-                setPhone("")
-                setCompany("")
-                setPosition("")
-                setSegmentId("")
-                setStatus("new")
-                setNotes("")
-                setOrigin("Campaign")
-                setError(null)
-                setIsOpen(false)
-              }
-            }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={isLoading || !name || !email}
-          >
-            {isLoading ? (
-              <>
-                <LoadingSkeleton variant="button" size="sm" className="text-white" />
-                Creating...
-              </>
-            ) : (
-              'Add Lead'
-            )}
-          </Button>
-        </DialogFooter>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (!isLoading) {
+                  setName("")
+                  setEmail("")
+                  setPersonalEmail("")
+                  setPhone("")
+                  setCompany("")
+                  setPosition("")
+                  setSegmentId("")
+                  setStatus("new")
+                  setNotes("")
+                  setOrigin("Campaign")
+                  setError(null)
+                  setIsOpen(false)
+                }
+              }}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading || !name || !email}
+            >
+              {isLoading ? "Creating..." : "Add Lead"}
+            </Button>
+          </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

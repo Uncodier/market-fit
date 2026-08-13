@@ -9,11 +9,17 @@ import { OrderWithRelations } from "../types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { Textarea } from "@/app/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { ActionFooter } from "@/app/components/ui/card-footer"
-import { Badge } from "@/app/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { toast } from "sonner"
 import { Save, ExternalLink, CheckCircle2, FileText, Send, Loader2, Mail, Link, Printer } from "@/app/components/ui/icons"
 import {
@@ -27,6 +33,13 @@ import { useSite } from "@/app/context/SiteContext"
 import { navigateToShipment } from "@/app/hooks/use-navigation-history"
 import { OrderInvoiceDocument } from "../components/OrderInvoiceDocument"
 import { OrderStatusBar } from "../components/OrderStatusBar"
+import {
+  DocumentListHead,
+  DocumentListRow,
+  EntityCell,
+  StatusDot,
+  documentListShellClassName,
+} from "@/app/components/documents/document-list"
 
 export default function OrderDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -315,13 +328,13 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
               />
 
               {hasShipments && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                <SectionCard>
+                  <SectionCardHeader>
+                    <SectionCardTitle className="flex items-center gap-2">
                       <Send className="h-4 w-4" /> {t('orders.detail.shipments') || 'Shipments'}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
+                    </SectionCardTitle>
+                  </SectionCardHeader>
+                  <SectionCardContent className="space-y-3">
                     <div className="text-sm font-medium">
                       {order.shipments!.length} {t('orders.detail.shipmentsAssociated') || 'shipment(s) associated'}
                     </div>
@@ -342,34 +355,32 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
                         </div>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
+                  </SectionCardContent>
+                </SectionCard>
               )}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+              <SectionCard>
+                <SectionCardHeader>
+                  <SectionCardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-muted-foreground" /> {t('orders.detail.notes') || 'Notes'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </SectionCardTitle>
+                </SectionCardHeader>
+                <SectionCardContent>
                   <Textarea
                     placeholder={t('orders.detail.notesPlaceholder') || "Add internal notes about this order..."}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="min-h-[120px]"
+                    className="min-h-[72px]"
                   />
-                </CardContent>
+                </SectionCardContent>
                 <ActionFooter>
-                  <Button
-                    variant="outline"
+                  <Button variant="outline"
                     onClick={handleSaveNotes}
-                    disabled={savingNotes || notes === (order.notes || "")}
-                  >
+                    disabled={savingNotes || notes === (order.notes || "")} size="sm">
                     <Save className="h-4 w-4 mr-2" /> {t('orders.detail.saveNotes') || 'Save Notes'}
                   </Button>
                 </ActionFooter>
-              </Card>
+              </SectionCard>
 
               {order.status === 'pending' && (
                 <div className="rounded-lg border-destructive/50 border bg-destructive/5 p-6">
@@ -409,58 +420,79 @@ export default function OrderDetail(props: { params: Promise<{ id: string }> }) 
             <div className="mx-auto max-w-[800px] space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">{t('orders.detail.associatedShipments') || 'Associated Shipments'}</h3>
-                <Button onClick={handleCreateShipment} size="sm" disabled={isCreatingShipment}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCreateShipment}
+                  disabled={isCreatingShipment}
+                >
                   {isCreatingShipment ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                   {t('orders.detail.createShipment') || 'Create Shipment'}
                 </Button>
               </div>
-              <Card>
-                <CardContent className="p-0">
+              {(!order.shipments || order.shipments.length === 0) ? (
+                <div className="rounded-xl border border-border/70 bg-card py-10 text-center text-sm text-muted-foreground">
+                  <Send className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  {t('orders.detail.noShipments') || 'No shipments created for this order yet.'}
+                </div>
+              ) : (
+                <div className={documentListShellClassName()}>
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('orders.detail.trackingCarrier') || 'Tracking / Carrier'}</TableHead>
-                        <TableHead>{t('orders.detail.status') || 'Status'}</TableHead>
-                        <TableHead className="w-16"></TableHead>
+                      <TableRow className="hover:bg-transparent">
+                        <DocumentListHead className="w-[48%]">{t('orders.detail.trackingCarrier') || 'Tracking / Carrier'}</DocumentListHead>
+                        <DocumentListHead className="w-[32%]">{t('orders.detail.status') || 'Status'}</DocumentListHead>
+                        <DocumentListHead className="w-[20%]" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(!order.shipments || order.shipments.length === 0) ? (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                            <Send className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                            {t('orders.detail.noShipments') || 'No shipments created for this order yet.'}
-                          </TableCell>
-                        </TableRow>
-                      ) : order.shipments.map((shipment: any) => (
-                        <TableRow key={shipment.id}>
-                          <TableCell>
-                            {shipment.tracking_number ? (
-                              <div>
-                                <div className="font-mono">{shipment.tracking_number}</div>
-                                <div className="text-xs text-muted-foreground">{shipment.carrier || 'Unknown'}</div>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">{t('orders.detail.notAssigned') || 'Not assigned'}</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{t(`orders.status.${shipment.status}`) || shipment.status.toUpperCase()}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <button 
-                              onClick={() => navigateToShipment({ shipmentId: shipment.id, router })} 
-                              className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground cursor-pointer"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {order.shipments.map((shipment: any) => {
+                        const hasTracking = Boolean(shipment.tracking_number)
+                        const cancelled = shipment.status === "cancelled" || shipment.status === "failed"
+                        const accent =
+                          cancelled
+                            ? "cancelled"
+                            : shipment.status === "pending" || shipment.status === "preparing" || ((shipment.status === "shipped" || shipment.status === "in_transit") && !hasTracking)
+                              ? "due"
+                              : "none"
+                        const statusLabel =
+                          t(`orders.status.${shipment.status}`) ||
+                          t(`shipments.status.${shipment.status}`) ||
+                          String(shipment.status).replace(/_/g, " ")
+
+                        return (
+                          <DocumentListRow
+                            key={shipment.id}
+                            onClick={() => navigateToShipment({ shipmentId: shipment.id, router })}
+                            accent={accent}
+                          >
+                            <TableCell className="py-3.5">
+                              <EntityCell
+                                name={shipment.carrier || (t('orders.detail.notAssigned') || "Not assigned")}
+                                secondary={hasTracking ? shipment.tracking_number : null}
+                              />
+                            </TableCell>
+                            <TableCell className="py-3.5">
+                              <StatusDot status={shipment.status} label={statusLabel} />
+                            </TableCell>
+                            <TableCell className="py-3.5 text-right" onClick={(event) => event.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => navigateToShipment({ shipmentId: shipment.id, router })}
+                                className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground cursor-pointer opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                <span className="sr-only">{t("common.open") || "Open"}</span>
+                              </button>
+                            </TableCell>
+                          </DocumentListRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
+                </div>
+              )}
             </div>
           </TabsContent>
         </div>

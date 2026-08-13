@@ -1,6 +1,13 @@
 "use client"
 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -39,17 +46,17 @@ export function PromotionRestrictionsCard({
   const { t } = useLocalization()
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
+    <SectionCard>
+      <SectionCardHeader>
+        <SectionCardTitle>
           {t("promotions.detail.restrictions.title") || "Restrictions"}
-        </CardTitle>
-        <CardDescription>
+        </SectionCardTitle>
+        <SectionCardDescription>
           {t("promotions.detail.restrictions.description") ||
             "Turn on only the limits you need. Off means no restriction."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+        </SectionCardDescription>
+      </SectionCardHeader>
+      <SectionCardContent>
         <PromotionRestrictionsFields
           siteId={siteId}
           siteTimezone={siteTimezone}
@@ -67,14 +74,14 @@ export function PromotionRestrictionsCard({
           requiredCategories={requiredCategories}
           onRequiredCategoriesChange={onRequiredCategoriesChange}
         />
-      </CardContent>
+      </SectionCardContent>
       <ActionFooter>
-        <Button type="button" variant="outline" onClick={onSave} disabled={saving}>
+        <Button variant="outline" type="button" onClick={onSave} disabled={saving} size="sm">
           {saving
             ? t("promotions.detail.saving") || "Saving..."
             : t("promotions.detail.restrictions.save") || "Save Restrictions"}
         </Button>
       </ActionFooter>
-    </Card>
+    </SectionCard>
   )
 }

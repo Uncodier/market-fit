@@ -8,6 +8,7 @@ import { RobotsBadge } from "./RobotsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { requestNavigationHistoryReset } from "@/app/hooks/use-navigation-history"
+import { NAV_ITEM_ICON } from "@/app/config/module-visuals"
 
 interface RobotsNavItemsProps {
   isCollapsed: boolean
@@ -22,6 +23,15 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
 
   const isRobotsRoute = pathname === "/robots" || pathname.startsWith("/robots/")
 
+  const overviewHref = useMemo(() => {
+    const p = new URLSearchParams()
+    if (new URLSearchParams(searchQueryString).get("artifact") === "true") {
+      p.set("artifact", "true")
+    }
+    p.set("tab", "overview")
+    return `/dashboard?${p.toString()}`
+  }, [searchQueryString])
+
   const agentHref = useMemo(() => {
     const p = new URLSearchParams(searchQueryString)
     p.delete("mode")
@@ -35,11 +45,22 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
     return `/robots?${p.toString()}`
   }, [searchQueryString])
 
+  const overviewActive = pathname.startsWith("/dashboard") && searchParams.get("tab") === "overview"
   const agentActive = isRobotsRoute && robotsViewMode === "agent"
   const imprentaActive = isRobotsRoute && robotsViewMode === "imprenta"
 
   return (
     <>
+      <MenuItem
+        href={overviewHref}
+        icon={NAV_ITEM_ICON.reportOverview}
+        title={t("layout.sidebar.summary") || "Overview"}
+        isActive={overviewActive}
+        isCollapsed={isCollapsed}
+        onClick={() => {
+          requestNavigationHistoryReset()
+        }}
+      />
       <MenuItem
         href={agentHref}
         icon={Bot}

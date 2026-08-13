@@ -17,12 +17,12 @@ export function CompanySection({ active, onSave }: CompanySectionProps) {
   if (!active) return null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <CompanyProfileCard onSave={onSave} />
-      <GoalsSection active={true} onSave={onSave} />
-      <SWOTSection active={true} onSave={onSave} />
       <LocationsCard onSave={onSave} />
       <BusinessHoursCard onSave={onSave} />
+      <GoalsSection active={true} onSave={onSave} />
+      <SWOTSection active={true} onSave={onSave} />
     </div>
   )
 } 

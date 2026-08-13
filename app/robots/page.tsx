@@ -977,7 +977,7 @@ function RobotsPageContent() {
       let matchingKey: string | null = null
       Object.values(NAVIGATION_AREAS).forEach((area) => {
         area.items.forEach((item) => {
-          if (item.key !== "contentCreator" && isNavItemActive(item, pathname, artifactSearchParams)) {
+          if (item.key !== "contentCreator" && item.key !== "reportOverview" && isNavItemActive(item, pathname, artifactSearchParams)) {
             matchingKey = item.key
           }
         })

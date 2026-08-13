@@ -5,7 +5,9 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import { 
   Dialog, 
-  DialogContent, 
+  DialogBody,
+  DialogContent,
+  DialogForm,
   DialogHeader, 
   DialogTitle, 
   DialogFooter
@@ -105,12 +107,12 @@ export function CreateInventoryStockDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
+      <DialogContent size="md" busy={saving}>
+        <DialogForm onSubmit={(e) => { e.preventDefault(); void handleSave() }}>
         <DialogHeader>
           <DialogTitle>{t("inventory.addStock") || "Add Inventory Stock"}</DialogTitle>
         </DialogHeader>
-        
-        <div className="space-y-4 py-4">
+        <DialogBody className="grid gap-4">
           <div className="space-y-2">
             <Label>{t("inventory.item") || "Catalog Item"}</Label>
             <RelationSelect 
@@ -149,16 +151,16 @@ export function CreateInventoryStockDialog() {
               onChange={e => setQuantity(e.target.value)} 
             />
           </div>
-        </div>
-
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
             {t("common.cancel") || "Cancel"}
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button type="submit" disabled={saving}>
             {saving ? (t("common.saving") || "Saving...") : (t("common.save") || "Save")}
           </Button>
         </DialogFooter>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

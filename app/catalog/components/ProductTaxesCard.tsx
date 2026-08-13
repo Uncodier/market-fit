@@ -11,7 +11,14 @@ import {
   findOrCreateTax,
 } from "../tax-actions"
 import { Tax, CatalogItemTax } from "@/app/types"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -134,11 +141,11 @@ export function ProductTaxesCard({ catalogItemId }: ProductTaxesCardProps) {
   const linkedTaxMap = new Map(linked.map((l) => [l.tax_id, l]))
 
   return (
-    <Card id="product-taxes" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-6 md:px-8 py-6 flex flex-row items-center justify-between">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+    <SectionCard id="product-taxes">
+      <SectionCardHeader className="flex flex-row items-center justify-between">
+        <SectionCardTitle className="flex items-center gap-2">
           <Tag className="h-5 w-5" /> {t("catalog.taxes.title") || "Taxes"}
-        </CardTitle>
+        </SectionCardTitle>
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
@@ -185,9 +192,9 @@ export function ProductTaxesCard({ catalogItemId }: ProductTaxesCardProps) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </CardHeader>
+      </SectionCardHeader>
 
-      <CardContent className="px-6 md:px-8 pb-8">
+      <SectionCardContent>
         {loading ? (
           <div className="space-y-4">
             <div className="h-10 bg-muted/50 rounded animate-pulse" />
@@ -237,7 +244,7 @@ export function ProductTaxesCard({ catalogItemId }: ProductTaxesCardProps) {
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </SectionCardContent>
+    </SectionCard>
   )
 }

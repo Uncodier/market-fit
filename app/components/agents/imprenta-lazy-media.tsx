@@ -267,6 +267,7 @@ export function ImprentaLazyCardImage({
   onOpen,
   alt = "Generated media",
   aspectRatio = "1/1",
+  bleed = false,
 }: {
   url: string
   className?: string
@@ -274,6 +275,8 @@ export function ImprentaLazyCardImage({
   alt?: string
   /** CSS aspect-ratio so the card footprint stays stable as the bitmap loads. */
   aspectRatio?: string
+  /** Edge-to-edge inside a rounded card; skip the inner media radius. */
+  bleed?: boolean
 }) {
   const [loaded, setLoaded] = useState(false)
   const [useOriginal, setUseOriginal] = useState(false)
@@ -296,7 +299,7 @@ export function ImprentaLazyCardImage({
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-xl bg-black/10"
+      className={`relative w-full overflow-hidden bg-black/10 ${bleed ? "rounded-none" : "rounded-xl"}`}
       style={{ aspectRatio }}
     >
       <div

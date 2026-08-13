@@ -5,7 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { Button } from "../ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { siteFormSchema, type SiteFormValues, getFocusModeConfig } from "./form-schema"
 import { GeneralSection } from "./GeneralSection"
 import { CompanySection } from "./CompanySection"
@@ -280,11 +287,11 @@ export function ContextForm({
           )}
 
           {renderCard("general",
-            <Card className="border border-destructive/30 shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="px-8 py-6">
-                <CardTitle className="text-xl font-semibold text-destructive">Danger Zone</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8 px-8 pb-8">
+            <SectionCard className="border-destructive/30">
+              <SectionCardHeader>
+                <SectionCardTitle className="text-destructive">Danger Zone</SectionCardTitle>
+              </SectionCardHeader>
+              <SectionCardContent className="space-y-4">
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
                     Once you delete a site, there is no going back. Please be certain.
@@ -300,8 +307,8 @@ export function ContextForm({
                     Delete Site
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </SectionCardContent>
+            </SectionCard>
           )}
         </div>
       </form>

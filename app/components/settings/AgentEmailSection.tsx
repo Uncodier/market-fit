@@ -3,7 +3,14 @@
 import { useState, useEffect, useMemo } from "react"
 import { useFormContext } from "react-hook-form"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table"
 import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
@@ -32,6 +39,7 @@ import {
 } from "../ui/alert-dialog"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -64,6 +72,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving agent email settings:", error)
     } finally {
@@ -531,17 +540,17 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
   if (!active) return null
 
   return (
-    <Card id="agent-email-channel" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <CardHeader className="px-8 py-6">
-        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+    <SectionCard id="agent-email-channel">
+      <SectionCardHeader>
+        <SectionCardTitle className="flex items-center gap-2">
           <Mail className="h-5 w-5" />
           Agent Email Channel
-        </CardTitle>
+        </SectionCardTitle>
         <p className="text-sm text-muted-foreground mt-1">
           Request an agent email address for automated customer communication
         </p>
-      </CardHeader>
-      <CardContent className="px-8 pb-4 space-y-6">
+      </SectionCardHeader>
+      <SectionCardContent className="pb-4 space-y-4">
         {isNotConfigured && (
           <div className="space-y-4">
             <div>
@@ -563,7 +572,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                   <SelectItem value="custom">Custom Domain</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Choose between our managed domain or use your own custom domain
               </p>
             </div>
@@ -576,7 +585,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                   value={customDomain || ""}
                   onChange={(e) => form.setValue("channels.agent_email.customDomain", e.target.value)}
                 />
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Enter your custom domain (without @ or www)
                 </p>
               </div>
@@ -589,7 +598,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                 value={username || ""}
                 onChange={(e) => form.setValue("channels.agent_email.username", e.target.value)}
               />
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 The username part of the email address (e.g., support@domain.com)
               </p>
             </div>
@@ -601,7 +610,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                 value={displayName || ""}
                 onChange={(e) => form.setValue("channels.agent_email.displayName", e.target.value)}
               />
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 The display name shown to recipients
               </p>
             </div>
@@ -687,7 +696,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
             })()}
           </div>
         )}
-      </CardContent>
+      </SectionCardContent>
 
       {isNotConfigured && (
         <ActionFooter>
@@ -744,7 +753,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
       )}
 
       {isActive && (
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
+        <SectionCardFooter>
           <Button
             type="button"
             variant="outline"
@@ -755,7 +764,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
             <Trash2 className="h-4 w-4 mr-2" />
             Delete Inbox
           </Button>
-        </CardFooter>
+        </SectionCardFooter>
       )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -799,14 +808,18 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
       </AlertDialog>
 
       <Dialog open={showDnsModal} onOpenChange={setShowDnsModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent size="lg">
+          <div
+            data-slot="dialog-form"
+            className="flex min-h-0 max-h-[inherit] flex-1 flex-col overflow-hidden"
+          >
           <DialogHeader>
             <DialogTitle>DNS Records Configuration</DialogTitle>
             <DialogDescription>
               Configure these DNS records in your domain provider. Click on any cell to copy its value.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-6">
+          <DialogBody className="grid gap-6">
             {hasDnsRecords && (() => {
               const handleCopy = async (text: string, label: string) => {
                 try {
@@ -896,7 +909,7 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
                 </>
               )
             })()}
-          </div>
+          </DialogBody>
           <DialogFooter>
             <Button
               type="button"
@@ -945,9 +958,10 @@ export function AgentEmailSection({ active, siteId, onSave }: AgentEmailSectionP
               Close
             </Button>
           </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
-    </Card>
+    </SectionCard>
   )
 }
 

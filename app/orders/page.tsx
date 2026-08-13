@@ -7,36 +7,27 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { listOrders, updateOrderStatus } from "./actions"
 import { OrderParams } from "./types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Badge } from "@/app/components/ui/badge"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Pagination } from "@/app/components/ui/pagination"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { ExternalLink, LayoutGrid, Clock, CheckCircle2, Ban, ListOrdered, PlayCircle, Search } from "@/app/components/ui/icons"
-import Link from "next/link"
-import { format, subDays } from "date-fns"
+import { LayoutGrid, Clock, CheckCircle2, Ban, PlayCircle, Search } from "@/app/components/ui/icons"
+import { subDays, startOfDay, endOfDay } from "date-fns"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { OrdersKanban } from "./components/OrdersKanban"
+import { OrdersTable, OrdersTableSkeleton } from "./components/OrdersTable"
 import { useOrdersRealtime } from "./hooks/useOrdersRealtime"
+import { usePrinterRealtime } from "@/lib/printer/hooks/use-printer-realtime"
+import { usePrinterSettings } from "@/lib/printer/hooks/use-printer"
+import { ticketBrandFromSite } from "@/lib/printer"
 import { listLocations } from "@/app/inventory/actions"
 import { toast } from "sonner"
 import { navigateToOrder } from "@/app/hooks/use-navigation-history"
 import { Button } from "@/app/components/ui/button"
+import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
-  in_progress: "bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200",
-  completed: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
-  cancelled: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
-}
 
 export default function OrdersPage() {
   const { currentSite } = useSite()
@@ -50,10 +41,10 @@ export default function OrdersPage() {
   const [locationFilter, setLocationFilter] = useState('all')
   const [viewType, setViewType] = useMobileView("kanban")
   
-  const [dateRange, setDateRange] = useState({
-    startDate: subDays(new Date(), 30),
-    endDate: new Date()
-  })
+  const [dateRange, setDateRange] = useState(() => ({
+    startDate: startOfDay(subDays(new Date(), 30)),
+    endDate: endOfDay(new Date()),
+  }))
 
   const handleDateRangeChange = (startDate: Date, endDate: Date) => {
     setDateRange({ startDate, endDate })
@@ -91,6 +82,8 @@ export default function OrdersPage() {
   useOrdersRealtime(currentSite?.id, () => {
     mutate()
   })
+  const printerSettings = usePrinterSettings()
+  usePrinterRealtime(currentSite?.id, printerSettings, ticketBrandFromSite(currentSite))
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     if (!currentSite?.id) return;
@@ -206,6 +199,7 @@ export default function OrdersPage() {
               </div>
 
               <div className="ml-auto flex items-center gap-3">
+                <PrinterSyncBadge module="orders" />
                 <div className="md:hidden">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -243,144 +237,30 @@ export default function OrdersPage() {
         </StickyHeader>
 
         <div className="p-8 space-y-4 bg-muted/30 flex-1">
-          <div className="flex flex-col gap-6">
-            <div className={viewType === "kanban" ? "" : "bg-card rounded-xl shadow-sm border border-border overflow-hidden"}>
+          <div className={viewType === "kanban" ? "overflow-x-auto pb-4 -mx-8" : ""}>
+            <div className={viewType === "kanban" ? "min-w-fit px-8" : ""}>
               {!currentSite || isLoading ? (
-                <div className="p-6 space-y-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
-                </div>
+                <OrdersTableSkeleton />
               ) : error ? (
                 <div className="p-6 text-center text-red-500">
                   Failed to load orders. {error.message}
                 </div>
               ) : viewType === "kanban" ? (
-                <OrdersKanban 
-                  orders={data?.data || []} 
+                <OrdersKanban
+                  orders={data?.data || []}
                   onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
                   onUpdateOrderStatus={handleUpdateOrderStatus}
                 />
               ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('orders.table.order') || 'Order'}</TableHead>
-                        <TableHead>{t('orders.table.customer') || 'Customer'}</TableHead>
-                        <TableHead>{t('orders.table.total') || 'Total'}</TableHead>
-                        <TableHead>{t('orders.table.status') || 'Status'}</TableHead>
-                        <TableHead>{t('orders.table.created') || 'Created'}</TableHead>
-                        <TableHead className="w-16"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data?.data && data.data.length > 0 ? (
-                        data.data.map((order) => {
-                          // Access lead if populated (note: our server action fetches it via sales, but it's joined differently)
-                          // If lead isn't directly available, we can safely fallback to unknown
-                          const leadName = (order.leads as any)?.name || 'Unknown Customer';
-                          const leadEmail = (order.leads as any)?.email;
-                          
-                          const hasNewItems = order.sale_order_items?.some((item: any) => item.status === 'new') || false;
-                          
-                          return (
-                            <TableRow key={order.id} className={cn(hasNewItems && "bg-amber-50/20 dark:bg-amber-500/5")}>
-                              <TableCell>
-                                <div className="font-medium text-foreground">
-                                  {order.order_number}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                  {order.sales?.source && (
-                                    <span>
-                                      {order.sales.source === 'online' || order.sales.source === 'shop' || order.sales.source === 'marketplace'
-                                        ? t('orders.kanban.sourceOnline')
-                                        : t('orders.kanban.sourcePos')}
-                                    </span>
-                                  )}
-                                  {order.fulfillment_method && order.fulfillment_method !== 'none' && (
-                                    <>
-                                      {order.sales?.source && <span className="opacity-40">·</span>}
-                                      <span>
-                                        {t(`orders.kanban.fulfillment.${order.fulfillment_method}`) || order.fulfillment_method}
-                                      </span>
-                                    </>
-                                  )}
-                                  {order.sales?.status && (
-                                    <>
-                                      <span className="opacity-40">·</span>
-                                      <span className={cn(
-                                        "font-medium",
-                                        (order.sales.status === 'completed' || order.sales.amount_due === 0)
-                                          ? "text-emerald-700 dark:text-emerald-400"
-                                          : "text-amber-700 dark:text-amber-400"
-                                      )}>
-                                        {(order.sales.status === 'completed' || order.sales.amount_due === 0)
-                                          ? t('orders.kanban.paid')
-                                          : t('orders.kanban.unpaid')}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="font-medium">{leadName}</div>
-                                {leadEmail && <div className="text-xs text-muted-foreground">{leadEmail}</div>}
-                              </TableCell>
-                              <TableCell>
-                                <div className="font-medium">
-                                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(order.total)}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={STATUS_STYLES[order.status] || ''}>
-                                  {t(`orders.status.${order.status}`) || order.status.replace('_', ' ').toUpperCase()}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm text-foreground">
-                                  {format(new Date(order.created_at), 'MMM d, yyyy')}
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  {format(new Date(order.created_at), 'h:mm a')}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <button 
-                                  onClick={() => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
-                                  className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center">
-                            <EmptyCard
-                              icon={<ListOrdered size={24} className="text-muted-foreground" />}
-                              title={t('orders.empty.title') || "No orders found"}
-                              description={t('orders.empty.description') || (searchQuery ? "No orders match your search criteria." : "Orders will appear here once a checkout is completed.")}
-                              className="border-0 shadow-none bg-transparent"
-                            />
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                  
-                  {(data?.count ?? 0) > pageSize && (
-                    <div className="p-4 border-t flex justify-center bg-muted/30">
-                      <Pagination 
-                        currentPage={page}
-                        totalPages={Math.ceil(data.count / pageSize)}
-                        onPageChange={setPage}
-                      />
-                    </div>
-                  )}
-                </>
+                <OrdersTable
+                  orders={data?.data || []}
+                  page={page}
+                  pageSize={pageSize}
+                  totalCount={data?.count ?? 0}
+                  searchQuery={searchQuery}
+                  onPageChange={setPage}
+                  onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
+                />
               )}
             </div>
           </div>

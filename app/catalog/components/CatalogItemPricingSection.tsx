@@ -6,7 +6,14 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { COMMON_CURRENCIES } from "@/app/lib/currencies"
 import { DynamicPricingCard } from "./DynamicPricingCard"
@@ -32,16 +39,16 @@ export function CatalogItemPricingSection({
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('catalog.pricing.title') || 'Pricing'}</CardTitle>
-          <CardDescription>
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>{t('catalog.pricing.title') || 'Pricing'}</SectionCardTitle>
+          <SectionCardDescription>
             {isDynamic
               ? (t('catalog.pricing.descDynamic') || "Sale price is determined by dynamic quote configuration below")
               : (t('catalog.pricing.descFixed') || "Default pricing (can be overridden by Price Lists)")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             {!isDynamic && (
               <div className="space-y-2">
@@ -78,11 +85,11 @@ export function CatalogItemPricingSection({
               </Select>
             </div>
           </div>
-        </CardContent>
+        </SectionCardContent>
         <ActionFooter>
-          <Button variant="outline" onClick={handleSave} disabled={saving}>{saving ? (t('common.saving') || "Saving...") : (t('common.savePricing') || "Save Pricing")}</Button>
+          <Button variant="outline" onClick={handleSave} disabled={saving} size="sm">{saving ? (t('common.saving') || "Saving...") : (t('common.savePricing') || "Save Pricing")}</Button>
         </ActionFooter>
-      </Card>
+      </SectionCard>
 
       <DynamicPricingCard
         item={item}

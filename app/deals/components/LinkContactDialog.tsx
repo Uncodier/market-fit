@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog"
+import { Label } from "@/app/components/ui/label"
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { addDealContact, getDealById } from "@/app/deals/actions"
@@ -122,17 +131,16 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
       }
       onOpenChange(open)
     }}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent size="md" busy={isLinking}>
         <DialogHeader>
           <DialogTitle>Add Contact</DialogTitle>
           <DialogDescription>
             Select a contact to link to this deal and specify their role.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="py-4 space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Contact</label>
+        <DialogBody className="grid gap-4">
+          <div className="grid gap-2">
+            <Label>Contact</Label>
             <RelationSelect
               options={leads.map((l) => ({ id: l.id, label: l.name + (l.email ? ` (${l.email})` : "") }))}
               value={leadValue}
@@ -141,37 +149,34 @@ export function LinkContactDialog({ deal, isOpen, onOpenChange, onLinked }: Link
               emptyMessage="No contacts found"
             />
           </div>
-
-          <div className="space-y-2 mt-4">
-            <label className="text-sm font-medium text-foreground">Role in Deal (Optional)</label>
-            <Input 
+          <div className="grid gap-2">
+            <Label>Role in deal (optional)</Label>
+            <Input
               className="h-12 text-base"
               placeholder="e.g. Decision Maker, Technical Evaluator..."
               value={role}
               onChange={(e) => setRole(e.target.value)}
             />
           </div>
-
-          <div className="flex items-center space-x-2 pt-4">
-            <input 
-              type="checkbox" 
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
               id="isPrimary"
               checked={isPrimary}
               onChange={(e) => setIsPrimary(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
-            <label htmlFor="isPrimary" className="text-sm font-medium cursor-pointer">
-              Primary Contact for this deal
-            </label>
+            <Label htmlFor="isPrimary" className="cursor-pointer font-medium">
+              Primary contact for this deal
+            </Label>
           </div>
-        </div>
-
-        <DialogFooter className="mt-6">
+        </DialogBody>
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLinking}>
             Cancel
           </Button>
           <Button onClick={handleLink} disabled={isLinking || !leadValue}>
-            {isLinking ? "Adding..." : "Add Contact"}
+            {isLinking ? "Adding..." : "Add contact"}
           </Button>
         </DialogFooter>
       </DialogContent>

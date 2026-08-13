@@ -2,7 +2,14 @@
 
 import { useState, RefObject } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -164,14 +171,14 @@ export default function SegmentDetailsTab({ segment, onSave, formRef }: SegmentD
   return (
     <div className="mx-auto max-w-2xl">
       <form ref={formRef} id="save-segment-form" onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-            <CardDescription>
+        <SectionCard>
+          <SectionCardHeader>
+            <SectionCardTitle>Basic Information</SectionCardTitle>
+            <SectionCardDescription>
               Update the basic details of your segment
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </SectionCardDescription>
+          </SectionCardHeader>
+          <SectionCardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>Status</Label>
@@ -246,27 +253,26 @@ export default function SegmentDetailsTab({ segment, onSave, formRef }: SegmentD
                 This URL is used for automatic segment attribution. New visitors accessing this URL will be automatically assigned to this segment. You can also manually assign visitors to this segment regardless of the URL.
               </p>
             </div>
-          </CardContent>
+          </SectionCardContent>
           <ActionFooter>
-            <Button
+            <Button variant="outline" size="sm"
               type="button"
-              variant="outline"
               onClick={() => handleSaveSection('basic')}
               disabled={savingSection === 'basic'}
             >
               {savingSection === 'basic' ? "Saving..." : "Save Basic Information"}
             </Button>
           </ActionFooter>
-        </Card>
+        </SectionCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Audience Details</CardTitle>
-            <CardDescription>
+        <SectionCard>
+          <SectionCardHeader>
+            <SectionCardTitle>Audience Details</SectionCardTitle>
+            <SectionCardDescription>
               Define the characteristics of your target audience
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </SectionCardDescription>
+          </SectionCardHeader>
+          <SectionCardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="audience">Audience Type</Label>
               <Select 
@@ -327,27 +333,26 @@ export default function SegmentDetailsTab({ segment, onSave, formRef }: SegmentD
                 Enter the estimated number of people in this segment. This helps with targeting and budget planning.
               </p>
             </div>
-          </CardContent>
+          </SectionCardContent>
           <ActionFooter>
-            <Button
+            <Button variant="outline" size="sm"
               type="button"
-              variant="outline"
               onClick={() => handleSaveSection('audience')}
               disabled={savingSection === 'audience'}
             >
               {savingSection === 'audience' ? "Saving..." : "Save Audience Details"}
             </Button>
           </ActionFooter>
-        </Card>
+        </SectionCard>
 
-        <Card className="border-red-100 dark:border-red-900">
-          <CardHeader>
-            <CardTitle className="text-red-500 dark:text-red-400">Danger Zone</CardTitle>
-            <CardDescription>
+        <SectionCard className="border-red-100 dark:border-red-900">
+          <SectionCardHeader>
+            <SectionCardTitle className="text-red-500 dark:text-red-400">Danger Zone</SectionCardTitle>
+            <SectionCardDescription>
               Actions in this section can't be undone
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </SectionCardDescription>
+          </SectionCardHeader>
+          <SectionCardContent>
             <div className="border border-red-200 dark:border-red-800 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -398,8 +403,8 @@ export default function SegmentDetailsTab({ segment, onSave, formRef }: SegmentD
                 </Dialog>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </SectionCardContent>
+        </SectionCard>
       </form>
     </div>
   )

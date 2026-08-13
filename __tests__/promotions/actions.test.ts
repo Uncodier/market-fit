@@ -226,7 +226,7 @@ describe("applyPromotionToOrder", () => {
       qb.maybeSingle = jest.fn().mockReturnValue(qb);
       qb.in = jest.fn().mockReturnValue(qb);
       qb.neq = jest.fn().mockReturnValue(qb);
-      qb.not = jest.fn().mockReturnValue(qb);
+      qb.not = jest.fn().mockResolvedValue({ count: 1, error: null });
       qb.update = jest.fn().mockReturnValue(qb);
 
       if (tableName === "promotions") {

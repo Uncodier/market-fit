@@ -232,6 +232,34 @@ export interface SiteSettings {
       instructions?: string
     }
   } | null
+  printers?: {
+    devices?: Array<{
+      id: string
+      name: string
+      transport: "usb" | "bluetooth" | "system"
+      paperWidthMm: 58 | 80
+      copies: number
+      enabled?: boolean
+      modules: { pos: boolean; orders: boolean; inventory: boolean }
+      autoPrint: {
+        posReceipt: boolean
+        kitchenTicket: boolean
+        orderDelta: boolean
+        inventoryLabel: boolean
+      }
+      station?: {
+        workstationId: string
+        workstationName: string
+        hardwareName?: string
+        bluetoothDeviceId?: string
+        usbVendorId?: number
+        usbProductId?: number
+        usbKind?: "serial" | "webusb"
+        usbSerialNumber?: string
+        boundAt?: string
+      }
+    }>
+  } | null
   branding?: {
     brand_essence?: string
     brand_personality?: string
@@ -1213,6 +1241,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   payment_methods: ['card', 'cash_on_pickup'],
                   default_delivery_options: ['pickup', 'ship', 'dine_in']
                 }),
+                printers: parseJsonField(settingsData.printers, { devices: [] }),
                 currency: settingsData.currency || "USD",
                 default_locale: (["en", "es", "fr", "de", "ja"] as const).includes(
                   (settingsData as { default_locale?: string }).default_locale as
@@ -1654,6 +1683,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       if (settings.shop !== undefined) {
         formattedSettings.shop = typeof settings.shop === 'object' ? settings.shop : null;
+      }
+
+      if (settings.printers !== undefined) {
+        formattedSettings.printers = typeof settings.printers === 'object' ? settings.printers : { devices: [] };
       }
       
       // Handle channels field

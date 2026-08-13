@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogForm, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
 import { Textarea } from "@/app/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { updateSale } from "@/app/sales/actions";
@@ -120,115 +120,92 @@ export function RegisterPaymentDialog({ sale, open, onOpenChange, onSuccess }: R
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden">
-        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-120px)] pr-4 -mr-4">
+      <DialogContent size="md" busy={loading}>
+        <DialogForm onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Register Payment</DialogTitle>
             <DialogDescription>
               Register a payment for this sale. The amount due will be reduced accordingly.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            {/* Payment Details */}
-            <div className="bg-muted/50 dark:bg-muted/10 p-4 rounded-md mb-2">
+          <DialogBody className="grid gap-4">
+            <div className="bg-muted/50 dark:bg-muted/10 p-4 rounded-md">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground">Invoice</div>
+                  <div className="text-sm text-muted-foreground">Invoice</div>
                   <div className="font-medium">{sale?.title || "N/A"}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground">Date</div>
+                  <div className="text-sm text-muted-foreground">Date</div>
                   <div className="font-medium">{sale ? `${format(new Date(), "MMM d")} ${format(new Date(), "yyyy")}` : "N/A"}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground">Total Amount</div>
+                  <div className="text-sm text-muted-foreground">Total amount</div>
                   <div className="font-medium">{sale ? formatCurrency(sale.amount) : "$0.00"}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground">Amount Due</div>
+                  <div className="text-sm text-muted-foreground">Amount due</div>
                   <div className="font-medium text-primary">{sale ? formatCurrency(sale.amount_due) : "$0.00"}</div>
                 </div>
               </div>
             </div>
-            
-            {/* Payment Amount */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="paymentAmount" className="text-right">
-                Payment Amount
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="paymentAmount"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max={sale?.amount_due || 0}
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  required
-                  className="h-12"
-                />
-              </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="paymentAmount">Payment amount</Label>
+              <Input
+                id="paymentAmount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={sale?.amount_due || 0}
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                required
+                className="h-12"
+              />
             </div>
-            
-            {/* Payment Method */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="paymentMethod" className="text-right">
-                Payment Method
-              </Label>
-              <div className="col-span-3">
-                <Select
-                  value={paymentMethod}
-                  onValueChange={setPaymentMethod}
-                >
-                  <SelectTrigger id="paymentMethod" className="h-12">
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHODS.map((method) => (
-                      <SelectItem key={method.value} value={method.value}>
-                        {method.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="paymentMethod">Payment method</Label>
+              <Select
+                value={paymentMethod}
+                onValueChange={setPaymentMethod}
+              >
+                <SelectTrigger id="paymentMethod" className="h-12">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((method) => (
+                    <SelectItem key={method.value} value={method.value}>
+                      {method.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
-            {/* Notes */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="notes" className="text-right">
-                Notes
-              </Label>
-              <div className="col-span-3">
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any payment notes..."
-                  className="h-24 min-h-[100px]"
-                />
-              </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add any payment notes..."
+                className="min-h-[100px]"
+              />
             </div>
-          </div>
-          
-          <DialogFooter className="mt-2">
+          </DialogBody>
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                  <span>Processing</span>
-                </div>
-              ) : "Register Payment"}
+              {loading ? "Processing..." : "Register payment"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   );

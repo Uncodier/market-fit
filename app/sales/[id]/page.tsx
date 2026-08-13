@@ -503,7 +503,7 @@ export default function SaleDetailPage(props: { params: Promise<{ id: string }> 
         {loading ? (
           <SaleInvoiceSkeleton />
         ) : sale ? (
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-[800px] mx-auto">
             <div className="relative">
               <SaleInvoice
                 sale={sale}

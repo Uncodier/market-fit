@@ -29,8 +29,7 @@ import { cn } from "@/lib/utils"
 import { useSite } from "@/app/context/SiteContext"
 import { Switch } from "@/app/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { getSegments, updateSegmentStatus, updateSegmentUrl, getSegmentById } from "../actions"
-import { createClient } from "@/lib/supabase/client"
+import { getSegmentById, updateSegmentStatus, updateSegmentUrl } from "../actions"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Input } from "@/app/components/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/app/components/ui/tooltip"
@@ -40,11 +39,6 @@ import { useTheme } from '@/app/context/ThemeContext'
 import dynamic from 'next/dynamic'
 import { LoadingState } from "./components/LoadingState"
 import { ErrorState } from "./components/ErrorState"
-import { AIActionModal, AIActionIcon } from "@/app/components/ui/ai-action-modal"
-import { notFound } from "next/navigation"
-import { buildSegmentsICPWithAI } from "@/app/services/ai-service"
-import { toast } from "sonner"
-import { safeReload } from "@/app/utils/safe-reload"
 import { SegmentStatusWidget } from "./components/SegmentStatusWidget"
 import { NewAdPlatformType } from "./components/analysisComponents"
 
@@ -524,20 +518,6 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
   // Form reference for submitting the form
   const formRef = React.useRef<HTMLFormElement>(null)
   
-  // Estados para controlar las solicitudes en proceso
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [isGeneratingTopics, setIsGeneratingTopics] = useState(false)
-  
-  // AI Action Modal states
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
-  const [aiModalConfig, setAIModalConfig] = useState({
-    title: "",
-    description: "",
-    actionLabel: "",
-    action: async (): Promise<any> => {},
-    estimatedTime: 30 // Valor predeterminado
-  })
-  
   // Estado para el dropdown de análisis
   const [analysisType, setAnalysisType] = useState("overview")
   // Estado para el dropdown de ICP
@@ -606,63 +586,32 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
   // Actualizar el título en el breadcrumb cuando se cargue la página
   useEffect(() => {
     if (segment) {
-      // Actualizar el título de la página para el breadcrumb
       document.title = `${segment.name} | Segments`
       
-      // Emitir un evento personalizado para actualizar el breadcrumb con más detalles
       const event = new CustomEvent('breadcrumb:update', {
         detail: {
           title: segment.name,
           path: `/segments/${segment.id}`,
           section: 'segments',
-          // Add segment data and callback functions for the TopBar buttons
-          segmentData: {
-            id: segment.id,
-            activeTab,
-            isAnalyzing,
-            isGeneratingTopics,
-            openAIModal
-          }
         }
       })
       
-      // Asegurarse de que el evento se dispare después de que el DOM esté actualizado
       setTimeout(() => {
         window.dispatchEvent(event)
-        console.log('Breadcrumb update event dispatched:', segment.name)
       }, 0)
     }
     
-    // Limpiar al desmontar
     return () => {
       document.title = 'Segments | Market Fit'
-      // Reset breadcrumb state
       window.dispatchEvent(new CustomEvent('breadcrumb:update', {
         detail: {
           title: 'Segments',
           path: '/segments',
           section: 'segments',
-          segmentData: null
         }
       }))
     }
-  }, [segment, activeTab, isAnalyzing, isGeneratingTopics])
-
-  // Listen for tab changes to update the breadcrumb
-  useEffect(() => {
-    if (segment) {
-      // Emit a custom event to update the breadcrumb with the new active tab
-      const event = new CustomEvent('segment:tabchange', {
-        detail: {
-          activeTab,
-          isAnalyzing,
-          isGeneratingTopics
-        }
-      })
-      
-      window.dispatchEvent(event)
-    }
-  }, [activeTab, isAnalyzing, isGeneratingTopics, segment])
+  }, [segment])
 
   const toggleSegmentStatus = async () => {
     if (!segment) {
@@ -719,205 +668,6 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
       console.error("Error saving segment URL:", err)
     }
   }
-
-  // AI action handlers
-  const handleAnalyzeSegmentWithAI = async (): Promise<any> => {
-    // Evitar múltiples solicitudes simultáneas
-    if (isAnalyzing) {
-      toast.error("Analysis is already in progress. Please wait.");
-      return {
-        success: false,
-        error: "Analysis is already in progress"
-      };
-    }
-
-    if (!segment || !currentSite) {
-      toast.error("No segment or site selected");
-      return {
-        success: false,
-        error: "No segment or site selected"
-      };
-    }
-
-    // Verificar que el sitio tiene una URL
-    if (!currentSite.url) {
-      toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
-      return {
-        success: false,
-        error: "Site URL is missing"
-      };
-    }
-
-    try {
-      // Marcar como en proceso
-      setIsAnalyzing(true);
-
-      // Get the current user ID from Supabase
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("You must be logged in to use this feature");
-        setIsAnalyzing(false);
-        return {
-          success: false,
-          error: "Authentication required"
-        };
-      }
-
-      console.log("Analyzing segment with params:", {
-        user_id: user.id,
-        site_id: currentSite.id,
-        segment_id: segment.id,
-        mode: "analyze",
-        url: currentSite.url,
-        segmentCount: 3
-      });
-
-      // Call the AI service to analyze the segment ICP
-      const result = await buildSegmentsICPWithAI({
-        user_id: user.id,
-        site_id: currentSite.id,
-        segment_id: segment.id,
-        mode: "analyze",
-        url: currentSite.url,
-        segmentCount: 3
-      });
-
-      if (result.success) {
-        toast.success("Segment analyzed successfully!");
-        // Reload the page to show the updated segment data
-        safeReload(false, 'Segment analysis completed');
-        return result;
-      } else {
-        // En lugar de lanzar un error, devolvemos el resultado completo
-        return result;
-      }
-    } catch (error) {
-      console.error("Error analyzing segment with AI:", error);
-      // Devolvemos un objeto con formato similar al de la respuesta del servicio
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred"
-      };
-    } finally {
-      // Siempre marcar como no en proceso al finalizar
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleGetTopics = async (): Promise<any> => {
-    // Evitar múltiples solicitudes simultáneas
-    if (isGeneratingTopics) {
-      toast.error("Topics generation is already in progress. Please wait.");
-      return {
-        success: false,
-        error: "Topics generation is already in progress"
-      };
-    }
-
-    if (!segment || !currentSite) {
-      toast.error("No segment or site selected");
-      return {
-        success: false,
-        error: "No segment or site selected"
-      };
-    }
-
-    // Verificar que el sitio tiene una URL
-    if (!currentSite.url) {
-      toast.error("The selected site doesn't have a URL. Please add a URL to your site in the settings.");
-      return {
-        success: false,
-        error: "Site URL is missing"
-      };
-    }
-
-    try {
-      // Marcar como en proceso
-      setIsGeneratingTopics(true);
-
-      // Get the current user ID from Supabase
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("You must be logged in to use this feature");
-        setIsGeneratingTopics(false);
-        return {
-          success: false,
-          error: "Authentication required"
-        };
-      }
-
-      console.log("Generating topics with params:", {
-        user_id: user.id,
-        site_id: currentSite.id,
-        segment_id: segment.id,
-        mode: "analyze",
-        analysisType: "topics",
-        url: currentSite.url,
-        segmentCount: 3
-      });
-
-      // Call the AI service to get topics
-      const result = await buildSegmentsICPWithAI({
-        user_id: user.id,
-        site_id: currentSite.id,
-        segment_id: segment.id,
-        mode: "analyze",
-        analysisType: "topics",
-        url: currentSite.url,
-        segmentCount: 3
-      });
-
-      if (result.success) {
-        toast.success("Topics generated successfully!");
-        // Reload the page to show the updated topics data
-        safeReload(false, 'Topics generation completed');
-        return result;
-      } else {
-        // En lugar de lanzar un error, devolvemos el resultado completo
-        return result;
-      }
-    } catch (error) {
-      console.error("Error generating topics with AI:", error);
-      // Devolvemos un objeto con formato similar al de la respuesta del servicio
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred"
-      };
-    } finally {
-      // Siempre marcar como no en proceso al finalizar
-      setIsGeneratingTopics(false);
-    }
-  };
-
-  // Open AI modal with specific configuration
-  const openAIModal = (type: 'analysis' | 'icp') => {
-    // Verificar si ya hay una operación en curso
-    if (isAnalyzing || isGeneratingTopics) {
-      toast.error("Another operation is already in progress. Please wait.");
-      return;
-    }
-    
-    // Configuración unificada para análisis con AI
-    const config = {
-      title: "Analyze Segment with AI",
-      description: "Our AI will analyze this segment to identify key characteristics, behaviors, preferences, and create a detailed Ideal Customer Profile. This helps you better understand your target market and tailor your marketing strategies.",
-      actionLabel: "Start Analysis",
-      action: handleAnalyzeSegmentWithAI,
-      estimatedTime: 60 // 1 minute
-    };
-
-    // Establecer la configuración
-    setAIModalConfig(config);
-    
-    // Abrir el modal después de configurarlo
-    setTimeout(() => {
-      setIsAIModalOpen(true);
-    }, 0);
-  };
 
   const handleSegmentUpdate = (prev: Segment | null, updates: Partial<Segment>): Segment | null => {
     if (!prev) return null;
@@ -1061,20 +811,6 @@ function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> 
         urlInput={urlInput}
         setUrlInput={setUrlInput}
         onSave={handleSaveUrl}
-      />
-      
-      {/* AI Action Modal */}
-      <AIActionModal
-        isOpen={isAIModalOpen}
-        setIsOpen={setIsAIModalOpen}
-        title={aiModalConfig.title}
-        description={aiModalConfig.description}
-        actionLabel={aiModalConfig.actionLabel}
-        onAction={aiModalConfig.action}
-        creditsAvailable={10} // This would come from user's account data
-        creditsRequired={1}
-        estimatedTime={aiModalConfig.estimatedTime}
-        refreshOnComplete={true} // Refresh the page when the action completes
       />
     </div>
   )

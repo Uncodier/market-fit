@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogForm, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
 import { Textarea } from "@/app/components/ui/textarea";
 import { createSaleOrder } from "@/app/sales/actions";
 import { Plus, Trash2 } from "@/app/components/ui/icons";
@@ -179,30 +179,24 @@ export function CreateSaleOrderDialog({ sale, open, onOpenChange, onSuccess }: C
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden">
-        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-120px)] pr-4 -mr-4">
+      <DialogContent size="lg" busy={loading}>
+        <DialogForm onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create Order</DialogTitle>
             <DialogDescription>
               Add a new order for this sale. Fill in the order details below.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            {/* Order Number */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="orderNumber" className="text-right">
-                Order Number
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="orderNumber"
-                  value={orderNumber}
-                  onChange={(e) => setOrderNumber(e.target.value)}
-                  required
-                  className="h-12"
-                />
-              </div>
+          <DialogBody className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="orderNumber">Order number</Label>
+              <Input
+                id="orderNumber"
+                value={orderNumber}
+                onChange={(e) => setOrderNumber(e.target.value)}
+                required
+                className="h-12"
+              />
             </div>
             
             {/* Item List */}
@@ -365,32 +359,26 @@ export function CreateSaleOrderDialog({ sale, open, onOpenChange, onSuccess }: C
             </div>
             
             {/* Notes */}
-            <div className="grid gap-2 mt-2">
-              <Label htmlFor="notes">Order Notes</Label>
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Order notes</Label>
               <Textarea
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add any notes or special instructions for this order..."
-                className="h-20 min-h-[100px]"
+                className="min-h-[100px]"
               />
             </div>
-          </div>
-          
-          <DialogFooter className="mt-2">
+          </DialogBody>
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-pulse bg-muted rounded" />
-                  <span>Creating</span>
-                </div>
-              ) : "Create Order"}
+              {loading ? "Creating..." : "Create order"}
             </Button>
           </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   );

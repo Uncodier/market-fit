@@ -1,6 +1,13 @@
 "use client"
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
 import {
@@ -42,13 +49,13 @@ export function PromotionRulesCard({
   const { t } = useLocalization()
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
+    <SectionCard>
+      <SectionCardHeader>
+        <SectionCardTitle>
           {t("promotions.detail.rules.title") || "Discount Scope"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+        </SectionCardTitle>
+      </SectionCardHeader>
+      <SectionCardContent className="space-y-4">
         <div className="space-y-2">
           <Label>
             {t("promotions.detail.rules.appliesTo") || "Applies To"}
@@ -124,14 +131,14 @@ export function PromotionRulesCard({
             />
           </div>
         </div>
-      </CardContent>
+      </SectionCardContent>
       <ActionFooter>
-        <Button type="button" variant="outline" onClick={onSave} disabled={saving}>
+        <Button variant="outline" type="button" onClick={onSave} disabled={saving} size="sm">
           {saving
             ? t("promotions.detail.saving") || "Saving..."
             : t("promotions.detail.rules.save") || "Save Rules"}
         </Button>
       </ActionFooter>
-    </Card>
+    </SectionCard>
   )
 }

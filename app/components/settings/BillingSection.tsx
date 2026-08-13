@@ -4,7 +4,14 @@ import { useFormContext } from "react-hook-form"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Switch } from "../ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
@@ -31,12 +38,12 @@ export function BillingSection() {
   }
 
   return (
-    <div className="space-y-8">
-      <Card id="credits" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Credits</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8 px-8 pb-8">
+    <div className="space-y-4">
+      <SectionCard id="credits">
+        <SectionCardHeader>
+          <SectionCardTitle>Credits</SectionCardTitle>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="text-3xl font-bold">25 <span className="text-sm font-medium text-muted-foreground">credits available</span></div>
@@ -78,23 +85,22 @@ export function BillingSection() {
               <div className="text-sm text-muted-foreground">One-time purchase</div>
             </div>
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('credits')}
-            disabled={savingCard === 'credits'}
+            disabled={savingCard === 'credits' || !form.formState.isDirty}
           >
             {savingCard === 'credits' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
       
-      <Card id="subscription-plan" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Subscription Plan</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8 px-8 pb-8">
+      <SectionCard id="subscription-plan">
+        <SectionCardHeader>
+          <SectionCardTitle>Subscription Plan</SectionCardTitle>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <FormField
             control={form.control}
             name="billing.plan"
@@ -153,23 +159,22 @@ export function BillingSection() {
               </FormItem>
             )}
           />
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('subscription-plan')}
-            disabled={savingCard === 'subscription-plan'}
+            disabled={savingCard === 'subscription-plan' || !form.formState.isDirty}
           >
             {savingCard === 'subscription-plan' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
       
-      <Card id="payment-method" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Payment Method</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8 px-8 pb-8">
+      <SectionCard id="payment-method">
+        <SectionCardHeader>
+          <SectionCardTitle>Payment Method</SectionCardTitle>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <FormField
             control={form.control}
             name="billing.card_name"
@@ -255,23 +260,22 @@ export function BillingSection() {
               )}
             />
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('payment-method')}
-            disabled={savingCard === 'payment-method'}
+            disabled={savingCard === 'payment-method' || !form.formState.isDirty}
           >
             {savingCard === 'payment-method' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
       
-      <Card id="billing-address" className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <CardHeader className="px-8 py-6">
-          <CardTitle className="text-xl font-semibold">Billing Address</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8 px-8 pb-8">
+      <SectionCard id="billing-address">
+        <SectionCardHeader>
+          <SectionCardTitle>Billing Address</SectionCardTitle>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <FormField
             control={form.control}
             name="billing.billing_address"
@@ -357,17 +361,16 @@ export function BillingSection() {
               )}
             />
           </div>
-        </CardContent>
-        <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-          <Button 
-            variant="outline"
+        </SectionCardContent>
+        <SectionCardFooter>
+          <Button variant="outline" size="sm"
             onClick={() => handleSave('billing-address')}
-            disabled={savingCard === 'billing-address'}
+            disabled={savingCard === 'billing-address' || !form.formState.isDirty}
           >
             {savingCard === 'billing-address' ? "Saving..." : "Save"}
           </Button>
-        </CardFooter>
-      </Card>
+        </SectionCardFooter>
+      </SectionCard>
     </div>
   )
 } 

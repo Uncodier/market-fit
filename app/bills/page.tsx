@@ -9,33 +9,14 @@ import { listPurchases, deletePurchase } from "@/app/purchases/actions"
 import { listLocations } from "@/app/inventory/actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
-import { Badge } from "@/app/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { FileText, LayoutGrid, MoreHorizontal, Pencil, Trash2 } from "@/app/components/ui/icons"
-import { format } from "date-fns"
-import { Button } from "@/app/components/ui/button"
+import { FileText, LayoutGrid } from "@/app/components/ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu"
 import { toast } from "sonner"
-import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { CreatePurchaseDialog } from "./components/CreatePurchaseDialog"
+import { BillsTable, BillsTableSkeleton } from "./components/BillsTable"
 import { Purchase } from "@/app/types"
-
-const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-muted text-muted-foreground border-border",
-  pending: "bg-yellow-50 text-yellow-700 border-yellow-200",
-  completed: "bg-green-50 text-green-700 border-green-200",
-  cancelled: "bg-red-50 text-red-700 border-red-200",
-}
 
 export default function BillsPage() {
   const { currentSite } = useSite()
@@ -161,11 +142,7 @@ export default function BillsPage() {
 
       <div className="px-6 py-4 space-y-4">
         {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
+          <BillsTableSkeleton />
         ) : error ? (
           <div className="text-destructive text-sm">{(error as Error).message}</div>
         ) : rows.length === 0 ? (
@@ -175,78 +152,15 @@ export default function BillsPage() {
             description={t("bills.empty.description") || "Create a vendor bill to track payables and receive inventory."}
           />
         ) : (
-          <>
-            <div className="rounded-md border bg-card">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("bills.field.title") || "Title"}</TableHead>
-                    <TableHead>{t("bills.field.vendor") || "Vendor"}</TableHead>
-                    <TableHead>{t("bills.field.date") || "Date"}</TableHead>
-                    <TableHead>{t("bills.field.status") || "Status"}</TableHead>
-                    <TableHead className="text-right">{t("bills.field.total") || "Total"}</TableHead>
-                    <TableHead className="text-right">{t("bills.field.amountDue") || "Due"}</TableHead>
-                    <TableHead className="w-12" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((purchase) => (
-                    <TableRow
-                      key={purchase.id}
-                      className="cursor-pointer"
-                      onClick={() => router.push(`/bills/${purchase.id}`)}
-                    >
-                      <TableCell className="font-medium">{purchase.title}</TableCell>
-                      <TableCell>{purchase.vendorName || "—"}</TableCell>
-                      <TableCell>
-                        {purchase.purchaseDate
-                          ? format(new Date(purchase.purchaseDate), "MMM d, yyyy")
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={STATUS_STYLES[purchase.status]}>
-                          {t(`bills.status.${purchase.status}`) || purchase.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(purchase.amount)} {purchase.currency}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(purchase.amountDue)} {purchase.currency}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => router.push(`/bills/${purchase.id}`)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              {t("common.open") || "Open"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDelete(purchase.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              {t("common.delete") || "Delete"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <Pagination
-              currentPage={page}
-              totalPages={Math.ceil((data?.count ?? 0) / pageSize)}
-              onPageChange={setPage}
-            />
-          </>
+          <BillsTable
+            rows={rows}
+            page={page}
+            pageSize={pageSize}
+            totalCount={data?.count ?? 0}
+            onPageChange={setPage}
+            onOpen={(id) => router.push(`/bills/${id}`)}
+            onDelete={handleDelete}
+          />
         )}
       </div>
 

@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog"
+import { Label } from "@/app/components/ui/label"
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { addDealOwner, getDealById } from "@/app/deals/actions"
 import { Deal } from "@/app/deals/types"
@@ -90,17 +99,16 @@ export function LinkTeamMemberDialog({ deal, isOpen, onOpenChange, onLinked }: L
     <Dialog open={isOpen} onOpenChange={(open) => {
       onOpenChange(open)
     }}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent size="md" busy={isLinking}>
         <DialogHeader>
           <DialogTitle>Assign Team Member</DialogTitle>
           <DialogDescription>
             Select a team member to assign to this deal.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="py-4 space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Team Member</label>
+        <DialogBody className="grid gap-4">
+          <div className="grid gap-2">
+            <Label>Team member</Label>
             <RelationSelect
               options={members.map((m) => ({ id: m.user_id!, label: m.name || m.email || "Unknown" }))}
               value={userValue}
@@ -110,10 +118,11 @@ export function LinkTeamMemberDialog({ deal, isOpen, onOpenChange, onLinked }: L
               emptyMessage="No team members found"
             />
           </div>
-        </div>
-
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLinking}>
+            Cancel
+          </Button>
           <Button onClick={handleLink} disabled={isLinking || !userValue}>
             {isLinking ? "Assigning..." : "Assign"}
           </Button>

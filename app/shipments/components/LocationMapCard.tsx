@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardContent,
+} from "@/app/components/ui/section-card"
 import { MapPin } from "@/app/components/ui/icons"
 import { listShipmentLocationPings } from "@/app/shipments/actions"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -34,9 +39,9 @@ export function LocationMapCard({ shipmentId, lastLat, lastLng, lastLocatedAt }:
   const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lastLng - 0.01},${lastLat - 0.01},${lastLng + 0.01},${lastLat + 0.01}&layer=mapnik&marker=${lastLat},${lastLng}`
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+    <SectionCard>
+      <SectionCardHeader>
+        <SectionCardTitle className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-muted-foreground" />
             {t('shipments.liveLocation') || 'Live Location'}
@@ -46,9 +51,9 @@ export function LocationMapCard({ shipmentId, lastLat, lastLng, lastLocatedAt }:
               Updated {formatDistanceToNow(new Date(lastLocatedAt), { addSuffix: true })}
             </span>
           )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+        </SectionCardTitle>
+      </SectionCardHeader>
+      <SectionCardContent>
         <div className="w-full h-[240px] bg-muted/50 rounded-lg overflow-hidden border">
           <iframe
             width="100%"
@@ -65,7 +70,7 @@ export function LocationMapCard({ shipmentId, lastLat, lastLng, lastLocatedAt }:
             {pings.length} location updates recorded.
           </div>
         )}
-      </CardContent>
-    </Card>
+      </SectionCardContent>
+    </SectionCard>
   )
 }

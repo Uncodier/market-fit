@@ -3,7 +3,14 @@
 import { useState, useEffect } from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Copy, ChevronDown, ChevronRight, Trash2, Play, PlusCircle } from "@/app/components/ui/icons"
@@ -45,17 +52,17 @@ import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
 function IntegrationsSkeleton() {
   return (
     <div className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>
             <Skeleton className="h-6 w-1/4" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </SectionCardTitle>
+        </SectionCardHeader>
+        <SectionCardContent className="space-y-4">
           <Skeleton className="h-10 w-1/2" />
           <Skeleton className="h-10 w-1/3" />
-        </CardContent>
-      </Card>
+        </SectionCardContent>
+      </SectionCard>
     </div>
   )
 }
@@ -419,15 +426,14 @@ export default function IntegrationsPage() {
                 {endpoints.map((ep, index) => {
                   const isExpanded = selectedEndpointId === ep.id
                   return (
-                    <Card key={ep.id} id={`webhook-endpoint-${index}`} className="border border-border">
+                    <SectionCard key={ep.id} id={`webhook-endpoint-${index}`} className="border border-border">
                       {/* Collapsible Header */}
-                      <CardHeader 
-                        className="px-8 py-6 cursor-pointer hover:bg-muted/50 transition-colors"
+                      <SectionCardHeader className="cursor-pointer hover:bg-muted/50 transition-colors"
                         onClick={() => setSelectedEndpointId((prev) => (prev === ep.id ? null : ep.id))}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg font-semibold truncate">{ep.name}</CardTitle>
+                            <SectionCardTitle className="text-lg font-semibold truncate">{ep.name}</SectionCardTitle>
                             <p className="text-sm text-muted-foreground truncate mt-1">{ep.target_url}</p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -438,12 +444,12 @@ export default function IntegrationsPage() {
                             )}
                           </div>
                         </div>
-                      </CardHeader>
+                      </SectionCardHeader>
 
                       {/* Collapsible Content */}
                       {isExpanded && (
                         <>
-                          <CardContent className="space-y-6 px-8 pt-8 pb-8 border-t">
+                          <SectionCardContent className="space-y-4 border-t">
                             <div className="space-y-2">
                               <Label>Subscribed Events</Label>
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -466,7 +472,7 @@ export default function IntegrationsPage() {
                                 <span className="font-mono bg-muted px-2 py-1 rounded">{ep.id}</span>
                               </div>
                             </div>
-                          </CardContent>
+                          </SectionCardContent>
 
                           {/* Card Footer with individual buttons */}
                           <ActionFooter>
@@ -514,16 +520,16 @@ export default function IntegrationsPage() {
                           </ActionFooter>
                         </>
                       )}
-                    </Card>
+                    </SectionCard>
                   )
                 })}
               </div>
 
-              <Card id="workflow-webhooks">
-                <CardHeader>
-                  <CardTitle>Workflow Webhooks</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <SectionCard id="workflow-webhooks">
+                <SectionCardHeader>
+                  <SectionCardTitle>Workflow Webhooks</SectionCardTitle>
+                </SectionCardHeader>
+                <SectionCardContent className="space-y-4">
                   <div className="space-y-2">
                     <div className="text-sm text-muted-foreground">
                       Use this endpoint to receive real-time workflow events (response received, completed, failed).
@@ -534,13 +540,13 @@ export default function IntegrationsPage() {
                       Secure this endpoint in production. Set `NEXT_PUBLIC_APP_URL` correctly.
                     </div>
                   </div>
-                </CardContent>
+                </SectionCardContent>
                 <ActionFooter>
                   <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
                     <Copy className="h-4 w-4 mr-2" /> Copy URL
                   </Button>
                 </ActionFooter>
-              </Card>
+              </SectionCard>
             </>
           )}
 

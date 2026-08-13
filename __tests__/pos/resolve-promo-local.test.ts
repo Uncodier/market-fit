@@ -1,5 +1,6 @@
 import {
   findMatchingConditionPromotionLocal,
+  promotionRequiresIdentifiableBuyer,
   resolvePromotionDiscountLocal,
 } from "@/app/pos/local/resolve-promo-local";
 import type { LocalPromotion } from "@/app/pos/local/types";
@@ -29,6 +30,19 @@ describe("resolvePromotionDiscountLocal", () => {
       locationId: "loc-1",
     });
     expect("data" in res && res.data.discount).toBe(10);
+  });
+
+  it("includes per-user usage limit on the match", () => {
+    const promo: LocalPromotion = {
+      ...basePromo,
+      usage_limit_per_user: 1,
+    };
+    const res = resolvePromotionDiscountLocal({
+      code: "TEN",
+      promotions: [promo],
+      lines: [{ catalogItemId: "a", subtotal: 100 }],
+    });
+    expect("data" in res && res.data.usageLimitPerUser).toBe(1);
   });
 
   it("rejects inactive codes", () => {
@@ -273,5 +287,21 @@ describe("findMatchingConditionPromotionLocal", () => {
     });
     expect(match?.promotionId).toBe("auto-2");
     expect(match?.discount).toBe(12);
+  });
+});
+
+describe("promotionRequiresIdentifiableBuyer", () => {
+  it("is true when limited to one use per user", () => {
+    expect(promotionRequiresIdentifiableBuyer(1)).toBe(true);
+  });
+
+  it("is true for any positive per-user limit", () => {
+    expect(promotionRequiresIdentifiableBuyer(2)).toBe(true);
+  });
+
+  it("is false when unlimited", () => {
+    expect(promotionRequiresIdentifiableBuyer(null)).toBe(false);
+    expect(promotionRequiresIdentifiableBuyer(undefined)).toBe(false);
+    expect(promotionRequiresIdentifiableBuyer(0)).toBe(false);
   });
 });

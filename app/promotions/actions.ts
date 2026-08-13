@@ -80,6 +80,7 @@ export async function upsertPromotion(promotion: Partial<Promotion> & Record<str
       category_ids: _categoryIds,
       required_items: _requiredItems,
       required_categories: _requiredCategories,
+      usage_count: _usageCount,
       ...rest
     } = promotion as Partial<Promotion> & {
       campaigns?: unknown

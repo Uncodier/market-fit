@@ -4,7 +4,14 @@ import { useFormContext } from "react-hook-form"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form"
 import { Input } from "../ui/input"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card"
+import {
+  SectionCard,
+  SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
+  SectionCardContent,
+  SectionCardFooter,
+} from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Badge } from "../ui/badge"
 import { PlusCircle, Trash2 } from "../ui/icons"
@@ -187,6 +194,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
     try {
       const formData = form.getValues()
       await onSave(formData)
+      form.reset(formData)
     } catch (error) {
       console.error("Error saving social media:", error)
     } finally {
@@ -338,7 +346,7 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Social Networks</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Connect your social media profiles to your site
           </p>
         </div>
@@ -360,17 +368,16 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
           const platformLabel = SOCIAL_PLATFORMS.find(p => p.value === social.platform)?.label || social.platform || "New Network";
           
           return (
-            <Card 
+            <SectionCard 
               key={`social-row-${index}`} 
               id={`social-network-${index}`}
-              className="border dark:border-white/5 border-black/5 shadow-sm hover:shadow-md transition-shadow duration-200"
             >
-              <CardHeader className="px-8 py-6">
+              <SectionCardHeader>
                  <div className="flex items-center justify-between">
-                   <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                   <SectionCardTitle className="flex items-center gap-2">
                      {getPlatformIcon(social.platform, 20)}
                      {platformLabel}
-                   </CardTitle>
+                   </SectionCardTitle>
                    
                    <Button
                     size="icon"
@@ -383,9 +390,9 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                      <Trash2 className="h-5 w-5" />
                    </Button>
                  </div>
-              </CardHeader>
+              </SectionCardHeader>
               
-              <CardContent className="space-y-6 px-8 pb-8">
+              <SectionCardContent className="space-y-4">
                   {/* Platform selector - only show when no platform selected (new entry) */}
                   {!hasPlatform && (
                     <FormField
@@ -599,13 +606,12 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                        )}
                     </div>
                   )}
-              </CardContent>
+              </SectionCardContent>
               {!(isActive && hasPlatform) && (
-                <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end">
-                  <Button 
-                    variant="outline"
+                <SectionCardFooter>
+                  <Button variant="outline" size="sm"
                     onClick={() => handleSave(index)}
-                    disabled={savingCard === index}
+                    disabled={savingCard === index || !form.formState.isDirty}
                   >
                     {savingCard === index ? (
                       <>
@@ -616,9 +622,9 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
                       "Save"
                     )}
                   </Button>
-                </CardFooter>
+                </SectionCardFooter>
               )}
-            </Card>
+            </SectionCard>
           )
         })}
         

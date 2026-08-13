@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { 
   Dialog, 
+  DialogBody,
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
@@ -140,7 +141,7 @@ export function PaymentConfirmationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] overflow-hidden">
+      <DialogContent size="xl" busy={isLoading} className="sm:max-w-[900px] max-h-[90vh]">
         <DialogHeader className="relative pb-6 border-b">
           <div className="flex justify-between items-center w-full pr-6">
             <div className="flex flex-col gap-1">
@@ -152,7 +153,8 @@ export function PaymentConfirmationDialog({
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-4">
+        <DialogBody>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Column 1: Payment Input */}
           <div className="flex flex-col gap-6">
             {remainingAmount > 0 ? (
@@ -393,6 +395,7 @@ export function PaymentConfirmationDialog({
             </div>
           </div>
         </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
