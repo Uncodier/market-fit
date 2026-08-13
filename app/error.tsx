@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './components/ui/card'
-import { isChunkLoadError, reloadForNewBuild } from './components/ChunkErrorGuard'
+import { isStaleClientBundleError, reloadForNewBuild } from './components/ChunkErrorGuard'
 
 export default function Error({
   error,
@@ -16,7 +16,7 @@ export default function Error({
   // reload so the browser fetches the latest HTML and chunk hashes. This is the
   // recovery path for users who had the tab open before a deploy.
   useEffect(() => {
-    if (isChunkLoadError(error)) {
+    if (isStaleClientBundleError(error)) {
       reloadForNewBuild()
       return
     }

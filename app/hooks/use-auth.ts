@@ -378,16 +378,11 @@ export function useAuth() {
       clearDemoMode()
       
       // Limpiar cookies del navegador relacionadas con Supabase
-      const cookiesToClear = [
-        'sb-access-token',
-        'sb-refresh-token',
-        'supabase-auth-token',
-        'sb-provider-token',
-        'sb-auth-token'
-      ]
-      
-      cookiesToClear.forEach(name => {
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/;`
+      document.cookie.split(';').forEach((entry) => {
+        const name = entry.trim().split('=')[0]
+        if (name.startsWith('sb-')) {
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/;`
+        }
       })
       
       

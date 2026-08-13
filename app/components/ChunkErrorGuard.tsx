@@ -30,15 +30,26 @@ const CHUNK_ERROR_SIGNATURES = [
   "Importing a module script failed",
 ]
 
+// After a deploy, mixed old/new chunks can instantiate two React context objects.
+// The provider is mounted, but useSite/useRobots read a different copy and throw.
+const STALE_CLIENT_BUNDLE_SIGNATURES = [
+  "useSite must be used within a SiteProvider",
+  "useRobots must be used within a RobotsProvider",
+  "useAuthContext must be used within an AuthProvider",
+]
+
+function errorMessage(value: unknown): string {
+  if (!value) return ""
+  if (typeof value === "string") return value
+  return (value as { message?: string }).message ?? ""
+}
+
 function isChunkLoadError(value: unknown): boolean {
   if (!value) return false
 
   const error = value as { name?: string; message?: string } | Error
   const name = (error as { name?: string }).name ?? ""
-  const message =
-    typeof error === "string"
-      ? error
-      : (error as { message?: string }).message ?? ""
+  const message = errorMessage(value)
 
   // Turbopack HMR client chunks flake during local edits; reloading on those
   // creates GET loops without fixing anything.
@@ -52,6 +63,12 @@ function isChunkLoadError(value: unknown): boolean {
   if (name === "ChunkLoadError") return true
 
   return CHUNK_ERROR_SIGNATURES.some((sig) => message.includes(sig))
+}
+
+function isStaleClientBundleError(value: unknown): boolean {
+  if (isChunkLoadError(value)) return true
+  const message = errorMessage(value)
+  return STALE_CLIENT_BUNDLE_SIGNATURES.some((sig) => message.includes(sig))
 }
 
 function shouldReload(): boolean {
@@ -117,14 +134,14 @@ function reloadForNewBuild(): void {
 export default function ChunkErrorGuard() {
   useEffect(() => {
     const onError = (event: ErrorEvent) => {
-      if (isChunkLoadError(event.error) || isChunkLoadError(event.message)) {
+      if (isStaleClientBundleError(event.error) || isStaleClientBundleError(event.message)) {
         event.preventDefault?.()
         reloadForNewBuild()
       }
     }
 
     const onUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (isChunkLoadError(event.reason)) {
+      if (isStaleClientBundleError(event.reason)) {
         event.preventDefault?.()
         reloadForNewBuild()
       }
@@ -142,4 +159,4 @@ export default function ChunkErrorGuard() {
   return null
 }
 
-export { isChunkLoadError, reloadForNewBuild }
+export { isChunkLoadError, isStaleClientBundleError, reloadForNewBuild }

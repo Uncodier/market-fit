@@ -28,7 +28,7 @@ export function FocusModeStep({ form }: FocusModeStepProps) {
                   </div>
                   <FormControl>
                     <Slider
-                      value={[field.value]}
+                      value={[field.value ?? 50]}
                       onValueChange={([value]) => field.onChange(value)}
                       max={100}
                       step={1}

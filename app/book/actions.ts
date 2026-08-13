@@ -2,7 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/server";
 import { ProfileData } from "@/app/services/profile.service";
-import { RoundRobinCalendar } from "@/app/context/SiteContext";
+import type { RoundRobinCalendar } from "@/app/context/SiteContext";
 import {
   addMinutes,
   format,

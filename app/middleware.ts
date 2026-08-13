@@ -1,7 +1,7 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { resolvePostAuthRedirect } from '@/lib/auth/post-auth-redirect'
+import { copyResponseCookies, getMiddlewareUser } from '@/lib/supabase/middleware-client'
 
 // Lista específica y exacta de rutas públicas permitidas
 const ALLOWED_PUBLIC_PATHS = [
@@ -335,123 +335,61 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Signed-in users hitting the sign-in page go to returnTo or /robots
-  if (pathname === '/auth' || pathname === '/auth/') {
-    const pendingCookies: Array<{ name: string; value: string; options?: any }> = []
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            pendingCookies.push(...cookiesToSet)
-          },
-        },
-      }
-    )
-
-    // Prefer getUser (validates JWT) over getSession for server auth checks
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const destination = resolvePostAuthRedirect(
-        request.nextUrl.searchParams.get('returnTo')
-      )
-      const response = NextResponse.redirect(new URL(destination, request.url))
-      pendingCookies.forEach(({ name, value, options }) => {
-        response.cookies.set(name, value, options)
-      })
-      return response
-    }
-  }
-  
-  // Si es una ruta pública conocida, permitir
-  if (
+  const isAuthPath = pathname === '/auth' || pathname === '/auth/'
+  const isPublicPage =
+    pathname === '/' ||
     ALLOWED_PUBLIC_PATHS.some(path => pathname.startsWith(path)) ||
     isPublicDocumentSharePath(pathname)
-  ) {
-    const res = nextWithAlignedServerActionHost(request)
 
-    // Commerce / buyer surfaces must never run in demo mode.
-    // Clear the demo cookie on the response so the browser drops it before
-    // client JS bootstraps (avoids a demo supabase singleton + reload loops).
-    const isCommerceSurface =
-      pathname.startsWith('/shop') ||
-      pathname.startsWith('/marketplace') ||
-      pathname.startsWith('/buyer') ||
-      pathname.startsWith('/cart') ||
-      pathname.startsWith('/book') ||
-      isPublicDocumentSharePath(pathname)
+  const sessionResponse = nextWithAlignedServerActionHost(request)
+  getCorsHeaders(sessionResponse, request, isPublicBooking)
 
-    if (isCommerceSurface && request.cookies.has('market_fit_demo_site_id')) {
-      res.cookies.set('market_fit_demo_site_id', '', {
-        path: '/',
-        maxAge: 0,
-        expires: new Date(0),
-      })
-    }
+  if (isAuthPath || !isPublicPage) {
+    const { user } = await getMiddlewareUser(request, sessionResponse)
 
-    return getCorsHeaders(res, request, isPublicBooking);
-  }
-  
-  try {
-    // Crear el cliente de Supabase
-    const res = nextWithAlignedServerActionHost(request)
-    
-    // Add CORS headers
-    getCorsHeaders(res, request, isPublicBooking);
-    
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name) {
-            return request.cookies.get(name)?.value
-          },
-          set(name, value, options) {
-            res.cookies.set(name, value, options)
-          },
-          remove(name, options) {
-            res.cookies.set(name, '', { ...options, maxAge: 0 })
-          }
-        }
+    if (isAuthPath) {
+      if (user) {
+        const destination = resolvePostAuthRedirect(
+          request.nextUrl.searchParams.get('returnTo')
+        )
+        return copyResponseCookies(
+          sessionResponse,
+          NextResponse.redirect(new URL(destination, request.url))
+        )
       }
-    )
-
-    // Verificar la sesión
-    const { data: { session } } = await supabase.auth.getSession()
-
-    // Comprobar si estamos en modo demo
-    const isDemoMode = request.cookies.has('market_fit_demo_site_id')
-
-    if (!session && !isDemoMode) {
-      // API-like requests get 403 to avoid client-side errors
+    } else if (!user && !request.cookies.has('market_fit_demo_site_id')) {
       if (isApiLikeRequest(request)) {
         return forbiddenResponse(request)
       }
-      // Si no hay sesión en rutas de páginas, redirigir a login
       const url = request.nextUrl.clone()
       url.pathname = '/auth'
       url.search = `?returnTo=${encodeURIComponent(pathname)}`
-      return NextResponse.redirect(url)
+      return copyResponseCookies(sessionResponse, NextResponse.redirect(url))
     }
-
-    // Usuario autenticado o en modo demo: permitir acceso
-    return res
-  } catch (error) {
-    // Avoid console.error noise; respond appropriately
-    if (isApiLikeRequest(request)) {
-      return forbiddenResponse(request)
-    }
-    // En caso de error en rutas de páginas, redirigir a login
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth'
-    url.search = `?returnTo=${encodeURIComponent(pathname)}`
-    return NextResponse.redirect(url)
   }
+
+  // Recreate the forwarded request so RSC sees refreshed or cleared cookies.
+  const res = nextWithAlignedServerActionHost(request)
+  copyResponseCookies(sessionResponse, res)
+  getCorsHeaders(res, request, isPublicBooking)
+
+  const isCommerceSurface =
+    pathname.startsWith('/shop') ||
+    pathname.startsWith('/marketplace') ||
+    pathname.startsWith('/buyer') ||
+    pathname.startsWith('/cart') ||
+    pathname.startsWith('/book') ||
+    isPublicDocumentSharePath(pathname)
+
+  if (isCommerceSurface && request.cookies.has('market_fit_demo_site_id')) {
+    res.cookies.set('market_fit_demo_site_id', '', {
+      path: '/',
+      maxAge: 0,
+      expires: new Date(0),
+    })
+  }
+
+  return res
 }
 
 // Configuración que excluye explícitamente recursos estáticos y rutas de API

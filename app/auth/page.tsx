@@ -31,8 +31,14 @@ export default async function AuthPage({
   const returnToRaw = params?.returnTo
   const returnTo = Array.isArray(returnToRaw) ? returnToRaw[0] : returnToRaw
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const supabase = await createClient()
+    const result = await supabase.auth.getUser()
+    if (!result.error) user = result.data.user
+  } catch {
+    // Invalid/expired session — stay on the sign-in page.
+  }
 
   if (user) {
     redirect(resolvePostAuthRedirect(returnTo ?? null))

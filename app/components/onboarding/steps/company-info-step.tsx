@@ -45,7 +45,7 @@ export function CompanyInfoStep({ form }: CompanyInfoStepProps) {
             <FormItem>
               <FormLabel>Company Size</FormLabel>
               <Select
-                value={field.value}
+                value={field.value || undefined}
                 onValueChange={(value) => field.onChange(value)}
               >
                 <FormControl>
@@ -73,7 +73,7 @@ export function CompanyInfoStep({ form }: CompanyInfoStepProps) {
             <FormItem>
               <FormLabel>Industry</FormLabel>
               <Select
-                value={field.value}
+                value={field.value || undefined}
                 onValueChange={(value) => field.onChange(value)}
               >
                 <FormControl>

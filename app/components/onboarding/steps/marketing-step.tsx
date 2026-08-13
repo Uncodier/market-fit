@@ -4,6 +4,7 @@ import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../../
 import { Input } from "../../ui/input"
 import { Button } from "../../ui/button"
 import { Globe, PlusCircle, Trash2 } from "../../ui/icons"
+import { nonNegativeNumber } from "../utils/onboarding-submit"
 
 interface MarketingStepProps {
   form: any
@@ -32,7 +33,7 @@ export function MarketingStep({ form, addMarketingChannel, removeMarketingChanne
                   type="number"
                   placeholder="0"
                   {...field}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
+                  onChange={(e) => field.onChange(nonNegativeNumber(e.target.value))}
                 />
               </FormControl>
               <FormMessage />
@@ -50,7 +51,7 @@ export function MarketingStep({ form, addMarketingChannel, removeMarketingChanne
                   type="number"
                   placeholder="0"
                   {...field}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
+                  onChange={(e) => field.onChange(nonNegativeNumber(e.target.value))}
                 />
               </FormControl>
               <FormMessage />

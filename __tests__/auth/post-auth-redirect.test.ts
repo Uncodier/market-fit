@@ -23,7 +23,9 @@ describe('post-auth-redirect', () => {
     expect(isSafeInternalPath('//evil.com')).toBe(false)
     expect(isSafeInternalPath('/auth')).toBe(false)
     expect(isSafeInternalPath('/auth/callback')).toBe(false)
+    expect(isSafeInternalPath('/')).toBe(false)
     expect(resolvePostAuthRedirect('/auth')).toBe('/robots')
+    expect(resolvePostAuthRedirect('/')).toBe('/robots')
   })
 
   it('uses navigation history when returnTo is missing (client)', () => {

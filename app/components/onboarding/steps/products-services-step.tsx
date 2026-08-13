@@ -5,6 +5,7 @@ import { Input } from "../../ui/input"
 import { Textarea } from "../../ui/textarea"
 import { Button } from "../../ui/button"
 import { ChevronDown, ChevronRight, PlusCircle, Trash2 } from "../../ui/icons"
+import { nonNegativeNumber } from "../utils/onboarding-submit"
 
 interface ProductsServicesStepProps {
   form: any
@@ -119,7 +120,7 @@ export function ProductsServicesStep({
                                 type="number"
                                 placeholder="0"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(nonNegativeNumber(e.target.value))}
                               />
                             </FormControl>
                             <FormMessage />
@@ -138,7 +139,7 @@ export function ProductsServicesStep({
                                 type="number"
                                 placeholder="0"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(nonNegativeNumber(e.target.value))}
                               />
                             </FormControl>
                             <FormMessage />
@@ -157,7 +158,7 @@ export function ProductsServicesStep({
                                 type="number"
                                 placeholder="0"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(nonNegativeNumber(e.target.value))}
                               />
                             </FormControl>
                             <FormMessage />
@@ -264,7 +265,7 @@ export function ProductsServicesStep({
                                 type="number"
                                 placeholder="0"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(nonNegativeNumber(e.target.value))}
                               />
                             </FormControl>
                             <FormMessage />
@@ -283,7 +284,7 @@ export function ProductsServicesStep({
                                 type="number"
                                 placeholder="0"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(nonNegativeNumber(e.target.value))}
                               />
                             </FormControl>
                             <FormMessage />
@@ -302,7 +303,7 @@ export function ProductsServicesStep({
                                 type="number"
                                 placeholder="0"
                                 {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => field.onChange(nonNegativeNumber(e.target.value))}
                               />
                             </FormControl>
                             <FormMessage />

@@ -12,6 +12,9 @@ export function isSafeInternalPath(path: string | null | undefined): path is str
   if (!path.startsWith('/')) return false
   if (path.startsWith('//')) return false
   if (path.startsWith('/auth')) return false
+  // Landing page re-enters the sign-in client; never bounce there after auth.
+  const pathname = path.split('?')[0].split('#')[0]
+  if (pathname === '/') return false
   return true
 }
 

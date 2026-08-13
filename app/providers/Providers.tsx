@@ -3,7 +3,7 @@
 import React from 'react';
 import { ThemeProvider } from '../context/ThemeContext';
 import { LayoutProvider } from '../context/LayoutContext';
-import { SiteProvider } from '../context/SiteContext';
+import { SiteProvider } from '@/app/context/SiteContext';
 import { WidgetProvider } from '../context/WidgetContext';
 import { RobotsProvider } from '../context/RobotsContext';
 import { TooltipProvider } from '../components/ui/tooltip';

@@ -416,6 +416,11 @@ export function useSite() {
   return context
 }
 
+/** Returns undefined instead of throwing when SiteProvider is missing (stale chunks / duplicate context). */
+export function useOptionalSite() {
+  return useContext(SiteContext)
+}
+
 // Props del proveedor
 interface SiteProviderProps {
   children: ReactNode
@@ -649,12 +654,15 @@ export function SiteProvider({ children }: SiteProviderProps) {
     // ✅ MARK that we attempted to load sites (kept for diagnostics)
     setSitesLoadAttempted(true)
     
-    // ✅ VERIFY session first
+    let userId: string | null = null
+
+    // VERIFY session first (getUser validates the JWT; getSession can return stale cookies)
     try {
-      const { data: { session } } = await supabaseRef.current.auth.getSession()
-      setHasValidSession(!!session)
+      const { data: { user }, error } = await supabaseRef.current.auth.getUser()
+      const valid = !!user && !error
+      setHasValidSession(valid)
       
-      if (!session) {
+      if (!valid || !user) {
         setSites([])
         setIsLoading(false)
         if (!isInitialized) {
@@ -662,7 +670,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         }
         return
       }
-      
+      userId = user.id
     } catch (sessionError) {
       console.error("Error checking session:", sessionError)
       setHasValidSession(false)
@@ -679,25 +687,11 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setIsLoading(true)
       setError(null)
       
-      const { data: { session } } = await supabaseRef.current.auth.getSession()
-      
-      if (!session) {
-        setSites([])
-        setCurrentSite(null)
-        setIsLoading(false)
-        setSitesLoaded(true)
-        if (!isInitialized) {
-          setIsInitialized(true)
-        }
-        return
-      }
-      
-      
       // Fetch user's own sites
       const { data: ownedSitesData, error: ownedSitesError } = await supabaseRef.current
         .from('sites')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
       
       if (ownedSitesError) {
         console.error("Error fetching owned sites:", ownedSitesError)
@@ -708,7 +702,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       const { data: sharedSiteIds, error: sharedSitesError } = await supabaseRef.current
         .from('site_members')
         .select('site_id')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .eq('status', 'active')
         .neq('role', 'owner') // Exclude own sites where user is explicitly marked as owner
       
@@ -751,7 +745,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
               url: demo.url || null,
               logo_url: null,
               description: demo.description,
-              user_id: session.user.id, // Set current user as owner to pass basic checks
+              user_id: userId, // Set current user as owner to pass basic checks
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });
@@ -1024,7 +1018,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
         hasValidSession &&        // ✅ NEW CONDITION
         sites.length === 0 && 
         !pathname.startsWith('/create-site') && 
-        !pathname.startsWith('/auth/') &&
+        !pathname.startsWith('/auth') &&
+        pathname !== '/' &&
         !isCommerceSurface &&
         supabaseRef.current
       ) {
@@ -1040,7 +1035,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
         sites.length > 0 &&
         !currentSite?.id &&
         !pathname.startsWith('/projects') &&
-        !pathname.startsWith('/auth/') &&
+        !pathname.startsWith('/auth') &&
+        pathname !== '/' &&
         !pathname.startsWith('/create-site') &&
         !pathname.startsWith('/demo') &&
         !isCommerceSurface &&
@@ -1374,20 +1370,40 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       // Crear el nuevo sitio en la base de datos
       const now = new Date().toISOString();
-      const { data: createdSiteData, error: createError } = await supabaseRef.current
+      const MAX_INLINE_LOGO_CHARS = 100_000
+      const rawLogo = typeof newSite.logo_url === "string" ? newSite.logo_url : ""
+      const logoUrl =
+        !rawLogo
+          ? null
+          : rawLogo.startsWith("data:") && rawLogo.length > MAX_INLINE_LOGO_CHARS
+            ? null
+            : rawLogo
+
+      const siteInsert = {
+        name: newSite.name,
+        url: newSite.url || null,
+        description: newSite.description || null,
+        logo_url: logoUrl,
+        resource_urls: newSite.resource_urls || [],
+        user_id: session.user.id,
+        created_at: now,
+        updated_at: now
+      }
+
+      let { data: createdSiteData, error: createError } = await supabaseRef.current
         .from('sites')
-        .insert({
-          name: newSite.name,
-          url: newSite.url || null,
-          description: newSite.description || null,
-          logo_url: newSite.logo_url,
-          resource_urls: newSite.resource_urls,
-          tracking: newSite.tracking,
-          user_id: session.user.id,
-          created_at: now,
-          updated_at: now
-        })
+        .insert(siteInsert)
         .select()
+
+      if (createError && logoUrl) {
+        console.warn("CREATE SITE: insert failed with logo, retrying without it:", createError)
+        const retry = await supabaseRef.current
+          .from('sites')
+          .insert({ ...siteInsert, logo_url: null })
+          .select()
+        createdSiteData = retry.data
+        createError = retry.error
+      }
       
       if (createError) {
         throw createError;
@@ -1497,13 +1513,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
         if (prev.some(s => s.id === createdSite.id)) return prev;
         return [...prev, createdSite];
       });
-      
-      await loadSites(); // Recargar los sitios
-      
-      // Si es el primer sitio, lo establecemos como actual
-      if (sites.length === 0) {
-        await handleSetCurrentSite(createdSite);
+
+      if (!currentSite) {
+        void handleSetCurrentSite(createdSite).catch((err) => {
+          console.error("CREATE SITE: Error selecting new site:", err);
+        });
       }
+
+      void loadSites().catch((err) => {
+        console.error("CREATE SITE: Error refreshing sites:", err);
+      });
       
       return createdSite
     } catch (err) {

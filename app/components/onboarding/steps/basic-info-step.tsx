@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Input } from "../../ui/input"
 import { Textarea } from "../../ui/textarea"
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "../../ui/form"
+import { normalizeSiteUrl } from "../schemas/onboarding-schema"
 import { AppWindow, Globe, Tag, UploadCloud, Trash2 } from "../../ui/icons"
 
 interface BasicInfoStepProps {
@@ -30,25 +31,6 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
     multiple: false
   })
 
-  const handleUrlChange = (value: string) => {
-    // If the value is empty, don't add anything
-    if (!value) {
-      return value
-    }
-
-    // If the value already starts with http:// or https://, don't modify it
-    if (value.startsWith('http://') || value.startsWith('https://')) {
-      return value
-    }
-
-    // Add https:// prefix when user starts typing anything that doesn't already have a protocol
-    if (value.trim() && !value.startsWith('//')) {
-      return `https://${value}`
-    }
-
-    return value
-  }
-
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
@@ -65,6 +47,7 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
                     <Input 
                       className="pl-10" 
                       placeholder="My Amazing Project"
+                      autoComplete="organization"
                       {...field} 
                     />
                   </div>
@@ -86,14 +69,11 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
                     <Input 
                       className="pl-10" 
                       placeholder="https://mysite.com"
+                      autoComplete="url"
+                      inputMode="url"
                       {...field}
-                      onChange={(e) => {
-                        const processedValue = handleUrlChange(e.target.value)
-                        field.onChange(processedValue)
-                      }}
                       onBlur={(e) => {
-                        const processedValue = handleUrlChange(e.target.value)
-                        field.onChange(processedValue)
+                        field.onChange(normalizeSiteUrl(e.target.value))
                         field.onBlur()
                       }}
                     />

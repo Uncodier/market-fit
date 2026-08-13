@@ -1,10 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useDropzone } from "react-dropzone"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -14,21 +12,16 @@ import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { ActionFooter } from "../ui/card-footer"
 import { Input } from "../ui/input"
-import { Textarea } from "../ui/textarea"
-import { Slider } from "../ui/slider"
 import { Switch } from "../ui/switch"
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "../ui/form"
 import {
@@ -40,17 +33,12 @@ import {
 } from "../ui/select"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import {
-  AppWindow,
   Globe,
-  Tag,
-  UploadCloud,
   Trash2,
   ChevronRight,
   ChevronLeft,
   Check,
   PlusCircle,
-  Clock,
-  Home,
   ChevronDown,
   X
 } from "../ui/icons"
@@ -58,18 +46,18 @@ import {
 // Extracted modules
 import { siteOnboardingSchema, SiteOnboardingValues } from "./schemas/onboarding-schema"
 import { 
-  COMPANY_SIZES, 
-  INDUSTRIES, 
   TIMEZONES, 
   DAYS_OF_WEEK, 
   TIME_OPTIONS, 
   steps 
 } from "./constants/onboarding-constants"
-import { getFocusModeConfig } from "./utils/focus-mode-config"
 import {
   sanitizeOnboardingValues,
   getFirstErrorStep,
   getValidationErrorMessage,
+  getRequiredFieldErrors,
+  prepareOnboardingSubmit,
+  readAutofilledBasicFields,
 } from "./utils/onboarding-submit"
 import { SuccessStep } from "./steps/success-step"
 import { BasicInfoStep } from "./steps/basic-info-step"
@@ -79,8 +67,6 @@ import { MarketingStep } from "./steps/marketing-step"
 import { ProductsServicesStep } from "./steps/products-services-step"
 import { LocationsOnboardingStep } from "./LocationsOnboardingStep"
 
-// Context
-import { useSite } from "../../context/SiteContext"
 import { cn } from "@/lib/utils"
 
 interface SiteOnboardingProps {
@@ -90,6 +76,7 @@ interface SiteOnboardingProps {
   createdSiteId?: string
   onGoToDashboard?: () => Promise<void>
   onGoToSettings?: () => Promise<void>
+  hasExistingSites?: boolean
 }
 
 export function SiteOnboarding({ 
@@ -98,7 +85,8 @@ export function SiteOnboarding({
   isSuccess, 
   createdSiteId,
   onGoToDashboard,
-  onGoToSettings
+  onGoToSettings,
+  hasExistingSites = false,
 }: SiteOnboardingProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set())
@@ -106,7 +94,7 @@ export function SiteOnboarding({
   const [expandedBusinessHours, setExpandedBusinessHours] = useState<Set<number>>(new Set())
   const [stepErrors, setStepErrors] = useState<Set<number>>(new Set())
   const [hasValidated, setHasValidated] = useState(false)
-  const { sites, isLoading: sitesLoading } = useSite()
+  const formRef = useRef<HTMLFormElement>(null)
   const router = useRouter()
 
   // Move to step 8 when project is successfully created
@@ -161,84 +149,24 @@ export function SiteOnboarding({
     }
   })
 
-  const { getRootProps, getInputProps } = useDropzone({
-    onDrop: (acceptedFiles) => {
-      const file = acceptedFiles[0]
-      if (file) {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          form.setValue("logo_url", reader.result as string)
-        }
-        reader.readAsDataURL(file)
-      }
-    },
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif']
-    },
-    maxSize: 5 * 1024 * 1024,
-    multiple: false
-  })
-
   // Validation and step management
   const validateStep = (stepId: number): boolean => {
     const formData = form.getValues()
     
     switch (stepId) {
       case 1:
-        const nameValid = formData.name && formData.name.trim()
-        const urlValid = formData.url && formData.url.trim()
-        let urlFormatValid = true
-        
-        if (urlValid) {
-          try {
-            new URL(formData.url)
-          } catch {
-            urlFormatValid = false
-          }
-        }
-        
-        return !!(nameValid && urlValid && urlFormatValid)
+        return Object.keys(getRequiredFieldErrors(formData)).length === 0
       
       case 2:
         return true
       
       case 3:
-        const businessHours = formData.business_hours || []
-        if (businessHours.length === 0) return true
-        
-        return businessHours.every(hours => {
-          if (!hours.name || !hours.name.trim()) return false
-          if (!hours.timezone) return false
-          
-          const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-          return days.every(day => {
-            const dayConfig = hours.days[day as keyof typeof hours.days]
-            if (!dayConfig.enabled) return true
-            return dayConfig.start && dayConfig.end && dayConfig.start < dayConfig.end
-          })
-        })
-      
       case 4:
-        const locations = formData.locations || []
-        if (locations.length === 0) return true
-        return locations.every(location => location.name && location.name.trim())
-      
       case 5:
-        return true
-      
       case 6:
-        const channels = formData.marketing_channels || []
-        if (channels.length === 0) return true
-        return channels.every(channel => channel.name && channel.name.trim())
-      
       case 7:
-        const products = formData.products || []
-        const services = formData.services || []
-        
-        const productsValid = products.length === 0 || products.every(product => product.name && product.name.trim())
-        const servicesValid = services.length === 0 || services.every(service => service.name && service.name.trim())
-        
-        return productsValid && servicesValid
+        // Optional steps never block progress; empty rows are dropped on submit.
+        return true
       
       default:
         return true
@@ -257,35 +185,47 @@ export function SiteOnboarding({
     setStepErrors(newErrors)
   }
 
+  const applySanitizedValues = (sanitized: SiteOnboardingValues) => {
+    form.setValue("name", sanitized.name)
+    form.setValue("url", sanitized.url)
+    form.setValue("products", sanitized.products)
+    form.setValue("services", sanitized.services)
+    form.setValue("marketing_channels", sanitized.marketing_channels)
+    form.setValue("business_hours", sanitized.business_hours)
+    form.setValue("locations", sanitized.locations)
+    form.setValue("marketing_budget", sanitized.marketing_budget)
+    form.setValue("focusMode", sanitized.focusMode)
+  }
+
+  const syncAutofilledBasicFields = () => {
+    const autofilled = readAutofilledBasicFields(formRef.current, form.getValues())
+    if (autofilled.name) form.setValue("name", autofilled.name)
+    if (autofilled.url) form.setValue("url", autofilled.url)
+  }
+
   const nextStep = () => {
     setHasValidated(true)
+    syncAutofilledBasicFields()
+
+    if (currentStep === 1) {
+      const fieldErrors = getRequiredFieldErrors(form.getValues())
+      if (fieldErrors.name) {
+        form.setError("name", { type: "manual", message: fieldErrors.name })
+      }
+      if (fieldErrors.url) {
+        form.setError("url", { type: "manual", message: fieldErrors.url })
+      }
+      if (fieldErrors.name || fieldErrors.url) {
+        updateStepErrors()
+        toast.error(fieldErrors.name || fieldErrors.url)
+        return
+      }
+    }
+
+    applySanitizedValues(sanitizeOnboardingValues(form.getValues()))
     updateStepErrors()
     
-    // Check if current step is valid before proceeding
-    if (!validateStep(currentStep)) {
-      // Specific validation for step 1
-      if (currentStep === 1) {
-        const formData = form.getValues()
-        const nameValid = formData.name && formData.name.trim()
-        const urlValid = formData.url && formData.url.trim()
-        
-        if (!nameValid) {
-          form.setError("name", { 
-            type: "manual", 
-            message: "Project name is required" 
-          })
-        }
-        if (!urlValid) {
-          form.setError("url", { 
-            type: "manual", 
-            message: "Site URL is required" 
-          })
-        }
-      }
-      return
-    }
-    
-    if (currentStep < steps.length) {
+    if (currentStep < 7) {
       setCurrentStep(currentStep + 1)
     }
   }
@@ -300,34 +240,28 @@ export function SiteOnboarding({
   }
 
   const handleComplete = () => {
+    if (isLoading) return
     setHasValidated(true)
+    syncAutofilledBasicFields()
 
-    const sanitized = sanitizeOnboardingValues(form.getValues())
-    form.setValue("name", sanitized.name)
-    form.setValue("url", sanitized.url)
-    form.setValue("products", sanitized.products)
-    form.setValue("services", sanitized.services)
-    form.setValue("marketing_channels", sanitized.marketing_channels)
-    form.setValue("business_hours", sanitized.business_hours)
-    form.setValue("locations", sanitized.locations)
-    form.setValue("marketing_budget", sanitized.marketing_budget)
+    const prepared = prepareOnboardingSubmit(form.getValues())
+    applySanitizedValues(prepared.data)
 
-    const parsed = siteOnboardingSchema.safeParse(sanitized)
-    if (!parsed.success) {
-      for (const issue of parsed.error.issues) {
+    if (!prepared.ok) {
+      for (const issue of prepared.error.issues) {
         const path = issue.path.join(".")
         if (path) {
           form.setError(path as any, { type: "manual", message: issue.message })
         }
       }
-      const errorStep = getFirstErrorStep(parsed.error)
+      const errorStep = getFirstErrorStep(prepared.error)
       setCurrentStep(errorStep)
       updateStepErrors()
-      toast.error(getValidationErrorMessage(parsed.error))
+      toast.error(getValidationErrorMessage(prepared.error))
       return
     }
 
-    onComplete(parsed.data)
+    onComplete(prepared.data)
   }
 
   // Helper functions for managing arrays
@@ -619,10 +553,6 @@ export function SiteOnboarding({
     setExpandedServices(newExpanded)
   }
 
-  const hasExistingSites = sites.length > 0
-  const formData = form.watch()
-  const isRequiredFieldsComplete = !!(formData.name && formData.name.trim() && formData.url && formData.url.trim())
-
   // Show loading skeleton while creating site, but never cover the success step
   if (isLoading && !isSuccess) {
     return (
@@ -813,6 +743,16 @@ export function SiteOnboarding({
           {/* Right Column - Form Content */}
           <div className="lg:col-span-2">
             <Form {...form}>
+              <form
+                ref={formRef}
+                noValidate
+                autoComplete="on"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (currentStep < 7) nextStep()
+                  else if (currentStep === 7) handleComplete()
+                }}
+              >
               <SectionCard className="bg-card rounded-xl border shadow-lg overflow-hidden">
                 {/* Step Header */}
                 <SectionCardHeader className="p-8 pb-6">
@@ -853,6 +793,15 @@ export function SiteOnboarding({
                           
                           {form.watch("business_hours")?.map((hours, index) => {
                             const isExpanded = expandedBusinessHours.has(index)
+                            const days = hours.days || {
+                              monday: { enabled: true, start: "09:00", end: "18:00" },
+                              tuesday: { enabled: true, start: "09:00", end: "18:00" },
+                              wednesday: { enabled: true, start: "09:00", end: "18:00" },
+                              thursday: { enabled: true, start: "09:00", end: "18:00" },
+                              friday: { enabled: true, start: "09:00", end: "18:00" },
+                              saturday: { enabled: false, start: "09:00", end: "14:00" },
+                              sunday: { enabled: false, start: "09:00", end: "14:00" },
+                            }
                             
                             return (
                               <div key={index} className="border dark:border-white/5 border-black/5 rounded-lg overflow-hidden">
@@ -898,7 +847,7 @@ export function SiteOnboarding({
                                         render={({ field }) => (
                                           <FormItem>
                                             <Select
-                                              value={hours.timezone}
+                                              value={hours.timezone || undefined}
                                               onValueChange={(value) => {
                                                 field.onChange(value)
                                                 updateBusinessHour(index, 'timezone', value)
@@ -958,7 +907,7 @@ export function SiteOnboarding({
                                           <div className="w-32">
                                             <div className="flex items-center space-x-2">
                                               <Switch
-                                                checked={hours.days[day.key as keyof typeof hours.days].enabled}
+                                                checked={days[day.key as keyof typeof days]?.enabled || false}
                                                 onCheckedChange={(checked) => {
                                                   updateBusinessHour(index, `days.${day.key}.enabled`, checked)
                                                 }}
@@ -969,10 +918,10 @@ export function SiteOnboarding({
                                             </div>
                                           </div>
 
-                                          {hours.days[day.key as keyof typeof hours.days].enabled && (
+                                          {days[day.key as keyof typeof days]?.enabled && (
                                             <div className="flex items-center gap-2 flex-1">
                                               <Select
-                                                value={hours.days[day.key as keyof typeof hours.days].start}
+                                                value={days[day.key as keyof typeof days]?.start || "09:00"}
                                                 onValueChange={(value) => {
                                                   updateBusinessHour(index, `days.${day.key}.start`, value)
                                                 }}
@@ -992,7 +941,7 @@ export function SiteOnboarding({
                                               <span className="text-muted-foreground">to</span>
 
                                               <Select
-                                                value={hours.days[day.key as keyof typeof hours.days].end}
+                                                value={days[day.key as keyof typeof days]?.end || "18:00"}
                                                 onValueChange={(value) => {
                                                   updateBusinessHour(index, `days.${day.key}.end`, value)
                                                 }}
@@ -1011,7 +960,7 @@ export function SiteOnboarding({
                                             </div>
                                           )}
 
-                                          {!hours.days[day.key as keyof typeof hours.days].enabled && (
+                                          {!days[day.key as keyof typeof days]?.enabled && (
                                             <div className="flex-1 text-sm text-muted-foreground">
                                               Closed
                                             </div>
@@ -1099,9 +1048,7 @@ export function SiteOnboarding({
 
                   {currentStep < 7 ? (
                     <Button
-                      type="button"
-                      onClick={nextStep}
-                      disabled={currentStep === 1 && !isRequiredFieldsComplete}
+                      type="submit"
                       size="lg"
                     >
                       Next
@@ -1109,8 +1056,7 @@ export function SiteOnboarding({
                     </Button>
                   ) : currentStep === 7 ? (
                     <Button
-                      type="button"
-                      onClick={handleComplete}
+                      type="submit"
                       disabled={isLoading}
                       size="lg"
                       className="min-w-[140px] bg-primary text-primary-foreground hover:bg-primary/90"
@@ -1145,6 +1091,7 @@ export function SiteOnboarding({
                   )}
                 </ActionFooter>
               </SectionCard>
+              </form>
             </Form>
           </div>
         </div>

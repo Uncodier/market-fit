@@ -1,23 +1,24 @@
 "use client"
 
-import { useState, useEffect, useRef, Suspense } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { toast } from "sonner"
-import { useSite } from "../context/SiteContext"
+import { useOptionalSite } from "@/app/context/SiteContext"
 import { SiteOnboarding } from "../components/onboarding/site-onboarding"
 import { useAuth } from "../hooks/use-auth"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "../services/api-client-service"
 import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
+import { getCreateSiteErrorMessage } from "../components/onboarding/utils/onboarding-submit"
+import { reloadForNewBuild } from "../components/ChunkErrorGuard"
 
 function CreateSitePageContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [createdSiteId, setCreatedSiteId] = useState<string>("")
-  const { createSite, setCurrentSite, sites, isLoading: sitesLoading } = useSite()
+  const siteContext = useOptionalSite()
   const { user } = useAuth()
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const hasRedirectedRef = useRef(false)
+  useSearchParams()
 
   // Simple refresh prevention specifically for create-site page
   useSimpleRefreshPrevention()
@@ -33,13 +34,31 @@ function CreateSitePageContent() {
     }
   }, [])
 
-  // Simple redirect logic - only redirect if user has no sites and is loading
   useEffect(() => {
-    // Don't do any redirects - let the user stay here if they navigated manually
-    // The SiteContext will handle redirecting users with no sites TO this page
-    // But we won't redirect them AWAY from this page
-    console.log("Create-site page loaded - allowing access regardless of existing sites")
-  }, [sitesLoading, sites.length, router, searchParams])
+    if (!siteContext) {
+      reloadForNewBuild()
+    }
+  }, [siteContext])
+
+  if (!siteContext) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Refreshing project setup...</p>
+          <button
+            type="button"
+            className="text-sm underline text-muted-foreground hover:text-foreground"
+            onClick={() => window.location.reload()}
+          >
+            Refresh page
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const { createSite, setCurrentSite, sites, isLoading: sitesLoading } = siteContext
 
   // Only show loading if still loading sites AND we haven't successfully created a site yet
   // AND we're not currently saving a site (to prevent the "jump" to loading screen when creating)
@@ -63,7 +82,12 @@ function CreateSitePageContent() {
         name: data.name,
         url: data.url || null,
         description: data.description || null,
-        logo_url: data.logo_url || null,
+        logo_url:
+          typeof data.logo_url === "string" &&
+          data.logo_url.startsWith("data:") &&
+          data.logo_url.length > 100000
+            ? null
+            : data.logo_url || null,
         resource_urls: [],
         user_id: user?.id as string,
         settings: {
@@ -117,11 +141,7 @@ function CreateSitePageContent() {
       })
     } catch (error) {
       console.error(error)
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : "Error creating project"
-      toast.error(message)
+      toast.error(getCreateSiteErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -158,6 +178,7 @@ function CreateSitePageContent() {
         createdSiteId={createdSiteId}
         onGoToDashboard={handleGoToDashboard}
         onGoToSettings={handleGoToSettings}
+        hasExistingSites={(sites?.length || 0) > 0}
       />
     </div>
   )

@@ -53,19 +53,28 @@ export function AuthLandingClient() {
     const redirectIfAuthenticated = async () => {
       try {
         const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { user }, error } = await supabase.auth.getUser()
         if (cancelled) return
 
-        if (session?.user) {
-          const url = new URL(window.location.href)
-          const destination = resolveAuthenticatedSignInRedirect(
-            url.searchParams.get("returnTo")
-          )
-          window.location.replace(destination)
+        if (error || !user) {
+          if (error) {
+            await supabase.auth.signOut({ scope: "local" }).catch(() => {})
+          }
           return
         }
+
+        const url = new URL(window.location.href)
+        const destination = resolveAuthenticatedSignInRedirect(
+          url.searchParams.get("returnTo")
+        )
+        window.location.replace(destination)
       } catch (error) {
         console.warn("[AuthLanding] session check failed:", error)
+        try {
+          await createClient().auth.signOut({ scope: "local" })
+        } catch {
+          // ignore
+        }
       } finally {
         if (!cancelled) setCheckingSession(false)
       }

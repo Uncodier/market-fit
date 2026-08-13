@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { Toaster } from "./components/ui/sonner"
 import { createClient } from "@/lib/supabase/client"
+import { isInvalidRefreshTokenError } from "@/lib/supabase/auth-cookies"
 import { type Segment } from "./requirements/types"
 import { useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
@@ -346,12 +347,25 @@ function LayoutClientInner({
         const secondsToExpiry = expiresAt - nowSeconds
 
         if (secondsToExpiry <= REFRESH_WINDOW_SECONDS) {
-          await supabase.auth.refreshSession()
+          const { error } = await supabase.auth.refreshSession()
+          if (error) {
+            if (isInvalidRefreshTokenError(error)) {
+              await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+            }
+            return false
+          }
           return true
         }
         return false
       } catch (err) {
         console.warn('[layout-client] Session refresh on wake failed:', err)
+        if (isInvalidRefreshTokenError(err)) {
+          try {
+            await createClient().auth.signOut({ scope: 'local' })
+          } catch {
+            // ignore
+          }
+        }
         return false
       } finally {
         isRefreshingAfterIdleRef.current = false
