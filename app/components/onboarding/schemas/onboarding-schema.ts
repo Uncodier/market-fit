@@ -1,8 +1,8 @@
 import * as z from "zod"
 
 export const siteOnboardingSchema = z.object({
-  name: z.string().min(2, "Project name must be at least 2 characters"),
-  url: z.string().url("Must be a valid URL"),
+  name: z.string().trim().min(2, "Project name must be at least 2 characters"),
+  url: z.string().trim().url("Must be a valid URL"),
   description: z.string().optional(),
   logo_url: z.string().optional(),
   focusMode: z.number().min(0).max(100),
@@ -58,7 +58,7 @@ export const siteOnboardingSchema = z.object({
     restrictions: z.object({
       enabled: z.boolean().optional().default(false),
       included_addresses: z.array(z.object({
-        name: z.string().min(1, "Address name is required"),
+        name: z.string().optional().default(""),
         address: z.string().optional(),
         city: z.string().optional(),
         state: z.string().optional(),
@@ -66,7 +66,7 @@ export const siteOnboardingSchema = z.object({
         country: z.string().optional()
       })).optional().default([]),
       excluded_addresses: z.array(z.object({
-        name: z.string().min(1, "Address name is required"),
+        name: z.string().optional().default(""),
         address: z.string().optional(),
         city: z.string().optional(),
         state: z.string().optional(),

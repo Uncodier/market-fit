@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useDropzone } from "react-dropzone"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 // UI Components
 import { Button } from "../ui/button"
@@ -65,6 +66,11 @@ import {
   steps 
 } from "./constants/onboarding-constants"
 import { getFocusModeConfig } from "./utils/focus-mode-config"
+import {
+  sanitizeOnboardingValues,
+  getFirstErrorStep,
+  getValidationErrorMessage,
+} from "./utils/onboarding-submit"
 import { SuccessStep } from "./steps/success-step"
 import { BasicInfoStep } from "./steps/basic-info-step"
 import { FocusModeStep } from "./steps/focus-mode-step"
@@ -294,39 +300,34 @@ export function SiteOnboarding({
   }
 
   const handleComplete = () => {
-    const formData = form.getValues()
-    const nameValid = formData.name && formData.name.trim()
-    const urlValid = formData.url && formData.url.trim()
-    
-    // If we're in step 7, proceed with creating the project even if basic validation fails
-    // The user has already progressed through previous steps
-    if (currentStep === 7) {
-      console.log("Step 7: Proceeding with project creation", { formData })
-      form.handleSubmit(onComplete)()
+    setHasValidated(true)
+
+    const sanitized = sanitizeOnboardingValues(form.getValues())
+    form.setValue("name", sanitized.name)
+    form.setValue("url", sanitized.url)
+    form.setValue("products", sanitized.products)
+    form.setValue("services", sanitized.services)
+    form.setValue("marketing_channels", sanitized.marketing_channels)
+    form.setValue("business_hours", sanitized.business_hours)
+    form.setValue("locations", sanitized.locations)
+    form.setValue("marketing_budget", sanitized.marketing_budget)
+
+    const parsed = siteOnboardingSchema.safeParse(sanitized)
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        const path = issue.path.join(".")
+        if (path) {
+          form.setError(path as any, { type: "manual", message: issue.message })
+        }
+      }
+      const errorStep = getFirstErrorStep(parsed.error)
+      setCurrentStep(errorStep)
+      updateStepErrors()
+      toast.error(getValidationErrorMessage(parsed.error))
       return
     }
-    
-    // For other steps, validate required fields
-    if (!nameValid || !urlValid) {
-      if (!nameValid) {
-        form.setError("name", { 
-          type: "manual", 
-          message: "Project name is required" 
-        })
-      }
-      if (!urlValid) {
-        form.setError("url", { 
-          type: "manual", 
-          message: "Site URL is required" 
-        })
-      }
-      if (currentStep !== 1) {
-        setCurrentStep(1)
-      }
-      return
-    }
-    
-    form.handleSubmit(onComplete)()
+
+    onComplete(parsed.data)
   }
 
   // Helper functions for managing arrays
@@ -621,21 +622,9 @@ export function SiteOnboarding({
   const hasExistingSites = sites.length > 0
   const formData = form.watch()
   const isRequiredFieldsComplete = !!(formData.name && formData.name.trim() && formData.url && formData.url.trim())
-  
-  // Check if there are any validation errors that should prevent project creation
-  const hasValidationErrors = () => {
-    // Update step errors before checking
-    const newErrors = new Set<number>()
-    for (let i = 1; i <= 7; i++) { // Only check steps 1-7 for project creation
-      if (!validateStep(i)) {
-        newErrors.add(i)
-      }
-    }
-    return newErrors.size > 0
-  }
 
-  // Show loading skeleton while creating site
-  if (isLoading) {
+  // Show loading skeleton while creating site, but never cover the success step
+  if (isLoading && !isSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center p-4">
         <div className="container max-w-6xl mx-auto">
@@ -1122,7 +1111,7 @@ export function SiteOnboarding({
                     <Button
                       type="button"
                       onClick={handleComplete}
-                      disabled={isLoading || hasValidationErrors()}
+                      disabled={isLoading}
                       size="lg"
                       className="min-w-[140px] bg-primary text-primary-foreground hover:bg-primary/90"
                     >

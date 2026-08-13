@@ -59,20 +59,6 @@ function CreateSitePageContent() {
     try {
       setIsSaving(true)
       
-      // Debug: log the data being sent
-      console.log("🔍 Onboarding form data received:", { 
-        rawData: data,
-        locations: data.locations,
-        locationsWithRestrictions: data.locations?.map((loc: any) => ({
-          name: loc.name,
-          hasRestrictions: !!loc.restrictions,
-          enabled: loc.restrictions?.enabled, // ⭐ CHECK IF BOOLEAN IS SAVED
-          restrictions: loc.restrictions,
-          includeCount: loc.restrictions?.included_addresses?.length || 0,
-          excludeCount: loc.restrictions?.excluded_addresses?.length || 0
-        }))
-      })
-      
       const newSite = await createSite({
         name: data.name,
         url: data.url || null,
@@ -111,35 +97,31 @@ function CreateSitePageContent() {
       
       setCreatedSiteId(newSite.id)
       setIsSuccess(true)
+      setIsSaving(false)
 
-      // Call site setup endpoint in background
-      try {
-        const apiKey = process.env.NEXT_PUBLIC_API_KEY || "market-fit-dev-api-key"
-        const apiSecret = process.env.NEXT_PUBLIC_API_SECRET || "market-fit-dev-api-secret"
-        
-        console.log("Calling site setup endpoint for site:", newSite.id)
-        
-        const setupResponse = await apiClient.postWithApiKeys(
-          '/api/site/setup',
-          { site_id: newSite.id },
-          apiKey,
-          apiSecret
-        )
-        
-        if (setupResponse.success) {
-          console.log("Site setup initiated successfully")
-        } else {
+      // Site setup is optional background work and must not block the success step
+      const apiKey = process.env.NEXT_PUBLIC_API_KEY || "market-fit-dev-api-key"
+      const apiSecret = process.env.NEXT_PUBLIC_API_SECRET || "market-fit-dev-api-secret"
+      void apiClient.postWithApiKeys(
+        '/api/site/setup',
+        { site_id: newSite.id },
+        apiKey,
+        apiSecret,
+        { timeout: 15000 }
+      ).then((setupResponse) => {
+        if (!setupResponse.success) {
           console.warn("Site setup initiation failed:", setupResponse.error?.message)
-          // Don't show error to user since this is background process
         }
-      } catch (setupError) {
+      }).catch((setupError) => {
         console.warn("Error initiating site setup:", setupError)
-        // Don't show error to user since this is background process
-      }
-      
+      })
     } catch (error) {
       console.error(error)
-      toast.error("Error creating project")
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Error creating project"
+      toast.error(message)
     } finally {
       setIsSaving(false)
     }
