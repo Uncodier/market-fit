@@ -74,7 +74,8 @@ export function ConfirmDialog({
           </AlertDialogCancel>
           <Button
             type="button"
-            variant={variant === "destructive" ? "destructive" : "default"}
+            variant="default"
+            tint={variant === "destructive" ? "destructive" : undefined}
             disabled={isLoading}
             onClick={(event) => {
               void handleConfirm(event)

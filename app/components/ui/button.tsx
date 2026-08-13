@@ -84,11 +84,13 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
+  tint?: "default" | "destructive"
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, tint, children, ...props }, ref) => {
     const isPrimary = variant === undefined || variant === "default"
+    const wellTintClass = tint === "destructive" ? "btn-tint-red" : undefined
     const setGlassNode = useBtnGlassMotion(isPrimary)
 
     const assignRef = React.useCallback(
@@ -118,7 +120,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     if (asChild) {
       const { outer, inner } = splitOuterClasses(className)
       return (
-        <span className={cn("btn-primary-well", outer)} style={pickCssVars(style)}>
+        <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
           <Slot
             className={cn(buttonVariants({ variant, size }), inner)}
             ref={assignRef}
@@ -148,7 +150,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const { outer, inner } = splitOuterClasses(className)
     return (
-      <span className={cn("btn-primary-well", outer)} style={pickCssVars(style)}>
+      <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
         <button
           className={cn(buttonVariants({ variant, size }), inner)}
           ref={assignRef}

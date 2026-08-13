@@ -252,7 +252,7 @@ export function ConfigurationSection({
           className={cn(
             "relative p-1",
             shouldShowSettingsChildren 
-              ? "rounded-[14px] border dark:border-white/10 border-black/5 bg-black/[0.02] dark:bg-white/[0.02]"
+              ? "overflow-visible rounded-[14px] border dark:border-white/10 border-black/5 bg-black/[0.02] dark:bg-white/[0.02] pr-2 pb-2.5"
               : "border border-transparent",
             isCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full"
           )}
@@ -273,7 +273,7 @@ export function ConfigurationSection({
           className={cn(
             "w-full transition-all duration-300 ease-in-out",
             shouldShowSettingsChildren
-              ? "max-h-[640px] opacity-100"
+              ? "max-h-[640px] overflow-visible opacity-100"
               : "max-h-0 opacity-0 overflow-hidden"
           )}
           style={{
@@ -284,7 +284,7 @@ export function ConfigurationSection({
         >
           <div
             className={cn(
-              "flex flex-col space-y-1 pb-1 pt-1",
+              "flex flex-col space-y-1 pb-2 pt-1",
               isCollapsed ? "items-center px-0" : "px-1"
             )}
           >

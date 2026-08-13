@@ -279,7 +279,7 @@ export function PromotionRestrictionsFields({
             const dayId = `${idPrefix}-day-${day.value}`
             const isActive = activeWeekdays.includes(day.value)
             return (
-              <div key={day.value} className="flex items-center space-x-2 py-1">
+              <div key={day.value} className="flex items-center space-x-2 overflow-visible py-1.5">
                 <Checkbox
                   id={dayId}
                   checked={isActive}

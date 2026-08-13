@@ -223,7 +223,10 @@ export function MenuItem({
           ? isActive
             ? cn("font-inter justify-center mx-auto h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
             : cn("justify-center mx-auto h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
-          : "min-w-0 rounded-md justify-start h-[32px] overflow-hidden",
+          : cn(
+              "min-w-0 rounded-md justify-start h-[32px]",
+              children ? "overflow-visible" : "overflow-hidden"
+            ),
         isActive
           ? visual
             ? "font-medium"

@@ -4,7 +4,7 @@ import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/app/components/ui/button"
+import { Button, buttonVariants } from "@/app/components/ui/button"
 import {
   dialogSizeClassName,
   overlayClassName,
@@ -114,20 +114,29 @@ const AlertDialogDescription = React.forwardRef<
 AlertDialogDescription.displayName =
   AlertDialogPrimitive.Description.displayName
 
+function withoutDestructiveColors(className?: string) {
+  if (!className) return className
+  return className
+    .split(/\s+/)
+    .filter((token) => !token.includes("destructive") && !token.includes("bg-red"))
+    .join(" ")
+}
+
 const AlertDialogAction = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Action>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
 >(({ className, ...props }, ref) => {
   const isDestructive =
     className?.includes("destructive") || className?.includes("bg-red")
-  const variant = isDestructive ? "destructive" : undefined
 
   return (
-    <AlertDialogPrimitive.Action
-      ref={ref}
-      className={cn(buttonVariants({ variant }), className)}
-      {...props}
-    />
+    <Button asChild tint={isDestructive ? "destructive" : undefined}>
+      <AlertDialogPrimitive.Action
+        ref={ref}
+        className={withoutDestructiveColors(className)}
+        {...props}
+      />
+    </Button>
   )
 })
 AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName

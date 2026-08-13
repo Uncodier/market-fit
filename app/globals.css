@@ -909,25 +909,25 @@
 }
 
 /* Soft hover for non-primary rounded buttons — keep primary skeuomorphic intact */
-button.rounded-full:not(.bg-primary):not(.btn-primary), button.rounded-xl:not(.bg-primary):not(.btn-primary) {
+button.rounded-full:not(.bg-primary):not(.btn-primary):not([role="switch"]), button.rounded-xl:not(.bg-primary):not(.btn-primary) {
   transition: background-color 0.2s ease;
 }
 
-button.rounded-full:not(.bg-primary):not(.btn-primary):hover, button.rounded-xl:not(.bg-primary):not(.btn-primary):hover {
+button.rounded-full:not(.bg-primary):not(.btn-primary):not([role="switch"]):hover, button.rounded-xl:not(.bg-primary):not(.btn-primary):hover {
   transform: none;
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-button.rounded-full:not(.bg-primary):not(.btn-primary):active, button.rounded-xl:not(.bg-primary):not(.btn-primary):active {
+button.rounded-full:not(.bg-primary):not(.btn-primary):not([role="switch"]):active, button.rounded-xl:not(.bg-primary):not(.btn-primary):active {
   transform: none;
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-.dark button.rounded-full:not(.bg-primary):not(.btn-primary):hover, .dark button.rounded-xl:not(.bg-primary):not(.btn-primary):hover {
+.dark button.rounded-full:not(.bg-primary):not(.btn-primary):not([role="switch"]):hover, .dark button.rounded-xl:not(.bg-primary):not(.btn-primary):hover {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.dark button.rounded-full:not(.bg-primary):not(.btn-primary):active, .dark button.rounded-xl:not(.bg-primary):not(.btn-primary):active {
+.dark button.rounded-full:not(.bg-primary):not(.btn-primary):not([role="switch"]):active, .dark button.rounded-xl:not(.bg-primary):not(.btn-primary):active {
   background-color: rgba(255, 255, 255, 0.15);
 }
 
@@ -1444,6 +1444,226 @@ html.safari [class*="select-trigger"] svg {
 /* Primary gradient styles */
 .bg-gradient-primary {
   background: hsl(var(--primary));
+}
+
+/* Shared lighting: top-left key light, soft long shadow down-right */
+:root {
+  --ctrl-track-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.28),
+    inset 0 1px 1px rgba(0, 0, 0, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  --ctrl-track-shadow-on:
+    inset 0 2px 6px rgba(0, 0, 0, 0.5),
+    inset 0 1px 2px rgba(0, 0, 0, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18);
+  --ctrl-track-shadow-hover:
+    inset 0 2px 4px rgba(0, 0, 0, 0.22),
+    inset 0 1px 1px rgba(0, 0, 0, 0.12),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.45),
+    0 0 0 3px hsl(var(--primary) / 0.06);
+  --ctrl-track-shadow-on-hover:
+    inset 0 2px 5px rgba(0, 0, 0, 0.42),
+    inset 0 1px 1px rgba(0, 0, 0, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.28),
+    0 0 0 3px hsl(var(--primary) / 0.08);
+  --ctrl-thumb-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -0.5px 1px rgba(0, 0, 0, 0.1),
+    1px 1px 0 rgba(0, 0, 0, 0.08),
+    2px 2px 0 rgba(0, 0, 0, 0.07),
+    3px 3px 0 rgba(0, 0, 0, 0.06),
+    4px 4px 0 rgba(0, 0, 0, 0.05),
+    5px 5px 0 rgba(0, 0, 0, 0.04),
+    6px 6px 0 rgba(0, 0, 0, 0.03),
+    7px 7px 0 rgba(0, 0, 0, 0.02),
+    4px 8px 14px rgba(0, 0, 0, 0.22);
+  --ctrl-thumb-shadow-hover:
+    inset 0 1.5px 0 rgba(255, 255, 255, 1),
+    inset 0 -0.5px 1px rgba(0, 0, 0, 0.08),
+    1px 1px 0 rgba(0, 0, 0, 0.07),
+    2px 2px 0 rgba(0, 0, 0, 0.065),
+    3px 3px 0 rgba(0, 0, 0, 0.06),
+    4px 4px 0 rgba(0, 0, 0, 0.05),
+    5px 5px 0 rgba(0, 0, 0, 0.04),
+    6px 6px 0 rgba(0, 0, 0, 0.035),
+    7px 7px 0 rgba(0, 0, 0, 0.03),
+    8px 8px 0 rgba(0, 0, 0, 0.02),
+    9px 9px 0 rgba(0, 0, 0, 0.015),
+    5px 12px 18px rgba(0, 0, 0, 0.26);
+  --ctrl-thumb-shadow-active:
+    inset 0 1px 2px rgba(0, 0, 0, 0.16),
+    1px 1px 0 rgba(0, 0, 0, 0.06),
+    2px 2px 0 rgba(0, 0, 0, 0.04),
+    2px 3px 6px rgba(0, 0, 0, 0.12);
+}
+
+html.dark {
+  --ctrl-track-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.65),
+    inset 0 1px 2px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  --ctrl-track-shadow-on:
+    inset 0 2px 6px rgba(0, 0, 0, 0.35),
+    inset 0 1px 2px rgba(0, 0, 0, 0.18),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.22);
+  --ctrl-track-shadow-hover:
+    inset 0 2px 5px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px rgba(0, 0, 0, 0.32),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.14),
+    0 0 0 3px hsl(var(--primary) / 0.1);
+  --ctrl-track-shadow-on-hover:
+    inset 0 2px 5px rgba(0, 0, 0, 0.28),
+    inset 0 1px 1px rgba(0, 0, 0, 0.14),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+    0 0 0 3px hsl(var(--primary) / 0.12);
+  --ctrl-thumb-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -0.5px 1px rgba(0, 0, 0, 0.45),
+    1px 1px 0 rgba(0, 0, 0, 0.28),
+    2px 2px 0 rgba(0, 0, 0, 0.24),
+    3px 3px 0 rgba(0, 0, 0, 0.2),
+    4px 4px 0 rgba(0, 0, 0, 0.16),
+    5px 5px 0 rgba(0, 0, 0, 0.12),
+    6px 6px 0 rgba(0, 0, 0, 0.08),
+    7px 7px 0 rgba(0, 0, 0, 0.05),
+    4px 8px 16px rgba(0, 0, 0, 0.5);
+  --ctrl-thumb-shadow-hover:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -0.5px 1px rgba(0, 0, 0, 0.4),
+    1px 1px 0 rgba(0, 0, 0, 0.26),
+    2px 2px 0 rgba(0, 0, 0, 0.22),
+    3px 3px 0 rgba(0, 0, 0, 0.18),
+    4px 4px 0 rgba(0, 0, 0, 0.14),
+    5px 5px 0 rgba(0, 0, 0, 0.11),
+    6px 6px 0 rgba(0, 0, 0, 0.08),
+    7px 7px 0 rgba(0, 0, 0, 0.06),
+    8px 8px 0 rgba(0, 0, 0, 0.04),
+    9px 9px 0 rgba(0, 0, 0, 0.025),
+    5px 12px 20px rgba(0, 0, 0, 0.55);
+}
+
+[role="switch"] {
+  overflow: visible;
+  box-shadow: var(--ctrl-track-shadow);
+  transition: background-color 200ms ease, box-shadow 200ms ease, filter 200ms ease;
+}
+
+[role="switch"][data-state="checked"] {
+  box-shadow: var(--ctrl-track-shadow-on);
+}
+
+[role="switch"] > span {
+  z-index: 1;
+  box-shadow: var(--ctrl-thumb-shadow);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+[role="switch"]:hover:not(:disabled),
+a.group:hover [role="switch"]:not(:disabled) {
+  box-shadow: var(--ctrl-track-shadow-hover);
+}
+
+[role="switch"][data-state="checked"]:hover:not(:disabled),
+a.group:hover [role="switch"][data-state="checked"]:not(:disabled) {
+  box-shadow: var(--ctrl-track-shadow-on-hover);
+}
+
+[role="switch"][data-state="unchecked"]:hover:not(:disabled) > span,
+a.group:hover [role="switch"][data-state="unchecked"]:not(:disabled) > span {
+  transform: translateX(0) translateY(-1.5px) scale(1.1);
+  box-shadow: var(--ctrl-thumb-shadow-hover);
+}
+
+[role="switch"][data-state="checked"]:hover:not(:disabled) > span,
+a.group:hover [role="switch"][data-state="checked"]:not(:disabled) > span {
+  transform: translateX(1.25rem) translateY(-1.5px) scale(1.1);
+  box-shadow: var(--ctrl-thumb-shadow-hover);
+}
+
+[role="switch"][data-state="unchecked"]:active:not(:disabled) > span,
+a.group:active [role="switch"][data-state="unchecked"]:not(:disabled) > span {
+  transform: translateX(0) translateY(1px) scale(0.94);
+  box-shadow: var(--ctrl-thumb-shadow-active);
+}
+
+[role="switch"][data-state="checked"]:active:not(:disabled) > span,
+a.group:active [role="switch"][data-state="checked"]:not(:disabled) > span {
+  transform: translateX(1.25rem) translateY(1px) scale(0.94);
+  box-shadow: var(--ctrl-thumb-shadow-active);
+}
+
+/* Checkboxes share the same light as switches, with a softer rim */
+[role="checkbox"] {
+  overflow: visible;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow:
+    inset 0 1.5px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 1px rgba(0, 0, 0, 0.06),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.45);
+  transition: transform 200ms ease, background-color 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+html.dark [role="checkbox"] {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1.5px 4px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(0, 0, 0, 0.2),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[role="checkbox"][data-state="checked"] {
+  border-color: transparent;
+  box-shadow: var(--ctrl-thumb-shadow);
+}
+
+[role="checkbox"] span,
+[role="checkbox"] svg {
+  overflow: hidden;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+[role="checkbox"] svg {
+  filter: none;
+}
+
+[role="checkbox"][data-state="unchecked"]:hover:not(:disabled),
+[role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
+  transform: none;
+  border-color: rgba(0, 0, 0, 0.16);
+  box-shadow:
+    inset 0 1.5px 3px rgba(0, 0, 0, 0.08),
+    inset 0 1px 1px rgba(0, 0, 0, 0.05),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.5),
+    0 0 0 3px hsl(var(--primary) / 0.06);
+}
+
+html.dark [role="checkbox"][data-state="unchecked"]:hover:not(:disabled),
+html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1.5px 3px rgba(0, 0, 0, 0.28),
+    inset 0 1px 1px rgba(0, 0, 0, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 3px hsl(var(--primary) / 0.1);
+}
+
+[role="checkbox"][data-state="checked"]:hover:not(:disabled) {
+  transform: translateY(-1.5px) scale(1.12);
+  box-shadow: var(--ctrl-thumb-shadow-hover);
+}
+
+[role="checkbox"][data-state="unchecked"]:active:not(:disabled),
+[role="checkbox"][data-state="indeterminate"]:active:not(:disabled) {
+  transform: none;
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.16),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+[role="checkbox"][data-state="checked"]:active:not(:disabled) {
+  transform: translateY(1px) scale(0.94);
+  box-shadow: var(--ctrl-thumb-shadow-active);
 }
 
 /* Primary button — black liquid glass */
@@ -1994,6 +2214,172 @@ html.safari.dark .btn-primary {
   text-shadow: 0 1px 1px rgba(16, 10, 28, 0.4), 0 -1px 0 rgba(220, 208, 240, 0.1);
 }
 
+.btn-primary-well.btn-tint-red {
+  --btn-tint: 248 113 113;
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary {
+  --btn-fill: 152 36 42;
+  --btn-tint: 248 113 113;
+  background-image:
+    linear-gradient(
+      90deg,
+      rgb(var(--btn-tint) / 0.32) 0%,
+      transparent 16%,
+      transparent 84%,
+      rgb(var(--btn-tint) / 0.32) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(var(--btn-tint) / 0.28) 0%,
+      rgb(var(--btn-tint) / 0.08) 14%,
+      rgba(255, 255, 255, 0) 38%
+    ),
+    radial-gradient(
+      92% 68% at 50% 124%,
+      rgb(var(--btn-tint) / 0.42) 0%,
+      rgb(var(--btn-tint) / 0.12) 36%,
+      transparent 64%
+    ),
+    linear-gradient(180deg, rgb(168 40 48 / 0.45) 0%, rgb(80 12 16 / 0.55) 100%);
+  border-color: rgb(var(--btn-tint) / 0.16);
+  border-top-color: rgb(var(--btn-tint) / 0.5);
+  border-right-color: rgb(var(--btn-tint) / 0.14);
+  border-bottom-color: rgb(var(--btn-tint) / 0.24);
+  border-left-color: rgb(var(--btn-tint) / 0.14);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--btn-tint) / 0.5),
+    inset 0 2px 2px rgb(var(--btn-tint) / 0.18),
+    inset 0 -1px 0 rgb(var(--btn-tint) / 0.28),
+    inset 14px 0 16px -10px rgb(var(--btn-tint) / 0.22),
+    inset -14px 0 16px -10px rgb(var(--btn-tint) / 0.22),
+    inset 0 -11px 16px -6px rgb(var(--btn-tint) / 0.24),
+    inset 0 14px 18px -12px rgb(var(--btn-tint) / 0.16);
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary::before {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.36) 0%, transparent 72%);
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary::after {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.2) 0%, transparent 70%);
+}
+
+.btn-primary-well.btn-tint-red .btn-glass-cursor {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.55) 0%, transparent 70%);
+}
+
+.btn-primary-well.btn-tint-red .btn-glass-rim {
+  background:
+    radial-gradient(circle 2.75rem at var(--gx) var(--gy), rgb(var(--btn-tint) / 0.7), transparent 52%),
+    radial-gradient(circle 2.2rem at var(--gx2) var(--gy2), rgb(var(--btn-tint) / 0.35), transparent 50%);
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary:hover {
+  border-top-color: rgb(var(--btn-tint) / 0.62);
+  border-right-color: rgb(var(--btn-tint) / 0.2);
+  border-bottom-color: rgb(var(--btn-tint) / 0.3);
+  border-left-color: rgb(var(--btn-tint) / 0.2);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--btn-tint) / 0.6),
+    inset 0 2px 2px rgb(var(--btn-tint) / 0.22),
+    inset 0 -1px 0 rgb(var(--btn-tint) / 0.34),
+    inset 16px 0 18px -10px rgb(var(--btn-tint) / 0.28),
+    inset -16px 0 18px -10px rgb(var(--btn-tint) / 0.28),
+    inset 0 -12px 18px -6px rgb(var(--btn-tint) / 0.3),
+    inset 0 14px 18px -12px rgb(var(--btn-tint) / 0.2);
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary:hover > .btn-glass-rim {
+  background:
+    radial-gradient(circle 3.1rem at var(--mx) var(--my), rgb(var(--btn-tint) / 0.85), transparent 54%),
+    radial-gradient(circle 2.75rem at var(--gx) var(--gy), rgb(var(--btn-tint) / 0.7), transparent 52%),
+    radial-gradient(circle 2.2rem at var(--gx2) var(--gy2), rgb(var(--btn-tint) / 0.35), transparent 50%);
+}
+
+.dark .btn-primary-well.btn-tint-red {
+  --btn-tint: 252 180 180;
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary {
+  --btn-fill: 58 30 34;
+  --btn-tint: 252 180 180;
+  background-image:
+    linear-gradient(
+      90deg,
+      rgb(var(--btn-tint) / 0.2) 0%,
+      transparent 16%,
+      transparent 84%,
+      rgb(var(--btn-tint) / 0.2) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(var(--btn-tint) / 0.2) 0%,
+      rgb(var(--btn-tint) / 0.05) 16%,
+      rgba(255, 255, 255, 0) 40%
+    ),
+    radial-gradient(
+      92% 68% at 50% 124%,
+      rgb(var(--btn-tint) / 0.28) 0%,
+      rgb(var(--btn-tint) / 0.08) 36%,
+      transparent 64%
+    ),
+    linear-gradient(180deg, rgb(58 30 34 / 0.4) 0%, rgb(30 14 16 / 0.45) 100%);
+  border-color: rgb(var(--btn-tint) / 0.1);
+  border-top-color: rgb(var(--btn-tint) / 0.42);
+  border-right-color: rgb(var(--btn-tint) / 0.08);
+  border-bottom-color: rgb(var(--btn-tint) / 0.2);
+  border-left-color: rgb(var(--btn-tint) / 0.08);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--btn-tint) / 0.4),
+    inset 0 2px 2px rgb(var(--btn-tint) / 0.12),
+    inset 0 -1px 0 rgb(var(--btn-tint) / 0.18),
+    inset 14px 0 16px -10px rgb(var(--btn-tint) / 0.12),
+    inset -14px 0 16px -10px rgb(var(--btn-tint) / 0.12),
+    inset 0 -11px 16px -6px rgb(var(--btn-tint) / 0.14),
+    inset 0 14px 18px -12px rgb(var(--btn-tint) / 0.1);
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary::before {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.22) 0%, transparent 72%);
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary::after {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.14) 0%, transparent 70%);
+}
+
+.dark .btn-primary-well.btn-tint-red .btn-glass-cursor {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.28) 0%, transparent 70%);
+}
+
+.dark .btn-primary-well.btn-tint-red .btn-glass-rim {
+  background:
+    radial-gradient(circle 2.75rem at var(--gx) var(--gy), rgb(var(--btn-tint) / 0.34), transparent 52%),
+    radial-gradient(circle 2.2rem at var(--gx2) var(--gy2), rgb(var(--btn-tint) / 0.16), transparent 50%);
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary:hover {
+  border-top-color: rgb(var(--btn-tint) / 0.52);
+  border-right-color: rgb(var(--btn-tint) / 0.16);
+  border-bottom-color: rgb(var(--btn-tint) / 0.26);
+  border-left-color: rgb(var(--btn-tint) / 0.16);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--btn-tint) / 0.5),
+    inset 0 2px 2px rgb(var(--btn-tint) / 0.16),
+    inset 0 -1px 0 rgb(var(--btn-tint) / 0.24),
+    inset 16px 0 18px -10px rgb(var(--btn-tint) / 0.16),
+    inset -16px 0 18px -10px rgb(var(--btn-tint) / 0.16),
+    inset 0 -12px 18px -6px rgb(var(--btn-tint) / 0.18),
+    inset 0 14px 18px -12px rgb(var(--btn-tint) / 0.14);
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary:hover > .btn-glass-rim {
+  background:
+    radial-gradient(circle 3.1rem at var(--mx) var(--my), rgb(var(--btn-tint) / 0.4), transparent 54%),
+    radial-gradient(circle 2.75rem at var(--gx) var(--gy), rgb(var(--btn-tint) / 0.28), transparent 52%),
+    radial-gradient(circle 2.2rem at var(--gx2) var(--gy2), rgb(var(--btn-tint) / 0.14), transparent 50%);
+}
+
 
 /* Navigation menu item active state gradient */
 .bg-primary:not(.btn-primary) {
@@ -2449,6 +2835,25 @@ html.safari .chat-input-container[style*="fixed"] {
 
   .btn-glass-cursor {
     display: none;
+  }
+
+  [role="switch"][data-state="unchecked"]:hover:not(:disabled) > span,
+  [role="switch"][data-state="unchecked"]:active:not(:disabled) > span,
+  a.group:hover [role="switch"][data-state="unchecked"]:not(:disabled) > span,
+  a.group:active [role="switch"][data-state="unchecked"]:not(:disabled) > span {
+    transform: translateX(0);
+  }
+
+  [role="switch"][data-state="checked"]:hover:not(:disabled) > span,
+  [role="switch"][data-state="checked"]:active:not(:disabled) > span,
+  a.group:hover [role="switch"][data-state="checked"]:not(:disabled) > span,
+  a.group:active [role="switch"][data-state="checked"]:not(:disabled) > span {
+    transform: translateX(1.25rem);
+  }
+
+  [role="checkbox"]:hover:not(:disabled),
+  [role="checkbox"]:active:not(:disabled) {
+    transform: none;
   }
 }
 
