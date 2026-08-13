@@ -83,6 +83,9 @@ const STATUS_DOT: Record<string, string> = {
   liability: "bg-amber-500",
   equity: "bg-violet-500",
   income: "bg-emerald-500",
+  high: "bg-rose-500",
+  medium: "bg-amber-500",
+  low: "bg-sky-500",
 }
 
 const STATUS_TEXT: Record<string, string> = {
@@ -152,6 +155,9 @@ const STATUS_TEXT: Record<string, string> = {
   liability: "text-amber-700 dark:text-amber-400",
   equity: "text-violet-700 dark:text-violet-400",
   income: "text-emerald-700 dark:text-emerald-400",
+  high: "text-rose-700 dark:text-rose-400",
+  medium: "text-amber-700 dark:text-amber-400",
+  low: "text-sky-700 dark:text-sky-400",
 }
 
 export function documentListShellClassName(className?: string) {

@@ -543,11 +543,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
   const [sitesLoadAttempted, setSitesLoadAttempted] = useState(false)
   const [hasValidSession, setHasValidSession] = useState(false)
   const hasValidSessionRef = useRef(false)
+  const isLoadingRef = useRef(true)
   
   // Sincronizar ref con state
   useEffect(() => {
     hasValidSessionRef.current = hasValidSession
   }, [hasValidSession])
+
+  useEffect(() => {
+    isLoadingRef.current = isLoading
+  }, [isLoading])
   
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
@@ -871,14 +876,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
     
     // Safety timeout to ensure loading state is resolved
     const loadingTimeout = setTimeout(() => {
-      if (isLoading) {
+      if (isLoadingRef.current) {
         console.warn("Loading timeout reached, forcing loading to false")
         setIsLoading(false)
-        if (!isInitialized) {
-          setIsInitialized(true)
-        }
+        setIsInitialized((initialized) => initialized || true)
       }
-    }, 10000) // 10 seconds timeout
+    }, 10000)
     
     // Suscribirse a eventos de autenticación para cargar sitios cuando el usuario inicie sesión
     const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(

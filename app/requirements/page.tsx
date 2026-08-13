@@ -1,1270 +1,237 @@
 "use client"
 
+import React, { useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/app/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
-import { Checkbox } from "@/app/components/ui/checkbox"
-import { PlusCircle, Filter, Search, ChevronDown, ChevronUp, XCircle, Check, Archive, RotateCcw, CheckCircle2, Ban, ClipboardList, FileText, Clock, LayoutGrid, ListOrdered, X } from "@/app/components/ui/icons"
-import { Input } from "@/app/components/ui/input"
-import { Collapsible, CollapsibleContent } from "@/app/components/ui/collapsible"
-import React, { useState, useEffect } from "react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import {
+  Filter,
+  ChevronDown,
+  XCircle,
+  Clock,
+  LayoutGrid,
+  ListOrdered,
+  CheckCircle2,
+  Ban,
+} from "@/app/components/ui/icons"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { EmptyState } from "@/app/components/ui/empty-state"
-import { useToast } from "@/app/components/ui/use-toast"
-import { CreateRequirementDialog } from "@/app/components/create-requirement-dialog"
-import { createRequirement, updateRequirementStatus, updateCompletionStatus, updateRequirementPriority } from "./actions"
-import { createClient } from "@/lib/supabase/client"
-import { useSite } from "@/app/context/SiteContext"
-import { navigateToRequirement } from "@/app/hooks/use-navigation-history"
-import { type Segment } from "./types"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { FilterModal, type RequirementFilters } from "@/app/components/ui/filter-modal"
-import { KanbanView } from './kanban-view'
-import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { FilterModal } from "@/app/components/ui/filter-modal"
+import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
+import { navigateToRequirement } from "@/app/hooks/use-navigation-history"
+import { safeReload } from "@/app/utils/safe-reload"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
 } from "@/app/components/ui/dropdown-menu"
-import { useRouter } from "next/navigation"
-import { safeReload } from "@/app/utils/safe-reload"
-import { useLocalization } from "@/app/context/LocalizationContext"
-
-// Constantes para estados
-const REQUIREMENT_STATUS = {
-  VALIDATED: "validated",
-  IN_PROGRESS: "in-progress",
-  ON_REVIEW: "on-review",
-  DONE: "done",
-  BACKLOG: "backlog",
-  CANCELED: "canceled"
-} as const;
-
-const COMPLETION_STATUS = {
-  PENDING: "pending",
-  COMPLETED: "completed",
-  REJECTED: "rejected"
-} as const;
-
-type RequirementStatusType = typeof REQUIREMENT_STATUS[keyof typeof REQUIREMENT_STATUS];
-type CompletionStatusType = typeof COMPLETION_STATUS[keyof typeof COMPLETION_STATUS];
-
-interface Requirement {
-  id: string
-  title: string
-  description: string
-  type: "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website"
-  priority: "high" | "medium" | "low"
-  status: RequirementStatusType
-  completionStatus: CompletionStatusType
-  source: string
-  campaigns?: string[]
-  campaignNames?: string[]
-  budget: number | null
-  createdAt: string
-  segments: string[]
-  segmentNames?: string[]
-  metadata?: {
-    payment_status?: {
-      status: 'pending' | 'paid' | 'failed'
-      amount_paid?: number
-      amount_due?: number
-      currency?: string
-      payment_method?: string
-      stripe_payment_intent_id?: string
-      payment_date?: string
-      invoice_number?: string
-      outsourced?: boolean
-      outsource_provider?: string
-      outsource_contact?: string
-    }
-  }
-  campaignOutsourced?: boolean
-}
-
-// Define el tipo para los datos de requisitos en Supabase
-interface RequirementData {
-  id: string
-  title: string
-  description: string
-  type: "app" | "automation" | "presentation" | "document" | "campaign" | "image" | "video" | "audio" | "report" | "message" | "segment" | "task" | "website"
-  priority: "high" | "medium" | "low"
-  status: RequirementStatusType
-  completion_status: CompletionStatusType
-  source: string
-  budget: number | null
-  created_at: string
-  requirement_segments: Array<{ segment_id: string }> | null
-  requirement_campaigns: Array<{ campaign_id: string }> | null
-  metadata?: any
-}
-
-// Define la interfaz para el segmento en Supabase
-interface SegmentData {
-  id: string
-  name: string
-  description: string
-}
-
-function RequirementCard({ requirement, onUpdateStatus, onUpdateCompletionStatus, onUpdatePriority }: { 
-  requirement: Requirement, 
-  onUpdateStatus: (id: string, status: RequirementStatusType) => Promise<void>,
-  onUpdateCompletionStatus: (id: string, status: CompletionStatusType) => Promise<void>,
-  onUpdatePriority: (id: string, priority: "high" | "medium" | "low") => Promise<void>
-}) {
-  const { t } = useLocalization()
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
-  const [isUpdatingCompletion, setIsUpdatingCompletion] = useState(false)
-  const [isUpdatingPriority, setIsUpdatingPriority] = useState(false)
-  const { toast } = useToast()
-
-  const priorityColors = {
-    high: "bg-red-50/60 text-red-600/70 dark:bg-red-900/20 dark:text-red-400/70 hover:bg-red-100/40 border border-red-200/30 dark:border-red-800/30",
-    medium: "bg-yellow-50/60 text-yellow-600/70 dark:bg-yellow-900/20 dark:text-yellow-400/70 hover:bg-yellow-100/40 border border-yellow-200/30 dark:border-yellow-800/30",
-    low: "bg-blue-50/60 text-blue-600/70 dark:bg-blue-900/20 dark:text-blue-400/70 hover:bg-blue-100/40 border border-blue-200/30 dark:border-blue-800/30"
-  }
-
-  const statusColors = {
-    [REQUIREMENT_STATUS.VALIDATED]: "bg-green-100/20 text-green-600 dark:text-green-400 hover:bg-green-100/30 border-green-300/30",
-    [REQUIREMENT_STATUS.IN_PROGRESS]: "bg-purple-100/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100/30 border-purple-300/30",
-    [REQUIREMENT_STATUS.ON_REVIEW]: "bg-blue-100/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100/30 border-blue-300/30",
-    [REQUIREMENT_STATUS.DONE]: "bg-green-100/20 text-green-600 dark:text-green-400 hover:bg-green-100/30 border-green-300/30",
-    [REQUIREMENT_STATUS.BACKLOG]: "bg-gray-100/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100/30 border-gray-300/30",
-    [REQUIREMENT_STATUS.CANCELED]: "bg-red-100/20 text-red-600 dark:text-red-400 hover:bg-red-100/30 border-red-300/30"
-  }
-
-  const completionStatusColors = {
-    [COMPLETION_STATUS.COMPLETED]: "bg-green-100/20 text-green-600 dark:text-green-400 border-green-300/30",
-    [COMPLETION_STATUS.REJECTED]: "bg-red-100/20 text-red-600 dark:text-red-400 border-red-300/30",
-    [COMPLETION_STATUS.PENDING]: "bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 border-yellow-300/30"
-  }
-
-  const handleUpdateStatus = async (status: RequirementStatusType) => {
-    try {
-      setIsUpdatingStatus(true)
-      await onUpdateStatus(requirement.id, status)
-      toast({
-        title: t('requirements.success.statusTitle') === 'requirements.success.statusTitle' ? "Status updated" : t('requirements.success.statusTitle'),
-        description: `${t('requirements.success.statusDesc') === 'requirements.success.statusDesc' ? 'The requirement has been moved to' : t('requirements.success.statusDesc')} ${
-          status === REQUIREMENT_STATUS.VALIDATED ? (t('requirements.status.validated') === 'requirements.status.validated' ? 'Validated' : t('requirements.status.validated')) : 
-          status === REQUIREMENT_STATUS.IN_PROGRESS ? (t('requirements.status.inProgress') === 'requirements.status.inProgress' ? 'In Progress' : t('requirements.status.inProgress')) :
-          status === REQUIREMENT_STATUS.ON_REVIEW ? (t('requirements.status.onReview') === 'requirements.status.onReview' ? 'On Review' : t('requirements.status.onReview')) :
-          status === REQUIREMENT_STATUS.DONE ? (t('requirements.status.done') === 'requirements.status.done' ? 'Done' : t('requirements.status.done')) :
-          status === REQUIREMENT_STATUS.CANCELED ? (t('requirements.status.canceled') === 'requirements.status.canceled' ? 'Canceled' : t('requirements.status.canceled')) :
-          (t('requirements.status.backlog') === 'requirements.status.backlog' ? 'Backlog' : t('requirements.status.backlog'))
-        }`,
-      })
-    } catch (error) {
-      toast({
-        title: t('requirements.error.title') === 'requirements.error.title' ? "Error" : t('requirements.error.title'),
-        variant: "destructive",
-        description: t('requirements.error.updateStatus') === 'requirements.error.updateStatus' ? "Error updating requirement status" : t('requirements.error.updateStatus'),
-      })
-    } finally {
-      setIsUpdatingStatus(false)
-    }
-  }
-
-  const handleUpdateCompletionStatus = async (status: CompletionStatusType) => {
-    try {
-      setIsUpdatingCompletion(true)
-      await onUpdateCompletionStatus(requirement.id, status)
-      toast({
-        title: t('requirements.success.completionTitle') === 'requirements.success.completionTitle' ? "Status updated" : t('requirements.success.completionTitle'),
-        description: `${t('requirements.success.completionDesc') === 'requirements.success.completionDesc' ? 'The completion status has been updated to' : t('requirements.success.completionDesc')} ${
-          status === COMPLETION_STATUS.PENDING ? (t('requirements.completion.pending') === 'requirements.completion.pending' ? 'Pending' : t('requirements.completion.pending')) : 
-          status === COMPLETION_STATUS.COMPLETED ? (t('requirements.completion.completed') === 'requirements.completion.completed' ? 'Completed' : t('requirements.completion.completed')) : 
-          (t('requirements.completion.rejected') === 'requirements.completion.rejected' ? 'Rejected' : t('requirements.completion.rejected'))
-        }`,
-      })
-    } catch (error) {
-      toast({
-        title: t('requirements.error.title') === 'requirements.error.title' ? "Error" : t('requirements.error.title'),
-        variant: "destructive",
-        description: t('requirements.error.updateCompletion') === 'requirements.error.updateCompletion' ? "Error updating completion status" : t('requirements.error.updateCompletion'),
-      })
-    } finally {
-      setIsUpdatingCompletion(false)
-    }
-  }
-
-  const handleUpdatePriority = async (priority: "high" | "medium" | "low") => {
-    try {
-      setIsUpdatingPriority(true)
-      await onUpdatePriority(requirement.id, priority)
-      toast({
-        title: t('requirements.success.priorityTitle') === 'requirements.success.priorityTitle' ? "Priority updated" : t('requirements.success.priorityTitle'),
-        description: `${t('requirements.success.priorityDesc') === 'requirements.success.priorityDesc' ? 'The requirement priority has been updated to' : t('requirements.success.priorityDesc')} ${
-          priority === "high" ? (t('requirements.priority.high') === 'requirements.priority.high' ? 'High' : t('requirements.priority.high')) : 
-          priority === "medium" ? (t('requirements.priority.medium') === 'requirements.priority.medium' ? 'Medium' : t('requirements.priority.medium')) : 
-          (t('requirements.priority.low') === 'requirements.priority.low' ? 'Low' : t('requirements.priority.low'))
-        }`,
-      })
-    } catch (error) {
-      toast({
-        title: t('requirements.error.title') === 'requirements.error.title' ? "Error" : t('requirements.error.title'),
-        variant: "destructive",
-        description: t('requirements.error.updatePriority') === 'requirements.error.updatePriority' ? "Error updating priority" : t('requirements.error.updatePriority'),
-      })
-    } finally {
-      setIsUpdatingPriority(false)
-    }
-  }
-
-  // Function to navigate to requirement details
-  const router = useRouter()
-  const navigateToDetails = () => {
-    navigateToRequirement({
-      requirementId: requirement.id,
-      requirementTitle: requirement.title,
-      router
-    })
-  }
-
-  return (
-    <Card 
-      className="border border-border hover:border-foreground/20 transition-colors overflow-hidden cursor-pointer"
-      onClick={navigateToDetails}
-    >
-      <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
-        <CardContent className="flex-1 p-4 w-full overflow-x-auto">
-          <div className="flex items-start gap-4 min-w-[1200px]">
-            <div className="w-[500px] min-w-[500px] pr-2 flex-grow">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-lg truncate">{requirement.title}</h3>
-                {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
-                  <Badge variant="secondary" className={`${priorityColors[requirement.priority]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}>
-                    {t(`requirements.priority.${requirement.priority}`) === `requirements.priority.${requirement.priority}` ? requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1) : t(`requirements.priority.${requirement.priority}`)}
-                  </Badge>
-                ) : (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                        <Badge variant="secondary" className={priorityColors[requirement.priority]}>
-                          {t(`requirements.priority.${requirement.priority}`) === `requirements.priority.${requirement.priority}` ? requirement.priority.charAt(0).toUpperCase() + requirement.priority.slice(1) : t(`requirements.priority.${requirement.priority}`)}
-                        </Badge>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-48">
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        disabled={isUpdatingPriority}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdatePriority("high");
-                        }}
-                      >
-                        <div className="w-2 h-2 rounded-full mr-2 bg-red-500"></div>
-                        {t('requirements.priority.high') === 'requirements.priority.high' ? 'High Priority' : t('requirements.priority.high')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        disabled={isUpdatingPriority}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdatePriority("medium");
-                        }}
-                      >
-                        <div className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></div>
-                        {t('requirements.priority.medium') === 'requirements.priority.medium' ? 'Medium Priority' : t('requirements.priority.medium')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        disabled={isUpdatingPriority}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdatePriority("low");
-                        }}
-                      >
-                        <div className="w-2 h-2 rounded-full mr-2 bg-blue-500"></div>
-                        {t('requirements.priority.low') === 'requirements.priority.low' ? 'Low Priority' : t('requirements.priority.low')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                {isUpdatingPriority && (
-                  <span className="text-xs text-muted-foreground animate-pulse">{t('requirements.updating') === 'requirements.updating' ? 'Updating...' : t('requirements.updating')}</span>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground/80 line-clamp-1">{requirement.description}</p>
-            </div>
-            <div className="w-[100px] min-w-[100px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.type') === 'requirements.list.type' ? 'Type' : t('requirements.list.type')}</p>
-              <div className="flex justify-center">
-                <Badge variant="outline" className={`text-xs ${
-                  requirement.type === 'app' ? 'bg-blue-100/20 text-blue-600 dark:text-blue-400 border-blue-300/30' :
-                  requirement.type === 'automation' ? 'bg-purple-100/20 text-purple-600 dark:text-purple-400 border-purple-300/30' :
-                  requirement.type === 'presentation' ? 'bg-indigo-100/20 text-indigo-600 dark:text-indigo-400 border-indigo-300/30' :
-                  requirement.type === 'document' ? 'bg-yellow-100/20 text-yellow-600 dark:text-yellow-400 border-yellow-300/30' :
-                  requirement.type === 'campaign' ? 'bg-green-100/20 text-green-600 dark:text-green-400 border-green-300/30' :
-                  requirement.type === 'image' ? 'bg-red-100/20 text-red-600 dark:text-red-400 border-red-300/30' :
-                  requirement.type === 'video' ? 'bg-teal-100/20 text-teal-600 dark:text-teal-400 border-teal-300/30' :
-                  requirement.type === 'audio' ? 'bg-orange-100/20 text-orange-600 dark:text-orange-400 border-orange-300/30' :
-                  requirement.type === 'report' ? 'bg-emerald-100/20 text-emerald-600 dark:text-emerald-400 border-emerald-300/30' :
-                  requirement.type === 'message' ? 'bg-cyan-100/20 text-cyan-600 dark:text-cyan-400 border-cyan-300/30' :
-                  requirement.type === 'segment' ? 'bg-violet-100/20 text-violet-600 dark:text-violet-400 border-violet-300/30' :
-                  requirement.type === 'task' ? 'bg-lime-100/20 text-lime-600 dark:text-lime-400 border-lime-300/30' :
-                  requirement.type === 'website' ? 'bg-sky-100/20 text-sky-600 dark:text-sky-400 border-sky-300/30' :
-                  'bg-pink-100/20 text-pink-600 dark:text-pink-400 border-pink-300/30'
-                }`}>
-                  {
-                    {
-                      app: 'Apps',
-                      automation: 'Automatización',
-                      presentation: 'Presentación',
-                      document: 'Documento',
-                      campaign: 'Campaña',
-                      image: 'Imagen',
-                      video: 'Video',
-                      audio: 'Audio',
-                      report: 'Reporte',
-                      message: 'Mensaje',
-                      segment: 'Segmento',
-                      task: 'Tarea',
-                      website: 'Sitio web'
-                    }[requirement.type] || requirement.type.charAt(0).toUpperCase() + requirement.type.slice(1)
-                  }
-                </Badge>
-              </div>
-            </div>
-            <div className="w-[120px] min-w-[120px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.campaign') === 'requirements.list.campaign' ? 'Campaign' : t('requirements.list.campaign')}</p>
-              <p className="text-sm font-medium truncate text-center">
-                {requirement.campaignNames && requirement.campaignNames.length > 0 
-                  ? requirement.campaignNames[0] 
-                  : (t('requirements.list.noCampaign') === 'requirements.list.noCampaign' ? 'No campaign' : t('requirements.list.noCampaign'))}
-              </p>
-            </div>
-            <div className="w-[100px] min-w-[100px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.status') === 'requirements.list.status' ? 'Status' : t('requirements.list.status')}</p>
-              <div className="flex justify-center">
-                {requirement.completionStatus === COMPLETION_STATUS.COMPLETED || requirement.completionStatus === COMPLETION_STATUS.REJECTED ? (
-                  <Badge 
-                    variant="secondary" 
-                    className={`${statusColors[requirement.status]} bg-opacity-30 hover:bg-opacity-30 cursor-not-allowed`}
-                  >
-                    {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                      ? (t('requirements.status.inProgress') === 'requirements.status.inProgress' ? 'In Progress' : t('requirements.status.inProgress')) 
-                      : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                        ? (t('requirements.status.onReview') === 'requirements.status.onReview' ? 'On Review' : t('requirements.status.onReview'))
-                        : requirement.status === REQUIREMENT_STATUS.DONE
-                          ? (t('requirements.status.done') === 'requirements.status.done' ? 'Done' : t('requirements.status.done'))
-                          : requirement.status === REQUIREMENT_STATUS.CANCELED
-                            ? (t('requirements.status.canceled') === 'requirements.status.canceled' ? 'Canceled' : t('requirements.status.canceled'))
-                            : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                              ? (t('requirements.status.validated') === 'requirements.status.validated' ? 'Validated' : t('requirements.status.validated'))
-                              : (t('requirements.status.backlog') === 'requirements.status.backlog' ? 'Backlog' : t('requirements.status.backlog'))}
-                  </Badge>
-                ) : (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <div className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                        <Badge variant="secondary" className={statusColors[requirement.status]}>
-                          {requirement.status === REQUIREMENT_STATUS.IN_PROGRESS 
-                            ? (t('requirements.status.inProgress') === 'requirements.status.inProgress' ? 'In Progress' : t('requirements.status.inProgress')) 
-                            : requirement.status === REQUIREMENT_STATUS.ON_REVIEW
-                              ? (t('requirements.status.onReview') === 'requirements.status.onReview' ? 'On Review' : t('requirements.status.onReview'))
-                              : requirement.status === REQUIREMENT_STATUS.DONE
-                                ? (t('requirements.status.done') === 'requirements.status.done' ? 'Done' : t('requirements.status.done'))
-                                : requirement.status === REQUIREMENT_STATUS.CANCELED
-                                  ? (t('requirements.status.canceled') === 'requirements.status.canceled' ? 'Canceled' : t('requirements.status.canceled'))
-                                  : requirement.status === REQUIREMENT_STATUS.VALIDATED
-                                    ? (t('requirements.status.validated') === 'requirements.status.validated' ? 'Validated' : t('requirements.status.validated'))
-                                    : (t('requirements.status.backlog') === 'requirements.status.backlog' ? 'Backlog' : t('requirements.status.backlog'))}
-                        </Badge>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-48">
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        disabled={isUpdatingStatus}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdateStatus(REQUIREMENT_STATUS.BACKLOG);
-                        }}
-                      >
-                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.BACKLOG].split(" ")[0]}`}></div>
-                        {t('requirements.status.backlog') === 'requirements.status.backlog' ? 'Backlog' : t('requirements.status.backlog')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        disabled={isUpdatingStatus}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdateStatus(REQUIREMENT_STATUS.IN_PROGRESS);
-                        }}
-                      >
-                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.IN_PROGRESS].split(" ")[0]}`}></div>
-                        {t('requirements.status.inProgress') === 'requirements.status.inProgress' ? 'In Progress' : t('requirements.status.inProgress')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        disabled={isUpdatingStatus}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdateStatus(REQUIREMENT_STATUS.ON_REVIEW);
-                        }}
-                      >
-                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.ON_REVIEW].split(" ")[0]}`}></div>
-                        {t('requirements.status.onReview') === 'requirements.status.onReview' ? 'On Review' : t('requirements.status.onReview')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        disabled={isUpdatingStatus}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdateStatus(REQUIREMENT_STATUS.DONE);
-                        }}
-                      >
-                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.DONE].split(" ")[0]}`}></div>
-                        {t('requirements.status.done') === 'requirements.status.done' ? 'Done' : t('requirements.status.done')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        disabled={isUpdatingStatus}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdateStatus(REQUIREMENT_STATUS.VALIDATED);
-                        }}
-                      >
-                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.VALIDATED].split(" ")[0]}`}></div>
-                        {t('requirements.status.validated') === 'requirements.status.validated' ? 'Validated' : t('requirements.status.validated')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        disabled={isUpdatingStatus}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleUpdateStatus(REQUIREMENT_STATUS.CANCELED);
-                        }}
-                      >
-                        <div className={`w-2 h-2 rounded-full mr-2 ${statusColors[REQUIREMENT_STATUS.CANCELED].split(" ")[0]}`}></div>
-                        {t('requirements.status.canceled') === 'requirements.status.canceled' ? 'Canceled' : t('requirements.status.canceled')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                {isUpdatingStatus && (
-                  <span className="text-xs text-muted-foreground animate-pulse block mt-1">{t('requirements.updating') === 'requirements.updating' ? 'Updating...' : t('requirements.updating')}</span>
-                )}
-              </div>
-            </div>
-            <div className="w-[80px] min-w-[80px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.budget') === 'requirements.list.budget' ? 'Budget' : t('requirements.list.budget')}</p>
-              <div className="flex justify-center">
-                {(requirement.metadata?.payment_status?.outsourced && requirement.metadata.payment_status.status === 'paid') || 
-                 requirement.campaignOutsourced ? (
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">{t('requirements.list.paid') === 'requirements.list.paid' ? 'Paid' : t('requirements.list.paid')}</span>
-                ) : requirement.budget ? (
-                  <span className="text-sm font-medium">${requirement.budget.toLocaleString()}</span>
-                ) : (
-                  <span className="text-sm text-muted-foreground">N/A</span>
-                )}
-              </div>
-            </div>
-            <div className="w-[180px] min-w-[180px] flex-shrink-0">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1 text-center">{t('requirements.list.segments') === 'requirements.list.segments' ? 'Segments' : t('requirements.list.segments')}</p>
-              <div className="flex items-center gap-1 justify-center">
-                {requirement.segmentNames && requirement.segmentNames.length > 0 ? (
-                  requirement.segmentNames.length > 1 ? (
-                    <>
-                      <Badge variant="outline" className="text-xs max-w-[120px] truncate">
-                        {requirement.segmentNames[0]}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs shrink-0">
-                        +{requirement.segmentNames.length - 1}
-                      </Badge>
-                    </>
-                  ) : (
-                    <Badge variant="outline" className="text-xs max-w-[160px] truncate">
-                      {requirement.segmentNames[0]}
-                    </Badge>
-                  )
-                ) : (
-                  <span className="text-sm text-muted-foreground">{t('requirements.list.noSegments') === 'requirements.list.noSegments' ? 'No segments' : t('requirements.list.noSegments')}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </div>
-    </Card>
-  )
-}
-
-/**
- * Limpia un UUID de comillas extras o caracteres no válidos
- * @param id Posible UUID con formato incorrecto
- * @returns UUID limpio o string vacía si no es válido
- */
-function cleanUUID(id: string | null): string {
-  if (!id) return "";
-  
-  // Eliminar comillas extras si existen
-  let cleaned = id.replace(/["']/g, '')
-  
-  // Verificar el formato básico de UUID después de limpiar
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned)) {
-    return cleaned
-  }
-  
-  // Caso especial para "default" u otros valores especiales
-  if (cleaned === "default") return cleaned
-  
-  console.warn("UUID inválido después de limpieza:", id, "->", cleaned)
-  return ""
-}
-
-// Define tipos para la caché (fuera del componente)
-type CacheData = {
-  segments: Segment[],
-  requirements: Requirement[],
-  timestamp: number,
-  lastUpdated: number
-};
-
-type CacheStore = {
-  [key: string]: CacheData;
-};
+import { KanbanView } from "./kanban-view"
+import { RequirementsTable, RequirementsTableSkeleton } from "./RequirementsTable"
+import { useRequirementsList } from "./use-requirements-list"
+import { COMPLETION_STATUS, REQUIREMENT_STATUS, type Requirement } from "./types"
 
 export default function RequirementsPage() {
   const { t } = useLocalization()
-  const [requirements, setRequirements] = useState<Requirement[]>([])
-  const [segments, setSegments] = useState<Segment[]>([])
-  const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description: string }>>([])
-  const [filteredRequirements, setFilteredRequirements] = useState<Requirement[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("all")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState<"priority" | "newest" | "budget">("priority")
-  
-  // View mode state (list or kanban)
+  const router = useRouter()
   const [viewMode, setViewMode] = useMobileView("table")
-  
-  // Estado de filtros avanzados
-  const [filters, setFilters] = useState<RequirementFilters>({
-    priority: [],
-    completionStatus: [],
-    status: [],
-    segments: []
-  })
-  
-  // Estado para controlar la visualización del modal de filtros
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
-  
-  // Estado de error visible al usuario
-  const [visibleError, setVisibleError] = useState<string | null>(null)
-  
-  // Usar refs para los estados que no necesitan re-renderizar el componente
-  const loadAttemptsRef = React.useRef(0)
-  const isMountedRef = React.useRef(true)
-  const isLoadingDataRef = React.useRef(false)
-  const siteLoadedRef = React.useRef<string | null>(null)
-  
-  // Referencia para guardar el caché por sitio con sistema de invalidación basado en tiempo
-  const dataCacheBySiteRef = React.useRef<CacheStore>({});
-  
-  // Para la referencia al input de búsqueda
-  const searchInputRef = React.useRef<HTMLInputElement>(null)
-  
-  const { toast } = useToast()
-  const { currentSite } = useSite()
-  
-  // Funciones de utilidad para manejar la caché de forma segura
-  const getCacheForSite = (siteId: string): CacheData | null => {
-    if (!siteId || typeof siteId !== 'string') return null;
-    return dataCacheBySiteRef.current[siteId] || null;
-  };
-  
-  const setCacheForSite = (siteId: string, data: CacheData): void => {
-    if (!siteId || typeof siteId !== 'string') return;
-    dataCacheBySiteRef.current[siteId] = data;
-  };
-  
-  // Forzar una recarga de datos (útil después de operaciones de actualización)
-  const invalidateCache = React.useCallback((siteId: string): void => {
-    if (!siteId || typeof siteId !== 'string') return;
-    
-    const cache = getCacheForSite(siteId);
-    if (cache) {
-      setCacheForSite(siteId, {
-        ...cache,
-        lastUpdated: 0
-      });
-    }
-  }, []);
+  const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const list = useRequirementsList()
 
-  // Configurar cleanup al desmontar
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [])
-
-  // Función optimizada para cargar datos con filtros a nivel de base de datos
-  const loadRequirementsWithFilters = React.useCallback(async () => {
-    if (!currentSite?.id) {
-      setIsLoading(false);
-      return;
-    }
-
-    const siteId = currentSite.id;
-    
-    try {
-      const supabase = createClient();
-      
-      // Verify that the site exists
-      const { data: siteData, error: siteError } = await supabase
-        .from("sites")
-        .select("id, name")
-        .eq("id", siteId)
-        .single();
-        
-      if (siteError || !siteData) {
-        throw new Error("The selected site does not exist or you don't have access to it");
-      }
-      
-      // Load segments
-      const { data: segmentData, error: segmentError } = await supabase
-        .from("segments")
-        .select("*")
-        .eq("site_id", siteId);
-      
-      if (segmentError) {
-        throw new Error(`Error loading segments: ${segmentError.message}`);
-      }
-      
-      // Build the optimized query for requirements
-      let requirementsQuery = supabase
-        .from("requirements")
-        .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id), metadata")
-        .eq("site_id", siteId);
-
-      // Apply database-level filters based on active tab and filters
-      if (activeTab !== "all") {
-        switch (activeTab) {
-          case "pending":
-            requirementsQuery = requirementsQuery.eq("completion_status", COMPLETION_STATUS.PENDING);
-            break;
-          case "completed":
-            requirementsQuery = requirementsQuery.eq("completion_status", COMPLETION_STATUS.COMPLETED);
-            break;
-          case "rejected":
-            requirementsQuery = requirementsQuery.eq("completion_status", COMPLETION_STATUS.REJECTED);
-            break;
-        }
-      }
-
-      // Apply advanced filters at database level
-      if (filters.completionStatus.length > 0) {
-        requirementsQuery = requirementsQuery.in("completion_status", filters.completionStatus);
-      }
-
-      if (filters.status.length > 0) {
-        requirementsQuery = requirementsQuery.in("status", filters.status);
-      }
-
-      if (filters.priority.length > 0) {
-        requirementsQuery = requirementsQuery.in("priority", filters.priority);
-      }
-
-      // Handle segment filtering with a separate query first if needed
-      let requirementIds: string[] | null = null;
-      if (filters.segments.length > 0) {
-        const { data: segmentRequirements, error: segmentError } = await supabase
-          .from("requirement_segments")
-          .select("requirement_id")
-          .in("segment_id", filters.segments);
-        
-        if (segmentError) {
-          throw new Error(`Error filtering by segments: ${segmentError.message}`);
-        }
-        
-        requirementIds = segmentRequirements?.map((sr: { requirement_id: string }) => sr.requirement_id) || [];
-        
-        // If no requirements match the segment filter, return empty result
-        if (requirementIds && requirementIds.length === 0) {
-          setSegments((segmentData || []).map((segment: SegmentData) => ({
-            id: segment.id,
-            name: segment.name,
-            description: segment.description || "",
-          })));
-          setRequirements([]);
-          setCampaigns([]);
-          setIsLoading(false);
-          return;
-        }
-        
-        // Apply the segment filter to the main query
-        requirementsQuery = requirementsQuery.in("id", requirementIds);
-      }
-
-      // Execute the optimized query
-      const { data: requirementData, error: requirementError } = await requirementsQuery;
-      
-      if (requirementError) {
-        throw new Error(`Error loading requirements: ${requirementError.message}`);
-      }
-      
-      // Load campaigns to get their names and metadata
-      const { data: campaignData, error: campaignError } = await supabase
-        .from("campaigns")
-        .select("id, title, metadata")
-        .eq("site_id", siteId);
-      
-      if (campaignError) {
-        console.warn("Error loading campaigns:", campaignError.message);
-        // We don't throw here to not block the requirements loading
-      }
-      
-      // Map segments to expected format
-      const segments = (segmentData || []).map((segment: SegmentData) => ({
-        id: segment.id,
-        name: segment.name,
-        description: segment.description || "",
-      }));
-      
-      // Create a campaigns map for quick lookup
-      const campaignsMap = new Map<string, string>();
-      const campaignsOutsourcedMap = new Map<string, boolean>();
-      if (campaignData && campaignData.length > 0) {
-        campaignData.forEach((campaign: { id: string, title: string, metadata?: any }) => {
-          campaignsMap.set(campaign.id, campaign.title);
-          campaignsOutsourcedMap.set(campaign.id, campaign.metadata?.payment_status?.outsourced || false);
-        });
-      }
-      
-      // Map requirements to expected format
-      const requirements = (requirementData || []).map((req: any) => {
-        // Extract related segment IDs
-        const segmentIds = (req.requirement_segments || []).map((sr: any) => sr.segment_id);
-        
-        // Get segment names
-        const segmentNames = segments
-          .filter((segment: any) => segmentIds.includes(segment.id))
-          .map((segment: any) => segment.name);
-        
-        // Extract related campaign IDs
-        const campaignIds = (req.campaign_requirements || []).map((cr: any) => cr.campaign_id);
-        
-        // Get campaign names
-        const campaignNames = campaignIds
-          .filter((id: string) => campaignsMap.has(id))
-          .map((id: string) => campaignsMap.get(id) || "");
-        
-        // Check if any of the related campaigns is outsourced
-        const campaignOutsourced = campaignIds.some((id: string) => 
-          campaignsOutsourcedMap.get(id) === true
-        );
-        
-        return {
-          id: req.id,
-          title: req.title,
-          description: req.description || "",
-          type: req.type || "task",
-          priority: req.priority || "medium",
-          status: req.status || "backlog",
-          completionStatus: req.completion_status || "pending",
-          source: req.source || "",
-          budget: req.budget || null,
-          createdAt: req.created_at || new Date().toISOString(),
-          segments: segmentIds,
-          segmentNames: segmentNames,
-          campaigns: campaignIds,
-          campaignNames: campaignNames,
-          metadata: req.metadata || {},
-          campaignOutsourced: campaignOutsourced
-        };
-      });
-      
-      // Save campaigns for the dropdown
-      const formattedCampaigns = (campaignData || []).map((campaign: { id: string; title: string; description?: string }) => ({
-        id: campaign.id,
-        title: campaign.title,
-        description: campaign.description || ""
-      }));
-      setCampaigns(formattedCampaigns);
-      
-      // Update state
-      setSegments(segments);
-      setRequirements(requirements);
-      
-      // Reset loading state
-      setIsLoading(false);
-      
-    } catch (error: any) {
-      setVisibleError(error.message || "Error loading data");
-      setIsLoading(false);
-    }
-  }, [currentSite, activeTab, filters]);
-
-  // Efecto de carga de datos optimizado
-  useEffect(() => {
-    // Si no hay sitio seleccionado, no cargamos nada
-    if (!currentSite) {
-      setIsLoading(false);
-      return;
-    }
-    
-    // Si el ID del sitio no es válido, mostramos error
-    const siteId = currentSite?.id;
-    if (!siteId) {
-      setVisibleError("Invalid site ID");
-      setIsLoading(false);
-      return;
-    }
-    
-    setIsLoading(true);
-    loadRequirementsWithFilters();
-    
-    return () => {
-      // Limpieza
-    };
-  }, [currentSite, activeTab, filters, loadRequirementsWithFilters]);
-
-  // Manejar actualización de estados con invalidación de caché
-  const handleUpdateStatus = async (id: string, status: RequirementStatusType) => {
-    try {
-      const { error } = await updateRequirementStatus(id, status)
-      
-      if (error) {
-        throw new Error(error)
-      }
-      
-      // Actualizar el estado local
-      setRequirements(prevReqs => 
-        prevReqs.map(req => 
-          req.id === id ? { ...req, status } : req
-        )
-      )
-      
-      // Invalidar caché si hay un sitio seleccionado
-      if (currentSite?.id) {
-        const siteId = cleanUUID(currentSite.id);
-        if (siteId) {
-          invalidateCache(siteId);
-        }
-      }
-      
-    } catch (error) {
-      console.error("Error al actualizar el estado:", error)
-      toast({
-        title: "Error",
-        variant: "destructive",
-        description: error instanceof Error ? error.message : t('requirements.error.updateStatus') || "Error updating status",
-      })
-      throw error
-    }
+  const handleOpen = (requirement: Requirement) => {
+    navigateToRequirement({
+      requirementId: requirement.id,
+      requirementTitle: requirement.title,
+      router,
+    })
   }
 
-  // Manejar actualización de estados de finalización con invalidación de caché
-  const handleUpdateCompletionStatus = async (id: string, completionStatus: CompletionStatusType) => {
-    try {
-      const { error } = await updateCompletionStatus(id, completionStatus)
-      
-      if (error) {
-        throw new Error(error)
-      }
-      
-      // Actualizar el estado local
-      setRequirements(prevReqs => 
-        prevReqs.map(req => 
-          req.id === id ? { ...req, completionStatus } : req
-        )
-      )
-      
-      // Invalidar caché si hay un sitio seleccionado
-      if (currentSite?.id) {
-        const siteId = cleanUUID(currentSite.id);
-        if (siteId) {
-          invalidateCache(siteId);
-        }
-      }
-      
-    } catch (error) {
-      console.error("Error al actualizar el estado de finalización:", error)
-      toast({
-        title: "Error",
-        variant: "destructive",
-        description: error instanceof Error ? error.message : t('requirements.error.updateCompletion') || "Error updating completion status",
-      })
-      throw error
-    }
-  }
-
-  // Manejar actualización de prioridad con invalidación de caché
-  const handleUpdatePriority = async (id: string, priority: "high" | "medium" | "low") => {
-    try {
-      const { error } = await updateRequirementPriority(id, priority)
-      
-      if (error) {
-        throw new Error(error)
-      }
-      
-      // Actualizar el estado local
-      setRequirements(prevReqs => 
-        prevReqs.map(req => 
-          req.id === id ? { ...req, priority } : req
-        )
-      )
-      
-      // Invalidar caché si hay un sitio seleccionado
-      if (currentSite?.id) {
-        const siteId = cleanUUID(currentSite.id);
-        if (siteId) {
-          invalidateCache(siteId);
-        }
-      }
-      
-    } catch (error) {
-      console.error("Error al actualizar la prioridad:", error)
-      toast({
-        title: "Error",
-        variant: "destructive",
-        description: error instanceof Error ? error.message : t('requirements.error.updatePriority') || "Error updating priority",
-      })
-      throw error
-    }
-  }
-
-  // Efecto optimizado para filtrar solo por búsqueda (el resto se filtra en DB)
-  useEffect(() => {
-    if (!requirements || requirements.length === 0) {
-      setFilteredRequirements([]);
-      return;
-    }
-
-    // Obtener requisitos que coinciden con los criterios de búsqueda
-    let filtered = [...requirements];
-
-    // Filtrar por texto de búsqueda (solo esto se hace en cliente)
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(req => 
-        req.title.toLowerCase().includes(query) || 
-        req.description.toLowerCase().includes(query) ||
-        (req.campaignNames && req.campaignNames.some(name => name.toLowerCase().includes(query)))
-      );
-    }
-
-    // Ordenar según el criterio seleccionado
-    filtered.sort((a, b) => {
-      if (sortBy === "priority") {
-        const priorityOrder = { high: 0, medium: 1, low: 2 };
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
-      } else if (sortBy === "newest") {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      } else if (sortBy === "budget") {
-        return (b.budget || 0) - (a.budget || 0);
-      }
-      return 0;
-    });
-
-    setFilteredRequirements(filtered);
-  }, [requirements, searchQuery, sortBy]);
-
-  // Security mechanism to prevent indefinite loading
-  useEffect(() => {
-    if (isLoading) {
-      const timeoutId = setTimeout(() => {
-        // If still loading after 10 seconds, force reset
-        if (isLoading) {
-          setIsLoading(false);
-          
-          // If no data, show an error
-          if (requirements.length === 0) {
-            setVisibleError(t('requirements.error.timeout') || "Loading time exceeded. Please try again.");
-          }
-        }
-      }, 10000);
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isLoading, requirements.length]);
-
-  // Componentes de estado
-  const NoSiteSelected = () => (
-    <div className="flex flex-col items-center justify-center p-8 text-center h-[300px]">
-      <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-xl font-medium mb-2">{t('requirements.noSite.title') === 'requirements.noSite.title' ? 'No site selected' : t('requirements.noSite.title')}</h3>
-      <p className="text-muted-foreground max-w-md">
-        {t('requirements.noSite.desc') === 'requirements.noSite.desc' ? 'Please create or select a site to manage its requirements.' : t('requirements.noSite.desc')}
-      </p>
-    </div>
-  )
-
-  const LoadingState = () => (
-    <div className="space-y-3 min-h-[calc(100dvh-var(--topbar-height,64px)-71px)]">
-      {[1, 2, 3].map(i => (
-        <Card key={i} className="overflow-hidden border border-border">
-          <div className="flex items-center hover:bg-muted/50 transition-colors w-full">
-            <div className="flex-1 p-4 w-full overflow-x-auto">
-              <div className="flex items-start gap-4 min-w-[1200px]">
-                <div className="w-[500px] min-w-[500px] pr-2 flex-grow">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-5 w-16" />
-                  </div>
-                  <Skeleton className="h-4 w-full" />
-                </div>
-                <div className="w-[100px] min-w-[100px] flex-shrink-0">
-                  <Skeleton className="h-3 w-8 mb-1 mx-auto" />
-                  <Skeleton className="h-6 w-16 mx-auto" />
-                </div>
-                <div className="w-[120px] min-w-[120px] flex-shrink-0">
-                  <Skeleton className="h-3 w-16 mb-1 mx-auto" />
-                  <Skeleton className="h-4 w-20 mx-auto" />
-                </div>
-                <div className="w-[100px] min-w-[100px] flex-shrink-0">
-                  <Skeleton className="h-3 w-12 mb-1 mx-auto" />
-                  <Skeleton className="h-6 w-20 mx-auto" />
-                </div>
-                <div className="w-[80px] min-w-[80px] flex-shrink-0">
-                  <Skeleton className="h-3 w-12 mb-1 mx-auto" />
-                  <Skeleton className="h-4 w-16 mx-auto" />
-                </div>
-                <div className="w-[180px] min-w-[180px] flex-shrink-0">
-                  <Skeleton className="h-3 w-16 mb-1 mx-auto" />
-                  <div className="flex items-center gap-1 justify-center">
-                    <Skeleton className="h-5 w-20" />
-                    <Skeleton className="h-5 w-8" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      ))}
-    </div>
-  )
-
-  const EmptyResults = () => {
-    // Determinar el mensaje adecuado según el contexto
-    const getTabName = (tab: string): string => {
-      switch (tab) {
-        case "validated": return t('requirements.empty.validated') === 'requirements.empty.validated' ? 'validated requirements' : t('requirements.empty.validated');
-        case "in-progress": return t('requirements.empty.inProgress') === 'requirements.empty.inProgress' ? 'in-progress requirements' : t('requirements.empty.inProgress');
-        case "backlog": return t('requirements.empty.backlog') === 'requirements.empty.backlog' ? 'backlog requirements' : t('requirements.empty.backlog');
-        default: return t('requirements.empty.all') === 'requirements.empty.all' ? 'all requirements' : t('requirements.empty.all');
-      }
-    };
-    const tabName = getTabName(activeTab);
-    
-    return (
-      <EmptyState
-        icon={<ClipboardList className="w-24 h-24 text-primary/40" />}
-        title={searchQuery ? (t('requirements.empty.searchTitle') === 'requirements.empty.searchTitle' ? 'No matching requirements found' : t('requirements.empty.searchTitle')) : (t('requirements.empty.noTitle') === 'requirements.empty.noTitle' ? 'No requirements found' : t('requirements.empty.noTitle'))}
-        description={
-          searchQuery 
-            ? (t('requirements.empty.searchDesc') === 'requirements.empty.searchDesc' ? 'No results for your search. Try with other terms.' : t('requirements.empty.searchDesc'))
-            : requirements.length > 0 
-              ? (t('requirements.empty.filterDesc') === 'requirements.empty.filterDesc' ? `There are {count} requirements in the database, but none match the current filter ({tabName}).` : t('requirements.empty.filterDesc')).replace('{count}', requirements.length.toString()).replace('{tabName}', tabName)
-              : (t('requirements.empty.noDesc') === 'requirements.empty.noDesc' ? 'No requirements created yet. Create a new one to start.' : t('requirements.empty.noDesc'))
-        }
-      />
-    );
-  };
-
-  // Función de búsqueda
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-  };
-
-  // Función para aplicar filtros avanzados
-  const handleApplyFilters = (newFilters: RequirementFilters) => {
-    setFilters(newFilters);
-  };
-
-  // Función para limpiar todos los filtros
   const handleClearFilters = () => {
-    setFilters({
-      priority: [],
-      completionStatus: [],
-      status: [],
-      segments: []
-    });
-    setSearchQuery("");
-    setActiveTab("all");
-    
-    // Resetear el campo de búsqueda
-    if (searchInputRef.current) {
-      searchInputRef.current.value = "";
+    list.handleClearFilters()
+    if (searchInputRef.current) searchInputRef.current.value = ""
+  }
+
+  const activeFilterCount = list.filters.priority.length + list.filters.completionStatus.length + list.filters.segments.length
+
+  const emptyMessage = () => {
+    if (list.searchQuery) {
+      return {
+        title: t("requirements.empty.searchTitle") || "No matching requirements found",
+        description: t("requirements.empty.searchDesc") || "No results for your search. Try with other terms.",
+      }
     }
-  };
+    return {
+      title: t("requirements.empty.noTitle") || "No requirements found",
+      description: t("requirements.empty.noDesc") || "No requirements created yet. Create a new one to start.",
+    }
+  }
 
-  // Función para abrir el modal de filtros
-  const handleOpenFilterModal = () => {
-    setIsFilterModalOpen(true);
-  };
-
-  // Función para manejar el clic en un requisito (usado en la vista Kanban)
-  const handleRequirementClick = (requirement: Requirement) => {
-    // Navegar a la vista de detalles del requisito
-    window.location.href = `/requirements/${requirement.id}`;
+  const renderContent = () => {
+    if (list.isLoading || (!list.currentSite && !list.visibleError)) {
+      return <RequirementsTableSkeleton />
+    }
+    if (list.visibleError) {
+      return (
+        <div className="mb-4 rounded-md border border-red-300 bg-red-50 p-4 text-red-800">
+          <h3 className="mb-2 font-semibold">{t("requirements.error.loading") || "Error loading requirements"}</h3>
+          <p>{list.visibleError}</p>
+          <button
+            onClick={() => safeReload(false, "Requirements page error retry")}
+            className="mt-2 rounded-md bg-red-100 px-4 py-2 text-red-800 hover:bg-red-200"
+          >
+            {t("requirements.error.retry") || "Retry"}
+          </button>
+        </div>
+      )
+    }
+    if (!list.currentSite) {
+      return (
+        <div className="flex h-[300px] flex-col items-center justify-center p-8 text-center">
+          <XCircle className="mb-4 h-12 w-12 text-muted-foreground" />
+          <h3 className="mb-2 text-xl font-medium">{t("requirements.noSite.title") || "No site selected"}</h3>
+          <p className="max-w-md text-muted-foreground">
+            {t("requirements.noSite.desc") || "Please create or select a site to manage its requirements."}
+          </p>
+        </div>
+      )
+    }
+    if (viewMode === "table") {
+      return (
+        <RequirementsTable
+          requirements={list.filteredRequirements}
+          currency={list.currentSite?.settings?.currency || "USD"}
+          onOpen={handleOpen}
+          onUpdateStatus={list.handleUpdateStatus}
+          onUpdatePriority={list.handleUpdatePriority}
+          emptyTitle={emptyMessage().title}
+          emptyDescription={emptyMessage().description}
+        />
+      )
+    }
+    return (
+      <KanbanView
+        requirements={list.filteredRequirements}
+        onUpdateRequirementStatus={(id, status) => list.handleUpdateStatus(id, status)}
+        segments={list.segments}
+        onRequirementClick={handleOpen}
+        filters={list.filters}
+        onOpenFilters={() => setIsFilterModalOpen(true)}
+      />
+    )
   }
 
   return (
-    <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
-      {/* Modal de filtros */}
+    <div className="flex min-h-[calc(100dvh-var(--topbar-height,64px))] w-full min-w-0 flex-1 flex-col p-0">
       <FilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
-        filters={filters}
-        onApplyFilters={handleApplyFilters}
-        segments={segments}
+        filters={list.filters}
+        onApplyFilters={list.setFilters}
+        segments={list.segments}
         completionStatusOptions={[COMPLETION_STATUS.PENDING, COMPLETION_STATUS.COMPLETED, COMPLETION_STATUS.REJECTED]}
-        statusOptions={[REQUIREMENT_STATUS.IN_PROGRESS, REQUIREMENT_STATUS.ON_REVIEW, REQUIREMENT_STATUS.DONE, REQUIREMENT_STATUS.BACKLOG, REQUIREMENT_STATUS.CANCELED]}
+        statusOptions={[
+          REQUIREMENT_STATUS.IN_PROGRESS,
+          REQUIREMENT_STATUS.ON_REVIEW,
+          REQUIREMENT_STATUS.DONE,
+          REQUIREMENT_STATUS.BACKLOG,
+          REQUIREMENT_STATUS.CANCELED,
+        ]}
       />
-      
-      <Tabs defaultValue="all" onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full min-h-0">
+
+      <Tabs value={list.activeTab} onValueChange={list.setActiveTab} className="flex h-full min-h-0 w-full flex-1 flex-col">
         <StickyHeader>
           <div className="w-full pt-0">
-            <div className="flex items-center justify-between w-full">
+            <div className="flex w-full items-center justify-between">
               <div className="flex items-center gap-8">
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.all') === 'requirements.tabs.all' ? 'All Requirements' : t('requirements.tabs.all')}>
+                <TabsList className="h-8 rounded-full bg-muted/30 p-0.5">
+                  <TabsTrigger value="all" className="flex items-center justify-center gap-1.5 rounded-full text-xs" title={t("requirements.tabs.all") || "All Requirements"}>
                     <LayoutGrid size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('requirements.tabs.all') === 'requirements.tabs.all' ? 'All Requirements' : t('requirements.tabs.all')}</span>
+                    <span className="tab-label">{t("requirements.tabs.all") || "All Requirements"}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.pending') === 'requirements.tabs.pending' ? 'Pending' : t('requirements.tabs.pending')}>
+                  <TabsTrigger value="pending" className="flex items-center justify-center gap-1.5 rounded-full text-xs" title={t("requirements.tabs.pending") || "Pending"}>
                     <Clock size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('requirements.tabs.pending') === 'requirements.tabs.pending' ? 'Pending' : t('requirements.tabs.pending')}</span>
+                    <span className="tab-label">{t("requirements.tabs.pending") || "Pending"}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.completed') === 'requirements.tabs.completed' ? 'Completed' : t('requirements.tabs.completed')}>
+                  <TabsTrigger value="completed" className="flex items-center justify-center gap-1.5 rounded-full text-xs" title={t("requirements.tabs.completed") || "Completed"}>
                     <CheckCircle2 size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('requirements.tabs.completed') === 'requirements.tabs.completed' ? 'Completed' : t('requirements.tabs.completed')}</span>
+                    <span className="tab-label">{t("requirements.tabs.completed") || "Completed"}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="rejected" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('requirements.tabs.rejected') === 'requirements.tabs.rejected' ? 'Rejected' : t('requirements.tabs.rejected')}>
+                  <TabsTrigger value="rejected" className="flex items-center justify-center gap-1.5 rounded-full text-xs" title={t("requirements.tabs.rejected") || "Rejected"}>
                     <Ban size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('requirements.tabs.rejected') === 'requirements.tabs.rejected' ? 'Rejected' : t('requirements.tabs.rejected')}</span>
+                    <span className="tab-label">{t("requirements.tabs.rejected") || "Rejected"}</span>
                   </TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-2">
                   <SearchInput
-                    placeholder={t('requirements.search') === 'requirements.search' ? 'Search requirements...' : t('requirements.search')}
-                    value={searchQuery}
-                    onSearch={handleSearch}
+                    placeholder={t("requirements.search") || "Search requirements..."}
+                    value={list.searchQuery}
+                    onSearch={list.setSearchQuery}
                     ref={searchInputRef}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                    className="border-border bg-background focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                     alwaysExpanded={false}
                   />
-                  
-                  <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
+                  <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={() => setIsFilterModalOpen(true)}>
                     <Filter className="h-4 w-4" />
                   </Button>
-
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('requirements.sortBy') === 'requirements.sortBy' ? 'Sort by' : t('requirements.sortBy')}>
+                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t("requirements.sortBy") || "Sort by"}>
                         <ListOrdered className="h-4 w-4" />
-                        <span className="hidden sm:inline font-normal">
-                          {sortBy === 'priority' ? (t('requirements.sort.priority') === 'requirements.sort.priority' ? 'Priority' : t('requirements.sort.priority')) :
-                           sortBy === 'newest' ? (t('requirements.sort.newest') === 'requirements.sort.newest' ? 'Newest' : t('requirements.sort.newest')) :
-                           (t('requirements.sort.budget') === 'requirements.sort.budget' ? 'Budget' : t('requirements.sort.budget'))}
+                        <span className="hidden font-normal sm:inline">
+                          {list.sortBy === "priority"
+                            ? (t("requirements.sort.priority") || "Priority")
+                            : list.sortBy === "newest"
+                              ? (t("requirements.sort.newest") || "Newest")
+                              : (t("requirements.sort.budget") || "Budget")}
                         </span>
                         <ChevronDown className="h-3 w-3 opacity-50" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={() => setSortBy('priority')} className="cursor-pointer">
-                        {t('requirements.sort.priority') === 'requirements.sort.priority' ? 'Priority' : t('requirements.sort.priority')}
+                      <DropdownMenuItem onClick={() => list.setSortBy("priority")} className="cursor-pointer">
+                        {t("requirements.sort.priority") || "Priority"}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy('newest')} className="cursor-pointer">
-                        {t('requirements.sort.newest') === 'requirements.sort.newest' ? 'Newest' : t('requirements.sort.newest')}
+                      <DropdownMenuItem onClick={() => list.setSortBy("newest")} className="cursor-pointer">
+                        {t("requirements.sort.newest") || "Newest"}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSortBy('budget')} className="cursor-pointer">
-                        {t('requirements.sort.budget') === 'requirements.sort.budget' ? 'Budget' : t('requirements.sort.budget')}
+                      <DropdownMenuItem onClick={() => list.setSortBy("budget")} className="cursor-pointer">
+                        {t("requirements.sort.budget") || "Budget"}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </div>
               <div className="ml-auto flex items-center gap-4">
-                {/* Indicador de filtros activos */}
-                {(filters.priority.length > 0 || filters.completionStatus.length > 0 || filters.segments.length > 0) && (
+                {activeFilterCount > 0 ? (
                   <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                    <Badge variant="outline" className="rounded-full px-2 py-0">
-                      {filters.priority.length + filters.completionStatus.length + filters.segments.length}
-                    </Badge>
-                    <span className="ml-2">{t('requirements.clearFilters') === 'requirements.clearFilters' ? 'Clear' : t('requirements.clearFilters')}</span>
+                    <Badge variant="outline" className="rounded-full px-2 py-0">{activeFilterCount}</Badge>
+                    <span className="ml-2">{t("requirements.clearFilters") || "Clear"}</span>
                   </Button>
-                )}
+                ) : null}
                 <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
               </div>
             </div>
           </div>
         </StickyHeader>
-        
-        <div className="p-8 space-y-4 bg-muted/30 flex-1">
-          <div className={viewMode === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : ""}>
-            <div className={viewMode === 'kanban' ? "min-w-fit px-8" : ""}>
-              {/* Rendering for all tabs */}
+
+        <div className="flex-1 space-y-4 bg-muted/30 p-8">
+          <div className={viewMode === "kanban" ? "overflow-x-auto pb-4 -mx-8" : ""}>
+            <div className={viewMode === "kanban" ? "min-w-fit px-8" : ""}>
               {["all", "pending", "completed", "rejected"].map((tab) => (
-                <TabsContent key={tab} value={tab} className={viewMode === 'kanban' ? "mt-0 m-0 min-h-[calc(100dvh-220px)]" : "mt-0 space-y-4 min-h-[calc(100dvh-220px)]"}>
-                {/* Case 1: Loading or initial state - prioritize loading over no site selected */}
-                {isLoading || (!currentSite && !visibleError) ? (
-                  <LoadingState />
-                ) : 
-                /* Case 2: Visible error */
-                visibleError ? (
-                  <div className="p-4 border border-red-300 bg-red-50 rounded-md text-red-800 mb-4">
-                    <h3 className="font-semibold mb-2">{t('requirements.error.loading') === 'requirements.error.loading' ? 'Error loading requirements' : t('requirements.error.loading')}</h3>
-                    <p>{visibleError}</p>
-                    <button 
-                      onClick={() => safeReload(false, 'Requirements page error retry')} 
-                      className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-md"
-                    >
-                      {t('requirements.error.retry') === 'requirements.error.retry' ? 'Retry' : t('requirements.error.retry')}
-                    </button>
-                  </div>
-                ) : 
-                /* Case 3: No site selected (only show this when we're sure there's no site and not loading) */
-                !currentSite ? (
-                  <NoSiteSelected />
-                ) : 
-                /* Case 4: Still processing data - show loading if we have requirements but no filtered results yet */
-                (requirements.length > 0 && filteredRequirements.length === 0) ? (
-                  <LoadingState />
-                ) :
-                /* Case 5: No filtered requirements to show */
-                filteredRequirements.length === 0 ? (
-                  <EmptyResults />
-                ) : 
-                /* Case 6: Show requirements - List or Kanban view */
-                viewMode === "table" ? (
-                  <div className="space-y-2">
-                    {filteredRequirements.map((requirement) => (
-                      <RequirementCard 
-                        key={requirement.id} 
-                        requirement={requirement} 
-                        onUpdateStatus={handleUpdateStatus}
-                        onUpdateCompletionStatus={handleUpdateCompletionStatus}
-                        onUpdatePriority={handleUpdatePriority}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <KanbanView
-                    requirements={filteredRequirements}
-                    onUpdateRequirementStatus={(id, status) => 
-                      handleUpdateStatus(id, status as RequirementStatusType)
-                    }
-                    segments={segments}
-                    onRequirementClick={handleRequirementClick}
-                    filters={filters}
-                    onOpenFilters={handleOpenFilterModal}
-                  />
-                )}
-              </TabsContent>
-            ))}
+                <TabsContent
+                  key={tab}
+                  value={tab}
+                  className={viewMode === "kanban" ? "m-0 mt-0 min-h-[calc(100dvh-220px)]" : "mt-0 min-h-[calc(100dvh-220px)] space-y-4"}
+                >
+                  {renderContent()}
+                </TabsContent>
+              ))}
             </div>
-            {/* Right padding spacer for scroll */}
-            {viewMode === 'kanban' && <div className="w-16 flex-shrink-0" />}
+            {viewMode === "kanban" ? <div className="w-16 flex-shrink-0" /> : null}
           </div>
         </div>
       </Tabs>
@@ -1272,11 +239,5 @@ export default function RequirementsPage() {
   )
 }
 
-// Exportamos esto para usarlo en el topbar
 export { createRequirement } from "./actions"
-
-// Exportamos también el tipo Segment
 export type { Segment } from "./types"
-
-// Ya no exportamos el componente para usarlo en el topbar, lo importan directamente
-// export { CreateRequirementDialog } 
