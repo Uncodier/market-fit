@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/client"
+"use server"
+
+import { createClient } from "@/lib/supabase/server"
 import { z } from "zod"
 import { findOrCreateCompany } from "@/app/companies/actions"
 import { Lead } from "./types"
