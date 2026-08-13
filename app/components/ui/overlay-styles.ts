@@ -14,6 +14,10 @@ export function dialogSizeClassName(size: DialogSize = "md"): string {
   return DIALOG_SIZES[size]
 }
 
+/** Outer scroll is a fallback. Slotted body/form must own scrolling or the footer sits in extra space. */
+export const dialogContentOverflowClassName =
+  "overflow-y-auto [&:has([data-slot=dialog-form])]:overflow-hidden [&:has([data-slot=dialog-body])]:overflow-hidden"
+
 const FLOATING_LAYER_SELECTOR = [
   "[data-radix-popper-content-wrapper]",
   "[data-radix-select-content]",

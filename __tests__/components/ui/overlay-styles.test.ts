@@ -1,4 +1,5 @@
 import {
+  dialogContentOverflowClassName,
   dialogSizeClassName,
   isDismissEventFromFloatingLayer,
   overlayClassName,
@@ -19,6 +20,16 @@ describe("overlay styles", () => {
     expect(dialogSizeClassName("lg")).toBe("sm:max-w-2xl")
     expect(dialogSizeClassName("xl")).toBe("sm:max-w-4xl")
     expect(dialogSizeClassName()).toBe("sm:max-w-lg")
+  })
+
+  it("keeps outer overflow hidden when a dialog form or body is slotted", () => {
+    expect(dialogContentOverflowClassName).toContain("overflow-y-auto")
+    expect(dialogContentOverflowClassName).toContain(
+      "[&:has([data-slot=dialog-form])]:overflow-hidden"
+    )
+    expect(dialogContentOverflowClassName).toContain(
+      "[&:has([data-slot=dialog-body])]:overflow-hidden"
+    )
   })
 
   it("ignores dismiss events from portaled selects and menus", () => {
