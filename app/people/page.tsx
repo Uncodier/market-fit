@@ -2385,7 +2385,7 @@ export default function PeopleSearchPage() {
                           setDate={(date) => setJobFeaturedDateTo(date)}
                           className="w-full"
                           mode="default"
-                          placeholder="Select end date"
+                          placeholder={t('people.filters.selectEndDate')}
                         />
                       </div>
                     </div>

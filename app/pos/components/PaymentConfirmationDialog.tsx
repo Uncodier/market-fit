@@ -13,10 +13,10 @@ import {
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { X, CreditCard, Banknote, HelpCircle, User, CheckCircle2 } from "@/app/components/ui/icons"
+import { X, CreditCard, Banknote, HelpCircle, User, CheckCircle2, Bank } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
+import { cn } from "@/lib/utils"
 
 interface PaymentEntry {
   method: string
@@ -74,7 +74,7 @@ export function PaymentConfirmationDialog({
     { value: "cash", label: t('pos.payment.methods.cash') || "Cash", icon: Banknote },
     { value: "credit_card", label: t('pos.payment.methods.creditCard') || "Credit Card", icon: CreditCard },
     { value: "debit_card", label: t('pos.payment.methods.debitCard') || "Debit Card", icon: CreditCard },
-    { value: "transfer", label: t('pos.payment.methods.transfer') || "Bank Transfer", icon: Banknote },
+    { value: "transfer", label: t('pos.payment.methods.transfer') || "Bank Transfer", icon: Bank },
     { value: "on_account", label: t('pos.payment.methods.onAccount') || "On Account", icon: User },
     { value: "other", label: t('pos.payment.methods.other') || "Other", icon: HelpCircle },
   ]
@@ -162,8 +162,8 @@ export function PaymentConfirmationDialog({
                 <div className="space-y-8">
                   <div className="space-y-3">
                     <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t('pos.payment.method') || 'Payment Method'}</Label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {paymentMethods.map(method => {
+                    <div className="grid grid-cols-3 grid-rows-2 w-full gap-1 p-1 bg-muted/30 rounded-xl [grid-auto-rows:1fr]">
+                      {paymentMethods.map((method) => {
                         const Icon = method.icon
                         const isSelected = selectedMethod === method.value
                         return (
@@ -171,14 +171,17 @@ export function PaymentConfirmationDialog({
                             key={method.value}
                             type="button"
                             onClick={() => setSelectedMethod(method.value)}
-                            className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl transition-all ${
-                              isSelected 
-                                ? 'bg-primary/10 text-primary ring-1 ring-primary/30 shadow-sm' 
-                                : 'bg-muted/20 hover:bg-muted/50 text-muted-foreground'
-                            }`}
+                            className={cn(
+                              "flex h-full min-h-[4.75rem] flex-col items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-muted-foreground transition-all",
+                              isSelected
+                                ? "bg-background text-foreground shadow-sm"
+                                : "hover:text-foreground",
+                            )}
                           >
-                            <Icon className="w-6 h-6" />
-                            <span className="text-xs font-medium text-center leading-tight">{method.label}</span>
+                            <Icon size={20} />
+                            <span className="text-[11px] font-medium leading-tight text-center">
+                              {method.label}
+                            </span>
                           </button>
                         )
                       })}

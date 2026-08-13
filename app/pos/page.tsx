@@ -14,6 +14,8 @@ import { ShoppingCart } from "@/app/components/ui/icons";
 import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal";
 import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialog";
 import { PosOptionsDialog } from "./components/PosOptionsDialog";
+import { PosReservationDialog } from "./components/PosReservationDialog";
+import { PosDigitalAssetDialog } from "./components/PosDigitalAssetDialog";
 import { CartPanel } from "./components/CartPanel";
 import { resolveUnitPriceLocal } from "./local/resolve-unit-price-local";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
@@ -28,6 +30,11 @@ import { usePosAddItem } from "./hooks/use-pos-add-item";
 import { usePosLead } from "./hooks/use-pos-lead";
 import { drainPosOutbox } from "./local/sync-engine";
 import { PosRequireLeadDialog } from "./components/PosRequireLeadDialog";
+import { cartHasReservationSlot } from "./cart-line-utils";
+import {
+  buyerUserFromLeads,
+  commitPosDigitalBuyer,
+} from "./assign-digital-buyer";
 
 export default function POSPage() {
   const { currentSite } = useSite();
@@ -86,6 +93,7 @@ export default function POSPage() {
     activeOrderId: cartApi.activeOrderId,
     buyerUserId: cartApi.buyerUserId,
     orderNotes: cartApi.orderNotes,
+    shippingAddress: cartApi.shippingAddress,
     subtotal: cartApi.subtotal,
     taxTotal: cartApi.taxTotal,
     router,
@@ -172,6 +180,7 @@ export default function POSPage() {
     updateQty: cartApi.updateQty,
     setItemQty: cartApi.setItemQty,
     setItemPrice: cartApi.setItemPrice,
+    setItemDiscount: cartApi.setItemDiscount,
     selectedCartItemId: cartApi.selectedCartItemId,
     setSelectedCartItemId: cartApi.setSelectedCartItemId,
     leadValue: cartApi.leadValue as any,
@@ -199,6 +208,8 @@ export default function POSPage() {
     allowedFulfillments: cartApi.allowedFulfillments,
     orderNotes: cartApi.orderNotes,
     setOrderNotes: cartApi.setOrderNotes,
+    shippingAddress: cartApi.shippingAddress,
+    setShippingAddress: cartApi.setShippingAddress,
     siteId,
     onLeadUpdated: leadApi.handleLeadUpdated,
     t,
@@ -373,6 +384,56 @@ export default function POSPage() {
         }}
       />
 
+      <PosReservationDialog
+        item={addApi.reservationItem}
+        open={!!addApi.reservationItem}
+        onOpenChange={(o) => {
+          if (!o) addApi.setReservationItem(null);
+        }}
+        leads={catalog.leads}
+        siteId={siteId}
+        initialLeadValue={leadApi.leadRelationValue}
+        onLeadUpdated={leadApi.handleLeadUpdated}
+        t={t}
+        onConfirm={async ({
+          item,
+          reservationStart,
+          reservationEnd,
+          leadValue,
+        }) => {
+          await leadApi.handleLeadValueChange(leadValue);
+          addApi.confirmReservation(item, {
+            reservationStart,
+            reservationEnd,
+          });
+        }}
+      />
+
+      <PosDigitalAssetDialog
+        item={addApi.digitalItem}
+        open={!!addApi.digitalItem}
+        modifiers={addApi.digitalModifiers}
+        initialBuyerUser={buyerUserFromLeads(
+          cartApi.buyerUserId,
+          catalog.leads,
+        )}
+        onOpenChange={(o) => {
+          if (!o) addApi.setDigitalItem(null);
+        }}
+        t={t}
+        onConfirm={async ({ item, buyerUser, modifiers }) => {
+          if (!siteId) return;
+          await commitPosDigitalBuyer({
+            siteId,
+            buyerUser,
+            handleLeadValueChange: leadApi.handleLeadValueChange,
+            setBuyerUserId: cartApi.setBuyerUserId,
+            setLeads: catalog.setLeads,
+          });
+          addApi.confirmDigital(item, modifiers);
+        }}
+      />
+
       <DynamicQuoteFieldsModal
         item={addApi.dynamicQuoteItem}
         open={!!addApi.dynamicQuoteItem}
@@ -396,6 +457,11 @@ export default function POSPage() {
         leads={catalog.leads}
         siteId={siteId}
         t={t}
+        purpose={
+          leadGate === "promo" || !cartHasReservationSlot(cartApi.cart)
+            ? "promo"
+            : "reservation"
+        }
         oncePerUser={
           Number(
             cartApi.appliedPromo?.usageLimitPerUser ??

@@ -3,12 +3,12 @@
 import * as React from "react"
 import { CalendarIcon, ChevronLeft, ChevronRight } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
-import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, startOfDay, endOfDay, startOfWeek as dateStartOfWeek, endOfWeek as dateEndOfWeek, startOfMonth as dateStartOfMonth, endOfMonth as dateEndOfMonth, startOfYear, endOfYear, isSameYear, subYears } from "date-fns"
+import { format, addDays, subDays, addWeeks, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, startOfDay, endOfDay, startOfWeek as dateStartOfWeek, endOfWeek as dateEndOfWeek, startOfMonth as dateStartOfMonth, endOfMonth as dateEndOfMonth, startOfYear, endOfYear, isSameYear } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/app/components/ui/badge"
-import { Calendar } from "@/app/components/ui/calendar"
-import { useMemo } from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 
 export type DateEventType = 'day' | 'week' | 'month' | 'year' | 'custom';
 export type DateEventPeriod = 'past' | 'future' | 'current';
@@ -44,7 +44,7 @@ export function DatePicker({
   date,
   setDate,
   className,
-  placeholder = "Select date",
+  placeholder,
   disabled = false,
   showEvents = true,
   events,
@@ -58,6 +58,9 @@ export function DatePicker({
   showTimePicker = false,
   timeFormat = '24h'
 }: DatePickerProps) {
+  const { t, locale } = useLocalization()
+  const dateLocale = getDateFnsLocale(locale)
+  const resolvedPlaceholder = placeholder || t("datePicker.selectDate")
   const defaultDate = date || new Date()
   const [currentMonth, setCurrentMonth] = React.useState(new Date(defaultDate))
   const [open, setOpen] = React.useState(false)
@@ -111,82 +114,67 @@ export function DatePicker({
   const getDefaultEvents = (): DateEvent[] => {
     const now = new Date();
     const today = startOfDay(now);
+    const weekOpts = { locale: dateLocale };
     
-    // Common events used across multiple modes
     const commonEvents: DateEvent[] = [
-      { label: "Today", value: today, type: "day", period: "current" },
+      { label: t("datePicker.today"), value: today, type: "day", period: "current" },
     ];
     
     switch (mode) {
       case 'task':
         return [
           ...commonEvents,
-          { label: "Tomorrow", value: addDays(today, 1), type: "day", period: "future" },
-          { label: "Next week", value: addWeeks(today, 1), type: "week", period: "future" },
-          { label: "Next month", value: addMonths(today, 1), type: "month", period: "future" },
+          { label: t("datePicker.tomorrow"), value: addDays(today, 1), type: "day", period: "future" },
+          { label: t("datePicker.nextWeek"), value: addWeeks(today, 1), type: "week", period: "future" },
+          { label: t("datePicker.nextMonth"), value: addMonths(today, 1), type: "month", period: "future" },
         ];
       
       case 'report':
         return [
           ...commonEvents,
-          { label: "Yesterday", value: subDays(today, 1), type: "day", period: "past" },
-          { label: "Last 7 days", value: subDays(today, 7), type: "day", period: "past" },
-          { label: "Last 30 days", value: subDays(today, 30), type: "day", period: "past" },
-          { label: "This month", value: dateStartOfMonth(today), type: "month", period: "current" },
-          { label: "Last month", value: startOfMonth(subMonths(today, 1)), type: "month", period: "past" },
-          { label: "Year to date", value: (() => {
-            // Use startOfYear but explicitly with the current year to avoid any issues
-            const currentYear = today.getFullYear();
-            return new Date(currentYear, 0, 1); // January 1st of current year
-          })(), type: "year", period: "current" },
+          { label: t("datePicker.yesterday"), value: subDays(today, 1), type: "day", period: "past" },
+          { label: t("datePicker.last7Days"), value: subDays(today, 7), type: "day", period: "past" },
+          { label: t("datePicker.last30Days"), value: subDays(today, 30), type: "day", period: "past" },
+          { label: t("datePicker.thisMonth"), value: dateStartOfMonth(today), type: "month", period: "current" },
+          { label: t("datePicker.lastMonth"), value: startOfMonth(subMonths(today, 1)), type: "month", period: "past" },
+          { label: t("datePicker.yearToDate"), value: new Date(today.getFullYear(), 0, 1), type: "year", period: "current" },
         ];
       
       case 'calendar':
         return [
           ...commonEvents,
-          { label: "Tomorrow", value: addDays(today, 1), type: "day", period: "future" },
-          { label: "This week", value: dateStartOfWeek(today), type: "week", period: "current" },
-          { label: "Next week", value: startOfWeek(addWeeks(today, 1)), type: "week", period: "future" },
-          { label: "This month", value: dateStartOfMonth(today), type: "month", period: "current" },
-          { label: "Next month", value: startOfMonth(addMonths(today, 1)), type: "month", period: "future" },
+          { label: t("datePicker.tomorrow"), value: addDays(today, 1), type: "day", period: "future" },
+          { label: t("datePicker.thisWeek"), value: dateStartOfWeek(today, weekOpts), type: "week", period: "current" },
+          { label: t("datePicker.nextWeek"), value: startOfWeek(addWeeks(today, 1), weekOpts), type: "week", period: "future" },
+          { label: t("datePicker.thisMonth"), value: dateStartOfMonth(today), type: "month", period: "current" },
+          { label: t("datePicker.nextMonth"), value: startOfMonth(addMonths(today, 1)), type: "month", period: "future" },
         ];
 
       case 'range':
         return [
-          { label: "Today", value: today, type: "day", period: "current" },
-          { label: "This week", value: dateStartOfWeek(today), type: "week", period: "current" },
-          { label: "This month", value: dateStartOfMonth(today), type: "month", period: "current" },
-          { label: "Last month", value: startOfMonth(subMonths(today, 1)), type: "month", period: "past" },
-          { label: "This quarter", value: (() => {
-            // Calculate current quarter's start date safely
+          { label: t("datePicker.today"), value: today, type: "day", period: "current" },
+          { label: t("datePicker.thisWeek"), value: dateStartOfWeek(today, weekOpts), type: "week", period: "current" },
+          { label: t("datePicker.thisMonth"), value: dateStartOfMonth(today), type: "month", period: "current" },
+          { label: t("datePicker.lastMonth"), value: startOfMonth(subMonths(today, 1)), type: "month", period: "past" },
+          { label: t("datePicker.thisQuarter"), value: (() => {
             const currentYear = today.getFullYear();
             const currentMonth = today.getMonth();
             const currentQuarter = Math.floor(currentMonth / 3);
-            // First month of the current quarter (0, 3, 6, or 9)
             const quarterStartMonth = currentQuarter * 3;
-            // Return first day of the quarter
             return new Date(currentYear, quarterStartMonth, 1);
           })(), type: "month", period: "current" },
-          { label: "Year to date", value: (() => {
-            // Use startOfYear but explicitly with the current year to avoid any issues
-            const currentYear = today.getFullYear();
-            return new Date(currentYear, 0, 1); // January 1st of current year
-          })(), type: "year", period: "current" },
-          { label: "Last year", value: (() => {
-            // Use startOfYear but explicitly with last year to avoid any issues
-            const lastYear = today.getFullYear() - 1;
-            return new Date(lastYear, 0, 1); // January 1st of last year
-          })(), type: "year", period: "past" },
-          { label: "All time", value: new Date(2000, 0, 1), type: "custom", period: "past" },
+          { label: t("datePicker.yearToDate"), value: new Date(today.getFullYear(), 0, 1), type: "year", period: "current" },
+          { label: t("datePicker.lastYear"), value: new Date(today.getFullYear() - 1, 0, 1), type: "year", period: "past" },
+          { label: t("datePicker.allTime"), value: new Date(2000, 0, 1), type: "custom", period: "past" },
         ];
       
       default:
         return [
           ...commonEvents,
-          { label: "Tomorrow", value: addDays(today, 1), type: "day", period: "future" },
-          { label: "Yesterday", value: subDays(today, 1), type: "day", period: "past" },
-          { label: "This week", value: dateStartOfWeek(today), type: "week", period: "current" },
-          { label: "This month", value: dateStartOfMonth(today), type: "month", period: "current" },
+          { label: t("datePicker.tomorrow"), value: addDays(today, 1), type: "day", period: "future" },
+          { label: t("datePicker.yesterday"), value: subDays(today, 1), type: "day", period: "past" },
+          { label: t("datePicker.thisWeek"), value: dateStartOfWeek(today, weekOpts), type: "week", period: "current" },
+          { label: t("datePicker.thisMonth"), value: dateStartOfMonth(today), type: "month", period: "current" },
         ];
     }
   };
@@ -201,15 +189,13 @@ export function DatePicker({
     // Get the last day of the month
     const monthEnd = endOfMonth(monthStart)
     // Get the first day of the first week
-    const startDate = startOfWeek(monthStart)
-    // Get the last day of the last week
-    const endDate = endOfWeek(monthEnd)
+    const startDate = startOfWeek(monthStart, { locale: dateLocale })
+    const calendarEnd = endOfWeek(monthEnd, { locale: dateLocale })
     
-    // Get all days in the interval
-    const calculatedDays = eachDayOfInterval({ start: startDate, end: endDate })
+    const calculatedDays = eachDayOfInterval({ start: startDate, end: calendarEnd })
     
     return calculatedDays
-  }, [currentMonth, forceUpdate])
+  }, [currentMonth, forceUpdate, dateLocale])
   
   // Function to go to the previous month
   const prevMonth = React.useCallback((e: React.MouseEvent) => {
@@ -287,7 +273,7 @@ export function DatePicker({
   // Time picker helper functions
   const formatDisplayTime = (hours: number, minutes: number): string => {
     if (timeFormat === '12h') {
-      const period = hours >= 12 ? 'PM' : 'AM';
+      const period = hours >= 12 ? t("datePicker.pm") : t("datePicker.am");
       const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
       return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
     } else {
@@ -328,14 +314,14 @@ export function DatePicker({
     if (mode === 'range' && endDate && rangeDisplay) {
       return rangeDisplay;
     } else if (date) {
-      const dateStr = format(date, "PPP");
+      const dateStr = format(date, "PPP", { locale: dateLocale });
       if (showTimePicker) {
         const timeStr = formatDisplayTime(selectedTime.hours, selectedTime.minutes);
-        return `${dateStr} at ${timeStr}`;
+        return t("datePicker.dateAtTime", { date: dateStr, time: timeStr });
       }
       return dateStr;
     }
-    return placeholder;
+    return resolvedPlaceholder;
   };
   
   // Select date and close popover
@@ -400,7 +386,7 @@ export function DatePicker({
           end = endOfDay(selectedDate);
           break;
         case 'week':
-          end = endOfDay(dateEndOfWeek(selectedDate));
+          end = endOfDay(dateEndOfWeek(selectedDate, { locale: dateLocale }));
           break;
         case 'month':
           end = endOfDay(dateEndOfMonth(selectedDate));
@@ -431,15 +417,15 @@ export function DatePicker({
   const getEventGroupTitle = (): string => {
     switch (mode) {
       case 'task':
-        return "Schedule For";
+        return t("datePicker.scheduleFor");
       case 'report':
-        return "Date Ranges";
+        return t("datePicker.dateRanges");
       case 'calendar':
-        return "Jump To";
+        return t("datePicker.jumpTo");
       case 'range':
-        return "Preset Ranges";
+        return t("datePicker.presetRanges");
       default:
-        return "Quick Select";
+        return t("datePicker.quickSelect");
     }
   };
 
@@ -473,7 +459,7 @@ export function DatePicker({
           start = startOfDay(today);
           break;
         case 'week':
-          start = startOfWeek(today);
+          start = startOfWeek(today, { locale: dateLocale });
           break;
         case 'month':
           start = startOfMonth(today);
@@ -487,7 +473,7 @@ export function DatePicker({
     }
     
     // Extra safety check for "This quarter" preset, which has caused issues
-    if (event.label === "This quarter" && start > today) {
+    if (event.label === t("datePicker.thisQuarter") && start > today) {
       console.warn(`[DatePicker] Quarter start date still in future after initial check: ${format(start, 'yyyy-MM-dd')}`);
       
       // Calculate current quarter as fallback
@@ -508,7 +494,7 @@ export function DatePicker({
         end = endOfDay(start);
         break;
       case 'week':
-        end = endOfDay(dateEndOfWeek(start));
+        end = endOfDay(dateEndOfWeek(start, { locale: dateLocale }));
         // Cap end date at today if it's in the future
         if (end > today) {
           end = today;
@@ -611,18 +597,18 @@ export function DatePicker({
             <div className="p-4 min-w-[280px]" onKeyDown={handleKeyDown} tabIndex={-1}>
               {mode === 'range' && (
                 <div className="mb-3 text-sm flex flex-col gap-1">
-                  <div className="text-xs font-medium text-muted-foreground">Selected Range</div>
+                  <div className="text-xs font-medium text-muted-foreground">{t("datePicker.selectedRange")}</div>
                   <div className="flex items-center justify-between w-full">
                     <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
-                      <span className="truncate">{(tempStartDate || date) ? format((tempStartDate || date)!, "MMM d, yyyy") : "Select date"}</span>
+                      <span className="truncate">{(tempStartDate || date) ? format((tempStartDate || date)!, "PP", { locale: dateLocale }) : t("datePicker.selectDate")}</span>
                     </Badge>
-                    <span className="px-2 text-muted-foreground flex-shrink-0">to</span>
+                    <span className="px-2 text-muted-foreground flex-shrink-0">{t("datePicker.to")}</span>
                     <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
-                      <span className="truncate">{!isSelectingEndDate && endDate ? format(endDate, "MMM d, yyyy") : "Select date"}</span>
+                      <span className="truncate">{!isSelectingEndDate && endDate ? format(endDate, "PP", { locale: dateLocale }) : t("datePicker.selectDate")}</span>
                     </Badge>
                   </div>
                   {isSelectingEndDate && (
-                    <p className="text-xs text-muted-foreground mt-1">Select end date</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t("datePicker.selectEndDate")}</p>
                   )}
                 </div>
               )}
@@ -637,7 +623,7 @@ export function DatePicker({
                   type="button"
                   style={{ zIndex: 1000001 }}
                 >
-                  <span className="sr-only">Previous month</span>
+                  <span className="sr-only">{t("datePicker.previousMonth")}</span>
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
@@ -647,7 +633,7 @@ export function DatePicker({
                     // Optional: could add month/year picker functionality here
                   }}
                 >
-                  {format(currentMonth, "MMMM yyyy")}
+                  {format(currentMonth, "MMMM yyyy", { locale: dateLocale })}
                 </button>
                 <button 
                   className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary rounded-md flex items-center justify-center border-0 bg-transparent cursor-pointer" 
@@ -659,18 +645,21 @@ export function DatePicker({
                   type="button"
                   style={{ zIndex: 1000001 }}
                 >
-                  <span className="sr-only">Next month</span>
+                  <span className="sr-only">{t("datePicker.nextMonth")}</span>
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
               <div className="grid grid-cols-7 gap-2">
-                {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                {eachDayOfInterval({
+                  start: startOfWeek(currentMonth, { locale: dateLocale }),
+                  end: addDays(startOfWeek(currentMonth, { locale: dateLocale }), 6),
+                }).map((weekday) => (
                   <div 
-                    key={day} 
+                    key={weekday.toISOString()} 
                     className="text-center text-xs text-muted-foreground py-1"
                     style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                   >
-                    {day}
+                    {format(weekday, "EEEEEE", { locale: dateLocale })}
                   </div>
                 ))}
                 {days.map((day, i) => {
@@ -729,7 +718,7 @@ export function DatePicker({
                 
                 {customEvents && (
                   <div className="mt-2 pt-2 border-t">
-                    <div className="text-xs font-medium text-muted-foreground mb-1">Custom Range</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">{t("datePicker.customRange")}</div>
                     {/* Aquí se puede agregar el UI para rangos personalizados */}
                   </div>
                 )}
@@ -739,13 +728,13 @@ export function DatePicker({
             {/* Time Picker - Rightmost Column */}
             {showTimePicker && (
               <div className="border-l p-4 w-[230px] flex flex-col">
-                <div className="text-xs font-medium text-muted-foreground mb-3">Select Time</div>
+                <div className="text-xs font-medium text-muted-foreground mb-3">{t("datePicker.selectTime")}</div>
                 
                 {/* Time Controls - Horizontal Layout */}
                 <div className="flex items-end gap-2 mb-4">
                   {/* Hours */}
                   <div className="flex flex-col flex-1">
-                    <label className="text-xs text-muted-foreground mb-1">Hours</label>
+                    <label className="text-xs text-muted-foreground mb-1">{t("datePicker.hours")}</label>
                     <select
                       value={timeFormat === '12h' ? (selectedTime.hours === 0 ? 12 : selectedTime.hours > 12 ? selectedTime.hours - 12 : selectedTime.hours) : selectedTime.hours}
                       onChange={(e) => {
@@ -776,7 +765,7 @@ export function DatePicker({
 
                   {/* Minutes */}
                   <div className="flex flex-col flex-1">
-                    <label className="text-xs text-muted-foreground mb-1">Minutes</label>
+                    <label className="text-xs text-muted-foreground mb-1">{t("datePicker.minutes")}</label>
                     <select
                       value={selectedTime.minutes}
                       onChange={(e) => handleMinuteChange(e.target.value)}
@@ -794,12 +783,12 @@ export function DatePicker({
                   {/* AM/PM Toggle for 12h format */}
                   {timeFormat === '12h' && (
                     <div className="flex flex-col">
-                      <label className="text-xs text-muted-foreground mb-1">Period</label>
+                      <label className="text-xs text-muted-foreground mb-1">{t("datePicker.period")}</label>
                       <button
                         onClick={handleAMPMToggle}
                         className="px-2 py-1.5 text-sm border border-input rounded-md bg-background hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors min-w-[50px]"
                       >
-                        {selectedTime.hours >= 12 ? 'PM' : 'AM'}
+                        {selectedTime.hours >= 12 ? t("datePicker.pm") : t("datePicker.am")}
                       </button>
                     </div>
                   )}
@@ -807,7 +796,7 @@ export function DatePicker({
 
                 {/* Current time display */}
                 <div className="pt-3 border-t dark:border-white/5 border-black/5">
-                  <div className="text-xs text-muted-foreground mb-2">Selected Time</div>
+                  <div className="text-xs text-muted-foreground mb-2">{t("datePicker.selectedTime")}</div>
                   <div className="text-center px-3 py-2 bg-muted/30 rounded-md">
                     <div className="text-sm font-medium">
                       {formatDisplayTime(selectedTime.hours, selectedTime.minutes)}

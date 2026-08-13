@@ -44,10 +44,16 @@ import {
   Receipt,
   Package,
   Boxes,
-  GitFork,
   FileVideo,
   Inbox,
   CalendarCheck,
+  Settings,
+  MapPin,
+  Calendar,
+  Share,
+  Plug,
+  Shield,
+  Code,
 } from "@/app/components/ui/icons"
 
 export const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
@@ -57,7 +63,9 @@ export const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
   buying: ShoppingCart,
   automation: Zap,
   applications: Smartphone,
+  finance: Building,
   reports: BarChart,
+  settings: Settings,
 }
 
 export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
@@ -88,7 +96,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   context: BookOpen,
   agentsConfiguration: Cpu,
   applicationsDatabase: DatabaseIcon,
-  applicationsRepositories: GitFork,
+  applicationsRepositories: Code,
   sales: DollarSign,
   leads: Users,
   deals: Briefcase,
@@ -109,6 +117,16 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   financeReports: Building,
   journalEntries: ClipboardList,
   chartOfAccounts: FileText,
+  settingsGeneral: Settings,
+  company: Building,
+  marketplace: Store,
+  settingsVisits: MapPin,
+  team: Users,
+  calendar: Calendar,
+  social: Share,
+  integrations: Plug,
+  billing: CreditCard,
+  security: Shield,
 }
 
 export type ModulePattern = "mesh-1" | "mesh-2" | "mesh-3" | "mesh-4" | "mesh-5" | "mesh-6" | "mesh-7"
@@ -152,7 +170,9 @@ export const AREA_FAMILY: Record<WorkspaceArea, AreaFamilyConfig> = {
   buying: { centerHue: 38, defaultPattern: "mesh-4" },
   automation: { centerHue: 265, defaultPattern: "mesh-5" },
   applications: { centerHue: 230, defaultPattern: "mesh-6" },
+  finance: { centerHue: 152, defaultPattern: "mesh-5" },
   reports: { centerHue: 75, defaultPattern: "mesh-7" },
+  settings: { centerHue: 205, defaultPattern: "mesh-4" },
 }
 
 export const FLAGSHIP_MODULE_KEYS = new Set([
@@ -163,7 +183,9 @@ export const FLAGSHIP_MODULE_KEYS = new Set([
   "purchasesOrders",
   "agentsConfiguration",
   "applicationsDatabase",
+  "financeReports",
   "reportPerformance",
+  "settingsGeneral",
 ])
 
 /** Build a rich dual-stop gradient + wash for a hue family. */
@@ -265,6 +287,11 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   applicationsDatabase: buildVariant(225, 245, 135, 58, 48, "mesh-4", true, true),
   applicationsRepositories: buildVariant(235, 220, 45, 48, 50, "mesh-5", false),
 
+  // —— Finance (emerald → sage) ——
+  financeReports: buildVariant(152, 168, 135, 72, 40, "mesh-5", true, true),
+  journalEntries: buildVariant(145, 160, 45, 65, 42, "mesh-3", false),
+  chartOfAccounts: buildVariant(160, 140, 200, 68, 44, "mesh-6", false),
+
   // —— Reports (chartreuse → brand lime) ——
   reportPerformance: buildVariant(72, 88, 135, 95, 42, "mesh-6", true, true),
   reportOverview: buildVariant(78, 65, 45, 80, 40, "mesh-7", false),
@@ -272,9 +299,18 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   reportTraffic: buildVariant(85, 70, 90, 75, 40, "mesh-2", false),
   reportCosts: buildVariant(55, 75, 310, 88, 42, "mesh-3", false),
   reportSales: buildVariant(80, 95, 160, 82, 40, "mesh-4", false),
-  financeReports: buildVariant(62, 85, 145, 88, 40, "mesh-5", true, true),
-  journalEntries: buildVariant(65, 75, 180, 75, 42, "mesh-3", false),
-  chartOfAccounts: buildVariant(70, 60, 220, 70, 44, "mesh-6", false),
+
+  // —— Settings (steel → slate → indigo) ——
+  settingsGeneral: buildVariant(205, 220, 135, 58, 48, "mesh-4", true, true),
+  company: buildVariant(198, 185, 45, 52, 46, "mesh-5", false),
+  marketplace: buildVariant(210, 230, 200, 60, 50, "mesh-6", false),
+  settingsVisits: buildVariant(192, 175, 90, 55, 48, "mesh-7", false),
+  team: buildVariant(218, 235, 310, 62, 52, "mesh-1", false),
+  calendar: buildVariant(200, 215, 160, 50, 46, "mesh-2", false),
+  social: buildVariant(225, 245, 50, 58, 50, "mesh-3", false),
+  integrations: buildVariant(212, 195, 120, 65, 48, "mesh-4", false),
+  billing: buildVariant(188, 205, 220, 70, 46, "mesh-5", false),
+  security: buildVariant(230, 250, 180, 55, 44, "mesh-6", false),
 }
 
 function hashString(str: string) {
@@ -296,6 +332,11 @@ function deriveVariant(area: WorkspaceArea, itemKey: string): ModuleVariant {
   let sat = 68 + (hash % 18)
   let light = 46 + (hash % 12)
   if (area === "applications") sat = 45 + (hash % 16)
+  if (area === "settings") sat = 50 + (hash % 16)
+  if (area === "finance") {
+    sat = 70 + (hash % 14)
+    light = 40 + (hash % 8)
+  }
   if (area === "reports") {
     sat = 82 + (hash % 16)
     light = 38 + (hash % 10)
@@ -320,6 +361,8 @@ export function getModuleVisual(area: WorkspaceArea, itemKey: string): ModuleVar
 export function getAreaFamilyAccent(area: WorkspaceArea): string {
   const family = AREA_FAMILY[area]
   if (area === "reports") return "hsl(72 95% 40%)"
+  if (area === "finance") return "hsl(152 72% 38%)"
   if (area === "applications") return "hsl(230 52% 50%)"
+  if (area === "settings") return "hsl(205 48% 46%)"
   return `hsl(${family.centerHue} 78% 50%)`
 }

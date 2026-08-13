@@ -2,7 +2,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 
 export function ExpenseDocumentSkeleton() {
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-[800px] mx-auto">
       <div className="bg-card dark:bg-card rounded-lg shadow-lg overflow-hidden border border-border dark:border-border" style={{
         boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)",
         background: "var(--card)"

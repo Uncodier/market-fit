@@ -1,8 +1,11 @@
+"use client"
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { useBtnGlassMotion } from "./use-btn-glass-motion"
 
 const buttonVariants = cva(
   "font-inter inline-flex items-center justify-center whitespace-nowrap rounded-full overflow-hidden text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
@@ -40,17 +43,48 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
+    const isPrimary = variant === undefined || variant === "default"
+    const setGlassNode = useBtnGlassMotion(isPrimary)
+
+    const assignRef = React.useCallback(
+      (node: HTMLButtonElement | null) => {
+        setGlassNode(node)
+        if (typeof ref === "function") ref(node)
+        else if (ref) ref.current = node
+      },
+      [setGlassNode, ref]
+    )
+
+    if (asChild) {
+      return (
+        <Slot
+          className={cn(buttonVariants({ variant, size }), className)}
+          ref={assignRef}
+          {...props}
+        >
+          {children}
+        </Slot>
+      )
+    }
+
     return (
-      <Comp
+      <button
         className={cn(buttonVariants({ variant, size }), className)}
-        ref={ref}
+        ref={assignRef}
         {...props}
-      />
+      >
+        {children}
+        {isPrimary ? (
+          <>
+            <span className="btn-glass-cursor" aria-hidden="true" />
+            <span className="btn-glass-rim" aria-hidden="true" />
+          </>
+        ) : null}
+      </button>
     )
   }
 )
 Button.displayName = "Button"
 
-export { Button, buttonVariants } 
+export { Button, buttonVariants }

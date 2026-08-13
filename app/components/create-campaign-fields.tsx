@@ -2,7 +2,9 @@
 
 import type { UseFormReturn } from "react-hook-form"
 import type * as z from "zod"
+import { format } from "date-fns"
 import { Input } from "@/app/components/ui/input"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Switch } from "@/app/components/ui/switch"
@@ -49,6 +51,7 @@ export function CreateCampaignFields({
 }) {
   const selectedSegments = form.watch("segments") || []
   const selectedRequirements = form.watch("requirements") || []
+  const dueDate = form.watch("dueDate")
   const errors = form.formState.errors
 
   return (
@@ -146,7 +149,17 @@ export function CreateCampaignFields({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label htmlFor="dueDate">{t("campaigns.create.dueDateLabel") || "Due date"}</Label>
-          <Input id="dueDate" type="date" {...form.register("dueDate")} />
+          <DatePicker
+            date={dueDate ? new Date(`${dueDate}T12:00:00`) : undefined}
+            setDate={(next) =>
+              form.setValue("dueDate", format(next, "yyyy-MM-dd"), {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
+            className="w-full"
+            placeholder={t("datePicker.selectDueDate")}
+          />
           {errors.dueDate && (
             <p className="text-sm text-destructive">{errors.dueDate.message}</p>
           )}

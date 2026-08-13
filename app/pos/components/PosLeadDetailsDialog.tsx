@@ -187,24 +187,11 @@ export function PosLeadDetailsDialog({
           <DialogTitle>
             {getTrans("pos.leadDetails.title", "Customer details")}
           </DialogTitle>
-          <DialogDescription asChild>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span>
-                {getTrans(
-                  "pos.leadDetails.description",
-                  "View and edit customer information for this order.",
-                )}
-              </span>
-              {leadId && (
-                <Link
-                  href={`/leads/${leadId}`}
-                  className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  {getTrans("pos.leadDetails.openFull", "Open full profile")}
-                </Link>
-              )}
-            </div>
+          <DialogDescription>
+            {getTrans(
+              "pos.leadDetails.description",
+              "View and edit customer information for this order.",
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -345,7 +332,15 @@ export function PosLeadDetailsDialog({
         )}
         </DialogBody>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter>
+          {leadId ? (
+            <Button asChild variant="outline" className="gap-2 sm:mr-auto">
+              <Link href={`/leads/${leadId}`}>
+                <ExternalLink className="h-4 w-4" />
+                {getTrans("pos.leadDetails.openFull", "Open full profile")}
+              </Link>
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"

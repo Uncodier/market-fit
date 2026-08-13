@@ -111,6 +111,7 @@ export function SiteForm({
       competitors: initialData?.competitors || [],
       focusMode: initialData?.focusMode || 50,
       default_locale: initialData?.default_locale || "en",
+      currency: initialData?.currency || "USD",
       about: initialData?.about || "",
       company_size: initialData?.company_size || "",
       industry: initialData?.industry || "",

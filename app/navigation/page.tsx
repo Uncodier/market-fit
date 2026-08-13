@@ -6,9 +6,10 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { ArrowLeft, Star } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { useRouter } from "next/navigation"
-import { NAVIGATION_AREAS, WorkspaceArea, AreaNavItem, buildNavItemHref } from "@/app/config/navigation-areas"
+import { NAVIGATION_AREAS, AreaNavItem, buildNavItemHref, getNavItemTitle, NAVIGATION_MENU_AREA_ORDER } from "@/app/config/navigation-areas"
 import { AREA_ICON, NAV_ITEM_ICON, getAreaFamilyAccent } from "@/app/config/module-visuals"
 import { ModuleTile } from "@/app/components/navigation/ModuleTile"
+import { useSidebarNavKeys } from "@/app/components/navigation/use-sidebar-nav-keys"
 import { cn } from "@/lib/utils"
 
 interface NavigationPageProps {
@@ -21,6 +22,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
+  const sidebarNavKeys = useSidebarNavKeys()
 
   useEffect(() => {
     // Only auto-focus on desktop to prevent mobile keyboard from popping up
@@ -33,37 +35,9 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
     return buildNavItemHref(item);
   }
 
-  const getTitle = (item: AreaNavItem) => {
-    if (item.dashboardTab) {
-      const translation = t(`dashboard.tabs.${item.dashboardTab}`)
-      return translation === `dashboard.tabs.${item.dashboardTab}` ? item.dashboardTab : translation
-    }
-    if (item.settingsTab === "channels") {
-      const translation = t("settings.tabs.channels")
-      return translation === "settings.tabs.channels" ? "Agent Channels" : translation
-    }
-    if (item.settingsTab === "activities") {
-      const translation = t("settings.tabs.activities")
-      return translation === "settings.tabs.activities" ? "Activities" : translation
-    }
-    if (item.key === "skills") {
-      const translation = t("settings.tabs.skills")
-      return translation === "settings.tabs.skills" ? "Code agent skills" : translation
-    }
-    if (item.key === "reportCosts") {
-      const translation = t("layout.sidebar.costs")
-      return translation === "layout.sidebar.costs" ? "Cost reports" : translation
-    }
-    if (item.key === "contentCreator") {
-      const translation = t("layout.sidebar.imprenta")
-      return translation === "layout.sidebar.imprenta" ? "Content Creator" : translation
-    }
-    const translation = t(`layout.sidebar.${item.key}`)
-    return translation === `layout.sidebar.${item.key}` ? item.key : translation
-  }
+  const getTitle = (item: AreaNavItem) => getNavItemTitle(item, t)
 
-  // Define the order of sections to render
-  const sectionsOrder: WorkspaceArea[] = ["marketing", "sales", "operations", "buying", "automation", "applications", "reports"]
+  const sectionsOrder = NAVIGATION_MENU_AREA_ORDER
 
   const handleBack = () => {
     if (onClose) {
@@ -89,8 +63,8 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
         "flex-none flex flex-col justify-center h-[64px] sticky top-0 z-[200]",
         "border-b dark:border-white/5 border-black/5",
         isOverlay 
-          ? "bg-background/95 backdrop-blur-3xl" 
-          : "bg-background/95 backdrop-blur-sm"
+          ? "bg-background/60 backdrop-blur-3xl" 
+          : "bg-background/70 backdrop-blur-sm"
       )}>
         <div className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">
           <div className="flex items-center flex-1 min-w-0">
@@ -163,6 +137,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
                         itemKey={item.key}
                         title={getTitle(item)}
                         icon={Icon}
+                        inMenu={sidebarNavKeys.has(item.key)}
                         onClick={() => handleTileClick(item)}
                       />
                     )

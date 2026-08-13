@@ -49,6 +49,11 @@ export function CheckoutIdentityPicker({
   const [loading, setLoading] = useState(false)
   const [timer, setTimer] = useState(0)
 
+  useEffect(() => {
+    if (otpEmail || !customerEmail) return
+    setOtpEmail(customerEmail)
+  }, [customerEmail, otpEmail])
+
   // Sync when session appears/disappears or digital cart forces auth
   useEffect(() => {
     if (session) {

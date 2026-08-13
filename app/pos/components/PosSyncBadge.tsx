@@ -15,8 +15,11 @@ export function PosSyncBadge({
   t: (key: string) => string;
 }) {
   const pending = status.pendingCount + status.failedCount;
-  let label = t("pos.sync.online") || "Online";
-  let tone = "text-muted-foreground bg-muted/50";
+  const busy = status.pulling || status.syncing || status.pendingCount > 0;
+  const expanded = !status.online || status.failedCount > 0 || busy;
+
+  let label = t("pos.sync.synced") || "Synced";
+  let tone = "text-emerald-800 bg-emerald-100 dark:text-emerald-200 dark:bg-emerald-950/50";
 
   if (!status.online) {
     label =
@@ -27,12 +30,9 @@ export function PosSyncBadge({
   } else if (status.failedCount > 0) {
     label = `${t("pos.sync.error") || "Sync error"} · ${status.failedCount}`;
     tone = "text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-950/50";
-  } else if (status.pulling || status.syncing || status.pendingCount > 0) {
+  } else if (busy) {
     label = `${t("pos.sync.syncing") || "Syncing"} · ${status.pendingCount || "…"}`;
     tone = "text-blue-800 bg-blue-100 dark:text-blue-200 dark:bg-blue-950/50";
-  } else if (status.lastPulledAt) {
-    label = t("pos.sync.synced") || "Synced";
-    tone = "text-emerald-800 bg-emerald-100 dark:text-emerald-200 dark:bg-emerald-950/50";
   }
 
   const Icon =
@@ -48,19 +48,28 @@ export function PosSyncBadge({
       variant="ghost"
       size="sm"
       onClick={onRetry}
+      aria-label={label}
       className={cn(
-        "h-8 gap-1.5 rounded-full px-3 text-xs font-medium",
+        "h-8 rounded-full text-xs font-medium overflow-hidden transition-[padding,gap,width] duration-200",
+        expanded ? "gap-1.5 px-3" : "w-8 px-0 justify-center",
         tone,
       )}
-      title={status.lastError || undefined}
+      title={status.lastError || label}
     >
       <Icon
         className={cn(
-          "h-3.5 w-3.5",
+          "h-3.5 w-3.5 flex-shrink-0",
           (status.pulling || status.syncing) && "animate-spin",
         )}
       />
-      {label}
+      <span
+        className={cn(
+          "overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200",
+          expanded ? "max-w-40 opacity-100" : "max-w-0 opacity-0",
+        )}
+      >
+        {label}
+      </span>
     </Button>
   );
 }

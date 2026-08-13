@@ -2,6 +2,7 @@ import type { CheckoutCartParams } from "@/app/commerce/checkout";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options";
+import type { PosShippingAddress } from "@/app/pos/shipping-address";
 
 export type OutboxStatus = "pending" | "syncing" | "failed" | "synced";
 
@@ -63,6 +64,7 @@ export type PosCartSession = {
   activeOrderId: string;
   buyerUserId: string | null;
   orderNotes?: string;
+  shippingAddress?: PosShippingAddress;
   updatedAt: string;
 };
 

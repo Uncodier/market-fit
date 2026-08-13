@@ -8,6 +8,7 @@ import { resolveRelationId } from "@/app/commerce/resolve-relation";
 import { roundMoney } from "@/app/commerce/taxes";
 import type { CheckoutLine } from "@/app/commerce/checkout";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
+import { getPosCheckoutGate } from "@/app/pos/checkout-gates";
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options";
 import { enqueueCheckout } from "@/app/pos/local/outbox";
 import { drainPosOutbox } from "@/app/pos/local/sync-engine";
@@ -16,6 +17,7 @@ import { navigateToOrder, navigateToSale } from "@/app/hooks/use-navigation-hist
 import { useSite } from "@/app/context/SiteContext";
 import { normalizePrintersSettings, ticketBrandFromSite } from "@/lib/printer";
 import { printAfterPosCheckout, receiptFromPosCart } from "@/app/pos/print-after-checkout";
+import type { PosShippingAddress } from "@/app/pos/shipping-address";
 
 type Payment = {
   method: string;
@@ -43,6 +45,7 @@ type UsePosCheckoutArgs = {
   activeOrderId: string;
   buyerUserId: string | null;
   orderNotes?: string;
+  shippingAddress?: PosShippingAddress;
   router: { push: (href: string) => void };
   onCleared: () => void;
   appliedPromoRequiresLead?: boolean;
@@ -67,6 +70,7 @@ export function usePosCheckout({
   activeOrderId,
   buyerUserId,
   orderNotes = "",
+  shippingAddress,
   router,
   onCleared,
   appliedPromoRequiresLead = false,
@@ -79,28 +83,49 @@ export function usePosCheckout({
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
+  const applyCheckoutGate = (
+    leadReason: "checkout" | "send",
+    opts?: { customerConfirmed?: boolean; leadOverride?: RelationSelectValue },
+  ) => {
+    const gate = getPosCheckoutGate({
+      cart,
+      originLocationId,
+      fulfillment,
+      leadValue: opts?.leadOverride ?? leadValue,
+      buyerUserId,
+      shippingAddress,
+      appliedPromoRequiresLead,
+      customerConfirmed: opts?.customerConfirmed,
+    });
+    if (gate.ok) return true;
+    if (gate.kind === "reservation-lead" || gate.kind === "promo-lead") {
+      onRequireLead?.(leadReason);
+      return false;
+    }
+    const messages: Record<string, [string, string]> = {
+      origin: ["pos.errorSelectOrigin", "Select an origin location"],
+      "ship-customer": [
+        "pos.errorSelectCustomerShipping",
+        "Select a customer for shipping",
+      ],
+      "ship-address": [
+        "pos.errorShippingAddress",
+        "Please enter a complete shipping address",
+      ],
+      "digital-buyer": [
+        "pos.digital.requireBuyer",
+        "Select a buyer account for digital items",
+      ],
+    };
+    const msg = messages[gate.kind];
+    if (msg) toast.error(t(msg[0]) || msg[1]);
+    return false;
+  };
+
   const initiateCheckout = (opts?: { customerConfirmed?: boolean }) => {
     const activeCartItems = cart.filter((c) => c.cartQty > 0);
     if (activeCartItems.length === 0) return;
-    if (!originLocationId) {
-      toast.error(t("pos.errorSelectOrigin") || "Select an origin location");
-      return;
-    }
-    if (fulfillment === "ship" && !leadValue && !opts?.customerConfirmed) {
-      toast.error(
-        t("pos.errorSelectCustomerShipping") ||
-          "Select a customer for shipping",
-      );
-      return;
-    }
-    if (
-      appliedPromoRequiresLead &&
-      !leadValue &&
-      !opts?.customerConfirmed
-    ) {
-      onRequireLead?.("checkout");
-      return;
-    }
+    if (!applyCheckoutGate("checkout", opts)) return;
     setIsPaymentDialogOpen(true);
   };
 
@@ -146,6 +171,8 @@ export function usePosCheckout({
       buyerUserId: buyerUserId || undefined,
       fulfillment,
       originLocationId,
+      shippingAddress:
+        fulfillment === "ship" ? shippingAddress : undefined,
       promotionCode:
         params.promo ||
         appliedPromo?.code ||
@@ -287,9 +314,8 @@ export function usePosCheckout({
       return;
     }
 
-    if (appliedPromoRequiresLead && !leadValue) {
+    if (!applyCheckoutGate("checkout")) {
       setIsPaymentDialogOpen(false);
-      onRequireLead?.("checkout");
       return;
     }
 
@@ -356,27 +382,8 @@ export function usePosCheckout({
       toast.error(t("pos.errorCartEmpty") || "Cart is empty");
       return;
     }
-    if (!originLocationId) {
-      toast.error(t("pos.errorSelectOrigin") || "Select an origin location");
-      return;
-    }
-    const effectiveLeadValue = opts?.leadOverride ?? leadValue;
+    if (!applyCheckoutGate("send", opts)) return;
     const effectiveLeadRelation = opts?.leadOverride ?? leadRelationValue;
-    if (fulfillment === "ship" && !effectiveLeadValue && !opts?.customerConfirmed) {
-      toast.error(
-        t("pos.errorSelectCustomerShipping") ||
-          "Select a customer for shipping",
-      );
-      return;
-    }
-    if (
-      appliedPromoRequiresLead &&
-      !effectiveLeadValue &&
-      !opts?.customerConfirmed
-    ) {
-      onRequireLead?.("send");
-      return;
-    }
     if (!siteId || !userId) return;
 
     setCheckoutLoading(true);
@@ -433,6 +440,8 @@ export function usePosCheckout({
     leadRelationValue,
     appliedPromoRequiresLead,
     onRequireLead,
+    buyerUserId,
+    shippingAddress,
     t,
   ]);
 

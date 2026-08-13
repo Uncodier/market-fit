@@ -6,7 +6,10 @@ import {
   type CheckoutCartSuccess,
 } from "@/app/commerce/checkout-client"
 import { clearCart } from "@/app/commerce/cart-storage"
-import { rememberDeviceOrder } from "@/app/commerce/device-order-storage"
+import {
+  rememberDeviceOrder,
+  type GuestShippingAddress,
+} from "@/app/commerce/device-order-storage"
 import type { CatalogItem } from "@/app/types"
 
 type CartItem = CatalogItem & {
@@ -28,7 +31,12 @@ type SessionLike = {
 function cacheDeviceOrder(
   siteId: string,
   res: CheckoutCartSuccess,
-  cart: CartItem[]
+  cart: CartItem[],
+  guest: {
+    customerName: string
+    customerEmail: string
+    shippingAddress?: GuestShippingAddress
+  }
 ) {
   if (!res.publicAccessToken) return
   rememberDeviceOrder(siteId, {
@@ -44,6 +52,9 @@ function cacheDeviceOrder(
       imageUrl: c.image_url ?? null,
       unitPrice: c.cartPrice ?? c.target_sale_price ?? null,
     })),
+    customerName: guest.customerName,
+    customerEmail: guest.customerEmail,
+    shippingAddress: guest.shippingAddress,
   })
 }
 
@@ -223,7 +234,11 @@ export async function runMarketplaceCheckout(params: {
       return
     }
 
-    cacheDeviceOrder(siteId, res, cart)
+    cacheDeviceOrder(siteId, res, cart, {
+      customerName: resolvedName,
+      customerEmail: resolvedEmail,
+      shippingAddress: fulfillment === "ship" ? shippingAddress : undefined,
+    })
     clearCart("cart", "marketplace")
 
     const marketHome =

@@ -24,6 +24,7 @@ import {
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { PlusCircle, Users } from "./ui/icons"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { createTask } from "@/app/tasks/actions"
 import { toast } from "sonner"
 import { type CreateTaskFormValues } from "@/app/tasks/types"
@@ -49,6 +50,7 @@ interface CreateTaskDialogProps {
 
 export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogProps) {
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [date, setDate] = useState<Date>(new Date())
@@ -269,7 +271,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
                   date={date}
                   setDate={setDate}
                   className="h-12 w-full"
-                  placeholder="Select due date"
+                  placeholder={t("datePicker.selectDueDate")}
                   mode="task"
                   showTimePicker={true}
                   timeFormat="12h"

@@ -16,25 +16,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select";
-import {
-  RelationSelect,
-  RelationSelectValue,
-} from "@/app/components/ui/relation-select";
+import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import { EmptyCard } from "@/app/components/ui/empty-card";
 import {
-  Store,
   X,
   CreditCard,
   ShoppingCart,
   Tag,
+  Store,
+  MapPin,
+  DollarSign,
 } from "@/app/components/ui/icons";
 import { NumpadPanel } from "./NumpadPanel";
 import { PosCustomerSelect } from "./PosCustomerSelect";
+import { PosOrderSelect } from "./PosOrderSelect";
 import { PosOrderNotesField } from "./PosOrderNotesField";
 import { PosAppliedPromoCard } from "./PosAppliedPromoCard";
 import { PosCartLines } from "./PosCartLines";
+import { PosShippingAddressFields } from "./PosShippingAddressFields";
 import { cn } from "@/lib/utils";
 import type { LocalPromoMatch } from "@/app/pos/local/resolve-promo-local";
+import type { PosShippingAddress } from "@/app/pos/shipping-address";
 
 export interface PosCartModifier {
   groupId: string;
@@ -47,6 +49,10 @@ export interface PosCartModifier {
 export interface PosCartItem extends CatalogItem {
   cartQty: number;
   cartPrice: number;
+  /** Unit price before a cashier line discount. */
+  cartListPrice?: number;
+  /** Percent off cartListPrice (0–100). */
+  cartDiscountPercent?: number;
   /** Stable cart line identity (host + modifiers). */
   lineKey?: string;
   modifiers?: PosCartModifier[];
@@ -63,6 +69,7 @@ interface CartPanelProps {
   updateQty: (id: string, delta: number) => void;
   setItemQty: (id: string, qty: number) => void;
   setItemPrice: (id: string, price: number) => void;
+  setItemDiscount: (id: string, percent: number) => void;
   selectedCartItemId: string | null;
   setSelectedCartItemId: (id: string | null) => void;
   leadValue: RelationSelectValue | string;
@@ -99,6 +106,8 @@ interface CartPanelProps {
     email: string;
     phone?: string | null;
   }) => void;
+  shippingAddress?: PosShippingAddress;
+  setShippingAddress?: (value: PosShippingAddress) => void;
   t: (key: string) => string;
 }
 
@@ -111,6 +120,7 @@ export function CartPanel({
   updateQty,
   setItemQty,
   setItemPrice,
+  setItemDiscount,
   selectedCartItemId,
   setSelectedCartItemId,
   leadValue,
@@ -142,6 +152,8 @@ export function CartPanel({
   setOrderNotes,
   siteId,
   onLeadUpdated,
+  shippingAddress,
+  setShippingAddress,
   t,
 }: CartPanelProps) {
   const money = (amount: number) =>
@@ -155,24 +167,34 @@ export function CartPanel({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {isMobile && (
-        <div className="p-4 border-b bg-muted/30 flex justify-between items-center">
-          <h2 className="font-semibold text-lg flex items-center gap-2">
-            <Store className="h-5 w-5 text-muted-foreground" />{" "}
-            {t("pos.cart.currentOrder") || "Current Order"}
-          </h2>
-          {closeCart && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={closeCart}
-              className="md:hidden"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          )}
+      <div
+        className={cn(
+          "sticky top-0 z-20 flex items-center gap-2 min-h-[71px] px-4 flex-shrink-0",
+          "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+          "border-b dark:border-white/5 border-black/5",
+        )}
+      >
+        <div className="flex-1 min-w-0">
+          <PosOrderSelect
+            pendingOrders={pendingOrders}
+            activeOrderId={activeOrderId}
+            orderNotes={orderNotes}
+            onOrderSelect={handleOrderSelect}
+            t={t}
+            className="bg-card"
+          />
         </div>
-      )}
+        {isMobile && closeCart && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={closeCart}
+            className="md:hidden flex-shrink-0"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
+      </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
         {cart.length === 0 ? (
@@ -222,60 +244,6 @@ export function CartPanel({
           </TabsList>
 
           <TabsContent value="options" className="space-y-3 mt-0">
-            <div className="space-y-1.5 pb-2 border-b mb-2">
-              <label className="text-xs font-medium text-muted-foreground">
-                {getTrans("pos.cart.currentOrder", "Current Order")}
-              </label>
-              <RelationSelect
-                options={pendingOrders.map((o: any) => {
-                  const timeString = new Intl.DateTimeFormat("en-US", {
-                    hour: "numeric",
-                    minute: "numeric",
-                  }).format(new Date(o.created_at));
-                  const customerName = o.leads?.name ? ` (${o.leads.name})` : "";
-                  return {
-                    id: o.id,
-                    label: `${getTrans("pos.order", "Order")} - ${timeString}${customerName}`,
-                  };
-                })}
-                value={
-                  activeOrderId === "new"
-                    ? null
-                    : {
-                        mode: "existing",
-                        id: activeOrderId,
-                        label: (() => {
-                          const order = pendingOrders.find(
-                            (o: any) => o.id === activeOrderId,
-                          );
-                          if (order?.created_at) {
-                            const customerName = order.leads?.name ? ` (${order.leads.name})` : "";
-                            return `${getTrans("pos.order", "Order")} - ${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "numeric" }).format(new Date(order.created_at))}${customerName}`;
-                          }
-                          return getTrans("pos.order", "Order");
-                        })(),
-                      }
-                }
-                onValueChange={(val) =>
-                  handleOrderSelect(
-                    val?.mode === "create" || !val ? "new" : val.id,
-                  )
-                }
-                placeholder={getTrans("pos.newOrder", "New Order")}
-                searchPlaceholder={getTrans(
-                  "pos.searchOrder",
-                  "Search order...",
-                )}
-                emptyMessage={getTrans(
-                  "pos.noPendingOrders",
-                  "No pending orders",
-                )}
-                allowCreate={true}
-                createLabel={(q) => `New Order`}
-                clearable={true}
-              />
-            </div>
-
             <PosCustomerSelect
               leads={leads}
               leadValue={leadValue}
@@ -293,16 +261,18 @@ export function CartPanel({
               />
             )}
 
-            <Select
-              value={fulfillment}
-              onValueChange={(val: any) => setFulfillment(val)}
-              disabled={allowedFulfillments.length <= 1}
-            >
-              <SelectTrigger className="bg-card">
-                <SelectValue
-                  placeholder={t("pos.cart.fulfillment") || "Fulfillment"}
-                />
-              </SelectTrigger>
+            <div className="relative">
+              <Store className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Select
+                value={fulfillment}
+                onValueChange={(val: any) => setFulfillment(val)}
+                disabled={allowedFulfillments.length <= 1}
+              >
+                <SelectTrigger className="bg-card pl-9">
+                  <SelectValue
+                    placeholder={t("pos.cart.fulfillment") || "Fulfillment"}
+                  />
+                </SelectTrigger>
               <SelectContent>
                 {allowedFulfillments.includes("dine_in") && (
                   <SelectItem value="dine_in">
@@ -325,50 +295,65 @@ export function CartPanel({
                   </SelectItem>
                 )}
               </SelectContent>
-            </Select>
+              </Select>
+            </div>
+
+            {fulfillment === "ship" && shippingAddress && setShippingAddress && (
+              <PosShippingAddressFields
+                value={shippingAddress}
+                onChange={setShippingAddress}
+                t={t}
+              />
+            )}
 
             {fulfillment !== "none" && locations.length > 1 && (
-              <Select
-                value={originLocationId}
-                onValueChange={setOriginLocationId}
-              >
-                <SelectTrigger className="bg-card">
-                  <SelectValue
-                    placeholder={
-                      fulfillment === "ship"
-                        ? t("pos.cart.shipFrom") || "Ship From Location"
-                        : t("pos.cart.originLocation") || "Origin Location"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {t("pos.cart.from") || "From"}: {l.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Select
+                  value={originLocationId}
+                  onValueChange={setOriginLocationId}
+                >
+                  <SelectTrigger className="bg-card pl-9">
+                    <SelectValue
+                      placeholder={
+                        fulfillment === "ship"
+                          ? t("pos.cart.shipFrom") || "Ship From Location"
+                          : t("pos.cart.originLocation") || "Origin Location"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>
+                        {t("pos.cart.from") || "From"}: {l.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             {priceLists && priceLists.length > 1 && (
-              <Select value={priceListId} onValueChange={handlePriceListChange}>
-                <SelectTrigger className="bg-card">
-                  <SelectValue
-                    placeholder={t("pos.cart.priceList") || "Price List"}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    {t("pos.cart.defaultPrices") || "Default Prices"}
-                  </SelectItem>
-                  {priceLists.map((pl) => (
-                    <SelectItem key={pl.id} value={pl.id}>
-                      {pl.name}
+              <div className="relative">
+                <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Select value={priceListId} onValueChange={handlePriceListChange}>
+                  <SelectTrigger className="bg-card pl-9">
+                    <SelectValue
+                      placeholder={t("pos.cart.priceList") || "Price List"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      {t("pos.cart.defaultPrices") || "Default Prices"}
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    {priceLists.map((pl) => (
+                      <SelectItem key={pl.id} value={pl.id}>
+                        {pl.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             <div className="space-y-1.5 pt-1">
@@ -406,9 +391,9 @@ export function CartPanel({
           <TabsContent value="numpad" className="mt-0">
             <NumpadPanel
               selectedCartItemId={selectedCartItemId}
-              cart={cart}
               setItemQty={setItemQty}
               setItemPrice={setItemPrice}
+              setItemDiscount={setItemDiscount}
               t={t}
             />
           </TabsContent>

@@ -8,6 +8,8 @@ import { AccountingAccount } from "@/app/types"
 import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
+import { DatePicker } from "@/app/components/ui/date-picker"
+import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
@@ -300,11 +302,10 @@ export function ChartOfAccountsClient() {
             <DialogBody className="grid gap-4">
             <div className="flex items-center gap-4 bg-muted/30 p-4 rounded-lg">
               <label className="font-semibold text-sm">{t('accounting.openingDate') || "Opening Date"}</label>
-              <Input 
-                type="date" 
-                value={openingDate} 
-                onChange={e => setOpeningDate(e.target.value)} 
-                className="w-auto h-9 bg-background"
+              <DatePicker
+                date={openingDate ? new Date(`${openingDate}T12:00:00`) : undefined}
+                setDate={(next) => setOpeningDate(format(next, "yyyy-MM-dd"))}
+                className="h-9 w-[220px] bg-background"
               />
             </div>
             

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
-import { NAVIGATION_AREAS, isNavItemActive, buildNavItemHref, AreaNavItem, WorkspaceArea } from "@/app/config/navigation-areas"
+import { NAVIGATION_AREAS, isNavItemActive, buildNavItemHref, AreaNavItem, WorkspaceArea, getNavItemTitle } from "@/app/config/navigation-areas"
 import { MenuItem } from "./MenuItem"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useAuth } from "@/app/hooks/use-auth"
@@ -36,32 +36,11 @@ import { cn } from "@/lib/utils"
 
 import { Star } from "@/app/components/ui/icons"
 
-import { ShortcutRecord } from "./shortcut-types"
+import { isPinnedShortcutKey, SIDEBAR_PINNED_NAV_KEYS } from "./shortcut-types"
 import { loadShortcuts, saveShortcuts, loadShortcutsFromLocalStorage } from "./shortcut-storage"
 import { useShortcutSlotCount } from "./use-shortcut-slot-count"
 import { NAV_ITEM_ICON, getModuleVisual, ModuleVariant } from "@/app/config/module-visuals"
-
-function reportItemTitle(item: AreaNavItem, t: (k: string) => string): string {
-  if (item.dashboardTab) {
-    return t(`dashboard.tabs.${item.dashboardTab}`) || item.dashboardTab
-  }
-  if (item.settingsTab === "channels") {
-    return t("settings.tabs.channels") || "Agent Channels"
-  }
-  if (item.settingsTab === "activities") {
-    return t("settings.tabs.activities") || "Activities"
-  }
-  if (item.key === "skills") {
-    return t("settings.tabs.skills") || "Code agent skills"
-  }
-  if (item.key === "reportCosts") {
-    return t("layout.sidebar.costs") || "Cost reports"
-  }
-  if (item.key === "contentCreator") {
-    return t("layout.sidebar.imprenta") || "Content Creator"
-  }
-  return t(`layout.sidebar.${item.key}`) || item.key
-}
+import { setVisibleSidebarShortcutKeys } from "./use-sidebar-nav-keys"
 
 interface DynamicShortcutsProps {
   isCollapsed: boolean
@@ -184,11 +163,7 @@ function SortableShortcutItem({
   )
 }
 
-const PINNED_NAV_KEYS = new Set(["contentCreator", "reportOverview"])
-
-function isPinnedShortcutKey(key: string): boolean {
-  return PINNED_NAV_KEYS.has(key)
-}
+const PINNED_NAV_KEYS = new Set<string>(SIDEBAR_PINNED_NAV_KEYS)
 
 // Get all possible items except pinned sidebar items (always visible at the top)
 type AreaNavItemWithArea = AreaNavItem & { area: WorkspaceArea }
@@ -349,11 +324,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         !(pathname.startsWith("/dashboard") && navSearchParams.get("tab") === "overview") &&
         pathname !== "/notifications" &&
         !pathname.startsWith("/notifications/") &&
-        !pathname.startsWith("/profile") &&
-        !pathname.startsWith("/settings") &&
-        !pathname.startsWith("/security") &&
-        !pathname.startsWith("/billing") &&
-        !pathname.startsWith("/integrations")
+        !pathname.startsWith("/profile")
       ) {
         const fullHref = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "");
         const customId = `custom-${pathname.replace(/\//g, '-')}`;
@@ -435,6 +406,16 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     }
   }
 
+  useEffect(() => {
+    const ids = shortcuts.slice(0, slots).flatMap((entry) => {
+      const id = typeof entry === "string" ? entry : entry.id
+      const isCustom = typeof entry !== "string" && Boolean(entry.isCustom)
+      if (!id || isCustom || isPinnedShortcutKey(id)) return []
+      return [id]
+    })
+    setVisibleSidebarShortcutKeys(ids)
+  }, [shortcuts, slots])
+
   if (shortcuts.length === 0) return null
 
   const visibleShortcuts = shortcuts.slice(0, slots)
@@ -507,7 +488,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
                 icon = NAV_ITEM_ICON[item.key] || Star
                 linkHref = buildNavItemHref(item, navSearchParams)
                 isActive = id === bestMatchId
-                title = reportItemTitle(item, t)
+                title = getNavItemTitle(item, t)
                 if ((item as AreaNavItemWithArea).area) {
                   visual = getModuleVisual((item as AreaNavItemWithArea).area, item.key)
                 }

@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
 import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
 import { getDeviceOrders } from "@/app/commerce/device-order-storage"
+import { useGuestCheckoutPrefill } from "@/app/commerce/use-guest-checkout-prefill"
 import { buildPublicDocPath } from "@/app/documents/public-token"
 import { withInternalFrom } from "@/app/documents/internal-back"
 import { runMarketplaceCheckout } from "./run-marketplace-checkout"
@@ -72,7 +73,7 @@ export function MarketplaceClient({
   promoBadgesByItemId?: Record<string, PromoBadge>,
 }) {
   const { t, locale, setLocale } = useLocalization()
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const pathname = usePathname() || "/marketplace"
   const router = useRouter()
@@ -152,6 +153,15 @@ export function MarketplaceClient({
 
   const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
+
+  useGuestCheckoutPrefill({
+    session,
+    isLoading: authLoading,
+    siteId: cart[0]?.site_id || null,
+    setCustomerName,
+    setCustomerEmail,
+    setShippingAddress,
+  })
 
   const buyerLocation = useBuyerLocation({
     scope: "marketplace",
@@ -256,13 +266,6 @@ export function MarketplaceClient({
   
   const [ownerSiteId, setOwnerSiteId] = useState<string | null>(initialOwnerSiteId)
   const isLockedDestination = !!initialOwnerSiteId
-
-  useEffect(() => {
-    if (session?.user && !customerEmail) {
-      setCustomerEmail(session.user.email || "")
-      setCustomerName(session.user.user_metadata?.name || "")
-    }
-  }, [session])
 
   useEffect(() => {
     if (typeof window === "undefined") return

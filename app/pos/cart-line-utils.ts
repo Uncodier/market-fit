@@ -1,10 +1,61 @@
 import { v4 as uuidv4 } from "uuid"
 import type { CatalogItem } from "@/app/types"
 import { buildModifierSignature } from "@/app/catalog/modifier-validate"
+import { needsBuyerAccount } from "@/app/catalog/product-details"
+import {
+  applyLineDiscountFields,
+  clearLineDiscountFields,
+} from "@/app/pos/line-discount"
 import type { PosCartItem, PosCartModifier } from "@/app/pos/components/CartPanel"
 
 export function cartLineKey(item: PosCartItem): string {
   return item.lineKey || item.id
+}
+
+function mapCartLine(
+  cart: PosCartItem[],
+  id: string,
+  update: (item: PosCartItem) => PosCartItem,
+): PosCartItem[] {
+  return cart.map((c) => (cartLineKey(c) === id ? update(c) : c))
+}
+
+export function cartWithQtyDelta(
+  cart: PosCartItem[],
+  id: string,
+  delta: number,
+): PosCartItem[] {
+  return mapCartLine(cart, id, (c) => ({
+    ...c,
+    cartQty: Math.max(0, c.cartQty + delta),
+  })).filter((c) => c.cartQty > 0)
+}
+
+export function cartWithQty(
+  cart: PosCartItem[],
+  id: string,
+  qty: number,
+): PosCartItem[] {
+  return mapCartLine(cart, id, (c) => ({
+    ...c,
+    cartQty: Math.max(0, qty),
+  }))
+}
+
+export function cartWithPrice(
+  cart: PosCartItem[],
+  id: string,
+  price: number,
+): PosCartItem[] {
+  return mapCartLine(cart, id, (c) => clearLineDiscountFields(c, price))
+}
+
+export function cartWithDiscountPercent(
+  cart: PosCartItem[],
+  id: string,
+  percent: number,
+): PosCartItem[] {
+  return mapCartLine(cart, id, (c) => applyLineDiscountFields(c, percent))
 }
 
 /** Merge identical host+modifiers into one line, or append a new cart line. */
@@ -81,4 +132,16 @@ export function cartLineUnitTotal(item: PosCartItem): number {
 
 export function cartLineExtendedTotal(item: PosCartItem): number {
   return cartLineUnitTotal(item) * item.cartQty
+}
+
+export function cartHasReservationSlot(
+  cart: Pick<PosCartItem, "cartQty" | "reservationStart">[],
+): boolean {
+  return cart.some((c) => c.cartQty > 0 && Boolean(c.reservationStart))
+}
+
+export function cartHasBuyerAccountItem(
+  cart: Pick<PosCartItem, "cartQty" | "kind" | "is_recurring">[],
+): boolean {
+  return cart.some((c) => c.cartQty > 0 && needsBuyerAccount(c))
 }

@@ -6,6 +6,7 @@ import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { getCartItems, clearCart, CartMode } from "@/app/commerce/cart-storage"
 import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
 import { rememberDeviceOrder, getDeviceOrders } from "@/app/commerce/device-order-storage"
+import { useGuestCheckoutPrefill } from "@/app/commerce/use-guest-checkout-prefill"
 import { CheckoutLine } from "@/app/commerce/checkout"
 import { checkoutCartRequest, createStripeOrderCheckout } from "@/app/commerce/checkout-client"
 import { buildPublicDocPath } from "@/app/documents/public-token"
@@ -44,7 +45,7 @@ export default function CheckoutClient({
   const { t, locale } = useLocalization()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const session = user ? { user } : null
 
   // URL Params
@@ -92,6 +93,15 @@ export default function CheckoutClient({
   const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
   const [orderNotes, setOrderNotes] = useState("")
+
+  useGuestCheckoutPrefill({
+    session,
+    isLoading: authLoading,
+    siteId: siteId || null,
+    setCustomerName,
+    setCustomerEmail,
+    setShippingAddress,
+  })
 
   const businessHours = siteSettings?.business_hours || []
   const isOpen = businessHours.length > 0 ? isBusinessOpen(businessHours) : true
@@ -164,13 +174,6 @@ export default function CheckoutClient({
       setFulfillment(defaultFulfillment(allowedOptions) || 'none');
     }
   }, [allowedOptions, fulfillment, setFulfillment]);
-
-  useEffect(() => {
-    if (session?.user && !customerEmail) {
-      setCustomerEmail(session.user.email || "")
-      setCustomerName(session.user.user_metadata?.name || "")
-    }
-  }, [session])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -411,6 +414,9 @@ export default function CheckoutClient({
           imageUrl: c.image_url ?? null,
           unitPrice: c.cartPrice ?? c.target_sale_price ?? null,
         })),
+        customerName: resolvedName,
+        customerEmail: resolvedEmail,
+        shippingAddress: fulfillment === "ship" ? shippingAddress : undefined,
       })
 
       const checkoutReturn =

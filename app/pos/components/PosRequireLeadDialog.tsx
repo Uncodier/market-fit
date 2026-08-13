@@ -22,6 +22,7 @@ export function PosRequireLeadDialog({
   siteId,
   t,
   oncePerUser = true,
+  purpose = "promo",
   onConfirm,
   onLeadUpdated,
 }: {
@@ -31,6 +32,7 @@ export function PosRequireLeadDialog({
   siteId?: string;
   t: (key: string) => string;
   oncePerUser?: boolean;
+  purpose?: "promo" | "reservation";
   onConfirm: (value: RelationSelectValue) => void | Promise<void>;
   onLeadUpdated?: (lead: {
     id: string;
@@ -71,15 +73,20 @@ export function PosRequireLeadDialog({
             {getTrans("pos.cart.requireLeadTitle", "Customer required")}
           </DialogTitle>
           <DialogDescription>
-            {oncePerUser
+            {purpose === "reservation"
               ? getTrans(
-                  "pos.cart.requireLeadOnce",
-                  "This promotion can only be used once per customer. Select or create a customer to continue.",
+                  "pos.cart.requireLeadReservation",
+                  "Reservable services require a customer. Select or create a customer to continue.",
                 )
-              : getTrans(
-                  "pos.cart.requireLeadLimited",
-                  "This promotion is limited per customer. Select or create a customer to continue.",
-                )}
+              : oncePerUser
+                ? getTrans(
+                    "pos.cart.requireLeadOnce",
+                    "This promotion can only be used once per customer. Select or create a customer to continue.",
+                  )
+                : getTrans(
+                    "pos.cart.requireLeadLimited",
+                    "This promotion is limited per customer. Select or create a customer to continue.",
+                  )}
           </DialogDescription>
         </DialogHeader>
 

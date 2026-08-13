@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { getExpenseById, updateExpense, deleteExpense } from "@/app/transactions/actions"
+import { getExpenseById, deleteExpense } from "@/app/transactions/actions"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Pencil, Trash2 } from "@/app/components/ui/icons"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from "@/app/components/ui/alert-dialog"
 import { CreateExpenseDialog } from "../components/CreateExpenseDialog"
-import { TypeBar } from "../components/TypeBar"
 import { ExpenseDocument } from "../components/ExpenseDocument"
 import { ExpenseDocumentSkeleton } from "../components/ExpenseDocumentSkeleton"
 import { upsertPolizaForExpense, removePolizaForSource } from "@/app/accounting/ensure"
@@ -155,29 +154,6 @@ export default function ExpenseDetailPage(props: { params: Promise<{ id: string 
     }
   };
 
-  const handleTypeChange = async (newType: "fixed" | "variable") => {
-    if (!currentSite?.id || !expense) return;
-
-    try {
-      const result = await updateExpense(expense.id, {
-        siteId: currentSite.id,
-        type: newType
-      });
-
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        const label = t(`expenses.type.${newType}`) || newType;
-        toast.success(`${t('expenses.detail.typeUpdated') || 'Type updated to'} ${label}`);
-        const expenseResult = await getExpenseById(currentSite.id, expense.id);
-        if (expenseResult.expense) setExpense(expenseResult.expense);
-      }
-    } catch (error) {
-      console.error("Error updating type:", error);
-      toast.error(t('expenses.detail.errorType') || "Error updating type");
-    }
-  };
-
   const handleEditSuccess = async () => {
     if (!currentSite?.id || !unwrappedParams.id) return;
 
@@ -203,7 +179,7 @@ export default function ExpenseDetailPage(props: { params: Promise<{ id: string 
     <div className="flex-1 p-0">
       <StickyHeader>
         <div className="flex flex-col w-full">
-          <div className="px-16 flex items-center justify-between h-[50px]">
+          <div className="px-16 flex items-center h-[50px]">
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -268,15 +244,6 @@ export default function ExpenseDetailPage(props: { params: Promise<{ id: string 
                 </AlertDialogContent>
               </AlertDialog>
             </div>
-
-            <div className="flex items-center justify-end">
-              {expense && (
-                <TypeBar
-                  currentType={expense.type}
-                  onTypeChange={handleTypeChange}
-                />
-              )}
-            </div>
           </div>
         </div>
       </StickyHeader>
@@ -285,7 +252,7 @@ export default function ExpenseDetailPage(props: { params: Promise<{ id: string 
         {loading ? (
           <ExpenseDocumentSkeleton />
         ) : expense ? (
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-[800px] mx-auto">
             <div className="relative">
               <ExpenseDocument
                 expense={expense}

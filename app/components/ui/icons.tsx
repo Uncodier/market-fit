@@ -2172,6 +2172,19 @@ export const Banknote = ({ className = "", size = 18, ...props }: IconProps) => 
   </IconWrapper>
 )
 
+export const Bank = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 22h18" />
+      <path d="M6 18V11" />
+      <path d="M10 18V11" />
+      <path d="M14 18V11" />
+      <path d="M18 18V11" />
+      <path d="m12 2 8 5H4Z" />
+    </svg>
+  </IconWrapper>
+)
+
 
 
 export const Repeat = ({ className = "", size = 18, ...props }: IconProps) => (
@@ -2214,13 +2227,15 @@ export const CalendarDays = ({ className = "", size = 18, ...props }: IconProps)
 )
 
 export const CalendarCheck = ({ className = "", size = 18, ...props }: IconProps) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-    <line x1="16" x2="16" y1="2" y2="6"/>
-    <line x1="8" x2="8" y1="2" y2="6"/>
-    <line x1="3" x2="21" y1="10" y2="10"/>
-    <path d="m9 16 2 2 4-4"/>
-  </svg>
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+      <line x1="16" x2="16" y1="2" y2="6"/>
+      <line x1="8" x2="8" y1="2" y2="6"/>
+      <line x1="3" x2="21" y1="10" y2="10"/>
+      <path d="m9 16 2 2 4-4"/>
+    </svg>
+  </IconWrapper>
 )
 
 export const Loader2 = Loader

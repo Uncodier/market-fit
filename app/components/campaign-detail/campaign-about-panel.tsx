@@ -16,6 +16,7 @@ import {
   campaignTypeLabel,
   formatCampaignBudget,
 } from "./campaign-format"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 const CURRENCIES = ["USD", "EUR", "GBP", "MXN", "CAD", "BRL"]
 const TYPES = Object.keys(CAMPAIGN_TYPE_LABELS) as CampaignType[]
@@ -30,6 +31,7 @@ export function CampaignAboutPanel({
   siteSegments: Array<{ id: string; name: string; description?: string | null }>
   onUpdate: (data: Record<string, unknown>) => Promise<void>
 }) {
+  const { t } = useLocalization()
   const dueDate = campaign.dueDate ? new Date(campaign.dueDate).toISOString().split("T")[0] : ""
   const createdLabel = campaign.createdAt ? new Date(campaign.createdAt).toLocaleDateString() : ""
   const updatedLabel = campaign.updatedAt ? new Date(campaign.updatedAt).toLocaleDateString() : null
@@ -117,7 +119,7 @@ export function CampaignAboutPanel({
                   date={draft ? new Date(`${draft}T12:00:00`) : undefined}
                   setDate={(date) => setDraft(format(date, "yyyy-MM-dd"))}
                   className="w-full h-8"
-                  placeholder="Select due date"
+                  placeholder={t("datePicker.selectDueDate")}
                 />
               )}
             />

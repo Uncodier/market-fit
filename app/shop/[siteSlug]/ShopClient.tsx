@@ -6,6 +6,7 @@ import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-stora
 import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
 import { getDeviceOrders } from "@/app/commerce/device-order-storage"
 import type { DeviceOrder } from "@/app/commerce/device-order-storage"
+import { useGuestCheckoutPrefill } from "@/app/commerce/use-guest-checkout-prefill"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -74,7 +75,7 @@ export default function ShopClient({
   categoryPromosByName?: Record<string, StorefrontPromoCard[]>,
 }) {
   const { t, locale } = useLocalization()
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const params = useParams()
   const siteSlug = params?.siteSlug || site?.slug || 'unknown'
   const [cart, setCart] = useState<CartItem[]>([])
@@ -248,6 +249,15 @@ export default function ShopClient({
   const session = user ? { user } : null
   const searchLabel = t("common.search") || "Search"
 
+  useGuestCheckoutPrefill({
+    session,
+    isLoading: authLoading,
+    siteId: site.id,
+    setCustomerName,
+    setCustomerEmail,
+    setShippingAddress,
+  })
+
   // Ownership is per-buyer — load after auth so the public shop page stays cacheable
   useEffect(() => {
     let cancelled = false
@@ -281,14 +291,6 @@ export default function ShopClient({
       cancelled = true
     }
   }, [user, site.id])
-
-  // Set customer details if logged in
-  useEffect(() => {
-    if (session?.user && !customerEmail) {
-      setCustomerEmail(session.user.email || "")
-      setCustomerName(session.user.user_metadata?.name || "")
-    }
-  }, [session])
 
   useEffect(() => {
     if (typeof window === "undefined") return

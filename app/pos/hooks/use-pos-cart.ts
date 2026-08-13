@@ -5,10 +5,14 @@ import type { CatalogItem } from "@/app/types";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import {
-  cartLineKey,
+  cartWithDiscountPercent,
+  cartWithPrice,
+  cartWithQty,
+  cartWithQtyDelta,
   mergeItemIntoCart,
   modifiersUnitTotal,
 } from "@/app/pos/cart-line-utils";
+import { clearLineDiscountFields } from "@/app/pos/line-discount";
 import { buildCartFromSaleOrderItems } from "@/app/pos/populate-cart-from-order";
 import {
   getItemDeliveryOptions,
@@ -27,6 +31,10 @@ import {
   loadCartSession,
   saveCartSession,
 } from "@/app/pos/local/cart-session";
+import {
+  EMPTY_POS_SHIPPING_ADDRESS,
+  type PosShippingAddress,
+} from "@/app/pos/shipping-address";
 import { getOrder } from "@/app/orders/actions";
 import { toast } from "sonner";
 
@@ -72,6 +80,9 @@ export function usePosCart({
   const [activeOrderId, setActiveOrderId] = useState("new");
   const [buyerUserId, setBuyerUserId] = useState<string | null>(null);
   const [orderNotes, setOrderNotes] = useState("");
+  const [shippingAddress, setShippingAddress] = useState<PosShippingAddress>(
+    EMPTY_POS_SHIPPING_ADDRESS,
+  );
   const [taxesByItem, setTaxesByItem] = useState<Record<string, any[]>>({});
   const [sessionReady, setSessionReady] = useState(false);
   const [loadingOrder, setLoadingOrder] = useState(false);
@@ -116,6 +127,7 @@ export function usePosCart({
       setActiveOrderId(session.activeOrderId || "new");
       setBuyerUserId(session.buyerUserId);
       setOrderNotes(session.orderNotes || "");
+      setShippingAddress(session.shippingAddress || EMPTY_POS_SHIPPING_ADDRESS);
       setSessionReady(true);
     })();
     return () => {
@@ -139,6 +151,7 @@ export function usePosCart({
         activeOrderId,
         buyerUserId,
         orderNotes,
+        shippingAddress,
       });
     }, 200);
     return () => {
@@ -156,6 +169,7 @@ export function usePosCart({
     activeOrderId,
     buyerUserId,
     orderNotes,
+    shippingAddress,
   ]);
 
   useEffect(() => {
@@ -247,61 +261,48 @@ export function usePosCart({
     [resolvePrice],
   );
 
-  const lineMatches = (c: PosCartItem, key: string) =>
-    cartLineKey(c) === key;
-
   const updateQty = (id: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((c) =>
-          lineMatches(c, id)
-            ? { ...c, cartQty: Math.max(0, c.cartQty + delta) }
-            : c,
-        )
-        .filter((c) => c.cartQty > 0),
-    );
+    setCart((prev) => cartWithQtyDelta(prev, id, delta));
   };
 
   const setItemQty = (id: string, qty: number) => {
-    setCart((prev) =>
-      prev.map((c) =>
-        lineMatches(c, id) ? { ...c, cartQty: Math.max(0, qty) } : c,
-      ),
-    );
+    setCart((prev) => cartWithQty(prev, id, qty));
   };
 
   const setItemPrice = (id: string, price: number) => {
-    setCart((prev) =>
-      prev.map((c) =>
-        lineMatches(c, id) ? { ...c, cartPrice: Math.max(0, price) } : c,
-      ),
-    );
+    setCart((prev) => cartWithPrice(prev, id, price));
+  };
+
+  const setItemDiscount = (id: string, percent: number) => {
+    setCart((prev) => cartWithDiscountPercent(prev, id, percent));
   };
 
   const handlePriceListChange = (newId: string) => {
     setPriceListId(newId);
     const listId = newId === "none" ? undefined : newId;
     setCart((prev) =>
-      prev.map((c) => ({
-        ...c,
-        cartPrice: resolveUnitPriceLocal({
+      prev.map((c) => {
+        const cartPrice = resolveUnitPriceLocal({
           catalogItemId: c.id,
           targetSalePrice: c.target_sale_price,
           priceListId: listId,
           priceLists,
           priceListItems,
-        }).price,
-        modifiers: (c.modifiers || []).map((m) => ({
-          ...m,
-          cartPrice: resolveUnitPriceLocal({
-            catalogItemId: m.catalogItemId,
-            targetSalePrice: m.cartPrice,
-            priceListId: listId,
-            priceLists,
-            priceListItems,
-          }).price,
-        })),
-      })),
+        }).price;
+        return {
+          ...clearLineDiscountFields(c, cartPrice),
+          modifiers: (c.modifiers || []).map((m) => ({
+            ...m,
+            cartPrice: resolveUnitPriceLocal({
+              catalogItemId: m.catalogItemId,
+              targetSalePrice: m.cartPrice,
+              priceListId: listId,
+              priceLists,
+              priceListItems,
+            }).price,
+          })),
+        };
+      }),
     );
   };
 
@@ -350,6 +351,8 @@ export function usePosCart({
     setPriceListId("none");
     setFulfillment("dine_in");
     setOrderNotes("");
+    setBuyerUserId(null);
+    setShippingAddress(EMPTY_POS_SHIPPING_ADDRESS);
     resetPromo();
     if (siteId) await clearCartSession(siteId);
   }, [siteId, resetPromo]);
@@ -374,6 +377,20 @@ export function usePosCart({
     }
     setPriceListId(order.price_list_id || "none");
     setOrderNotes(typeof order.notes === "string" ? order.notes : "");
+    setBuyerUserId(order.buyer_user_id || null);
+    const addr = order.shipping_address;
+    setShippingAddress(
+      addr && typeof addr === "object"
+        ? {
+            line1: addr.line1 || "",
+            line2: addr.line2 || "",
+            city: addr.city || "",
+            state: addr.state || "",
+            zip: addr.zip || "",
+            country: addr.country || "",
+          }
+        : EMPTY_POS_SHIPPING_ADDRESS,
+    );
     if (order?.sale_order_items) {
       setCart(
         buildCartFromSaleOrderItems(order.sale_order_items, catalogItems),
@@ -424,27 +441,6 @@ export function usePosCart({
     }
   };
 
-  // Restore pending reservation from booking page
-  useEffect(() => {
-    if (typeof window === "undefined" || !siteId || catalogItems.length === 0) {
-      return;
-    }
-    const pendingStr = sessionStorage.getItem("pos-pending-reservation");
-    if (!pendingStr) return;
-    try {
-      const pending = JSON.parse(pendingStr);
-      const item = catalogItems.find((i) => i.id === pending.itemId);
-      if (!item) return;
-      sessionStorage.removeItem("pos-pending-reservation");
-      addItemToCart(item, {
-        reservationStart: pending.startIso,
-        reservationEnd: pending.endIso,
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  }, [catalogItems, siteId, addItemToCart]);
-
   return {
     cart,
     setCart,
@@ -470,11 +466,14 @@ export function usePosCart({
     setBuyerUserId,
     orderNotes,
     setOrderNotes,
+    shippingAddress,
+    setShippingAddress,
     allowedFulfillments,
     addItemToCart,
     updateQty,
     setItemQty,
     setItemPrice,
+    setItemDiscount,
     handlePriceListChange,
     subtotal,
     taxTotal,

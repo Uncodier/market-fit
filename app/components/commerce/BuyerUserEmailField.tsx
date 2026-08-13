@@ -18,9 +18,15 @@ interface BuyerUserEmailFieldProps {
   value: BuyerUser | null
   onChange: (value: BuyerUser | null) => void
   disabled?: boolean
+  required?: boolean
 }
 
-export function BuyerUserEmailField({ value, onChange, disabled }: BuyerUserEmailFieldProps) {
+export function BuyerUserEmailField({
+  value,
+  onChange,
+  disabled,
+  required = false,
+}: BuyerUserEmailFieldProps) {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -76,7 +82,9 @@ export function BuyerUserEmailField({ value, onChange, disabled }: BuyerUserEmai
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          This user will be able to see this document in their buyer portal.
+          {required
+            ? "This user will be able to see this asset in their buyer portal."
+            : "This user will be able to see this document in their buyer portal."}
         </p>
       </div>
     )
@@ -85,8 +93,10 @@ export function BuyerUserEmailField({ value, onChange, disabled }: BuyerUserEmai
   return (
     <div className="space-y-2">
       <Label>
-        Buyer account (email){" "}
-        <span className="text-muted-foreground font-normal">(Optional)</span>
+        Buyer account (email)
+        {required ? null : (
+          <span className="text-muted-foreground font-normal"> (Optional)</span>
+        )}
       </Label>
       <div className="flex gap-2">
         <Input

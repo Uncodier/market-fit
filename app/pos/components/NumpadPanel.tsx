@@ -2,28 +2,31 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/app/components/ui/button";
-import { PosCartItem } from "./CartPanel";
+
+type NumpadMode = "qty" | "price" | "discount";
 
 interface NumpadPanelProps {
   selectedCartItemId: string | null;
-  cart: PosCartItem[];
   setItemQty: (id: string, qty: number) => void;
   setItemPrice: (id: string, price: number) => void;
+  setItemDiscount: (id: string, percent: number) => void;
   t: (key: string) => string;
 }
 
+const MODE_BTN =
+  "w-full aspect-square !p-0 h-auto !min-w-0 !rounded-full text-xs font-medium";
+
 export function NumpadPanel({
   selectedCartItemId,
-  cart,
   setItemQty,
   setItemPrice,
+  setItemDiscount,
   t,
 }: NumpadPanelProps) {
-  const [mode, setMode] = useState<"qty" | "price">("qty");
+  const [mode, setMode] = useState<NumpadMode>("qty");
   const [inputVal, setInputVal] = useState("");
   const [isNewEntry, setIsNewEntry] = useState(true);
 
-  // Reset when selecting a different item or changing mode
   useEffect(() => {
     setInputVal("");
     setIsNewEntry(true);
@@ -32,13 +35,14 @@ export function NumpadPanel({
   const getTrans = (key: string, fallback: string) =>
     t(key) === key ? fallback : t(key);
 
-  const handleModeChange = (newMode: "qty" | "price") => {
-    setMode(newMode);
-  };
-
   const applyValue = (valStr: string) => {
     if (!selectedCartItemId) return;
     const parsed = parseFloat(valStr);
+    if (mode === "discount") {
+      const percent = valStr === "" || valStr === "-" || isNaN(parsed) ? 0 : parsed;
+      setItemDiscount(selectedCartItemId, percent);
+      return;
+    }
     if (!isNaN(parsed)) {
       if (mode === "qty") {
         setItemQty(selectedCartItemId, parsed);
@@ -46,7 +50,6 @@ export function NumpadPanel({
         setItemPrice(selectedCartItemId, parsed);
       }
     } else if (valStr === "" || valStr === "-") {
-      // If backspaced everything, we can set to 0 visually
       if (mode === "qty") {
         setItemQty(selectedCartItemId, 0);
       } else {
@@ -85,6 +88,8 @@ export function NumpadPanel({
     applyValue(newVal);
   };
 
+  const noLine = !selectedCartItemId;
+
   return (
     <div className="flex flex-col gap-3 pb-2">
       <div className="grid grid-cols-4 gap-2">
@@ -106,28 +111,36 @@ export function NumpadPanel({
             ),
           )}
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-rows-4 gap-2">
           <Button
             variant="outline"
-            className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-card"
+            className="w-full aspect-square !p-0 h-auto !min-w-0 !rounded-full bg-card"
             onClick={handleBackspace}
-            disabled={!selectedCartItemId}
+            disabled={noLine}
           >
             ⌫
           </Button>
           <Button
             variant={mode === "qty" ? "default" : "secondary"}
-            className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full text-xs font-medium"
-            onClick={() => handleModeChange("qty")}
-            disabled={!selectedCartItemId}
+            className={MODE_BTN}
+            onClick={() => setMode("qty")}
+            disabled={noLine}
           >
             {getTrans("pos.cart.numpadQty", "Qty")}
           </Button>
           <Button
+            variant={mode === "discount" ? "default" : "secondary"}
+            className={MODE_BTN}
+            onClick={() => setMode("discount")}
+            disabled={noLine}
+          >
+            {getTrans("pos.cart.numpadDiscount", "%")}
+          </Button>
+          <Button
             variant={mode === "price" ? "default" : "secondary"}
-            className="flex-1 aspect-square !p-0 h-auto !min-w-0 !rounded-full text-xs font-medium"
-            onClick={() => handleModeChange("price")}
-            disabled={!selectedCartItemId}
+            className={MODE_BTN}
+            onClick={() => setMode("price")}
+            disabled={noLine}
           >
             {getTrans("pos.cart.numpadPrice", "Price")}
           </Button>

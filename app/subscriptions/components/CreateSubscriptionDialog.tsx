@@ -15,9 +15,12 @@ import {
 } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { Label } from "@/app/components/ui/label"
+import { format } from "date-fns"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { upsertSubscription } from "../actions"
 import { getLeads } from "@/app/leads/actions"
 import { listCatalogItems } from "@/app/catalog/actions"
@@ -42,13 +45,17 @@ type FormData = {
 
 export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: CreateSubscriptionDialogProps) {
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [buyerUser, setBuyerUser] = useState<BuyerUser | null>(null)
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>()
+  register("start_date", { required: true })
 
   const catalogItemValue = watch('catalog_item_value')
   const leadValue = watch('lead_value')
+  const startDate = watch('start_date')
+  const endDate = watch('end_date')
 
   const { data: leadsData } = useSWR(
     open && currentSite ? ['leads', currentSite.id] : null,
@@ -179,11 +186,34 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="start_date">Start date</Label>
-                <Input type="date" id="start_date" className="h-12" {...register("start_date", { required: true })} />
+                <DatePicker
+                  date={startDate ? new Date(`${startDate}T12:00:00`) : undefined}
+                  setDate={(next) =>
+                    setValue("start_date", format(next, "yyyy-MM-dd"), {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                  className="h-12 w-full"
+                  placeholder={t("datePicker.selectStartDate")}
+                />
+                {errors.start_date && (
+                  <p className="text-sm text-destructive">Start date is required</p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="end_date">End date</Label>
-                <Input type="date" id="end_date" className="h-12" {...register("end_date")} />
+                <DatePicker
+                  date={endDate ? new Date(`${endDate}T12:00:00`) : undefined}
+                  setDate={(next) =>
+                    setValue("end_date", format(next, "yyyy-MM-dd"), {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                  className="h-12 w-full"
+                  placeholder={t("datePicker.selectEndDate")}
+                />
               </div>
             </div>
             <div className="grid gap-2">

@@ -16,6 +16,7 @@ import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { DealTeamList } from "./DealTeamList"
 import { DealContactsList } from "./DealContactsList"
 import { formatDealCurrency } from "./deal-format"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 const CURRENCIES = ["USD", "EUR", "GBP", "MXN", "CAD", "BRL"]
 
@@ -27,6 +28,7 @@ export function DealAboutPanel({
   onUpdate: (deal: Deal) => void
 }) {
   const companyName = deal.companies?.name || deal.company?.name || ""
+  const { t } = useLocalization()
   const companyValue: RelationSelectValue =
     deal.company_id && companyName
       ? { mode: "existing", id: deal.company_id, label: companyName }
@@ -143,7 +145,7 @@ export function DealAboutPanel({
                   date={draft ? new Date(`${draft}T12:00:00`) : undefined}
                   setDate={(date) => setDraft(format(date, "yyyy-MM-dd"))}
                   className="w-full h-8"
-                  placeholder="Select close date"
+                  placeholder={t("datePicker.selectCloseDate")}
                 />
               )}
             />

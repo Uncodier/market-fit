@@ -63,6 +63,22 @@ describe("device-order-sync", () => {
     expect(merged.items).toEqual(cached.items)
   })
 
+  it("keeps guest identity when applying a public snapshot", () => {
+    const withGuest = {
+      ...cached,
+      customerName: "Jane Doe",
+      customerEmail: "jane@example.com",
+    }
+    const merged = mergeDeviceOrderSnapshot(withGuest, {
+      ...cached,
+      status: "completed",
+    })
+
+    expect(merged.customerName).toBe("Jane Doe")
+    expect(merged.customerEmail).toBe("jane@example.com")
+    expect(merged.status).toBe("completed")
+  })
+
   it("does not mark unchanged snapshots as dirty", () => {
     const { changed, orders } = applyDeviceOrderSnapshots([cached], [cached])
     expect(changed).toBe(false)

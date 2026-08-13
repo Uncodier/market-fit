@@ -4,7 +4,9 @@ import React, { useMemo, useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { Label } from "@/app/components/ui/label"
+import { format } from "date-fns"
 import {
   Dialog,
   DialogBody,
@@ -358,13 +360,10 @@ export function CreateExpenseDialog({ siteId, open, onOpenChange, onSuccess, exp
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="date">{t('expenses.field.date') || "Date"}</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  required
-                  className="h-12"
+                <DatePicker
+                  date={formData.date ? new Date(`${formData.date}T12:00:00`) : undefined}
+                  setDate={(next) => setFormData(prev => ({ ...prev, date: format(next, "yyyy-MM-dd") }))}
+                  className="h-12 w-full"
                 />
               </div>
             </div>

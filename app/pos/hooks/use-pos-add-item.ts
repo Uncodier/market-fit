@@ -12,6 +12,7 @@ import {
 } from "@/app/catalog/dynamic-pricing";
 import {
   isAccessOnlyItem,
+  needsBuyerAccount,
   requiresVariantSelection,
 } from "@/app/catalog/product-details";
 import { createClient } from "@/lib/supabase/client";
@@ -91,6 +92,13 @@ export function usePosAddItem({
 }: Args) {
   const [optionsParentItem, setOptionsParentItem] =
     useState<CatalogItem | null>(null);
+  const [reservationItem, setReservationItem] = useState<CatalogItem | null>(
+    null,
+  );
+  const [digitalItem, setDigitalItem] = useState<CatalogItem | null>(null);
+  const [digitalModifiers, setDigitalModifiers] = useState<PosCartModifier[]>(
+    [],
+  );
   const [dynamicQuoteItem, setDynamicQuoteItem] = useState<CatalogItem | null>(
     null,
   );
@@ -146,8 +154,31 @@ export function usePosAddItem({
     item: CatalogItem,
     modifiers: PosCartModifier[] = [],
   ) => {
+    if (needsBuyerAccount(item)) {
+      setDigitalItem(item);
+      setDigitalModifiers(modifiers);
+      setOptionsParentItem(null);
+      return;
+    }
     addItemToCart(item, modifiers.length ? { modifiers } : undefined);
     setOptionsParentItem(null);
+  };
+
+  const confirmReservation = (
+    item: CatalogItem,
+    extras: { reservationStart: string; reservationEnd: string },
+  ) => {
+    addItemToCart(item, extras);
+    setReservationItem(null);
+  };
+
+  const confirmDigital = (
+    item: CatalogItem,
+    modifiers: PosCartModifier[] = [],
+  ) => {
+    addItemToCart(item, modifiers.length ? { modifiers } : undefined);
+    setDigitalItem(null);
+    setDigitalModifiers([]);
   };
 
   const openOptions = (item: CatalogItem) => {
@@ -209,7 +240,17 @@ export function usePosAddItem({
     }
 
     if (item.is_reservation && !isAccessOnlyItem(item)) {
-      router.push(`/pos/book/${item.id}`);
+      setReservationItem(item);
+      return;
+    }
+
+    if (needsBuyerAccount(item)) {
+      if (await hasModifierGroups(item, siteId, modifierGroupsByHostId)) {
+        openOptions(item);
+        return;
+      }
+      setDigitalItem(item);
+      setDigitalModifiers([]);
       return;
     }
 
@@ -225,10 +266,17 @@ export function usePosAddItem({
   return {
     optionsParentItem,
     setOptionsParentItem,
+    reservationItem,
+    setReservationItem,
+    digitalItem,
+    setDigitalItem,
+    digitalModifiers,
     dynamicQuoteItem,
     setDynamicQuoteItem,
     dynamicQuoteLoading,
     confirmOptions,
+    confirmReservation,
+    confirmDigital,
     addToCart,
     requestQuote,
   };

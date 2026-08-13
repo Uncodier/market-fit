@@ -8,6 +8,8 @@ import { createManualJournalEntry, updateManualJournalEntry } from "../entries"
 import { Dialog, DialogBody, DialogContent, DialogForm, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
+import { DatePicker } from "@/app/components/ui/date-picker"
+import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { toast } from "sonner"
@@ -167,10 +169,10 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">{t('accounting.date') || "Date"}</label>
-              <Input 
-                type="date" 
-                value={date} 
-                onChange={e => setDate(e.target.value)}
+              <DatePicker
+                date={date ? new Date(`${date}T12:00:00`) : undefined}
+                setDate={(next) => setDate(format(next, "yyyy-MM-dd"))}
+                className="h-12 w-full"
                 disabled={isReadOnly}
               />
             </div>

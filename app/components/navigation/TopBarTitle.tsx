@@ -81,6 +81,8 @@ export function TopBarTitle({
       'campaigns': t('layout.sidebar.campaigns') || 'Campaigns',
       'control-center': t('layout.sidebar.controlCenter') || 'Tasks',
       'billing': t('layout.sidebar.billing') || 'Billing',
+      'integrations': t('layout.sidebar.integrations') || 'Integrations',
+      'security': t('layout.sidebar.security') || 'Security & API',
       'robots': t('layout.sidebar.robots') || 'Agents',
       'applications': t('layout.sidebar.applications') || 'Applications',
       'pos': t('layout.sidebar.pos') || 'Point of Sale',

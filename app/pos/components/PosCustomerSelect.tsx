@@ -5,6 +5,7 @@ import {
   RelationSelect,
   RelationSelectValue,
 } from "@/app/components/ui/relation-select";
+import { User } from "@/app/components/ui/icons";
 import { PosLeadDetailsDialog } from "./PosLeadDetailsDialog";
 
 function getSelectedLeadId(
@@ -76,6 +77,7 @@ export function PosCustomerSelect({
         }
         emptyMessage={t("pos.cart.noCustomers") || "No customers found"}
         className="bg-card"
+        icon={<User className="h-4 w-4" />}
         endAction={
           <button
             type="button"

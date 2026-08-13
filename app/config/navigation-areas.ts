@@ -1,17 +1,18 @@
 /**
  * Menu-only grouping. Routes stay canonical (no URL prefixes for areas).
  *
- * Reports: each entry is its own destination — dashboard tabs via `?tab=` or standalone `/costs`.
+ * Reports and Finance: each entry is its own destination — dashboard tabs via `?tab=` or standalone `/costs` / `/finance`.
  */
 
-export type WorkspaceArea = "marketing" | "sales" | "operations" | "buying" | "automation" | "applications" | "reports"
+export type WorkspaceArea = "marketing" | "sales" | "operations" | "buying" | "automation" | "applications" | "finance" | "reports" | "settings"
 
-/** Middle sidebar (scroll): Marketing, Sales, Operations, Buying, Reports */
+/** Middle sidebar (scroll): Marketing, Sales, Operations, Buying, Finance, Reports */
 export const SIDEBAR_SCROLL_AREA_ORDER: WorkspaceArea[] = [
   "marketing",
   "sales",
   "operations",
   "buying",
+  "finance",
   "reports",
 ]
 
@@ -19,6 +20,19 @@ export const SIDEBAR_SCROLL_AREA_ORDER: WorkspaceArea[] = [
 export const SIDEBAR_AUTOMATION_AREA_ORDER: WorkspaceArea[] = [
   "applications",
   "automation",
+]
+
+/** Apps launcher sections, including Settings */
+export const NAVIGATION_MENU_AREA_ORDER: WorkspaceArea[] = [
+  "marketing",
+  "sales",
+  "operations",
+  "buying",
+  "automation",
+  "finance",
+  "reports",
+  "applications",
+  "settings",
 ]
 
 export interface AreaNavItem {
@@ -109,6 +123,14 @@ export const NAVIGATION_AREAS: Record<
       { key: "applicationsRepositories", href: "/applications/repositories" },
     ],
   },
+  finance: {
+    categoryKey: "layout.category.finance",
+    items: [
+      { key: "financeReports", href: "/finance" },
+      { key: "journalEntries", href: "/accounting/entries" },
+      { key: "chartOfAccounts", href: "/accounting" },
+    ],
+  },
   reports: {
     categoryKey: "layout.category.reports",
     items: [
@@ -118,9 +140,21 @@ export const NAVIGATION_AREAS: Record<
       { key: "reportTraffic", href: "/dashboard", dashboardTab: "traffic" },
       { key: "reportCosts", href: "/costs" },
       { key: "reportSales", href: "/dashboard", dashboardTab: "sales" },
-      { key: "financeReports", href: "/finance" },
-      { key: "journalEntries", href: "/accounting/entries" },
-      { key: "chartOfAccounts", href: "/accounting" },
+    ],
+  },
+  settings: {
+    categoryKey: "layout.category.settings",
+    items: [
+      { key: "settingsGeneral", href: "/settings", settingsTab: "general" },
+      { key: "company", href: "/settings", settingsTab: "company" },
+      { key: "marketplace", href: "/settings", settingsTab: "marketplace" },
+      { key: "settingsVisits", href: "/settings", settingsTab: "visits" },
+      { key: "team", href: "/settings", settingsTab: "team" },
+      { key: "calendar", href: "/settings", settingsTab: "calendar" },
+      { key: "social", href: "/settings", settingsTab: "social" },
+      { key: "integrations", href: "/integrations" },
+      { key: "billing", href: "/billing" },
+      { key: "security", href: "/security" },
     ],
   },
 }
@@ -177,7 +211,11 @@ export function isNavItemActive(
   }
   if (item.settingsTab) {
     if (!pathname.startsWith("/settings")) return false
-    return searchParams.get("tab") === item.settingsTab
+    const cur = searchParams.get("tab")
+    if (item.settingsTab === "general") {
+      return !cur || cur === "general"
+    }
+    return cur === item.settingsTab
   }
   if (item.robotsMode) {
     if (!pathname.startsWith("/robots")) return false
@@ -207,4 +245,33 @@ export function getModuleArea(itemKey: string): WorkspaceArea | undefined {
     }
   }
   return undefined
+}
+
+export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): string {
+  if (item.dashboardTab) {
+    const key = `dashboard.tabs.${item.dashboardTab}`
+    const translation = t(key)
+    return translation === key ? item.dashboardTab : translation
+  }
+  const sidebarKey = `layout.sidebar.${item.key}`
+  const sidebarTitle = t(sidebarKey)
+  if (sidebarTitle !== sidebarKey) return sidebarTitle
+  if (item.settingsTab) {
+    const tabKey = `settings.tabs.${item.settingsTab}`
+    const tabTitle = t(tabKey)
+    if (tabTitle !== tabKey) return tabTitle
+  }
+  if (item.key === "skills") {
+    const translation = t("settings.tabs.skills")
+    return translation === "settings.tabs.skills" ? "Code agent skills" : translation
+  }
+  if (item.key === "reportCosts") {
+    const translation = t("layout.sidebar.costs")
+    return translation === "layout.sidebar.costs" ? "Cost reports" : translation
+  }
+  if (item.key === "contentCreator") {
+    const translation = t("layout.sidebar.imprenta")
+    return translation === "layout.sidebar.imprenta" ? "Content Creator" : translation
+  }
+  return item.key
 }

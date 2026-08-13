@@ -16,6 +16,13 @@ export type ShortcutRecord = {
   isCustom?: boolean
 }
 
+/** Always shown at the top of the sidebar (not stored as user shortcuts). */
+export const SIDEBAR_PINNED_NAV_KEYS = ["contentCreator", "reportOverview"] as const
+
+export function isPinnedShortcutKey(key: string): boolean {
+  return (SIDEBAR_PINNED_NAV_KEYS as readonly string[]).includes(key)
+}
+
 export function normalizeShortcut(entry: LegacyShortcutEntry | ShortcutRecord): ShortcutRecord {
   if (typeof entry === 'string') {
     return {

@@ -1,7 +1,9 @@
 "use client"
 
 import React from "react"
+import { format } from "date-fns"
 import { Input } from "@/app/components/ui/input"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import {
@@ -15,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/app/components/ui/alert-dialog"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 type SaleForm = {
   title: string
@@ -36,6 +39,7 @@ function SaleFields({
   onChange: (name: string, value: string) => void
   idPrefix: string
 }) {
+  const { t } = useLocalization()
   return (
     <div className="space-y-4 py-4">
       <div className="space-y-2">
@@ -59,12 +63,12 @@ function SaleFields({
       </div>
       <div className="space-y-2">
         <Label htmlFor={`${idPrefix}-saleDate`}>Sale Date*</Label>
-        <Input
-          id={`${idPrefix}-saleDate`}
-          type="date"
-          value={values.saleDate || ""}
-          onChange={(e) => onChange("saleDate", e.target.value)}
-          max={new Date().toISOString().split("T")[0]}
+        <DatePicker
+          date={values.saleDate ? new Date(`${values.saleDate}T12:00:00`) : undefined}
+          setDate={(next) => onChange("saleDate", format(next, "yyyy-MM-dd"))}
+          className="w-full"
+          mode="report"
+          placeholder={t("datePicker.selectSaleDate")}
         />
       </div>
       <div className="space-y-2">

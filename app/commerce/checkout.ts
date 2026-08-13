@@ -198,23 +198,13 @@ export async function checkoutCart({
         }
       }
 
-      // 2. Validate business hours — ASAP while closed is allowed; queue for next open slot when known
-      const { isBusinessOpen, getNextOpenSlot } = await import('./business-hours');
-      const businessHours = siteSettings.business_hours || [];
-      if (businessHours.length > 0) {
-        if (!resolvedScheduledFor && !isBusinessOpen(businessHours)) {
-          const nextOpen = getNextOpenSlot(businessHours);
-          if (nextOpen) {
-            resolvedScheduledFor = nextOpen.at.toISOString();
-          }
-        }
-        if (
-          resolvedScheduledFor &&
-          !isBusinessOpen(businessHours, new Date(resolvedScheduledFor), { ignoreForceClosed: true })
-        ) {
-          throw new Error('The selected scheduled time is outside business hours.');
-        }
-      }
+      // 2. Store hours gate shop/marketplace ASAP; POS can sell while closed
+      const { resolveCheckoutScheduledFor } = await import('./checkout-schedule');
+      resolvedScheduledFor = resolveCheckoutScheduledFor({
+        source,
+        scheduledFor: resolvedScheduledFor,
+        businessHours: siteSettings.business_hours || [],
+      });
     }
 
     if (!lines || lines.length === 0) throw new Error("Cart is empty");
@@ -230,8 +220,13 @@ export async function checkoutCart({
     if (!catItemsForCheck || catItemsForCheck.length === 0) throw new Error("No items found");
 
     const hasDigitalOrRecurring = catItemsForCheck.some((c: any) => c.kind === 'digital_asset' || c.is_recurring);
-    if (hasDigitalOrRecurring && !buyerUserId && (source === 'shop' || source === 'marketplace' || source === 'quote')) {
-      throw new Error("You must be logged in to purchase digital assets or subscriptions.");
+    if (hasDigitalOrRecurring && !buyerUserId) {
+      if (source === 'pos') {
+        throw new Error("Digital items require a buyer account.");
+      }
+      if (source === 'shop' || source === 'marketplace' || source === 'quote') {
+        throw new Error("You must be logged in to purchase digital assets or subscriptions.");
+      }
     }
 
     // Validate fulfillment against allowed options (same defaults as shop UI).

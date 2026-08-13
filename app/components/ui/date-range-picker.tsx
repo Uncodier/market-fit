@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { format, startOfMonth, startOfDay, endOfDay, isSameDay, isFuture, subMonths, isValid } from "date-fns"
 import { DatePicker } from "@/app/components/ui/date-picker"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 
 export interface DateRangePickerProps {
   className?: string;
@@ -21,7 +23,8 @@ export function CalendarDateRangePicker({
   initialStartDate,
   initialEndDate,
 }: DateRangePickerProps) {
-  // Use refs to track if we're in the middle of an update to prevent loops
+  const { t, locale } = useLocalization()
+  const dateLocale = getDateFnsLocale(locale)
   const isUpdatingRef = useRef(false);
   const callbackRef = useRef(onRangeChange);
   
@@ -153,15 +156,15 @@ export function CalendarDateRangePicker({
   // Format the range display - show placeholder if dates are not set
   const rangeDisplay = React.useMemo(() => {
     if (!startDate || !endDate) {
-      return "Select date range";
+      return t("datePicker.selectDateRange")
     }
-    const safeStartDate = startDate instanceof Date && isValid(startDate) ? startDate : undefined;
-    const safeEndDate = endDate instanceof Date && isValid(endDate) ? endDate : undefined;
+    const safeStartDate = startDate instanceof Date && isValid(startDate) ? startDate : undefined
+    const safeEndDate = endDate instanceof Date && isValid(endDate) ? endDate : undefined
     if (!safeStartDate || !safeEndDate) {
-      return "Select date range";
+      return t("datePicker.selectDateRange")
     }
-    return `${format(safeStartDate, "MMM d")} - ${format(safeEndDate, "MMM d")} ${format(safeEndDate, "yyyy")}`;
-  }, [startDate, endDate]);
+    return `${format(safeStartDate, "MMM d", { locale: dateLocale })} - ${format(safeEndDate, "MMM d", { locale: dateLocale })} ${format(safeEndDate, "yyyy")}`
+  }, [startDate, endDate, t, dateLocale])
 
   // Use placeholder dates for DatePicker when dates are undefined
   // These are only for display - callbacks only fire through handleRangeSelect (user interaction)

@@ -14,6 +14,7 @@ import { getNetworkIcon } from "../content-shared"
 import { publishOutstandPost } from "../outstand"
 import { updateContent, type ContentItem } from "../actions"
 import { toast } from "sonner"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface ContentPublishDialogProps {
   content: ContentItem | null
@@ -33,6 +34,7 @@ export function ContentPublishDialog({
   onUpdateStatus,
 }: ContentPublishDialogProps) {
   const router = useRouter()
+  const { t } = useLocalization()
   const [selectedNetworks, setSelectedNetworks] = useState<string[]>([])
   const [scheduleEnabled, setScheduleEnabled] = useState(false)
   const [scheduledDate, setScheduledDate] = useState<Date>(new Date())
@@ -291,7 +293,7 @@ export function ContentPublishDialog({
                   {scheduleEnabled && (
                     <div className="grid gap-2 mt-4">
                       <label className="text-xs text-muted-foreground">
-                        Select date and time
+                        {t("datePicker.selectDateTime")}
                       </label>
                       <DatePicker
                         date={scheduledDate}

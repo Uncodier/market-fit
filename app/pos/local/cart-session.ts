@@ -4,6 +4,7 @@ import {
   clearActivePosOrderId,
   getActivePosOrderId,
 } from "@/app/pos/active-order-storage";
+import { EMPTY_POS_SHIPPING_ADDRESS } from "@/app/pos/shipping-address";
 
 const DEFAULT_SESSION = (
   siteId: string,
@@ -18,6 +19,7 @@ const DEFAULT_SESSION = (
   activeOrderId: "new",
   buyerUserId: null,
   orderNotes: "",
+  shippingAddress: EMPTY_POS_SHIPPING_ADDRESS,
 });
 
 export async function loadCartSession(

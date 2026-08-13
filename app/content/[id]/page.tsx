@@ -10,6 +10,7 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Switch } from "@/app/components/ui/switch"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { updateContent, updateContentStatus, deleteContent, getContentById, type ContentItem } from "../actions"
@@ -965,6 +966,7 @@ const getNetworkIcon = (network: string) => {
 export default function ContentDetailPage(props: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(props.params);
   const router = useRouter()
+  const { t } = useLocalization()
   const [content, setContent] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -2757,7 +2759,7 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
                   {scheduleEnabled && (
                     <div className="grid gap-2 mt-4">
                       <label className="text-xs text-muted-foreground">
-                        Select date and time
+                        {t("datePicker.selectDateTime")}
                       </label>
                       <DatePicker
                         date={scheduledDate}

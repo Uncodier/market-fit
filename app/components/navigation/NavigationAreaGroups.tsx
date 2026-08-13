@@ -11,6 +11,7 @@ import {
   isNavItemActive,
   type AreaNavItem,
   type WorkspaceArea,
+  getNavItemTitle,
 } from "@/app/config/navigation-areas"
 import { MenuItem, EmojiIcon } from "./MenuItem"
 import {
@@ -29,28 +30,6 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { requestNavigationHistoryReset } from "@/app/hooks/use-navigation-history"
 
 import { AREA_ICON, NAV_ITEM_ICON } from "@/app/config/module-visuals"
-
-function reportItemTitle(item: AreaNavItem, t: (k: string) => string): string {
-  if (item.dashboardTab) {
-    return t(`dashboard.tabs.${item.dashboardTab}`) || item.dashboardTab
-  }
-  if (item.settingsTab === "channels") {
-    return t("settings.tabs.channels") || "Agent Channels"
-  }
-  if (item.settingsTab === "activities") {
-    return t("settings.tabs.activities") || "Activities"
-  }
-  if (item.key === "skills") {
-    return t("settings.tabs.skills") || "Code agent skills"
-  }
-  if (item.key === "reportCosts") {
-    return t("layout.sidebar.costs") || "Cost reports"
-  }
-  if (item.key === "contentCreator") {
-    return t("layout.sidebar.imprenta") || "Content Creator"
-  }
-  return t(`layout.sidebar.${item.key}`) || item.key
-}
 
 interface NavigationAreaGroupsProps {
   renderCollapsed: boolean
@@ -90,9 +69,13 @@ export function NavigationAreaGroups({
   const [open, setOpen] = useState<Record<WorkspaceArea, boolean>>({
     marketing: false,
     sales: false,
+    operations: false,
+    buying: false,
     automation: false,
     applications: false,
+    finance: false,
     reports: false,
+    settings: false,
   })
 
   useEffect(() => {
@@ -146,7 +129,7 @@ export function NavigationAreaGroups({
     const isActive = item.robotsMode
       ? pathname.startsWith("/robots") && robotsViewMode === item.robotsMode
       : isNavItemActive(item, pathname, navSearchParams)
-    const title = reportItemTitle(item, t)
+    const title = getNavItemTitle(item, t)
     return (
       <MenuItem
         key={item.key}

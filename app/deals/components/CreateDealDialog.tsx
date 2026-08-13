@@ -34,6 +34,7 @@ import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relatio
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { format } from "date-fns"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { toast } from "sonner"
 import { DEAL_STAGES } from "../types"
 import { createClient } from "@/lib/supabase/client"
@@ -55,6 +56,7 @@ interface CreateDealDialogProps {
 }
 
 export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: CreateDealDialogProps) {
+  const { t } = useLocalization()
   const [internalOpen, setInternalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState("")
@@ -320,7 +322,7 @@ export function CreateDealDialog({ onCreateDeal, trigger, open, onOpenChange }: 
                   date={expectedCloseDate as Date}
                   setDate={setExpectedCloseDate as any}
                   className="w-full h-12"
-                  placeholder="Select close date"
+                  placeholder={t("datePicker.selectCloseDate")}
                 />
               </div>
             </div>

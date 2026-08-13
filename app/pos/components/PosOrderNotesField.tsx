@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Input } from "@/app/components/ui/input";
-import { Button } from "@/app/components/ui/button";
+import { FileText } from "@/app/components/ui/icons";
 import { PosOrderNotesDialog } from "./PosOrderNotesDialog";
 
 export function PosOrderNotesField({
@@ -20,29 +20,22 @@ export function PosOrderNotesField({
 
   return (
     <>
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">
-          {getTrans("pos.cart.orderNotes", "Order notes")}
-        </label>
-        <div className="relative">
-          <Input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder={getTrans(
-              "pos.cart.orderNotesPlaceholder",
-              "Any special requests for this order?",
-            )}
-            className="bg-card h-9 pr-20"
-          />
-          <Button
+      <div className="relative">
+        <Input
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder={getTrans("pos.cart.orderNotes", "Order notes")}
+          icon={<FileText className="h-4 w-4" />}
+          className="bg-card pr-20"
+        />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             onClick={() => setOpen(true)}
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs"
+            className="h-7 px-2 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             {getTrans("details", "Details")}
-          </Button>
+          </button>
         </div>
       </div>
 

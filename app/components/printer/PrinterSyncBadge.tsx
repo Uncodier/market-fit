@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/app/components/ui/button"
-import { AlertTriangle, CheckCircle2, Loader2, Printer } from "@/app/components/ui/icons"
+import { AlertTriangle, Loader2, Printer } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { usePrinterStationStatus } from "@/lib/printer/hooks/use-printer-station-status"
 import type { PrinterModule } from "@/lib/printer"
@@ -63,11 +63,11 @@ export function PrinterSyncBadge({ module }: { module: PrinterModule }) {
   const Icon =
     status.state === "checking"
       ? Loader2
-      : status.state === "ready"
-        ? CheckCircle2
-        : status.state === "unpaired"
-          ? Printer
-          : AlertTriangle
+      : status.state === "disconnected" || status.state === "unsupported"
+        ? AlertTriangle
+        : Printer
+
+  const expanded = status.state !== "ready"
 
   return (
     <>
@@ -86,11 +86,23 @@ export function PrinterSyncBadge({ module }: { module: PrinterModule }) {
             toast.error(err instanceof Error ? err.message : "Could not confirm printer")
           })
         }}
-        className={cn("h-8 gap-1.5 rounded-full px-3 text-xs font-medium", tone)}
+        aria-label={label}
+        className={cn(
+          "h-8 rounded-full text-xs font-medium overflow-hidden transition-[padding,gap,width] duration-200",
+          expanded ? "gap-1.5 px-3" : "w-8 px-0 justify-center",
+          tone,
+        )}
         title={hint}
       >
-        <Icon className={cn("h-3.5 w-3.5", status.state === "checking" && "animate-spin")} />
-        {label}
+        <Icon className={cn("h-3.5 w-3.5 flex-shrink-0", status.state === "checking" && "animate-spin")} />
+        <span
+          className={cn(
+            "overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200",
+            expanded ? "max-w-48 opacity-100" : "max-w-0 opacity-0",
+          )}
+        >
+          {label}
+        </span>
       </Button>
       <PrinterFirstAidDialog
         open={aidOpen && status.state !== "checking" && status.state !== "hidden"}

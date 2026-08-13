@@ -1,6 +1,8 @@
 "use client"
 
+import { format } from "date-fns"
 import { Input } from "@/app/components/ui/input"
+import { DatePicker } from "@/app/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { User, MessageSquare, Phone, Globe, Tag, FileText, Target } from "@/app/components/ui/icons"
 import { CalendarDays } from "./custom-icons"
@@ -9,6 +11,7 @@ import { Campaign } from "@/app/types"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { PropertyRow, ShowEmptyFieldsToggle, hasPropertyValue } from "./PropertyRow"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 export const LEAD_LANGUAGES: Record<string, string> = {
@@ -46,6 +49,7 @@ export function DetailsTab({
   onUpdateLead,
 }: DetailsTabProps) {
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const getSegmentName = (segmentId: string | null) => {
     if (!segmentId) return ""
     return segments.find((segment) => segment.id === segmentId)?.name || "Unknown Segment"
@@ -133,10 +137,16 @@ export function DetailsTab({
         value={lead.birthday ? new Date(lead.birthday).toLocaleDateString() : ""}
         empty={!hasPropertyValue(lead.birthday)}
         showEmpty={showEmpty}
-        editValue={lead.birthday || ""}
+        editValue={lead.birthday ? lead.birthday.split("T")[0] : ""}
+        saveOnEnter={false}
         onCommit={(value) => save({ birthday: value || null })}
         renderEditor={(draft, setDraft) => (
-          <Input type="date" value={draft} onChange={(event) => setDraft(event.target.value)} className="h-8 text-sm" />
+          <DatePicker
+            date={draft ? new Date(`${draft}T12:00:00`) : undefined}
+            setDate={(next) => setDraft(format(next, "yyyy-MM-dd"))}
+            className="w-full h-8"
+            placeholder={t("datePicker.selectBirthday")}
+          />
         )}
       />
       <PropertyRow

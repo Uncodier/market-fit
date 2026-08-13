@@ -65,6 +65,13 @@ export function isAccessOnlyItem(item: CatalogItem) {
   return Boolean(item.is_recurring || (item.kind === 'digital_asset' && item.digital_subtype === 'pass'));
 }
 
+/** Digital assets and recurring plans grant entitlements to a platform user. */
+export function needsBuyerAccount(
+  item: Pick<CatalogItem, "kind" | "is_recurring">,
+) {
+  return Boolean(item.kind === "digital_asset" || item.is_recurring)
+}
+
 /** Parent listing that must resolve a child SKU before add-to-cart / book / buy. */
 export function requiresVariantSelection(
   item: CatalogItem & { _shop?: { hasVariants?: boolean; children?: unknown[] } }

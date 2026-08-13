@@ -44,6 +44,12 @@ interface RelationSelectProps {
   /** Renders inside the input on the right (before clear/chevron). */
   endAction?: React.ReactNode
   createLabel?: (query: string) => string
+  /** Always-visible action at the top of the dropdown (e.g. New Order). */
+  pinnedAction?: {
+    label: string
+    selected?: boolean
+    onSelect: () => void
+  }
 }
 
 export function RelationSelect({
@@ -61,7 +67,8 @@ export function RelationSelect({
   label,
   icon,
   endAction,
-  createLabel = (q) => `Use "${q}"`
+  createLabel = (q) => `Use "${q}"`,
+  pinnedAction,
 }: RelationSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -217,6 +224,25 @@ export function RelationSelect({
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
+          {pinnedAction && (
+            <>
+              <div
+                className={cn(
+                  "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm font-inter outline-none hover:bg-accent hover:text-accent-foreground transition-colors text-primary",
+                  pinnedAction.selected && "bg-accent text-accent-foreground",
+                )}
+                onClick={() => {
+                  pinnedAction.onSelect()
+                  setSearchQuery("")
+                  setOpen(false)
+                }}
+              >
+                <Plus className="h-3.5 w-3.5 mr-2" />
+                {pinnedAction.label}
+              </div>
+              <div className="h-px bg-border my-1" />
+            </>
+          )}
           {filteredOptions.length > 0 ? (
             <div className="pb-1">
               {filteredOptions.map((option) => (
@@ -232,9 +258,9 @@ export function RelationSelect({
                 </div>
               ))}
             </div>
-          ) : !showCreate ? (
+          ) : showCreate && !pinnedAction ? null : (
             <div className="py-6 text-center text-sm font-inter text-muted-foreground">{emptyMessage}</div>
-          ) : null}
+          )}
 
           {showCreate && (
             <>
