@@ -1,5 +1,10 @@
-/** Default landing for authenticated users leaving the sign-in page. */
+/** Default landing for authenticated users leaving the sign-in page on app. */
 export const DEFAULT_POST_AUTH_PATH = '/robots'
+
+/** Default landing for authenticated users on www (commerce, not workspace). */
+export const WWW_POST_AUTH_PATH = '/buyer'
+
+const WWW_HOSTS = new Set(['makinari.com', 'www.makinari.com'])
 
 const SHOP_AUTH_PATH_PREFIXES = ['/shop', '/marketplace', '/buyer', '/cart'] as const
 
@@ -18,6 +23,17 @@ export function isSafeInternalPath(path: string | null | undefined): path is str
   return true
 }
 
+export function isWwwCommerceHost(hostname?: string | null): boolean {
+  if (hostname) return WWW_HOSTS.has(hostname)
+  if (typeof window === 'undefined') return false
+  return WWW_HOSTS.has(window.location.hostname)
+}
+
+/** Workspace on app, buyer portal on www. */
+export function defaultPostAuthPath(hostname?: string | null): string {
+  return isWwwCommerceHost(hostname) ? WWW_POST_AUTH_PATH : DEFAULT_POST_AUTH_PATH
+}
+
 /**
  * Shop/buyer login copy when returnTo points at a storefront, marketplace,
  * buyer portal, or cart. Marketing and workspace entry stay on product copy.
@@ -30,15 +46,21 @@ export function isShopAuthContext(returnTo?: string | null): boolean {
   )
 }
 
-/** Prefer returnTo, otherwise fall back to robots. */
-export function resolvePostAuthRedirect(returnTo?: string | null): string {
-  return isSafeInternalPath(returnTo) ? returnTo : DEFAULT_POST_AUTH_PATH
+/** Prefer returnTo, otherwise fall back to host-aware default. */
+export function resolvePostAuthRedirect(
+  returnTo?: string | null,
+  hostname?: string | null
+): string {
+  return isSafeInternalPath(returnTo) ? returnTo : defaultPostAuthPath(hostname)
 }
 
 /**
- * Client-only: returnTo → last navigation history entry → /robots.
+ * Client-only: returnTo → last navigation history entry → host default.
  */
-export function resolveAuthenticatedSignInRedirect(returnTo?: string | null): string {
+export function resolveAuthenticatedSignInRedirect(
+  returnTo?: string | null,
+  hostname?: string | null
+): string {
   if (isSafeInternalPath(returnTo)) return returnTo
 
   if (typeof window !== 'undefined') {
@@ -59,5 +81,5 @@ export function resolveAuthenticatedSignInRedirect(returnTo?: string | null): st
     }
   }
 
-  return DEFAULT_POST_AUTH_PATH
+  return defaultPostAuthPath(hostname)
 }

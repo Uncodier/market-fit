@@ -1,21 +1,37 @@
 import {
   DEFAULT_POST_AUTH_PATH,
+  WWW_POST_AUTH_PATH,
+  defaultPostAuthPath,
   isSafeInternalPath,
   isShopAuthContext,
+  isWwwCommerceHost,
   resolveAuthenticatedSignInRedirect,
   resolvePostAuthRedirect,
 } from '@/lib/auth/post-auth-redirect'
 
 describe('post-auth-redirect', () => {
-  it('defaults to /robots', () => {
+  it('defaults to /robots on app', () => {
     expect(DEFAULT_POST_AUTH_PATH).toBe('/robots')
     expect(resolvePostAuthRedirect(null)).toBe('/robots')
     expect(resolvePostAuthRedirect(undefined)).toBe('/robots')
+    expect(resolvePostAuthRedirect(null, 'app.makinari.com')).toBe('/robots')
+  })
+
+  it('defaults to /buyer on www', () => {
+    expect(WWW_POST_AUTH_PATH).toBe('/buyer')
+    expect(isWwwCommerceHost('makinari.com')).toBe(true)
+    expect(isWwwCommerceHost('www.makinari.com')).toBe(true)
+    expect(isWwwCommerceHost('app.makinari.com')).toBe(false)
+    expect(defaultPostAuthPath('makinari.com')).toBe('/buyer')
+    expect(defaultPostAuthPath('www.makinari.com')).toBe('/buyer')
+    expect(resolvePostAuthRedirect(null, 'www.makinari.com')).toBe('/buyer')
+    expect(resolvePostAuthRedirect('/auth', 'makinari.com')).toBe('/buyer')
   })
 
   it('accepts safe internal returnTo paths', () => {
     expect(resolvePostAuthRedirect('/leads')).toBe('/leads')
     expect(resolvePostAuthRedirect('/robots?instance=1')).toBe('/robots?instance=1')
+    expect(resolvePostAuthRedirect('/buyer', 'app.makinari.com')).toBe('/buyer')
   })
 
   it('rejects open redirects and auth loops', () => {
@@ -53,6 +69,27 @@ describe('post-auth-redirect', () => {
 
     expect(resolveAuthenticatedSignInRedirect(null)).toBe('/chat')
     expect(resolveAuthenticatedSignInRedirect('/leads')).toBe('/leads')
+    expect(resolveAuthenticatedSignInRedirect(null, 'www.makinari.com')).toBe('/chat')
+
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: original,
+    })
+  })
+
+  it('falls back to /buyer on www when history is empty', () => {
+    const original = globalThis.localStorage
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+      },
+    })
+
+    expect(resolveAuthenticatedSignInRedirect(null, 'www.makinari.com')).toBe('/buyer')
+    expect(resolveAuthenticatedSignInRedirect(null, 'app.makinari.com')).toBe('/robots')
 
     Object.defineProperty(globalThis, 'localStorage', {
       configurable: true,

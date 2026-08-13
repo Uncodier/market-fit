@@ -15,7 +15,7 @@ import { Eye, EyeOff, Lock, Mail, User, AlertCircle, Check, Tag, Google, Shield,
 import { Separator } from "@/app/components/ui/separator"
 import { Alert, AlertDescription } from "@/app/components/ui/alert"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import { DEFAULT_POST_AUTH_PATH, resolvePostAuthRedirect } from "@/lib/auth/post-auth-redirect"
+import { defaultPostAuthPath, resolvePostAuthRedirect } from "@/lib/auth/post-auth-redirect"
 
 interface AuthFormProps {
   mode?: 'login' | 'register'
@@ -72,8 +72,8 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
   const [mfaCode, setMfaCode] = useState('')
   const [mfaVerifying, setMfaVerifying] = useState(false)
   
-  // Get returnTo from URL or default to AI Agents (robots)
-  const [finalReturnTo, setFinalReturnTo] = useState<string>(DEFAULT_POST_AUTH_PATH)
+  // Get returnTo from URL or default to buyer on www / robots on app
+  const [finalReturnTo, setFinalReturnTo] = useState<string>(defaultPostAuthPath())
   
   const isDark = theme === 'dark'
   
