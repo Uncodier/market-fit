@@ -27,6 +27,11 @@ import {
 } from "@/app/documents/public-token";
 import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items"
 import { kitchenDeltaForSend } from "./checkout-print-delta";
+import {
+  commerceLeadCreateFields,
+  ensureCommerceLeadConverted,
+  isCommerceLeadSource,
+} from "./ensure-commerce-lead-converted";
 
 export interface CheckoutLineModifier {
   catalogItemId: string;
@@ -299,15 +304,18 @@ export async function checkoutCart({
           await supabaseAdmin.from('leads').update({ buyer_user_id: buyerUserId }).eq('id', existing.id);
         }
       } else {
+        const createFields = isCommerceLeadSource(source)
+          ? commerceLeadCreateFields(source, false)
+          : { status: "new" as const };
         const { data: newLead } = await (isAdmin ? supabaseAdmin : supabase)
           .from("leads")
           .insert({ 
             site_id: siteId, 
             name: customerName, 
             email: customerEmail, 
-            status: 'new', 
             user_id: resolvedUserId,
-            buyer_user_id: buyerUserId || null
+            buyer_user_id: buyerUserId || null,
+            ...createFields,
           })
           .select("id")
           .single();
@@ -1001,6 +1009,23 @@ export async function checkoutCart({
         .single();
       if (latest) order = { ...order, ...latest };
       orderPublicAccessToken = order.public_access_token as string;
+    }
+
+    if (finalLeadId && resolvedUserId && isCommerceLeadSource(source)) {
+      try {
+        await ensureCommerceLeadConverted({
+          supabase: isAdmin ? supabaseAdmin : supabase,
+          siteId,
+          leadId: finalLeadId,
+          source,
+          userId: resolvedUserId,
+          amount: orderTotal,
+          leadName: customerName,
+          paid: orderInitialStatus === "completed",
+        });
+      } catch (e) {
+        console.error("Failed to sync commerce lead conversion:", e);
+      }
     }
 
     return {

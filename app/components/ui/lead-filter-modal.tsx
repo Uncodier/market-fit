@@ -22,7 +22,9 @@ import {
   Users, 
   X,
   Globe,
-  MessageSquare
+  MessageSquare,
+  Store,
+  ShoppingCart
 } from "@/app/components/ui/icons"
 
 export interface LeadFilters {
@@ -50,7 +52,7 @@ export function LeadFilterModal({
   onApplyFilters,
   segments,
   statusOptions = ["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"],
-  originOptions = ["website", "referral", "social", "email", "phone", "other"],
+  originOptions = ["website", "referral", "social", "email", "phone", "pos", "shop", "marketplace", "other"],
   journeyStageOptions = [
     { id: "not_contacted", label: "Unaware" },
     { id: "awareness", label: "Awareness" },
@@ -197,6 +199,12 @@ export function LeadFilterModal({
         return <MessageSquare className="h-4 w-4 text-yellow-500" />
       case "phone":
         return <MessageSquare className="h-4 w-4 text-red-500" />
+      case "pos":
+        return <Store className="h-4 w-4 text-amber-500" />
+      case "shop":
+        return <ShoppingCart className="h-4 w-4 text-blue-500" />
+      case "marketplace":
+        return <Globe className="h-4 w-4 text-indigo-500" />
       default:
         return <Tag className="h-4 w-4" />
     }

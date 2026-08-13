@@ -1,5 +1,6 @@
 import { processPostPaymentFulfillment } from "../../app/commerce/post-payment";
 import { createShipment } from "../../app/shipments/actions";
+import { ensureCommerceLeadConverted } from "../../app/commerce/ensure-commerce-lead-converted";
 
 jest.mock("../../lib/supabase/server", () => ({
   createServiceClient: jest.fn(),
@@ -7,6 +8,10 @@ jest.mock("../../lib/supabase/server", () => ({
 
 jest.mock("../../app/shipments/actions", () => ({
   createShipment: jest.fn(),
+}));
+
+jest.mock("../../app/commerce/ensure-commerce-lead-converted", () => ({
+  ensureCommerceLeadConverted: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe("processPostPaymentFulfillment", () => {
@@ -17,6 +22,7 @@ describe("processPostPaymentFulfillment", () => {
   let settingsChain: any;
   let catalogChain: any;
   let inventoryChain: any;
+  let salesChain: any;
 
   const createChainable = () => {
     const chainable: any = {};
@@ -40,6 +46,10 @@ describe("processPostPaymentFulfillment", () => {
     settingsChain = createChainable();
     catalogChain = createChainable();
     inventoryChain = createChainable();
+    salesChain = createChainable();
+    salesChain.single.mockResolvedValue({
+      data: { lead_id: "lead-1", source: "shop", amount: 20 },
+    });
 
     mockSupabase = {
       from: jest.fn().mockImplementation((table: string) => {
@@ -49,6 +59,7 @@ describe("processPostPaymentFulfillment", () => {
         if (table === "settings") return settingsChain;
         if (table === "catalog_items") return catalogChain;
         if (table === "inventory_levels") return inventoryChain;
+        if (table === "sales") return salesChain;
         return createChainable();
       })
     };
@@ -80,6 +91,14 @@ describe("processPostPaymentFulfillment", () => {
     expect(itemsChain.update).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
     // No shipment created
     expect(createShipment).not.toHaveBeenCalled();
+    expect(ensureCommerceLeadConverted).toHaveBeenCalledWith(expect.objectContaining({
+      siteId: "site-1",
+      leadId: "lead-1",
+      source: "shop",
+      userId: "user-1",
+      amount: 20,
+      paid: true,
+    }));
   });
 
   it("promotes 'ship' items to 'new' and creates a shipment", async () => {

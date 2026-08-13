@@ -1323,46 +1323,43 @@ export default function LeadsPage() {
         <StickyHeader>
           <div className="w-full pt-0">
             {selectedLeads.size > 0 ? (
-              <div className="flex items-center justify-between w-full bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
-                <div className="flex items-center gap-4">
-                  <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-4 overflow-hidden">
+                  <Badge variant="outline" className="rounded-full px-2 py-0">
                     {selectedLeads.size} selected
                   </Badge>
-                  <span className="text-sm font-medium text-muted-foreground">
+                  <span className="text-sm text-muted-foreground hidden sm:inline">
                     Choose bulk action
                   </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedLeads(new Set())} disabled={isBulkActionLoading}>
-                    Cancel
-                  </Button>
-                  <div className="h-4 w-px bg-border mx-2" />
-                  <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkAssign} disabled={isBulkActionLoading}>
-                    {isBulkActionLoading ? <Loader className="h-4 w-4 animate-spin" /> : <UserIcon className="h-4 w-4" />}
-                    Assign to me
-                  </Button>
-                  
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2" disabled={isBulkActionLoading}>
-                        <Tag className="h-4 w-4" />
-                        Change Status
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"].map(status => (
-                        <DropdownMenuItem key={status} onClick={() => handleBulkStatusChange(status)} className="capitalize">
-                          {status.replace('_', ' ')}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <Button variant="outline" size="sm" className="gap-2 text-destructive hover:text-destructive" onClick={handleBulkDelete} disabled={isBulkActionLoading}>
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedLeads(new Set())} disabled={isBulkActionLoading}>
+                      Cancel
+                    </Button>
+                    <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" onClick={handleBulkAssign} disabled={isBulkActionLoading}>
+                      {isBulkActionLoading ? <Loader className="h-4 w-4 animate-spin" /> : <UserIcon className="h-4 w-4" />}
+                      Assign to me
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" disabled={isBulkActionLoading}>
+                          <Tag className="h-4 w-4" />
+                          Change Status
+                          <ChevronDown className="h-3 w-3 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {["new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"].map(status => (
+                          <DropdownMenuItem key={status} onClick={() => handleBulkStatusChange(status)} className="capitalize">
+                            {status.replace('_', ' ')}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4 text-destructive hover:text-destructive" onClick={handleBulkDelete} disabled={isBulkActionLoading}>
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : (

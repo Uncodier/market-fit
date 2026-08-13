@@ -19,7 +19,6 @@ import { ImportLeadsDialog } from "../leads/import-leads-dialog";
 import { CreateContentDialog } from "@/app/content/components";
 import { CreateCampaignDialog } from "../create-campaign-dialog";
 import { CreateTaskDialog } from "../create-task-dialog";
-import { CalendarDateRangePicker } from "../ui/date-range-picker";
 import { CreateDealDialog } from "@/app/deals/components/CreateDealDialog";
 import { CreateQuotationDialog } from "@/app/quotations/components/CreateQuotationDialog";
 import { useSite } from "@/app/context/SiteContext";

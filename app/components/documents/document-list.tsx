@@ -75,6 +75,14 @@ const STATUS_DOT: Record<string, string> = {
   scroll: "bg-amber-500",
   engagement: "bg-indigo-500",
   session_recording: "bg-rose-500",
+  sale: "bg-sky-500",
+  expense: "bg-rose-500",
+  opening: "bg-violet-500",
+  manual: "bg-orange-500",
+  asset: "bg-sky-500",
+  liability: "bg-amber-500",
+  equity: "bg-violet-500",
+  income: "bg-emerald-500",
 }
 
 const STATUS_TEXT: Record<string, string> = {
@@ -136,6 +144,14 @@ const STATUS_TEXT: Record<string, string> = {
   scroll: "text-amber-700 dark:text-amber-400",
   engagement: "text-indigo-700 dark:text-indigo-400",
   session_recording: "text-rose-700 dark:text-rose-400",
+  sale: "text-sky-700 dark:text-sky-400",
+  expense: "text-rose-700 dark:text-rose-400",
+  opening: "text-violet-700 dark:text-violet-400",
+  manual: "text-orange-700 dark:text-orange-400",
+  asset: "text-sky-700 dark:text-sky-400",
+  liability: "text-amber-700 dark:text-amber-400",
+  equity: "text-violet-700 dark:text-violet-400",
+  income: "text-emerald-700 dark:text-emerald-400",
 }
 
 export function documentListShellClassName(className?: string) {

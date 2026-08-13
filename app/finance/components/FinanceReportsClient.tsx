@@ -1,22 +1,22 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { format, parse, subMonths } from "date-fns"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { ensureChartOfAccounts, getAllAccounts } from "@/app/accounting/chart"
 import { getPnLReport, getBalanceSheetReport } from "../reports"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
-import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { AccountingAccount } from "@/app/types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { SyncJournalEntriesDialog } from "@/app/accounting/components/SyncJournalEntriesDialog"
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
-import { Download, AlertTriangle, TrendingUp, TrendingDown, Building, ListOrdered, CheckCircle, RefreshCcw } from "@/app/components/ui/icons"
+import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
+import { AlertTriangle, TrendingUp, Building, ListOrdered } from "@/app/components/ui/icons"
+import { PnlStatementCard, BalanceSheetCard } from "./FinanceReportStatements"
+import { TrialBalanceTable } from "./TrialBalanceTable"
 
 export function FinanceReportsClient() {
   const { currentSite } = useSite()
@@ -26,14 +26,12 @@ export function FinanceReportsClient() {
   const [accounts, setAccounts] = useState<Record<string, AccountingAccount>>({})
   
   // P&L State
-  const [pnlFrom, setPnlFrom] = useState(() => {
-    const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split('T')[0]
-  })
-  const [pnlTo, setPnlTo] = useState(new Date().toISOString().split('T')[0])
+  const [pnlFrom, setPnlFrom] = useState(() => format(subMonths(new Date(), 1), "yyyy-MM-dd"))
+  const [pnlTo, setPnlTo] = useState(() => format(new Date(), "yyyy-MM-dd"))
   const [pnlData, setPnlData] = useState<Record<string, { debit: number, credit: number }>>({})
   
   // BS State
-  const [bsAsOf, setBsAsOf] = useState(new Date().toISOString().split('T')[0])
+  const [bsAsOf, setBsAsOf] = useState(() => format(new Date(), "yyyy-MM-dd"))
   const [bsData, setBsData] = useState<Record<string, { debit: number, credit: number }>>({})
   
   const [activeTab, setActiveTab] = useState("pnl")
@@ -261,6 +259,25 @@ export function FinanceReportsClient() {
 
   const isBsBalanced = Math.abs(totalAssets - (totalLiabilities + totalEquity)) <= 0.01;
   const isTbBalanced = Math.abs(totalTBDebits - totalTBCredits) <= 0.01;
+  const formatReportDate = (iso: string) => format(parse(iso, "yyyy-MM-dd", new Date()), "MMM d, yyyy")
+  const selectedPeriodText = t('accounting.kpi.selectedPeriod')
+  const asOfText = t('accounting.kpi.asOf', { date: formatReportDate(bsAsOf) })
+  const netIncomeChangeText = `${netIncomePnL >= 0 ? t('accounting.profit') : t('accounting.loss')} ${t('accounting.kpi.thisPeriod')}`
+  const tbDifference = Math.abs(totalTBDebits - totalTBCredits)
+
+  const handleDateRangeChange = (start: Date, end: Date) => {
+    setPnlFrom(format(start, "yyyy-MM-dd"))
+    setPnlTo(format(end, "yyyy-MM-dd"))
+    setBsAsOf(format(end, "yyyy-MM-dd"))
+  }
+
+  const periodPicker = (
+    <CalendarDateRangePicker
+      onRangeChange={handleDateRangeChange}
+      initialStartDate={parse(pnlFrom, "yyyy-MM-dd", new Date())}
+      initialEndDate={parse(pnlTo, "yyyy-MM-dd", new Date())}
+    />
+  )
 
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
@@ -282,29 +299,8 @@ export function FinanceReportsClient() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-2 bg-background border rounded-md px-3 py-1.5 shadow-sm">
-              {activeTab === "pnl" ? (
-                <>
-                  <Input type="date" value={pnlFrom} onChange={e => setPnlFrom(e.target.value)} className="h-7 text-xs border-0 p-0 w-[110px] focus-visible:ring-0 shadow-none bg-transparent" />
-                  <span className="text-muted-foreground text-xs font-medium px-1">to</span>
-                  <Input type="date" value={pnlTo} onChange={e => setPnlTo(e.target.value)} className="h-7 text-xs border-0 p-0 w-[110px] focus-visible:ring-0 shadow-none bg-transparent" />
-                </>
-              ) : (
-                <>
-                  <span className="text-muted-foreground text-xs font-medium mr-1">As of</span>
-                  <Input type="date" value={bsAsOf} onChange={e => setBsAsOf(e.target.value)} className="h-7 text-xs border-0 p-0 w-[110px] focus-visible:ring-0 shadow-none bg-transparent" />
-                </>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2 ml-auto">
-              <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => exportReport()}>
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('common.export') || "Export"}</span>
-              </Button>
-            </div>
+          <div className="ml-auto">
+            {periodPicker}
           </div>
         </div>
       </StickyHeader>
@@ -315,130 +311,58 @@ export function FinanceReportsClient() {
           <TabsContent value="pnl" className="space-y-6 m-0">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <BaseKpiWidget
-                title={t('accounting.totalIncome') || "Total Income"}
+                title={t('accounting.totalIncome')}
                 value={formatCurrency(totalRevenue)}
-                changeText=""
+                changeText={selectedPeriodText}
                 isLoading={loading}
               />
               <BaseKpiWidget
-                title={t('accounting.totalExpenses') || "Total Expenses"}
+                title={t('accounting.totalExpenses')}
                 value={formatCurrency(totalExpense)}
-                changeText=""
+                changeText={selectedPeriodText}
                 isLoading={loading}
               />
               <BaseKpiWidget
-                title={t('accounting.netIncome') || "Net Income"}
+                title={t('accounting.netIncome')}
                 value={formatCurrency(netIncomePnL)}
-                changeText=""
-                isLoading={loading}
+                changeText={netIncomeChangeText}
                 isPositiveChange={netIncomePnL >= 0}
-                customStatus={
-                  <div className={`text-xs font-medium flex items-center gap-1 ${netIncomePnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {netIncomePnL >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                    {netIncomePnL >= 0 ? 'Profit' : 'Loss'}
-                  </div>
-                }
+                isLoading={loading}
               />
             </div>
 
-            <Card className="shadow-sm border-border/50">
-              <CardHeader className="border-b bg-muted/10 pb-4">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  {t('accounting.pnl') || "Profit & Loss Statement"}
-                </CardTitle>
-                <CardDescription>
-                  For the period {pnlFrom} to {pnlTo}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y">
-                  {/* Income Section */}
-                  <div className="p-6">
-                    <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider mb-4">{t('accounting.income') || "Income"}</h3>
-                    <Table>
-                      <TableBody>
-                        {Object.entries(pnlData)
-                          .filter(([code]) => accounts[code]?.type === 'income')
-                          .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
-                          .map(([code, amts]) => {
-                          const acc = accounts[code]
-                          const bal = amts.credit - amts.debit
-                          if (bal === 0) return null
-                          return (
-                            <TableRow key={code} className="hover:bg-muted/30 border-b-0 transition-colors">
-                              <TableCell className="w-[120px] font-mono text-xs text-muted-foreground">{code}</TableCell>
-                              <TableCell className="font-medium">{acc.label}</TableCell>
-                              <TableCell className="text-right font-mono tabular-nums">{formatCurrency(bal)}</TableCell>
-                            </TableRow>
-                          )
-                        })}
-                        <TableRow className="bg-muted/10 hover:bg-muted/10">
-                          <TableCell colSpan={2} className="font-semibold">{t('accounting.totalIncome') || "Total Income"}</TableCell>
-                          <TableCell className="text-right font-mono font-bold tabular-nums text-primary">{formatCurrency(totalRevenue)}</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Expenses Section */}
-                  <div className="p-6 bg-muted/5">
-                    <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider mb-4">{t('accounting.expenses') || "Expenses"}</h3>
-                    <Table>
-                      <TableBody>
-                        {Object.entries(pnlData)
-                          .filter(([code]) => accounts[code]?.type === 'expense')
-                          .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
-                          .map(([code, amts]) => {
-                          const acc = accounts[code]
-                          const bal = amts.debit - amts.credit
-                          if (bal === 0) return null
-                          return (
-                            <TableRow key={code} className="hover:bg-muted/30 border-b-0 transition-colors">
-                              <TableCell className="w-[120px] font-mono text-xs text-muted-foreground">{code}</TableCell>
-                              <TableCell className="font-medium">{acc.label}</TableCell>
-                              <TableCell className="text-right font-mono tabular-nums">{formatCurrency(bal)}</TableCell>
-                            </TableRow>
-                          )
-                        })}
-                        <TableRow className="bg-muted/10 hover:bg-muted/10">
-                          <TableCell colSpan={2} className="font-semibold">{t('accounting.totalExpenses') || "Total Expenses"}</TableCell>
-                          <TableCell className="text-right font-mono font-bold tabular-nums text-primary">{formatCurrency(totalExpense)}</TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Net Income Summary */}
-                  <div className="p-6 bg-primary/5 flex items-center justify-between">
-                    <span className="font-bold text-lg">{t('accounting.netIncome') || "Net Income"}</span>
-                    <span className={`font-mono font-bold text-xl tabular-nums ${netIncomePnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(netIncomePnL)}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <PnlStatementCard
+              accounts={accounts}
+              pnlData={pnlData}
+              totalRevenue={totalRevenue}
+              totalExpense={totalExpense}
+              netIncomePnL={netIncomePnL}
+              pnlFrom={formatReportDate(pnlFrom)}
+              pnlTo={formatReportDate(pnlTo)}
+              formatCurrency={formatCurrency}
+              t={t}
+            />
           </TabsContent>
 
           {/* Balance Sheet Tab */}
           <TabsContent value="bs" className="space-y-6 m-0">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <BaseKpiWidget
-                title={t('accounting.totalAssets') || "Total Assets"}
+                title={t('accounting.totalAssets')}
                 value={formatCurrency(totalAssets)}
-                changeText=""
+                changeText={asOfText}
                 isLoading={loading}
               />
               <BaseKpiWidget
-                title={t('accounting.totalLiabilities') || "Total Liabilities"}
+                title={t('accounting.totalLiabilities')}
                 value={formatCurrency(totalLiabilities)}
-                changeText=""
+                changeText={asOfText}
                 isLoading={loading}
               />
               <BaseKpiWidget
-                title={t('accounting.totalEquity') || "Total Equity"}
+                title={t('accounting.totalEquity')}
                 value={formatCurrency(totalEquity)}
-                changeText=""
+                changeText={asOfText}
                 isLoading={loading}
               />
             </div>
@@ -455,219 +379,54 @@ export function FinanceReportsClient() {
               </div>
             )}
 
-            <Card className="shadow-sm border-border/50">
-              <CardHeader className="border-b bg-muted/10 pb-4">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  {t('accounting.bs') || "Balance Sheet"}
-                </CardTitle>
-                <CardDescription>
-                  As of {bsAsOf}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x">
-                  {/* Left Column: Assets */}
-                  <div className="divide-y">
-                    <div className="p-6 h-full">
-                      <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider mb-4">{t('accounting.assets') || "Assets"}</h3>
-                      <Table>
-                        <TableBody>
-                          {Object.entries(bsData)
-                            .filter(([code]) => accounts[code]?.type === 'asset')
-                            .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
-                            .map(([code, amts]) => {
-                            const acc = accounts[code]
-                            const bal = amts.debit - amts.credit
-                            if (bal === 0) return null
-                            return (
-                              <TableRow key={code} className="hover:bg-muted/30 border-b-0 transition-colors">
-                                <TableCell className="w-[100px] font-mono text-xs text-muted-foreground">{code}</TableCell>
-                                <TableCell className="font-medium">{acc.label}</TableCell>
-                                <TableCell className="text-right font-mono tabular-nums">{formatCurrency(bal)}</TableCell>
-                              </TableRow>
-                            )
-                          })}
-                          <TableRow className="bg-muted/10 hover:bg-muted/10">
-                            <TableCell colSpan={2} className="font-semibold">{t('accounting.totalAssets') || "Total Assets"}</TableCell>
-                            <TableCell className="text-right font-mono font-bold tabular-nums text-primary">{formatCurrency(totalAssets)}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Liabilities & Equity */}
-                  <div className="divide-y flex flex-col">
-                    <div className="p-6">
-                      <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider mb-4">{t('accounting.filter.liability') || "Liabilities"}</h3>
-                      <Table>
-                        <TableBody>
-                          {Object.entries(bsData)
-                            .filter(([code]) => accounts[code]?.type === 'liability')
-                            .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
-                            .map(([code, amts]) => {
-                            const acc = accounts[code]
-                            const bal = amts.credit - amts.debit
-                            if (bal === 0) return null
-                            return (
-                              <TableRow key={code} className="hover:bg-muted/30 border-b-0 transition-colors">
-                                <TableCell className="w-[100px] font-mono text-xs text-muted-foreground">{code}</TableCell>
-                                <TableCell className="font-medium">{acc.label}</TableCell>
-                                <TableCell className="text-right font-mono tabular-nums">{formatCurrency(bal)}</TableCell>
-                              </TableRow>
-                            )
-                          })}
-                          <TableRow className="bg-muted/10 hover:bg-muted/10">
-                            <TableCell colSpan={2} className="font-semibold">{t('accounting.totalLiabilities') || "Total Liabilities"}</TableCell>
-                            <TableCell className="text-right font-mono font-bold tabular-nums text-primary">{formatCurrency(totalLiabilities)}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div className="p-6 flex-1 bg-muted/5">
-                      <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider mb-4">{t('accounting.filter.equity') || "Equity"}</h3>
-                      <Table>
-                        <TableBody>
-                          {Object.entries(bsData)
-                            .filter(([code]) => accounts[code]?.type === 'equity')
-                            .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
-                            .map(([code, amts]) => {
-                            const acc = accounts[code]
-                            const bal = amts.credit - amts.debit
-                            if (bal === 0) return null
-                            return (
-                              <TableRow key={code} className="hover:bg-muted/30 border-b-0 transition-colors">
-                                <TableCell className="w-[100px] font-mono text-xs text-muted-foreground">{code}</TableCell>
-                                <TableCell className="font-medium">{acc.label}</TableCell>
-                                <TableCell className="text-right font-mono tabular-nums">{formatCurrency(bal)}</TableCell>
-                              </TableRow>
-                            )
-                          })}
-                          <TableRow className="border-b-0">
-                            <TableCell className="w-[100px] font-mono text-xs text-transparent">-</TableCell>
-                            <TableCell className="text-muted-foreground flex items-center gap-1.5">
-                              {t('accounting.retainedEarnings') || "Retained Earnings (Net Income)"}
-                            </TableCell>
-                            <TableCell className="text-right font-mono tabular-nums text-muted-foreground">{formatCurrency(bsNetIncome)}</TableCell>
-                          </TableRow>
-                          <TableRow className="bg-muted/10 hover:bg-muted/10">
-                            <TableCell colSpan={2} className="font-semibold">{t('accounting.totalEquity') || "Total Equity"}</TableCell>
-                            <TableCell className="text-right font-mono font-bold tabular-nums text-primary">{formatCurrency(totalEquity)}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-                    
-                    <div className="p-6 bg-primary/5 flex items-center justify-between border-t mt-auto">
-                      <span className="font-bold">{t('accounting.totalLiabAndEquity') || "Total Liabilities & Equity"}</span>
-                      <span className="font-mono font-bold text-lg tabular-nums">
-                        {formatCurrency(totalLiabilities + totalEquity)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <BalanceSheetCard
+              accounts={accounts}
+              bsData={bsData}
+              totalAssets={totalAssets}
+              totalLiabilities={totalLiabilities}
+              totalEquity={totalEquity}
+              bsNetIncome={bsNetIncome}
+              bsAsOf={formatReportDate(bsAsOf)}
+              formatCurrency={formatCurrency}
+              t={t}
+            />
           </TabsContent>
           
           {/* Trial Balance Tab */}
           <TabsContent value="tb" className="space-y-6 m-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <BaseKpiWidget
-                title={t('accounting.totalDebits') || "Total Debits"}
+                title={t('accounting.totalDebits')}
                 value={formatCurrency(totalTBDebits)}
-                changeText=""
+                changeText={asOfText}
                 isLoading={loading}
               />
               <BaseKpiWidget
-                title={t('accounting.totalCredits') || "Total Credits"}
+                title={t('accounting.totalCredits')}
                 value={formatCurrency(totalTBCredits)}
-                changeText=""
+                changeText={asOfText}
                 isLoading={loading}
               />
-              <Card className="h-[116.5px] lg:col-span-2 overflow-hidden relative">
-                <div className={`absolute inset-0 opacity-10 ${isTbBalanced ? 'bg-green-500' : 'bg-red-500'}`} />
-                <CardHeader className="pb-2 pt-4 relative">
-                  <CardTitle className="text-sm font-medium">Status</CardTitle>
-                </CardHeader>
-                <CardContent className="relative flex flex-col justify-center gap-1">
-                  {isTbBalanced ? (
-                    <>
-                      <div className="flex items-center gap-2 text-green-600 font-bold text-xl">
-                        <CheckCircle className="w-5 h-5" />
-                        In Balance
-                      </div>
-                      <p className="text-xs text-muted-foreground">Debits and credits match perfectly.</p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2 text-red-600 font-bold text-xl">
-                        <AlertTriangle className="w-5 h-5" />
-                        Out of Balance
-                      </div>
-                      <p className="text-xs text-muted-foreground text-red-600/80 font-medium">
-                        Difference of {formatCurrency(Math.abs(totalTBDebits - totalTBCredits))}
-                      </p>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+              <BaseKpiWidget
+                title={t('accounting.status')}
+                value={isTbBalanced ? t('accounting.inBalance') : t('accounting.outOfBalance')}
+                changeText={
+                  isTbBalanced
+                    ? t('accounting.debitsMatchCredits')
+                    : t('accounting.kpi.differenceOf', { amount: formatCurrency(tbDifference) })
+                }
+                isPositiveChange={isTbBalanced}
+                isLoading={loading}
+              />
             </div>
 
-            <Card className="shadow-sm border-border/50">
-              <CardHeader className="border-b bg-muted/10 pb-4">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  {t('accounting.tb') || "Trial Balance"}
-                </CardTitle>
-                <CardDescription>
-                  As of {bsAsOf}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader className="bg-muted/30">
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-[120px]">{t('accounting.accountCode') || "Account Code"}</TableHead>
-                      <TableHead>{t('accounting.accountName') || "Account Name"}</TableHead>
-                      <TableHead className="w-[150px]">{t('accounting.type') || "Type"}</TableHead>
-                      <TableHead className="text-right w-[150px]">{t('accounting.debitBalance') || "Debit Balance"}</TableHead>
-                      <TableHead className="text-right w-[150px]">{t('accounting.creditBalance') || "Credit Balance"}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(bsData)
-                      .sort(([codeA], [codeB]) => codeA.localeCompare(codeB))
-                      .map(([code, amts]) => {
-                      const acc = accounts[code]
-                      if (!acc) return null
-                      const bal = amts.debit - amts.credit
-                      if (bal === 0) return null
-                      const isDebit = bal > 0
-                      
-                      return (
-                        <TableRow key={code} className="hover:bg-muted/20 transition-colors">
-                          <TableCell className="font-mono text-xs text-muted-foreground">{code}</TableCell>
-                          <TableCell className="font-medium">{acc.label}</TableCell>
-                          <TableCell className="capitalize text-muted-foreground text-sm">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-xs">
-                              {t(`accounting.filter.${acc.type}`) || acc.type}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right font-mono tabular-nums">{isDebit ? formatCurrency(bal) : ""}</TableCell>
-                          <TableCell className="text-right font-mono tabular-nums">{!isDebit ? formatCurrency(Math.abs(bal)) : ""}</TableCell>
-                        </TableRow>
-                      )
-                    })}
-                    <TableRow className="bg-muted/10 hover:bg-muted/10 border-t-2">
-                      <TableCell colSpan={3} className="font-semibold text-right">{t('accounting.totals') || "Totals"}</TableCell>
-                      <TableCell className="text-right font-mono font-bold tabular-nums text-primary">{formatCurrency(totalTBDebits)}</TableCell>
-                      <TableCell className="text-right font-mono font-bold tabular-nums text-primary">{formatCurrency(totalTBCredits)}</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <TrialBalanceTable
+              accounts={accounts}
+              bsData={bsData}
+              totalDebits={totalTBDebits}
+              totalCredits={totalTBCredits}
+              formatCurrency={formatCurrency}
+            />
           </TabsContent>
         </Tabs>
       </div>

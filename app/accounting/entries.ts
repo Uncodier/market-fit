@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { JournalDraft } from './builders'
+import { resolveJournalMemo } from './journal-memo'
 
 export async function insertJournalEntry(draft: JournalDraft) {
   const supabase = await createClient()
@@ -78,7 +79,67 @@ export async function listJournalEntries(
     throw new Error('Failed to fetch journal entries')
   }
 
-  return data
+  return attachParentMemos(supabase, data || [])
+}
+
+async function attachParentMemos(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  entries: any[]
+) {
+  if (entries.length === 0) return entries
+
+  const saleIds = uniqueSourceIds(entries, 'sale')
+  const expenseIds = uniqueSourceIds(entries, 'expense')
+  const purchaseIds = uniqueSourceIds(entries, 'purchase')
+
+  const [salesRes, expensesRes, purchasesRes] = await Promise.all([
+    saleIds.length
+      ? supabase
+          .from('sales')
+          .select('id, title, product_name, invoice_number, reference_code, leads(name)')
+          .in('id', saleIds)
+      : Promise.resolve({ data: [] as any[] }),
+    expenseIds.length
+      ? supabase
+          .from('transactions')
+          .select('id, description, category')
+          .in('id', expenseIds)
+      : Promise.resolve({ data: [] as any[] }),
+    purchaseIds.length
+      ? supabase
+          .from('purchases')
+          .select('id, title, notes, vendor:companies!vendor_company_id(name)')
+          .in('id', purchaseIds)
+      : Promise.resolve({ data: [] as any[] }),
+  ])
+
+  const sales = new Map((salesRes.data || []).map((row: any) => [row.id, row]))
+  const expenses = new Map((expensesRes.data || []).map((row: any) => [row.id, row]))
+  const purchases = new Map((purchasesRes.data || []).map((row: any) => [row.id, row]))
+
+  return entries.map((entry) => {
+    const source =
+      entry.source_type === 'sale'
+        ? sales.get(entry.source_id)
+        : entry.source_type === 'expense'
+          ? expenses.get(entry.source_id)
+          : entry.source_type === 'purchase'
+            ? purchases.get(entry.source_id)
+            : null
+
+    return {
+      ...entry,
+      memo: resolveJournalMemo(entry.source_type, source, entry.memo, entry.source_id),
+    }
+  })
+}
+
+function uniqueSourceIds(entries: any[], sourceType: string) {
+  return [...new Set(
+    entries
+      .filter((entry) => entry.source_type === sourceType && entry.source_id)
+      .map((entry) => entry.source_id)
+  )]
 }
 
 export async function getJournalEntry(siteId: string, entryId: string) {

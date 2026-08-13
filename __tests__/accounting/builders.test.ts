@@ -24,6 +24,7 @@ describe('accounting builders', () => {
     expect(draft!.lines.find(l => l.accountCode === '1100')?.debit).toBe(16)
     expect(draft!.lines.find(l => l.accountCode === '4000')?.credit).toBe(100)
     expect(draft!.lines.find(l => l.accountCode === '2100')?.credit).toBe(16)
+    expect(draft!.entry.memo).toBe('Sale')
   })
 
   it('returns null for non-completed sales', () => {
@@ -66,6 +67,7 @@ describe('accounting builders', () => {
       credit: 40,
     })
     expect(draft!.entry.idempotencyKey).toBe('expense:exp-1')
+    expect(draft!.entry.memo).toBe('Ads')
   })
 
   it('changes source hash when category changes', () => {
@@ -130,6 +132,7 @@ describe('accounting builders', () => {
     expect(draft!.lines.find(l => l.accountCode === '2200')?.credit).toBe(100)
     expect(draft!.entry.sourceType).toBe('purchase')
     expect(draft!.entry.idempotencyKey).toBe('purchase:pur-1')
+    expect(draft!.entry.memo).toBe('Bill')
   })
 
   it('splits purchase cash/AP and inventory/operating', () => {
@@ -178,5 +181,39 @@ describe('accounting builders', () => {
         []
       )
     ).toBeNull()
+  })
+
+  it('builds sale memo from invoice and customer', () => {
+    const draft = buildFromSale(
+      {
+        id: 'sale-memo',
+        site_id: 'site-1',
+        status: 'completed',
+        amount: 100,
+        amount_due: 0,
+        sale_date: '2026-07-01',
+        invoice_number: '1042',
+        leads: { name: 'Jane Doe' },
+      },
+      null
+    )
+    expect(draft!.entry.memo).toBe('#1042 · Jane Doe')
+  })
+
+  it('builds purchase memo from title and vendor', () => {
+    const draft = buildFromPurchase(
+      {
+        id: 'pur-memo',
+        site_id: 'site-1',
+        status: 'pending',
+        amount: 20,
+        amount_due: 20,
+        purchase_date: '2026-08-07',
+        title: 'Office supplies',
+        vendor: { name: 'Staples' },
+      },
+      []
+    )
+    expect(draft!.entry.memo).toBe('Office supplies · Staples')
   })
 })

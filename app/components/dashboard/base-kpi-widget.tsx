@@ -57,13 +57,13 @@ function useCountUp(value: string | number | null, isLoading: boolean) {
 
     const stringValue = String(value);
     
-    // Check if the value is a number (for count-up effect)
-    const numericMatch = stringValue.match(/^[\$]?([\d,]+\.?\d*)([%]?)$/);
+    // Check if the value is a number (for count-up effect), including currency prefixes like MX$
+    const numericMatch = stringValue.match(/^([^\d-]*)(-?[\d,]+\.?\d*)([%]?)$/);
     
     if (numericMatch) {
-      const prefix = stringValue.startsWith('$') ? '$' : '';
-      const suffix = stringValue.endsWith('%') ? '%' : '';
-      const numericValue = parseFloat(numericMatch[1].replace(/,/g, ''));
+      const prefix = numericMatch[1];
+      const suffix = numericMatch[3];
+      const numericValue = parseFloat(numericMatch[2].replace(/,/g, ''));
       
       if (!isNaN(numericValue) && numericValue > 0) {
         setIsAnimating(true);
@@ -81,9 +81,10 @@ function useCountUp(value: string | number | null, isLoading: boolean) {
           const easeOut = 1 - Math.pow(1 - progress, 3);
           const currentValue = startValue + (endValue - startValue) * easeOut;
           
+          const decimals = (numericMatch[2].split(".")[1] || "").length;
           let formattedValue = currentValue.toLocaleString(undefined, {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: endValue < 100 ? 1 : 0
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals || (endValue < 100 ? 1 : 0)
           });
           
           setDisplayValue(prefix + formattedValue + suffix);
@@ -233,17 +234,24 @@ export function BaseKpiWidget({
           </div>
         ) : (
           <div className="flex flex-col">
-            <div className="text-2xl font-bold pt-1 h-8 flex items-center kpi-fade-in">
+            <div className="text-2xl font-bold pt-1 h-8 flex items-center kpi-fade-in tabular-nums whitespace-nowrap">
               {displayValue}
             </div>
             {customStatus || (
-              <p className="text-xs text-muted-foreground mt-1 h-[18px] flex items-center kpi-fade-in-delayed">
-                {isPositiveChange !== undefined && (
-                  <span className={isPositiveChange ? "text-green-500" : "text-red-500"}>
-                    {isPositiveChange ? '+' : ''}{changeText.split(' ')[0]}
-                  </span>
+              <p className="text-xs text-muted-foreground mt-1 h-[18px] flex items-center gap-1 kpi-fade-in-delayed">
+                {isPositiveChange !== undefined ? (
+                  <>
+                    <span className={isPositiveChange ? "text-green-500" : "text-red-500"}>
+                      {/^-?[\d.,]+/.test(changeText.split(' ')[0]) && isPositiveChange ? '+' : ''}
+                      {changeText.split(' ')[0]}
+                    </span>
+                    {changeText.split(' ').length > 1 && (
+                      <span>{changeText.split(' ').slice(1).join(' ')}</span>
+                    )}
+                  </>
+                ) : (
+                  changeText
                 )}
-                {" "}{changeText.split(' ').slice(1).join(' ')}
               </p>
             )}
           </div>

@@ -13,6 +13,7 @@ import { insertJournalEntry } from './entries'
 
 const SALE_SELECT = `
   *,
+  leads(name),
   sale_orders(
     tax_total,
     sale_order_items(
@@ -36,6 +37,7 @@ const EXPENSE_SELECT = `
 
 const PURCHASE_SELECT = `
   *,
+  vendor:companies!vendor_company_id(name),
   purchase_items(
     catalog_item_id,
     name,

@@ -10,25 +10,27 @@ export default function OnboardingPage() {
   const { user } = useAuth()
   const { currentSite } = useSite()
   const router = useRouter()
-  
+
   const userName =
     user?.user_metadata?.full_name ||
     user?.email?.split("@")[0] ||
     "User"
 
   useEffect(() => {
-    if (currentSite?.id.startsWith('demo-')) {
-      router.replace('/dashboard')
+    if (currentSite?.id.startsWith("demo-")) {
+      router.replace("/dashboard")
     }
   }, [currentSite?.id, router])
 
-  if (currentSite?.id.startsWith('demo-')) {
+  if (currentSite?.id.startsWith("demo-")) {
     return null
   }
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full">
-      <OnboardingItinerary userName={userName} />
+    <div className="flex-1 px-4 lg:px-8 py-6 md:py-8 w-full">
+      <div className="mx-auto w-full max-w-3xl">
+        <OnboardingItinerary userName={userName} />
+      </div>
     </div>
   )
 }

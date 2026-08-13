@@ -5,13 +5,16 @@ import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { AccountingAccount } from "@/app/types"
 import { createManualJournalEntry, updateManualJournalEntry } from "../entries"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogForm, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { toast } from "sonner"
 import { Badge } from "@/app/components/ui/badge"
+import { ExternalLink, PlusCircle } from "@/app/components/ui/icons"
+import { journalSourceActionKey, journalSourceHref } from "../journal-source"
+import { useRouter } from "next/navigation"
 
 interface JournalEntryDialogProps {
   open: boolean
@@ -24,6 +27,7 @@ interface JournalEntryDialogProps {
 export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSaved }: JournalEntryDialogProps) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
+  const router = useRouter()
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [memo, setMemo] = useState("")
@@ -31,6 +35,8 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
   const [saving, setSaving] = useState(false)
 
   const isReadOnly = entry && entry.source_type !== 'manual'
+  const sourceHref = entry ? journalSourceHref(entry) : null
+  const sourceAction = journalSourceActionKey(entry?.source_type)
 
   useEffect(() => {
     if (open) {
@@ -85,8 +91,9 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
     }))
   }
 
-  async function handleSave() {
-    if (!currentSite?.id) return
+  async function handleSave(e?: React.FormEvent) {
+    e?.preventDefault()
+    if (!currentSite?.id || isReadOnly) return
     
     // Validations
     if (lines.length < 2) {
@@ -139,8 +146,8 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-        <div className="p-6 border-b flex-shrink-0 bg-muted/10">
+      <DialogContent size="xl" busy={saving}>
+        <DialogForm onSubmit={handleSave}>
           <DialogHeader>
             <div className="flex items-center gap-3">
               <DialogTitle>
@@ -156,8 +163,8 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                 : (t('accounting.manualEntryDesc') || "Enter the details and lines for this manual journal entry.")}
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+          <DialogBody className="grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">{t('accounting.date') || "Date"}</label>
               <Input 
@@ -177,20 +184,28 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
               />
             </div>
           </div>
-        </div>
 
-        <div className="flex-1 overflow-auto p-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[300px]">{t('accounting.account') || "Account"}</TableHead>
-                <TableHead className="text-right w-[150px]">{t('accounting.debit') || "Debit"}</TableHead>
-                <TableHead className="text-right w-[150px]">{t('accounting.credit') || "Credit"}</TableHead>
-                {!isReadOnly && <TableHead className="w-[50px]"></TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lines.map((line, index) => (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">{t('accounting.lines') || "Lines"}</h3>
+              {!isReadOnly && (
+                <Button type="button" size="sm" variant="outline" onClick={addLine}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  {t('accounting.addLine') || "Add Line"}
+                </Button>
+              )}
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('accounting.account') || "Account"}</TableHead>
+                  <TableHead className="w-[150px] text-right">{t('accounting.debit') || "Debit"}</TableHead>
+                  <TableHead className="w-[150px] text-right">{t('accounting.credit') || "Credit"}</TableHead>
+                  {!isReadOnly && <TableHead className="w-[50px]"></TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+              {lines.map((line) => (
                 <TableRow key={line.id}>
                   <TableCell>
                     {isReadOnly ? (
@@ -221,9 +236,9 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                       </Select>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-right">
                     {isReadOnly ? (
-                      <div className="text-right font-mono">
+                      <div className="font-mono">
                         {line.debit > 0 ? formatCurrency(line.debit) : "-"}
                       </div>
                     ) : (
@@ -238,9 +253,9 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                       />
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-right">
                     {isReadOnly ? (
-                      <div className="text-right font-mono">
+                      <div className="font-mono">
                         {line.credit > 0 ? formatCurrency(line.credit) : "-"}
                       </div>
                     ) : (
@@ -271,52 +286,54 @@ export function JournalEntryDialog({ open, onOpenChange, entry, accounts, onSave
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-
-          {!isReadOnly && (
-            <div className="mt-4">
-              <Button variant="outline" size="sm" onClick={addLine}>
-                {t('accounting.addLine') || "+ Add Line"}
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <div className="p-6 border-t bg-muted/10 flex-shrink-0">
-          <div className="flex items-center justify-between mb-6">
-            <div className="text-sm font-medium">
-              {!isBalanced && !isReadOnly && (
-                <span className="text-rose-600 bg-rose-50 px-2 py-1 rounded">
-                  {t('accounting.difference') || "Difference"}: {formatCurrency(Math.abs(totalDebit - totalCredit))}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-8 text-lg">
-              <div className="flex flex-col items-end">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">{t('accounting.totalDebit') || "Total Debit"}</span>
-                <span className="font-mono font-medium">{formatCurrency(totalDebit)}</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">{t('accounting.totalCredit') || "Total Credit"}</span>
-                <span className="font-mono font-medium">{formatCurrency(totalCredit)}</span>
-              </div>
-            </div>
+            <TableFooter className="bg-muted/30 text-foreground">
+              <TableRow className="hover:bg-transparent">
+                <TableCell>
+                  {!isBalanced && !isReadOnly && (
+                    <span className="text-sm font-medium text-rose-600 bg-rose-50 px-2 py-1 rounded">
+                      {t('accounting.difference') || "Difference"}: {formatCurrency(Math.abs(totalDebit - totalCredit))}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider">{t('accounting.totalDebit') || "Total Debit"}</div>
+                  <div className="font-mono font-medium">{formatCurrency(totalDebit)}</div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wider">{t('accounting.totalCredit') || "Total Credit"}</div>
+                  <div className="font-mono font-medium">{formatCurrency(totalCredit)}</div>
+                </TableCell>
+                {!isReadOnly && <TableCell />}
+              </TableRow>
+            </TableFooter>
+            </Table>
           </div>
-          
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {t('common.close') || "Close"}
-            </Button>
-            {!isReadOnly && (
-              <Button 
-                onClick={handleSave} 
-                disabled={saving || !isBalanced || lines.length < 2}
-              >
-                {saving ? (t('common.saving') || "Saving...") : (t('common.save') || "Save Entry")}
+          </DialogBody>
+          <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                {t('common.close') || "Close"}
               </Button>
-            )}
+              {sourceHref ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => router.push(sourceHref)}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  {t(sourceAction.key) || sourceAction.fallback}
+                </Button>
+              ) : null}
+              {!isReadOnly && (
+                <Button 
+                  type="submit"
+                  disabled={saving || !isBalanced || lines.length < 2}
+                >
+                  {saving ? (t('common.saving') || "Saving...") : (t('common.save') || "Save Entry")}
+                </Button>
+              )}
           </DialogFooter>
-        </div>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   )

@@ -1,5 +1,6 @@
 import { JournalEntry, JournalLine } from '../types'
 import crypto from 'crypto'
+import { memoFromExpense, memoFromPurchase, memoFromSale } from "./journal-memo"
 
 function hashSource(data: Record<string, unknown>): string {
   return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex')
@@ -24,6 +25,12 @@ export interface SaleSource {
   segment_id?: string | null
   company_id?: string | null
   accounting_state?: string
+  title?: string | null
+  product_name?: string | null
+  invoice_number?: string | number | null
+  reference_code?: string | null
+  leads?: { name?: string | null } | Array<{ name?: string | null }> | null
+  companies?: { name?: string | null } | Array<{ name?: string | null }> | null
 }
 
 /** Raw sale_order row from Supabase (snake_case). */
@@ -111,7 +118,7 @@ export function buildFromSale(
   const entry: Partial<JournalEntry> = {
     siteId: sale.site_id,
     entryDate: sale.sale_date,
-    memo: `Sale ${sale.id}`,
+    memo: memoFromSale(sale),
     sourceType: 'sale',
     sourceId: sale.id,
     idempotencyKey: `sale:${sale.id}`,
@@ -198,7 +205,7 @@ export function buildFromExpense(tx: ExpenseSource, expenseCodeMap: Map<string, 
   const entry: Partial<JournalEntry> = {
     siteId: tx.site_id,
     entryDate: tx.date,
-    memo: tx.description || `Expense ${tx.id}`,
+    memo: memoFromExpense(tx),
     sourceType: 'expense',
     sourceId: tx.id,
     idempotencyKey: `expense:${tx.id}`,
@@ -251,6 +258,7 @@ export interface PurchaseSource {
   title?: string | null
   notes?: string | null
   accounting_state?: string
+  vendor?: { name?: string | null } | Array<{ name?: string | null }> | null
 }
 
 export interface PurchaseItemSource {
@@ -301,7 +309,7 @@ export function buildFromPurchase(
   const entry: Partial<JournalEntry> = {
     siteId: purchase.site_id,
     entryDate: purchase.purchase_date,
-    memo: purchase.title || purchase.notes || `Purchase ${purchase.id}`,
+    memo: memoFromPurchase(purchase),
     sourceType: 'purchase',
     sourceId: purchase.id,
     idempotencyKey: `purchase:${purchase.id}`,

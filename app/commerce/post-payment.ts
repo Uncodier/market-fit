@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import { createShipment } from "@/app/shipments/actions"
+import { ensureCommerceLeadConverted } from "./ensure-commerce-lead-converted"
 
 export async function processPostPaymentFulfillment(
   orderId: string, 
@@ -9,6 +10,30 @@ export async function processPostPaymentFulfillment(
   userId: string
 ) {
   const supabase = await createServiceClient(true)
+
+  try {
+    const saleResult = await supabase
+      .from("sales")
+      .select("lead_id, source, amount")
+      .eq("id", saleId)
+      .single()
+
+    const sale = saleResult?.data
+    const resolvedLeadId = sale?.lead_id || leadId
+    if (resolvedLeadId && userId) {
+      await ensureCommerceLeadConverted({
+        supabase,
+        siteId,
+        leadId: resolvedLeadId,
+        source: sale?.source || "",
+        userId,
+        amount: sale?.amount ?? null,
+        paid: true,
+      })
+    }
+  } catch (e) {
+    console.error("Failed to sync commerce lead conversion after payment:", e)
+  }
 
   // 1. Load order fulfillment fields and line items
   const { data: order } = await supabase
