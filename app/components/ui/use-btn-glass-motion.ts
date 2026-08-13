@@ -6,6 +6,7 @@ type Blob = { x: number; y: number; tx: number; ty: number; pause: number }
 
 type Entry = {
   el: HTMLElement
+  well: HTMLElement | null
   a: Blob
   b: Blob
   mx: number
@@ -65,6 +66,7 @@ function setVar(entry: Entry, name: string, value: string) {
   if (entry.prev[name] === value) return
   entry.prev[name] = value
   entry.el.style.setProperty(name, value)
+  entry.well?.style.setProperty(name, value)
 }
 
 function writeEntry(entry: Entry) {
@@ -140,8 +142,13 @@ export function useBtnGlassMotion(enabled: boolean) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
     safari = detectSafari()
 
+    const well =
+      node.parentElement?.classList.contains("btn-primary-well") ? node.parentElement : null
+    const host = well ?? node
+
     const entry: Entry = {
       el: node,
+      well,
       a: createBlob(),
       b: createBlob(),
       mx: 0.5,
@@ -160,7 +167,7 @@ export function useBtnGlassMotion(enabled: boolean) {
     }
 
     const readPointer = (event: PointerEvent) => {
-      const rect = node.getBoundingClientRect()
+      const rect = host.getBoundingClientRect()
       if (rect.width === 0 || rect.height === 0) return
       entry.w = rect.width
       entry.h = rect.height
@@ -184,9 +191,9 @@ export function useBtnGlassMotion(enabled: boolean) {
       entry.hovering = false
     }
 
-    node.addEventListener("pointerenter", onEnter)
-    node.addEventListener("pointermove", onMove, { passive: true })
-    node.addEventListener("pointerleave", onLeave)
+    host.addEventListener("pointerenter", onEnter)
+    host.addEventListener("pointermove", onMove, { passive: true })
+    host.addEventListener("pointerleave", onLeave)
     entry.io.observe(node)
     entry.ro.observe(node)
     entries.add(entry)
@@ -194,9 +201,9 @@ export function useBtnGlassMotion(enabled: boolean) {
     startLoop()
 
     return () => {
-      node.removeEventListener("pointerenter", onEnter)
-      node.removeEventListener("pointermove", onMove)
-      node.removeEventListener("pointerleave", onLeave)
+      host.removeEventListener("pointerenter", onEnter)
+      host.removeEventListener("pointermove", onMove)
+      host.removeEventListener("pointerleave", onLeave)
       entry.io.disconnect()
       entry.ro.disconnect()
       entries.delete(entry)

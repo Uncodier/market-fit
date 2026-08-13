@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
+import { Slot, Slottable } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
@@ -36,6 +36,50 @@ const buttonVariants = cva(
   }
 )
 
+const OUTER_CLASS_RE =
+  /(?:^|\s)((?:sm:|md:|lg:|xl:|2xl:)?(?:w-full|flex-1|grow|shrink-0|(?:m|mt|mb|ml|mr|mx|my|ms|me)-(?:\[[^\]]+\]|[\w./]+)|self-[\w-]+))(?=\s|$)/g
+
+const RADIUS_CLASS_RE =
+  /(?:^|\s)((?:sm:|md:|lg:|xl:|2xl:)?(?:rounded(?:-(?:\[[^\]]+\]|[\w]+))?))/g
+
+function splitOuterClasses(className?: string) {
+  if (!className) return { outer: "", inner: undefined as string | undefined }
+  const outer: string[] = []
+  const inner = className
+    .replace(OUTER_CLASS_RE, (_match, token: string) => {
+      outer.push(token)
+      return " "
+    })
+    .replace(/\s+/g, " ")
+    .trim()
+  const radius = [...className.matchAll(RADIUS_CLASS_RE)].map((match) => match[1])
+  return { outer: [...outer, ...radius].join(" "), inner: inner || undefined }
+}
+
+function safariRgbChannels(value: string) {
+  return value.replace(/,/g, " ").replace(/\s+/g, " ").trim()
+}
+
+function withSafariRgbVars(style?: React.CSSProperties) {
+  if (!style) return undefined
+  const next: Record<string, unknown> = { ...style }
+  for (const key of ["--btn-tint", "--btn-fill"]) {
+    const value = next[key]
+    if (typeof value === "string") next[key] = safariRgbChannels(value)
+  }
+  return next as React.CSSProperties
+}
+
+function pickCssVars(style?: React.CSSProperties) {
+  const normalized = withSafariRgbVars(style)
+  if (!normalized) return undefined
+  const vars: Record<string, string> = {}
+  for (const [key, value] of Object.entries(normalized)) {
+    if (key.startsWith("--") && value != null) vars[key] = String(value)
+  }
+  return Object.keys(vars).length ? (vars as React.CSSProperties) : undefined
+}
+
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
@@ -56,32 +100,66 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       [setGlassNode, ref]
     )
 
-    if (asChild) {
+    const style = withSafariRgbVars(props.style)
+
+    if (asChild && !isPrimary) {
       return (
         <Slot
           className={cn(buttonVariants({ variant, size }), className)}
           ref={assignRef}
           {...props}
+          style={style}
         >
           {children}
         </Slot>
       )
     }
 
-    return (
-      <button
-        className={cn(buttonVariants({ variant, size }), className)}
-        ref={assignRef}
-        {...props}
-      >
-        {children}
-        {isPrimary ? (
-          <>
+    if (asChild) {
+      const { outer, inner } = splitOuterClasses(className)
+      return (
+        <span className={cn("btn-primary-well", outer)} style={pickCssVars(style)}>
+          <Slot
+            className={cn(buttonVariants({ variant, size }), inner)}
+            ref={assignRef}
+            {...props}
+            style={style}
+          >
+            <Slottable>{children}</Slottable>
             <span className="btn-glass-cursor" aria-hidden="true" />
             <span className="btn-glass-rim" aria-hidden="true" />
-          </>
-        ) : null}
-      </button>
+          </Slot>
+        </span>
+      )
+    }
+
+    if (!isPrimary) {
+      return (
+        <button
+          className={cn(buttonVariants({ variant, size }), className)}
+          ref={assignRef}
+          {...props}
+          style={style}
+        >
+          {children}
+        </button>
+      )
+    }
+
+    const { outer, inner } = splitOuterClasses(className)
+    return (
+      <span className={cn("btn-primary-well", outer)} style={pickCssVars(style)}>
+        <button
+          className={cn(buttonVariants({ variant, size }), inner)}
+          ref={assignRef}
+          {...props}
+          style={style}
+        >
+          {children}
+          <span className="btn-glass-cursor" aria-hidden="true" />
+          <span className="btn-glass-rim" aria-hidden="true" />
+        </button>
+      </span>
     )
   }
 )
