@@ -30,7 +30,7 @@ import { Label } from "@/app/components/ui/label"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
-import { PlusCircle, Trash2, Sliders } from "@/app/components/ui/icons"
+import { PlusCircle, Trash2, ModifierGroups } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 
 export function ModifiersTab({ catalogItemId }: { catalogItemId: string }) {
@@ -117,7 +117,7 @@ export function ModifiersTab({ catalogItemId }: { catalogItemId: string }) {
       <SectionCardHeader className="flex flex-row items-center justify-between gap-4">
         <div className="space-y-1">
           <SectionCardTitle className="flex items-center gap-2">
-            <Sliders className="h-5 w-5" />
+            <ModifierGroups className="h-5 w-5" />
             {t("catalog.modifiers.title") || "Modifiers"}
           </SectionCardTitle>
           <p className="text-xs text-muted-foreground">
@@ -238,7 +238,7 @@ export function ModifiersTab({ catalogItemId }: { catalogItemId: string }) {
           </div>
         ) : (
           <EmptyCard
-            icon={<Sliders className="h-10 w-10 text-muted-foreground" />}
+            icon={<ModifierGroups className="h-10 w-10 text-muted-foreground" />}
             title={t("catalog.modifiers.empty.title") || "No modifier groups"}
             description={
               t("catalog.modifiers.empty.desc") ||

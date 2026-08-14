@@ -6,6 +6,7 @@ import {
 } from '@/lib/auth/post-auth-redirect'
 import { copyResponseCookies, getMiddlewareUser } from '@/lib/supabase/middleware-client'
 import { resolveBlockedScreenRedirect } from '@/lib/auth/enforce-screen-access'
+import { shouldClearDemoCookieOnPath } from '@/lib/auth/workspace-site-redirect'
 import { isRouterPrefetchRequest } from '@/lib/navigation/is-router-prefetch'
 
 // Lista específica y exacta de rutas públicas permitidas
@@ -406,15 +407,7 @@ export async function middleware(request: NextRequest) {
   copyResponseCookies(sessionResponse, res)
   getCorsHeaders(res, request, isPublicBooking)
 
-  const isCommerceSurface =
-    pathname.startsWith('/shop') ||
-    pathname.startsWith('/marketplace') ||
-    pathname.startsWith('/buyer') ||
-    pathname.startsWith('/cart') ||
-    pathname.startsWith('/book') ||
-    isPublicDocumentSharePath(pathname)
-
-  if (isCommerceSurface && request.cookies.has('market_fit_demo_site_id')) {
+  if (shouldClearDemoCookieOnPath(pathname) && request.cookies.has('market_fit_demo_site_id')) {
     res.cookies.set('market_fit_demo_site_id', '', {
       path: '/',
       maxAge: 0,

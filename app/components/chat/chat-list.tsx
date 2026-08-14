@@ -20,6 +20,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { ConversationItem } from "./ConversationItem"
 import { ChannelFilter } from "./ChannelFilter"
 import { useConversationsList } from "@/app/hooks/useConversationsList"
+import { useAutoSelectTopConversation } from "@/app/hooks/useAutoSelectTopConversation"
 
 // Componente para renderizar esqueletos de carga
 function ConversationSkeleton() {
@@ -167,6 +168,14 @@ export function ChatList({
     userId: user?.id,
     combinedFilter,
     debouncedSearchQuery,
+  })
+
+  useAutoSelectTopConversation({
+    conversations,
+    isLoading,
+    isInitialLoad,
+    selectedConversationId,
+    onSelectConversation,
   })
 
   // Reference for the subscription

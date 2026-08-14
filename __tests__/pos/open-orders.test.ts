@@ -122,4 +122,26 @@ describe("POS open orders", () => {
       }),
     ).toBe(false);
   });
+
+  it("hides pending orders when payments already cover the sale", () => {
+    expect(
+      isPosOpenOrder({
+        status: "pending",
+        sales: {
+          amount: 20,
+          amount_due: 20,
+          payments: [{ amount: 20 }],
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps completed unpaid even when the sale status is completed", () => {
+    expect(
+      isPosOpenOrder({
+        status: "completed",
+        sales: { status: "completed", amount_due: 15, amount: 15 },
+      }),
+    ).toBe(true);
+  });
 });

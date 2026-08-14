@@ -98,6 +98,7 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
       _is_reservation_dropin,
       _reservationStart,
       _reservationEnd,
+      _isRoundRobinDropin,
       ...dbPayload
     } = payload
     let dbItem
@@ -129,6 +130,7 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
       _is_reservation_dropin,
       _reservationStart,
       _reservationEnd,
+      _isRoundRobinDropin,
     }
   }
 
@@ -158,6 +160,7 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
       _is_reservation_dropin: pl.is_reservation_dropin,
       _reservationStart: pl.reservationStart,
       _reservationEnd: pl.reservationEnd,
+      _isRoundRobinDropin: pl.isRoundRobinDropin,
     })
     upsertedItems.push(dbItem)
     if (pl.client_line_key) clientKeyToDbId.set(pl.client_line_key, dbItem.id)
@@ -199,6 +202,7 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
       _is_reservation_dropin: false,
       _reservationStart: undefined,
       _reservationEnd: undefined,
+      _isRoundRobinDropin: false,
     })
     upsertedItems.push(dbItem)
   }

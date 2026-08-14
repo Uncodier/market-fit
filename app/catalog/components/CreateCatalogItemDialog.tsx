@@ -45,28 +45,35 @@ type FormData = {
   image_url?: string
 }
 
+function emptyCreateCatalogForm(currency: string): FormData {
+  return {
+    name: '',
+    kind: 'product',
+    digital_subtype: 'none',
+    is_marketplace_listed: true,
+    sku: '',
+    target_sale_price: '',
+    currency,
+    cost: '',
+    availability_mode: 'manual',
+    track_inventory: false,
+    category_value: null,
+    is_pos_available: true,
+    is_recurring: false,
+    is_reservation: false,
+  }
+}
+
 export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: CreateCatalogItemDialogProps) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [categories, setCategories] = useState<CatalogCategory[]>([])
   const [image, setImage] = useState<string>('')
+  const siteCurrency = currentSite?.settings?.currency || 'USD'
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors, isDirty } } = useForm<FormData>({
-    defaultValues: {
-      kind: 'product',
-      digital_subtype: 'none',
-      is_marketplace_listed: true,
-      availability_mode: 'manual',
-      track_inventory: false,
-      sku: '',
-      target_sale_price: '',
-      currency: 'USD',
-      cost: '',
-      is_pos_available: true,
-      is_recurring: false,
-      is_reservation: false,
-    }
+    defaultValues: emptyCreateCatalogForm(siteCurrency),
   })
 
   const { discardOpen, setDiscardOpen, handleOpenChange, confirmDiscard } =
@@ -77,15 +84,16 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
     })
 
   useEffect(() => {
-    if (open && currentSite) {
-      if (currentSite.settings?.currency) {
-        setValue('currency', currentSite.settings.currency);
-      }
-      listCatalogCategories(currentSite.id).then(res => {
-        if (res.data) setCategories(res.data as CatalogCategory[])
-      })
-    }
-  }, [open, currentSite, setValue])
+    if (!open) return
+    setValue('currency', siteCurrency, { shouldDirty: false })
+  }, [open, siteCurrency, setValue])
+
+  useEffect(() => {
+    if (!open || !currentSite) return
+    listCatalogCategories(currentSite.id).then(res => {
+      if (res.data) setCategories(res.data as CatalogCategory[])
+    })
+  }, [open, currentSite])
 
   const kind = watch('kind')
   const mode = watch('availability_mode')
@@ -111,7 +119,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
         is_marketplace_listed: data.is_marketplace_listed,
         sku: data.sku || undefined,
         target_sale_price: data.target_sale_price ? parseFloat(data.target_sale_price) : undefined,
-        currency: data.currency || 'USD',
+        currency: data.currency || siteCurrency,
         cost: data.cost ? parseFloat(data.cost) : undefined,
         availability_mode: data.availability_mode,
         track_inventory: data.track_inventory,
@@ -130,7 +138,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
       if (res.error) throw new Error(res.error)
 
       toast.success('Catalog item created successfully')
-      reset()
+      reset(emptyCreateCatalogForm(siteCurrency))
       setImage('')
       onSuccess()
       onOpenChange(false)

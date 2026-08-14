@@ -16,6 +16,7 @@ import { billingService, BillingData } from "../services/billing-service"
 import { toast } from "react-hot-toast"
 import { isDemoModeActive, isRealSiteId } from "@/lib/demo-utils"
 import { clearCurrentSiteCookie, persistCurrentSiteCookie } from "@/lib/auth/current-site-cookie"
+import { getWorkspaceSiteRedirect } from "@/lib/auth/workspace-site-redirect"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
 
 // Definición de la interfaz Site adaptada a la estructura de Supabase
@@ -961,8 +962,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }
   }, [isInitialized, isMounted, currentSite?.id || null]) // currentSite?.id needed for closure in UPDATE handling
 
-  // Redirect to /create-site if user has no sites.
-  // If user has sites but none selected, redirect to /projects to choose.
+  // Keep demo accounts on the page they loaded (robots iframe, catalog, etc.).
+  // Real users with no workspace site still go to /buyer or /projects.
   useEffect(() => {
     // Add a delay to ensure all state updates are complete
     const redirectTimer = setTimeout(() => {
@@ -974,76 +975,34 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // 5. No sites available
       // 6. Not already on create-site page or auth pages
       // 7. Not trying to redirect FROM create-site (this was the bug!)
-      const isCommerceSurface =
-        pathname.startsWith('/buyer') ||
-        pathname.startsWith('/marketplace') ||
-        pathname.startsWith('/shop') ||
-        pathname.startsWith('/book') ||
-        pathname.startsWith('/cart') ||
-        pathname.startsWith('/q/') ||
-        pathname.startsWith('/i/') ||
-        pathname.startsWith('/so/') ||
-        pathname.startsWith('/vb/');
+      if (
+        !isMounted ||
+        !isInitialized ||
+        isLoading ||
+        !sitesLoaded ||
+        !supabaseRef.current
+      ) {
+        return
+      }
 
       const realSites = sites.filter((site) => isRealSiteId(site.id))
-      const currentIsReal = Boolean(
-        currentSite?.id && realSites.some((site) => site.id === currentSite.id)
-      )
+      const redirectTo = getWorkspaceSiteRedirect({
+        pathname,
+        isDemoMode: isDemoModeActive(),
+        hasValidSession,
+        realSiteCount: realSites.length,
+        hasRealCurrentSite: Boolean(
+          currentSite?.id && realSites.some((site) => site.id === currentSite.id)
+        ),
+      })
 
-      // Case A: No real sites (demos / default don't count) -> buyer, including /robots.
-      // Stay on /projects if they opened it to start a business.
-      if (
-        isMounted && 
-        isInitialized && 
-        !isLoading && 
-        sitesLoaded &&            // ✅ Only after a completed load
-        hasValidSession &&        // ✅ NEW CONDITION
-        realSites.length === 0 && 
-        !pathname.startsWith('/create-site') && 
-        !pathname.startsWith('/auth') &&
-        !pathname.startsWith('/projects') &&
-        !pathname.startsWith('/demo') &&
-        pathname !== '/' &&
-        !isCommerceSurface &&
-        supabaseRef.current
-      ) {
-        navigateOrAssign(router, "/buyer", { markUI: false })
-      }
-      // Case B: There are real sites but no real selection -> go to projects
-      else if (
-        isMounted &&
-        isInitialized &&
-        !isLoading &&
-        sitesLoaded &&
-        hasValidSession &&
-        realSites.length > 0 &&
-        !currentIsReal &&
-        !pathname.startsWith('/projects') &&
-        !pathname.startsWith('/auth') &&
-        pathname !== '/' &&
-        !pathname.startsWith('/create-site') &&
-        !pathname.startsWith('/demo') &&
-        !isCommerceSurface &&
-        supabaseRef.current
-      ) {
-        navigateOrAssign(router, "/projects", { markUI: false })
-      } else if (
-        // 🚫 NEVER redirect away from create-site if user is there intentionally
-        pathname.startsWith('/create-site') || pathname.startsWith('/demo')
-      ) {
-        // Check if this is intentional access
-        const isIntentionalAccess = typeof window !== 'undefined' && 
-          sessionStorage.getItem('intentional_create_site_access') === 'true'
-        
-        if (isIntentionalAccess || sites.length > 0) {
-          // Do nothing - let them stay on create-site
-        }
-      } else {
+      if (redirectTo) {
+        navigateOrAssign(router, redirectTo, { markUI: false })
       }
     }, 1000) // ✅ Increased delay from 100ms to 1000ms
 
     return () => clearTimeout(redirectTimer)
-  }, [isMounted, isInitialized, isLoading, sitesLoadAttempted, hasValidSession, sites.length, currentSite?.id, pathname, router])
+  }, [isMounted, isInitialized, isLoading, sitesLoaded, hasValidSession, sites.length, currentSite?.id, pathname, router])
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = async (site: Site) => {

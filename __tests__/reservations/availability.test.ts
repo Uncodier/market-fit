@@ -4,7 +4,7 @@ import { fromZonedTime } from 'date-fns-tz';
 
 function createChain(resolved: any) {
   const chain: any = {};
-  const methods = ['from', 'select', 'eq', 'in', 'gte', 'lte', 'neq', 'single'];
+  const methods = ['from', 'select', 'eq', 'in', 'gte', 'lte', 'neq', 'single', 'maybeSingle', 'order'];
   for (const m of methods) {
     chain[m] = jest.fn(() => chain);
   }
@@ -82,6 +82,7 @@ describe('Reservation Availability Engine', () => {
 
       mockCreateServiceClient.mockResolvedValue({
         from: jest.fn((table: string) => {
+          if (table === 'catalog_items') return createChain({ data: { kind: 'service' }, error: null });
           if (table === 'reservation_schedules') return schedulesChain;
           return reservationsChain;
         }),
@@ -121,6 +122,7 @@ describe('Reservation Availability Engine', () => {
 
       mockCreateServiceClient.mockResolvedValue({
         from: jest.fn((table: string) => {
+          if (table === 'catalog_items') return createChain({ data: { kind: 'service' }, error: null });
           if (table === 'reservation_schedules') return schedulesChain;
           return reservationsChain;
         }),
@@ -155,6 +157,7 @@ describe('Reservation Availability Engine', () => {
 
       mockCreateServiceClient.mockResolvedValue({
         from: jest.fn((table: string) => {
+          if (table === 'catalog_items') return createChain({ data: { kind: 'service' }, error: null });
           if (table === 'reservation_schedules') return schedulesChain;
           return reservationsChain;
         }),

@@ -157,6 +157,7 @@ export function DatePicker({
           { label: t("datePicker.thisWeek"), value: dateStartOfWeek(today, weekOpts), type: "week", period: "current" },
           { label: t("datePicker.thisMonth"), value: dateStartOfMonth(today), type: "month", period: "current" },
           { label: t("datePicker.lastMonth"), value: startOfMonth(subMonths(today, 1)), type: "month", period: "past" },
+          { label: t("datePicker.last30Days"), value: subDays(today, 30), type: "custom", period: "past" },
           { label: t("datePicker.thisQuarter"), value: (() => {
             const currentYear = today.getFullYear();
             const currentMonth = today.getMonth();
@@ -586,7 +587,6 @@ export function DatePicker({
             <div className="p-4 min-w-[280px]" onKeyDown={handleKeyDown} tabIndex={-1}>
               {mode === 'range' && (
                 <div className="mb-3 text-sm flex flex-col gap-1">
-                  <div className="text-xs font-medium text-muted-foreground">{t("datePicker.selectedRange")}</div>
                   <div className="flex items-center justify-between w-full">
                     <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
                       <span className="truncate">{(tempStartDate || date) ? format((tempStartDate || date)!, "PP", { locale: dateLocale }) : t("datePicker.selectDate")}</span>

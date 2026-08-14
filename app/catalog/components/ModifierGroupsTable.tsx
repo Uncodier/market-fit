@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/compon
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Button } from "@/app/components/ui/button"
-import { Plus, Sliders } from "@/app/components/ui/icons"
+import { Plus, ModifierGroups } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import type { ModifierGroup } from "@/app/catalog/modifier-types"
 import {
@@ -38,7 +38,7 @@ export function ModifierGroupsTable({
   if (groups.length === 0) {
     return (
       <EmptyCard
-        icon={<Sliders className="h-12 w-12 text-muted-foreground/50" />}
+        icon={<ModifierGroups className="h-12 w-12 text-muted-foreground/50" />}
         title={t("catalog.modifiers.emptyGroupsTitle") || "No modifier groups"}
         description={
           t("catalog.modifiers.emptyGroupsDesc") ||

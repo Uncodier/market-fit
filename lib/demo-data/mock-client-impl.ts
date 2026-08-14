@@ -221,45 +221,51 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
           };
         },
         update: (data: any) => {
-          const updateBuilder = (column: string, value: any) => {
-            // Update local memory copy
-            let updatedItem = null;
-            if (memoryData[table]) {
-              const itemIndex = memoryData[table].findIndex((item: any) => item[column] === value);
-              if (itemIndex >= 0) {
-                memoryData[table][itemIndex] = { ...memoryData[table][itemIndex], ...data };
-                updatedItem = memoryData[table][itemIndex];
-              }
-            }
-            
-            return {
-              select: () => ({
-                single: () => Promise.resolve({ data: updatedItem || {...data, [column]: value}, error: null })
-              }),
-              then: (resolve: any) => resolve({ data: null, error: null }) 
-            }
+          const filters: Array<(item: any) => boolean> = [];
+          const apply = () => {
+            const rows = memoryData[table] || [];
+            const updated: any[] = [];
+            memoryData[table] = rows.map((item: any) => {
+              if (!filters.every((match) => match(item))) return item;
+              const next = { ...item, ...data };
+              updated.push(next);
+              return next;
+            });
+            return updated;
           };
-          
-          return { 
-            eq: updateBuilder,
+          const builder: any = {
+            eq: (column: string, value: any) => {
+              filters.push((item) => item[column] === value);
+              return builder;
+            },
             in: (column: string, values: any[]) => {
-               // Update multiple
-               if (memoryData[table]) {
-                 values.forEach(val => {
-                    const itemIndex = memoryData[table].findIndex((item: any) => item[column] === val);
-                    if (itemIndex >= 0) {
-                      memoryData[table][itemIndex] = { ...memoryData[table][itemIndex], ...data };
-                    }
-                 });
-               }
-               return {
-                  select: () => ({
-                    then: (resolve: any) => resolve({ data: [], error: null })
-                  }),
-                  then: (resolve: any) => resolve({ data: null, error: null })
-               }
-            }
+              filters.push((item) => values.includes(item[column]));
+              return builder;
+            },
+            lt: (column: string, value: any) => {
+              filters.push((item) => item[column] < value);
+              return builder;
+            },
+            lte: (column: string, value: any) => {
+              filters.push((item) => item[column] <= value);
+              return builder;
+            },
+            gt: (column: string, value: any) => {
+              filters.push((item) => item[column] > value);
+              return builder;
+            },
+            gte: (column: string, value: any) => {
+              filters.push((item) => item[column] >= value);
+              return builder;
+            },
+            select: () => ({
+              single: () => Promise.resolve({ data: apply()[0] || null, error: null }),
+              then: (resolve: any) => resolve({ data: apply(), error: null }),
+            }),
+            then: (resolve: any) => resolve({ data: apply(), error: null }),
           };
+          builder.catch = (reject: any) => Promise.resolve({ data: apply(), error: null }).catch(reject);
+          return builder;
         },
         delete: () => {
           return { 
@@ -295,6 +301,22 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
     },
     rpc: (fn: string, params: any) => {
        console.log(`🤖 DEMO RPC INTERCEPT: ${fn}`, params);
+       if (fn === "get_my_accessible_sites") {
+         return Promise.resolve({ data: memoryData.sites || [], error: null });
+       }
+       if (fn === "get_my_site_capabilities") {
+         return Promise.resolve({
+           data: {
+             role: "owner",
+             is_owner: true,
+             select: true,
+             insert: true,
+             update: true,
+             delete: true,
+           },
+           error: null,
+         });
+       }
        return Promise.resolve({ data: null, error: null });
     },
     channel: (channel: string) => {

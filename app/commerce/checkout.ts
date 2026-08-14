@@ -8,7 +8,11 @@ import { toPriceListChannel } from "@/app/price-lists/price-list-channels";
 import { applyPromotionToOrder } from "@/app/promotions/apply-promotion-to-order";
 import { resolvePromotionDiscount } from "@/app/promotions/resolve-promotion";
 import { createShipment } from "@/app/shipments/actions";
-import { assertReservationSlot } from "@/app/reservations/availability";
+import { isAccessOnlyItem } from "@/app/catalog/product-details";
+import {
+  assertCommerceReservationSlot,
+} from "@/app/commerce/pass-round-robin-server";
+import { isRoundRobinPass } from "@/app/commerce/pass-round-robin";
 import { grantFromOrder, syncSubscriptionEntitlements } from "./entitlements";
 import { calculateOrderTaxTotal, roundMoney } from "./taxes";
 import {
@@ -26,6 +30,7 @@ import {
   isValidPublicAccessToken,
 } from "@/app/documents/public-token";
 import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items"
+import { syncCheckoutDropinReservations } from "./checkout-reservations"
 import { kitchenDeltaForSend } from "./checkout-print-delta";
 import {
   commerceLeadCreateFields,
@@ -375,12 +380,18 @@ export async function checkoutCart({
 
       const { data: catalogItem } = await (isAdmin ? supabaseAdmin : supabase)
         .from("catalog_items")
-        .select("name, description, is_recurring, kind, digital_subtype, is_reservation, currency, metadata, target_sale_price")
+        .select("id, name, description, is_recurring, kind, digital_subtype, is_reservation, redeem_assignment_mode, currency, metadata, target_sale_price")
         .eq("id", line.catalogItemId)
         .single();
         
-      const isAccessOnly = catalogItem?.is_recurring || (catalogItem?.kind === 'digital_asset' && catalogItem?.digital_subtype === 'pass');
+      const isAccessOnly = isAccessOnlyItem({
+        is_recurring: Boolean(catalogItem?.is_recurring),
+        kind: catalogItem?.kind,
+        digital_subtype: catalogItem?.digital_subtype,
+        redeem_assignment_mode: catalogItem?.redeem_assignment_mode,
+      } as any);
 
+      let isRoundRobinDropin = false;
       if (catalogItem?.is_reservation && !isAccessOnly) {
         if (!line.reservationStart || !line.reservationEnd) {
           throw new Error("Reservation dates are required for drop-in reservable items.");
@@ -388,14 +399,20 @@ export async function checkoutCart({
         if (!finalLeadId && !isAdmin) {
           throw new Error("Reservable items require a customer.");
         }
-        await assertReservationSlot(
+        isRoundRobinDropin = isRoundRobinPass(catalogItem);
+        await assertCommerceReservationSlot({
           siteId,
-          line.catalogItemId,
-          line.reservationStart,
-          line.reservationEnd,
-          line.quantity,
-          isAdmin
-        );
+          catalogItem: {
+            id: catalogItem.id,
+            kind: catalogItem.kind,
+            digital_subtype: catalogItem.digital_subtype,
+            redeem_assignment_mode: catalogItem.redeem_assignment_mode,
+          },
+          startIso: line.reservationStart,
+          endIso: line.reservationEnd,
+          quantity: line.quantity,
+          isAdmin,
+        });
       }
       
       const price = await resolveLinePrice(line.catalogItemId, line.unitPriceOverride);
@@ -422,6 +439,7 @@ export async function checkoutCart({
         is_reservation_dropin: catalogItem?.is_reservation && !isAccessOnly,
         reservationStart: line.reservationStart,
         reservationEnd: line.reservationEnd,
+        isRoundRobinDropin,
         client_line_key: clientLineKey,
         parent_client_line_key: null as string | null,
         modifier_group_id: null as string | null,
@@ -460,6 +478,7 @@ export async function checkoutCart({
           is_reservation_dropin: false,
           reservationStart: undefined,
           reservationEnd: undefined,
+          isRoundRobinDropin: false,
           client_line_key: `${clientLineKey}:mod:${mod.groupId || "g"}:${mod.catalogItemId}`,
           parent_client_line_key: clientLineKey,
           modifier_group_id: mod.groupId || null,
@@ -812,44 +831,17 @@ export async function checkoutCart({
       isFullyPaid,
     });
 
-    // 6.a Handle reservations
-    for (const item of upsertedItems) {
-      if (item._is_reservation_dropin && item._reservationStart && item._reservationEnd) {
-        // Check if reservation already exists for this order item
-        const { data: existingRes } = await supabaseAdmin
-          .from("reservations")
-          .select("id")
-          .eq("sale_order_item_id", item.id)
-          .single();
-
-        const resStatus = ['completed', 'pay'].includes(intent || '') && isFullyPaid ? 'confirmed' : 'pending';
-
-        if (existingRes) {
-           await supabaseAdmin.from("reservations").update({
-             status: resStatus,
-             quantity: item.quantity,
-             start_time: item._reservationStart,
-             end_time: item._reservationEnd
-           }).eq("id", existingRes.id);
-        } else {
-           if (!finalLeadId && !isAdmin) {
-             throw new Error("Reservations require a valid customer/lead.");
-           }
-           await supabaseAdmin.from("reservations").insert({
-             site_id: siteId,
-             catalog_item_id: item.catalog_item_id,
-             sale_order_item_id: item.id,
-             lead_id: finalLeadId,
-             buyer_user_id: buyerUserId || null,
-             owner_site_id: ownerSiteId || null,
-             start_time: item._reservationStart,
-             end_time: item._reservationEnd,
-             quantity: item.quantity,
-             status: resStatus
-           });
-        }
-      }
-    }
+    await syncCheckoutDropinReservations({
+      supabaseAdmin,
+      siteId,
+      upsertedItems,
+      intent,
+      isFullyPaid,
+      isAdmin,
+      finalLeadId,
+      buyerUserId,
+      ownerSiteId,
+    });
 
     // 6.b Update order JSONB items for backwards compatibility is already handled above in the update/insert.
 

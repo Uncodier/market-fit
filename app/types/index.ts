@@ -754,6 +754,8 @@ export interface CatalogItem {
   is_dynamic_price?: boolean;
   pass_uses?: number | null;
   pass_validity_days?: number | null;
+  /** Pass redeemables: buyer picks a service, or commerce auto-assigns round-robin. */
+  redeem_assignment_mode?: 'user_choice' | 'round_robin' | null;
   metadata?: CatalogItemMetadata;
   item_specs?: ItemSpec[];
   parent_id?: string | null;

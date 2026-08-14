@@ -1,4 +1,5 @@
 import { CatalogItem, ItemSpec } from "../types";
+import { isRoundRobinPass } from "@/app/commerce/pass-round-robin";
 
 export function resolveItemSpecDisplay(item: CatalogItem, categorySlug: string): ItemSpec | undefined {
   return item.item_specs?.find(s => s.category?.slug === categorySlug);
@@ -62,7 +63,9 @@ export function mergeParentIntoCatalogItem(
 }
 
 export function isAccessOnlyItem(item: CatalogItem) {
-  return Boolean(item.is_recurring || (item.kind === 'digital_asset' && item.digital_subtype === 'pass'));
+  if (item.is_recurring) return true
+  if (isRoundRobinPass(item)) return false
+  return Boolean(item.kind === 'digital_asset' && item.digital_subtype === 'pass')
 }
 
 /** Digital assets and recurring plans grant entitlements to a platform user. */
@@ -248,6 +251,9 @@ export function getListingCtaLabel(item: CatalogItem, options?: { isOwned?: bool
       : 'marketplace.listing.cta.getInstantAiQuote'
   }
   if (item.is_recurring) return 'marketplace.listing.cta.subscribe';
+  if ((item.kind === 'service' || isRoundRobinPass(item)) && item.is_reservation && !isAccessOnlyItem(item)) {
+    return 'marketplace.listing.cta.book';
+  }
   if (item.kind === 'digital_asset') {
     switch (item.digital_subtype) {
       case 'course': return 'marketplace.listing.cta.enroll';
@@ -256,9 +262,6 @@ export function getListingCtaLabel(item: CatalogItem, options?: { isOwned?: bool
       case 'license': return 'marketplace.listing.cta.getLicense';
       case 'file': return 'marketplace.listing.cta.getDownload';
     }
-  }
-  if (item.kind === 'service' && item.is_reservation && !isAccessOnlyItem(item)) {
-    return 'marketplace.listing.cta.book';
   }
   return 'marketplace.listing.cta.addToCart';
 }

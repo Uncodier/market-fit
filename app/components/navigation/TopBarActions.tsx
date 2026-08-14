@@ -52,7 +52,7 @@ import {
   Settings,
   Ticket,
   Repeat,
-  Sliders,
+  ModifierGroups,
 } from "@/app/components/ui/icons";
 
 import { subMonths, format } from "date-fns";
@@ -1619,7 +1619,7 @@ export function TopBarActions({
             onClick={() => router.push("/catalog/modifier-groups")}
             title={t("catalog.modifiers.groupsTitle") || "Modifier groups"}
           >
-            <Sliders className="h-4 w-4 shrink-0" />
+            <ModifierGroups className="h-4 w-4 shrink-0" />
             <span className="hidden md:inline ml-2">
               {t("catalog.modifiers.groupsTitle") || "Modifier groups"}
             </span>

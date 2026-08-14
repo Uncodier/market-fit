@@ -37,13 +37,18 @@ export async function getBuyerPortalSummary({
     if (!isMember) return { error: "Not authorized for this site" }
   }
 
-  const { completePastBuyerReservations } = await import('./reservation-actions')
-  await completePastBuyerReservations(supabase, {
-    buyerUserId: session.user.id,
-    ownerSiteId: scope === 'site' ? ownerSiteId : undefined
-  })
+  try {
+    const { completePastBuyerReservations } = await import('./reservation-actions')
+    await completePastBuyerReservations(supabase, {
+      buyerUserId: session.user.id,
+      ownerSiteId: scope === 'site' ? ownerSiteId : undefined
+    })
+  } catch (error) {
+    console.warn("completePastBuyerReservations failed:", error)
+  }
 
-  const supabaseService = await createServiceClient(true)
+  // Respect demo mode (skipDemo would hit Postgres with mock user ids).
+  const supabaseService = await createServiceClient()
 
   let ordersQ = supabaseService.from('sale_orders').select('created_at', { count: 'exact' })
   let subsQ = supabaseService.from('subscriptions').select('created_at', { count: 'exact' })

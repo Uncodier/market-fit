@@ -94,6 +94,43 @@ export async function getAvailableSlots(
   ignoreReservationId?: string
 ) {
   const supabase = await createServiceClient(true)
+  const { data: item } = await supabase
+    .from("catalog_items")
+    .select("kind, digital_subtype, redeem_assignment_mode")
+    .eq("id", catalogItemId)
+    .maybeSingle()
+
+  const { isRoundRobinPass } = await import("@/app/commerce/pass-round-robin")
+  if (isRoundRobinPass(item)) {
+    const { getMergedRoundRobinSlots } = await import(
+      "@/app/commerce/pass-round-robin-server"
+    )
+    return getMergedRoundRobinSlots(
+      catalogItemId,
+      startDateStr,
+      endDateStr,
+      qty,
+      ignoreReservationId
+    )
+  }
+
+  return getAvailableSlotsForItem(
+    catalogItemId,
+    startDateStr,
+    endDateStr,
+    qty,
+    ignoreReservationId
+  )
+}
+
+export async function getAvailableSlotsForItem(
+  catalogItemId: string,
+  startDateStr: string,
+  endDateStr: string,
+  qty: number = 1,
+  ignoreReservationId?: string
+) {
+  const supabase = await createServiceClient(true)
   
   // 1. Get schedules
   const { data: schedules } = await supabase

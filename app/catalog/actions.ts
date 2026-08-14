@@ -150,6 +150,7 @@ async function ensurePassRedeemsCatalogItem(
     site_id: siteId,
     pass_catalog_item_id: passCatalogItemId,
     reservable_catalog_item_id: reservableCatalogItemId,
+    sort_order: 0,
   })
 }
 

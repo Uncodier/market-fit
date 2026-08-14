@@ -1,24 +1,25 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type Dispatch, type SetStateAction } from "react"
 import { useSite } from "@/app/context/SiteContext"
-import { getPassRedeemableItems, updatePassRedeemableItems } from "../pass-actions"
+import { getPassRedeemableItems, updatePassAssignmentMode, updatePassRedeemableItems } from "../pass-actions"
 import { listCatalogItems } from "../actions"
 import { Button } from "@/app/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Trash2, PlusCircle, Calendar } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import type { CatalogItem } from "@/app/types"
+import type { RedeemAssignmentMode } from "@/app/commerce/pass-round-robin"
+import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
   SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import {
   Dialog,
@@ -32,7 +33,15 @@ import {
 import { Label } from "@/app/components/ui/label"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 
-export function PassRedeemableItemsTab({ passCatalogItemId }: { passCatalogItemId: string }) {
+export function PassRedeemableItemsTab({
+  passCatalogItemId,
+  formData,
+  setFormData,
+}: {
+  passCatalogItemId: string
+  formData: Partial<CatalogItem>
+  setFormData: Dispatch<SetStateAction<Partial<CatalogItem>>>
+}) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const [redeemableIds, setRedeemableIds] = useState<string[]>([])
@@ -122,9 +131,76 @@ export function PassRedeemableItemsTab({ passCatalogItemId }: { passCatalogItemI
     )
   }
 
-  const currentItems = availableServices.filter(s => redeemableIds.includes(s.id))
+  const currentItems = redeemableIds
+    .map((id) => availableServices.find((s) => s.id === id))
+    .filter(Boolean)
+
+  const assignmentMode: RedeemAssignmentMode =
+    formData.redeem_assignment_mode === "round_robin" ? "round_robin" : "user_choice"
+
+  const handleAssignmentModeChange = async (value: RedeemAssignmentMode) => {
+    if (!currentSite) return
+    setFormData((prev) => ({
+      ...prev,
+      redeem_assignment_mode: value,
+      ...(value === "round_robin" ? { is_reservation: true } : {}),
+    }))
+    const { error } = await updatePassAssignmentMode(currentSite.id, passCatalogItemId, value)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success(
+      value === "round_robin"
+        ? (t("catalog.passItems.modeRoundRobinSaved") || "Auto-assign (round robin) enabled")
+        : (t("catalog.passItems.modeUserChoiceSaved") || "Buyer chooses service")
+    )
+  }
 
   return (
+    <div className="space-y-6">
+    <SectionCard>
+      <SectionCardHeader>
+        <SectionCardTitle>{t("catalog.passItems.assignmentTitle") || "Service assignment"}</SectionCardTitle>
+        <SectionCardDescription>
+          {t("catalog.passItems.assignmentDescription") ||
+            "Choose whether buyers pick a service, or Shop / POS / Marketplace auto-assign the next available one."}
+        </SectionCardDescription>
+      </SectionCardHeader>
+      <SectionCardContent>
+        <RadioGroup
+          value={assignmentMode}
+          onValueChange={(val) => handleAssignmentModeChange(val as RedeemAssignmentMode)}
+          className="gap-4"
+        >
+          <div className="flex items-start space-x-3">
+            <RadioGroupItem value="user_choice" id="pass-mode-choice" className="mt-1" />
+            <div className="space-y-1">
+              <Label htmlFor="pass-mode-choice" className="font-medium cursor-pointer">
+                {t("catalog.passItems.modeUserChoice") || "Buyer chooses service"}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("catalog.passItems.modeUserChoiceHelp") ||
+                  "After purchase, the customer selects which linked service to book."}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start space-x-3">
+            <RadioGroupItem value="round_robin" id="pass-mode-rr" className="mt-1" />
+            <div className="space-y-1">
+              <Label htmlFor="pass-mode-rr" className="font-medium cursor-pointer">
+                {t("catalog.passItems.modeRoundRobin") || "Auto-assign (round robin)"}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("catalog.passItems.modeRoundRobinHelp") ||
+                  "Shop, POS, and Marketplace assign the next available service in cycle. Skips busy resources until the cycle restarts."}
+              </p>
+            </div>
+          </div>
+        </RadioGroup>
+      </SectionCardContent>
+    </SectionCard>
+
     <SectionCard id="pass-items">
       <SectionCardHeader className="flex flex-row items-center justify-between">
         <SectionCardTitle className="flex items-center gap-2">
@@ -148,7 +224,11 @@ export function PassRedeemableItemsTab({ passCatalogItemId }: { passCatalogItemI
                 <Label>{t('catalog.passItems.service') || 'Service'}</Label>
                 <RelationSelect 
                   options={availableServices
-                    .filter(service => !redeemableIds.includes(service.id))
+                    .filter(service =>
+                      !redeemableIds.includes(service.id) &&
+                      service.id !== passCatalogItemId &&
+                      service.redeem_assignment_mode !== "round_robin"
+                    )
                     .map(service => ({ 
                       id: service.id, 
                       label: service.name
@@ -208,5 +288,6 @@ export function PassRedeemableItemsTab({ passCatalogItemId }: { passCatalogItemI
         )}
       </SectionCardContent>
     </SectionCard>
+    </div>
   )
 }

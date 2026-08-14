@@ -459,7 +459,11 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
           {formData.kind === 'digital_asset' && formData.digital_subtype === 'pass' && (
             <TabsContent value="pass_items" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
               <div className="mx-auto max-w-[800px]">
-                <PassRedeemableItemsTab passCatalogItemId={item?.id || ''} />
+                <PassRedeemableItemsTab
+                  passCatalogItemId={item?.id || ''}
+                  formData={formData}
+                  setFormData={setFormData}
+                />
               </div>
             </TabsContent>
           )}

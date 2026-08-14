@@ -5,8 +5,9 @@ import { listCatalogItems, listCatalogCategories } from "@/app/catalog/actions";
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions";
 import { listLocations } from "@/app/inventory/actions";
 import { getLeads } from "@/app/leads/actions";
-import { listOrders } from "@/app/orders/actions";
 import { listPriceLists } from "@/app/price-lists/actions";
+import { listAllModifierGroupsForPos } from "@/app/catalog/modifier-actions";
+import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
 import { isPriceListAllowedForChannel } from "@/app/price-lists/price-list-channels";
 import {
   listPromotions,
@@ -16,8 +17,6 @@ import {
   listPromotionRequiredCategories,
 } from "@/app/promotions/actions";
 import { isPromotionAllowedForChannel } from "@/app/promotions/promotion-channels";
-import { listAllModifierGroupsForPos } from "@/app/catalog/modifier-actions";
-import { selectPosOpenOrders } from "@/app/pos/open-orders";
 
 export type PosSnapshot = {
   catalogItems: any[];
@@ -56,8 +55,7 @@ export async function pullPosSnapshot(siteId: string): Promise<
       locationsRes,
       leadsRes,
       priceListsRes,
-      pendingRes,
-      unpaidRes,
+      openOrdersRes,
       promotionsRes,
     ] = await Promise.all([
       listCatalogItems({
@@ -70,13 +68,7 @@ export async function pullPosSnapshot(siteId: string): Promise<
       listLocations(siteId),
       getLeads(siteId),
       listPriceLists({ siteId, pageSize: 100 }),
-      listOrders({ siteId, status: "pending,in_progress", pageSize: 50 }),
-      listOrders({
-        siteId,
-        status: "completed",
-        paymentStatus: "unpaid",
-        pageSize: 50,
-      }),
+      listPosOpenOrders(siteId),
       listPromotions({ siteId, status: "active", pageSize: 100 }),
     ]);
 
@@ -131,10 +123,7 @@ export async function pullPosSnapshot(siteId: string): Promise<
       }),
     );
 
-    const pendingOrders = selectPosOpenOrders([
-      ...(pendingRes?.data || []),
-      ...(unpaidRes?.data || []),
-    ]);
+    const pendingOrders = openOrdersRes?.data || [];
 
     const modifiersRes = await listAllModifierGroupsForPos(siteId);
 

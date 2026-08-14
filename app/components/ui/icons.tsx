@@ -1781,6 +1781,21 @@ export const Sliders = ({ className = "", size = 18, ...props }: IconProps) => (
   </IconWrapper>
 )
 
+// Modifier groups: a group card with selectable extras
+export const ModifierGroups = ({ className = "", size = 18, ...props }: IconProps) => (
+  <IconWrapper className={className} size={size} {...props}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" />
+      <circle cx="8" cy="8.5" r="1.35" />
+      <path d="M11.25 8.5h6.25" />
+      <circle cx="8" cy="12" r="1.35" fill="currentColor" />
+      <path d="M11.25 12h6.25" />
+      <circle cx="8" cy="15.5" r="1.35" />
+      <path d="M11.25 15.5h6.25" />
+    </svg>
+  </IconWrapper>
+)
+
 export const Cpu = ({ className = "", size = 18, ...props }: IconProps) => (
   <IconWrapper className={className} size={size} {...props}>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">

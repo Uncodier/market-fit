@@ -36,15 +36,33 @@ export function posOrderAmountDue(order: PosOpenOrderLike): number | null {
   return null;
 }
 
+function paymentsCoverSale(sale: PosSaleLike | null): boolean {
+  if (!sale) return false;
+  const amount = Number(sale.amount);
+  const payments = sale.payments;
+  if (!Number.isFinite(amount) || !Array.isArray(payments) || payments.length === 0) {
+    return false;
+  }
+  const paid = payments.reduce((sum, p) => sum + (Number(p?.amount) || 0), 0);
+  return paid + 0.009 >= amount;
+}
+
 /** Fully paid orders should not appear in the POS order picker. */
 export function isPosOrderPaid(order: PosOpenOrderLike | null | undefined): boolean {
   if (!order) return false;
+  const sale = firstSale(order);
+  if (paymentsCoverSale(sale)) return true;
+
+  const due = posOrderAmountDue(order);
+  if (due != null && due <= 0.009) return true;
   if (order.payment_status === "paid") return true;
   if (order.payment_status === "unpaid") return false;
-  const due = posOrderAmountDue(order);
-  if (due != null) return due <= 0;
-  const saleStatus = firstSale(order)?.status;
-  return saleStatus === "completed" || saleStatus === "paid";
+
+  const saleCompleted = sale?.status === "completed" || sale?.status === "paid";
+  // Paid from sales/POS while the ticket is still pending in the kitchen.
+  if (saleCompleted && order.status !== "completed") return true;
+  if (saleCompleted && due == null) return true;
+  return false;
 }
 
 export function isPosOpenOrder(order: PosOpenOrderLike | null | undefined): boolean {
