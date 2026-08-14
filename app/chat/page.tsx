@@ -31,6 +31,7 @@ import { useOptimizedMessageState } from "@/app/hooks/useOptimizedMessageState"
 // import { useSimpleMessageState } from "@/app/hooks/useSimpleMessageState" // For testing
 import { useOptimizedKeyboardHandler } from "@/app/hooks/useOptimizedKeyboardHandler"
 import { useLayout } from "@/app/context/LayoutContext"
+import { useAutoCollapseSidebar } from "@/app/hooks/use-auto-collapse-sidebar"
 
 export default function ChatPage() {
   return (
@@ -61,8 +62,7 @@ function ChatPageContent() {
   const { currentSite } = useSite()
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
   
-  // Estado para controlar la visibilidad de la lista de chats
-  const [isChatListCollapsed, setIsChatListCollapsed] = useState(false)
+  const [isChatListCollapsed, setIsChatListCollapsed] = useAutoCollapseSidebar()
   
   // Estado para verificar la disponibilidad del API server
   const [isApiServerAvailable, setIsApiServerAvailable] = useState<boolean | null>(null)
@@ -595,7 +595,7 @@ function ChatPageContent() {
         hasSelectedConversation ? "hidden md:block" : "w-full",
         !hasSelectedConversation && "md:w-[319px] md:min-w-[319px]",
         isChatListCollapsed
-          ? "w-0 md:w-0 md:min-w-0 md:opacity-0 -translate-x-full md:translate-x-0 border-none"
+          ? "w-full md:w-0 md:min-w-0 md:opacity-0 md:border-none"
           : "w-full md:w-[319px] md:min-w-[319px] translate-x-0",
         !isChatListCollapsed && !hasSelectedConversation && "w-full md:w-[319px] md:min-w-[319px]"
       )} style={{ overflow: 'hidden' }}>

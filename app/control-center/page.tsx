@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
+import { useAutoCollapseSidebar } from "@/app/hooks/use-auto-collapse-sidebar"
 import { createClient } from "@/utils/supabase/client"
 import { Category } from "@/app/types"
 import { TaskSidebar } from "./components/TaskSidebar"
@@ -39,7 +40,7 @@ export default function ControlCenterPage() {
   const { currentSite } = useSite()
   const { isLayoutCollapsed } = useLayout()
   const isMobile = useIsMobile()
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useAutoCollapseSidebar()
   const [selectedItem, setSelectedItem] = useState<string>("all")
   const {
     categories,
