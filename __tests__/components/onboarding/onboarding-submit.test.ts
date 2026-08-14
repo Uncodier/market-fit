@@ -1,6 +1,7 @@
 import { siteOnboardingSchema } from "@/app/components/onboarding/schemas/onboarding-schema"
 import { isUsableSiteUrl, normalizeSiteUrl } from "@/app/components/onboarding/schemas/onboarding-schema"
 import {
+  canProceedFromStep,
   getCreateSiteErrorMessage,
   getFirstErrorStep,
   getRequiredFieldErrors,
@@ -124,6 +125,15 @@ describe("onboarding submit helpers", () => {
     expect(prepared.data.business_hours[0].timezone).toBe("America/Mexico_City")
     expect(prepared.data.business_hours[0].days.monday.enabled).toBe(false)
     expect(siteOnboardingSchema.safeParse(prepared.data).success).toBe(true)
+  })
+
+  it("disables next on step 1 until name and URL are valid", () => {
+    expect(canProceedFromStep(1, { ...baseValues(), name: "", url: "" })).toBe(false)
+    expect(canProceedFromStep(1, { ...baseValues(), name: "Acme", url: "" })).toBe(false)
+    expect(canProceedFromStep(1, { ...baseValues(), name: "A", url: "https://acme.com" })).toBe(false)
+    expect(canProceedFromStep(1, { ...baseValues(), name: "Acme", url: "https://" })).toBe(false)
+    expect(canProceedFromStep(1, { ...baseValues(), name: "Acme", url: "acme.com" })).toBe(true)
+    expect(canProceedFromStep(2, { ...baseValues(), name: "", url: "" })).toBe(true)
   })
 
   it("only blocks on missing name or invalid URL", () => {

@@ -167,6 +167,16 @@ export function getRequiredFieldErrors(values: SiteOnboardingValues): {
   return errors
 }
 
+export function canProceedFromStep(
+  stepId: number,
+  values: SiteOnboardingValues
+): boolean {
+  if (stepId === 1) {
+    return Object.keys(getRequiredFieldErrors(values)).length === 0
+  }
+  return true
+}
+
 export function prepareOnboardingSubmit(values: SiteOnboardingValues):
   | { ok: true; data: SiteOnboardingValues }
   | { ok: false; data: SiteOnboardingValues; error: ZodError } {

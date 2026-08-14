@@ -36,6 +36,7 @@ import {
   getFirstErrorStep,
   getValidationErrorMessage,
   getRequiredFieldErrors,
+  canProceedFromStep,
   prepareOnboardingSubmit,
   readAutofilledBasicFields,
 } from "./utils/onboarding-submit"
@@ -129,28 +130,14 @@ export function SiteOnboarding({
     }
   })
 
+  const watchedName = form.watch("name")
+  const watchedUrl = form.watch("url")
+  const currentValues = { ...form.getValues(), name: watchedName, url: watchedUrl }
+  const canGoNext = canProceedFromStep(currentStep, currentValues)
+
   // Validation and step management
   const validateStep = (stepId: number): boolean => {
-    const formData = form.getValues()
-    
-    switch (stepId) {
-      case 1:
-        return Object.keys(getRequiredFieldErrors(formData)).length === 0
-      
-      case 2:
-        return true
-      
-      case 3:
-      case 4:
-      case 5:
-      case 6:
-      case 7:
-        // Optional steps never block progress; empty rows are dropped on submit.
-        return true
-      
-      default:
-        return true
-    }
+    return canProceedFromStep(stepId, currentValues)
   }
 
   const updateStepErrors = () => {
@@ -182,6 +169,23 @@ export function SiteOnboarding({
     if (autofilled.name) form.setValue("name", autofilled.name)
     if (autofilled.url) form.setValue("url", autofilled.url)
   }
+
+  useEffect(() => {
+    if (currentStep !== 1) return
+    const formEl = formRef.current
+    if (!formEl) return
+
+    const sync = () => syncAutofilledBasicFields()
+    sync()
+    formEl.addEventListener("animationstart", sync)
+    formEl.addEventListener("input", sync)
+    formEl.addEventListener("change", sync)
+    return () => {
+      formEl.removeEventListener("animationstart", sync)
+      formEl.removeEventListener("input", sync)
+      formEl.removeEventListener("change", sync)
+    }
+  }, [currentStep])
 
   const nextStep = () => {
     setHasValidated(true)
@@ -538,8 +542,9 @@ export function SiteOnboarding({
                   // If site is not created (currentStep < 8), don't allow jumping to success step
                   if (step.id === 8 && currentStep < 8) return true
                   
-                  // Don't allow jumping ahead if there are validation errors in previous steps
+                  // Don't allow jumping ahead if required fields in previous steps are empty
                   for (let i = 1; i < step.id; i++) {
+                    if (!validateStep(i)) return true
                     if (hasValidated && stepErrors.has(i)) return true
                   }
                   
@@ -617,8 +622,10 @@ export function SiteOnboarding({
                 autoComplete="on"
                 onSubmit={(event) => {
                   event.preventDefault()
-                  if (currentStep < 7) nextStep()
-                  else if (currentStep === 7) handleComplete()
+                  if (currentStep < 7) {
+                    if (!canGoNext) return
+                    nextStep()
+                  } else if (currentStep === 7) handleComplete()
                 }}
               >
               <SectionCard className="bg-card rounded-xl border shadow-lg overflow-hidden">
@@ -719,6 +726,7 @@ export function SiteOnboarding({
                     <Button
                       type="submit"
                       size="lg"
+                      disabled={!canGoNext}
                     >
                       Next
                       <ChevronRight className="h-4 w-4 ml-2" />
