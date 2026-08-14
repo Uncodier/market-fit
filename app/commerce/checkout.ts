@@ -37,6 +37,7 @@ import {
   ensureCommerceLeadConverted,
   isCommerceLeadSource,
 } from "./ensure-commerce-lead-converted";
+import { tryUpsertPolizaForSale } from "@/app/accounting/ensure";
 import { format } from "date-fns";
 
 export interface CheckoutLineModifier {
@@ -998,6 +999,8 @@ export async function checkoutCart({
       if (latest) order = { ...order, ...latest };
       orderPublicAccessToken = order.public_access_token as string;
     }
+
+    await tryUpsertPolizaForSale(sale.id, siteId);
 
     if (finalLeadId && resolvedUserId && isCommerceLeadSource(source)) {
       try {

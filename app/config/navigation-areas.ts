@@ -22,7 +22,7 @@ export const SIDEBAR_AUTOMATION_AREA_ORDER: WorkspaceArea[] = [
   "automation",
 ]
 
-/** Apps launcher sections. Settings lives in the bottom Configuration section, not here. */
+/** Apps launcher and navigation modal sections, including Settings. */
 export const NAVIGATION_MENU_AREA_ORDER: WorkspaceArea[] = [
   "marketing",
   "sales",
@@ -32,13 +32,11 @@ export const NAVIGATION_MENU_AREA_ORDER: WorkspaceArea[] = [
   "finance",
   "reports",
   "applications",
-]
-
-/** All areas including Settings, used for screen-access matching. */
-export const ALL_NAV_AREA_ORDER: WorkspaceArea[] = [
-  ...NAVIGATION_MENU_AREA_ORDER,
   "settings",
 ]
+
+/** Same as the launcher; kept for screen-access matching. */
+export const ALL_NAV_AREA_ORDER: WorkspaceArea[] = NAVIGATION_MENU_AREA_ORDER
 
 export interface AreaNavItem {
   /** Stable id for i18n / emoji map */

@@ -18,6 +18,10 @@ jest.mock("../../app/promotions/promo-discount-expense", () => ({
   upsertPromotionDiscountExpense: jest.fn().mockResolvedValue({ skipped: false }),
 }));
 
+jest.mock("../../app/accounting/ensure", () => ({
+  upsertPolizaForExpense: jest.fn().mockResolvedValue(undefined),
+}));
+
 // Mock Supabase Server
 jest.mock("../../lib/supabase/server", () => {
   const mockSupabase = {
@@ -99,6 +103,10 @@ describe("applyPromotionToOrder", () => {
         qb.maybeSingle = jest.fn().mockResolvedValue({ data: { business_hours: null } });
       } else if (tableName === "sales" || tableName === "leads") {
         qb.update = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
+      } else if (tableName === "transactions") {
+        qb.select = jest.fn().mockReturnValue(qb);
+        qb.eq = jest.fn().mockReturnValue(qb);
+        qb.maybeSingle = jest.fn().mockResolvedValue({ data: { id: "txn-promo" }, error: null });
       }
       return qb;
     };
@@ -294,6 +302,90 @@ describe("applyPromotionToOrder", () => {
       campaign_id: "camp1",
     });
     expect(leadsUpdate).toHaveBeenCalledWith({ campaign_id: "camp1" });
+  });
+
+  it("does not mark a paid POS sale as unpaid after applying a discount", async () => {
+    const salesUpdate = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
+    setupMocks(
+      { id: "promo1", code: "NEWPIG20", status: "active", applies_to: "all", discount_type: "fixed", discount_value: 32, usage_count: 0 },
+      [{ id: "line1", catalog_item_id: "item1", subtotal: 160, quantity: 1 }],
+      {
+        id: "order1",
+        sale_id: "sale1",
+        buyer_user_id: "user1",
+        tax_total: 0,
+        shipping_cost: 0,
+        sales: {
+          source: "pos",
+          lead_id: "lead1",
+          amount: 160,
+          amount_due: 0,
+          payments: [{ amount: 160 }],
+          status: "completed",
+        },
+      }
+    );
+    mockSupabase.from.mockImplementation((tableName: string) => {
+      const qb: any = {};
+      qb.select = jest.fn().mockReturnValue(qb);
+      qb.eq = jest.fn().mockReturnValue(qb);
+      qb.single = jest.fn().mockReturnValue(qb);
+      qb.maybeSingle = jest.fn().mockResolvedValue({ data: { id: "txn-promo" }, error: null });
+      qb.in = jest.fn().mockReturnValue(qb);
+      qb.neq = jest.fn().mockReturnValue(qb);
+      qb.not = jest.fn().mockResolvedValue({ count: 1, error: null });
+      qb.update = jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) });
+
+      if (tableName === "promotions") {
+        qb.maybeSingle = jest.fn().mockResolvedValue({
+          data: { id: "promo1", code: "NEWPIG20", status: "active", applies_to: "all", discount_type: "fixed", discount_value: 32, usage_count: 0 },
+        });
+        qb.single = jest.fn().mockResolvedValue({ data: { usage_count: 0 } });
+      } else if (tableName === "sale_order_items") {
+        qb.eq = jest.fn().mockResolvedValue({
+          data: [{ id: "line1", catalog_item_id: "item1", subtotal: 160, quantity: 1 }],
+        });
+      } else if (tableName === "sale_orders") {
+        qb.eq = jest.fn().mockImplementation((col: string) => {
+          if (col === "id") {
+            return {
+              single: jest.fn().mockResolvedValue({
+                data: {
+                  id: "order1",
+                  sale_id: "sale1",
+                  buyer_user_id: "user1",
+                  tax_total: 0,
+                  shipping_cost: 0,
+                  sales: {
+                    source: "pos",
+                    lead_id: "lead1",
+                    amount: 160,
+                    amount_due: 0,
+                    payments: [{ amount: 160 }],
+                    status: "completed",
+                  },
+                },
+              }),
+            };
+          }
+          return qb;
+        });
+      } else if (tableName === "sales") {
+        qb.update = salesUpdate;
+      } else if (tableName === "settings") {
+        qb.maybeSingle = jest.fn().mockResolvedValue({ data: { business_hours: null } });
+      } else if (tableName === "promotion_catalog_items" || tableName === "promotion_catalog_categories") {
+        qb.eq = jest.fn().mockResolvedValue({ data: [] });
+      }
+      return qb;
+    });
+
+    const res = await applyPromotionToOrder("site1", "order1", "NEWPIG20");
+    expect(res.error).toBeUndefined();
+    expect(salesUpdate).toHaveBeenCalledWith({
+      amount: 128,
+      amount_due: 0,
+    });
   });
 
   it("records the discount expense with service role on POS (no forceServiceRole)", async () => {

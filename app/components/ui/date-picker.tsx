@@ -429,46 +429,9 @@ export function DatePicker({
     e.stopPropagation();
     
     const today = new Date();
-    today.setHours(23, 59, 59, 999); // End of today
+    today.setHours(23, 59, 59, 999);
     
-    // Ensure the start date is not in the future
-    let start = new Date(event.value);
-    if (start > today) {
-      console.warn(`[DatePicker] Preset start date ${format(start, 'yyyy-MM-dd')} is in the future, using safe fallback`);
-      
-      // Different fallbacks based on event type
-      switch (event.type) {
-        case 'day':
-          start = startOfDay(today);
-          break;
-        case 'week':
-          start = startOfWeek(today, { locale: dateLocale });
-          break;
-        case 'month':
-          start = startOfMonth(today);
-          break;
-        case 'year':
-          start = startOfYear(today);
-          break;
-        default:
-          start = startOfDay(today);
-      }
-    }
-    
-    // Extra safety check for "This quarter" preset, which has caused issues
-    if (event.label === t("datePicker.thisQuarter") && start > today) {
-      console.warn(`[DatePicker] Quarter start date still in future after initial check: ${format(start, 'yyyy-MM-dd')}`);
-      
-      // Calculate current quarter as fallback
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth();
-      const currentQuarter = Math.floor(currentMonth / 3);
-      const quarterStartMonth = currentQuarter * 3;
-      
-      // Use first day of current quarter
-      start = new Date(currentYear, quarterStartMonth, 1);
-      console.log(`[DatePicker] Using current quarter start: ${format(start, 'yyyy-MM-dd')}`);
-    }
+    const start = new Date(event.value);
     
     let end: Date;
     
@@ -478,26 +441,14 @@ export function DatePicker({
         break;
       case 'week':
         end = endOfDay(dateEndOfWeek(start, { locale: dateLocale }));
-        // Cap end date at today if it's in the future
-        if (end > today) {
-          end = today;
-        }
         break;
       case 'month':
         end = endOfDay(dateEndOfMonth(start));
-        // Cap end date at today if it's in the future
-        if (end > today) {
-          end = today;
-        }
         break;
       case 'year':
-        end = isSameYear(start, today) 
-          ? endOfDay(today) 
+        end = isSameYear(start, today)
+          ? endOfDay(today)
           : endOfDay(endOfYear(start));
-        // Cap end date at today if it's in the future
-        if (end > today) {
-          end = today;
-        }
         break;
       default:
         end = today;
@@ -529,18 +480,7 @@ export function DatePicker({
     }
   };
   
-  // Add a function to disable future dates based on mode
-  const shouldDisableDate = (date: Date) => {
-    // Only disable future dates for report mode and similar analytical modes
-    if (mode === 'report' || mode === 'range') {
-      const today = new Date();
-      today.setHours(23, 59, 59, 999); // End of today
-      return date > today;
-    }
-    
-    // For task mode and others, allow future dates
-    return false;
-  };
+  const shouldDisableDate = (_date: Date) => false;
 
   return (
     <div className="w-full">

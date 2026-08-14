@@ -1,8 +1,10 @@
 "use server";
 
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { upsertPolizaForExpense } from "@/app/accounting/ensure";
 import { resolvePromotionDiscount } from "./resolve-promotion";
 import { upsertPromotionDiscountExpense } from "./promo-discount-expense";
+import { saleAmountsAfterDiscount } from "./sale-amounts-after-discount";
 
 export async function applyPromotionToOrder(
   siteId: string,
@@ -25,7 +27,7 @@ export async function applyPromotionToOrder(
     const { data: order } = await supabase
       .from("sale_orders")
       .select(
-        "id, site_id, sale_id, tax_total, currency, user_id, buyer_user_id, origin_location_id, promotion_id, sales(source, lead_id, sale_date, user_id)",
+        "id, site_id, sale_id, tax_total, shipping_cost, currency, user_id, buyer_user_id, origin_location_id, promotion_id, sales(source, lead_id, sale_date, user_id, amount, amount_due, payments, status)",
       )
       .eq("id", saleOrderId)
       .single();
@@ -59,7 +61,8 @@ export async function applyPromotionToOrder(
     const { promotionId: resolvedPromoId, discount, orderSubtotal } =
       resolved.data;
     const taxTotal = Number(order.tax_total) || 0;
-    const total = Math.max(0, orderSubtotal - discount + taxTotal);
+    const shippingCost = Number((order as { shipping_cost?: number | null }).shipping_cost) || 0;
+    const total = Math.max(0, orderSubtotal - discount + taxTotal + shippingCost);
 
     const { error: updateError } = await supabase
       .from("sale_orders")
@@ -94,8 +97,7 @@ export async function applyPromotionToOrder(
     const campaignId = promo?.campaign_id || null;
     if (order.sale_id) {
       const saleUpdate: Record<string, unknown> = {
-        amount: total,
-        amount_due: total,
+        ...saleAmountsAfterDiscount(total, saleRel),
       };
       if (campaignId) saleUpdate.campaign_id = campaignId;
       await supabase.from("sales").update(saleUpdate).eq("id", order.sale_id);
@@ -110,7 +112,7 @@ export async function applyPromotionToOrder(
     if (discount > 0) {
       const expenseDate =
         (saleRel?.sale_date as string | undefined) ||
-        new Date().toISOString().split("T")[0];
+        new Date().toLocaleDateString("en-CA");
       let expenseUserId: string | null =
         order.user_id || saleRel?.user_id || null;
 
@@ -138,6 +140,20 @@ export async function applyPromotionToOrder(
         promotionCode: promo?.code || promotionCode,
         promotionName: promo?.name,
       });
+
+      try {
+        const { data: promoExpense } = await expenseClient
+          .from("transactions")
+          .select("id")
+          .eq("sale_order_id", saleOrderId)
+          .eq("category", "promotions")
+          .maybeSingle();
+        if (promoExpense?.id) {
+          await upsertPolizaForExpense(promoExpense.id, order.site_id || siteId);
+        }
+      } catch (error) {
+        console.error("[accounting] Failed to post promotion expense:", error);
+      }
     }
 
     return { success: true, discount, total };

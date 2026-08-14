@@ -198,6 +198,9 @@ export async function updateSale(siteId: string, updatedSale: Sale) {
       return { error: error.message };
     }
 
+    const { tryUpsertPolizaForSale } = await import("@/app/accounting/ensure");
+    await tryUpsertPolizaForSale(updatedSale.id, siteId);
+
     revalidatePath("/sales");
     revalidatePath(`/sales/${updatedSale.id}`);
     revalidatePath("/orders");

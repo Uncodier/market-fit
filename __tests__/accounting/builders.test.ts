@@ -27,7 +27,7 @@ describe('accounting builders', () => {
     expect(draft!.entry.memo).toBe('Sale')
   })
 
-  it('returns null for non-completed sales', () => {
+  it('returns null for unpaid pending sales', () => {
     expect(
       buildFromSale(
         {
@@ -41,6 +41,41 @@ describe('accounting builders', () => {
         null
       )
     ).toBeNull()
+  })
+
+  it('uses recorded payments when amount_due was reset after a promo', () => {
+    const draft = buildFromSale(
+      {
+        id: 'sale-promo',
+        site_id: 'site-1',
+        status: 'completed',
+        amount: 128,
+        amount_due: 128,
+        sale_date: '2026-08-13',
+        payments: [{ amount: 160 }],
+      },
+      null
+    )
+    expect(draft!.lines.find(l => l.accountCode === '1000')?.debit).toBe(128)
+    expect(draft!.lines.find(l => l.accountCode === '1100')).toBeUndefined()
+  })
+
+  it('posts a paid pending sale as cash to revenue', () => {
+    const draft = buildFromSale(
+      {
+        id: 'sale-paid',
+        site_id: 'site-1',
+        status: 'pending',
+        amount: 80,
+        amount_due: 0,
+        sale_date: '2026-08-13',
+      },
+      null
+    )
+    expect(draft).not.toBeNull()
+    expect(draft!.lines.find(l => l.accountCode === '1000')?.debit).toBe(80)
+    expect(draft!.lines.find(l => l.accountCode === '1100')).toBeUndefined()
+    expect(draft!.lines.find(l => l.accountCode === '4000')?.credit).toBe(80)
   })
 
   it('builds expense as DR expense / CR cash', () => {

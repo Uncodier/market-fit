@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { addCalendarDays, inclusiveEndWithUtcSlack } from '@/lib/costs/aggregate-costs'
 import {
   buildFromSale,
   buildFromExpense,
@@ -53,6 +54,18 @@ function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value
 }
 
+function mergeRowsById<T extends { id?: string }>(
+  ...groups: Array<T[] | null | undefined>
+): T[] {
+  const byId = new Map<string, T>()
+  for (const group of groups) {
+    for (const row of group || []) {
+      if (row?.id) byId.set(row.id, row)
+    }
+  }
+  return Array.from(byId.values())
+}
+
 function normalizeExpenseSource(exp: any): ExpenseSource {
   const directCategory = firstRelation(exp.catalog_category)
   const item = firstRelation(exp.catalog_item)
@@ -86,6 +99,14 @@ function buildAccountMaps(accounts: Awaited<ReturnType<typeof getAllAccounts>>) 
 type SourceTable = 'sales' | 'transactions' | 'purchases'
 type PolizaSourceType = 'sale' | 'expense' | 'purchase'
 
+export async function tryUpsertPolizaForSale(saleId: string, siteId: string): Promise<void> {
+  try {
+    await upsertPolizaForSale(saleId, siteId)
+  } catch (error) {
+    console.error('[accounting] Failed to post sale journal entry:', error)
+  }
+}
+
 export async function upsertPolizaForSale(saleId: string, siteId: string): Promise<void> {
   await ensureChartOfAccounts(siteId)
   const supabase = await createClient()
@@ -103,7 +124,7 @@ export async function upsertPolizaForSale(saleId: string, siteId: string): Promi
 
   const accounts = await getAllAccounts(siteId)
   const codeMap = buildAccountMaps(accounts)
-  const order = sale.sale_orders && sale.sale_orders.length > 0 ? sale.sale_orders[0] : null
+  const order = firstRelation(sale.sale_orders)
   const draft = buildFromSale(sale, order, codeMap)
 
   await applyDraftToJournal(`sale:${saleId}`, draft, 'sales', saleId)
@@ -221,26 +242,39 @@ export async function ensurePolizasForPeriod(
 
   const supabase = await createClient()
 
-  const { data: sales, error: salesError } = await supabase
+  const fromSlack = addCalendarDays(fromDate, -1)
+  const toInclusive = inclusiveEndWithUtcSlack(toDate)
+
+  const { data: salesByDate, error: salesError } = await supabase
     .from('sales')
     .select(SALE_SELECT)
     .eq('site_id', siteId)
     .neq('accounting_state', 'unpublished')
-    .gte('sale_date', fromDate)
-    .lte('sale_date', toDate)
+    .gte('sale_date', fromSlack)
+    .lte('sale_date', toInclusive)
 
   if (salesError) {
     console.error(salesError)
     throw new Error('Failed to fetch sales')
   }
 
+  const { data: salesByCreated } = await supabase
+    .from('sales')
+    .select(SALE_SELECT)
+    .eq('site_id', siteId)
+    .neq('accounting_state', 'unpublished')
+    .gte('created_at', `${fromSlack}T00:00:00.000Z`)
+    .lte('created_at', `${toInclusive}T23:59:59.999Z`)
+
+  const sales = mergeRowsById(salesByDate, salesByCreated)
+
   const { data: expenses, error: expensesError } = await supabase
     .from('transactions')
     .select(EXPENSE_SELECT)
     .eq('site_id', siteId)
     .neq('accounting_state', 'unpublished')
-    .gte('date', fromDate)
-    .lte('date', toDate)
+    .gte('date', fromSlack)
+    .lte('date', toInclusive)
 
   if (expensesError) {
     console.error(expensesError)
@@ -284,8 +318,7 @@ export async function ensurePolizasForPeriod(
   const sourcesToMarkPosted: { table: SourceTable; id: string }[] = []
 
   for (const sale of sales || []) {
-    const order =
-      sale.sale_orders && sale.sale_orders.length > 0 ? sale.sale_orders[0] : null
+    const order = firstRelation(sale.sale_orders)
     const draft = buildFromSale(sale, order, codeMap)
     const key = `sale:${sale.id}`
     const existing = existingMap.get(key)

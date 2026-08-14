@@ -1,4 +1,7 @@
 import { subMonths } from 'date-fns';
+import { isRecognizedRevenueSale } from '@/lib/sales/recognized-sale';
+
+export { isRecognizedRevenueSale };
 
 const ONLINE_SOURCES = new Set(['online', 'shop', 'marketplace']);
 const RETAIL_SOURCES = new Set(['retail', 'pos']);
@@ -28,19 +31,6 @@ export function percentChangeFrom(previous: number, current: number): number {
     change = 100;
   }
   return isNaN(change) ? 0 : change;
-}
-
-const EXCLUDED_SALE_STATUSES = new Set(['cancelled', 'refunded']);
-
-/** Paid sales count as revenue, matching the Orders "Paid" badge. */
-export function isRecognizedRevenueSale(sale: {
-  status?: string | null;
-  amount_due?: number | string | null;
-}): boolean {
-  const status = (sale?.status || '').toLowerCase();
-  if (!status || EXCLUDED_SALE_STATUSES.has(status)) return false;
-  if (status === 'completed') return true;
-  return status === 'pending' && Number(sale.amount_due) === 0;
 }
 
 export function saleCalendarDate(sale: {

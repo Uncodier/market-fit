@@ -33,7 +33,7 @@ import { ROIWidget } from "@/app/components/dashboard/roi-widget"
 import { CACWidget } from "@/app/components/dashboard/cac-widget"
 import { CPLWidget } from "@/app/components/dashboard/cpl-widget"
 import { format, subMonths, isAfter, isFuture } from "date-fns"
-import { startOfMonth } from "date-fns"
+import { startOfMonth, endOfMonth } from "date-fns"
 import { isSameDay, isSameMonth } from "date-fns"
 import { useProfile } from "@/app/hooks/use-profile"
 import { usePageRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
@@ -139,9 +139,9 @@ function DashboardPageContent() {
     if (isSameDay(startDate, today) && isSameDay(endDate, today)) {
       setSelectedRangeType("Today")
     } else if (
-      isSameDay(startDate, monthStart) && 
-      isSameMonth(startDate, today) && 
-      isSameDay(endDate, today)
+      isSameDay(startDate, monthStart) &&
+      isSameMonth(startDate, today) &&
+      (isSameDay(endDate, today) || isSameDay(endDate, endOfMonth(today)))
     ) {
       setSelectedRangeType("This month")
     } else {
@@ -177,14 +177,10 @@ function DashboardPageContent() {
         const twoYearsAgo = subMonths(now, 24);
         
         // Use actual date comparison instead of year comparison
-        if (startDate <= now && startDate >= twoYearsAgo) {
+        if (startDate >= twoYearsAgo) {
           safeStartDate = startDate;
-        } else if (startDate > now) {
-          console.warn(`[Dashboard] Start date is in the future: ${format(startDate, 'yyyy-MM-dd')}, using one month ago`);
-          // Keep the default
         } else {
           console.warn(`[Dashboard] Start date is too old: ${format(startDate, 'yyyy-MM-dd')}, using one month ago`);
-          // Keep the default
         }
       }
       
@@ -192,13 +188,7 @@ function DashboardPageContent() {
         console.error("[Dashboard] Invalid end date:", endDate);
         // Use defaults already set above
       } else {
-        // End date must be today or in the past
-        if (endDate <= now) {
-          safeEndDate = endDate;
-        } else {
-          console.warn(`[Dashboard] End date is in the future: ${format(endDate, 'yyyy-MM-dd')}, using today`);
-          // Keep the default (today)
-        }
+        safeEndDate = endDate;
       }
       
       // Final safety check - if start date is after end date, adjust
@@ -248,40 +238,6 @@ function DashboardPageContent() {
       setDateRange(safeDefaults);
     }
   }, [determineRangeType, validateDates]);
-
-  // Safety effect to detect and fix future dates that might slip through
-  useEffect(() => {
-    // Run this check only when dates are initialized and after any change
-    if (isInitialized && dateRange.startDate && dateRange.endDate) {
-      const now = new Date();
-      let needsReset = false;
-      
-      // Check if either date is actually in the future (beyond today)
-      if (dateRange.startDate > now || dateRange.endDate > now) {
-        console.error(`[Dashboard] Future dates detected in initialized state: ${format(dateRange.startDate, 'yyyy-MM-dd')} - ${format(dateRange.endDate, 'yyyy-MM-dd')}`);
-        console.error(`[Dashboard] Current date: ${format(now, 'yyyy-MM-dd')}`);
-        needsReset = true;
-      }
-      
-      // If future dates were somehow set, reset to safe values
-      if (needsReset) {
-        console.log('[Dashboard] Resetting to safe date range');
-        
-        // Use safe dates
-        const safeStartDate = subMonths(now, 1);
-        const safeEndDate = now;
-        
-        // Reset the state
-        setDateRange({
-          startDate: safeStartDate,
-          endDate: safeEndDate
-        });
-        
-        // Update the range type
-        determineRangeType(safeStartDate, safeEndDate);
-      }
-    }
-  }, [isInitialized, determineRangeType]);
 
   // Initialize date range when the component mounts - ENHANCED
   useEffect(() => {

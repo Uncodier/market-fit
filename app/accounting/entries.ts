@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { inclusiveEndWithUtcSlack } from '@/lib/costs/aggregate-costs'
 import { JournalDraft } from './builders'
 import { resolveJournalMemo } from './journal-memo'
 
@@ -64,7 +65,7 @@ export async function listJournalEntries(
     .select('*, journal_lines(*)')
     .eq('site_id', siteId)
     .gte('entry_date', fromDate)
-    .lte('entry_date', toDate)
+    .lte('entry_date', inclusiveEndWithUtcSlack(toDate))
     .order('entry_date', { ascending: false })
     .order('created_at', { ascending: false })
 

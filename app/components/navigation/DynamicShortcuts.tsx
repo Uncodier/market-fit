@@ -56,14 +56,15 @@ export interface CustomShortcutItem {
 
 export type ShortcutEntry = string | CustomShortcutItem;
 
-// Launcher items only — Settings lives in the bottom Configuration section
+// Sidebar shortcuts exclude Settings — those stay in Configuration and the launcher
 type AreaNavItemWithArea = AreaNavItem & { area: WorkspaceArea }
 const ALL_ITEMS: AreaNavItemWithArea[] = []
 for (const areaKey of NAVIGATION_MENU_AREA_ORDER) {
+  if (areaKey === "settings") continue
   const area = NAVIGATION_AREAS[areaKey]
   if (!area?.items) continue
   for (const item of area.items) {
-    if (!PINNED_NAV_KEYS.has(item.key)) {
+    if (!PINNED_NAV_KEYS.has(item.key) && !isSettingsNavKey(item.key)) {
       ALL_ITEMS.push({ ...item, area: areaKey })
     }
   }

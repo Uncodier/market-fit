@@ -1,5 +1,7 @@
 import { JournalEntry, JournalLine } from '../types'
 import crypto from 'crypto'
+import { isRecognizedRevenueSale } from '@/lib/sales/recognized-sale'
+import { paidOnSale } from '@/app/promotions/sale-amounts-after-discount'
 import { memoFromExpense, memoFromPurchase, memoFromSale } from "./journal-memo"
 
 function hashSource(data: Record<string, unknown>): string {
@@ -29,6 +31,7 @@ export interface SaleSource {
   product_name?: string | null
   invoice_number?: string | number | null
   reference_code?: string | null
+  payments?: Array<{ amount?: number | string | null }> | null
   leads?: { name?: string | null } | Array<{ name?: string | null }> | null
   companies?: { name?: string | null } | Array<{ name?: string | null }> | null
 }
@@ -100,12 +103,13 @@ export function buildFromSale(
   order: SaleOrderSource | null,
   incomeCodeMap: Map<string, string> = new Map([['revenue', '4000']])
 ): JournalDraft | null {
-  if (sale.status !== 'completed') {
+  if (!isRecognizedRevenueSale(sale)) {
     return null
   }
 
-  const amountDue = Number(sale.amount_due) || 0
   const totalAmount = Number(sale.amount) || 0
+  const paidAmount = round2(Math.min(totalAmount, paidOnSale(sale)))
+  const amountDue = round2(Math.max(0, totalAmount - paidAmount))
   const taxTotal = Number(order?.tax_total ?? order?.taxTotal ?? 0) || 0
   const revenue = round2(totalAmount - taxTotal)
   const locId = sale.location_id || null
@@ -147,7 +151,6 @@ export function buildFromSale(
   }
 
   const lines: Partial<JournalLine>[] = []
-  const paidAmount = round2(totalAmount - amountDue)
 
   if (paidAmount > 0) {
     lines.push({ accountCode: '1000', debit: paidAmount, credit: 0, ...baseLineDims })

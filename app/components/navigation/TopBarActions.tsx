@@ -1951,7 +1951,7 @@ export function TopBarActions({
             onClick={() => window.dispatchEvent(new CustomEvent('finance:loadReport'))}
           >
             <FileText className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">Load Report</span>
+            <span className="hidden md:inline ml-2">Generate Report</span>
           </Button>
         </div>
       )}

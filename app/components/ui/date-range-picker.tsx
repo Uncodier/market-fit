@@ -5,7 +5,7 @@ import { CalendarIcon } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useCallback, useRef } from "react"
-import { format, startOfMonth, startOfDay, endOfDay, isSameDay, isFuture, subMonths, isValid } from "date-fns"
+import { format, startOfMonth, startOfDay, endOfDay, isSameDay, subMonths, isValid } from "date-fns"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
@@ -36,18 +36,9 @@ export function CalendarDateRangePicker({
   // Validation function - moved outside of useEffect to prevent recreation
   const validateDates = useCallback((startDate: Date, endDate: Date) => {
     const now = new Date();
-    const todayEnd = endOfDay(now);
 
     let validStartDate = startOfDay(startDate);
     let validEndDate = endOfDay(endDate);
-
-    if (validStartDate > todayEnd) {
-      validStartDate = startOfDay(subMonths(now, 1));
-    }
-
-    if (validEndDate > todayEnd) {
-      validEndDate = todayEnd;
-    }
 
     if (validStartDate > validEndDate) {
       validStartDate = startOfDay(subMonths(validEndDate, 1));

@@ -5,8 +5,8 @@ import {
 } from '@/app/config/navigation-areas'
 
 describe('navigation-areas', () => {
-  it('keeps Settings out of the apps launcher', () => {
-    expect(NAVIGATION_MENU_AREA_ORDER).not.toContain('settings')
+  it('includes Settings in the apps launcher but not as sidebar shortcuts', () => {
+    expect(NAVIGATION_MENU_AREA_ORDER).toContain('settings')
   })
 
   it('treats Configuration screens as settings nav keys', () => {

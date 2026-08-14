@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
     const currentStart = toDateOnly(startDate);
-    const currentEnd = toDateOnly(endDate) > today ? today : toDateOnly(endDate);
+    const currentEnd = toDateOnly(endDate);
     const periodLength = endDate.getTime() - startDate.getTime();
     const daysDiff = Math.max(1, Math.floor(periodLength / (1000 * 60 * 60 * 24)));
     const periodType = periodTypeFromDays(daysDiff);
