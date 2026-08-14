@@ -32,6 +32,7 @@ import {
   TEAM_ROLES,
   getMemberInitials,
   isPendingInvitation,
+  isValidTeamEmail,
   type FormTeamMember,
   type TeamRole,
 } from "./team-types"
@@ -109,6 +110,8 @@ export function TeamMemberCard({
   const selectedRole = TEAM_ROLES.find((role) => role.value === member.role)
   const displayName = member.name || member.email || "New Member"
   const showResend = isPendingInvitation(member)
+  const showEmailField = !isExisting || showResend
+  const hasInvalidEmail = !!member.email && !isValidTeamEmail(member.email)
 
   return (
     <SectionCard id={`team-member-${index}`}>
@@ -152,16 +155,7 @@ export function TeamMemberCard({
               value={member.name || ""}
               onChange={(value) => onUpdate("name", value)}
             />
-            {isExisting ? (
-              <MemberTextField
-                control={form.control}
-                name={`team_members.${index}.position`}
-                label="Position"
-                placeholder="Job title"
-                value={member.position || ""}
-                onChange={(value) => onUpdate("position", value)}
-              />
-            ) : (
+            {showEmailField && (
               <MemberTextField
                 control={form.control}
                 name={`team_members.${index}.email`}
@@ -172,16 +166,14 @@ export function TeamMemberCard({
                 onChange={(value) => onUpdate("email", value)}
               />
             )}
-            {!isExisting && (
-              <MemberTextField
-                control={form.control}
-                name={`team_members.${index}.position`}
-                label="Position"
-                placeholder="Job title"
-                value={member.position || ""}
-                onChange={(value) => onUpdate("position", value)}
-              />
-            )}
+            <MemberTextField
+              control={form.control}
+              name={`team_members.${index}.position`}
+              label="Position"
+              placeholder="Job title"
+              value={member.position || ""}
+              onChange={(value) => onUpdate("position", value)}
+            />
             <FormField
               control={form.control}
               name={`team_members.${index}.role`}
@@ -198,6 +190,11 @@ export function TeamMemberCard({
               )}
             />
           </div>
+          {hasInvalidEmail && (
+            <p className="text-xs text-destructive">
+              This invitation has an invalid email. Remove it and invite the member again.
+            </p>
+          )}
           {isAdmin ? (
             <p className="text-xs text-muted-foreground">Admins can access all apps.</p>
           ) : (
@@ -221,6 +218,7 @@ export function TeamMemberCard({
                 disabled={isLoading || !canManageTeam || !validation.canDelete(member)}
                 title={validation.getDeleteTooltip(member)}
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                data-permission="allow"
               >
                 <Trash2 className="mr-1.5 h-4 w-4" />
                 Remove
@@ -239,6 +237,7 @@ export function TeamMemberCard({
                   <AlertDialogAction
                     onClick={onRemove}
                     className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
+                    data-permission="allow"
                   >
                     Remove Member
                   </AlertDialogAction>
@@ -253,7 +252,7 @@ export function TeamMemberCard({
                 variant="outline"
                 size="sm"
                 onClick={onResend}
-                disabled={isLoading || isResendingThis}
+                disabled={isLoading || isResendingThis || !isValidTeamEmail(member.email)}
               >
                 {isResendingThis ? (
                   <Loader className="mr-1.5 h-4 w-4 animate-spin" />

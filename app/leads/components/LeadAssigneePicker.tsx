@@ -10,11 +10,10 @@ import { Lead } from "@/app/leads/types"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { assignLeadToUser } from "@/app/leads/actions"
-import { siteMembersService, SiteMember } from "@/app/services/site-members-service"
+import { siteMembersService } from "@/app/services/site-members-service"
+import { assignableSiteMembers, type AssignableSiteMember } from "@/lib/auth/assignable-site-members"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-
-type ActiveSiteMember = SiteMember & { user_id: string }
 
 export function LeadAssigneePicker({
   lead,
@@ -27,7 +26,7 @@ export function LeadAssigneePicker({
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
-  const [members, setMembers] = useState<ActiveSiteMember[]>([])
+  const [members, setMembers] = useState<AssignableSiteMember[]>([])
   const [loading, setLoading] = useState(false)
   const [assigning, setAssigning] = useState(false)
 
@@ -39,7 +38,7 @@ export function LeadAssigneePicker({
       .getMembers(currentSite.id)
       .then((list) => {
         if (cancelled) return
-        setMembers(list.filter((member) => member.status === "active" && member.user_id) as ActiveSiteMember[])
+        setMembers(assignableSiteMembers(list))
       })
       .catch(() => toast.error("Failed to load team members"))
       .finally(() => {

@@ -31,7 +31,10 @@ export async function createUserSupabase() {
 export function createServiceSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+    }
   )
 }
 
@@ -44,6 +47,7 @@ export type SiteMemberAccess =
       isOwner: boolean
       isAdmin: boolean
       isMember: boolean
+      ownerUserId: string
     }
 
 export async function getSiteMemberAccess(siteId: string): Promise<SiteMemberAccess> {
@@ -76,7 +80,14 @@ export async function getSiteMemberAccess(siteId: string): Promise<SiteMemberAcc
 
   const isOwner = siteData.user_id === user.id
   const isAdmin = isAdminScreenRole(membershipCheck?.role)
-  return { supabase, userId: user.id, isOwner, isAdmin, isMember: !!membershipCheck }
+  return {
+    supabase,
+    userId: user.id,
+    isOwner,
+    isAdmin,
+    isMember: !!membershipCheck,
+    ownerUserId: siteData.user_id,
+  }
 }
 
 export function denyUnlessTeamManager(access: SiteMemberAccess): NextResponse | null {

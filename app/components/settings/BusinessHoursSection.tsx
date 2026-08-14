@@ -5,14 +5,15 @@ import { useState, useCallback, useEffect } from "react"
 import { type SiteFormValues } from "./form-schema"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
-import { PlusCircle, Trash2 } from "../ui/icons"
+import { PlusCircle, Trash2, ChevronDown, ChevronRight, Clock } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { TimeRangeSelect } from "../ui/time-select"
 import { Switch } from "../ui/switch"
-import { ChevronDown, ChevronRight } from "../ui/icons"
 import {
   SectionCard,
   SectionCardHeader,
+  SectionCardTitle,
+  SectionCardDescription,
   SectionCardContent,
   SectionCardFooter,
   snapshotsDiffer,
@@ -115,6 +116,10 @@ const DAYS_OF_WEEK = [
   { key: "saturday", labelKey: "settings.company.days.saturday" },
   { key: "sunday", labelKey: "settings.company.days.sunday" }
 ] as const
+
+function timezoneLabel(value?: string) {
+  return TIMEZONES.find((tz) => tz.value === value)?.label || value || ""
+}
 
 interface BusinessHoursSectionProps {
   onSave?: (data: SiteFormValues) => void
@@ -250,35 +255,19 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
               onClick={() => toggleExpanded(index)}
             >
               <div className="flex items-center justify-between w-full gap-3">
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <Input
-                      placeholder={t("settings.company.hours.placeholder.name")}
-                      value={hours.name || ""}
-                      onChange={(e) => updateBusinessHourField(index, "name", e.target.value)}
-                      className="bg-background"
-                    />
-                  </div>
-
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <Select
-                      value={hours.timezone || "America/Mexico_City"}
-                      onValueChange={(value) => updateBusinessHourField(index, "timezone", value)}
-                    >
-                      <SelectTrigger className="bg-background">
-                        <SelectValue placeholder={t("settings.company.hours.timezonePlaceholder")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIMEZONES.map((tz) => (
-                          <SelectItem key={tz.value} value={tz.value}>
-                            {tz.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <SectionCardTitle className="truncate">
+                      {hours.name || t("settings.company.hours.scheduleN", { n: index + 1 })}
+                    </SectionCardTitle>
+                    {hours.timezone && (
+                      <SectionCardDescription className="truncate mt-1">
+                        {timezoneLabel(hours.timezone)}
+                      </SectionCardDescription>
+                    )}
                   </div>
                 </div>
-
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -291,6 +280,30 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
             {isExpanded && (
               <>
               <SectionCardContent className="border-t border-border/70 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input
+                    placeholder={t("settings.company.hours.placeholder.name")}
+                    value={hours.name || ""}
+                    onChange={(e) => updateBusinessHourField(index, "name", e.target.value)}
+                    className="bg-background"
+                  />
+                  <Select
+                    value={hours.timezone || "America/Mexico_City"}
+                    onValueChange={(value) => updateBusinessHourField(index, "timezone", value)}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder={t("settings.company.hours.timezonePlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIMEZONES.map((tz) => (
+                        <SelectItem key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <label className="text-sm font-medium">{t("settings.company.hours.respectHolidays")}</label>

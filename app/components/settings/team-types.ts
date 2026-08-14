@@ -99,3 +99,8 @@ export function isPendingInvitation(member: FormTeamMember): boolean {
     (!member.emailConfirmed || !member.lastSignIn)
   )
 }
+
+export function isValidTeamEmail(email: string | undefined): boolean {
+  if (!email) return false
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+}

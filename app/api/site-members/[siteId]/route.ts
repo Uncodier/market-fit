@@ -10,6 +10,44 @@ function invalidSiteResponse() {
   return NextResponse.json({ success: false, error: "Invalid site" }, { status: 400 })
 }
 
+async function withSiteOwner(
+  admin: ReturnType<typeof createServiceSupabase>,
+  siteId: string,
+  ownerUserId: string,
+  members: any[]
+) {
+  if (members.some((member) => member.user_id === ownerUserId)) return members
+
+  const { data: authUser } = await admin.auth.admin.getUserById(ownerUserId)
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("name, email")
+    .eq("id", ownerUserId)
+    .maybeSingle()
+  const email = profile?.email || authUser?.email
+  if (!email) return members
+
+  const { data: inserted, error } = await admin
+    .from("site_members")
+    .insert({
+      site_id: siteId,
+      user_id: ownerUserId,
+      email,
+      name: profile?.name || authUser?.user_metadata?.name || null,
+      role: "owner",
+      status: "active",
+      blocked_screens: [],
+    })
+    .select()
+    .single()
+
+  if (error || !inserted) {
+    const { data: refreshed } = await admin.from("site_members").select("*").eq("site_id", siteId)
+    return refreshed || members
+  }
+  return [inserted, ...members]
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ siteId: string }> }
@@ -24,7 +62,7 @@ export async function GET(
     const access = await getSiteMemberAccess(siteId)
     if (access.error) return access.error
 
-    const { isOwner, isMember } = access
+    const { isOwner, isMember, ownerUserId } = access
 
     if (!isOwner && !isMember) {
       return NextResponse.json(
@@ -34,7 +72,7 @@ export async function GET(
     }
 
     const adminSupabase = createServiceSupabase()
-    const { data: siteMembers, error: membersError } = await adminSupabase
+    const { data: listedMembers, error: membersError } = await adminSupabase
       .from("site_members")
       .select("*")
       .eq("site_id", siteId)
@@ -46,6 +84,13 @@ export async function GET(
         { status: 500 }
       )
     }
+
+    const siteMembers = await withSiteOwner(
+      adminSupabase,
+      siteId,
+      ownerUserId,
+      listedMembers || []
+    )
 
     const membersWithStatus = await Promise.all(
       (siteMembers || []).map(async (member: any) => {
@@ -126,6 +171,9 @@ export async function POST(
     const role = parseWritableSiteMemberRole(body.role)
     if (!email) {
       return NextResponse.json({ success: false, error: "email is required" }, { status: 400 })
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ success: false, error: "A valid email is required" }, { status: 400 })
     }
     if (!role) {
       return NextResponse.json({ success: false, error: "Invalid role" }, { status: 400 })

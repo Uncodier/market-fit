@@ -15,6 +15,7 @@ import {
   formRoleToSiteMemberRole,
   formRoleToInvitationRole,
   membersToOriginalMap,
+  isValidTeamEmail,
   type FormTeamMember,
   type TeamRole,
 } from "./team-types"
@@ -68,8 +69,6 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
 
   const applyMembersRef = useRef(applyMembers)
   applyMembersRef.current = applyMembers
-  const formRef = useRef(form)
-  formRef.current = form
 
   useEffect(() => {
     debouncedUpdateRef.current = debounce((newTeamList: FormTeamMember[]) => {
@@ -117,13 +116,12 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
           applyMembersRef.current(formattedMembers)
           return
         }
-        const currentTeamMembers = formRef.current.getValues("team_members") || []
-        if (currentTeamMembers.length > 0) setTeamList(currentTeamMembers)
+        applyMembersRef.current([])
       } catch (error) {
         if (!isMounted) return
         console.error("Error fetching site members:", error)
-        const currentTeamMembers = formRef.current.getValues("team_members") || []
-        if (currentTeamMembers.length > 0) setTeamList(currentTeamMembers)
+        const errorMessage = error instanceof Error ? error.message : "Failed to load team members"
+        toast.error(errorMessage)
       } finally {
         if (isMounted) setIsLoading(false)
       }
@@ -254,10 +252,16 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
     try {
       setIsSaving(true)
       const newMembers = teamList.filter(
-        (member) => member.email && member.email.trim() !== "" && !member.id
+        (member) => isValidTeamEmail(member.email) && !member.id
       )
+      const invalidEmails = teamList.filter(
+        (member) => !member.id && member.email.trim() !== "" && !isValidTeamEmail(member.email)
+      )
+      if (invalidEmails.length > 0) {
+        toast.error("Enter a valid email before sending an invitation")
+      }
       if (newMembers.length === 0) {
-        toast.info("No new members to save")
+        if (invalidEmails.length === 0) toast.info("No new members to save")
         setHasUnsavedChanges(false)
         return
       }

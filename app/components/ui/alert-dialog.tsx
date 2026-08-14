@@ -128,9 +128,16 @@ const AlertDialogAction = React.forwardRef<
 >(({ className, ...props }, ref) => {
   const isDestructive =
     className?.includes("destructive") || className?.includes("bg-red")
+  const dataPermission = (props as Record<string, unknown>)["data-permission"] as
+    | string
+    | undefined
 
   return (
-    <Button asChild tint={isDestructive ? "destructive" : undefined}>
+    <Button
+      asChild
+      tint={isDestructive ? "destructive" : undefined}
+      data-permission={dataPermission}
+    >
       <AlertDialogPrimitive.Action
         ref={ref}
         className={withoutDestructiveColors(className)}

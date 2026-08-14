@@ -6,7 +6,10 @@ import {
 import {
   formRoleToInvitationRole,
   formRoleToSiteMemberRole,
+  isValidTeamEmail,
 } from "@/app/components/settings/team-types"
+import { inferButtonCommand } from "@/lib/permissions/button-heuristic"
+import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
 import {
   isInviteEmailError,
   siteMembersService,
@@ -49,6 +52,83 @@ describe("invite role mapping", () => {
     expect(formRoleToInvitationRole("create")).toBe("create")
     expect(formRoleToInvitationRole("delete")).toBe("create")
     expect(formRoleToInvitationRole("view")).toBe("view")
+  })
+})
+
+describe("pending member cleanup", () => {
+  it("rejects placeholder emails that were saved as values", () => {
+    expect(isValidTeamEmail("Professional email address")).toBe(false)
+    expect(isValidTeamEmail("Full name of team member")).toBe(false)
+    expect(isValidTeamEmail("ada@example.com")).toBe(true)
+  })
+
+  it("does not treat team remove confirms as a data-delete when allowed", () => {
+    expect(
+      inferButtonCommand({
+        variant: "default",
+        tint: "destructive",
+        childrenText: "Remove Member",
+      })
+    ).toBe("delete")
+    expect(
+      inferButtonCommand({
+        variant: "default",
+        tint: "destructive",
+        childrenText: "Remove Member",
+        dataPermission: "allow",
+      })
+    ).toBeNull()
+  })
+})
+
+describe("assignableSiteMembers", () => {
+  it("includes active collaborators with a user id, not only the current owner", () => {
+    const result = assignableSiteMembers([
+      {
+        id: "owner-row",
+        site_id: "makinari",
+        user_id: "sergio",
+        role: "owner",
+        added_by: null,
+        created_at: "",
+        updated_at: "",
+        email: "sergio@uncodie.com",
+        name: "Sergio Prado",
+        position: null,
+        status: "active",
+      },
+      {
+        id: "ale-row",
+        site_id: "makinari",
+        user_id: "ale",
+        role: "collaborator",
+        added_by: "sergio",
+        created_at: "",
+        updated_at: "",
+        email: "ale@uncodie.com",
+        name: "Alejandra Barragán Contreras",
+        position: "COO",
+        status: "active",
+      },
+      {
+        id: "placeholder",
+        site_id: "makinari",
+        user_id: null,
+        role: "collaborator",
+        added_by: "sergio",
+        created_at: "",
+        updated_at: "",
+        email: "Professional email address",
+        name: "Full name of team member",
+        position: null,
+        status: "pending",
+      },
+    ])
+
+    expect(result.map((member) => member.email)).toEqual([
+      "sergio@uncodie.com",
+      "ale@uncodie.com",
+    ])
   })
 })
 

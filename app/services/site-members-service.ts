@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { siteMemberRoleToInvitationRole } from '@/lib/auth/screen-access'
+import { assignableSiteMembers } from '@/lib/auth/assignable-site-members'
 import { sendMagicLinkInvitation } from './magic-link-invitation-service'
 
 export interface SiteMember {
@@ -87,6 +88,14 @@ export const siteMembersService = {
       console.error('Error fetching site members:', error)
       throw error
     }
+  },
+
+  async getAssigneeOptions(siteId: string): Promise<{ id: string; name: string }[]> {
+    const members = assignableSiteMembers(await this.getMembers(siteId))
+    return members.map((member) => ({
+      id: member.user_id,
+      name: member.name?.trim() || member.email,
+    }))
   },
   
   // Add a new member to a site (owner/admin API — bypasses owner-only RLS)

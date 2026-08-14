@@ -33,6 +33,7 @@ import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relatio
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { TASK_TYPES } from "@/app/leads/types"
 import { createClient } from "@/lib/supabase/client"
+import { siteMembersService } from "@/app/services/site-members-service"
 
 const TASK_STAGES = [
   'awareness',
@@ -71,66 +72,12 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
   useEffect(() => {
     async function fetchUsers() {
       if (!currentSite) return
-
-      const supabase = createClient()
-      
-      // Get site owner
-      const { data: ownerData, error: ownerError } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .eq('id', currentSite.user_id)
-        .single()
-
-      if (ownerError && ownerError.code !== 'PGRST116') {
-        console.error('Error fetching site owner:', ownerError)
+      try {
+        const uniqueUsers = await siteMembersService.getAssigneeOptions(currentSite.id)
+        setUsers(uniqueUsers)
+      } catch (error) {
+        console.error("Error fetching site members:", error)
       }
-
-      // Get site members - first get the member records
-      const { data: siteMembers, error: siteMembersError } = await supabase
-        .from('site_members')
-        .select('user_id')
-        .eq('site_id', currentSite.id)
-        .eq('status', 'active')
-        .not('user_id', 'is', null)
-
-      if (siteMembersError) {
-        console.error('Error fetching site members:', siteMembersError)
-      }
-
-      // Get profiles for site members
-      let memberProfiles: Array<{ id: string; name: string }> = []
-      if (siteMembers && siteMembers.length > 0) {
-        const memberUserIds = siteMembers.map((m: { user_id: string }) => m.user_id)
-        
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, name')
-          .in('id', memberUserIds)
-
-        if (profilesError) {
-          console.error('Error fetching member profiles:', profilesError)
-        } else {
-          memberProfiles = profilesData || []
-        }
-      }
-
-      // Combine owner and members
-      const allUsers = []
-      
-      // Add owner if found
-      if (ownerData) {
-        allUsers.push(ownerData)
-      }
-      
-      // Add members
-      allUsers.push(...memberProfiles)
-
-      // Remove duplicates (in case owner is also in members table) and sort
-      const uniqueUsers = allUsers.filter((user, index, self) => 
-        index === self.findIndex(u => u.id === user.id)
-      ).sort((a, b) => a.name.localeCompare(b.name))
-
-      setUsers(uniqueUsers)
     }
 
     async function fetchLeads() {

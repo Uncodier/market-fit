@@ -368,7 +368,8 @@ export const siteFormSchema = z.object({
     channelId: z.string().optional()
   })).optional().default([]),
   team_members: z.array(z.object({
-    email: z.string().email("Must be a valid email"),
+    id: z.string().optional(),
+    email: z.string(),
     role: z.enum(["view", "create", "delete", "admin"], {
       required_error: "Role is required",
     }),

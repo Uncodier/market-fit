@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import useSWR from 'swr'
 import { createClient } from '@/utils/supabase/client'
+import { siteMembersService } from '@/app/services/site-members-service'
 import { Category, Task } from '@/app/types'
 import { getUserData } from '@/app/services/user-service'
 
@@ -130,52 +131,15 @@ async function fetchLeads(siteId: string): Promise<Array<{ id: string; name: str
   return data || []
 }
 
-async function fetchUsers(siteId: string, ownerId?: string): Promise<Array<{ id: string; name: string }>> {
-  const supabase = createClient()
-  const allUsers: Array<{ id: string; name: string }> = []
-
-  if (ownerId) {
-    const { data: ownerData, error: ownerError } = await supabase
-      .from('profiles')
-      .select('id, name')
-      .eq('id', ownerId)
-      .single()
-
-    if (!ownerError && ownerData) {
-      allUsers.push(ownerData)
-    }
-  }
-
-  const { data: siteMembers, error: siteMembersError } = await supabase
-    .from('site_members')
-    .select('user_id')
-    .eq('site_id', siteId)
-    .eq('status', 'active')
-    .not('user_id', 'is', null)
-
-  if (siteMembersError) throw siteMembersError
-
-  if (siteMembers && siteMembers.length > 0) {
-    const memberUserIds = siteMembers.map((m) => m.user_id)
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, name')
-      .in('id', memberUserIds)
-
-    if (profilesError) throw profilesError
-    if (profilesData) allUsers.push(...profilesData)
-  }
-
-  return allUsers
-    .filter((user, index, self) => index === self.findIndex((u) => u.id === user.id))
-    .sort((a, b) => a.name.localeCompare(b.name))
+async function fetchUsers(siteId: string): Promise<Array<{ id: string; name: string }>> {
+  return siteMembersService.getAssigneeOptions(siteId)
 }
 
-export function useControlCenterData(siteId?: string, ownerId?: string) {
+export function useControlCenterData(siteId?: string, _ownerId?: string) {
   const tasksKey = siteId ? ['control-center-tasks', siteId] : null
   const categoriesKey = siteId ? ['control-center-categories', siteId] : null
   const leadsKey = siteId ? ['control-center-leads', siteId] : null
-  const usersKey = siteId ? ['control-center-users', siteId, ownerId || ''] : null
+  const usersKey = siteId ? ['control-center-users', siteId] : null
 
   const {
     data: tasksBundle,
@@ -190,7 +154,7 @@ export function useControlCenterData(siteId?: string, ownerId?: string) {
 
   const { data: leadsData } = useSWR(leadsKey, ([, id]) => fetchLeads(id))
 
-  const { data: usersData } = useSWR(usersKey, ([, id, owner]) => fetchUsers(id, owner || undefined))
+  const { data: usersData } = useSWR(usersKey, ([, id]) => fetchUsers(id))
 
   const categories = categoriesData || []
   const leads = leadsData || []
