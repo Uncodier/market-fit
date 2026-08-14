@@ -60,7 +60,7 @@ function firstShareImageSource(
   return undefined
 }
 
-export function resolveShopShareVisual(site: {
+type ShopVisualSite = {
   name: string
   logo_url?: string | null
   description?: string | null
@@ -69,19 +69,13 @@ export function resolveShopShareVisual(site: {
     hero_subtitle?: string
     hero_image_url?: string
   } }
-}): ShopShareVisual {
-  const shop = site.settings?.shop
-  const subtitle = shop?.hero_subtitle || shop?.hero_title || undefined
-  const hero = firstShareImageSource(shop?.hero_image_url)
-  if (hero) {
-    return { source: hero, fit: "cover", title: site.name, subtitle }
-  }
+}
 
-  const logo = firstShareImageSource(site.logo_url)
-  if (logo) {
-    return { source: logo, fit: "contain", title: site.name, subtitle }
-  }
+function shopSubtitle(site: ShopVisualSite): string | undefined {
+  return site.settings?.shop?.hero_subtitle || site.settings?.shop?.hero_title || undefined
+}
 
+function shopFallbackVisual(site: ShopVisualSite, subtitle?: string): ShopShareVisual {
   return {
     source: {
       kind: "url",
@@ -95,6 +89,33 @@ export function resolveShopShareVisual(site: {
     title: site.name,
     subtitle,
   }
+}
+
+/** Open Graph / social preview: hero first (wide photo), then logo. */
+export function resolveShopShareVisual(site: ShopVisualSite): ShopShareVisual {
+  const subtitle = shopSubtitle(site)
+  const hero = firstShareImageSource(site.settings?.shop?.hero_image_url)
+  if (hero) {
+    return { source: hero, fit: "cover", title: site.name, subtitle }
+  }
+
+  const logo = firstShareImageSource(site.logo_url)
+  if (logo) {
+    return { source: logo, fit: "contain", title: site.name, subtitle }
+  }
+
+  return shopFallbackVisual(site, subtitle)
+}
+
+/** Favicon / apple-touch icon: site logo when present; do not use the hero. */
+export function resolveShopIconVisual(site: ShopVisualSite): ShopShareVisual {
+  const subtitle = shopSubtitle(site)
+  const logo = firstShareImageSource(site.logo_url)
+  if (logo) {
+    return { source: logo, fit: "contain", title: site.name, subtitle }
+  }
+
+  return shopFallbackVisual(site, subtitle)
 }
 
 export function resolveCatalogItemShareImageSource(item: {

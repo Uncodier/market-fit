@@ -67,8 +67,10 @@ export async function renderCommerceOgImage(opts: {
 export async function renderCommerceIcon(
   source: ShareImageSource,
   size: { width: number; height: number },
+  opts?: { fit?: "cover" | "contain" },
 ): Promise<ImageResponse> {
   const src = await resolveImageSrc(source)
+  const fit = opts?.fit || "cover"
 
   return new ImageResponse(
     (
@@ -79,7 +81,7 @@ export async function renderCommerceIcon(
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#111111",
+          background: fit === "contain" ? "#ffffff" : "#111111",
         }}
       >
         {src ? (
@@ -89,7 +91,7 @@ export async function renderCommerceIcon(
             style={{
               width: "100%",
               height: "100%",
-              objectFit: "cover",
+              objectFit: fit,
             }}
           />
         ) : (

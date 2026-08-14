@@ -17,6 +17,7 @@ import {
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useToast } from "@/app/components/ui/use-toast"
 import { formatCurrency } from "@/app/lib/formatters"
+import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -29,7 +30,6 @@ import {
   COMPLETION_STATUS,
   REQUIREMENT_STATUS,
   REQUIREMENT_TYPE_LABELS,
-  type CompletionStatusType,
   type Requirement,
   type RequirementPriority,
   type RequirementStatusType,
@@ -46,24 +46,47 @@ const STATUS_OPTIONS: RequirementStatusType[] = [
 
 const PRIORITY_OPTIONS: RequirementPriority[] = ["high", "medium", "low"]
 
-function statusLabelKey(status: RequirementStatusType) {
-  if (status === "in-progress") return "requirements.status.inProgress"
-  if (status === "on-review") return "requirements.status.onReview"
-  return `requirements.status.${status}`
+const STATUS_I18N_KEYS: Record<string, string> = {
+  backlog: "requirements.status.backlog",
+  canceled: "requirements.status.canceled",
+  cancelled: "requirements.status.canceled",
+  completed: "requirements.status.completed",
+  done: "requirements.status.done",
+  "in-progress": "requirements.status.inProgress",
+  in_progress: "requirements.status.inProgress",
+  "on-review": "requirements.status.onReview",
+  on_review: "requirements.status.onReview",
+  pending: "requirements.status.pending",
+  rejected: "requirements.completion.rejected",
+  validated: "requirements.status.validated",
 }
 
-function statusFallback(status: RequirementStatusType) {
-  if (status === "in-progress") return "In Progress"
-  if (status === "on-review") return "On Review"
-  return status.charAt(0).toUpperCase() + status.slice(1)
+const STATUS_FALLBACKS: Record<string, string> = {
+  backlog: "Backlog",
+  canceled: "Canceled",
+  cancelled: "Canceled",
+  completed: "Completed",
+  done: "Done",
+  "in-progress": "In Progress",
+  in_progress: "In Progress",
+  "on-review": "On Review",
+  on_review: "On Review",
+  pending: "Pending",
+  rejected: "Rejected",
+  validated: "Validated",
 }
 
-function formatDate(value: string) {
-  try {
-    return format(new Date(value), "MMM d, yyyy")
-  } catch {
-    return value
-  }
+function statusLabelKey(status: string) {
+  return STATUS_I18N_KEYS[status] || `requirements.status.${status}`
+}
+
+function statusFallback(status: string) {
+  return STATUS_FALLBACKS[status] || status.charAt(0).toUpperCase() + status.slice(1).replace(/[-_]/g, " ")
+}
+
+function translateOrFallback(t: (key: string) => string, key: string, fallback: string) {
+  const value = t(key)
+  return !value || value === key ? fallback : value
 }
 
 function requirementAccent(requirement: Requirement): "due" | "cancelled" | "none" {
@@ -100,8 +123,23 @@ export function RequirementsTable({
   emptyTitle?: string
   emptyDescription?: string
 }) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
   const { toast } = useToast()
+  const dateLocale = getDateFnsLocale(locale)
+
+  const formatDate = (value: string) => {
+    try {
+      return format(new Date(value), "MMM d, yyyy", { locale: dateLocale })
+    } catch {
+      return value
+    }
+  }
+
+  const statusLabel = (status: string) =>
+    translateOrFallback(t, statusLabelKey(status), statusFallback(status))
+
+  const priorityLabel = (priority: RequirementPriority) =>
+    translateOrFallback(t, `requirements.priority.${priority}`, priority)
 
   const changeStatus = async (id: string, status: RequirementStatusType) => {
     try {
@@ -177,16 +215,16 @@ export function RequirementsTable({
                     secondaryMono={false}
                   />
                 </TableCell>
-                <TableCell className="py-3.5" onClick={(event) => event.stopPropagation()}>
+                <TableCell className="max-w-[160px] overflow-hidden py-3.5" onClick={(event) => event.stopPropagation()}>
                   <StatusDot
                     status={requirement.status}
-                    label={t(statusLabelKey(requirement.status)) || statusFallback(requirement.status)}
+                    label={statusLabel(requirement.status)}
                   />
                 </TableCell>
-                <TableCell className="py-3.5" onClick={(event) => event.stopPropagation()}>
+                <TableCell className="max-w-[140px] overflow-hidden py-3.5" onClick={(event) => event.stopPropagation()}>
                   <StatusDot
                     status={requirement.priority}
-                    label={t(`requirements.priority.${requirement.priority}`) || requirement.priority}
+                    label={priorityLabel(requirement.priority)}
                   />
                 </TableCell>
                 <TableCell className="py-3.5">
@@ -228,7 +266,7 @@ export function RequirementsTable({
                               disabled={requirement.status === status}
                               onClick={() => changeStatus(requirement.id, status)}
                             >
-                              {t(statusLabelKey(status)) || statusFallback(status)}
+                              {statusLabel(status)}
                             </DropdownMenuItem>
                           ))}
                           <DropdownMenuSeparator />
@@ -238,7 +276,7 @@ export function RequirementsTable({
                               disabled={requirement.priority === priority}
                               onClick={() => changePriority(requirement.id, priority)}
                             >
-                              {t(`requirements.priority.${priority}`) || priority}
+                              {priorityLabel(priority)}
                             </DropdownMenuItem>
                           ))}
                         </>

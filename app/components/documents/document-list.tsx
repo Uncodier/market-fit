@@ -277,9 +277,9 @@ export function EntityCell({
 export function StatusDot({ status, label }: { status: string; label: string }) {
   const key = status.toLowerCase()
   return (
-    <span className={cn("inline-flex items-center gap-2 text-sm font-medium", STATUS_TEXT[key] || "text-foreground")}>
+    <span className={cn("inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-medium", STATUS_TEXT[key] || "text-foreground")}>
       <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[key] || "bg-muted-foreground")} />
-      {label}
+      <span className="truncate">{label}</span>
     </span>
   )
 }

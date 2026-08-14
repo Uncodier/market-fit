@@ -50,27 +50,13 @@ export function TopBarTitle({
   
   // States for segment detail page
 
-  // Get the default title from the first route segment
-  const getDefaultTitle = useCallback(() => {
-    const pathSegments = pathname.split('/').filter(Boolean)
-    if (pathSegments.length === 0) return "Dashboard"
-    
-    // Handle specific case for checkout page
-    if (pathSegments[0] === 'billing' && pathSegments[1] === 'checkout') {
-      return "Checkout"
-    }
-    
-    if (pathSegments[0] === 'accounting' && pathSegments[1] === 'entries') {
-      return t('layout.sidebar.journalEntries') || "Journal Entries"
-    }
-    
-    const firstSegment = pathSegments[0]
+  const getRouteTitle = useCallback((segment: string) => {
     const routeTitles: Record<string, string> = {
       'dashboard': t('layout.sidebar.dashboard') || 'Dashboard',
       'agents': t('layout.sidebar.agents') || 'Agents',
       'segments': t('layout.sidebar.segments') || 'Segments',
       'experiments': t('layout.sidebar.experiments') || 'Experiments',
-      'requirements': t('layout.sidebar.requirements') || 'Requirements',
+      'requirements': t('layout.nav.requirements.title') || t('layout.sidebar.requirements') || 'Requirements',
       'leads': t('layout.sidebar.leads') || 'Leads',
       'assets': t('layout.sidebar.assets') || 'Assets',
       'content': t('layout.sidebar.content') || 'Content',
@@ -101,9 +87,26 @@ export function TopBarTitle({
       'bills': t('layout.sidebar.bills') || 'Bills',
       'transactions': t('layout.sidebar.transactions') || 'Expenses'
     }
+    return routeTitles[segment]
+  }, [t])
+
+  // Get the default title from the first route segment
+  const getDefaultTitle = useCallback(() => {
+    const pathSegments = pathname.split('/').filter(Boolean)
+    if (pathSegments.length === 0) return "Dashboard"
     
-    return routeTitles[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
-  }, [pathname, t])
+    // Handle specific case for checkout page
+    if (pathSegments[0] === 'billing' && pathSegments[1] === 'checkout') {
+      return "Checkout"
+    }
+    
+    if (pathSegments[0] === 'accounting' && pathSegments[1] === 'entries') {
+      return t('layout.sidebar.journalEntries') || "Journal Entries"
+    }
+    
+    const firstSegment = pathSegments[0]
+    return getRouteTitle(firstSegment) || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
+  }, [pathname, t, getRouteTitle])
 
   // Set the default title when the pathname changes
   useEffect(() => {
@@ -162,11 +165,15 @@ export function TopBarTitle({
   }, []);
 
   // Convert history items to breadcrumb format
-  const breadcrumbItems = hasHistory ? historyItems.map((item, index) => ({
-    href: item.path,
-    label: item.label,
-    isCurrent: index === historyItems.length - 1
-  })) : null;
+  const breadcrumbItems = hasHistory ? historyItems.map((item, index) => {
+    const pathSegments = item.path.split("?")[0].split("/").filter(Boolean)
+    const translatedRoot = pathSegments.length === 1 ? getRouteTitle(pathSegments[0]) : undefined
+    return {
+      href: item.path,
+      label: translatedRoot || item.label,
+      isCurrent: index === historyItems.length - 1
+    }
+  }) : null;
  
   return (
     <div className={cn("flex items-center gap-4 min-w-0", className)}>
