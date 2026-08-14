@@ -5,6 +5,9 @@ export const DEFAULT_POST_AUTH_PATH = '/robots'
 export const WWW_POST_AUTH_PATH = '/buyer'
 
 const WWW_HOSTS = new Set(['makinari.com', 'www.makinari.com'])
+const APP_HOSTS = new Set(['app.makinari.com'])
+
+type HeaderReader = { get(name: string): string | null }
 
 const SHOP_AUTH_PATH_PREFIXES = ['/shop', '/marketplace', '/buyer', '/cart'] as const
 
@@ -27,6 +30,86 @@ export function isWwwCommerceHost(hostname?: string | null): boolean {
   if (hostname) return WWW_HOSTS.has(hostname)
   if (typeof window === 'undefined') return false
   return WWW_HOSTS.has(window.location.hostname)
+}
+
+function hostnameFromUrlLike(value: string | null | undefined): string | null {
+  if (!value || value === 'null') return null
+  try {
+    return new URL(value).hostname
+  } catch {
+    return null
+  }
+}
+
+function hostnameFromHostHeader(value: string | null | undefined): string | null {
+  if (!value) return null
+  return value.split(',')[0]?.trim().split(':')[0] || null
+}
+
+/**
+ * Prefer www when Origin/Referer/forwarded-host disagree with the app rewrite host.
+ */
+export function hostnameFromRequestHeaders(headers: HeaderReader): string | null {
+  const candidates = [
+    hostnameFromUrlLike(headers.get('origin')),
+    hostnameFromUrlLike(headers.get('referer')),
+    hostnameFromHostHeader(headers.get('x-forwarded-host')),
+    hostnameFromHostHeader(headers.get('host')),
+  ].filter((value): value is string => Boolean(value))
+
+  const wwwHost = candidates.find((host) => WWW_HOSTS.has(host))
+  if (wwwHost) return wwwHost
+  return candidates[0] ?? null
+}
+
+/**
+ * Confirm/reset links send `returnTo`, `redirect_to`, or `next`.
+ * Absolute same-app URLs are reduced to path+query.
+ */
+export function authReturnToFromSearchParams(params: {
+  get(name: string): string | null
+}): string | null {
+  const raw =
+    params.get('returnTo') || params.get('redirect_to') || params.get('next')
+  if (!raw) return null
+
+  if (isSafeInternalPath(raw)) return raw
+
+  try {
+    const url = raw.startsWith('http') ? new URL(raw) : null
+    if (!url) return null
+    const host = url.hostname
+    const sameApp =
+      WWW_HOSTS.has(host) ||
+      APP_HOSTS.has(host) ||
+      host.endsWith('.makinari.com') ||
+      host === 'localhost' ||
+      host.endsWith('.localhost')
+    if (!sameApp) return null
+    const nested = url.searchParams.get('returnTo')
+    if (nested && isSafeInternalPath(nested)) return nested
+    const path = `${url.pathname}${url.search}`
+    return isSafeInternalPath(path) ? path : null
+  } catch {
+    return null
+  }
+}
+
+const TEAM_INVITATION_PATH = '/auth/team-invitation'
+
+/** Set-password follows returnTo, then a team-invitation redirect_to, then host default. */
+export function resolveSetPasswordRedirect(
+  params: { get(name: string): string | null },
+  hostname?: string | null
+): string {
+  const preferred = authReturnToFromSearchParams(params)
+  if (preferred) return resolvePostAuthRedirect(preferred, hostname)
+  const redirectTo = params.get('redirect_to')
+  if (redirectTo) {
+    const path = redirectTo.split('?')[0].split('#')[0]
+    if (path === TEAM_INVITATION_PATH) return redirectTo
+  }
+  return resolvePostAuthRedirect(redirectTo, hostname)
 }
 
 /** Workspace on app, buyer portal on www. */

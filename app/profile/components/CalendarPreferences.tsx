@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select"
+import { TimeRangeSelect } from "@/app/components/ui/time-select"
 import * as Icons from "@/app/components/ui/icons"
 import { Calendar, Clock, Link, PlusCircle, Trash2, Plus, Edit, Copy, ChevronDown, ChevronRight } from "@/app/components/ui/icons"
 import { toast } from "sonner"
@@ -61,12 +62,6 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
     timezone: "America/Mexico_City",
     schedule_name: "Sinergia México"
   })
-
-  const timeOptions = Array.from({ length: 48 }).map((_, i) => {
-    const hours = Math.floor(i / 2).toString().padStart(2, '0');
-    const minutes = i % 2 === 0 ? '00' : '30';
-    return `${hours}:${minutes}`;
-  });
 
   const [editingEventType, setEditingEventType] = useState<Partial<EventType> | null>(null)
 
@@ -261,31 +256,13 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
                   </div>
                   
                   {formData.availability[day.id]?.enabled ? (
-                    <div className="flex items-center gap-4">
-                      <Select
-                        value={formData.availability[day.id].start}
-                        onValueChange={(value) => handleTimeChange(day.id, "start", value)}
-                      >
-                        <SelectTrigger className="w-[140px] h-10 bg-background shadow-none">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <span className="text-muted-foreground text-sm font-medium">to</span>
-                      <Select
-                        value={formData.availability[day.id].end}
-                        onValueChange={(value) => handleTimeChange(day.id, "end", value)}
-                      >
-                        <SelectTrigger className="w-[140px] h-10 bg-background shadow-none">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {timeOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <TimeRangeSelect
+                      start={formData.availability[day.id].start}
+                      end={formData.availability[day.id].end}
+                      onStartChange={(value) => handleTimeChange(day.id, "start", value)}
+                      onEndChange={(value) => handleTimeChange(day.id, "end", value)}
+                      triggerClassName="h-10 bg-background shadow-none"
+                    />
                   ) : (
                     <span className="text-sm text-muted-foreground italic">Unavailable</span>
                   )}

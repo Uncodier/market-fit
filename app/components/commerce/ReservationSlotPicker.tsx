@@ -26,17 +26,34 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { es, enUS } from "date-fns/locale"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { ReservationSlotPickerPage } from "./booking/ReservationSlotPickerPage"
+import {
+  findSlotByInstant,
+  isSameSlotInstant,
+  mergeCurrentReservationSlot,
+  shouldShowSlotLeftover,
+} from "./reservation-slot-utils"
 
 interface ReservationSlotPickerProps {
   catalogItemId: string
   quantity?: number
   onSelect: (startIso: string, endIso: string, additionalData?: any) => void
   selectedStartIso?: string
+  selectedEndIso?: string
+  ignoreReservationId?: string
   hideDetailsStep?: boolean
   layout?: "dialog" | "page"
 }
 
-export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, selectedStartIso, hideDetailsStep = false, layout = "dialog" }: ReservationSlotPickerProps) {
+export function ReservationSlotPicker({
+  catalogItemId,
+  quantity = 1,
+  onSelect,
+  selectedStartIso,
+  selectedEndIso,
+  ignoreReservationId,
+  hideDetailsStep = false,
+  layout = "dialog",
+}: ReservationSlotPickerProps) {
   const { locale, t } = useLocalization()
   const dateLocale = locale === "es" ? es : enUS
   const { user } = useAuth()
@@ -48,7 +65,7 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
   
   const [allSlots, setAllSlots] = useState<{start: string, end: string, available: number}[]>([])
   const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({})
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false)
+  const [isLoadingSlots, setIsLoadingSlots] = useState(true)
   const [selectedSlot, setSelectedSlot] = useState<{start: string, end: string} | null>(null)
 
   // Form state
@@ -72,6 +89,15 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
   }, [catalogItemId])
 
   useEffect(() => {
+    if (!selectedStartIso) return
+    const start = new Date(selectedStartIso)
+    setCurrentMonth(startOfMonth(start))
+    setSelectedDate(startOfDay(start))
+    setActiveStep("time")
+    didAutoSelectTodayRef.current = true
+  }, [selectedStartIso, catalogItemId])
+
+  useEffect(() => {
     async function loadMonthAvailability() {
       setIsLoadingSlots(true)
       const firstDayOfMonth = startOfMonth(currentMonth).getDay()
@@ -84,15 +110,23 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
         startDate: startStr,
         endDate: endStr,
         qty: quantity,
+        ignoreReservationId,
       })
-      setAllSlots(available)
+
+      const slots = mergeCurrentReservationSlot(available, selectedStartIso, selectedEndIso)
+
+      setAllSlots(slots)
       
       const availMap: Record<string, boolean> = {}
-      available.forEach(slot => {
-        // use local date for mapping
+      slots.forEach(slot => {
         const d = format(new Date(slot.start), "yyyy-MM-dd")
         availMap[d] = true
       })
+      if (selectedStartIso) {
+        availMap[format(new Date(selectedStartIso), "yyyy-MM-dd")] = true
+        const match = findSlotByInstant(slots, selectedStartIso)
+        if (match) setSelectedSlot(match)
+      }
       setMonthAvailability(availMap)
       setIsLoadingSlots(false)
     }
@@ -100,7 +134,7 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
     if (catalogItemId) {
       loadMonthAvailability()
     }
-  }, [catalogItemId, currentMonth, quantity])
+  }, [catalogItemId, currentMonth, quantity, ignoreReservationId, selectedStartIso, selectedEndIso])
 
   // Auto-select today when it has available slots so times show without an extra click.
   useEffect(() => {
@@ -140,24 +174,10 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
   }
 
   return (
-    <div className={cn("relative w-full overflow-hidden", layout === "page" ? "pb-8" : "")} ref={containerRef}>
-      <style>{`
-        .rsp-panel {
-          transition: transform 0.4s ease-in-out, opacity 0.4s ease-in-out;
-        }
-      `}</style>
-      
+    <div className={cn("relative w-full", layout === "page" ? "pb-8" : "")} ref={containerRef}>
       {layout === "dialog" ? (
-      <div 
-        className="flex"
-        style={{
-          transform: activeStep === "calendar" ? "translateX(0)" : activeStep === "time" ? "translateX(-33.3333%)" : "translateX(-66.6666%)",
-          width: "300%",
-          transition: "transform 0.4s ease-in-out"
-        }}
-      >
-        {/* CALENDAR STEP */}
-        <div className="w-1/3 shrink-0 rsp-panel">
+      <div>
+        {activeStep === "calendar" ? (
           <div className="p-1">
             <div className="flex items-center justify-between mb-6 px-1">
               <Button
@@ -203,7 +223,10 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
                   const isPast = isBefore(startOfDay(date), startOfDay(new Date()))
                   const isCurrentMonth = isSameMonth(date, currentMonth)
                   const isAvailable = monthAvailability[dateStr] ?? false
-                  const shouldDisable = isPast || !isAvailable
+                  const isCurrentReservationDate = Boolean(
+                    selectedStartIso && format(new Date(selectedStartIso), "yyyy-MM-dd") === dateStr
+                  )
+                  const shouldDisable = (isPast || !isAvailable) && !isCurrentReservationDate
 
                   return (
                     <button
@@ -235,11 +258,10 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
               )}
             </div>
           </div>
-        </div>
+        ) : null}
 
-        {/* TIME STEP */}
-        <div className="w-1/3 shrink-0 rsp-panel">
-          <div className="p-1 h-[400px] flex flex-col">
+        {activeStep === "time" ? (
+          <div className="p-1">
             <div className="flex items-center justify-between mb-6 px-1">
               <Button
                 variant="ghost"
@@ -254,30 +276,30 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
               </h3>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+            <div className="space-y-3">
               {isLoadingSlots ? (
-                <div className="grid grid-cols-1 gap-3 pb-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="h-12 w-full rounded-md bg-accent/50 flex items-center justify-center">
-                      <Skeleton className="h-4 w-16" />
-                    </div>
+                <div className="grid grid-cols-1 gap-3">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
                   ))}
                 </div>
               ) : slotsForSelectedDate.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full pb-8">
+                <div className="flex flex-col items-center justify-center py-8">
                   <EmptyCard icon={<Clock />} title={t("booking.noAvailability")} description="" showShadow={false} />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3 pb-4">
+                <div className="grid grid-cols-1 gap-3">
                   {slotsForSelectedDate.map((slot) => {
-                    const isSelected = selectedSlot?.start === slot.start
+                    const isSelected = isSameSlotInstant(selectedSlot?.start, slot.start)
                     return (
                       <Button
                         key={slot.start}
-                        variant={isSelected ? "default" : "outline"}
+                        variant="outline"
                         className={cn(
                           "w-full justify-center font-medium transition-all h-12",
-                          isSelected ? "shadow-md" : "hover:border-primary/30 hover:bg-accent"
+                          isSelected
+                            ? "ring-primary bg-primary/5 text-primary"
+                            : "hover:border-primary/30 hover:bg-accent"
                         )}
                         onClick={() => {
                           setSelectedSlot(slot)
@@ -289,7 +311,9 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
                         }}
                       >
                         {format(new Date(slot.start), "h:mm a")}
-                        <span className="text-xs opacity-70 ml-2">({slot.available} left)</span>
+                        {shouldShowSlotLeftover(slot, selectedStartIso) ? (
+                          <span className="text-xs opacity-70 ml-2">({slot.available} left)</span>
+                        ) : null}
                       </Button>
                     )
                   })}
@@ -297,11 +321,10 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
               )}
             </div>
           </div>
-        </div>
+        ) : null}
 
-        {/* DETAILS STEP */}
-        <div className="w-1/3 shrink-0 rsp-panel">
-          <div className="p-1 h-[400px] flex flex-col">
+        {activeStep === "details" ? (
+          <div className="p-1">
             <div className="flex items-center justify-start mb-4 px-1">
               <Button
                 variant="ghost"
@@ -313,7 +336,7 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
               </Button>
             </div>
             
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+            <div className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="name" className="text-sm font-semibold">{t("booking.form.name") || "Name"}</Label>
                 <Input id="name" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} />
@@ -338,7 +361,7 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
               </Button>
             </div>
           </div>
-        </div>
+        ) : null}
       </div>
       ) : (
         <ReservationSlotPickerPage
@@ -356,6 +379,7 @@ export function ReservationSlotPicker({ catalogItemId, quantity = 1, onSelect, s
           monthAvailability={monthAvailability}
           isLoadingSlots={isLoadingSlots}
           slotsForSelectedDate={slotsForSelectedDate}
+          selectedStartIso={selectedStartIso}
           selectedSlot={selectedSlot}
           hideDetailsStep={hideDetailsStep}
           onSelect={onSelect}

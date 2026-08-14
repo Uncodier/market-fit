@@ -1,8 +1,13 @@
 import { Metadata } from "next"
+import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { AuthLandingClient } from "@/app/components/auth/AuthLandingClient"
 import { createClient } from "@/lib/supabase/server"
-import { isShopAuthContext, resolvePostAuthRedirect } from "@/lib/auth/post-auth-redirect"
+import {
+  hostnameFromRequestHeaders,
+  isShopAuthContext,
+  resolvePostAuthRedirect,
+} from "@/lib/auth/post-auth-redirect"
 
 export async function generateMetadata({
   searchParams,
@@ -41,7 +46,10 @@ export default async function AuthPage({
   }
 
   if (user) {
-    redirect(resolvePostAuthRedirect(returnTo ?? null))
+    const requestHeaders = await headers()
+    redirect(
+      resolvePostAuthRedirect(returnTo ?? null, hostnameFromRequestHeaders(requestHeaders))
+    )
   }
 
   return <AuthLandingClient />

@@ -18,6 +18,7 @@ import {
 import { ReservationAttestationCell } from "./ReservationAttestationCell"
 import { ReservationCustomerCell } from "./ReservationCustomerCell"
 import { ReservationRowActions } from "./ReservationRowActions"
+import { reservationCanEdit } from "../reservation-helpers"
 
 export function reservationAccent(status: Reservation["status"]): "due" | "cancelled" | "none" {
   if (status === "cancelled") return "cancelled"
@@ -68,6 +69,7 @@ export function ReservationDataRow({
   siteId,
   updating,
   onStatusChange,
+  onEdit,
   customerMeta,
   showDate,
 }: {
@@ -75,14 +77,20 @@ export function ReservationDataRow({
   siteId: string
   updating: boolean
   onStatusChange: (id: string, status: Reservation["status"]) => void
+  onEdit?: (reservation: Reservation) => void
   customerMeta?: string | null
   showDate?: boolean
 }) {
   const { t } = useLocalization()
   const statusLabel = t(`reservations.status.${reservation.status}`) || reservation.status
+  const canEdit = Boolean(onEdit) && reservationCanEdit(reservation)
 
   return (
-    <DocumentListRow accent={reservationAccent(reservation.status)} className="cursor-default">
+    <DocumentListRow
+      accent={reservationAccent(reservation.status)}
+      onClick={canEdit ? () => onEdit?.(reservation) : undefined}
+      className={canEdit ? undefined : "cursor-default"}
+    >
       <TableCell className="py-3.5">
         <ReservationCustomerCell reservation={reservation} siteId={siteId} meta={customerMeta} />
       </TableCell>
@@ -101,6 +109,7 @@ export function ReservationDataRow({
           siteId={siteId}
           updating={updating}
           onStatusChange={onStatusChange}
+          onEdit={onEdit}
         />
       </TableCell>
     </DocumentListRow>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useRobots } from '@/app/context/RobotsContext'
 import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
+import { markRobotInstanceError } from './send-message-reliability'
 
 interface UseRobotInstanceProps {
   onClearNewMakinaThinking?: () => void
@@ -38,7 +39,6 @@ export const useRobotInstance = ({ onClearNewMakinaThinking, onScrollToBottom }:
           .select('id, status, name')
           .eq('site_id', currentSite!.id)
           .neq('status', 'stopped')
-          .neq('status', 'error')
           .limit(1)
 
         if (instanceId) {
@@ -103,14 +103,21 @@ export const useRobotInstance = ({ onClearNewMakinaThinking, onScrollToBottom }:
         }
         setIsStartingRobot(false)
         queuedMessageRef.current = null
-        // Clear New Makina thinking state on timeout
+        if (instanceId && currentSite?.id) {
+          await markRobotInstanceError({
+            instanceId,
+            siteId: currentSite.id,
+            errorMessage: 'Robot failed to start in time',
+          })
+          await refreshRobots()
+        }
         onClearNewMakinaThinking?.()
         toast({ title: 'Failed to start robot in time', description: 'Please try again.', variant: 'destructive' })
       }
     }
 
     setTimeout(tick, 1500)
-  }, [currentSite?.id, refreshRobots, router, onClearNewMakinaThinking, onScrollToBottom])
+  }, [currentSite?.id, refreshRobots, router, onClearNewMakinaThinking, onScrollToBottom, toast])
 
   return {
     isStartingRobot,

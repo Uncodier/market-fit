@@ -18,9 +18,10 @@ interface ReservationsByDateListProps {
   reservations: Reservation[]
   siteId: string
   onUpdate: () => void
+  onEdit: (reservation: Reservation) => void
 }
 
-export function ReservationsByDateList({ reservations, siteId, onUpdate }: ReservationsByDateListProps) {
+export function ReservationsByDateList({ reservations, siteId, onUpdate, onEdit }: ReservationsByDateListProps) {
   const { t } = useLocalization()
   const [updating, setUpdating] = useState<string | null>(null)
 
@@ -65,6 +66,7 @@ export function ReservationsByDateList({ reservations, siteId, onUpdate }: Reser
                 siteId={siteId}
                 updating={updating === reservation.id}
                 onStatusChange={handleStatusChange}
+                onEdit={onEdit}
                 showDate={false}
                 customerMeta={reservationResourceLabel({
                   resource_type: reservation.resource_type,

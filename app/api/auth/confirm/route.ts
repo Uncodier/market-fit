@@ -2,6 +2,11 @@ import { type EmailOtpType } from '@supabase/supabase-js'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import {
+  authReturnToFromSearchParams,
+  hostnameFromRequestHeaders,
+  resolvePostAuthRedirect,
+} from '@/lib/auth/post-auth-redirect'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +15,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const token_hash = searchParams.get('token_hash')
     const type = searchParams.get('type') as EmailOtpType | null
-    const next = searchParams.get('next') ?? '/'
+    const hostname = hostnameFromRequestHeaders(request.headers)
+    const destination = resolvePostAuthRedirect(
+      authReturnToFromSearchParams(searchParams),
+      hostname
+    )
 
     if (!token_hash || !type) {
       console.error('Faltan parámetros requeridos:', { token_hash, type })
@@ -48,8 +57,7 @@ export async function GET(request: Request) {
     if (type === 'recovery') {
       console.log('Password recovery OTP verified, redirecting to set-password')
       // Extract returnTo from next parameter if present, or use default
-      const returnTo = next && next !== '/' ? next : '/buyer'
-      const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
+      const setPasswordUrl = `/auth/set-password?returnTo=${encodeURIComponent(destination)}`
       return NextResponse.redirect(new URL(setPasswordUrl, request.url))
     }
 
@@ -76,7 +84,7 @@ export async function GET(request: Request) {
     }
 
     // Redirigir al usuario a la página especificada o al inicio
-    return NextResponse.redirect(new URL(next, request.url))
+    return NextResponse.redirect(new URL(destination, request.url))
   } catch (error: any) {
     console.error('Error en la confirmación de email:', error)
     return NextResponse.redirect(

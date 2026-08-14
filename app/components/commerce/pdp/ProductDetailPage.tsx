@@ -5,7 +5,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { ArrowLeft, Moon, ShoppingCart, Sun, User } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import Link from "next/link"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useState, useEffect } from "react"
@@ -26,6 +26,7 @@ import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { PdpExperience } from "./pdp-experience"
 import { CommerceShellHeader, shellClasses } from "../CommerceShellHeader"
+import { useCommerceSignInHref } from "../use-commerce-sign-in-href"
 
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 
@@ -42,8 +43,7 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
   const { user } = useAuth()
   const session = user ? { user } : null
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const currentUrl = `${pathname || ''}${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`
+  const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
   
   const [cartCount, setCartCount] = useState(0)
   const [subtotal, setSubtotal] = useState(0)
@@ -153,14 +153,16 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
             ) : (
               <>
                 <Link
-                  href={`/auth?returnTo=${encodeURIComponent(currentUrl)}`}
+                  href={signInHref}
+                  onClick={onSignInClick}
                   className={`md:hidden ${shellClasses.iconButton}`}
                   aria-label={t("marketplace.signIn") || "Sign In"}
                 >
                   <User className="h-4 w-4" />
                 </Link>
                 <Link
-                  href={`/auth?returnTo=${encodeURIComponent(currentUrl)}`}
+                  href={signInHref}
+                  onClick={onSignInClick}
                   className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}
                 >
                   {t("marketplace.signIn") || "Sign In"}

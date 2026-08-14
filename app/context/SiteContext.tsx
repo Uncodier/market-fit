@@ -14,6 +14,7 @@ import type {
 } from "@/lib/types/database.types"
 import { billingService, BillingData } from "../services/billing-service"
 import { toast } from "react-hot-toast"
+import { isDemoModeActive, isRealSiteId } from "@/lib/demo-utils"
 
 // Definición de la interfaz Site adaptada a la estructura de Supabase
 export interface Site {
@@ -733,8 +734,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Combine owned and shared sites
       const allSitesData = [...(ownedSitesData || []), ...sharedSitesData]
       
-      // Inject demo sites
-      if (typeof window !== 'undefined') {
+      // Demo accounts are only available while demo mode is active.
+      // Do not inject them into workspace/buyer site lists.
+      if (typeof window !== 'undefined' && isDemoModeActive()) {
         const { availableDemos } = await import('@/lib/demo-data/index');
         for (const demo of availableDemos) {
           // Check if it already exists to prevent duplicates
@@ -1009,31 +1011,39 @@ export function SiteProvider({ children }: SiteProviderProps) {
         pathname.startsWith('/so/') ||
         pathname.startsWith('/vb/');
 
-      // Case A: No sites at all -> go to buyer/orders instead of create-site
+      const realSites = sites.filter((site) => isRealSiteId(site.id))
+      const currentIsReal = Boolean(
+        currentSite?.id && realSites.some((site) => site.id === currentSite.id)
+      )
+
+      // Case A: No real sites (demos / default don't count) -> buyer, including /robots.
+      // Stay on /projects if they opened it to start a business.
       if (
         isMounted && 
         isInitialized && 
         !isLoading && 
         sitesLoaded &&            // ✅ Only after a completed load
         hasValidSession &&        // ✅ NEW CONDITION
-        sites.length === 0 && 
+        realSites.length === 0 && 
         !pathname.startsWith('/create-site') && 
         !pathname.startsWith('/auth') &&
+        !pathname.startsWith('/projects') &&
+        !pathname.startsWith('/demo') &&
         pathname !== '/' &&
         !isCommerceSurface &&
         supabaseRef.current
       ) {
         router.push('/buyer')
       }
-      // Case B: There are sites but no selection -> go to projects
+      // Case B: There are real sites but no real selection -> go to projects
       else if (
         isMounted &&
         isInitialized &&
         !isLoading &&
         sitesLoaded &&
         hasValidSession &&
-        sites.length > 0 &&
-        !currentSite?.id &&
+        realSites.length > 0 &&
+        !currentIsReal &&
         !pathname.startsWith('/projects') &&
         !pathname.startsWith('/auth') &&
         pathname !== '/' &&
@@ -1059,7 +1069,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }, 1000) // ✅ Increased delay from 100ms to 1000ms
 
     return () => clearTimeout(redirectTimer)
-  }, [isMounted, isInitialized, isLoading, sitesLoadAttempted, hasValidSession, sites.length, pathname, router])
+  }, [isMounted, isInitialized, isLoading, sitesLoadAttempted, hasValidSession, sites.length, currentSite?.id, pathname, router])
   
   // Guardar el sitio seleccionado en localStorage cuando cambie
   const handleSetCurrentSite = async (site: Site) => {

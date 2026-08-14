@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { format } from "date-fns"
 import useSWR from "swr"
 import { useRouter } from "next/navigation"
@@ -18,6 +18,8 @@ import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import type { Reservation } from "@/app/types"
 import { upsertReservation } from "../actions"
 import { assertReservationSlot } from "../availability"
 import { getLeads } from "@/app/leads/actions"
@@ -27,20 +29,60 @@ import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { ReservationSlotPicker } from "@/app/components/commerce/ReservationSlotPicker"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { useDirtyDialogClose } from "@/app/components/ui/use-dirty-dialog-close"
+import { Skeleton } from "@/app/components/ui/skeleton"
+
+function ReservationDialogFormSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="mx-auto h-6 w-52" />
+        <div className="space-y-3 pt-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-12 w-full" />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    </div>
+  )
+}
 
 interface CreateReservationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  reservation?: Reservation | null
+  initialSlot?: { start: string; end: string } | null
+}
+
+function existingValue(id: string | null | undefined, label: string): RelationSelectValue {
+  if (!id) return null
+  return { mode: "existing", id, label }
 }
 
 export function CreateReservationDialog({
   open,
   onOpenChange,
   onSuccess,
+  reservation,
+  initialSlot,
 }: CreateReservationDialogProps) {
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const router = useRouter()
+  const isEdit = Boolean(reservation)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [catalogItemValue, setCatalogItemValue] = useState<RelationSelectValue>(null)
   const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
@@ -68,7 +110,33 @@ export function CreateReservationDialog({
     setNotes("")
   }
 
-  const dirty = Boolean(catalogItemValue || leadValue || selectedSlot || notes.trim())
+  useEffect(() => {
+    if (!open) return
+    if (reservation) {
+      setCatalogItemValue(
+        existingValue(
+          reservation.catalog_item_id,
+          reservation.catalog_item?.name || reservation.catalog_item_id || ""
+        )
+      )
+      setLeadValue(
+        existingValue(reservation.lead_id, reservation.lead?.name || reservation.lead?.email || reservation.lead_id)
+      )
+      setSelectedSlot({ start: reservation.start_time, end: reservation.end_time })
+      setNotes(reservation.notes || "")
+      return
+    }
+    resetForm()
+    if (initialSlot) setSelectedSlot(initialSlot)
+  }, [open, reservation, initialSlot])
+
+  const dirty = isEdit
+    ? catalogItemId !== (reservation?.catalog_item_id || "") ||
+      (leadValue?.mode === "existing" ? leadValue.id : "") !== (reservation?.lead_id || "") ||
+      selectedSlot?.start !== reservation?.start_time ||
+      selectedSlot?.end !== reservation?.end_time ||
+      notes.trim() !== (reservation?.notes || "")
+    : Boolean(catalogItemValue || leadValue || selectedSlot || notes.trim())
 
   const { discardOpen, setDiscardOpen, handleOpenChange, confirmDiscard } =
     useDirtyDialogClose({
@@ -110,27 +178,44 @@ export function CreateReservationDialog({
         resolvedItemId,
         selectedSlot.start,
         selectedSlot.end,
-        1,
-        true
+        reservation?.quantity || 1,
+        true,
+        reservation?.id
       )
 
-      const res = await upsertReservation({
+      const payload: Partial<Reservation> = {
         site_id: currentSite.id,
         catalog_item_id: resolvedItemId,
         lead_id: resolvedLeadId,
         start_time: selectedSlot.start,
         end_time: selectedSlot.end,
         notes: notes.trim() || undefined,
-        status: "confirmed",
-      })
+        quantity: reservation?.quantity || 1,
+      }
+      if (reservation) {
+        payload.id = reservation.id
+      } else {
+        payload.status = "confirmed"
+      }
+
+      const res = await upsertReservation(payload)
       if (res.error) throw new Error(res.error)
 
-      toast.success("Reservation created successfully")
+      toast.success(
+        isEdit
+          ? t("reservations.toast.updated") || "Reservation updated"
+          : t("reservations.toast.created") || "Reservation created successfully"
+      )
       resetForm()
       onSuccess()
       onOpenChange(false)
     } catch (error: any) {
-      toast.error(error.message || "Failed to create reservation")
+      toast.error(
+        error.message ||
+          (isEdit
+            ? t("reservations.toast.updateFailed") || "Failed to update reservation"
+            : t("reservations.toast.createFailed") || "Failed to create reservation")
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -141,15 +226,23 @@ export function CreateReservationDialog({
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent size="lg" busy={isSubmitting}>
           <DialogHeader>
-            <DialogTitle>Create reservation</DialogTitle>
+            <DialogTitle>
+              {isEdit
+                ? t("reservations.dialog.editTitle") || "Edit reservation"
+                : t("reservations.dialog.createTitle") || "Create reservation"}
+            </DialogTitle>
             <DialogDescription>
-              Book a reservable service for a customer.
+              {isEdit
+                ? t("reservations.dialog.editDescription") ||
+                  "Update the service, customer, time slot, or notes."
+                : t("reservations.dialog.createDescription") ||
+                  "Book a reservable service for a customer."}
             </DialogDescription>
           </DialogHeader>
 
           <DialogBody className="space-y-5">
             {catalogLoading ? (
-              <p className="text-sm text-muted-foreground">Loading services...</p>
+              <ReservationDialogFormSkeleton />
             ) : items.length === 0 ? (
               <div className="rounded-lg border bg-muted/30 p-4 text-sm">
                 <p className="font-medium">No reservable services</p>
@@ -179,7 +272,7 @@ export function CreateReservationDialog({
                     value={catalogItemValue}
                     onValueChange={(value) => {
                       setCatalogItemValue(value)
-                      setSelectedSlot(null)
+                      if (!reservation && !initialSlot) setSelectedSlot(null)
                     }}
                     allowCreate={false}
                     placeholder="Select a reservable service..."
@@ -199,18 +292,26 @@ export function CreateReservationDialog({
                     emptyMessage="No customers found"
                   />
                 </div>
+                {selectedSlot && !catalogItemId ? (
+                  <p className="text-sm text-muted-foreground">
+                    Selected: {format(new Date(selectedSlot.start), "PPP p")} – {format(new Date(selectedSlot.end), "p")}
+                  </p>
+                ) : null}
                 {catalogItemId ? (
                   <div className="space-y-2">
                     <Label>Time slot</Label>
                     <ReservationSlotPicker
-                      key={catalogItemId}
+                      key={`${catalogItemId}-${reservation?.id || "new"}-${initialSlot?.start || ""}`}
                       catalogItemId={catalogItemId}
                       hideDetailsStep
+                      ignoreReservationId={reservation?.id}
+                      selectedStartIso={selectedSlot?.start}
+                      selectedEndIso={selectedSlot?.end}
                       onSelect={(start, end) => setSelectedSlot({ start, end })}
                     />
                     {selectedSlot ? (
                       <p className="text-sm text-muted-foreground">
-                        Selected: {format(new Date(selectedSlot.start), "PPP p")}
+                        Selected: {format(new Date(selectedSlot.start), "PPP p")} – {format(new Date(selectedSlot.end), "p")}
                       </p>
                     ) : null}
                   </div>
@@ -242,7 +343,13 @@ export function CreateReservationDialog({
               onClick={() => void handleSubmit()}
               disabled={isSubmitting || items.length === 0 || !catalogItemId || !leadValue || !selectedSlot}
             >
-              {isSubmitting ? "Creating..." : "Create reservation"}
+              {isSubmitting
+                ? isEdit
+                  ? t("reservations.dialog.saving") || "Saving..."
+                  : t("reservations.dialog.creating") || "Creating..."
+                : isEdit
+                  ? t("reservations.dialog.save") || "Save changes"
+                  : t("reservations.dialog.createTitle") || "Create reservation"}
             </Button>
           </DialogFooter>
         </DialogContent>

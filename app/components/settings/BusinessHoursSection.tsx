@@ -7,6 +7,7 @@ import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 import { PlusCircle, Trash2 } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { TimeRangeSelect } from "../ui/time-select"
 import { Switch } from "../ui/switch"
 import { ChevronDown, ChevronRight } from "../ui/icons"
 import {
@@ -114,17 +115,6 @@ const DAYS_OF_WEEK = [
   { key: "saturday", labelKey: "settings.company.days.saturday" },
   { key: "sunday", labelKey: "settings.company.days.sunday" }
 ] as const
-
-const TIME_OPTIONS = (() => {
-  const times = []
-  for (let hour = 0; hour < 24; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
-      const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-      times.push({ value: time, label: time })
-    }
-  }
-  return times
-})()
 
 interface BusinessHoursSectionProps {
   onSave?: (data: SiteFormValues) => void
@@ -330,41 +320,15 @@ export function BusinessHoursSection({ onSave }: BusinessHoursSectionProps) {
                       </div>
 
                       {hours.days[day.key]?.enabled && (
-                        <div className="flex items-center gap-2 flex-1">
-                          <Select
-                            value={hours.days[day.key]?.start || "09:00"}
-                            onValueChange={(value) => updateBusinessHourField(index, `days.${day.key}.start`, value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("settings.company.hours.startTime")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {TIME_OPTIONS.map((time) => (
-                                <SelectItem key={time.value} value={time.value}>
-                                  {time.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-
-                          <span className="text-muted-foreground">{t("settings.company.common.to")}</span>
-
-                          <Select
-                            value={hours.days[day.key]?.end || "18:00"}
-                            onValueChange={(value) => updateBusinessHourField(index, `days.${day.key}.end`, value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("settings.company.hours.endTime")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {TIME_OPTIONS.map((time) => (
-                                <SelectItem key={time.value} value={time.value}>
-                                  {time.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <TimeRangeSelect
+                          start={hours.days[day.key]?.start || "09:00"}
+                          end={hours.days[day.key]?.end || "18:00"}
+                          onStartChange={(value) => updateBusinessHourField(index, `days.${day.key}.start`, value)}
+                          onEndChange={(value) => updateBusinessHourField(index, `days.${day.key}.end`, value)}
+                          toLabel={t("settings.company.common.to")}
+                          startPlaceholder={t("settings.company.hours.startTime")}
+                          endPlaceholder={t("settings.company.hours.endTime")}
+                        />
                       )}
 
                       {!hours.days[day.key]?.enabled && (

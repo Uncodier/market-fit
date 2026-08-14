@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { resolvePostAuthRedirect } from '@/lib/auth/post-auth-redirect'
+import {
+  hostnameFromRequestHeaders,
+  resolvePostAuthRedirect,
+} from '@/lib/auth/post-auth-redirect'
 import { copyResponseCookies, getMiddlewareUser } from '@/lib/supabase/middleware-client'
 
 // Lista específica y exacta de rutas públicas permitidas
@@ -350,7 +353,8 @@ export async function middleware(request: NextRequest) {
     if (isAuthPath) {
       if (user) {
         const destination = resolvePostAuthRedirect(
-          request.nextUrl.searchParams.get('returnTo')
+          request.nextUrl.searchParams.get('returnTo'),
+          hostnameFromRequestHeaders(request.headers)
         )
         return copyResponseCookies(
           sessionResponse,

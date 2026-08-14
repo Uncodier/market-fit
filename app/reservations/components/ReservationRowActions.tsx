@@ -16,21 +16,25 @@ import {
   Ban,
   CheckCircle,
   ClipboardList,
+  Pencil,
 } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getVisitsSettings } from "@/app/visits/actions"
 import { reservationCanRegisterVisitor } from "@/app/visits/visit-helpers"
+import { reservationCanEdit } from "../reservation-helpers"
 
 export function ReservationRowActions({
   reservation,
   siteId,
   updating,
   onStatusChange,
+  onEdit,
 }: {
   reservation: Reservation
   siteId: string
   updating: boolean
   onStatusChange: (id: string, status: Reservation["status"]) => void
+  onEdit?: (reservation: Reservation) => void
 }) {
   const { t } = useLocalization()
   const router = useRouter()
@@ -55,6 +59,11 @@ export function ReservationRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {onEdit && reservationCanEdit(reservation) && (
+          <DropdownMenuItem onClick={() => onEdit(reservation)}>
+            <Pencil className="h-4 w-4 mr-2" /> {t("reservations.actions.edit") || "Edit"}
+          </DropdownMenuItem>
+        )}
         {reservation.status === "pending" && (
           <DropdownMenuItem onClick={() => onStatusChange(reservation.id, "confirmed")}>
             <CalendarCheck className="h-4 w-4 mr-2" /> {t("reservations.actions.confirm")}

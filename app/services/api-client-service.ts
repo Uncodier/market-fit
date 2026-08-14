@@ -152,6 +152,21 @@ export class ApiClientService {
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     const contentType = response.headers.get('content-type');
 
+    // Assistant/workflow endpoints stream SSE; results land in instance_logs.
+    // Do not buffer the stream — that can hang until the workflow ends or drops.
+    if (response.ok && contentType && contentType.includes('text/event-stream')) {
+      try {
+        await response.body?.cancel();
+      } catch {
+        // Ignore cancel errors; the durable workflow keeps running.
+      }
+      return {
+        success: true,
+        data: { streaming: true } as T,
+        status: response.status
+      };
+    }
+
     // Read response body as text first to avoid "body stream already read" error
     let responseText: string;
     try {

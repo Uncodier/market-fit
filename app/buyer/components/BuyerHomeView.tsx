@@ -24,6 +24,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
+import { isDemoSiteId } from "@/lib/demo-utils"
 import QRCode from "react-qr-code"
 
 export function BuyerHomeView({
@@ -37,6 +38,8 @@ export function BuyerHomeView({
 }) {
   const { t } = useLocalization()
   const { sites } = useSite()
+  const managedSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
+  const hasBusinesses = managedSites.length > 0
   // Workspace (projects/create-site) lives on app; buyer commerce is proxied under www.
   const workspaceUrl = 'https://app.makinari.com'
   
@@ -59,16 +62,16 @@ export function BuyerHomeView({
 
   const settingsCards = [
     ...(scope === "personal" ? [{
-      title: sites?.length > 0 
+      title: hasBusinesses
         ? (t("buyer.home.cards.businesses.title") || "Manage your businesses")
         : (t("buyer.home.cards.startSelling.title") || "Start selling"),
-      description: sites?.length > 0
+      description: hasBusinesses
         ? (t("buyer.home.cards.businesses.desc") || "Switch businesses or create a new one.")
         : (t("buyer.home.cards.startSelling.desc") || "Create your business and start selling on Makinari."),
       icon: <Store className="w-6 h-6 text-foreground/70" />,
-      href: sites?.length > 0 ? `${workspaceUrl}/projects?manage=1` : `${workspaceUrl}/create-site`,
+      href: hasBusinesses ? `${workspaceUrl}/projects?manage=1` : `${workspaceUrl}/create-site`,
       isPrimary: true,
-      count: sites?.length > 0 ? sites.length : undefined
+      count: hasBusinesses ? managedSites.length : undefined
     }] : []),
     {
       title: t("buyer.home.cards.profile.title") || "Profile information",

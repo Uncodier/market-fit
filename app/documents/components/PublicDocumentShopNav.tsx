@@ -8,6 +8,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { useCommerceSignInHref } from "@/app/components/commerce/use-commerce-sign-in-href"
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { getCartItems } from "@/app/commerce/cart-storage"
 import { resolveInternalBackHref } from "@/app/documents/internal-back"
@@ -31,7 +32,7 @@ export function PublicDocumentShopNav({
   const { user } = useAuth()
   const session = user ? { user } : null
   const pathname = usePathname()
-  const returnTo = pathname || "/"
+  const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
 
   const shopHref = siteId ? `/shop/${siteId}` : "/marketplace"
   const [cartCount, setCartCount] = useState(0)
@@ -149,14 +150,16 @@ export function PublicDocumentShopNav({
             ) : (
               <>
                 <Link
-                  href={`/auth?returnTo=${encodeURIComponent(returnTo)}`}
+                  href={signInHref}
+                  onClick={onSignInClick}
                   className={`md:hidden ${shellClasses.iconButton}`}
                   aria-label={t("marketplace.signIn") || "Sign In"}
                 >
                   <User className="h-4 w-4" />
                 </Link>
                 <Link
-                  href={`/auth?returnTo=${encodeURIComponent(returnTo)}`}
+                  href={signInHref}
+                  onClick={onSignInClick}
                   className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}
                 >
                   {t("marketplace.signIn") || "Sign In"}

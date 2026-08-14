@@ -11,6 +11,7 @@ import { Loader, Eye, EyeOff, CheckCircle2, Lock, AlertCircle } from "@/app/comp
 import { toast } from "sonner"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { Alert, AlertDescription } from "@/app/components/ui/alert"
+import { resolveSetPasswordRedirect } from "@/lib/auth/post-auth-redirect"
 
 function SetPasswordContent() {
   const router = useRouter()
@@ -24,7 +25,7 @@ function SetPasswordContent() {
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [apiError, setApiError] = useState<{ code?: string; message: string } | null>(null)
 
-  const redirectTo = searchParams.get('redirect_to')
+  const redirectTo = resolveSetPasswordRedirect(searchParams)
 
   // Check for active session on component mount
   useEffect(() => {
@@ -221,8 +222,7 @@ function SetPasswordContent() {
       
       console.log('[Set Password] Session verified, user:', refreshedSession?.user?.email || 'verified')
 
-      // Redirect to the original destination or dashboard
-      const targetUrl = redirectTo ? decodeURIComponent(redirectTo) : '/buyer'
+      const targetUrl = redirectTo
       console.log('🔄 Redirecting to:', targetUrl)
       
       await new Promise(resolve => setTimeout(resolve, 500))

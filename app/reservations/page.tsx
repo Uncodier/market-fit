@@ -17,6 +17,9 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { reservationResourceLabel } from "@/app/visits/visit-helpers"
 import { CreateReservationDialog } from "./components/CreateReservationDialog"
+import { reservationCanEdit } from "./reservation-helpers"
+import type { CalendarTimeSlot } from "./components/reservation-calendar-hour-select"
+import type { Reservation } from "@/app/types"
 
 export default function ReservationsPage() {
   const { t } = useLocalization()
@@ -24,7 +27,9 @@ export default function ReservationsPage() {
   const [viewMode, setViewMode] = useState<"service" | "calendar" | "schedules">("service")
   const [viewType, setViewType] = useState<"list" | "calendar">("list")
   const [searchQuery, setSearchQuery] = useState("")
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null)
+  const [createSlot, setCreateSlot] = useState<CalendarTimeSlot | null>(null)
 
   const { data, isLoading, mutate } = useSWR(
     currentSite?.id ? ["reservations", currentSite.id] : null,
@@ -41,8 +46,29 @@ export default function ReservationsPage() {
     window.dispatchEvent(event)
   }, [t])
 
+  const openCreate = (slot?: CalendarTimeSlot | null) => {
+    setEditingReservation(null)
+    setCreateSlot(slot ?? null)
+    setIsFormOpen(true)
+  }
+
+  const openEdit = (reservation: Reservation) => {
+    if (!reservationCanEdit(reservation)) return
+    setCreateSlot(null)
+    setEditingReservation(reservation)
+    setIsFormOpen(true)
+  }
+
+  const handleFormOpenChange = (open: boolean) => {
+    setIsFormOpen(open)
+    if (!open) {
+      setEditingReservation(null)
+      setCreateSlot(null)
+    }
+  }
+
   useEffect(() => {
-    const handleCreate = () => setIsCreateOpen(true)
+    const handleCreate = () => openCreate()
     window.addEventListener("reservations:create", handleCreate)
     return () => window.removeEventListener("reservations:create", handleCreate)
   }, [])
@@ -126,25 +152,34 @@ export default function ReservationsPage() {
           </div>
         ) : viewType === "calendar" ? (
           <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-            <ReservationCalendar reservations={filteredReservations} viewMode={viewMode} />
+            <ReservationCalendar
+              reservations={filteredReservations}
+              viewMode={viewMode}
+              onReservationClick={openEdit}
+              onCreateSlot={openCreate}
+            />
           </div>
         ) : viewMode === "service" ? (
           <ReservationsList
             reservations={filteredReservations}
             siteId={currentSite.id}
             onUpdate={mutate}
+            onEdit={openEdit}
           />
         ) : (
           <ReservationsByDateList
             reservations={filteredReservations}
             siteId={currentSite.id}
             onUpdate={mutate}
+            onEdit={openEdit}
           />
         )}
       </div>
       <CreateReservationDialog
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
+        open={isFormOpen}
+        reservation={editingReservation}
+        initialSlot={createSlot}
+        onOpenChange={handleFormOpenChange}
         onSuccess={mutate}
       />
     </div>

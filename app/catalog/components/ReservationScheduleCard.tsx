@@ -21,6 +21,7 @@ import { ReservationSchedule } from "@/app/types"
 import { toast } from "sonner"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { CalendarIcon, ChevronDown, ChevronRight, PlusCircle, Trash2, Plus, Clock } from "@/app/components/ui/icons"
+import { TimeRangeSelect } from "@/app/components/ui/time-select"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -207,20 +208,13 @@ function ScheduleForm({
                     <div className="flex flex-1 flex-col gap-2 mt-3 sm:mt-0 items-end sm:items-start">
                       {watch(`days.${day}.timeBlocks`)?.map((_: any, index: number) => (
                         <div key={index} className="flex items-center gap-2">
-                          <Controller
-                            name={`days.${day}.timeBlocks.${index}.start`}
-                            control={control}
-                            render={({ field }) => (
-                              <Input type="time" className="h-9 w-32 bg-background" {...field} />
-                            )}
-                          />
-                          <span className="text-muted-foreground text-sm px-2">{t("catalog.schedules.to") || "to"}</span>
-                          <Controller
-                            name={`days.${day}.timeBlocks.${index}.end`}
-                            control={control}
-                            render={({ field }) => (
-                              <Input type="time" className="h-9 w-32 bg-background" {...field} />
-                            )}
+                          <TimeRangeSelect
+                            start={watch(`days.${day}.timeBlocks.${index}.start`)}
+                            end={watch(`days.${day}.timeBlocks.${index}.end`)}
+                            onStartChange={(value) => setValue(`days.${day}.timeBlocks.${index}.start`, value)}
+                            onEndChange={(value) => setValue(`days.${day}.timeBlocks.${index}.end`, value)}
+                            toLabel={t("catalog.schedules.to") || "to"}
+                            triggerClassName="h-9 bg-background"
                           />
                           <Button 
                             type="button" 

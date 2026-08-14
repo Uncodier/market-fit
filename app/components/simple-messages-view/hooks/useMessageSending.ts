@@ -3,8 +3,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
 import { contextService, type SelectedContextIds } from '@/app/services/context-service'
-import { getActivityName, getSystemPromptForActivity } from '../utils'
-import { InstanceLog, ImageParameters, VideoParameters, AudioParameters } from '../types'
+import { getSystemPromptForActivity } from '../utils'
+import { ImageParameters, VideoParameters, AudioParameters } from '../types'
+import { persistUserActionLog, markRobotInstanceError, postWithRetry } from './send-message-reliability'
 
 interface UseMessageSendingProps {
   activeRobotInstance?: any
@@ -175,7 +176,6 @@ export const useMessageSending = ({
 
       const contextString = JSON.stringify(contextObj)
       
-      const { apiClient } = await import('@/app/services/api-client-service')
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
@@ -202,16 +202,30 @@ export const useMessageSending = ({
       if (instanceId) {
         requestPayload.instance_id = instanceId
         console.log('🤖 Sending assistant message with existing instance_id:', instanceId)
+        await persistUserActionLog({
+          instanceId,
+          siteId: currentSite.id,
+          userId: user?.id,
+          message: messageToSend,
+        })
       } else {
         console.log('🤖 Sending assistant message without instance_id (new_makina context)')
       }
       
-      const response = await apiClient.post('/api/robots/instance/assistant', requestPayload)
+      const response = await postWithRetry('/api/robots/instance/assistant', requestPayload)
 
       if (response.success) {
         console.log('✅ Assistant message sent successfully:', response.data)
       } else {
         console.error('Assistant API error:', response.error)
+        if (instanceId) {
+          await markRobotInstanceError({
+            instanceId,
+            siteId: currentSite.id,
+            userId: user?.id,
+            errorMessage: response.error?.message || 'Assistant request failed',
+          })
+        }
         toast({
           title: 'Error',
           description: 'Please try again.', 
@@ -220,6 +234,14 @@ export const useMessageSending = ({
       }
     } catch (error) {
       console.error('Error sending assistant message:', error)
+      const instanceId = activeRobotInstance?.id
+      if (instanceId && currentSite?.id) {
+        await markRobotInstanceError({
+          instanceId,
+          siteId: currentSite.id,
+          errorMessage: error instanceof Error ? error.message : 'Assistant request failed',
+        })
+      }
       toast({
         title: 'Error',
         description: 'Please try again.', 
@@ -233,25 +255,11 @@ export const useMessageSending = ({
     if (!currentSite?.id) return
 
     try {
-      const { apiClient } = await import('@/app/services/api-client-service')
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       let response
       
-      
-      // Debug: Log robot instance status
-      console.log('🔍 Robot instance debug:', {
-        hasActiveRobotInstance: !!activeRobotInstance,
-        instanceId: activeRobotInstance?.id,
-        instanceStatus: activeRobotInstance ? (activeRobotInstance as any).status : 'none',
-        instanceName: activeRobotInstance?.name,
-        selectedActivity: selectedActivity,
-        willUsePromptRobot: !!activeRobotInstance?.id,
-        willUseStartRobot: !activeRobotInstance?.id
-      })
-      
-      // Add instance_id if we have an active robot instance
       if (activeRobotInstance?.id) {
         console.log('🤖 Sending message to existing robot instance:', activeRobotInstance.id)
         
@@ -274,8 +282,15 @@ export const useMessageSending = ({
           activity: 'robot'
         }
         
+        await persistUserActionLog({
+          instanceId: activeRobotInstance.id,
+          siteId: currentSite.id,
+          userId: user?.id,
+          message: messageToSend,
+        })
+
         // Use promptRobot endpoint for existing robots
-        response = await apiClient.post('/api/workflow/promptRobot', promptPayload)
+        response = await postWithRetry('/api/workflow/promptRobot', promptPayload)
       } else {
         console.log('🤖 Starting robot workflow for new instance')
         // Set New Makina thinking state
@@ -291,7 +306,7 @@ export const useMessageSending = ({
         }
         
         // Use startRobot endpoint for new instances
-        response = await apiClient.post('/api/workflow/startRobot', startPayload)
+        response = await postWithRetry('/api/workflow/startRobot', startPayload)
       }
 
       if (response.success) {
@@ -323,6 +338,14 @@ export const useMessageSending = ({
         }
       } else {
         console.error('Robot workflow API error:', response.error)
+        if (activeRobotInstance?.id) {
+          await markRobotInstanceError({
+            instanceId: activeRobotInstance.id,
+            siteId: currentSite.id,
+            userId: user?.id,
+            errorMessage: response.error?.message || 'Failed to start robot workflow',
+          })
+        }
         // Clear thinking states on error
         clearThinkingState()
         clearNewMakinaThinking()
@@ -334,6 +357,13 @@ export const useMessageSending = ({
       }
     } catch (error) {
       console.error('Error starting robot workflow:', error)
+      if (activeRobotInstance?.id && currentSite?.id) {
+        await markRobotInstanceError({
+          instanceId: activeRobotInstance.id,
+          siteId: currentSite.id,
+          errorMessage: error instanceof Error ? error.message : 'Failed to start robot workflow',
+        })
+      }
       // Clear thinking states on error
       clearThinkingState()
       clearNewMakinaThinking()
@@ -376,17 +406,13 @@ export const useMessageSending = ({
     }
 
     try {
-      // Route based on activity type only
       if (selectedActivity === 'robot') {
-        // Robot activity: use robot workflow
         await handleRobotMessage(messageToSend)
       } else {
-        // Non-robot activities: use assistant endpoint
         await handleAssistantMessage(messageToSend)
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      // Clear thinking state on error
       if (!activeRobotInstance) {
         clearNewMakinaThinking()
       } else {

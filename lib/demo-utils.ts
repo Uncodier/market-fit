@@ -37,14 +37,25 @@ export function exitDemoMode() {
   }
 }
 
+export function isDemoSiteId(id: string | null | undefined): boolean {
+  return typeof id === "string" && id.startsWith("demo-")
+}
+
+/** Owned workspace sites only — demos and the placeholder `default` id do not count. */
+export function isRealSiteId(id: string | null | undefined): boolean {
+  if (!id || id === "default") return false
+  return !isDemoSiteId(id)
+}
+
 /** True when the browser still has demo cookie or manual-demo flag. */
 export function isDemoModeActive(): boolean {
   if (typeof document === "undefined") return false
   try {
-    if (document.cookie.includes("market_fit_demo_site_id=")) return true
+    const match = document.cookie.match(/(?:^|; )market_fit_demo_site_id=([^;]*)/)
+    const cookieId = match?.[1] ? decodeURIComponent(match[1]).trim() : ""
+    if (isDemoSiteId(cookieId)) return true
     if (localStorage.getItem("market_fit_manual_demo") === "true") return true
-    const currentSite = localStorage.getItem("currentSiteId")
-    return !!currentSite && currentSite.startsWith("demo-")
+    return isDemoSiteId(localStorage.getItem("currentSiteId"))
   } catch {
     return false
   }

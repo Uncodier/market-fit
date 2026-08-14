@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "../context/SiteContext"
+import { isDemoSiteId } from "@/lib/demo-utils"
 import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Skeleton } from "../components/ui/skeleton"
@@ -46,7 +47,8 @@ export default function ProjectsPage() {
   const searchParams = useSearchParams()
   const isManageMode = searchParams?.get('manage') === '1' || searchParams?.get('from') === 'buyer'
 
-  const hasSites = (sites?.length || 0) > 0
+  const realSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
+  const hasSites = (isManageMode ? realSites : sites)?.length > 0
 
   const [demoSiteIdFromCookie, setDemoSiteIdFromCookie] = useState<string | null>(null)
   const [manualDemoEnabled, setManualDemoEnabled] = useState(false)
@@ -138,7 +140,7 @@ export default function ProjectsPage() {
       )
     }
 
-    const filteredSites = isDemoMode ? sites : sites.filter(site => !site.id.startsWith('demo-'));
+    const filteredSites = isDemoMode && !isManageMode ? sites : realSites;
 
     return (
       <div className="w-full max-w-2xl mx-auto space-y-3">
@@ -212,7 +214,7 @@ export default function ProjectsPage() {
           </Card>
         )}
 
-        {!isDemoMode && (
+        {!isDemoMode && !isManageMode && (
           <Card className="border border-border hover:border-foreground/20 transition-colors cursor-pointer" onClick={() => router.push("/demo") }>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
@@ -230,7 +232,7 @@ export default function ProjectsPage() {
         )}
       </div>
     )
-  }, [isLoading, hasSites, sites, currentSite?.id, isDemoMode, router])
+  }, [isLoading, hasSites, sites, realSites, currentSite?.id, isDemoMode, isManageMode, router])
 
   return (
     <div className="min-h-[calc(100vh-var(--topbar-height,64px))] w-full flex items-center justify-center p-6">

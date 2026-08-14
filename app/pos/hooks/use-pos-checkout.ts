@@ -13,7 +13,6 @@ import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options"
 import { enqueueCheckout } from "@/app/pos/local/outbox";
 import { drainPosOutbox } from "@/app/pos/local/sync-engine";
 import { getPosDb } from "@/app/pos/local/db";
-import { navigateToOrder, navigateToSale } from "@/app/hooks/use-navigation-history";
 import { useSite } from "@/app/context/SiteContext";
 import { normalizePrintersSettings, ticketBrandFromSite } from "@/lib/printer";
 import { printAfterPosCheckout, receiptFromPosCart } from "@/app/pos/print-after-checkout";
@@ -46,7 +45,6 @@ type UsePosCheckoutArgs = {
   buyerUserId: string | null;
   orderNotes?: string;
   shippingAddress?: PosShippingAddress;
-  router: { push: (href: string) => void };
   onCleared: () => void;
   appliedPromoRequiresLead?: boolean;
   onRequireLead?: (reason: "checkout" | "send") => void;
@@ -71,7 +69,6 @@ export function usePosCheckout({
   buyerUserId,
   orderNotes = "",
   shippingAddress,
-  router,
   onCleared,
   appliedPromoRequiresLead = false,
   onRequireLead,
@@ -147,7 +144,7 @@ export function usePosCheckout({
         })),
       }));
 
-  const enqueueAndMaybeNavigate = async (params: {
+  const enqueueAndFinishCheckout = async (params: {
     payments: Payment[];
     intent: "complete" | "pay" | "send";
     promo?: string;
@@ -261,11 +258,6 @@ export function usePosCheckout({
           } catch (err) {
             console.warn("[printer] POS print failed", err);
           }
-          if (params.intent === "send" && row.resultOrderId) {
-            navigateToOrder({ orderId: row.resultOrderId, router });
-          } else if (row.resultSaleId) {
-            navigateToSale({ saleId: row.resultSaleId, router });
-          }
         } else if (row?.status === "failed") {
           toast.error(
             row.lastError ||
@@ -357,7 +349,7 @@ export function usePosCheckout({
         return;
       }
 
-      await enqueueAndMaybeNavigate({
+      await enqueueAndFinishCheckout({
         payments,
         intent: resolvedIntent,
         promo: checkoutPromoCode,
@@ -415,7 +407,7 @@ export function usePosCheckout({
         resolvedLeadId = effectiveLeadRelation.id;
       }
 
-      await enqueueAndMaybeNavigate({
+      await enqueueAndFinishCheckout({
         payments: [],
         intent: "send",
         resolvedLeadId,
@@ -428,7 +420,7 @@ export function usePosCheckout({
     } finally {
       setCheckoutLoading(false);
     }
-    // enqueueAndMaybeNavigate closes over latest cart/session fields via render
+    // enqueueAndFinishCheckout closes over latest cart/session fields via render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     cart,

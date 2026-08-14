@@ -90,7 +90,8 @@ export async function getAvailableSlots(
   catalogItemId: string,
   startDateStr: string,
   endDateStr: string,
-  qty: number = 1
+  qty: number = 1,
+  ignoreReservationId?: string
 ) {
   const supabase = await createServiceClient(true)
   
@@ -112,11 +113,15 @@ export async function getAvailableSlots(
   // 2. Get reservations
   const { data: reservations } = await supabase
     .from("reservations")
-    .select("start_time, end_time, quantity, status")
+    .select("id, start_time, end_time, quantity, status")
     .eq("catalog_item_id", catalogItemId)
     .in("status", ["pending", "confirmed"])
     .gte("start_time", rangeStart.toISOString())
     .lte("end_time", rangeEnd.toISOString())
+
+  const activeReservations = (reservations || []).filter(
+    (r: { id?: string }) => !ignoreReservationId || r.id !== ignoreReservationId
+  )
 
   for (const dateStr of dateStrs) {
     for (const schedule of schedules) {
@@ -141,7 +146,7 @@ export async function getAvailableSlots(
           if (isAfter(slotEnd, dayEnd)) break
           
           // Calculate booked seats
-          const booked = (reservations || []).filter((r: any) => {
+          const booked = activeReservations.filter((r: any) => {
             const rStart = new Date(r.start_time)
             const rEnd = new Date(r.end_time)
             return isBefore(current, rEnd) && isAfter(slotEnd, rStart)

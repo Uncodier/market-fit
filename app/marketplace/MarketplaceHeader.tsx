@@ -10,6 +10,7 @@ import {
   MobileShellSearchTrigger,
   useMobileShellSearchCollapsed,
 } from "@/app/components/commerce/MobileShellSearch"
+import { useCommerceSignInHref } from "@/app/components/commerce/use-commerce-sign-in-href"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +62,7 @@ export function MarketplaceHeader({
   signInLabel,
 }: Props) {
   const searchCollapsed = useMobileShellSearchCollapsed(false)
+  const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
 
   return (
     <>
@@ -184,14 +186,16 @@ export function MarketplaceHeader({
               ) : (
                 <>
                   <Link
-                    href={`/auth?returnTo=${encodeURIComponent("/marketplace")}`}
+                    href={signInHref}
+                    onClick={onSignInClick}
                     className={`md:hidden ${shellClasses.iconButton}`}
                     aria-label={signInLabel}
                   >
                     <User className="h-4 w-4" />
                   </Link>
                   <Link
-                    href={`/auth?returnTo=${encodeURIComponent("/marketplace")}`}
+                    href={signInHref}
+                    onClick={onSignInClick}
                     className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}
                   >
                     {signInLabel}

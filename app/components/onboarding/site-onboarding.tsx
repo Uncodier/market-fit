@@ -15,40 +15,20 @@ import {
   SectionCardContent,
 } from "@/app/components/ui/section-card"
 import { ActionFooter } from "../ui/card-footer"
-import { Input } from "../ui/input"
-import { Switch } from "../ui/switch"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "../ui/form"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select"
+import { Form } from "../ui/form"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
+import { SiteOnboardingSkeleton } from "./site-onboarding-skeleton"
 import {
   Globe,
-  Trash2,
   ChevronRight,
   ChevronLeft,
   Check,
-  PlusCircle,
-  ChevronDown,
   X
 } from "../ui/icons"
 
 // Extracted modules
 import { siteOnboardingSchema, SiteOnboardingValues } from "./schemas/onboarding-schema"
 import { 
-  TIMEZONES, 
-  DAYS_OF_WEEK, 
-  TIME_OPTIONS, 
   steps 
 } from "./constants/onboarding-constants"
 import {
@@ -61,6 +41,7 @@ import {
 } from "./utils/onboarding-submit"
 import { SuccessStep } from "./steps/success-step"
 import { BasicInfoStep } from "./steps/basic-info-step"
+import { BusinessHoursStep } from "./steps/business-hours-step"
 import { FocusModeStep } from "./steps/focus-mode-step"
 import { CompanyInfoStep } from "./steps/company-info-step"
 import { MarketingStep } from "./steps/marketing-step"
@@ -91,7 +72,6 @@ export function SiteOnboarding({
   const [currentStep, setCurrentStep] = useState(1)
   const [expandedProducts, setExpandedProducts] = useState<Set<number>>(new Set())
   const [expandedServices, setExpandedServices] = useState<Set<number>>(new Set())
-  const [expandedBusinessHours, setExpandedBusinessHours] = useState<Set<number>>(new Set())
   const [stepErrors, setStepErrors] = useState<Set<number>>(new Set())
   const [hasValidated, setHasValidated] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
@@ -262,62 +242,6 @@ export function SiteOnboarding({
     }
 
     onComplete(prepared.data)
-  }
-
-  // Helper functions for managing arrays
-  const addBusinessHour = () => {
-    const current = form.getValues("business_hours") || []
-    const newHours = { 
-      name: "", 
-      timezone: "America/Mexico_City", 
-      respectHolidays: true, 
-      days: { 
-        monday: { enabled: true, start: "09:00", end: "18:00" }, 
-        tuesday: { enabled: true, start: "09:00", end: "18:00" }, 
-        wednesday: { enabled: true, start: "09:00", end: "18:00" }, 
-        thursday: { enabled: true, start: "09:00", end: "18:00" }, 
-        friday: { enabled: true, start: "09:00", end: "18:00" }, 
-        saturday: { enabled: false, start: "09:00", end: "14:00" }, 
-        sunday: { enabled: false, start: "09:00", end: "14:00" } 
-      } 
-    }
-    const newList = [...current, newHours]
-    form.setValue("business_hours", newList)
-    
-    const newExpanded = new Set(expandedBusinessHours)
-    newExpanded.add(newList.length - 1)
-    setExpandedBusinessHours(newExpanded)
-  }
-
-  const removeBusinessHour = (index: number) => {
-    const current = form.getValues("business_hours") || []
-    form.setValue("business_hours", current.filter((_, i) => i !== index))
-  }
-
-  const updateBusinessHour = (index: number, field: string, value: any) => {
-    const current = form.getValues("business_hours") || []
-    const newList = [...current]
-    if (field.includes('.')) {
-      const parts = field.split('.')
-      let currentObj = newList[index] as any
-      for (let i = 0; i < parts.length - 1; i++) {
-        currentObj = currentObj[parts[i]]
-      }
-      currentObj[parts[parts.length - 1]] = value
-    } else {
-      (newList[index] as any)[field] = value
-    }
-    form.setValue("business_hours", newList)
-  }
-
-  const toggleBusinessHourExpanded = (index: number) => {
-    const newExpanded = new Set(expandedBusinessHours)
-    if (newExpanded.has(index)) {
-      newExpanded.delete(index)
-    } else {
-      newExpanded.add(index)
-    }
-    setExpandedBusinessHours(newExpanded)
   }
 
   // Helper function to ensure proper location structure
@@ -556,71 +480,15 @@ export function SiteOnboarding({
   // Show loading skeleton while creating site, but never cover the success step
   if (isLoading && !isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center p-4">
-        <div className="container max-w-6xl mx-auto">
-          {/* Header skeleton */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-            <div />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Steps skeleton */}
-            <div className="space-y-6">
-              <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-              <div className="space-y-3">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-full" />
-                    <div className="flex-1">
-                      <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mb-1" />
-                      <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Main Content skeleton */}
-            <div className="lg:col-span-2">
-              <SectionCard className="h-[600px]">
-                <SectionCardHeader>
-                  <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mb-2" />
-                  <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                </SectionCardHeader>
-                <SectionCardContent className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                    <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                  </div>
-                  <div className="space-y-4">
-                    <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                    <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                  </div>
-                  <div className="space-y-4">
-                    <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                    <div className="h-24 w-full bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                  </div>
-                </SectionCardContent>
-                <ActionFooter>
-                  <div className="flex justify-between">
-                    <div className="h-10 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                    <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
-                  </div>
-                </ActionFooter>
-              </SectionCard>
-            </div>
-          </div>
-
-          {/* Loading indicator */}
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-card border dark:border-white/5 border-black/5 rounded-lg shadow-lg p-6 text-center">
-              <LoadingSkeleton variant="fullscreen" size="lg" />
-              <h3 className="text-lg font-semibold mb-2">Creating Your Project</h3>
-              <p className="text-sm text-muted-foreground">
-                Setting up your workspace and configuring everything...
-              </p>
-            </div>
+      <div className="relative">
+        <SiteOnboardingSkeleton />
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-card border dark:border-white/5 border-black/5 rounded-lg shadow-lg p-6 text-center">
+            <LoadingSkeleton variant="fullscreen" size="lg" />
+            <h3 className="text-lg font-semibold mb-2">Creating Your Project</h3>
+            <p className="text-sm text-muted-foreground">
+              Setting up your workspace and configuring everything...
+            </p>
           </div>
         </div>
       </div>
@@ -784,206 +652,7 @@ export function SiteOnboarding({
                   ) : (
                     <>
                       {currentStep === 3 && (
-                        <div className="space-y-4">
-                          <div className="text-center mb-4">
-                            <p className="text-sm text-muted-foreground">
-                              Define your business hours for different regions. Most agent activities will start on those time ranges.
-                            </p>
-                          </div>
-                          
-                          {form.watch("business_hours")?.map((hours, index) => {
-                            const isExpanded = expandedBusinessHours.has(index)
-                            const days = hours.days || {
-                              monday: { enabled: true, start: "09:00", end: "18:00" },
-                              tuesday: { enabled: true, start: "09:00", end: "18:00" },
-                              wednesday: { enabled: true, start: "09:00", end: "18:00" },
-                              thursday: { enabled: true, start: "09:00", end: "18:00" },
-                              friday: { enabled: true, start: "09:00", end: "18:00" },
-                              saturday: { enabled: false, start: "09:00", end: "14:00" },
-                              sunday: { enabled: false, start: "09:00", end: "14:00" },
-                            }
-                            
-                            return (
-                              <div key={index} className="border dark:border-white/5 border-black/5 rounded-lg overflow-hidden">
-                                <div className="p-4 bg-muted/30">
-                                  <div className="flex items-center gap-4">
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleBusinessHourExpanded(index)}
-                                      className="p-1 hover:bg-muted/50 rounded transition-colors h-10 w-10 flex items-center justify-center"
-                                    >
-                                      {isExpanded ? (
-                                        <ChevronDown className="h-4 w-4" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4" />
-                                      )}
-                                    </button>
-                                    
-                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <FormField
-                                        control={form.control}
-                                        name={`business_hours.${index}.name`}
-                                        render={({ field }) => (
-                                          <FormItem>
-                                            <FormControl>
-                                              <Input 
-                                                placeholder="e.g., Main Office, Europe Branch"
-                                                value={hours.name}
-                                                onChange={(e) => {
-                                                  field.onChange(e)
-                                                  updateBusinessHour(index, 'name', e.target.value)
-                                                }}
-                                                className="bg-background"
-                                              />
-                                            </FormControl>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-
-                                      <FormField
-                                        control={form.control}
-                                        name={`business_hours.${index}.timezone`}
-                                        render={({ field }) => (
-                                          <FormItem>
-                                            <Select
-                                              value={hours.timezone || undefined}
-                                              onValueChange={(value) => {
-                                                field.onChange(value)
-                                                updateBusinessHour(index, 'timezone', value)
-                                              }}
-                                            >
-                                              <FormControl>
-                                                <SelectTrigger className="bg-background">
-                                                  <SelectValue placeholder="Select timezone" />
-                                                </SelectTrigger>
-                                              </FormControl>
-                                              <SelectContent>
-                                                {TIMEZONES.map((tz) => (
-                                                  <SelectItem key={tz.value} value={tz.value}>
-                                                    {tz.label}
-                                                  </SelectItem>
-                                                ))}
-                                              </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                          </FormItem>
-                                        )}
-                                      />
-                                    </div>
-
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      type="button"
-                                      onClick={() => removeBusinessHour(index)}
-                                      className="h-10 w-10"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-
-                                {isExpanded && (
-                                  <div className="p-6 space-y-4 border-t dark:border-white/5 border-black/5">
-                                    <div className="flex items-center justify-between">
-                                      <div className="space-y-1">
-                                        <label className="text-sm font-medium">Respect Holidays</label>
-                                        <p className="text-xs text-muted-foreground">
-                                          Agents will not work on regional holidays when enabled
-                                        </p>
-                                      </div>
-                                      <Switch
-                                        checked={hours.respectHolidays || false}
-                                        onCheckedChange={(checked) => {
-                                          updateBusinessHour(index, 'respectHolidays', checked)
-                                        }}
-                                      />
-                                    </div>
-
-                                    <div className="space-y-3">
-                                      {DAYS_OF_WEEK.map((day) => (
-                                        <div key={day.key} className="flex items-center gap-4">
-                                          <div className="w-32">
-                                            <div className="flex items-center space-x-2">
-                                              <Switch
-                                                checked={days[day.key as keyof typeof days]?.enabled || false}
-                                                onCheckedChange={(checked) => {
-                                                  updateBusinessHour(index, `days.${day.key}.enabled`, checked)
-                                                }}
-                                              />
-                                              <label className="text-sm font-medium">
-                                                {day.label}
-                                              </label>
-                                            </div>
-                                          </div>
-
-                                          {days[day.key as keyof typeof days]?.enabled && (
-                                            <div className="flex items-center gap-2 flex-1">
-                                              <Select
-                                                value={days[day.key as keyof typeof days]?.start || "09:00"}
-                                                onValueChange={(value) => {
-                                                  updateBusinessHour(index, `days.${day.key}.start`, value)
-                                                }}
-                                              >
-                                                <SelectTrigger>
-                                                  <SelectValue placeholder="Start time" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  {TIME_OPTIONS.map((time) => (
-                                                    <SelectItem key={time.value} value={time.value}>
-                                                      {time.label}
-                                                    </SelectItem>
-                                                  ))}
-                                                </SelectContent>
-                                              </Select>
-
-                                              <span className="text-muted-foreground">to</span>
-
-                                              <Select
-                                                value={days[day.key as keyof typeof days]?.end || "18:00"}
-                                                onValueChange={(value) => {
-                                                  updateBusinessHour(index, `days.${day.key}.end`, value)
-                                                }}
-                                              >
-                                                <SelectTrigger>
-                                                  <SelectValue placeholder="End time" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  {TIME_OPTIONS.map((time) => (
-                                                    <SelectItem key={time.value} value={time.value}>
-                                                      {time.label}
-                                                    </SelectItem>
-                                                  ))}
-                                                </SelectContent>
-                                              </Select>
-                                            </div>
-                                          )}
-
-                                          {!days[day.key as keyof typeof days]?.enabled && (
-                                            <div className="flex-1 text-sm text-muted-foreground">
-                                              Closed
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          })}
-                          
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full"
-                            onClick={addBusinessHour}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add Business Hours Schedule
-                          </Button>
-                        </div>
+                        <BusinessHoursStep form={form} />
                       )}
 
                       {currentStep === 4 && (

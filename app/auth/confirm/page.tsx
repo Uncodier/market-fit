@@ -5,8 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
-import { Loader, CheckCircle2, XCircle, Mail } from "@/app/components/ui/icons"
-import { toast } from "sonner"
+import { CheckCircle2, XCircle } from "@/app/components/ui/icons"
+import {
+  authReturnToFromSearchParams,
+  resolvePostAuthRedirect,
+} from "@/lib/auth/post-auth-redirect"
 
 type ConfirmationState = 'loading' | 'success' | 'error' | 'redirect'
 
@@ -24,6 +27,8 @@ function ConfirmContent() {
         const type = searchParams.get('type')
         const redirectTo = searchParams.get('redirect_to')
         const invitationType = searchParams.get('invitationType')
+        const postAuthPath = resolvePostAuthRedirect(authReturnToFromSearchParams(searchParams))
+        const setPasswordUrl = `/auth/set-password?returnTo=${encodeURIComponent(postAuthPath)}`
 
         if (!tokenHash) {
           setState('error')
@@ -65,29 +70,24 @@ function ConfirmContent() {
             setState('redirect')
             setMessage('Invitation confirmed! Setting up your account...')
             
-            // Encode the original redirect URL to pass it through password setup
-            const encodedRedirect = redirectTo ? encodeURIComponent(redirectTo) : ''
-            const passwordSetupUrl = `/auth/set-password?redirect_to=${encodedRedirect}`
-            
             setTimeout(() => {
-              router.push(passwordSetupUrl)
+              router.push(
+                redirectTo
+                  ? `/auth/set-password?redirect_to=${encodeURIComponent(redirectTo)}`
+                  : setPasswordUrl
+              )
             }, 1500)
           } else if (redirectTo) {
             console.log('🔄 Redirecting to:', redirectTo)
             setState('redirect')
             setMessage('Invitation confirmed! Redirecting...')
-            
-            // Decode the redirect URL
-            const decodedRedirect = decodeURIComponent(redirectTo)
-            
-            // Wait a moment to show success message, then redirect
             setTimeout(() => {
-              window.location.href = decodedRedirect
+              window.location.href = decodeURIComponent(redirectTo)
             }, 1500)
           } else {
             setState('success')
             setMessage('Invitation confirmed successfully!')
-            setRedirectUrl('/buyer')
+            setRedirectUrl(postAuthPath)
           }
         } else {
           // Handle other confirmation types (signup, recovery, etc.)
@@ -154,33 +154,14 @@ function ConfirmContent() {
             setState('redirect')
             setMessage('Email confirmed! Setting up your account...')
             
-            // Encode the original redirect URL to pass it through password setup
-            const encodedRedirect = redirectTo ? encodeURIComponent(redirectTo) : ''
-            const passwordSetupUrl = `/auth/set-password?redirect_to=${encodedRedirect}`
-            
             setTimeout(() => {
-              router.push(passwordSetupUrl)
+              router.push(setPasswordUrl)
             }, 1500)
-          } else if (redirectTo) {
-            const decodedRedirect = decodeURIComponent(redirectTo)
+          } else {
             setState('redirect')
             setMessage('Email confirmed! Redirecting...')
-            
-            // Give the auth state some time to update before redirecting
             setTimeout(() => {
-              console.log('🔄 Redirecting to:', decodedRedirect)
-              window.location.href = decodedRedirect
-            }, 2000)
-          } else {
-            // User is confirmed and has password set, redirect automatically to Makinas
-            console.log('✅ Email confirmed, user authenticated, redirecting to Makinas')
-            setState('redirect')
-            setMessage('Email confirmed successfully! Redirecting...')
-            
-            // Give the auth state time to update before redirecting
-            setTimeout(() => {
-              console.log('🔄 Redirecting to Buyer')
-              window.location.href = '/buyer'
+              window.location.href = postAuthPath
             }, 2000)
           }
         }

@@ -16,9 +16,10 @@ interface ReservationsListProps {
   reservations: Reservation[]
   siteId: string
   onUpdate: () => void
+  onEdit: (reservation: Reservation) => void
 }
 
-export function ReservationsList({ reservations, siteId, onUpdate }: ReservationsListProps) {
+export function ReservationsList({ reservations, siteId, onUpdate, onEdit }: ReservationsListProps) {
   const { t } = useLocalization()
   const [updating, setUpdating] = useState<string | null>(null)
 
@@ -63,6 +64,7 @@ export function ReservationsList({ reservations, siteId, onUpdate }: Reservation
               siteId={siteId}
               updating={updating === reservation.id}
               onStatusChange={handleStatusChange}
+              onEdit={onEdit}
             />
           ))}
         </React.Fragment>

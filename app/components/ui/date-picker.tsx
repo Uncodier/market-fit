@@ -5,6 +5,7 @@ import { CalendarIcon, ChevronLeft, ChevronRight } from "@/app/components/ui/ico
 import { Button } from "@/app/components/ui/button"
 import { format, addDays, subDays, addWeeks, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, startOfDay, endOfDay, startOfWeek as dateStartOfWeek, endOfWeek as dateEndOfWeek, startOfMonth as dateStartOfMonth, endOfMonth as dateEndOfMonth, startOfYear, endOfYear, isSameYear } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
+import { TimeSelect } from "@/app/components/ui/time-select"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/app/components/ui/badge"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -290,25 +291,6 @@ export function DatePicker({
     setDate(newDate);
   };
 
-  const handleHourChange = (value: string) => {
-    const hours = parseInt(value);
-    if (!isNaN(hours)) {
-      handleTimeChange(hours, selectedTime.minutes);
-    }
-  };
-
-  const handleMinuteChange = (value: string) => {
-    const minutes = parseInt(value);
-    if (!isNaN(minutes)) {
-      handleTimeChange(selectedTime.hours, minutes);
-    }
-  };
-
-  const handleAMPMToggle = () => {
-    const newHours = selectedTime.hours >= 12 ? selectedTime.hours - 12 : selectedTime.hours + 12;
-    handleTimeChange(newHours, selectedTime.minutes);
-  };
-
   // Update display text to include time if time picker is enabled
   const getDisplayText = (): string => {
     if (mode === 'range' && endDate && rangeDisplay) {
@@ -591,7 +573,14 @@ export function DatePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-auto z-[999999]" side={position}>
+        <PopoverContent
+          className="p-0 w-auto z-[999999]"
+          side={position}
+          onInteractOutside={(event) => {
+            const target = event.target as HTMLElement | null
+            if (target?.closest("[data-time-select]")) event.preventDefault()
+          }}
+        >
           <div className="flex flex-row">
             {/* Calendar */}
             <div className="p-4 min-w-[280px]" onKeyDown={handleKeyDown} tabIndex={-1}>
@@ -729,80 +718,27 @@ export function DatePicker({
             {showTimePicker && (
               <div className="border-l p-4 w-[230px] flex flex-col">
                 <div className="text-xs font-medium text-muted-foreground mb-3">{t("datePicker.selectTime")}</div>
-                
-                {/* Time Controls - Horizontal Layout */}
-                <div className="flex items-end gap-2 mb-4">
-                  {/* Hours */}
-                  <div className="flex flex-col flex-1">
-                    <label className="text-xs text-muted-foreground mb-1">{t("datePicker.hours")}</label>
-                    <select
-                      value={timeFormat === '12h' ? (selectedTime.hours === 0 ? 12 : selectedTime.hours > 12 ? selectedTime.hours - 12 : selectedTime.hours) : selectedTime.hours}
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (timeFormat === '12h') {
-                          const isPM = selectedTime.hours >= 12;
-                          const newHours = value === 12 ? (isPM ? 12 : 0) : (isPM ? value + 12 : value);
-                          handleHourChange(newHours.toString());
-                        } else {
-                          handleHourChange(e.target.value);
-                        }
-                      }}
-                      className="w-full px-2 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent max-h-[200px] overflow-y-auto"
-                      style={{ maxHeight: '200px' }}
-                    >
-                      {Array.from({ length: timeFormat === '12h' ? 12 : 24 }, (_, i) => {
-                        const value = timeFormat === '12h' ? i + 1 : i;
-                        return (
-                          <option key={value} value={value}>
-                            {value.toString().padStart(2, '0')}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-
-                  <div className="text-muted-foreground text-lg pb-1.5">:</div>
-
-                  {/* Minutes */}
-                  <div className="flex flex-col flex-1">
-                    <label className="text-xs text-muted-foreground mb-1">{t("datePicker.minutes")}</label>
-                    <select
-                      value={selectedTime.minutes}
-                      onChange={(e) => handleMinuteChange(e.target.value)}
-                      className="w-full px-2 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent max-h-[200px] overflow-y-auto"
-                      style={{ maxHeight: '200px' }}
-                    >
-                      {Array.from({ length: 60 }, (_, i) => (
-                        <option key={i} value={i}>
-                          {i.toString().padStart(2, '0')}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* AM/PM Toggle for 12h format */}
-                  {timeFormat === '12h' && (
-                    <div className="flex flex-col">
-                      <label className="text-xs text-muted-foreground mb-1">{t("datePicker.period")}</label>
-                      <button
-                        onClick={handleAMPMToggle}
-                        className="px-2 py-1.5 text-sm border border-input rounded-md bg-background hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors min-w-[50px]"
-                      >
-                        {selectedTime.hours >= 12 ? t("datePicker.pm") : t("datePicker.am")}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Current time display */}
-                <div className="pt-3 border-t dark:border-white/5 border-black/5">
-                  <div className="text-xs text-muted-foreground mb-2">{t("datePicker.selectedTime")}</div>
-                  <div className="text-center px-3 py-2 bg-muted/30 rounded-md">
-                    <div className="text-sm font-medium">
-                      {formatDisplayTime(selectedTime.hours, selectedTime.minutes)}
+                <TimeSelect
+                  value={`${selectedTime.hours.toString().padStart(2, "0")}:${selectedTime.minutes.toString().padStart(2, "0")}`}
+                  onValueChange={(next) => {
+                    const [hours, minutes] = next.split(":").map(Number)
+                    if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+                      handleTimeChange(hours, minutes)
+                    }
+                  }}
+                  step={15}
+                  triggerClassName="h-10"
+                />
+                {timeFormat === "12h" && (
+                  <div className="pt-3 mt-3 border-t dark:border-white/5 border-black/5">
+                    <div className="text-xs text-muted-foreground mb-2">{t("datePicker.selectedTime")}</div>
+                    <div className="text-center px-3 py-2 bg-muted/30 rounded-md">
+                      <div className="text-sm font-medium">
+                        {formatDisplayTime(selectedTime.hours, selectedTime.minutes)}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>

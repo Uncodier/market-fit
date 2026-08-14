@@ -94,6 +94,46 @@ describe('Reservation Availability Engine', () => {
       expect(slots[1].available).toBe(5); // 5 capacity - 0 booked
     });
 
+    it('should ignore the reservation being edited when counting booked seats', async () => {
+      const tomorrow = addDays(new Date(), 1);
+      const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
+      const dayOfWeek = format(tomorrow, 'eeee').toLowerCase();
+      const timeZone = 'UTC';
+      const slot1Start = fromZonedTime(`${tomorrowStr}T10:00:00`, timeZone);
+      const slot1End = addMinutes(slot1Start, 60);
+
+      const schedulesChain = createChain({
+        data: [{
+          catalog_item_id: catalogItemId,
+          duration_minutes: 60,
+          capacity: 2,
+          timezone: timeZone,
+          days: {
+            [dayOfWeek]: { enabled: true, start: '10:00', end: '11:00' }
+          }
+        }],
+      });
+      const reservationsChain = createChain({
+        data: [
+          { id: 'res-edit', start_time: slot1Start.toISOString(), end_time: slot1End.toISOString(), quantity: 2, status: 'confirmed' }
+        ],
+      });
+
+      mockCreateServiceClient.mockResolvedValue({
+        from: jest.fn((table: string) => {
+          if (table === 'reservation_schedules') return schedulesChain;
+          return reservationsChain;
+        }),
+      });
+
+      const withoutIgnore = await getAvailableSlots(catalogItemId, tomorrowStr, tomorrowStr, 1);
+      expect(withoutIgnore).toHaveLength(0);
+
+      const withIgnore = await getAvailableSlots(catalogItemId, tomorrowStr, tomorrowStr, 1, 'res-edit');
+      expect(withIgnore).toHaveLength(1);
+      expect(withIgnore[0].available).toBe(2);
+    });
+
     it('should interpret schedule hours in the schedule timezone (not server local/UTC)', async () => {
       // Pick a Wednesday far enough in the future
       const wednesday = new Date('2026-08-12T12:00:00Z');

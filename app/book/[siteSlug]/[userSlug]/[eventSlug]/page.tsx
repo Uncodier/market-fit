@@ -750,10 +750,12 @@ export default function UserBookingPage(props: {
                           {availableSlots.map((slot) => (
                             <Button
                               key={slot}
-                              variant={selectedSlot === slot ? "default" : "outline"}
+                              variant="outline"
                               className={cn(
                                 "w-full justify-center font-medium transition-all h-12",
-                                selectedSlot === slot ? "shadow-md" : "hover:border-primary/30 hover:bg-accent",
+                                selectedSlot === slot
+                                  ? "ring-primary bg-primary/5 text-primary"
+                                  : "hover:border-primary/30 hover:bg-accent",
                               )}
                               onClick={() => {
                                 setSelectedSlot(slot);

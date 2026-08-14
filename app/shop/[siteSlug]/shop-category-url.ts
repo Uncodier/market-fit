@@ -1,5 +1,7 @@
 /** Shop category query param helpers (`?category=`). */
 
+import { notifyCommerceLocationChange } from "@/lib/auth/commerce-sign-in-href"
+
 export function readShopCategoryFromLocation(): string | null {
   if (typeof window === "undefined") return null
   const value = new URL(window.location.href).searchParams.get("category")
@@ -31,4 +33,5 @@ export function writeShopCategoryToLocation(category: string): void {
     url.searchParams.set("category", category)
   }
   window.history.replaceState({}, "", url.toString())
+  notifyCommerceLocationChange()
 }

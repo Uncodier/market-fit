@@ -1,12 +1,16 @@
+import { commerceSignInHref, commerceSignInHrefFromWindow } from '@/lib/auth/commerce-sign-in-href'
 import {
   DEFAULT_POST_AUTH_PATH,
   WWW_POST_AUTH_PATH,
+  authReturnToFromSearchParams,
   defaultPostAuthPath,
+  hostnameFromRequestHeaders,
   isSafeInternalPath,
   isShopAuthContext,
   isWwwCommerceHost,
   resolveAuthenticatedSignInRedirect,
   resolvePostAuthRedirect,
+  resolveSetPasswordRedirect,
 } from '@/lib/auth/post-auth-redirect'
 
 describe('post-auth-redirect', () => {
@@ -103,6 +107,104 @@ describe('post-auth-redirect', () => {
     expect(isShopAuthContext('/marketplace')).toBe(true)
     expect(isShopAuthContext('/buyer')).toBe(true)
     expect(isShopAuthContext('/cart/checkout')).toBe(true)
+  })
+
+  it('never drops a shop or marketplace returnTo', () => {
+    expect(resolvePostAuthRedirect('/shop/acme')).toBe('/shop/acme')
+    expect(resolvePostAuthRedirect('/shop/acme/pizza?variant=1', 'app.makinari.com')).toBe(
+      '/shop/acme/pizza?variant=1'
+    )
+    expect(resolvePostAuthRedirect('/marketplace?q=coffee', 'www.makinari.com')).toBe(
+      '/marketplace?q=coffee'
+    )
+    expect(resolvePostAuthRedirect('/cart/checkout?source=shop&siteId=abc')).toBe(
+      '/cart/checkout?source=shop&siteId=abc'
+    )
+  })
+
+  it('prefers returnTo over redirect_to on confirm links', () => {
+    const params = new URLSearchParams(
+      'token_hash=abc&type=email&returnTo=/shop/acme&redirect_to=/buyer'
+    )
+    expect(authReturnToFromSearchParams(params)).toBe('/shop/acme')
+    expect(resolvePostAuthRedirect(authReturnToFromSearchParams(params))).toBe('/shop/acme')
+  })
+
+  it('reads redirect_to when returnTo is absent', () => {
+    const params = new URLSearchParams('redirect_to=/marketplace')
+    expect(authReturnToFromSearchParams(params)).toBe('/marketplace')
+  })
+
+  it('extracts nested returnTo from a same-app confirm URL', () => {
+    const params = new URLSearchParams(
+      'redirect_to=' +
+        encodeURIComponent('https://www.makinari.com/auth/confirm?returnTo=/shop/acme')
+    )
+    expect(authReturnToFromSearchParams(params)).toBe('/shop/acme')
+  })
+
+  it('prefers www host when the rewrite forwarded host is app', () => {
+    const headers = new Headers({
+      origin: 'https://www.makinari.com',
+      'x-forwarded-host': 'app.makinari.com',
+      host: 'app.makinari.com',
+    })
+    expect(hostnameFromRequestHeaders(headers)).toBe('www.makinari.com')
+    expect(resolvePostAuthRedirect(null, hostnameFromRequestHeaders(headers))).toBe('/buyer')
+  })
+
+  it('builds Sign In href from the current commerce section', () => {
+    expect(commerceSignInHref('/shop/acme', '?category=drinks')).toBe(
+      `/auth?returnTo=${encodeURIComponent('/shop/acme?category=drinks')}`
+    )
+    expect(commerceSignInHref('/shop/acme/pizza')).toBe(
+      `/auth?returnTo=${encodeURIComponent('/shop/acme/pizza')}`
+    )
+    expect(commerceSignInHref('/marketplace', 'q=coffee')).toBe(
+      `/auth?returnTo=${encodeURIComponent('/marketplace?q=coffee')}`
+    )
+  })
+
+  it('reads Sign In returnTo from the live address bar', () => {
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: {
+        pathname: '/shop/acme',
+        search: '?category=drinks',
+      },
+    })
+    expect(commerceSignInHrefFromWindow()).toBe(
+      `/auth?returnTo=${encodeURIComponent('/shop/acme?category=drinks')}`
+    )
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    })
+  })
+
+  it('keeps invitation redirect_to when returnTo is not mixed in', () => {
+    const invite = new URLSearchParams()
+    invite.set('redirect_to', '/auth/team-invitation?siteId=abc&type=team_invitation')
+    expect(resolveSetPasswordRedirect(invite)).toBe(
+      '/auth/team-invitation?siteId=abc&type=team_invitation'
+    )
+    expect(
+      resolveSetPasswordRedirect(
+        new URLSearchParams('redirect_to=/projects')
+      )
+    ).toBe('/projects')
+  })
+
+  it('does not let a fallback returnTo override invitation redirect_to', () => {
+    const mixed = new URLSearchParams(
+      'redirect_to=/projects&returnTo=/buyer'
+    )
+    // Shop confirm still prefers returnTo; invitations must not send both.
+    expect(authReturnToFromSearchParams(mixed)).toBe('/buyer')
+    expect(
+      resolveSetPasswordRedirect(new URLSearchParams('redirect_to=/projects'))
+    ).toBe('/projects')
   })
 
   it('keeps marketing and workspace entry on product copy', () => {

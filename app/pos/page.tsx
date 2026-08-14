@@ -96,7 +96,6 @@ export default function POSPage() {
     shippingAddress: cartApi.shippingAddress,
     subtotal: cartApi.subtotal,
     taxTotal: cartApi.taxTotal,
-    router,
     onCleared: () => {
       void cartApi.resetToNewOrder();
     },

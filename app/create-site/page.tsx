@@ -4,12 +4,14 @@ import { useState, useEffect, Suspense } from "react"
 import { toast } from "sonner"
 import { useOptionalSite } from "@/app/context/SiteContext"
 import { SiteOnboarding } from "../components/onboarding/site-onboarding"
+import { SiteOnboardingSkeleton } from "../components/onboarding/site-onboarding-skeleton"
 import { useAuth } from "../hooks/use-auth"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "../services/api-client-service"
 import { useSimpleRefreshPrevention } from "../hooks/use-prevent-refresh"
 import { getCreateSiteErrorMessage } from "../components/onboarding/utils/onboarding-submit"
 import { reloadForNewBuild } from "../components/ChunkErrorGuard"
+import { isDemoSiteId } from "@/lib/demo-utils"
 
 function CreateSitePageContent() {
   const [isSaving, setIsSaving] = useState(false)
@@ -64,14 +66,7 @@ function CreateSitePageContent() {
   // AND we're not currently saving a site (to prevent the "jump" to loading screen when creating)
   // This prevents the loading screen from appearing over the success message or during site creation
   if (sitesLoading && !isSuccess && !isSaving) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your sites...</p>
-        </div>
-      </div>
-    )
+    return <SiteOnboardingSkeleton />
   }
 
   const handleComplete = async (data: any) => {
@@ -178,7 +173,7 @@ function CreateSitePageContent() {
         createdSiteId={createdSiteId}
         onGoToDashboard={handleGoToDashboard}
         onGoToSettings={handleGoToSettings}
-        hasExistingSites={(sites?.length || 0) > 0}
+        hasExistingSites={(sites || []).some((site) => !isDemoSiteId(site.id))}
       />
     </div>
   )
@@ -186,14 +181,7 @@ function CreateSitePageContent() {
 
 export default function CreateSitePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<SiteOnboardingSkeleton />}>
       <CreateSitePageContent />
     </Suspense>
   )

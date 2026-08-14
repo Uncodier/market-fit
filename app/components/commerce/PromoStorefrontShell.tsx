@@ -1,11 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useSearchParams } from "next/navigation"
 import { ArrowLeft, User } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { useCommerceSignInHref } from "@/app/components/commerce/use-commerce-sign-in-href"
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { LocaleSelector } from "@/app/components/commerce/LocaleSelector"
 import { CurrencySelector } from "@/app/components/commerce/CurrencySelector"
@@ -40,9 +40,7 @@ export function PromoStorefrontShell({
   const { t } = useLocalization()
   const { user } = useAuth()
   const session = user ? { user } : null
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const currentUrl = `${pathname || ""}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`
+  const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
   const siteName = site?.name || null
   const siteLogo = site?.logo_url || null
 
@@ -112,14 +110,16 @@ export function PromoStorefrontShell({
             ) : (
               <>
                 <Link
-                  href={`/auth?returnTo=${encodeURIComponent(currentUrl)}`}
+                  href={signInHref}
+                  onClick={onSignInClick}
                   className={`md:hidden ${shellClasses.iconButton}`}
                   aria-label={t("marketplace.signIn") || "Sign In"}
                 >
                   <User className="h-4 w-4" />
                 </Link>
                 <Link
-                  href={`/auth?returnTo=${encodeURIComponent(currentUrl)}`}
+                  href={signInHref}
+                  onClick={onSignInClick}
                   className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}
                 >
                   {t("marketplace.signIn") || "Sign In"}

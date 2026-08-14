@@ -1322,6 +1322,7 @@ function RobotsPageContent() {
                                   const isRunning = ['running','active'].includes(status);
                                   const isPaused = ['paused'].includes(status);
                                   const isStarting = ['starting','pending','initializing'].includes(status);
+                                  const isError = ['error', 'failed'].includes(status);
                                   
                                   const isActiveState = isRunning || isStarting;
                                   const avatarUrl = instanceAvatars[inst.id];
@@ -1332,6 +1333,8 @@ function RobotsPageContent() {
                                     <MicroPause className="h-1.5 w-1.5 text-yellow-600" />
                                   ) : isStarting ? (
                                     <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                                  ) : isError ? (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                                   ) : (
                                     <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                                   );
@@ -1404,6 +1407,8 @@ function RobotsPageContent() {
                                             <Pause className="h-2.5 w-2.5 text-yellow-600" />
                                           ) : isStarting ? (
                                             <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                                          ) : isError ? (
+                                            <span className="w-2 h-2 rounded-full bg-red-500" />
                                           ) : (
                                             <span className="w-2 h-2 rounded-full bg-gray-400" />
                                           )}

@@ -10,6 +10,10 @@ import {
 } from "@/app/components/ui/popover"
 import { Input } from "@/app/components/ui/input"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import {
+  filterRelationSelectOptions,
+  shouldFilterRelationSelectOptions,
+} from "@/app/components/ui/relation-select-filter"
 
 export type RelationSelectValue =
   | { mode: "existing"; id: string; label: string }
@@ -74,19 +78,26 @@ export function RelationSelect({
   const [searchQuery, setSearchQuery] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement>(null)
 
-  const filteredOptions = React.useMemo(() => {
-    if (!searchQuery) return options
-    const lowerCaseQuery = searchQuery.toLowerCase()
-    return options.filter(option =>
-      (option.searchText ?? option.label).toLowerCase().includes(lowerCaseQuery)
-    )
-  }, [options, searchQuery])
+  const selectedLabel = value?.label
+  const isBrowseQuery = !shouldFilterRelationSelectOptions(
+    searchQuery,
+    selectedLabel,
+  )
+
+  const filteredOptions = React.useMemo(
+    () => filterRelationSelectOptions(options, searchQuery, selectedLabel),
+    [options, searchQuery, selectedLabel],
+  )
 
   const exactMatch = React.useMemo(() => {
     return options.find(o => o.label.toLowerCase() === searchQuery.trim().toLowerCase())
   }, [options, searchQuery])
 
-  const showCreate = allowCreate && searchQuery.trim().length > 0 && !exactMatch
+  const showCreate =
+    allowCreate &&
+    !isBrowseQuery &&
+    searchQuery.trim().length > 0 &&
+    !exactMatch
 
   // Existing selection whose display name is still resolving — show skeleton, not "Loading..." / blank.
   // Empty label only counts as pending while options have not loaded yet (avoids stuck skeleton
@@ -162,7 +173,15 @@ export function RelationSelect({
       {label && (
         <label className="text-sm font-medium">{label}</label>
       )}
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (next) {
+            requestAnimationFrame(() => inputRef.current?.select())
+          }
+        }}
+      >
         <PopoverTrigger asChild>
           <div className="relative w-full">
             {isResolvingLabel && !open ? (
@@ -186,7 +205,10 @@ export function RelationSelect({
                     icon && "pl-9",
                     className
                   )}
-                  onClick={() => setOpen(true)}
+                  onClick={() => {
+                    setOpen(true)
+                    inputRef.current?.select()
+                  }}
                 />
                 {icon && (
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-muted-foreground">

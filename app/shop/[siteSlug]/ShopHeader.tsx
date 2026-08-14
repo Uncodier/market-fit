@@ -11,6 +11,7 @@ import {
   MobileShellSearchTrigger,
   useMobileShellSearchCollapsed,
 } from "@/app/components/commerce/MobileShellSearch"
+import { useCommerceSignInHref } from "@/app/components/commerce/use-commerce-sign-in-href"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/app/components/ui/sheet"
 import { CartSidebar } from "./CartSidebar"
 import type { CatalogItem } from "@/app/types"
@@ -136,6 +137,7 @@ export function ShopHeader({
 }: Props) {
   // Prefer center search; Sign In is icon-only on mobile so it rarely needs collapse.
   const searchCollapsed = useMobileShellSearchCollapsed(false)
+  const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
 
   return (
     <>
@@ -289,14 +291,16 @@ export function ShopHeader({
               ) : (
                 <>
                   <Link
-                    href={`/auth?returnTo=${encodeURIComponent(`/shop/${siteSlug}`)}`}
+                    href={signInHref}
+                    onClick={onSignInClick}
                     className={`md:hidden ${shellClasses.iconButton}`}
                     aria-label={signInLabel}
                   >
                     <User className="h-4 w-4" />
                   </Link>
                   <Link
-                    href={`/auth?returnTo=${encodeURIComponent(`/shop/${siteSlug}`)}`}
+                    href={signInHref}
+                    onClick={onSignInClick}
                     className={`hidden md:inline-flex ${shellClasses.primaryCta} ml-1`}
                   >
                     {signInLabel}

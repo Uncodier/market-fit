@@ -10,6 +10,7 @@ import { CalendarIcon, Clock, ChevronLeft, ChevronRight } from "@/app/components
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import { isSameSlotInstant, shouldShowSlotLeftover } from "../reservation-slot-utils"
 
 interface ReservationSlotPickerPageProps {
   dateLocale: Locale
@@ -26,6 +27,7 @@ interface ReservationSlotPickerPageProps {
   monthAvailability: Record<string, boolean>
   isLoadingSlots: boolean
   slotsForSelectedDate: { start: string; end: string; available: number }[]
+  selectedStartIso?: string
   selectedSlot: { start: string; end: string } | null
   hideDetailsStep: boolean
   onSelect: (startIso: string, endIso: string, additionalData?: any) => void
@@ -55,6 +57,7 @@ export function ReservationSlotPickerPage({
   monthAvailability,
   isLoadingSlots,
   slotsForSelectedDate,
+  selectedStartIso,
   selectedSlot,
   hideDetailsStep,
   onSelect,
@@ -171,9 +174,7 @@ export function ReservationSlotPickerPage({
                   {isLoadingSlots ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="h-14 w-full rounded-xl bg-accent/50 flex items-center justify-center">
-                          <Skeleton className="h-4 w-16" />
-                        </div>
+                        <Skeleton key={i} className="h-14 w-full rounded-xl" />
                       ))}
                     </div>
                   ) : slotsForSelectedDate.length === 0 ? (
@@ -183,14 +184,16 @@ export function ReservationSlotPickerPage({
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {slotsForSelectedDate.map((slot) => {
-                        const isSelected = selectedSlot?.start === slot.start
+                        const isSelected = isSameSlotInstant(selectedSlot?.start, slot.start)
                         return (
                           <Button
                             key={slot.start}
-                            variant={isSelected ? "default" : "outline"}
+                            variant="outline"
                             className={cn(
                               "w-full justify-center font-medium transition-all h-14 text-base rounded-xl",
-                              isSelected ? "shadow-md" : "hover:border-primary/40 hover:bg-accent/50 border-border/60"
+                              isSelected
+                                ? "ring-primary bg-primary/5 text-primary"
+                                : "hover:border-primary/40 hover:bg-accent/50 border-border/60"
                             )}
                             onClick={() => {
                               if (hideDetailsStep) onSelect(slot.start, slot.end, {})
@@ -201,7 +204,9 @@ export function ReservationSlotPickerPage({
                             }}
                           >
                             {format(new Date(slot.start), "h:mm a")}
-                            <span className="text-xs opacity-70 ml-2 block">({slot.available} left)</span>
+                            {shouldShowSlotLeftover(slot, selectedStartIso) ? (
+                              <span className="text-xs opacity-70 ml-2 block">({slot.available} left)</span>
+                            ) : null}
                           </Button>
                         )
                       })}

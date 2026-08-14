@@ -61,8 +61,10 @@ export async function getReservationSlotsLocalFirst(params: {
   startDate: string;
   endDate: string;
   qty?: number;
+  ignoreReservationId?: string;
 }): Promise<{ slots: LocalReservationSlots["slots"]; fromCache: boolean }> {
-  const cached = await getCachedReservationSlots(params);
+  const skipCache = Boolean(params.ignoreReservationId);
+  const cached = skipCache ? null : await getCachedReservationSlots(params);
   const online = typeof navigator === "undefined" ? true : navigator.onLine;
 
   if (!online) {
@@ -75,13 +77,16 @@ export async function getReservationSlotsLocalFirst(params: {
       params.startDate,
       params.endDate,
       params.qty ?? 1,
+      params.ignoreReservationId,
     );
-    await cacheReservationSlots({
-      catalogItemId: params.catalogItemId,
-      startDate: params.startDate,
-      endDate: params.endDate,
-      slots,
-    });
+    if (!skipCache) {
+      await cacheReservationSlots({
+        catalogItemId: params.catalogItemId,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        slots,
+      });
+    }
     return { slots, fromCache: false };
   } catch {
     return { slots: cached || [], fromCache: true };
