@@ -37,6 +37,7 @@ import {
   ensureCommerceLeadConverted,
   isCommerceLeadSource,
 } from "./ensure-commerce-lead-converted";
+import { format } from "date-fns";
 
 export interface CheckoutLineModifier {
   catalogItemId: string;
@@ -653,7 +654,7 @@ export async function checkoutCart({
         amount_due: payments ? Math.max(0, orderTotal - totalPaid) : orderTotal,
         currency: orderCurrency,
         user_id: resolvedUserId,
-        sale_date: new Date().toISOString().split('T')[0],
+        sale_date: format(new Date(), "yyyy-MM-dd"),
         source: source,
       };
 
@@ -746,7 +747,7 @@ export async function checkoutCart({
         amount_due: payments ? Math.max(0, orderTotal - totalPaid) : orderTotal,
         currency: orderCurrency,
         user_id: resolvedUserId,
-        sale_date: new Date().toISOString().split('T')[0],
+        sale_date: format(new Date(), "yyyy-MM-dd"),
         source: source,
         payment_method: paymentMethodToStore,
         payments: payments ? payments.map(p => ({

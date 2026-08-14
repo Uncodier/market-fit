@@ -38,6 +38,13 @@ export async function fetchWithRetry(
       if (response.ok) {
         return response;
       }
+
+      // Client errors won't succeed on retry (except timeouts and rate limits)
+      const isRetryableClientError = response.status === 408 || response.status === 429;
+      if (response.status >= 400 && response.status < 500 && !isRetryableClientError) {
+        console.error(`[fetchWithRetry] Client error ${response.status} for ${url}`);
+        return null;
+      }
       
       // HTTP error - retry if we have attempts left
       if (attempt < maxRetries) {

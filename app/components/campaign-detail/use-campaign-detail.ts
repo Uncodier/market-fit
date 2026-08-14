@@ -8,6 +8,7 @@ import { getCampaignById } from "@/app/campaigns/actions/campaigns/read"
 import { updateCampaign } from "@/app/campaigns/actions/campaigns/update"
 import { deleteCampaign } from "@/app/campaigns/actions/campaigns/delete"
 import { getLeadsByCampaignId } from "@/app/leads/actions"
+import { getLeadSalesTotals } from "@/app/campaigns/actions/sales"
 import { getSegments } from "@/app/segments/actions"
 import { createRequirement } from "@/app/requirements/actions"
 import { createClient } from "@/lib/supabase/client"
@@ -75,6 +76,7 @@ export function useCampaignDetail(campaignId: string | undefined) {
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [loading, setLoading] = useState(true)
   const [campaignLeads, setCampaignLeads] = useState<Lead[]>([])
+  const [leadSalesTotals, setLeadSalesTotals] = useState<Record<string, number>>({})
   const [loadingLeads, setLoadingLeads] = useState(false)
   const [siteSegments, setSiteSegments] = useState<Array<{ id: string; name: string }>>([])
   const [campaignSegments, setCampaignSegments] = useState<CampaignSegmentOption[]>([])
@@ -87,7 +89,14 @@ export function useCampaignDetail(campaignId: string | undefined) {
     try {
       const result = await getLeadsByCampaignId(id, currentSite.id)
       if (result.error) return
-      setCampaignLeads(result.leads || [])
+      const leads = result.leads || []
+      setCampaignLeads(leads)
+
+      const convertedIds = leads
+        .filter((lead) => lead.status === "converted")
+        .map((lead) => lead.id)
+      const salesResult = await getLeadSalesTotals(convertedIds, currentSite.id)
+      setLeadSalesTotals(salesResult.data || {})
     } finally {
       setLoadingLeads(false)
     }
@@ -251,6 +260,7 @@ export function useCampaignDetail(campaignId: string | undefined) {
     campaign,
     loading,
     campaignLeads,
+    leadSalesTotals,
     loadingLeads,
     siteSegments,
     campaignRequirements,

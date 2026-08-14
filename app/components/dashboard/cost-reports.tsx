@@ -1,157 +1,222 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import { useMemo } from "react"
 import useSWR from "swr"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
-import { FinancialCostsReport } from "@/app/components/dashboard/financial-costs-report"
 import { useSite } from "@/app/context/SiteContext"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { PieChart, BarChart } from "@/app/components/ui/icons"
-import { CostCategoryChart } from "@/app/components/dashboard/cost-category-chart"
-import { MonthlyCostChart } from "@/app/components/dashboard/monthly-cost-chart"
-import { 
-  TotalCostsWidget,
-  MarketingCostsWidget,
-  EfficiencyWidget,
-  OverheadWidget
-} from "@/app/components/dashboard/costs"
+import { BarChart } from "@/app/components/ui/icons"
+import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
 import { CostDistributionChart } from "@/app/components/dashboard/cost-distribution-chart"
 import { MonthlyCostEvolutionChart } from "@/app/components/dashboard/monthly-cost-evolution-chart"
 import { CostBreakdownReport } from "@/app/components/dashboard/cost-breakdown-report"
-import { subDays } from "date-fns"
+import { format, subDays } from "date-fns"
+import {
+  efficiencyRatio,
+  marketingFromCategories,
+  overheadFromCategories,
+} from "@/lib/costs/aggregate-costs"
 
 interface CostData {
   totalCosts: {
-    actual: number;
-    previous: number;
-    percentChange: number;
-    formattedActual: string;
-    formattedPrevious: string;
-  };
+    actual: number
+    previous: number
+    percentChange: number
+    formattedActual: string
+    formattedPrevious: string
+  }
   costCategories: Array<{
-    name: string;
-    amount: number;
-    prevAmount: number;
-    percentChange: number;
-  }>;
+    name: string
+    amount: number
+    prevAmount: number
+    percentChange: number
+  }>
   monthlyData: Array<{
-    month: string;
-    fixedCosts: number;
-    variableCosts: number;
-  }>;
+    month: string
+    fixedCosts: number
+    variableCosts: number
+  }>
   costDistribution: Array<{
-    category: string;
-    percentage: number;
-    amount: number;
-  }>;
-  noData?: boolean;
+    category: string
+    percentage: number
+    amount: number
+  }>
+  periodType?: string
+  noData?: boolean
 }
 
-// Definimos la estructura inicial vacía para evitar datos dummy
+interface RevenueData {
+  totalSales?: {
+    actual: number
+    previous: number
+  }
+  noData?: boolean
+}
+
 const emptyData: CostData = {
   totalCosts: {
     actual: 0,
     previous: 0,
     percentChange: 0,
     formattedActual: "0",
-    formattedPrevious: "0"
+    formattedPrevious: "0",
   },
   costCategories: [],
   monthlyData: [],
   costDistribution: [],
-  noData: true
-};
-
-interface CostReportsProps {
-  startDate?: Date;
-  endDate?: Date;
-  segmentId?: string;
+  noData: true,
 }
 
-export function CostReports({ 
-  startDate: propStartDate, 
+interface CostReportsProps {
+  startDate?: Date
+  endDate?: Date
+  segmentId?: string
+  campaignId?: string
+}
+
+function formatPeriodType(periodType?: string): string {
+  switch (periodType) {
+    case "daily":
+      return "yesterday"
+    case "weekly":
+      return "last week"
+    case "monthly":
+      return "last month"
+    case "quarterly":
+      return "last quarter"
+    case "yearly":
+      return "last year"
+    default:
+      return "previous period"
+  }
+}
+
+function formatCurrency(amount: number): string {
+  if (!Number.isFinite(amount)) return "$0"
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
+async function fetchJson(url: string) {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error("Failed to fetch cost data")
+  }
+  return response.json()
+}
+
+export function CostReports({
+  startDate: propStartDate,
   endDate: propEndDate,
-  segmentId = "all" 
+  segmentId = "all",
+  campaignId = "all",
 }: CostReportsProps) {
   const { currentSite } = useSite()
-  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30))
-  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date())
-  
-  // Update local state when props change
-  useEffect(() => {
-    if (propStartDate) {
-      setStartDate(propStartDate);
-    }
-    if (propEndDate) {
-      setEndDate(propEndDate);
-    }
-  }, [propStartDate, propEndDate]);
+  const startDate = propStartDate || subDays(new Date(), 30)
+  const endDate = propEndDate || new Date()
 
   const siteId = currentSite?.id === "default" ? null : currentSite?.id
-  const url = siteId 
-    ? `/api/costs?siteId=${siteId}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}${segmentId !== "all" ? `&segmentId=${segmentId}` : ''}`
-    : null
+  const dateQuery = `startDate=${format(startDate, "yyyy-MM-dd")}&endDate=${format(endDate, "yyyy-MM-dd")}`
+  const filterQuery = `${segmentId !== "all" ? `&segmentId=${segmentId}` : ""}${
+    campaignId !== "all" ? `&campaignId=${campaignId}` : ""
+  }`
+  const costsUrl = siteId ? `/api/costs?siteId=${siteId}&${dateQuery}${filterQuery}` : null
+  const revenueUrl = siteId ? `/api/revenue?siteId=${siteId}&${dateQuery}${
+    segmentId !== "all" ? `&segmentId=${segmentId}` : ""
+  }` : null
 
-  const { data: fetchedCostData, isLoading: isLoadingCosts } = useSWR(
-    url,
-    async (fetchUrl) => {
-      const response = await fetch(fetchUrl)
-      if (!response.ok) {
-        throw new Error('Failed to fetch cost data')
-      }
-      return await response.json()
-    },
-    {}
+  const { data: fetchedCostData, isLoading: isLoadingCosts } = useSWR<CostData>(
+    costsUrl,
+    fetchJson
+  )
+  const { data: fetchedRevenueData, isLoading: isLoadingRevenue } = useSWR<RevenueData>(
+    revenueUrl,
+    fetchJson
   )
 
   const isLoading = isLoadingCosts
+  const isEfficiencyLoading = isLoadingCosts || (!!revenueUrl && isLoadingRevenue && !fetchedRevenueData)
   const dataReady = !!fetchedCostData || !siteId
   const costData = fetchedCostData || emptyData
   const hasData = fetchedCostData ? !fetchedCostData.noData : false
+  const hasDistributionData = hasData && costData.costDistribution.length > 0
+  const hasMonthlyData = costData.monthlyData.some(
+    (row) => row.fixedCosts > 0 || row.variableCosts > 0
+  )
+  const hasCategoriesData = hasData && costData.costCategories.length > 0
+  const periodLabel = formatPeriodType(costData.periodType)
 
-  // Check if we have data to display
-  const hasDistributionData = hasData && costData.costDistribution && costData.costDistribution.length > 0
-  const hasMonthlyData = hasData && costData.monthlyData && costData.monthlyData.length > 0
-  const hasCategoriesData = hasData && costData.costCategories && costData.costCategories.length > 0
+  const kpis = useMemo(() => {
+    const marketing = marketingFromCategories(costData.costCategories)
+    const overhead = overheadFromCategories(costData.costCategories)
+    const currentRevenue = fetchedRevenueData?.totalSales?.actual || 0
+    const prevRevenue = fetchedRevenueData?.totalSales?.previous || 0
+    const currentRatio = efficiencyRatio(currentRevenue, costData.totalCosts.actual)
+    const prevRatio = efficiencyRatio(prevRevenue, costData.totalCosts.previous)
+    const ratioChange =
+      prevRatio > 0 ? ((currentRatio - prevRatio) / prevRatio) * 100 : currentRatio > 0 ? 100 : 0
+
+    return { marketing, overhead, currentRatio, ratioChange }
+  }, [costData, fetchedRevenueData])
 
   return (
     <div className="space-y-6">
-      {/* KPI Widgets Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <TotalCostsWidget
+        <BaseKpiWidget
+          title="Total Costs"
+          value={hasData ? `$${costData.totalCosts.formattedActual}` : "$0"}
+          changeText={hasData ? `${costData.totalCosts.percentChange.toFixed(1)}% from ${periodLabel}` : "No data available"}
+          isPositiveChange={hasData ? costData.totalCosts.percentChange < 0 : undefined}
+          isLoading={isLoading}
           startDate={startDate}
           endDate={endDate}
         />
-        <MarketingCostsWidget
+        <BaseKpiWidget
+          title="Marketing Costs"
+          value={formatCurrency(kpis.marketing.amount)}
+          changeText={hasData ? `${kpis.marketing.percentChange.toFixed(1)}% from ${periodLabel}` : "No data available"}
+          isPositiveChange={hasData ? kpis.marketing.percentChange < 0 : undefined}
+          isLoading={isLoading}
           startDate={startDate}
           endDate={endDate}
         />
-        <EfficiencyWidget
+        <BaseKpiWidget
+          title="Efficiency Ratio"
+          value={`${(kpis.currentRatio || 0).toFixed(1)}:1`}
+          changeText={hasData ? `${kpis.ratioChange.toFixed(1)}% from ${periodLabel}` : "No data available"}
+          isPositiveChange={hasData ? kpis.ratioChange > 0 : undefined}
+          isLoading={isEfficiencyLoading}
           startDate={startDate}
           endDate={endDate}
         />
-        <OverheadWidget
+        <BaseKpiWidget
+          title="Overhead Costs"
+          value={formatCurrency(kpis.overhead.amount)}
+          changeText={hasData ? `${kpis.overhead.percentChange.toFixed(1)}% from ${periodLabel}` : "No data available"}
+          isPositiveChange={hasData ? kpis.overhead.percentChange < 0 : undefined}
+          isLoading={isLoading}
           startDate={startDate}
           endDate={endDate}
         />
       </div>
-      
-      {/* Charts Section - Pie and Bar side by side */}
+
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        <CostDistributionChart 
-          data={costData.costDistribution}
+        <CostDistributionChart
+          data={hasDistributionData ? costData.costDistribution : []}
           isLoading={isLoading}
           dataReady={dataReady}
         />
         <MonthlyCostEvolutionChart
-          data={costData.monthlyData}
+          data={hasMonthlyData ? costData.monthlyData : []}
           isLoading={isLoading}
           dataReady={dataReady}
         />
       </div>
-      
-      {/* Financial Cost Report Section */}
+
       {isLoading || !dataReady ? (
         <Card>
           <CardHeader>
@@ -185,11 +250,6 @@ export function CostReports({
                   </div>
                 ))}
               </div>
-              <div className="pt-4">
-                <Skeleton className="h-6 w-full" />
-                <Skeleton className="h-6 w-4/5 mt-2" />
-                <Skeleton className="h-6 w-2/3 mt-2" />
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -206,7 +266,7 @@ export function CostReports({
             <CardDescription>Detailed analysis of costs by category.</CardDescription>
           </CardHeader>
           <CardContent>
-            <EmptyCard 
+            <EmptyCard
               icon={<BarChart className="h-8 w-8 text-muted-foreground" />}
               title="No cost categories data"
               description="There is no cost breakdown data available for the selected period."
@@ -216,4 +276,4 @@ export function CostReports({
       )}
     </div>
   )
-} 
+}

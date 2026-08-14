@@ -1,322 +1,276 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { subDays, subMonths, format, parseISO } from 'date-fns';
+import { NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/utils/supabase/server"
+import { startOfMonth, subDays, subMonths } from "date-fns"
+import {
+  BILL_COST_STATUSES,
+  addCalendarDays,
+  aggregateByCategory,
+  buildCostCategories,
+  buildCostDistribution,
+  buildMonthlyCostData,
+  costRowsInRange,
+  inclusiveEndWithUtcSlack,
+  mapPurchasesToCostRows,
+  parseDateParam,
+  periodTypeFromDays,
+  shouldIncludeBillsInCostReport,
+  sumCosts,
+  toDateOnly,
+  type CostTransaction,
+  type PurchaseCostRow,
+  type PurchaseItemCostRow,
+} from "@/lib/costs/aggregate-costs"
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic"
 
-interface Transaction {
-  id: string;
-  campaign_id: string;
-  type: 'fixed' | 'variable';
-  amount: number;
-  description: string | null;
-  category: string;
-  date: string;
-  created_at: string;
-  currency: string;
-  site_id: string;
-  user_id: string;
-  updated_at: string;
+const TRANSACTION_COLUMNS = "id, type, amount, category, date, campaign_id, segment_id"
+
+function emptyPayload(extras: Record<string, unknown> = {}) {
+  return {
+    totalCosts: {
+      actual: 0,
+      previous: 0,
+      percentChange: 0,
+      formattedActual: "0",
+      formattedPrevious: "0",
+    },
+    costCategories: [],
+    monthlyData: [],
+    costDistribution: [],
+    periodType: "custom",
+    noData: true,
+    ...extras,
+  }
 }
 
-// Define category groups for better reporting
-const CATEGORY_GROUPS: Record<string, string> = {
-  // Marketing expenses
-  advertising: "Marketing",
-  promotions: "Marketing",
-  content: "Marketing",
-  adspend: "Marketing",
-  seo: "Marketing",
-  social: "Marketing",
-  email: "Marketing",
-  events: "Marketing",
-  print: "Marketing",
-  sponsorship: "Marketing",
-  
-  // Sales expenses
-  sales_commission: "Sales",
-  sales_travel: "Sales",
-  crm: "Sales",
-  
-  // Technology expenses
-  software: "Technology",
-  hosting: "Technology",
-  tools: "Technology",
-  
-  // Operational expenses
-  freelance: "Operations",
-  agency: "Operations",
-  consulting: "Operations",
-  research: "Operations",
-  utilities: "Operations",
-  rent: "Operations",
-  
-  // Administrative expenses
-  salaries: "Administration",
-  insurance: "Administration",
-  legal: "Administration",
-  travel: "Administration",
-  training: "Administration",
-  
-  // Default
-  other: "Other"
-};
+function applyCostFilters(
+  query: any,
+  opts: {
+    siteId: string
+    startDate: string
+    endInclusive: string
+    campaignId?: string | null
+    segmentId?: string | null
+    segmentCampaignIds?: string[]
+  }
+) {
+  let next = query
+    .eq("site_id", opts.siteId)
+    .gte("date", opts.startDate)
+    .lte("date", opts.endInclusive)
+
+  if (opts.campaignId && opts.campaignId !== "all") {
+    next = next.eq("campaign_id", opts.campaignId)
+  }
+
+  if (opts.segmentId && opts.segmentId !== "all") {
+    const campaignIds = opts.segmentCampaignIds || []
+    if (campaignIds.length > 0) {
+      next = next.or(
+        `segment_id.eq.${opts.segmentId},campaign_id.in.(${campaignIds.join(",")})`
+      )
+    } else {
+      next = next.eq("segment_id", opts.segmentId)
+    }
+  }
+
+  return next
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // Obtener parámetros de consulta
-    const searchParams = request.nextUrl.searchParams;
-    const siteId = searchParams.get('siteId');
-    const segmentId = searchParams.get('segmentId');
-    const startDateParam = searchParams.get('startDate');
-    const endDateParam = searchParams.get('endDate');
+    const searchParams = request.nextUrl.searchParams
+    const siteId = searchParams.get("siteId")
+    const segmentId = searchParams.get("segmentId")
+    const campaignId = searchParams.get("campaignId")
+    const startDateParam = searchParams.get("startDate")
+    const endDateParam = searchParams.get("endDate")
 
-    // Validar ID del sitio
     if (!siteId) {
-      return NextResponse.json(
-        { error: 'Site ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Site ID is required" }, { status: 400 })
     }
 
-    // Handle demo sites to prevent invalid UUID database errors
     if (siteId.startsWith("demo-")) {
-      return NextResponse.json({
-        totalCosts: {
-          actual: 0,
-          previous: 0,
-          percentChange: 0,
-          formattedActual: "0",
-          formattedPrevious: "0"
-        },
-        costCategories: [],
-        monthlyData: [],
-        costDistribution: [],
-        periodType: "custom",
-        noData: true,
-        metadata: {
-          warning: "Demo site detected"
-        }
-      });
-    }
-
-    // Inicializar cliente Supabase
-    const supabase = await createClient();
-    
-    // Parsear fechas
-    const endDate = endDateParam ? new Date(endDateParam) : new Date();
-    const startDate = startDateParam ? new Date(startDateParam) : subDays(endDate, 30);
-    
-    // Calcular período anterior
-    const periodLength = endDate.getTime() - startDate.getTime();
-    const previousPeriodEnd = new Date(startDate.getTime() - 1);
-    const previousPeriodStart = new Date(previousPeriodEnd.getTime() - periodLength);
-    
-    // Formatear fechas para consultas SQL
-    const startDateFormatted = format(startDate, 'yyyy-MM-dd');
-    const endDateFormatted = format(endDate, 'yyyy-MM-dd');
-    const prevStartFormatted = format(previousPeriodStart, 'yyyy-MM-dd');
-    const prevEndFormatted = format(previousPeriodEnd, 'yyyy-MM-dd');
-    
-    // Determinar tipo de período
-    let periodType = "custom";
-    const daysDiff = Math.floor(periodLength / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff <= 1) periodType = "daily";
-    else if (daysDiff <= 7) periodType = "weekly";
-    else if (daysDiff <= 31) periodType = "monthly";
-    else if (daysDiff <= 92) periodType = "quarterly";
-    else periodType = "yearly";
-    
-    // Buscar campañas para este sitio
-    const { data: campaigns } = await supabase
-      .from('campaigns')
-      .select('id')
-      .eq('site_id', siteId);
-    
-    const campaignIds = campaigns?.map(campaign => campaign.id) || [];
-    
-    // Obtener transacciones para el período actual
-    const { data: currentTransactions, error: currentError } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('site_id', siteId)
-      .gte('date', startDateFormatted)
-      .lte('date', endDateFormatted);
-    
-    if (currentError) {
-      console.error('Error fetching current transactions:', currentError);
       return NextResponse.json(
-        { error: 'Failed to fetch transaction data' },
+        emptyPayload({
+          metadata: { warning: "Demo site detected" },
+        })
+      )
+    }
+
+    const supabase = await createClient()
+
+    const endDate = parseDateParam(endDateParam, new Date())
+    const startDate = parseDateParam(startDateParam, subDays(endDate, 30))
+    const currentStart = toDateOnly(startDate)
+    const currentEnd = toDateOnly(endDate)
+    const currentEndInclusive = inclusiveEndWithUtcSlack(currentEnd)
+
+    const periodLength = endDate.getTime() - startDate.getTime()
+    const daysDiff = Math.max(1, Math.floor(periodLength / (1000 * 60 * 60 * 24)))
+    const periodType = periodTypeFromDays(daysDiff)
+    const previousEnd = addCalendarDays(currentStart, -1)
+    const previousStart = addCalendarDays(previousEnd, -(daysDiff - 1))
+
+    let segmentCampaignIds: string[] = []
+    if (segmentId && segmentId !== "all") {
+      const { data: campaignSegments } = await supabase
+        .from("campaign_segments")
+        .select("campaign_id")
+        .eq("segment_id", segmentId)
+      segmentCampaignIds = (campaignSegments || [])
+        .map((row) => row.campaign_id)
+        .filter(Boolean)
+    }
+
+    const filterOpts = {
+      siteId,
+      campaignId,
+      segmentId,
+      segmentCampaignIds,
+    }
+
+    const monthlyStart = startOfMonth(subMonths(endDate, 5))
+    const monthlyStartDate = toDateOnly(monthlyStart)
+    const includeBills = shouldIncludeBillsInCostReport(campaignId, segmentId)
+    const billsQueryStart = previousStart < monthlyStartDate ? previousStart : monthlyStartDate
+
+    const currentQuery = applyCostFilters(
+      supabase.from("transactions").select(TRANSACTION_COLUMNS),
+      {
+        ...filterOpts,
+        startDate: currentStart,
+        endInclusive: currentEndInclusive,
+      }
+    )
+
+    const previousQuery = applyCostFilters(
+      supabase.from("transactions").select(TRANSACTION_COLUMNS),
+      {
+        ...filterOpts,
+        startDate: previousStart,
+        endInclusive: previousEnd,
+      }
+    )
+
+    const monthlyQuery = applyCostFilters(
+      supabase.from("transactions").select(TRANSACTION_COLUMNS),
+      {
+        ...filterOpts,
+        startDate: monthlyStartDate,
+        endInclusive: currentEndInclusive,
+      }
+    )
+
+    const billsQuery = includeBills
+      ? supabase
+          .from("purchases")
+          .select("id, amount, purchase_date, status")
+          .eq("site_id", siteId)
+          .in("status", [...BILL_COST_STATUSES])
+          .gte("purchase_date", billsQueryStart)
+          .lte("purchase_date", currentEndInclusive)
+      : Promise.resolve({ data: [] as PurchaseCostRow[], error: null })
+
+    const [
+      { data: currentTransactions, error: currentError },
+      { data: prevTransactions },
+      { data: monthlyTransactions },
+      { data: purchases, error: purchasesError },
+    ] = await Promise.all([currentQuery, previousQuery, monthlyQuery, billsQuery])
+
+    if (currentError) {
+      console.error("Error fetching current transactions:", currentError)
+      return NextResponse.json(
+        { error: "Failed to fetch transaction data" },
         { status: 500 }
-      );
+      )
     }
-    
-    // Filtrar por campañas si es necesario
-    let filteredTransactions = currentTransactions || [];
-    if (campaignIds.length > 0) {
-      filteredTransactions = filteredTransactions.filter(tx => 
-        campaignIds.includes(tx.campaign_id)
-      );
-    }
-    
-    // Obtener transacciones para el período anterior
-    const { data: prevData } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('site_id', siteId)
-      .gte('date', prevStartFormatted)
-      .lte('date', prevEndFormatted);
-    
-    // Filtrar por campañas si es necesario
-    let prevTransactions = prevData || [];
-    if (campaignIds.length > 0) {
-      prevTransactions = prevTransactions.filter(tx => 
-        campaignIds.includes(tx.campaign_id)
-      );
-    }
-    
-    // Si no hay datos, devolver respuesta vacía
-    if (filteredTransactions.length === 0) {
-      return NextResponse.json({
-        totalCosts: {
-          actual: 0,
-          previous: 0,
-          percentChange: 0,
-          formattedActual: "0",
-          formattedPrevious: "0"
-        },
-        costCategories: [],
-        monthlyData: [],
-        costDistribution: [],
-        periodType,
-        noData: true,
-        metadata: {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          prevStartDate: previousPeriodStart.toISOString(),
-          prevEndDate: previousPeriodEnd.toISOString(),
-          segmentId: segmentId || 'all'
-        }
-      });
-    }
-    
-    // Calcular costos totales
-    const totalCosts = filteredTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
-    const prevTotalCosts = prevTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
-    const percentChange = prevTotalCosts > 0 ? ((totalCosts - prevTotalCosts) / prevTotalCosts) * 100 : 0;
 
-    // Calcular costos fijos/variables
-    const fixedCosts = filteredTransactions.filter(tx => tx.type === 'fixed').reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
-    const variableCosts = filteredTransactions.filter(tx => tx.type === 'variable').reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
-    const prevFixedCosts = prevTransactions.filter(tx => tx.type === 'fixed').reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
-    const prevVariableCosts = prevTransactions.filter(tx => tx.type === 'variable').reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
-    
-    // Agrupar por categoría
-    const categories = new Map<string, number>();
-    const prevCategories = new Map<string, number>();
-    
-    // Función para obtener el grupo de categoría
-    const getCategoryGroup = (tx: Transaction): string => {
-      const categoryKey = tx.category || "other";
-      return CATEGORY_GROUPS[categoryKey] || "Other";
-    };
-    
-    // Agrupar transacciones actuales por categoría
-    filteredTransactions.forEach(tx => {
-      const categoryGroup = getCategoryGroup(tx);
-      const amount = parseFloat(tx.amount.toString());
-      categories.set(categoryGroup, (categories.get(categoryGroup) || 0) + amount);
-    });
-    
-    // Agrupar transacciones anteriores por categoría
-    prevTransactions.forEach(tx => {
-      const categoryGroup = getCategoryGroup(tx);
-      const amount = parseFloat(tx.amount.toString());
-      prevCategories.set(categoryGroup, (prevCategories.get(categoryGroup) || 0) + amount);
-    });
-    
-    // Crear array de categorías con porcentajes de cambio
-    const costCategories = Array.from(categories.entries()).map(([name, amount]) => {
-      const prevAmount = prevCategories.get(name) || 0;
-      const percentChange = prevAmount > 0 ? ((amount - prevAmount) / prevAmount) * 100 : 0;
-      return {
-        name,
-        amount,
-        prevAmount,
-        percentChange: parseFloat(percentChange.toFixed(1))
-      };
-    });
-    
-    // Crear distribución de costos con porcentajes
-    const costDistribution = Array.from(categories.entries()).map(([category, amount]) => {
-      const percentage = totalCosts > 0 ? Math.round((amount / totalCosts) * 100) : 0;
-      return {
-        category,
-        percentage,
-        amount
-      };
-    });
-    
-    // Datos mensuales para los últimos 6 meses
-    const monthlyData = [];
-    const today = new Date();
-
-    for (let i = 5; i >= 0; i--) {
-      const monthDate = subMonths(today, i);
-      const month = monthDate.toLocaleString('en-US', { month: 'short' });
-      const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-      const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59, 999);
-      
-      // Filtrar transacciones para este mes
-      const monthFixedCosts = filteredTransactions
-        .filter(tx => {
-          const txDate = parseISO(tx.date);
-          return tx.type === 'fixed' && txDate >= monthStart && txDate <= monthEnd;
-        })
-        .reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
-        
-      const monthVariableCosts = filteredTransactions
-        .filter(tx => {
-          const txDate = parseISO(tx.date);
-          return tx.type === 'variable' && txDate >= monthStart && txDate <= monthEnd;
-        })
-        .reduce((sum, tx) => sum + parseFloat(tx.amount.toString()), 0);
-      
-      monthlyData.push({
-        month,
-        fixedCosts: monthFixedCosts,
-        variableCosts: monthVariableCosts
-      });
+    if (purchasesError) {
+      console.error("Error fetching bills:", purchasesError)
+      return NextResponse.json(
+        { error: "Failed to fetch bill data" },
+        { status: 500 }
+      )
     }
-    
-    // Devolver respuesta formateada
+
+    let billRows: CostTransaction[] = []
+    if (includeBills && purchases && purchases.length > 0) {
+      const purchaseIds = purchases.map((purchase) => purchase.id)
+      const { data: purchaseItems, error: itemsError } = await supabase
+        .from("purchase_items")
+        .select("purchase_id, catalog_item_id, subtotal, quantity, unit_cost, catalog_items(kind)")
+        .in("purchase_id", purchaseIds)
+
+      if (itemsError) {
+        console.error("Error fetching bill line items:", itemsError)
+        return NextResponse.json(
+          { error: "Failed to fetch bill data" },
+          { status: 500 }
+        )
+      }
+
+      billRows = mapPurchasesToCostRows(
+        purchases as PurchaseCostRow[],
+        (purchaseItems || []) as PurchaseItemCostRow[]
+      )
+    }
+
+    const current = [
+      ...((currentTransactions || []) as CostTransaction[]),
+      ...costRowsInRange(billRows, currentStart, currentEndInclusive),
+    ]
+    const previous = [
+      ...((prevTransactions || []) as CostTransaction[]),
+      ...costRowsInRange(billRows, previousStart, previousEnd),
+    ]
+    const monthly = [
+      ...((monthlyTransactions || []) as CostTransaction[]),
+      ...costRowsInRange(billRows, monthlyStartDate, currentEndInclusive),
+    ]
+
+    const metadata = {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      prevStartDate: parseDateParam(previousStart, startDate).toISOString(),
+      prevEndDate: parseDateParam(previousEnd, endDate).toISOString(),
+      segmentId: segmentId || "all",
+      campaignId: campaignId || "all",
+    }
+
+    if (current.length === 0 && monthly.length === 0) {
+      return NextResponse.json(emptyPayload({ periodType, metadata }))
+    }
+
+    const totalCosts = sumCosts(current)
+    const prevTotalCosts = sumCosts(previous)
+    const percentChange =
+      prevTotalCosts > 0 ? ((totalCosts - prevTotalCosts) / prevTotalCosts) * 100 : totalCosts > 0 ? 100 : 0
+
+    const categories = aggregateByCategory(current)
+    const prevCategories = aggregateByCategory(previous)
+    const costCategories = buildCostCategories(categories, prevCategories)
+    const costDistribution = buildCostDistribution(categories, totalCosts)
+    const monthlyData = buildMonthlyCostData(monthly, 6, endDate)
+
     return NextResponse.json({
       totalCosts: {
         actual: totalCosts,
         previous: prevTotalCosts,
         percentChange,
         formattedActual: totalCosts.toLocaleString(),
-        formattedPrevious: prevTotalCosts.toLocaleString()
+        formattedPrevious: prevTotalCosts.toLocaleString(),
       },
       costCategories,
       monthlyData,
       costDistribution,
       periodType,
-      metadata: {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        prevStartDate: previousPeriodStart.toISOString(),
-        prevEndDate: previousPeriodEnd.toISOString(),
-        segmentId: segmentId || 'all'
-      }
-    });
-    
+      noData: current.length === 0,
+      metadata,
+    })
   } catch (error) {
-    console.error('Error in Costs API:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error("Error in Costs API:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-} 
+}

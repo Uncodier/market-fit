@@ -57,6 +57,8 @@ export interface SaleCampaignInput {
 export interface SaleInput {
   id: string
   amount?: number | string | null
+  amount_due?: number | string | null
+  status?: string | null
   currency?: string | null
   created_at: string
   product_name?: string | null

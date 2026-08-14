@@ -140,6 +140,23 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
         .from("sale_order_items")
         .update({ status: 'completed' })
         .eq("sale_order_id", orderId);
+
+      if (currentOrder?.sale_id) {
+        const { data: paidSale } = await supabase
+          .from("sales")
+          .select("id, status, amount_due")
+          .eq("id", currentOrder.sale_id)
+          .eq("site_id", siteId)
+          .single();
+
+        if (paidSale?.status === "pending" && Number(paidSale.amount_due) === 0) {
+          await supabase
+            .from("sales")
+            .update({ status: "completed" })
+            .eq("id", paidSale.id)
+            .eq("site_id", siteId);
+        }
+      }
     }
 
     if (status === "cancelled" && currentOrder?.sale_id) {

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/compon
 import { formatCurrency } from "@/app/lib/formatters"
 import { format } from "date-fns"
 import { Lead } from "@/app/leads/types"
+import { convertedLeadDate, convertedLeadValue } from "@/lib/leads/converted-lead-value"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -37,10 +38,12 @@ function formatLeadDate(dateString?: string | null) {
 
 export function CampaignLeadsTables({
   campaignLeads,
+  leadSalesTotals = {},
   loadingLeads,
   addLeadButton,
 }: {
   campaignLeads: Lead[]
+  leadSalesTotals?: Record<string, number>
   loadingLeads: boolean
   addLeadButton: React.ReactNode
 }) {
@@ -123,10 +126,10 @@ export function CampaignLeadsTables({
                       />
                     </TableCell>
                     <TableCell className="py-3.5 text-sm text-muted-foreground whitespace-nowrap">
-                      {formatLeadDate(lead.created_at)}
+                      {formatLeadDate(convertedLeadDate(lead))}
                     </TableCell>
                     <TableCell className="py-3.5">
-                      <MoneyCell amountLabel={formatCurrency((lead as { value?: number }).value || 0)} />
+                      <MoneyCell amountLabel={formatCurrency(convertedLeadValue(lead, leadSalesTotals[lead.id]))} />
                     </TableCell>
                   </DocumentListRow>
                 ))}

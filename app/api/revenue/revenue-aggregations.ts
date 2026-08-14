@@ -30,6 +30,53 @@ export function percentChangeFrom(previous: number, current: number): number {
   return isNaN(change) ? 0 : change;
 }
 
+const EXCLUDED_SALE_STATUSES = new Set(['cancelled', 'refunded']);
+
+/** Paid sales count as revenue, matching the Orders "Paid" badge. */
+export function isRecognizedRevenueSale(sale: {
+  status?: string | null;
+  amount_due?: number | string | null;
+}): boolean {
+  const status = (sale?.status || '').toLowerCase();
+  if (!status || EXCLUDED_SALE_STATUSES.has(status)) return false;
+  if (status === 'completed') return true;
+  return status === 'pending' && Number(sale.amount_due) === 0;
+}
+
+export function saleCalendarDate(sale: {
+  sale_date?: string | null;
+  created_at?: string | null;
+}): string {
+  if (sale?.sale_date && /^\d{4}-\d{2}-\d{2}/.test(sale.sale_date)) {
+    return sale.sale_date.slice(0, 10);
+  }
+  if (sale?.created_at) return String(sale.created_at).slice(0, 10);
+  return '';
+}
+
+export function salesInLocalRange<T extends {
+  status?: string | null;
+  amount_due?: number | string | null;
+  sale_date?: string | null;
+  created_at?: string | null;
+}>(sales: T[], startDate: string, endInclusive: string): T[] {
+  return sales.filter((sale) => {
+    if (!isRecognizedRevenueSale(sale)) return false;
+    const date = saleCalendarDate(sale);
+    return date >= startDate && date <= endInclusive;
+  });
+}
+
+export function mergeSalesById<T extends { id?: string }>(...groups: Array<T[] | null | undefined>): T[] {
+  const byId = new Map<string, T>();
+  for (const group of groups) {
+    for (const sale of group || []) {
+      if (sale?.id) byId.set(sale.id, sale);
+    }
+  }
+  return Array.from(byId.values());
+}
+
 type SupabaseLike = {
   from: (table: string) => any;
 };

@@ -50,7 +50,10 @@ export function WidgetProvider({ children }: WidgetProviderProps) {
   useEffect(() => {
     // Only enable widgets on client side and in dashboard routes
     if (isClient) {
-      const isDashboardRoute = pathname?.includes('/dashboard') || pathname === '/'
+      const isDashboardRoute =
+        pathname?.includes('/dashboard') ||
+        pathname === '/' ||
+        pathname?.startsWith('/costs')
       setShouldExecuteWidgets(isDashboardRoute)
       
     }

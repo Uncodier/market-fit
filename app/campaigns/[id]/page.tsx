@@ -75,6 +75,7 @@ export default function CampaignDetailPage(props: { params: Promise<{ id: string
                   campaign={campaign}
                   loadingLeads={detail.loadingLeads}
                   campaignLeads={detail.campaignLeads}
+                  leadSalesTotals={detail.leadSalesTotals}
                   onCreateRequirement={detail.handleCreateRequirement}
                   segments={detail.siteSegments}
                   onReloadLeads={() => detail.reloadLeads()}

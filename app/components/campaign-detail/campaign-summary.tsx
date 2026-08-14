@@ -13,6 +13,7 @@ export interface CampaignSummaryProps {
   campaign: { id: string }
   loadingLeads: boolean
   campaignLeads: Lead[]
+  leadSalesTotals?: Record<string, number>
   onCreateRequirement: (values: CampaignRequirementFormValues) => Promise<{ data?: unknown; error?: string }>
   segments: Array<{ id: string; name: string }>
   onReloadLeads?: () => void
@@ -24,6 +25,7 @@ export function CampaignSummary({
   campaign,
   loadingLeads,
   campaignLeads,
+  leadSalesTotals,
   onCreateRequirement,
   segments,
   onReloadLeads,
@@ -50,8 +52,9 @@ export function CampaignSummary({
         )}
       />
 
-      <CampaignLeadsTables
+        <CampaignLeadsTables
         campaignLeads={campaignLeads}
+        leadSalesTotals={leadSalesTotals}
         loadingLeads={loadingLeads}
         addLeadButton={
           <AddCampaignLeadDialog

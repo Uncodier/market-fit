@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { subDays, format } from 'date-fns';
+import { addDays, endOfDay, startOfDay, subDays } from 'date-fns';
+import {
+  addCalendarDays,
+  inclusiveEndWithUtcSlack,
+  parseDateParam,
+  periodTypeFromDays,
+  toDateOnly,
+} from '@/lib/costs/aggregate-costs';
 import {
   aggregateSalesByCategory,
   buildMonthlyChannelData,
   getSalesAmount,
   isOnlineSource,
   isRetailSource,
+  mergeSalesById,
   percentChangeFrom,
+  salesInLocalRange,
 } from './revenue-aggregations';
 
 export const dynamic = 'force-dynamic';
@@ -57,13 +66,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const endDate = endDateParam ? new Date(endDateParam) : new Date();
-    const startDate = startDateParam ? new Date(startDateParam) : subDays(endDate, 30);
+    const endDate = parseDateParam(endDateParam, new Date());
+    const startDate = parseDateParam(startDateParam, subDays(endDate, 30));
+    const today = toDateOnly(new Date());
 
-    const now = new Date();
-    if (startDate > now || endDate > now) {
+    if (toDateOnly(startDate) > today) {
       console.warn(
-        `[Revenue API] Future date detected in request - startDate: ${startDate.toISOString()}, endDate: ${endDate.toISOString()}`
+        `[Revenue API] Future date detected in request - startDate: ${toDateOnly(startDate)}, endDate: ${toDateOnly(endDate)}`
       );
       return NextResponse.json(
         emptyRevenuePayload({
@@ -79,67 +88,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const periodLength = endDate.getTime() - startDate.getTime();
-    const previousPeriodEnd = new Date(startDate.getTime() - 1);
-    const previousPeriodStart = new Date(previousPeriodEnd.getTime() - periodLength);
-
     const supabase = await createClient();
+    const currentStart = toDateOnly(startDate);
+    const currentEnd = toDateOnly(endDate) > today ? today : toDateOnly(endDate);
+    const periodLength = endDate.getTime() - startDate.getTime();
+    const daysDiff = Math.max(1, Math.floor(periodLength / (1000 * 60 * 60 * 24)));
+    const periodType = periodTypeFromDays(daysDiff);
+    const previousEnd = addCalendarDays(currentStart, -1);
+    const previousStart = addCalendarDays(previousEnd, -(daysDiff - 1));
 
-    let periodType = 'custom';
-    const daysDiff = Math.floor(periodLength / (1000 * 60 * 60 * 24));
-
-    if (daysDiff <= 1) periodType = 'daily';
-    else if (daysDiff <= 7) periodType = 'weekly';
-    else if (daysDiff <= 31) periodType = 'monthly';
-    else if (daysDiff <= 92) periodType = 'quarterly';
-    else periodType = 'yearly';
-
-    const startDateStr = format(startDate, 'yyyy-MM-dd');
-    const endDateStr = format(endDate, 'yyyy-MM-dd');
-
-    let salesQuerySaleDate = supabase
-      .from('sales')
-      .select('*')
-      .eq('site_id', siteId)
-      .gte('sale_date', startDateStr)
-      .lte('sale_date', endDateStr)
-      .eq('status', 'completed');
-
-    if (segmentId && segmentId !== 'all') {
-      salesQuerySaleDate = salesQuerySaleDate.eq('segment_id', segmentId);
-    }
-
-    const { data: currentSalesDataSaleDate, error: currentSalesErrorSaleDate } =
-      await salesQuerySaleDate;
-
-    let currentSalesData = currentSalesDataSaleDate;
-    let currentSalesError = currentSalesErrorSaleDate;
-
-    if (
-      currentSalesErrorSaleDate ||
-      !currentSalesDataSaleDate ||
-      currentSalesDataSaleDate.length === 0
-    ) {
-      console.log('[Revenue API] Using created_at fallback for current period');
-
-      let salesQuery = supabase
-        .from('sales')
-        .select('*')
-        .eq('site_id', siteId)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString())
-        .eq('status', 'completed');
-
-      if (segmentId && segmentId !== 'all') {
-        salesQuery = salesQuery.eq('segment_id', segmentId);
-      }
-
-      const result = await salesQuery;
-      currentSalesData = result.data;
-      currentSalesError = result.error;
-    } else {
-      console.log('[Revenue API] Using sale_date for current period');
-    }
+    const { data: currentSalesData, error: currentSalesError } = await fetchPeriodSales(
+      supabase,
+      siteId,
+      segmentId,
+      startDate,
+      parseDateParam(currentEnd, endDate)
+    );
 
     if (currentSalesError) {
       console.error('Error fetching current sales:', currentSalesError);
@@ -149,52 +113,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const prevStartDateStr = format(previousPeriodStart, 'yyyy-MM-dd');
-    const prevEndDateStr = format(previousPeriodEnd, 'yyyy-MM-dd');
-
-    let prevSalesQuerySaleDate = supabase
-      .from('sales')
-      .select('*')
-      .eq('site_id', siteId)
-      .gte('sale_date', prevStartDateStr)
-      .lte('sale_date', prevEndDateStr)
-      .eq('status', 'completed');
-
-    if (segmentId && segmentId !== 'all') {
-      prevSalesQuerySaleDate = prevSalesQuerySaleDate.eq('segment_id', segmentId);
-    }
-
-    const { data: prevSalesDataSaleDate, error: prevSalesErrorSaleDate } =
-      await prevSalesQuerySaleDate;
-
-    let prevSalesData = prevSalesDataSaleDate;
-    let prevSalesError = prevSalesErrorSaleDate;
-
-    if (
-      prevSalesErrorSaleDate ||
-      !prevSalesDataSaleDate ||
-      prevSalesDataSaleDate.length === 0
-    ) {
-      console.log('[Revenue API] Using created_at fallback for previous period');
-
-      let prevSalesQuery = supabase
-        .from('sales')
-        .select('*')
-        .eq('site_id', siteId)
-        .gte('created_at', previousPeriodStart.toISOString())
-        .lte('created_at', previousPeriodEnd.toISOString())
-        .eq('status', 'completed');
-
-      if (segmentId && segmentId !== 'all') {
-        prevSalesQuery = prevSalesQuery.eq('segment_id', segmentId);
-      }
-
-      const result = await prevSalesQuery;
-      prevSalesData = result.data;
-      prevSalesError = result.error;
-    } else {
-      console.log('[Revenue API] Using sale_date for previous period');
-    }
+    const { data: prevSalesData, error: prevSalesError } = await fetchPeriodSales(
+      supabase,
+      siteId,
+      segmentId,
+      parseDateParam(previousStart, startDate),
+      parseDateParam(previousEnd, startDate)
+    );
 
     if (prevSalesError) {
       console.error('Error fetching previous sales:', prevSalesError);
@@ -222,8 +147,8 @@ export async function GET(request: NextRequest) {
           metadata: {
             startDate: startDate.toISOString(),
             endDate: endDate.toISOString(),
-            prevStartDate: previousPeriodStart.toISOString(),
-            prevEndDate: previousPeriodEnd.toISOString(),
+            prevStartDate: previousStart,
+            prevEndDate: previousEnd,
             segmentId: segmentId || 'all',
           },
         })
@@ -333,8 +258,8 @@ export async function GET(request: NextRequest) {
       metadata: {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
-        prevStartDate: previousPeriodStart.toISOString(),
-        prevEndDate: previousPeriodEnd.toISOString(),
+        prevStartDate: previousStart,
+        prevEndDate: previousEnd,
         segmentId: segmentId || 'all',
       },
     });
@@ -345,4 +270,56 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function fetchPeriodSales(
+  supabase: { from: (table: string) => any },
+  siteId: string,
+  segmentId: string | null,
+  startDate: Date,
+  endDate: Date
+) {
+  const start = toDateOnly(startDate);
+  const end = toDateOnly(endDate);
+  const endInclusive = inclusiveEndWithUtcSlack(end);
+  const startSlack = addCalendarDays(start, -1);
+
+  const applyFilters = (query: any) => {
+    let next = query
+      .eq('site_id', siteId)
+      .in('status', ['completed', 'pending']);
+    if (segmentId && segmentId !== 'all') {
+      next = next.eq('segment_id', segmentId);
+    }
+    return next;
+  };
+
+  const bySaleDate = applyFilters(supabase.from('sales').select('*'))
+    .gte('sale_date', startSlack)
+    .lte('sale_date', endInclusive);
+
+  const byCreatedAt = applyFilters(supabase.from('sales').select('*'))
+    .gte('created_at', startOfDay(addDays(startDate, -1)).toISOString())
+    .lte('created_at', endOfDay(addDays(endDate, 1)).toISOString());
+
+  const [saleDateResult, createdAtResult] = await Promise.all([
+    bySaleDate,
+    byCreatedAt,
+  ]);
+
+  if (saleDateResult.error) {
+    return { data: null, error: saleDateResult.error };
+  }
+  if (createdAtResult.error) {
+    return { data: null, error: createdAtResult.error };
+  }
+
+  return {
+    data: salesInLocalRange(
+      mergeSalesById(saleDateResult.data, createdAtResult.data),
+      start,
+      endInclusive
+    ),
+    error: null,
+  };
 }

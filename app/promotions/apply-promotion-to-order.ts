@@ -123,27 +123,21 @@ export async function applyPromotionToOrder(
         expenseUserId = site?.user_id || null;
       }
 
-      try {
-        await upsertPromotionDiscountExpense({
-          supabase,
-          siteId: order.site_id || siteId,
-          saleOrderId,
-          discount,
-          campaignId,
-          leadId: saleLeadId,
-          locationId: order.origin_location_id || null,
-          userId: expenseUserId,
-          currency: order.currency || "USD",
-          date: expenseDate,
-          promotionCode: promo?.code || promotionCode,
-          promotionName: promo?.name,
-        });
-      } catch (expenseError) {
-        console.error(
-          "Failed to record promotion discount expense:",
-          expenseError,
-        );
-      }
+      const expenseClient = await createServiceClient(true);
+      await upsertPromotionDiscountExpense({
+        supabase: expenseClient,
+        siteId: order.site_id || siteId,
+        saleOrderId,
+        discount,
+        campaignId,
+        leadId: saleLeadId,
+        locationId: order.origin_location_id || null,
+        userId: expenseUserId,
+        currency: order.currency || "USD",
+        date: expenseDate,
+        promotionCode: promo?.code || promotionCode,
+        promotionName: promo?.name,
+      });
     }
 
     return { success: true, discount, total };

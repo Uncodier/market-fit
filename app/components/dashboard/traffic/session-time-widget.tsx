@@ -57,7 +57,7 @@ export function SessionTimeWidget({
   endDate: propEndDate
 }: SessionTimeWidgetProps) {
   const { currentSite } = useSite();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
   const [sessionTime, setSessionTime] = useState<SessionTimeData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +82,13 @@ export function SessionTimeWidget({
         return;
       }
 
+      if (isAuthLoading) return;
+
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -92,9 +99,7 @@ export function SessionTimeWidget({
         const params = new URLSearchParams();
         params.append("segmentId", segmentId);
         params.append("siteId", currentSite.id);
-        if (user?.id) {
-          params.append("userId", user.id);
-        }
+        params.append("userId", user.id);
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
@@ -121,7 +126,7 @@ export function SessionTimeWidget({
     };
 
     fetchSessionTime();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, ]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, isAuthLoading]);
 
   const formattedValue = sessionTime ? formatSessionTime(sessionTime.actual) : "0s";
   const changeText = `${sessionTime?.percentChange || 0}% from ${formatPeriodType(sessionTime?.periodType || "monthly")}`;

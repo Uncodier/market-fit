@@ -43,7 +43,7 @@ export function LeadConversionWidget({
   endDate: propEndDate
 }: LeadConversionWidgetProps) {
   const { currentSite } = useSite();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
   const [leadConversion, setLeadConversion] = useState<LeadConversionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,6 +68,13 @@ export function LeadConversionWidget({
         return;
       }
 
+      if (isAuthLoading) return;
+
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -78,9 +85,7 @@ export function LeadConversionWidget({
         const params = new URLSearchParams();
         params.append("segmentId", segmentId);
         params.append("siteId", currentSite.id);
-        if (user?.id) {
-          params.append("userId", user.id);
-        }
+        params.append("userId", user.id);
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
@@ -107,7 +112,7 @@ export function LeadConversionWidget({
     };
 
     fetchLeadConversion();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, ]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, isAuthLoading]);
 
   const formattedValue = leadConversion ? `${leadConversion.actual.toFixed(1)}%` : "0%";
   const changeText = `${leadConversion?.percentChange || 0}% from ${formatPeriodType(leadConversion?.periodType || "monthly")}`;

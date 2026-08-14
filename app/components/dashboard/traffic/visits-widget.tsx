@@ -42,7 +42,7 @@ export function SessionsWidget({
   endDate: propEndDate
 }: SessionsWidgetProps) {
   const { currentSite } = useSite();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const { shouldExecuteWidgets } = useWidgetContext();
   const [sessions, setSessions] = useState<SessionsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,6 +67,13 @@ export function SessionsWidget({
         return;
       }
 
+      if (isAuthLoading) return;
+
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
       if (!currentSite || currentSite.id === "default") return;
       
       setIsLoading(true);
@@ -77,9 +84,7 @@ export function SessionsWidget({
         const params = new URLSearchParams();
         params.append("segmentId", segmentId);
         params.append("siteId", currentSite.id);
-        if (user?.id) {
-          params.append("userId", user.id);
-        }
+        params.append("userId", user.id);
         if (start) params.append("startDate", start);
         if (end) params.append("endDate", end);
         
@@ -106,7 +111,7 @@ export function SessionsWidget({
     };
 
     fetchSessions();
-  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, ]);
+  }, [shouldExecuteWidgets, segmentId, startDate, endDate, currentSite, user, isAuthLoading]);
 
   const formattedValue = sessions ? sessions.actual.toLocaleString() : "0";
   const changeText = `${sessions?.percentChange || 0}% from ${formatPeriodType(sessions?.periodType || "monthly")}`;

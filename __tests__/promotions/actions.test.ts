@@ -1,8 +1,13 @@
 import { applyPromotionToOrder } from "../../app/promotions/apply-promotion-to-order";
+import { upsertPromotionDiscountExpense } from "../../app/promotions/promo-discount-expense";
 import { createClient, createServiceClient } from "../../lib/supabase/server";
 import { TextEncoder, TextDecoder } from 'util';
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder as any;
+
+const mockedUpsertExpense = upsertPromotionDiscountExpense as jest.MockedFunction<
+  typeof upsertPromotionDiscountExpense
+>;
 
 // Mock next/cache
 jest.mock('next/cache', () => ({
@@ -29,6 +34,7 @@ describe("applyPromotionToOrder", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedUpsertExpense.mockResolvedValue({ skipped: false });
     mockSupabase = {
       from: jest.fn(),
     };
@@ -288,5 +294,65 @@ describe("applyPromotionToOrder", () => {
       campaign_id: "camp1",
     });
     expect(leadsUpdate).toHaveBeenCalledWith({ campaign_id: "camp1" });
+  });
+
+  it("records the discount expense with service role on POS (no forceServiceRole)", async () => {
+    setupMocks(
+      { id: "promo1", code: "CODE", status: "active", applies_to: "all", discount_type: "percent", discount_value: 10, usage_count: 0, name: "Ten off" },
+      [{ id: "line1", catalog_item_id: "item1", subtotal: 100, quantity: 1 }],
+      { id: "order1", site_id: "site1", user_id: "staff1", buyer_user_id: "user1", tax_total: 10, origin_location_id: "loc1", sales: { source: "pos", lead_id: "lead1", sale_date: "2026-08-13", user_id: "staff1" } }
+    );
+
+    const res = await applyPromotionToOrder("site1", "order1", "CODE");
+    expect(res.error).toBeUndefined();
+    expect(createClient).toHaveBeenCalled();
+    expect(createServiceClient).toHaveBeenCalledWith(true);
+    expect(mockedUpsertExpense).toHaveBeenCalledWith(
+      expect.objectContaining({
+        saleOrderId: "order1",
+        siteId: "site1",
+        discount: 10,
+        campaignId: null,
+        leadId: "lead1",
+        locationId: "loc1",
+        userId: "staff1",
+        promotionCode: "CODE",
+        promotionName: "Ten off",
+      })
+    );
+  });
+
+  it("records the discount expense with service role on shop (forceServiceRole)", async () => {
+    setupMocks(
+      { id: "promo1", code: "CODE", status: "active", applies_to: "all", discount_type: "fixed", discount_value: 5, usage_count: 0, campaign_id: "camp1" },
+      [{ id: "line1", catalog_item_id: "item1", subtotal: 100, quantity: 1 }],
+      { id: "order1", site_id: "site1", user_id: "owner1", buyer_user_id: "user1", tax_total: 0, sales: { source: "shop", lead_id: "lead1" } }
+    );
+
+    const res = await applyPromotionToOrder("site1", "order1", "CODE", true);
+    expect(res.error).toBeUndefined();
+    expect(createServiceClient).toHaveBeenCalledWith(true);
+    expect(mockedUpsertExpense).toHaveBeenCalledWith(
+      expect.objectContaining({
+        saleOrderId: "order1",
+        discount: 5,
+        campaignId: "camp1",
+        leadId: "lead1",
+      })
+    );
+  });
+
+  it("returns error if recording the promotion expense fails", async () => {
+    mockedUpsertExpense.mockRejectedValueOnce(
+      new Error("Failed to create promotion expense: permission denied")
+    );
+    setupMocks(
+      { id: "promo1", code: "CODE", status: "active", applies_to: "all", discount_type: "percent", discount_value: 10, usage_count: 0 },
+      [{ id: "line1", catalog_item_id: "item1", subtotal: 100, quantity: 1 }],
+      { id: "order1", buyer_user_id: "user1", tax_total: 10 }
+    );
+
+    const res = await applyPromotionToOrder("site1", "order1", "CODE");
+    expect(res.error).toBe("Failed to create promotion expense: permission denied");
   });
 });

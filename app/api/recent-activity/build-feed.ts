@@ -1,4 +1,6 @@
 import { createServiceApiClient } from "@/lib/supabase/server-client"
+import { addCalendarDays } from "@/lib/costs/aggregate-costs"
+import { isRecognizedRevenueSale } from "@/app/api/revenue/revenue-aggregations"
 import {
   mapSaleToActivity,
   mapTaskToActivity,
@@ -20,12 +22,14 @@ export interface BuildFeedOptions {
   endDate?: string | null
 }
 
-function toStartIso(value: string): string {
+/** Date-only params are calendar days; end includes the next UTC day so evening local activity is not cut off. */
+export function toStartIso(value: string): string {
   return value.includes("T") ? new Date(value).toISOString() : `${value}T00:00:00.000Z`
 }
 
-function toEndIso(value: string): string {
-  return value.includes("T") ? new Date(value).toISOString() : `${value}T23:59:59.999Z`
+export function toEndIso(value: string): string {
+  if (value.includes("T")) return new Date(value).toISOString()
+  return `${addCalendarDays(value, 1)}T23:59:59.999Z`
 }
 
 function applyDateRange(query: any, startIso?: string, endIso?: string) {
@@ -102,7 +106,7 @@ async function fetchCompletedSales(
   endIso?: string,
 ): Promise<SaleInput[]> {
   const nestedSelect = `
-      id, amount, currency, created_at, source, campaign_id, product_name, lead_id,
+      id, amount, amount_due, status, currency, created_at, source, campaign_id, product_name, lead_id,
       leads ( id, name, email ),
       sale_orders (
         id, order_number,
@@ -114,23 +118,25 @@ async function fetchCompletedSales(
     .from("sales")
     .select(nestedSelect)
     .eq("site_id", siteId)
-    .eq("status", "completed")
+    .in("status", ["completed", "pending"])
     .order("created_at", { ascending: false })
-    .limit(limit)
+    .limit(Math.max(limit * 3, 18))
   nestedQuery = applyDateRange(nestedQuery, startIso, endIso)
 
   const nested = await nestedQuery
-  if (!nested.error) return (nested.data || []) as SaleInput[]
+  if (!nested.error) {
+    return ((nested.data || []) as SaleInput[]).filter(isRecognizedRevenueSale).slice(0, limit)
+  }
 
   console.error("[recent-activity] Nested sales query failed, falling back:", nested.error.message)
 
   let flatQuery = supabase
     .from("sales")
-    .select("id, amount, currency, created_at, source, campaign_id, product_name, lead_id")
+    .select("id, amount, amount_due, status, currency, created_at, source, campaign_id, product_name, lead_id")
     .eq("site_id", siteId)
-    .eq("status", "completed")
+    .in("status", ["completed", "pending"])
     .order("created_at", { ascending: false })
-    .limit(limit)
+    .limit(Math.max(limit * 3, 18))
   flatQuery = applyDateRange(flatQuery, startIso, endIso)
 
   const { data: salesData, error } = await flatQuery
@@ -139,7 +145,9 @@ async function fetchCompletedSales(
     return []
   }
 
-  const sales = (salesData || []) as SaleInput[]
+  const sales = ((salesData || []) as SaleInput[])
+    .filter(isRecognizedRevenueSale)
+    .slice(0, limit)
   if (sales.length === 0) return []
 
   const saleIds = sales.map((sale) => sale.id)
