@@ -456,7 +456,7 @@ export interface Database {
     Views: {}
     Functions: {
       get_my_accessible_sites: {
-        Args: Record<string, never>
+        Args: Record<PropertyKey, never>
         Returns: Database["public"]["Tables"]["sites"]["Row"][]
       }
       current_user_site_role: {

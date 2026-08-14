@@ -193,26 +193,38 @@ export function usePosCheckout({
       clientMutationId,
     });
 
-    // Optimistic local pending order marker for UX
-    await getPosDb().pendingOrders.put({
-      id: `local_${clientMutationId}`,
-      site_id: siteId,
-      status: params.intent === "send" ? "pending" : "completed",
-      created_at: new Date().toISOString(),
-      lead_id: params.resolvedLeadId || null,
-      price_list_id: priceListId !== "none" ? priceListId : null,
-      payment_status: params.intent === "pay" || params.intent === "complete"
-        ? "paid"
-        : "unpaid",
-      raw: {
-        id: `local_${clientMutationId}`,
-        status: params.intent === "send" ? "pending" : "completed",
-        created_at: new Date().toISOString(),
-        leads: null,
-        client_mutation_id: clientMutationId,
-        pending_sync: true,
-      },
-    });
+    const totalPaid = params.payments.reduce((sum, p) => sum + p.amount, 0);
+    const amountDue = roundMoney(Math.max(0, total - totalPaid));
+    const db = getPosDb();
+    if (activeOrderId !== "new") {
+      await db.pendingOrders.delete(activeOrderId);
+    }
+    if (amountDue > 0) {
+      const status = params.intent === "complete" ? "completed" : "pending";
+      const id =
+        activeOrderId !== "new" ? activeOrderId : `local_${clientMutationId}`;
+      const createdAt = new Date().toISOString();
+      await db.pendingOrders.put({
+        id,
+        site_id: siteId,
+        status,
+        created_at: createdAt,
+        lead_id: params.resolvedLeadId || null,
+        price_list_id: priceListId !== "none" ? priceListId : null,
+        amount_due: amountDue,
+        payment_status: "unpaid",
+        raw: {
+          id,
+          status,
+          created_at: createdAt,
+          leads: null,
+          amount_due: amountDue,
+          payment_status: "unpaid",
+          client_mutation_id: clientMutationId,
+          pending_sync: true,
+        },
+      });
+    }
 
     onCleared();
     setIsPaymentDialogOpen(false);

@@ -56,7 +56,8 @@ export async function getSiteMemberAccess(siteId: string): Promise<SiteMemberAcc
     return { error: NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 }) }
   }
 
-  const { data: siteData, error: siteError } = await supabase
+  const admin = createServiceSupabase()
+  const { data: siteData, error: siteError } = await admin
     .from("sites")
     .select("name, user_id")
     .eq("id", siteId)
@@ -66,7 +67,7 @@ export async function getSiteMemberAccess(siteId: string): Promise<SiteMemberAcc
     return { error: NextResponse.json({ success: false, error: "Site not found or access denied" }, { status: 404 }) }
   }
 
-  const { data: membershipCheck } = await supabase
+  const { data: membershipCheck } = await admin
     .from("site_members")
     .select("role")
     .eq("site_id", siteId)

@@ -1,4 +1,5 @@
 import { pullPosSnapshot, type PosSnapshot } from "@/app/pos/actions/pull-snapshot";
+import { posOrderAmountDue, selectPosOpenOrders } from "@/app/pos/open-orders";
 import { getPosDb } from "./db";
 import type { LocalPendingOrder, LocalPromotion } from "./types";
 
@@ -56,21 +57,24 @@ export async function applyPosSnapshot(siteId: string, snapshot: PosSnapshot) {
     }),
   );
 
-  const pendingOrders: LocalPendingOrder[] = (snapshot.pendingOrders || []).map(
-    (o: any) => ({
+  const pendingOrders: LocalPendingOrder[] = selectPosOpenOrders(
+    snapshot.pendingOrders || [],
+  ).map((o: any) => {
+    const amountDue = posOrderAmountDue(o);
+    return {
       id: o.id,
       site_id: siteId,
       status: o.status,
       created_at: o.created_at,
       lead_id: o.lead_id ?? o.leads?.id ?? null,
       price_list_id: o.price_list_id ?? null,
-      amount_due: o.amount_due ?? null,
+      amount_due: amountDue,
       total: o.total ?? o.amount ?? null,
       leads: o.leads ?? null,
-      payment_status: o.payment_status ?? null,
+      payment_status: o.payment_status ?? (amountDue != null && amountDue <= 0 ? "paid" : "unpaid"),
       raw: o,
-    }),
-  );
+    };
+  });
 
   const promotions: LocalPromotion[] = (snapshot.promotions || []).map(
     (p: any) => ({

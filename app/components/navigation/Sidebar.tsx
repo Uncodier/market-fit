@@ -11,7 +11,7 @@ import { NotificationBadge } from "./NotificationBadge"
 import { RobotsNavItems } from "./RobotsNavItems"
 import { DynamicShortcuts } from "./DynamicShortcuts"
 import { useAuth } from "@/app/hooks/use-auth"
-import { markUINavigation } from "@/app/hooks/use-navigation-history"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { NavigationLink } from "./NavigationLink"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { NavigationAreaGroups } from "./NavigationAreaGroups"
@@ -81,24 +81,20 @@ export function Sidebar({
 
     if (section === "settings") {
       if (href === "/settings" && pathname.startsWith("/settings")) {
-        markUINavigation()
-        router.push(href)
+        navigateOrAssign(router, href)
         return
       }
 
       if (!inSettingsArea) {
         setForceShowSettingsChildren(true)
         setTimeout(() => {
-          markUINavigation()
-          router.push(href)
+          navigateOrAssign(router, href)
         }, 400)
       } else {
-        markUINavigation()
-        router.push(href)
+        navigateOrAssign(router, href)
       }
     } else if (section === "profile") {
-      markUINavigation()
-      router.push(href)
+      navigateOrAssign(router, href)
     }
   }
 

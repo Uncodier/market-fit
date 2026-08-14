@@ -9,6 +9,7 @@ import {
   isAlwaysAllowedPath,
   isScreenBlocked,
 } from "@/lib/auth/screen-access"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 
 export function ScreenAccessRedirect() {
   const pathname = usePathname()
@@ -22,7 +23,7 @@ export function ScreenAccessRedirect() {
     const navKey = getNavKeyForPath(pathname, new URLSearchParams(searchParams.toString()))
     if (!isScreenBlocked("collaborator", access.blockedScreens, navKey)) return
     const next = firstAllowedNavHref("collaborator", access.blockedScreens)
-    if (next !== pathname) router.replace(next)
+    if (next !== pathname) navigateOrAssign(router, next, { replace: true, markUI: false })
   }, [access, pathname, router, searchParams])
 
   return null

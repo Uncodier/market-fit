@@ -2,16 +2,17 @@
 
 import { Sidebar } from "./components/navigation/Sidebar"
 import { TopBar } from "./components/navigation/TopBar"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect, useRef } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Toaster } from "./components/ui/sonner"
 import { createClient } from "@/lib/supabase/client"
-import { isInvalidRefreshTokenError } from "@/lib/supabase/auth-cookies"
 import { type Segment } from "./requirements/types"
 import { useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
 import { usePageRefreshPrevention } from "./hooks/use-prevent-refresh"
+import { useWakeSessionRefresh } from "./hooks/use-wake-session-refresh"
+import { useArtifactRouterPatch } from "./hooks/use-artifact-router-patch"
 import { useIsMobile } from "./hooks/use-mobile-view"
 import { useLocalization } from "./context/LocalizationContext"
 import { ScreenAccessRedirect } from "./components/navigation/ScreenAccessRedirect"
@@ -187,258 +188,14 @@ function LayoutClientInner({
     // Sometimes Radix UI components (Dialogs, Dropdowns) leave pointer-events: none 
     // on body when navigating before they fully close, causing clicks to be ignored
     document.body.style.pointerEvents = '';
+    document.documentElement.style.pointerEvents = '';
     
     // Also ensure mobile sidebar closes on navigation
     setIsMobileSidebarOpen(false);
   }, [pathname])
 
-  // Fix: Clean up stale UI state when returning from background and quietly
-  // refresh the Supabase session after long idle. We intentionally do NOT
-  // call `router.refresh()` here: in Next.js 16 / React 19 a pending RSC
-  // transition (especially one that ends up redirected by middleware) can
-  // deadlock the App Router, leaving subsequent `router.push()` calls
-  // (e.g. sidebar clicks) silently queued forever. See:
-  //   https://github.com/vercel/next.js/issues/86055
-  //   https://github.com/vercel/next.js/issues/84299
-  // Symptoms: after coming back to the tab, in-page interactions still
-  // work but clicking any sidebar/menu item does nothing.
-  const hiddenSinceRef = useRef<number | null>(null)
-  const isRefreshingAfterIdleRef = useRef(false)
-  const wakeHandledRef = useRef(false)
-  const router = useRouter()
-
-  // Fix: Intercept router methods and update DOM links to maintain artifact=true
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    // Ensure we don't try to patch if router is not fully initialized
-    if (!router || !router.push) return
-
-    const currentParams = new URLSearchParams(window.location.search)
-    const isArtifactInUrl = currentParams.get('artifact') === 'true'
-
-    // 1. Patch router methods if artifact is true
-    if (isArtifactInUrl && !(router as any)._patchedForArtifact) {
-      const originalPush = router.push
-      const originalReplace = router.replace
-      const originalPrefetch = router.prefetch
-
-      const appendArtifactIfNeeded = (href: string) => {
-        if (typeof href !== 'string') return href
-        const currentUrlParams = new URLSearchParams(window.location.search)
-        if (currentUrlParams.get('artifact') === 'true') {
-          if (href.startsWith('/') || href.startsWith('?') || href.startsWith('#')) {
-            const [pathAndSearch, hash] = href.split('#')
-            const [path, search] = pathAndSearch.split('?')
-            const params = new URLSearchParams(search || '')
-            if (!params.has('artifact')) {
-              params.set('artifact', 'true')
-              return `${path}?${params.toString()}${hash !== undefined ? `#${hash}` : ''}`
-            }
-          }
-        }
-        return href
-      }
-
-      router.push = (href: string, options?: any) => {
-        return originalPush.call(router, appendArtifactIfNeeded(href), options)
-      }
-
-      router.replace = (href: string, options?: any) => {
-        return originalReplace.call(router, appendArtifactIfNeeded(href), options)
-      }
-
-      if (originalPrefetch) {
-        router.prefetch = (href: string, options?: any) => {
-          return originalPrefetch.call(router, appendArtifactIfNeeded(href), options)
-        }
-      }
-
-      (router as any)._patchedForArtifact = true
-    }
-
-    // 2. Keep DOM links updated for "Open in new tab" and hovering
-    if (isArtifactInUrl) {
-      const updateLinks = () => {
-        document.querySelectorAll('a[href]').forEach(a => {
-          const href = a.getAttribute('href')
-          if (!href || href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')) return
-          if (href.startsWith('/') || href.startsWith('?') || href.startsWith('#')) {
-            const [pathAndSearch, hash] = href.split('#')
-            const [path, search] = pathAndSearch.split('?')
-            const params = new URLSearchParams(search || '')
-            if (!params.has('artifact')) {
-              params.set('artifact', 'true')
-              a.setAttribute('href', `${path}?${params.toString()}${hash !== undefined ? `#${hash}` : ''}`)
-            }
-          }
-        })
-      }
-
-      updateLinks()
-
-      const observer = new MutationObserver((mutations) => {
-        let shouldUpdate = false
-        for (const mutation of mutations) {
-          if (mutation.addedNodes.length > 0) {
-            shouldUpdate = true
-            break
-          }
-          if (mutation.type === 'attributes' && mutation.attributeName === 'href') {
-            const target = mutation.target as HTMLAnchorElement
-            if (target.tagName === 'A' && target.getAttribute('href') && !target.getAttribute('href')?.includes('artifact=true')) {
-               shouldUpdate = true
-               break
-            }
-          }
-        }
-        if (shouldUpdate) {
-          updateLinks()
-        }
-      })
-
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['href']
-      })
-
-      return () => observer.disconnect()
-    }
-  }, [router, pathname, searchParams])
-
-  useEffect(() => {
-    // Threshold after which we consider the session potentially stale.
-    // Kept low on purpose: background tabs are aggressively throttled by
-    // Chromium/Safari, so Supabase's internal auto-refresh timer often does
-    // not run and the access_token can expire well before we actually notice.
-    const IDLE_THRESHOLD_MS = 2 * 60 * 1000 // 2 minutes
-    // Refresh proactively when the access_token is this close to expiring.
-    const REFRESH_WINDOW_SECONDS = 120 // 2 minutes
-    // Coalesce visibilitychange + focus + pageshow firing in quick succession
-    // for the same wake event.
-    const WAKE_COALESCE_MS = 1500
-
-    /**
-     * Quietly bring the Supabase session up to date if it is close to (or
-     * past) expiry. Updates cookies via the browser client so the *next*
-     * RSC fetch initiated by the user's navigation passes middleware.
-     *
-     * Returns true if a refresh was actually attempted, false otherwise.
-     */
-    const ensureFreshSession = async (): Promise<boolean> => {
-      if (isRefreshingAfterIdleRef.current) return false
-      isRefreshingAfterIdleRef.current = true
-
-      try {
-        const supabase = createClient()
-        const { data } = await supabase.auth.getSession()
-        const session = data?.session
-
-        if (!session) {
-          // No local session at all. Don't force-navigate here — middleware
-          // will redirect the next request. Forcing window.location now would
-          // interrupt a user that is actively typing/clicking in-page.
-          return false
-        }
-
-        const nowSeconds = Math.floor(Date.now() / 1000)
-        const expiresAt = session.expires_at ?? 0
-        const secondsToExpiry = expiresAt - nowSeconds
-
-        if (secondsToExpiry <= REFRESH_WINDOW_SECONDS) {
-          const { error } = await supabase.auth.refreshSession()
-          if (error) {
-            if (isInvalidRefreshTokenError(error)) {
-              await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
-            }
-            return false
-          }
-          return true
-        }
-        return false
-      } catch (err) {
-        console.warn('[layout-client] Session refresh on wake failed:', err)
-        if (isInvalidRefreshTokenError(err)) {
-          try {
-            await createClient().auth.signOut({ scope: 'local' })
-          } catch {
-            // ignore
-          }
-        }
-        return false
-      } finally {
-        isRefreshingAfterIdleRef.current = false
-      }
-    }
-
-    const handleWake = async (hiddenDuration: number) => {
-      // Radix UI portals occasionally leave pointer-events: none on body
-      // when the tab is hidden mid-animation. Always clear it.
-      document.body.style.pointerEvents = ''
-
-      if (hiddenDuration <= IDLE_THRESHOLD_MS) return
-      if (wakeHandledRef.current) return
-      wakeHandledRef.current = true
-
-      try {
-        await ensureFreshSession()
-        // IMPORTANT: do not call router.refresh() here. Letting the next
-        // user-initiated navigation use the freshly written cookies avoids
-        // the Next 16 / React 19 transition deadlock that froze the
-        // sidebar after wake.
-      } finally {
-        // Allow another wake handling after the coalesce window.
-        setTimeout(() => {
-          wakeHandledRef.current = false
-        }, WAKE_COALESCE_MS)
-      }
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        hiddenSinceRef.current = Date.now()
-      } else if (document.visibilityState === 'visible') {
-        const hiddenDuration = hiddenSinceRef.current
-          ? Date.now() - hiddenSinceRef.current
-          : 0
-        hiddenSinceRef.current = null
-        void handleWake(hiddenDuration)
-      }
-    }
-
-    // Window focus is a useful complement: some browsers (Safari in
-    // particular) don't always fire visibilitychange when returning from
-    // another OS window while the tab technically stayed "visible".
-    const handleWindowFocus = () => {
-      if (document.visibilityState !== 'visible') return
-      const hiddenDuration = hiddenSinceRef.current
-        ? Date.now() - hiddenSinceRef.current
-        : 0
-      hiddenSinceRef.current = null
-      void handleWake(hiddenDuration)
-    }
-
-    // bfcache restore: Safari/Firefox/Chrome may keep the entire page in
-    // memory and just re-display it. visibilitychange / focus do not always
-    // fire reliably in that case. `pageshow` with persisted=true is the
-    // canonical signal.
-    const handlePageShow = (e: PageTransitionEvent) => {
-      if (!e.persisted) return
-      // Treat bfcache restore as a long idle to force a session re-check.
-      void handleWake(IDLE_THRESHOLD_MS + 1)
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleWindowFocus)
-    window.addEventListener('pageshow', handlePageShow)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleWindowFocus)
-      window.removeEventListener('pageshow', handlePageShow)
-    }
-  }, [router])
+  useWakeSessionRefresh()
+  useArtifactRouterPatch()
 
   // Pages that need full-height layout (no scroll, fixed height container)
   const isChatPage = pathname && pathname.startsWith('/chat');

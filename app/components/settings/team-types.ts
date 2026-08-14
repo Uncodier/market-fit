@@ -1,4 +1,5 @@
 import type { SiteMember } from "@/app/services/site-members-service"
+import { siteMemberRoleToInvitationRole } from "@/lib/auth/screen-access"
 
 export type TeamRole = "view" | "create" | "delete" | "admin"
 
@@ -80,9 +81,7 @@ export function formRoleToSiteMemberRole(
 }
 
 export function formRoleToInvitationRole(role: TeamRole): string {
-  if (role === "admin") return "admin"
-  if (role === "create" || role === "delete") return "create"
-  return "view"
+  return siteMemberRoleToInvitationRole(formRoleToSiteMemberRole(role))
 }
 
 export function membersToOriginalMap(members: FormTeamMember[]) {

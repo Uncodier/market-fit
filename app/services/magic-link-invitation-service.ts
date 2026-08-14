@@ -44,12 +44,14 @@ export async function sendMagicLinkInvitation(
     const result = await response.json()
 
     if (!response.ok) {
-      // Return the full error info including codes and retry information
+      const code =
+        result.code ||
+        (response.status === 429 ? 'RATE_LIMIT_EXCEEDED' : undefined)
       return {
         success: false,
         error: result.error || 'Failed to send invitation',
-        code: result.code,
-        retryAfter: result.retryAfter
+        code,
+        retryAfter: result.retryAfter || (response.status === 429 ? 60 : undefined),
       }
     }
 

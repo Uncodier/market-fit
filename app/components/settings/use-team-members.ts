@@ -4,7 +4,7 @@ import { useFormContext } from "react-hook-form"
 import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
-import { siteMembersService } from "@/app/services/site-members-service"
+import { isInviteEmailError, siteMembersService } from "@/app/services/site-members-service"
 import { useTeamMemberValidation } from "@/app/hooks/useTeamMemberValidation"
 import { resendMagicLinkInvitation } from "@/app/services/magic-link-invitation-service"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
@@ -265,14 +265,23 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
       const savedMembers = []
       for (const member of newMembers) {
         try {
-          savedMembers.push(await siteMembersService.addMember(siteId, {
-            email: member.email,
-            role: formRoleToSiteMemberRole(member.role),
-            name: member.name,
-            position: member.position,
-            blocked_screens: member.blocked_screens || [],
-          }))
+          savedMembers.push(await siteMembersService.addMember(
+            siteId,
+            {
+              email: member.email,
+              role: formRoleToSiteMemberRole(member.role),
+              name: member.name,
+              position: member.position,
+              blocked_screens: member.blocked_screens || [],
+            },
+            form.getValues().name || "Your Site"
+          ))
         } catch (memberError) {
+          if (isInviteEmailError(memberError)) {
+            savedMembers.push(memberError.member)
+            toast.error(`Member added but invitation failed for ${member.email}: ${memberError.message}`)
+            continue
+          }
           console.error(`Failed to save ${member.email}:`, memberError)
           const errorMessage = memberError instanceof Error ? memberError.message : "Unknown error"
           toast.error(`Failed to save ${member.email}: ${errorMessage}`)

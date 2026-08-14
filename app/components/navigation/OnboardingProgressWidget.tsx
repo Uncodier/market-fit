@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/app/components/ui/progress"
 import {
@@ -78,7 +79,7 @@ export function OnboardingProgressWidget({
 
   const openOnboarding = (e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push("/onboarding")
+    navigateOrAssign(router, "/onboarding")
   }
 
   if (loading || complete) {

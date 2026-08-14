@@ -4,6 +4,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/app/components/ui/progress"
 import { useRouter } from "next/navigation"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
@@ -66,7 +67,7 @@ export function CreditsWidget({ className, isCollapsed }: CreditsWidgetProps) {
 
   const handleBuyCredits = (e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push('/billing')
+    navigateOrAssign(router, '/billing')
   }
 
   // Collapsed view - Pie Graph

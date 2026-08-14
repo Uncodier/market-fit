@@ -5896,6 +5896,7 @@
   "pos.filters.services": "サービス",
   "pos.newOrder": "新しい秩序",
   "pos.noPendingOrders": "未決注文はありません",
+  "pos.completedUnpaid": "Completed (unpaid)",
   "pos.order": "注文",
   "pos.orderSent": "注文は注文パネルに送信されました。",
   "pos.payment.accountDetails": "アカウントの詳細",

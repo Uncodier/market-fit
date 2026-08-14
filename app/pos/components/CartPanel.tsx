@@ -372,18 +372,18 @@ export function CartPanel({
                       validatePromotion();
                     }
                   }}
-                  className="uppercase pl-9 pr-24 bg-card"
+                  className="uppercase pl-9 pr-28 bg-card"
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2 text-xs"
-                  onClick={validatePromotion}
-                  disabled={cart.length === 0}
-                >
-                  {getTrans("pos.cart.validatePromo", "Validate")}
-                </Button>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                  <button
+                    type="button"
+                    disabled={cart.length === 0}
+                    onClick={validatePromotion}
+                    className="h-7 px-2 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                  >
+                    {getTrans("pos.cart.validatePromo", "Validate")}
+                  </button>
+                </div>
               </div>
             </div>
           </TabsContent>

@@ -1,7 +1,6 @@
-import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { denyUnlessTeamManager, getSiteMemberAccess } from '@/lib/auth/site-member-request'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,72 +25,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create client for user authentication using SSR
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // The `setAll` method was called from a Server Component.
-              // This can be ignored if you have middleware refreshing
-              // user sessions.
-            }
-          },
-        },
-      }
-    )
+    const access = await getSiteMemberAccess(siteId)
+    const denied = denyUnlessTeamManager(access)
+    if (denied) return denied
+    if (access.error) return access.error
 
-    // Check if current user is authenticated
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    // Verify user has permission to invite to this site
-    const { data: siteData, error: siteError } = await supabase
-      .from('sites')
-      .select('name, user_id')
-      .eq('id', siteId)
-      .single()
-    
-    if (siteError || !siteData) {
-      return NextResponse.json(
-        { success: false, error: 'Site not found or access denied' },
-        { status: 404 }
-      )
-    }
-
-    const { data: membershipCheck } = await supabase
-      .from('site_members')
-      .select('role')
-      .eq('site_id', siteId)
-      .eq('user_id', user.id)
-      .single()
-
-    const isOwner = siteData.user_id === user.id
-    const isAdmin = membershipCheck?.role === 'admin' || membershipCheck?.role === 'owner'
-    
-    if (!isOwner && !isAdmin) {
-      return NextResponse.json(
-        { success: false, error: 'Insufficient permissions to send invitations' },
-        { status: 403 }
-      )
-    }
-
-    // Create admin client for user operations
+    const supabase = access.supabase
     const adminSupabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -209,8 +148,27 @@ export async function POST(request: Request) {
       // Handle rate limiting gracefully
       if (invitationResult.error.code === 'over_email_send_rate_limit') {
         return NextResponse.json(
-          { success: false, error: 'Too many emails sent. Please try again later.' },
+          {
+            success: false,
+            error: 'Too many emails sent. Please try again later.',
+            code: 'RATE_LIMIT_EXCEEDED',
+            retryAfter: 60,
+          },
           { status: 429 }
+        )
+      }
+
+      const signupDisabled =
+        invitationResult.error.code === 'signup_disabled' ||
+        /sign.?up.*(disabled|not allowed)/i.test(invitationResult.error.message || '')
+      if (signupDisabled) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'User registration is currently disabled. Please contact support.',
+            code: 'SIGNUP_DISABLED',
+          },
+          { status: 403 }
         )
       }
       

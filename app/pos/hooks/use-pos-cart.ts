@@ -36,6 +36,7 @@ import {
   type PosShippingAddress,
 } from "@/app/pos/shipping-address";
 import { getOrder } from "@/app/orders/actions";
+import { isPosOpenOrder } from "@/app/pos/open-orders";
 import { toast } from "sonner";
 
 type UsePosCartArgs = {
@@ -358,12 +359,7 @@ export function usePosCart({
   }, [siteId, resetPromo]);
 
   const populateFromOrder = (order: any) => {
-    if (
-      !order ||
-      (order.status !== "pending" &&
-        order.status !== "in_progress" &&
-        order.status !== "completed")
-    ) {
+    if (!isPosOpenOrder(order)) {
       return false;
     }
     if (order.leads) {

@@ -2,6 +2,7 @@ export type RelationSelectFilterOption = {
   id: string
   label: string
   searchText?: string
+  group?: string
 }
 
 /** Filter only after the user types a query distinct from the committed label. */

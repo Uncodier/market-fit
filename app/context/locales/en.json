@@ -6290,6 +6290,7 @@
   "pos.filters.services": "Services",
   "pos.newOrder": "New Order",
   "pos.noPendingOrders": "No pending orders",
+  "pos.completedUnpaid": "Completed (unpaid)",
   "pos.order": "Order",
   "pos.orderSent": "Order sent to orders panel!",
   "pos.payment.accountDetails": "Account Details",

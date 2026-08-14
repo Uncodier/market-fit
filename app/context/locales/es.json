@@ -6300,6 +6300,7 @@
   "pos.filters.services": "Servicios",
   "pos.newOrder": "Nueva Orden",
   "pos.noPendingOrders": "No hay órdenes pendientes",
+  "pos.completedUnpaid": "Completed (unpaid)",
   "pos.order": "Orden",
   "pos.orderSent": "¡Pedido enviado!",
   "pos.payment.accountDetails": "Detalles de la cuenta",

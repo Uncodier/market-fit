@@ -40,4 +40,14 @@ describe("relation select filtering", () => {
     const filtered = filterRelationSelectOptions(options, "4:00")
     expect(filtered.map((option) => option.id)).toEqual(["3"])
   })
+
+  it("keeps group metadata while filtering", () => {
+    const grouped = [
+      { id: "1", label: "Table 1", group: undefined },
+      { id: "2", label: "Table 2", group: "Completed (unpaid)" },
+    ]
+    expect(filterRelationSelectOptions(grouped, "table 2")).toEqual([
+      { id: "2", label: "Table 2", group: "Completed (unpaid)" },
+    ])
+  })
 })

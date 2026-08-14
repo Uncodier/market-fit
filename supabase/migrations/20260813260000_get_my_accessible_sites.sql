@@ -28,3 +28,10 @@ GRANT EXECUTE ON FUNCTION public.get_my_accessible_sites() TO authenticated, ser
 
 COMMENT ON FUNCTION public.get_my_accessible_sites() IS
   'Sites the current user owns or is an active member of. Bypasses RLS to avoid policy recursion.';
+
+NOTIFY pgrst, 'reload schema';
+
+SELECT proname, pg_get_function_identity_arguments(oid) AS args
+FROM pg_proc
+WHERE pronamespace = 'public'::regnamespace
+  AND proname = 'get_my_accessible_sites';

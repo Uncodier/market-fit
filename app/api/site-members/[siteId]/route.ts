@@ -24,7 +24,7 @@ export async function GET(
     const access = await getSiteMemberAccess(siteId)
     if (access.error) return access.error
 
-    const { supabase, isOwner, isMember } = access
+    const { isOwner, isMember } = access
 
     if (!isOwner && !isMember) {
       return NextResponse.json(
@@ -33,7 +33,8 @@ export async function GET(
       )
     }
 
-    const { data: siteMembers, error: membersError } = await supabase
+    const adminSupabase = createServiceSupabase()
+    const { data: siteMembers, error: membersError } = await adminSupabase
       .from("site_members")
       .select("*")
       .eq("site_id", siteId)
@@ -45,8 +46,6 @@ export async function GET(
         { status: 500 }
       )
     }
-
-    const adminSupabase = createServiceSupabase()
 
     const membersWithStatus = await Promise.all(
       (siteMembers || []).map(async (member: any) => {

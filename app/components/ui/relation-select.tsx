@@ -24,6 +24,8 @@ export interface RelationSelectOption {
   id: string
   label: string
   searchText?: string
+  /** Optional dropdown section label; consecutive options with the same group share one header. */
+  group?: string
 }
 
 interface RelationSelectProps {
@@ -267,18 +269,32 @@ export function RelationSelect({
           )}
           {filteredOptions.length > 0 ? (
             <div className="pb-1">
-              {filteredOptions.map((option) => (
-                <div
-                  key={option.id}
-                  className={cn(
-                    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm font-inter outline-none hover:bg-accent hover:text-accent-foreground transition-colors",
-                    value?.mode === "existing" && value.id === option.id && "bg-accent text-accent-foreground"
-                  )}
-                  onClick={() => handleSelectExisting(option)}
-                >
-                  {option.label}
-                </div>
-              ))}
+              {filteredOptions.map((option, index) => {
+                const prevGroup = filteredOptions[index - 1]?.group
+                const showGroupHeader =
+                  Boolean(option.group) && option.group !== prevGroup
+                return (
+                  <React.Fragment key={option.id}>
+                    {showGroupHeader && (
+                      <>
+                        {index > 0 && <div className="h-px bg-border my-1" />}
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                          {option.group}
+                        </div>
+                      </>
+                    )}
+                    <div
+                      className={cn(
+                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm font-inter outline-none hover:bg-accent hover:text-accent-foreground transition-colors",
+                        value?.mode === "existing" && value.id === option.id && "bg-accent text-accent-foreground"
+                      )}
+                      onClick={() => handleSelectExisting(option)}
+                    >
+                      {option.label}
+                    </div>
+                  </React.Fragment>
+                )
+              })}
             </div>
           ) : showCreate && !pinnedAction ? null : (
             <div className="py-6 text-center text-sm font-inter text-muted-foreground">{emptyMessage}</div>

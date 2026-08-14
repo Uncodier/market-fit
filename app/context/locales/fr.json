@@ -5896,6 +5896,7 @@
   "pos.filters.services": "Services",
   "pos.newOrder": "Nouvelle commande",
   "pos.noPendingOrders": "Aucune commande en attente",
+  "pos.completedUnpaid": "Completed (unpaid)",
   "pos.order": "Commande",
   "pos.orderSent": "Commande envoyée au panneau de commandes !",
   "pos.payment.accountDetails": "Détails du compte",

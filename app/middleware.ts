@@ -6,6 +6,7 @@ import {
 } from '@/lib/auth/post-auth-redirect'
 import { copyResponseCookies, getMiddlewareUser } from '@/lib/supabase/middleware-client'
 import { resolveBlockedScreenRedirect } from '@/lib/auth/enforce-screen-access'
+import { isRouterPrefetchRequest } from '@/lib/navigation/is-router-prefetch'
 
 // Lista específica y exacta de rutas públicas permitidas
 const ALLOWED_PUBLIC_PATHS = [
@@ -348,6 +349,7 @@ export async function middleware(request: NextRequest) {
   const sessionResponse = nextWithAlignedServerActionHost(request)
   getCorsHeaders(sessionResponse, request, isPublicBooking)
 
+  const isPrefetch = isRouterPrefetchRequest(request.headers)
   let middlewareUserId: string | null = null
 
   if (isAuthPath || !isPublicPage) {
@@ -355,7 +357,7 @@ export async function middleware(request: NextRequest) {
     middlewareUserId = user?.id ?? null
 
     if (isAuthPath) {
-      if (user) {
+      if (user && !isPrefetch) {
         const destination = resolvePostAuthRedirect(
           request.nextUrl.searchParams.get('returnTo'),
           hostnameFromRequestHeaders(request.headers)
@@ -369,10 +371,12 @@ export async function middleware(request: NextRequest) {
       if (isApiLikeRequest(request)) {
         return forbiddenResponse(request)
       }
-      const url = request.nextUrl.clone()
-      url.pathname = '/auth'
-      url.search = `?returnTo=${encodeURIComponent(pathname)}`
-      return copyResponseCookies(sessionResponse, NextResponse.redirect(url))
+      if (!isPrefetch) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/auth'
+        url.search = `?returnTo=${encodeURIComponent(pathname)}`
+        return copyResponseCookies(sessionResponse, NextResponse.redirect(url))
+      }
     }
   }
 
@@ -380,6 +384,7 @@ export async function middleware(request: NextRequest) {
     middlewareUserId &&
     !isPublicPage &&
     !isAuthPath &&
+    !isPrefetch &&
     !request.cookies.has('market_fit_demo_site_id')
   ) {
     try {

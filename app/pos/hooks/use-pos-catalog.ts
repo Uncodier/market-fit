@@ -11,6 +11,7 @@ import {
 import { getPosDb } from "@/app/pos/local/db";
 import { subscribePosSync } from "@/app/pos/local/sync-engine";
 import type { LocalPendingOrder, LocalPromotion } from "@/app/pos/local/types";
+import { selectPosOpenOrders } from "@/app/pos/open-orders";
 
 export function usePosCatalog(siteId: string | undefined) {
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
@@ -84,7 +85,7 @@ export function usePosCatalog(siteId: string | undefined) {
     priceLists,
     priceListItems,
     modifierGroupsByHostId,
-    pendingOrders: pendingOrders.map((o) => o.raw || o),
+    pendingOrders: selectPosOpenOrders(pendingOrders.map((o) => o.raw || o)),
     promotions,
     hydrated,
     hasLocalData,

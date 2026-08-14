@@ -15,6 +15,7 @@ import { Check, Users, PlusCircle } from "@/app/components/ui/icons"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useRouter } from "next/navigation"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { useEffect, useState } from "react"
 import { Site } from "@/app/context/SiteContext"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
@@ -145,7 +146,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
             "flex items-center gap-2 p-2 rounded-md border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer transition-colors",
             isCollapsed ? "justify-center" : "px-3 py-2 w-[232px]"
           )}
-          onClick={() => router.push("/create-site")}
+          onClick={() => navigateOrAssign(router, "/create-site")}
         >
           <div className="h-6 w-6 flex items-center justify-center rounded-full font-inter font-bold bg-blue-100 text-blue-600 flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -294,7 +295,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                               window.location.href = "/robots";
                             } else {
                               setCurrentSite(site)
-                              router.push("/robots")
+                              navigateOrAssign(router, "/robots")
                             }
                           }
                         }}
@@ -346,7 +347,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                     variant="outline"
                     size="default"
                     className="w-full text-xs"
-                    onClick={() => router.push("/demo")}
+                    onClick={() => navigateOrAssign(router, "/demo")}
                   >
                     View Demo Accounts
                   </Button>
@@ -369,7 +370,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                   variant="secondary"
                   size="default"
                   className="w-full"
-                  onClick={() => router.push("/create-site")}
+                  onClick={() => navigateOrAssign(router, "/create-site")}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
                   {t('layout.sidebar.addNewProject') || 'Add New Project'}

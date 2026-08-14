@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { siteMemberRoleToInvitationRole } from '@/lib/auth/screen-access'
 import { sendMagicLinkInvitation } from './magic-link-invitation-service'
 
 export interface SiteMember {
@@ -33,6 +34,24 @@ interface ExistingSiteMember {
   role: string
   name?: string | null
   position?: string | null
+}
+
+export class InviteEmailError extends Error {
+  readonly member: SiteMember
+
+  constructor(message: string, member: SiteMember) {
+    super(message)
+    this.name = 'InviteEmailError'
+    this.member = member
+  }
+}
+
+export function isInviteEmailError(error: unknown): error is InviteEmailError {
+  return (
+    error instanceof Error &&
+    error.name === 'InviteEmailError' &&
+    'member' in error
+  )
 }
 
 const mapTeamRoleToSiteMemberRole = (role: 'view' | 'create' | 'delete' | 'admin'): 'collaborator' | 'marketing' | 'admin' => {
@@ -71,7 +90,7 @@ export const siteMembersService = {
   },
   
   // Add a new member to a site (owner/admin API — bypasses owner-only RLS)
-  async addMember(siteId: string, member: SiteMemberInput): Promise<SiteMember> {
+  async addMember(siteId: string, member: SiteMemberInput, siteName = 'Your Site'): Promise<SiteMember> {
     const response = await fetch(`/api/site-members/${siteId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,63 +109,47 @@ export const siteMembersService = {
     }
 
     const data = result.member as SiteMember
-    
-    // After successfully creating the site member, send magic link invitation
+
     try {
-      const supabase = createClient()
-      const { data: siteData } = await supabase
-        .from('sites')
-        .select('name')
-        .eq('id', siteId)
-        .single();
-      
-      const siteName = siteData?.name || 'Your Site';
-      
-      // Map site_member role to invitation role for magic link
-      let invitationRole: string = 'view';
-      switch (member.role) {
-        case 'admin': invitationRole = 'admin'; break;
-        case 'marketing': invitationRole = 'view'; break;        // Viewer role -> SELECT only
-        case 'collaborator': invitationRole = 'create'; break;   // Editor role -> SELECT, INSERT, UPDATE
-        default: invitationRole = 'view'; break;
-      }
-      
-      // Send magic link invitation
       const invitationResult = await sendMagicLinkInvitation({
         email: member.email,
-        siteId: siteId,
-        siteName: siteName,
-        role: invitationRole,
+        siteId,
+        siteName: siteName || 'Your Site',
+        role: siteMemberRoleToInvitationRole(member.role),
         name: member.name,
-        position: member.position
-      });
-      
+        position: member.position,
+      })
+
       if (invitationResult.success) {
-        console.log(`Magic link invitation sent successfully to ${member.email}`);
-      } else {
-        console.warn(`Failed to send magic link invitation to ${member.email}:`, invitationResult.error);
-        
-        // For rate limit errors, we want to propagate this to the user
-        if (invitationResult.code === 'RATE_LIMIT_EXCEEDED') {
-          throw new Error(`Rate limit exceeded for ${member.email}. Please wait ${invitationResult.retryAfter || 60} seconds before trying again.`);
-        }
-        
-        // For other critical errors, also propagate
-        if (invitationResult.code === 'SIGNUP_DISABLED') {
-          throw new Error('User registration is currently disabled. Please contact support.');
-        }
-        
-        // For other errors, log but don't fail the operation
-        // Note: We don't throw an error here because the site member was created successfully
-        // The invitation failure is logged but doesn't affect the main operation
+        return data
       }
-      
+
+      if (invitationResult.code === 'RATE_LIMIT_EXCEEDED') {
+        throw new InviteEmailError(
+          `Rate limit exceeded for ${member.email}. Please wait ${invitationResult.retryAfter || 60} seconds before trying again.`,
+          data
+        )
+      }
+
+      if (invitationResult.code === 'SIGNUP_DISABLED') {
+        throw new InviteEmailError(
+          'User registration is currently disabled. Please contact support.',
+          data
+        )
+      }
+
+      throw new InviteEmailError(
+        invitationResult.error || `Failed to send invitation to ${member.email}`,
+        data
+      )
     } catch (invitationError) {
-      console.warn('Error sending magic link invitation:', invitationError);
-      // Again, we log the error but don't throw it since the main operation succeeded
+      if (isInviteEmailError(invitationError)) throw invitationError
+      const message =
+        invitationError instanceof Error
+          ? invitationError.message
+          : `Failed to send invitation to ${member.email}`
+      throw new InviteEmailError(message, data)
     }
-    
-    return data
   },
   
   // Update a member's details
@@ -215,8 +218,7 @@ export const siteMembersService = {
   
   // Invite a member by email (legacy method - now addMember handles invitations automatically)
   async inviteMember(siteId: string, siteName: string, member: SiteMemberInput): Promise<SiteMember> {
-    // This method now just calls addMember since invitations are sent automatically
-    return this.addMember(siteId, member)
+    return this.addMember(siteId, member, siteName)
   },
   
   // Manually activate pending memberships for a user (useful for existing users)

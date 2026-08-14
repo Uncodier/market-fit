@@ -6,6 +6,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { ArrowLeft, Star } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { useRouter } from "next/navigation"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { NAVIGATION_AREAS, AreaNavItem, buildNavItemHref, getNavItemTitle, NAVIGATION_MENU_AREA_ORDER } from "@/app/config/navigation-areas"
 import { AREA_ICON, NAV_ITEM_ICON, getAreaFamilyAccent } from "@/app/config/module-visuals"
 import { ModuleTile } from "@/app/components/navigation/ModuleTile"
@@ -50,7 +51,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
   }
 
   const handleTileClick = (item: AreaNavItem) => {
-    router.push(buildHref(item))
+    navigateOrAssign(router, buildHref(item))
     if (onClose) {
       onClose()
     }

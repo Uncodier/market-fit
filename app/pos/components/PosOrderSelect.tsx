@@ -6,6 +6,10 @@ import {
 } from "@/app/components/ui/relation-select";
 import { Receipt } from "@/app/components/ui/icons";
 import { formatPosOrderLabel } from "@/app/pos/order-label";
+import {
+  posOpenOrderGroupKey,
+  selectPosOpenOrders,
+} from "@/app/pos/open-orders";
 
 export function PosOrderSelect({
   pendingOrders,
@@ -24,10 +28,16 @@ export function PosOrderSelect({
 }) {
   const getTrans = (key: string, fallback: string) =>
     t(key) === key ? fallback : t(key);
+  const openOrders = selectPosOpenOrders(pendingOrders);
+  const groupLabels = {
+    pending: getTrans("orders.status.pending", "Pending"),
+    in_progress: getTrans("orders.status.in_progress", "In Progress"),
+    completed: getTrans("pos.completedUnpaid", "Completed (unpaid)"),
+  };
   const isNew = activeOrderId === "new";
   const selected = isNew
     ? undefined
-    : pendingOrders.find((o: any) => o.id === activeOrderId);
+    : openOrders.find((o: any) => o.id === activeOrderId);
   const currentLabel = formatPosOrderLabel(selected, t, orderNotes);
   const value: RelationSelectValue = isNew
     ? orderNotes.trim()
@@ -41,7 +51,7 @@ export function PosOrderSelect({
 
   return (
     <RelationSelect
-      options={pendingOrders.map((o: any) => ({
+      options={openOrders.map((o: any) => ({
         id: o.id,
         label: formatPosOrderLabel(
           o,
@@ -49,6 +59,7 @@ export function PosOrderSelect({
           o.id === activeOrderId ? orderNotes : undefined,
         ),
         searchText: [o.notes, o.leads?.name].filter(Boolean).join(" "),
+        group: groupLabels[posOpenOrderGroupKey(o.status)],
       }))}
       value={value}
       onValueChange={(val) =>

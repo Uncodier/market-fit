@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/app/components/ui/tooltip"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { Fragment, useState, useEffect, useRef } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { type LucideIcon } from "@/app/components/ui/icons"
@@ -146,7 +147,7 @@ export function ConfigurationSection({
     
     // If already in settings area and trying to go to settings, navigate immediately
     if (href === '/settings' && isOnSettingsPath) {
-      router.push(href);
+      navigateOrAssign(router, href);
       return;
     }
     
@@ -156,11 +157,11 @@ export function ConfigurationSection({
       
       // Navigate after delay
       setTimeout(() => {
-        router.push(href);
+        navigateOrAssign(router, href);
       }, 400);
     } else {
       // If already in settings area, navigate immediately
-      router.push(href);
+      navigateOrAssign(router, href);
     }
   });
   

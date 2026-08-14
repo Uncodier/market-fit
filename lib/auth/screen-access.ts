@@ -51,6 +51,18 @@ export function parseWritableSiteMemberRole(value: unknown): WritableSiteMemberR
     : null
 }
 
+/** Maps a stored site_members role to the invitation payload used by magic links. */
+export function siteMemberRoleToInvitationRole(role: WritableSiteMemberRole): string {
+  switch (role) {
+    case "admin":
+      return "admin"
+    case "collaborator":
+      return "create"
+    default:
+      return "view"
+  }
+}
+
 export function getBlockableNavItems(): AreaNavItem[] {
   const items: AreaNavItem[] = []
   for (const area of ALL_NAV_AREA_ORDER) {

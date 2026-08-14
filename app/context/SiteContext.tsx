@@ -16,6 +16,7 @@ import { billingService, BillingData } from "../services/billing-service"
 import { toast } from "react-hot-toast"
 import { isDemoModeActive, isRealSiteId } from "@/lib/demo-utils"
 import { clearCurrentSiteCookie, persistCurrentSiteCookie } from "@/lib/auth/current-site-cookie"
+import { navigateOrAssign } from "@/lib/navigation/stale-router"
 
 // Definición de la interfaz Site adaptada a la estructura de Supabase
 export interface Site {
@@ -695,7 +696,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setError(null)
 
       const { data: accessibleSites, error: sitesError } = await supabaseRef.current.rpc(
-        "get_my_accessible_sites"
+        "get_my_accessible_sites",
+        {}
       )
 
       if (sitesError) {
@@ -1005,7 +1007,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         !isCommerceSurface &&
         supabaseRef.current
       ) {
-        router.push('/buyer')
+        navigateOrAssign(router, "/buyer", { markUI: false })
       }
       // Case B: There are real sites but no real selection -> go to projects
       else if (
@@ -1024,7 +1026,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         !isCommerceSurface &&
         supabaseRef.current
       ) {
-        router.push('/projects')
+        navigateOrAssign(router, "/projects", { markUI: false })
       } else if (
         // 🚫 NEVER redirect away from create-site if user is there intentionally
         pathname.startsWith('/create-site') || pathname.startsWith('/demo')

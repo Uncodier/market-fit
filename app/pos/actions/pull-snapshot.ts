@@ -17,6 +17,7 @@ import {
 } from "@/app/promotions/actions";
 import { isPromotionAllowedForChannel } from "@/app/promotions/promotion-channels";
 import { listAllModifierGroupsForPos } from "@/app/catalog/modifier-actions";
+import { selectPosOpenOrders } from "@/app/pos/open-orders";
 
 export type PosSnapshot = {
   catalogItems: any[];
@@ -130,13 +131,10 @@ export async function pullPosSnapshot(siteId: string): Promise<
       }),
     );
 
-    const pendingOrders = [
+    const pendingOrders = selectPosOpenOrders([
       ...(pendingRes?.data || []),
       ...(unpaidRes?.data || []),
-    ].sort(
-      (a: any, b: any) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    );
+    ]);
 
     const modifiersRes = await listAllModifierGroupsForPos(siteId);
 
