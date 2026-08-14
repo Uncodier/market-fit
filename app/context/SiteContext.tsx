@@ -694,73 +694,16 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setIsLoading(true)
       setError(null)
 
-      const QUERY_MS = 8000
-      const withTimeout = async <T,>(promise: PromiseLike<T>, label: string): Promise<T> => {
-        let timer: ReturnType<typeof setTimeout> | undefined
-        try {
-          return await Promise.race([
-            Promise.resolve(promise),
-            new Promise<never>((_, reject) => {
-              timer = setTimeout(
-                () => reject(new Error(`${label} timed out after ${QUERY_MS}ms`)),
-                QUERY_MS
-              )
-            }),
-          ])
-        } finally {
-          if (timer) clearTimeout(timer)
-        }
-      }
-      
-      // Fetch user's own sites
-      const { data: ownedSitesData, error: ownedSitesError } = await withTimeout(
-        supabaseRef.current.from('sites').select('*').eq('user_id', userId),
-        'owned sites'
+      const { data: accessibleSites, error: sitesError } = await supabaseRef.current.rpc(
+        "get_my_accessible_sites"
       )
-      
-      if (ownedSitesError) {
-        console.error("Error fetching owned sites:", ownedSitesError)
-        setError(new Error(ownedSitesError.message || "Failed to load owned sites"))
+
+      if (sitesError) {
+        console.error("Error fetching accessible sites:", sitesError)
+        throw new Error(sitesError.message || "Failed to load sites")
       }
 
-      const ownedSites = ownedSitesError ? [] : (ownedSitesData || [])
-      
-      // Fetch sites where the user is a member (shared with the user)
-      const { data: sharedSiteIds, error: sharedSitesError } = await withTimeout(
-        supabaseRef.current
-          .from('site_members')
-          .select('site_id')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .neq('role', 'owner'),
-        'shared site members'
-      )
-      
-      if (sharedSitesError) {
-        console.error("Error fetching shared site IDs:", sharedSitesError)
-        // Do not abort owned sites if membership RLS fails.
-      }
-      
-      const sharedIds = (sharedSiteIds || []).map((item: { site_id: string }) => item.site_id)
-      let sharedSitesData: any[] = []
-      
-      // If there are shared sites, fetch their details
-      if (sharedIds.length > 0) {
-        const { data: sharedSites, error: fetchSharedError } = await supabaseRef.current
-          .from('sites')
-          .select('*')
-          .in('id', sharedIds)
-        
-        if (fetchSharedError) {
-          console.error("Error fetching shared sites data:", fetchSharedError)
-          throw fetchSharedError
-        }
-        
-        sharedSitesData = sharedSites || []
-      }
-      
-      // Combine owned and shared sites
-      const allSitesData = [...ownedSites, ...sharedSitesData]
+      const allSitesData = [...(accessibleSites || [])]
       
       // Demo accounts are only available while demo mode is active.
       // Do not inject them into workspace/buyer site lists.
