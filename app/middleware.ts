@@ -5,6 +5,7 @@ import {
   resolvePostAuthRedirect,
 } from '@/lib/auth/post-auth-redirect'
 import { copyResponseCookies, getMiddlewareUser } from '@/lib/supabase/middleware-client'
+import { resolveBlockedScreenRedirect } from '@/lib/auth/enforce-screen-access'
 
 // Lista específica y exacta de rutas públicas permitidas
 const ALLOWED_PUBLIC_PATHS = [
@@ -347,8 +348,11 @@ export async function middleware(request: NextRequest) {
   const sessionResponse = nextWithAlignedServerActionHost(request)
   getCorsHeaders(sessionResponse, request, isPublicBooking)
 
+  let middlewareUserId: string | null = null
+
   if (isAuthPath || !isPublicPage) {
     const { user } = await getMiddlewareUser(request, sessionResponse)
+    middlewareUserId = user?.id ?? null
 
     if (isAuthPath) {
       if (user) {
@@ -369,6 +373,26 @@ export async function middleware(request: NextRequest) {
       url.pathname = '/auth'
       url.search = `?returnTo=${encodeURIComponent(pathname)}`
       return copyResponseCookies(sessionResponse, NextResponse.redirect(url))
+    }
+  }
+
+  if (
+    middlewareUserId &&
+    !isPublicPage &&
+    !isAuthPath &&
+    !request.cookies.has('market_fit_demo_site_id')
+  ) {
+    try {
+      const blockedRedirect = await resolveBlockedScreenRedirect(
+        request,
+        sessionResponse,
+        middlewareUserId
+      )
+      if (blockedRedirect) {
+        return copyResponseCookies(sessionResponse, blockedRedirect)
+      }
+    } catch {
+      // Fail open on lookup errors so a membership query cannot take down the app.
     }
   }
 

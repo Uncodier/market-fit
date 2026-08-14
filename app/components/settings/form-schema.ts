@@ -373,7 +373,8 @@ export const siteFormSchema = z.object({
       required_error: "Role is required",
     }),
     name: z.string().optional(),
-    position: z.string().optional()
+    position: z.string().optional(),
+    blocked_screens: z.array(z.string()).optional().default([])
   })).optional().default([]),
   tracking: z.object({
     track_visitors: z.boolean().optional().default(false),

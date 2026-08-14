@@ -139,8 +139,8 @@ export function useChatMessages(
     const checkConnection = () => {
       if (!conversationId || conversationId.startsWith('new-')) return
 
-      const supabase = createClient()
-      const isConnected = supabase.channel('any').connectionState() === 'OPEN'
+      const supabase = createClient() as { realtime?: { isConnected?: () => boolean } }
+      const isConnected = supabase.realtime?.isConnected?.() === true
 
       if (
         messageSubscriptionRef.current &&

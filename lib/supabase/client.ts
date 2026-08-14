@@ -1,6 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { getDemoData } from '@/lib/demo-data'
 import { createDemoMockClient } from '@/lib/demo-data/mock-client'
+import { wrapSupabaseClient } from '@/lib/permissions/mutation-guard'
+import { notifyPermissionDenied } from '@/lib/permissions/notify'
 
 // Singleton client for the entire application
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
@@ -123,22 +125,25 @@ export function createClient() {
     
     // Let @supabase/ssr manage auth cookies (getAll/setAll). Custom get/set
     // handlers break chunked session cookies and can miss an active session.
-    supabaseClient = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        realtime: {
-          params: {
-            eventsPerSecond: 10
+    supabaseClient = wrapSupabaseClient(
+      createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          realtime: {
+            params: {
+              eventsPerSecond: 10
+            },
+            timeout: 60000
           },
-          timeout: 60000
-        },
-        global: {
-          headers: {
-            'X-Supabase-Cache-Control': '0'
+          global: {
+            headers: {
+              'X-Supabase-Cache-Control': '0'
+            }
           }
         }
-      }
+      ),
+      { onDenied: notifyPermissionDenied }
     )
     
     clientCreationError = null

@@ -30,6 +30,7 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { requestNavigationHistoryReset } from "@/app/hooks/use-navigation-history"
 
 import { AREA_ICON, NAV_ITEM_ICON } from "@/app/config/module-visuals"
+import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 
 interface NavigationAreaGroupsProps {
   renderCollapsed: boolean
@@ -47,6 +48,7 @@ export function NavigationAreaGroups({
   const searchParams = useSearchParams()
   const router = useRouter()
   const searchQueryString = searchParams.toString()
+  const screenAccess = useOptionalScreenAccess()
   const navSearchParams = useMemo(
     () => new URLSearchParams(searchQueryString),
     [searchQueryString]
@@ -165,6 +167,10 @@ export function NavigationAreaGroups({
       >
         {areaOrder.map((area) => {
           const config = NAVIGATION_AREAS[area]
+          const visibleItems = config.items.filter(
+            (item) => !item.hidden && (!screenAccess || screenAccess.canAccessNavKey(item.key))
+          )
+          if (visibleItems.length === 0) return null
           const title = t(config.categoryKey) || area
           const expanded = open[area]
 
@@ -274,7 +280,7 @@ export function NavigationAreaGroups({
                   renderCollapsed ? "items-center px-0 w-full" : "px-1"
                 )}
               >
-                {config.items.filter(item => !item.hidden).map((item) => renderItem(item))}
+                {visibleItems.map((item) => renderItem(item))}
               </div>
             </div>
           </div>

@@ -9,6 +9,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { requestNavigationHistoryReset } from "@/app/hooks/use-navigation-history"
 import { NAV_ITEM_ICON } from "@/app/config/module-visuals"
+import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 
 interface RobotsNavItemsProps {
   isCollapsed: boolean
@@ -48,9 +49,13 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
   const overviewActive = pathname.startsWith("/dashboard") && searchParams.get("tab") === "overview"
   const agentActive = isRobotsRoute && robotsViewMode === "agent"
   const imprentaActive = isRobotsRoute && robotsViewMode === "imprenta"
+  const screenAccess = useOptionalScreenAccess()
+  const showOverview = !screenAccess || screenAccess.canAccessNavKey("reportOverview")
+  const showContentCreator = !screenAccess || screenAccess.canAccessNavKey("contentCreator")
 
   return (
     <>
+      {showOverview && (
       <MenuItem
         href={overviewHref}
         icon={NAV_ITEM_ICON.reportOverview}
@@ -61,6 +66,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
           requestNavigationHistoryReset()
         }}
       />
+      )}
       <MenuItem
         href={agentHref}
         icon={Bot}
@@ -74,6 +80,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
       >
         <RobotsBadge isActive={agentActive} />
       </MenuItem>
+      {showContentCreator && (
       <MenuItem
         href={imprentaHref}
         icon={Printer}
@@ -85,6 +92,7 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
           requestNavigationHistoryReset()
         }}
       />
+      )}
     </>
   )
 }

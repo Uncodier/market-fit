@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { Database } from "../database.types"
 import { createDemoMockClient } from "@/lib/demo-data/mock-client"
+import { wrapSupabaseClient } from "@/lib/permissions/mutation-guard"
 
 export async function createClient(skipDemo: boolean = false) {
   const cookieStore = await cookies()
@@ -13,25 +14,27 @@ export async function createClient(skipDemo: boolean = false) {
     return createDemoMockClient(demoSiteId) as any;
   }
 
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
+  return wrapSupabaseClient(
+    createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options)
+              })
+            } catch {
+              // Ignore in Server Components — middleware refreshes the session.
+            }
+          },
         },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          } catch {
-            // Ignore in Server Components — middleware refreshes the session.
-          }
-        },
-      },
-    }
+      }
+    )
   )
 }
 

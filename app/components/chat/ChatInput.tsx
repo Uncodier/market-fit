@@ -175,14 +175,8 @@ export const ChatInput = memo(function ChatInput({
                 <Button 
                   type="submit" 
                   size="icon"
-                  variant="ghost"
                   disabled={!canSend}
-                  className={cn(
-                    "rounded-[9999px] h-[35.1px] w-[35.1px] transition-[background-color,box-shadow,border-color] duration-200 border border-transparent",
-                    canSend
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset opacity-100"
-                      : "peer-focus:border-primary text-primary opacity-50 hover:bg-transparent"
-                  )}
+                  className="h-[35.1px] w-[35.1px] shrink-0"
                 >
                   {isLoading ? (
                     <LoadingSkeleton size="sm" />

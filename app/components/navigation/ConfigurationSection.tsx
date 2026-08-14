@@ -16,6 +16,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Fragment, useState, useEffect, useRef } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { type LucideIcon } from "@/app/components/ui/icons"
+import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 
 const SETTINGS_SECTION_EMOJI = "⚙️"
 
@@ -56,6 +57,7 @@ export function ConfigurationSection({
   const router = useRouter()
   const dummyFocusRef = useRef<HTMLDivElement>(null)
   const { isDarkMode, toggleTheme } = useTheme()
+  const screenAccess = useOptionalScreenAccess()
 
   const settingsUrlTab =
     searchParams.get("tab") || searchParams.get("segment") || ""
@@ -290,6 +292,13 @@ export function ConfigurationSection({
           >
             {settingsChildItems.map((item) => {
               const isTheme = item.href === "#theme"
+              if (
+                !isTheme &&
+                screenAccess &&
+                !screenAccess.canAccessNavKey(item.titleKey)
+              ) {
+                return null
+              }
 
               if (isTheme) {
                 return (

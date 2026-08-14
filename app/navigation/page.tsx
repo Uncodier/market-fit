@@ -10,6 +10,7 @@ import { NAVIGATION_AREAS, AreaNavItem, buildNavItemHref, getNavItemTitle, NAVIG
 import { AREA_ICON, NAV_ITEM_ICON, getAreaFamilyAccent } from "@/app/config/module-visuals"
 import { ModuleTile } from "@/app/components/navigation/ModuleTile"
 import { useSidebarNavKeys } from "@/app/components/navigation/use-sidebar-nav-keys"
+import { useOptionalScreenAccess } from "@/app/context/ScreenAccessContext"
 import { cn } from "@/lib/utils"
 
 interface NavigationPageProps {
@@ -23,6 +24,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
   const [searchQuery, setSearchQuery] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const sidebarNavKeys = useSidebarNavKeys()
+  const screenAccess = useOptionalScreenAccess()
 
   useEffect(() => {
     // Only auto-focus on desktop to prevent mobile keyboard from popping up
@@ -102,6 +104,7 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
             const area = NAVIGATION_AREAS[areaKey]
             const items = area.items.filter(item => {
               if (item.hidden) return false
+              if (screenAccess && !screenAccess.canAccessNavKey(item.key)) return false
               const title = getTitle(item).toLowerCase()
               return title.includes(searchQuery.toLowerCase())
             })

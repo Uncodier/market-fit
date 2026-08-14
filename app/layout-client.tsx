@@ -14,6 +14,7 @@ import { NotificationsProvider } from "./notifications/context/NotificationsCont
 import { usePageRefreshPrevention } from "./hooks/use-prevent-refresh"
 import { useIsMobile } from "./hooks/use-mobile-view"
 import { useLocalization } from "./context/LocalizationContext"
+import { ScreenAccessRedirect } from "./components/navigation/ScreenAccessRedirect"
 
 const pathToNavKey: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -519,6 +520,7 @@ function LayoutClientInner({
         ) : (
           // Para el resto de páginas, mostrar el layout completo
           <div className="flex overflow-visible relative min-h-[100dvh] w-full">
+            <ScreenAccessRedirect />
             <Sidebar 
               isCollapsed={isLayoutCollapsed} 
               onCollapse={handleCollapse}

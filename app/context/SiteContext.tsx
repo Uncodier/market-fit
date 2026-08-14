@@ -15,6 +15,7 @@ import type {
 import { billingService, BillingData } from "../services/billing-service"
 import { toast } from "react-hot-toast"
 import { isDemoModeActive, isRealSiteId } from "@/lib/demo-utils"
+import { clearCurrentSiteCookie, persistCurrentSiteCookie } from "@/lib/auth/current-site-cookie"
 
 // Definición de la interfaz Site adaptada a la estructura de Supabase
 export interface Site {
@@ -511,6 +512,7 @@ function setLocalStorage(key: string, value: any) {
       }
       
       localStorage.setItem(key, valueToStore)
+      persistCurrentSiteCookie(String(valueToStore))
       return
     }
     
@@ -555,6 +557,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
   useEffect(() => {
     hasValidSessionRef.current = hasValidSession
   }, [hasValidSession])
+
+  useEffect(() => {
+    if (currentSite?.id) persistCurrentSiteCookie(currentSite.id)
+  }, [currentSite?.id])
 
   useEffect(() => {
     isLoadingRef.current = isLoading
@@ -687,33 +693,55 @@ export function SiteProvider({ children }: SiteProviderProps) {
       // Always set loading to true when starting to load sites, regardless of initialization status
       setIsLoading(true)
       setError(null)
+
+      const QUERY_MS = 8000
+      const withTimeout = async <T,>(promise: PromiseLike<T>, label: string): Promise<T> => {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        try {
+          return await Promise.race([
+            Promise.resolve(promise),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(
+                () => reject(new Error(`${label} timed out after ${QUERY_MS}ms`)),
+                QUERY_MS
+              )
+            }),
+          ])
+        } finally {
+          if (timer) clearTimeout(timer)
+        }
+      }
       
       // Fetch user's own sites
-      const { data: ownedSitesData, error: ownedSitesError } = await supabaseRef.current
-        .from('sites')
-        .select('*')
-        .eq('user_id', userId)
+      const { data: ownedSitesData, error: ownedSitesError } = await withTimeout(
+        supabaseRef.current.from('sites').select('*').eq('user_id', userId),
+        'owned sites'
+      )
       
       if (ownedSitesError) {
         console.error("Error fetching owned sites:", ownedSitesError)
-        throw ownedSitesError
+        setError(new Error(ownedSitesError.message || "Failed to load owned sites"))
       }
+
+      const ownedSites = ownedSitesError ? [] : (ownedSitesData || [])
       
       // Fetch sites where the user is a member (shared with the user)
-      const { data: sharedSiteIds, error: sharedSitesError } = await supabaseRef.current
-        .from('site_members')
-        .select('site_id')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .neq('role', 'owner') // Exclude own sites where user is explicitly marked as owner
+      const { data: sharedSiteIds, error: sharedSitesError } = await withTimeout(
+        supabaseRef.current
+          .from('site_members')
+          .select('site_id')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .neq('role', 'owner'),
+        'shared site members'
+      )
       
       if (sharedSitesError) {
         console.error("Error fetching shared site IDs:", sharedSitesError)
-        throw sharedSitesError
+        // Do not abort owned sites if membership RLS fails.
       }
       
-      // Extract the site IDs from the site_members result
-      const sharedIds = sharedSiteIds.map((item: { site_id: string }) => item.site_id)
+      const sharedIds = (sharedSiteIds || []).map((item: { site_id: string }) => item.site_id)
       let sharedSitesData: any[] = []
       
       // If there are shared sites, fetch their details
@@ -732,7 +760,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       // Combine owned and shared sites
-      const allSitesData = [...(ownedSitesData || []), ...sharedSitesData]
+      const allSitesData = [...ownedSites, ...sharedSitesData]
       
       // Demo accounts are only available while demo mode is active.
       // Do not inject them into workspace/buyer site lists.
@@ -901,6 +929,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
           setIsLoading(false)
           try {
             localStorage.removeItem("currentSiteId")
+            clearCurrentSiteCookie()
           } catch (e) {
             console.error("Error removing currentSiteId from localStorage:", e)
           }

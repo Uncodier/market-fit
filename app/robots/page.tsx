@@ -975,7 +975,8 @@ function RobotsPageContent() {
       const artifactSearchParams = new URLSearchParams(url.search)
       
       let matchingKey: string | null = null
-      Object.values(NAVIGATION_AREAS).forEach((area) => {
+      Object.entries(NAVIGATION_AREAS).forEach(([areaKey, area]) => {
+        if (areaKey === "settings") return
         area.items.forEach((item) => {
           if (item.key !== "contentCreator" && item.key !== "reportOverview" && isNavItemActive(item, pathname, artifactSearchParams)) {
             matchingKey = item.key

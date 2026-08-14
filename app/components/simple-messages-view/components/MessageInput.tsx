@@ -427,13 +427,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
               <Button 
                 type="submit" 
                 size="icon"
-                variant="ghost"
                 disabled={disabled || !message.trim()}
-                className={`rounded-[9999px] h-[35.1px] w-[35.1px] transition-all duration-200 border border-transparent ${
-                  !disabled && message.trim()
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset opacity-100'
-                    : activeRobotInstance?.id ? 'peer-focus:border-primary text-primary opacity-50 hover:bg-transparent' : 'text-muted-foreground opacity-50 hover:bg-transparent'
-                }`}
+                className="h-[35.1px] w-[35.1px] shrink-0"
               >
                 <ChevronRight className="h-4.5 w-4.5" />
                 <span className="sr-only">Enviar</span>

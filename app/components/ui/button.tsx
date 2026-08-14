@@ -6,6 +6,10 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 import { useBtnGlassMotion } from "./use-btn-glass-motion"
+import { useOptionalPermissions } from "@/app/context/PermissionContext"
+import { inferButtonCommand, getNodeText } from "@/lib/permissions/button-heuristic"
+import { notifyPermissionDenied } from "@/lib/permissions/notify"
+import { PERMISSION_DENIED_TITLE } from "@/lib/permissions/types"
 
 const buttonVariants = cva(
   "font-inter inline-flex items-center justify-center whitespace-nowrap rounded-full overflow-hidden text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
@@ -88,10 +92,24 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, tint, children, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, tint, children, onClick, ...props }, ref) => {
     const isPrimary = variant === undefined || variant === "default"
     const wellTintClass = tint === "destructive" ? "btn-tint-red" : undefined
     const setGlassNode = useBtnGlassMotion(isPrimary)
+    const permissions = useOptionalPermissions()
+    const dataPermission =
+      (props as Record<string, unknown>)["data-permission"] as string | undefined
+    const inferredCommand = inferButtonCommand({
+      type: props.type,
+      variant,
+      tint,
+      childrenText: getNodeText(children),
+      dataPermission,
+    })
+    const blockedCommand =
+      !props.disabled && inferredCommand && permissions && !permissions.can(inferredCommand)
+        ? inferredCommand
+        : null
 
     const assignRef = React.useCallback(
       (node: HTMLButtonElement | null) => {
@@ -103,13 +121,28 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     )
 
     const style = withSafariRgbVars(props.style)
+    const gatedClassName = blockedCommand ? "opacity-50 cursor-not-allowed" : undefined
+    const blockClick = (event: React.SyntheticEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      if (blockedCommand) notifyPermissionDenied(blockedCommand)
+    }
+    const gatedHandlers = blockedCommand
+      ? {
+          "aria-disabled": true as const,
+          title: props.title || PERMISSION_DENIED_TITLE,
+          onClick: blockClick,
+          onClickCapture: blockClick,
+        }
+      : { onClick }
 
     if (asChild && !isPrimary) {
       return (
         <Slot
-          className={cn(buttonVariants({ variant, size }), className)}
+          className={cn(buttonVariants({ variant, size }), gatedClassName, className)}
           ref={assignRef}
           {...props}
+          {...gatedHandlers}
           style={style}
         >
           {children}
@@ -122,9 +155,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       return (
         <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
           <Slot
-            className={cn(buttonVariants({ variant, size }), inner)}
+            className={cn(buttonVariants({ variant, size }), gatedClassName, inner)}
             ref={assignRef}
             {...props}
+            {...gatedHandlers}
             style={style}
           >
             <Slottable>{children}</Slottable>
@@ -138,9 +172,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     if (!isPrimary) {
       return (
         <button
-          className={cn(buttonVariants({ variant, size }), className)}
+          className={cn(buttonVariants({ variant, size }), gatedClassName, className)}
           ref={assignRef}
           {...props}
+          {...gatedHandlers}
           style={style}
         >
           {children}
@@ -152,9 +187,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
         <button
-          className={cn(buttonVariants({ variant, size }), inner)}
+          className={cn(buttonVariants({ variant, size }), gatedClassName, inner)}
           ref={assignRef}
           {...props}
+          {...gatedHandlers}
           style={style}
         >
           {children}

@@ -42,7 +42,7 @@ function clearCookieEverywhere(name: string) {
 }
 
 export default function ProjectsPage() {
-  const { sites, currentSite, isLoading, setCurrentSite } = useSite()
+  const { sites, currentSite, isLoading, setCurrentSite, error } = useSite()
   const router = useRouter()
   const searchParams = useSearchParams()
   const isManageMode = searchParams?.get('manage') === '1' || searchParams?.get('from') === 'buyer'
@@ -122,6 +122,13 @@ export default function ProjectsPage() {
     if (!hasSites) {
       return (
         <div className="w-full max-w-2xl mx-auto space-y-3">
+          {error ? (
+            <Card className="border-destructive/40 bg-destructive/5">
+              <CardContent className="p-4 text-sm text-destructive">
+                Could not load projects: {error.message}
+              </CardContent>
+            </Card>
+          ) : null}
           <Card className="border border-border hover:border-foreground/20 transition-colors cursor-pointer" onClick={() => router.push("/create-site") }>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">

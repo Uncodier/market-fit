@@ -454,7 +454,27 @@ export interface Database {
       }
     }
     Views: {}
-    Functions: {}
+    Functions: {
+      current_user_site_role: {
+        Args: { p_site_id: string }
+        Returns: string | null
+      }
+      user_can: {
+        Args: { p_site_id: string; p_command: string }
+        Returns: boolean
+      }
+      get_my_site_capabilities: {
+        Args: { p_site_id: string }
+        Returns: {
+          role: string | null
+          is_owner: boolean
+          select: boolean
+          insert: boolean
+          update: boolean
+          delete: boolean
+        }
+      }
+    }
     Enums: {}
   }
 }
@@ -535,6 +555,7 @@ export interface SiteMember {
   name: string | null
   position: string | null
   status: 'pending' | 'active' | 'rejected'
+  blocked_screens?: string[]
 }
 
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']

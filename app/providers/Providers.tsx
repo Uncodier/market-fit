@@ -4,6 +4,8 @@ import React from 'react';
 import { ThemeProvider } from '../context/ThemeContext';
 import { LayoutProvider } from '../context/LayoutContext';
 import { SiteProvider } from '@/app/context/SiteContext';
+import { PermissionProvider } from '@/app/context/PermissionContext';
+import { ScreenAccessProvider } from '@/app/context/ScreenAccessContext';
 import { WidgetProvider } from '../context/WidgetContext';
 import { RobotsProvider } from '../context/RobotsContext';
 import { TooltipProvider } from '../components/ui/tooltip';
@@ -26,6 +28,8 @@ export default function Providers({ children, country }: ProvidersProps) {
           <DisplayCurrencyProvider initialCountry={country}>
             <LayoutProvider>
               <SiteProvider>
+                <PermissionProvider>
+                <ScreenAccessProvider>
                 <RobotsProvider>
                   <WidgetProvider>
                     <TooltipProvider>
@@ -33,6 +37,8 @@ export default function Providers({ children, country }: ProvidersProps) {
                     </TooltipProvider>
                   </WidgetProvider>
                 </RobotsProvider>
+                </ScreenAccessProvider>
+                </PermissionProvider>
               </SiteProvider>
             </LayoutProvider>
           </DisplayCurrencyProvider>

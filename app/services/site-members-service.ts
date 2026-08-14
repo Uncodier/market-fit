@@ -13,6 +13,7 @@ export interface SiteMember {
   name: string | null
   position: string | null
   status: 'pending' | 'active' | 'rejected'
+  blocked_screens?: string[]
   emailConfirmed?: boolean // Track if user has confirmed their email
   lastSignIn?: string // Track last sign in to know if user is truly active
 }
@@ -22,6 +23,7 @@ export interface SiteMemberInput {
   role: 'admin' | 'marketing' | 'collaborator'
   name?: string
   position?: string
+  blocked_screens?: string[]
 }
 
 // For existing members fetched from the database
@@ -68,45 +70,30 @@ export const siteMembersService = {
     }
   },
   
-  // Add a new member to a site
+  // Add a new member to a site (owner/admin API — bypasses owner-only RLS)
   async addMember(siteId: string, member: SiteMemberInput): Promise<SiteMember> {
-    const supabase = createClient()
-    const { data: userData } = await supabase.auth.getUser()
-    
-    // Check if the user already exists in auth.users
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', member.email)
-      .single();
-    
-    const { data, error } = await supabase
-      .from('site_members')
-      .insert({
-        site_id: siteId,
-        user_id: existingUser?.id || null, // NULL for users that don't exist yet
+    const response = await fetch(`/api/site-members/${siteId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         email: member.email,
         role: member.role,
-        name: member.name || null,
-        position: member.position || null,
-        added_by: userData.user?.id,
-        status: existingUser?.id ? 'active' : 'pending' // 'active' if user exists, 'pending' otherwise
-      })
-      .select()
-      .single()
-    
-    if (error) {
-      console.error('Error adding site member:', error)
-      // If it's a duplicate error, provide a more friendly message
-      if (error.code === '23505') {
-        throw new Error(`This email is already a member of this site`)
-      }
-      throw new Error(`Failed to add site member: ${error.message}`)
+        name: member.name,
+        position: member.position,
+        blocked_screens: member.blocked_screens || [],
+      }),
+    })
+
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to add site member')
     }
+
+    const data = result.member as SiteMember
     
     // After successfully creating the site member, send magic link invitation
     try {
-      // Get site information for the invitation
+      const supabase = createClient()
       const { data: siteData } = await supabase
         .from('sites')
         .select('name')
@@ -163,52 +150,66 @@ export const siteMembersService = {
   },
   
   // Update a member's details
-  async updateMember(memberId: string, updates: Partial<SiteMemberInput>): Promise<SiteMember> {
-    const supabase = createClient()
-    
-    const { data, error } = await supabase
-      .from('site_members')
-      .update({
+  async updateMember(siteId: string, memberId: string, updates: Partial<SiteMemberInput>): Promise<SiteMember> {
+    const response = await fetch(`/api/site-members/${siteId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        memberId,
         role: updates.role,
         name: updates.name,
-        position: updates.position
-      })
-      .eq('id', memberId)
-      .select()
-      .single()
-    
-    if (error) {
-      console.error('Error updating site member:', error)
-      
-      // Check if it's the trigger preventing role change of last admin
-      if (error.message?.includes('Cannot change role of the last admin or owner')) {
+        position: updates.position,
+        ...(updates.blocked_screens ? { blocked_screens: updates.blocked_screens } : {}),
+      }),
+    })
+
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || !result.success) {
+      const errorMessage = result.error || 'Failed to update site member'
+      if (errorMessage.includes('Cannot change role of the last admin or owner')) {
         throw new Error('Cannot change role of the last admin or owner. At least one admin or owner must remain for the site.')
       }
-      
-      throw new Error(`Failed to update site member: ${error.message}`)
+      throw new Error(errorMessage)
     }
-    
-    return data
+
+    return result.member
+  },
+
+  async updateBlockedScreens(
+    siteId: string,
+    memberId: string,
+    blockedScreens: string[]
+  ): Promise<SiteMember> {
+    const response = await fetch(`/api/site-members/${siteId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        memberId,
+        blocked_screens: blockedScreens,
+      }),
+    })
+
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to update blocked screens')
+    }
+
+    return result.member
   },
   
   // Remove a member from a site
-  async removeMember(memberId: string): Promise<void> {
-    const supabase = createClient()
-    
-    const { error } = await supabase
-      .from('site_members')
-      .delete()
-      .eq('id', memberId)
-    
-    if (error) {
-      console.error('Error removing site member:', error)
-      
-      // Check if it's the trigger preventing deletion of last admin
-      if (error.message?.includes('Cannot delete the last admin or owner')) {
+  async removeMember(siteId: string, memberId: string): Promise<void> {
+    const response = await fetch(`/api/site-members/${siteId}?memberId=${encodeURIComponent(memberId)}`, {
+      method: 'DELETE',
+    })
+
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || !result.success) {
+      const errorMessage = result.error || 'Failed to remove site member'
+      if (errorMessage.includes('Cannot delete the last admin or owner')) {
         throw new Error('Cannot delete the last admin or owner of the site. At least one admin or owner must remain.')
       }
-      
-      throw new Error(`Failed to remove site member: ${error.message}`)
+      throw new Error(errorMessage)
     }
   },
   

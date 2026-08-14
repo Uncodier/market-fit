@@ -29,6 +29,22 @@ jest.mock('next/image', () => ({
 // Mock SVG imports
 jest.mock('*.svg', () => 'svg');
 
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: jest.fn().mockImplementation((query) => ({
+      matches: String(query).includes('prefers-reduced-motion'),
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
+}
+
 // Set up global fetch mock
 global.fetch = jest.fn(() =>
   Promise.resolve({

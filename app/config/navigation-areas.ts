@@ -22,7 +22,7 @@ export const SIDEBAR_AUTOMATION_AREA_ORDER: WorkspaceArea[] = [
   "automation",
 ]
 
-/** Apps launcher sections, including Settings */
+/** Apps launcher sections. Settings lives in the bottom Configuration section, not here. */
 export const NAVIGATION_MENU_AREA_ORDER: WorkspaceArea[] = [
   "marketing",
   "sales",
@@ -32,6 +32,11 @@ export const NAVIGATION_MENU_AREA_ORDER: WorkspaceArea[] = [
   "finance",
   "reports",
   "applications",
+]
+
+/** All areas including Settings, used for screen-access matching. */
+export const ALL_NAV_AREA_ORDER: WorkspaceArea[] = [
+  ...NAVIGATION_MENU_AREA_ORDER,
   "settings",
 ]
 
@@ -245,6 +250,36 @@ export function getModuleArea(itemKey: string): WorkspaceArea | undefined {
     }
   }
   return undefined
+}
+
+export const SETTINGS_NAV_KEYS = new Set(
+  NAVIGATION_AREAS.settings.items.map((item) => item.key)
+)
+
+export function isSettingsNavKey(key: string): boolean {
+  return SETTINGS_NAV_KEYS.has(key)
+}
+
+const CONFIGURATION_PATH_PREFIXES = ["/integrations", "/billing", "/security"]
+const SHORTCUT_ELIGIBLE_SETTINGS_TABS = new Set(["printers", "channels", "activities"])
+
+/** Bottom Configuration section — do not pin these as sidebar shortcuts. */
+export function isConfigurationNavPath(
+  pathname: string,
+  searchParams?: URLSearchParams
+): boolean {
+  if (!pathname) return false
+  if (
+    CONFIGURATION_PATH_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    )
+  ) {
+    return true
+  }
+  if (!pathname.startsWith("/settings")) return false
+  const tab = searchParams?.get("tab")
+  if (tab && SHORTCUT_ELIGIBLE_SETTINGS_TABS.has(tab)) return false
+  return true
 }
 
 export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): string {
