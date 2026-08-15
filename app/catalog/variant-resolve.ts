@@ -37,10 +37,13 @@ export function resolveVariantAxesForDisplay(
     {
       id: FALLBACK_VARIANT_AXIS_ID,
       kind: "custom",
-      values: children.map((child) => ({
-        id: child.id,
-        label: shortVariantLabel(item.name, child.name),
-      })),
+      values: children.map((child) => {
+        const lbl = shortVariantLabel(item.name || "", child.name || "");
+        return {
+          id: child.id,
+          label: lbl || child.name || "Option",
+        };
+      }),
     },
   ]
 

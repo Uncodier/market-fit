@@ -19,7 +19,7 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
       if (file) {
         const reader = new FileReader()
         reader.onloadend = () => {
-          form.setValue("logo_url", reader.result as string)
+          form.setValue("logo_url", reader.result as string, { shouldDirty: true, shouldValidate: true })
         }
         reader.readAsDataURL(file)
       }
@@ -125,7 +125,7 @@ export function BasicInfoStep({ form }: BasicInfoStepProps) {
                         />
                         <button
                           type="button"
-                          onClick={() => field.onChange("")}
+                          onClick={() => form.setValue("logo_url", "", { shouldDirty: true, shouldValidate: true })}
                           className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
                         >
                           <Trash2 className="h-5 w-5 text-white" />

@@ -72,7 +72,13 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
 
   const getLayout = () => {
     if (isAccessOnlyItem(item)) return PassPdpLayout;
-    if (item.kind === 'service' || (item.is_reservation && !isAccessOnlyItem(item))) return ServicePdpLayout;
+    
+    const hasVariants = item._shop?.hasVariants || (item.metadata?.variant_axes?.length ?? 0) > 0 || (item._shop?.children?.length ?? 0) > 0;
+    
+    if (item.kind === 'service' || (item.is_reservation && !isAccessOnlyItem(item))) {
+      if (hasVariants) return ProductPdpLayout;
+      return ServicePdpLayout;
+    }
     
     if (item.kind === 'product') return ProductPdpLayout;
     if (item.kind === 'digital_asset') {

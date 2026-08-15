@@ -66,7 +66,7 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
       if (file) {
         const reader = new FileReader()
         reader.onloadend = () => {
-          form.setValue("logo_url", reader.result as string)
+          form.setValue("logo_url", reader.result as string, { shouldDirty: true, shouldValidate: true })
         }
         reader.readAsDataURL(file)
       }
@@ -106,7 +106,7 @@ export function GeneralSection({ active, onSave }: GeneralSectionProps) {
                           />
                           <button
                             type="button"
-                            onClick={() => field.onChange("")}
+                            onClick={() => form.setValue("logo_url", "", { shouldDirty: true, shouldValidate: true })}
                             className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
                           >
                             <Trash2 className="h-4 w-4 text-white" />

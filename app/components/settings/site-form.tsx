@@ -368,7 +368,7 @@ export function SiteForm({
       if (file) {
         const reader = new FileReader()
         reader.onloadend = () => {
-          form.setValue("logo_url", reader.result as string)
+          form.setValue("logo_url", reader.result as string, { shouldDirty: true, shouldValidate: true })
         }
         reader.readAsDataURL(file)
       }

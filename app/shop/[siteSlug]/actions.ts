@@ -19,11 +19,6 @@ import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve";
 /** Keep getShopCatalog + getShopCategoryOffsets on the same key order. */
 function applyShopCatalogOrder<T extends { order: (...args: any[]) => T }>(query: T): T {
   return query
-    .order("sort_order", {
-      foreignTable: "category",
-      ascending: true,
-      nullsFirst: false,
-    })
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true })
     // Stable tiebreaker so range() pages cannot skip/duplicate rows.
@@ -130,8 +125,8 @@ export async function getShopCategoryOffsets(siteId: string): Promise<ShopCatego
       );
       return buildShopCategoryOffsets(names);
     },
-    // v3: stable id tiebreaker + full per-category counts
-    ["shop-category-offsets-v3", siteId],
+    // v5: fixed category sort order relying on global sort_order
+    ["shop-category-offsets-v5", siteId],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],
@@ -227,8 +222,8 @@ export async function getShopCatalog(
         offset,
       };
     },
-    // v3: stable id tiebreaker for range pagination
-    ["shop-catalog-v3", siteId, String(offset), String(pageSize), search, category],
+    // v5: fixed category sort order relying on global sort_order
+    ["shop-catalog-v5", siteId, String(offset), String(pageSize), search, category],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],

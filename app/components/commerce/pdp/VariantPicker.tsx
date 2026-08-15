@@ -122,10 +122,6 @@ export function VariantPicker({
     
     const child = childForValue(axisId, v.id)
     if (child && child.name) {
-      const parentName = imageContext?.parentName || ""
-      if (parentName) {
-        return shortVariantLabel(parentName, child.name)
-      }
       return child.name
     }
     
