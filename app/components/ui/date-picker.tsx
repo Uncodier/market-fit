@@ -629,7 +629,9 @@ export function DatePicker({
                 "border-l p-4 w-[168px] flex flex-col gap-2 overflow-hidden",
                 mode !== 'range' && "max-h-[300px] overflow-y-auto"
               )}>
-                <div className="text-xs font-medium text-muted-foreground mb-3">{getEventGroupTitle()}</div>
+                {mode !== 'range' && (
+                  <div className="text-xs font-medium text-muted-foreground mb-3">{getEventGroupTitle()}</div>
+                )}
                 {displayEvents.map((event, index) => (
                   <div 
                     key={index}

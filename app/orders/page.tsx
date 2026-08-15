@@ -16,7 +16,7 @@ import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { useRouter } from "next/navigation"
 import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
-import { OrdersKanban } from "./components/OrdersKanban"
+import { OrdersKanban, OrdersKanbanSkeleton } from "./components/OrdersKanban"
 import { OrdersTable, OrdersTableSkeleton } from "./components/OrdersTable"
 import { useOrdersRealtime } from "./hooks/useOrdersRealtime"
 import { usePrinterRealtime } from "@/lib/printer/hooks/use-printer-realtime"
@@ -240,7 +240,7 @@ export default function OrdersPage() {
           <div className={viewType === "kanban" ? "overflow-x-auto pb-4 -mx-8" : ""}>
             <div className={viewType === "kanban" ? "min-w-fit px-8" : ""}>
               {!currentSite || isLoading ? (
-                <OrdersTableSkeleton />
+                viewType === "kanban" ? <OrdersKanbanSkeleton /> : <OrdersTableSkeleton />
               ) : error ? (
                 <div className="p-6 text-center text-red-500">
                   Failed to load orders. {error.message}

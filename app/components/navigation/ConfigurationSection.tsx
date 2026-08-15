@@ -26,6 +26,7 @@ interface ConfigurationSectionProps extends React.HTMLAttributes<HTMLDivElement>
   forceShowChildren?: boolean
   setForceShowChildren?: (value: boolean) => void
   onSettingsNavigation?: (e: React.MouseEvent, href: string) => void
+  onExpandedChange?: (expanded: boolean) => void
 }
 
 interface ConfigItem {
@@ -50,7 +51,8 @@ export function ConfigurationSection({
   isCollapsed, 
   forceShowChildren: externalForceShowChildren,
   setForceShowChildren: externalSetForceShowChildren,
-  onSettingsNavigation
+  onSettingsNavigation,
+  onExpandedChange
 }: ConfigurationSectionProps) {
   const { t } = useLocalization()
   const pathname = usePathname()
@@ -100,6 +102,10 @@ export function ConfigurationSection({
 
   const settingsSectionRef = useRef<HTMLDivElement>(null)
   const prevPathRef = useRef(pathname)
+
+  useEffect(() => {
+    onExpandedChange?.(shouldShowSettingsChildren)
+  }, [shouldShowSettingsChildren, onExpandedChange])
 
   useEffect(() => {
     if (!routeDrivenOpen) {

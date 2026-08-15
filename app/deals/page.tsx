@@ -9,7 +9,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { getDeals } from "./actions"
 import { Deal } from "./types"
 import { DealsTable } from "./components/DealsTable"
-import { DealsKanban } from "./components/DealsKanban"
+import { DealsKanban, DealsKanbanSkeleton } from "./components/DealsKanban"
 import { updateDeal } from "./actions"
 import { toast } from "sonner"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -55,45 +55,6 @@ function DealsTableSkeleton() {
           ))}
         </TableBody>
       </Table>
-    </div>
-  )
-}
-
-function DealsKanbanSkeleton() {
-  return (
-    <div className="overflow-x-auto pb-4 -mx-8">
-      <div className="flex gap-4 min-w-fit px-8 min-h-[calc(100vh-220px)] items-stretch">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex-shrink-0 w-80 flex flex-col">
-            <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
-              <div className="flex items-center justify-between">
-                <Skeleton className="h-5 w-24" />
-                <Skeleton className="h-5 w-8" />
-              </div>
-              <Skeleton className="h-3 w-16 mt-2" />
-            </div>
-            <div className="bg-muted/30 rounded-b-md border-b border-x p-2 flex-1 min-h-[150px]">
-              {Array.from({ length: i % 2 === 0 ? 3 : 2 }).map((_, j) => (
-                <div key={j} className="bg-card border rounded-lg p-3 shadow-sm mb-2">
-                  <div className="flex justify-between items-start mb-2">
-                    <Skeleton className="h-4 w-3/4" />
-                  </div>
-                  <div className="mb-3">
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-5 w-12 rounded-full" />
-                  </div>
-                  <div className="mt-2 pt-2 border-t">
-                    <Skeleton className="h-3 w-1/3" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }

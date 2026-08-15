@@ -25,6 +25,7 @@ const CHUNK_ERROR_SIGNATURES = [
   "ChunkLoadError",
   "Loading chunk",
   "Loading CSS chunk",
+  "Failed to load chunk",
   "Failed to fetch dynamically imported module",
   "error loading dynamically imported module",
   "Importing a module script failed",

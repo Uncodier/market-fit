@@ -106,6 +106,14 @@ export function Sidebar({
     handleSectionNavigation(e, href, "profile")
   }
 
+  const [settingsMenuExpanded, setSettingsMenuExpanded] = useState(
+    pathname.startsWith("/settings") ||
+      pathname.startsWith("/security") ||
+      pathname.startsWith("/billing") ||
+      pathname.startsWith("/integrations")
+  )
+  const hideSidebarWidgets = settingsMenuExpanded
+
   const [isAppsLauncherOpen, setIsAppsLauncherOpen] = useState(false)
 
   useEffect(() => {
@@ -204,9 +212,24 @@ export function Sidebar({
           </div>
         </div>
 
-        <div className={cn("flex-none flex flex-col gap-0 pb-2", renderCollapsed && "items-center")}>
-          <OnboardingProgressWidget isCollapsed={renderCollapsed} />
-          <CreditsWidget isCollapsed={renderCollapsed} />
+        <div
+          aria-hidden={hideSidebarWidgets}
+          className={cn(
+            "grid flex-none transition-[grid-template-rows,opacity] duration-300 ease-in-out",
+            hideSidebarWidgets
+              ? "grid-rows-[0fr] opacity-0 pointer-events-none"
+              : "grid-rows-[1fr] opacity-100"
+          )}
+        >
+          <div
+            className={cn(
+              "overflow-hidden flex flex-col gap-0 pb-2",
+              renderCollapsed && "items-center"
+            )}
+          >
+            <OnboardingProgressWidget isCollapsed={renderCollapsed} />
+            <CreditsWidget isCollapsed={renderCollapsed} />
+          </div>
         </div>
 
           <div className="flex-none border-t dark:border-white/5 border-black/5">
@@ -247,6 +270,7 @@ export function Sidebar({
               forceShowChildren={forceShowSettingsChildren}
               setForceShowChildren={setForceShowSettingsChildren}
               onSettingsNavigation={handleSettingsNavigation}
+              onExpandedChange={setSettingsMenuExpanded}
             />
 
             <div className={cn("relative", renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full px-1")}>

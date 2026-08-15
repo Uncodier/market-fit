@@ -11,11 +11,16 @@ export default async function Icon({
 }: {
   params: Promise<{ siteSlug: string; itemId: string }>
 }) {
-  const { itemId } = await params
-  const item = await getPdpCatalogItem(itemId)
-  const source = item
-    ? resolveCatalogItemShareImageSource(item as any)
-    : { kind: "url" as const, url: "/images/logo.png" }
+  try {
+    const { itemId } = await params
+    const item = await getPdpCatalogItem(itemId)
+    const source = item
+      ? resolveCatalogItemShareImageSource(item as any)
+      : { kind: "url" as const, url: "/images/logo.png" }
 
-  return renderCommerceIcon(source, ICON_SIZE)
+    return await renderCommerceIcon(source, ICON_SIZE)
+  } catch (error) {
+    console.error(`Error generating icon for product:`, error)
+    return renderCommerceIcon({ kind: "url", url: "/images/logo.png" }, ICON_SIZE)
+  }
 }

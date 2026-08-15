@@ -221,25 +221,105 @@ export function OnboardingItinerary({ userName }: OnboardingItineraryProps) {
 
 function OnboardingSkeleton({ showCards }: { showCards: boolean }) {
   return (
-    <div className="space-y-8 w-full pb-10">
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-36" />
-        <Skeleton className="h-4 w-72" />
-      </div>
-      {showCards ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-border/70 p-5 space-y-3">
-              <Skeleton className="h-9 w-9 rounded-lg" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-          ))}
+    <div className="space-y-6 w-full pb-10">
+      <div className="space-y-4">
+        <div className="min-w-0 space-y-1">
+          <Skeleton className="h-8 w-36" />
+          <Skeleton className="h-4 w-full max-w-md" />
         </div>
-      ) : (
-        <Skeleton className="h-9 w-72 rounded-full" />
-      )}
-      <Skeleton className="h-48 w-full rounded-xl" />
+
+        {showCards ? (
+          <div className="space-y-4">
+            <div>
+              <Skeleton className="h-5 w-44" />
+              <Skeleton className="h-4 w-64 mt-1" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="flex flex-col items-start rounded-xl border border-border/70 bg-card p-5"
+                >
+                  <Skeleton className="h-9 w-9 rounded-lg mb-4" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-full mt-1" />
+                  <Skeleton className="h-3 w-16 mt-4" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <Skeleton className="h-3 w-44" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <Skeleton className="h-1 w-full rounded-full" />
+          </div>
+        )}
+      </div>
+
+      {!showCards ? (
+        <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
+          <div className="border-b border-border/70 p-2">
+            <div className="h-9 p-1 bg-muted/50 rounded-lg w-full grid grid-cols-3 gap-1">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-full w-full rounded-md" />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 px-5 py-3.5">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-8" />
+            </div>
+            <Skeleton className="h-4 w-4 shrink-0" />
+          </div>
+          <div className="border-t border-border/70">
+            <div className="border-b border-border/70 px-5 py-5 flex items-start gap-3 bg-muted/30">
+              <Skeleton className="mt-0.5 h-5 w-5 rounded-full shrink-0" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <Skeleton className="h-4 w-44" />
+                  <Skeleton className="h-3 w-10 shrink-0" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-8 w-28 rounded-md" />
+                  <Skeleton className="h-8 w-20 rounded-md" />
+                </div>
+              </div>
+            </div>
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="border-b border-border/70 last:border-b-0 px-5 py-3.5 flex items-start gap-3"
+              >
+                <Skeleton className="mt-0.5 h-5 w-5 rounded-full shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-10 shrink-0" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-border/70 flex items-center justify-between gap-3 px-5 py-3.5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-3 w-8" />
+              </div>
+              <Skeleton className="h-3 w-52 mt-0.5" />
+            </div>
+            <Skeleton className="h-4 w-4 shrink-0" />
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

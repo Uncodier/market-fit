@@ -8,6 +8,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { EmptyCard } from "@/app/components/ui/empty-card"
+import { Skeleton } from "@/app/components/ui/skeleton"
 
 interface OrdersKanbanProps {
   orders: OrderWithRelations[]
@@ -21,6 +22,66 @@ const ORDER_STATUSES = [
   { id: "completed", name: "Completed", icon: CheckCircle2 },
   { id: "cancelled", name: "Cancelled", icon: Ban },
 ]
+
+const STATUS_BORDER_COLORS: Record<string, string> = {
+  pending: "border-b-yellow-500 dark:border-b-yellow-600",
+  in_progress: "border-b-blue-500 dark:border-b-blue-600",
+  completed: "border-b-emerald-500 dark:border-b-emerald-600",
+  cancelled: "border-b-rose-500 dark:border-b-rose-600",
+}
+
+const ORDER_SKELETON_CARD_COUNTS = [3, 2, 3, 1]
+
+function OrderCardSkeleton() {
+  return (
+    <Card className="mb-3 border-border/60 shadow-sm">
+      <CardContent className="p-3 space-y-2.5">
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+          <Skeleton className="h-4 w-12 shrink-0" />
+        </div>
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-3 w-10" />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+export function OrdersKanbanSkeleton() {
+  return (
+    <div className="overflow-x-auto pb-4 -mx-4 md:-mx-8">
+      <div className="flex gap-4 min-w-fit px-4 md:px-8 min-h-[calc(100vh-220px)] items-stretch">
+        {ORDER_STATUSES.map((status, columnIndex) => (
+          <div key={status.id} className="flex-shrink-0 w-80 flex flex-col">
+            <div
+              className={cn(
+                "bg-background/80 backdrop-blur-sm rounded-t-lg p-3.5 border-b-[3px] border-x border-t shadow-sm",
+                STATUS_BORDER_COLORS[status.id] || "border-b-primary/30"
+              )}
+            >
+              <div className="flex items-center justify-between mb-0.5">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-5 w-6 rounded-full" />
+              </div>
+              <Skeleton className="h-3 w-14 mt-1" />
+            </div>
+            <div className="bg-muted/30 rounded-b-lg p-3 border-b border-x flex-1 flex flex-col min-h-[150px]">
+              {Array.from({ length: ORDER_SKELETON_CARD_COUNTS[columnIndex] ?? 2 }).map((_, cardIndex) => (
+                <OrderCardSkeleton key={cardIndex} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: OrdersKanbanProps) {
   const { t } = useLocalization()
@@ -50,13 +111,6 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
     onUpdateOrderStatus(draggableId, destination.droppableId)
   }
 
-  const statusBorderColors: Record<string, string> = {
-    pending: "border-b-yellow-500 dark:border-b-yellow-600",
-    in_progress: "border-b-blue-500 dark:border-b-blue-600",
-    completed: "border-b-emerald-500 dark:border-b-emerald-600",
-    cancelled: "border-b-rose-500 dark:border-b-rose-600",
-  }
-
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="overflow-x-auto pb-4 -mx-4 md:-mx-8">
@@ -71,7 +125,7 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
                 <div 
                   className={cn(
                     "bg-background/80 backdrop-blur-sm rounded-t-lg p-3.5 border-b-[3px] border-x border-t shadow-sm sticky top-0 z-10",
-                    statusBorderColors[status.id] || "border-b-primary/30"
+                    STATUS_BORDER_COLORS[status.id] || "border-b-primary/30"
                   )}
                 >
                   <div className="flex items-center justify-between mb-0.5">
