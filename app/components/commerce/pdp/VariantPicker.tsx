@@ -3,7 +3,7 @@
 import React from "react"
 import { VariantAxis, CatalogItem } from "@/app/types"
 import { getVariantWidgetForKind } from "@/app/catalog/variant-axes"
-import { FALLBACK_VARIANT_AXIS_ID } from "@/app/catalog/variant-resolve"
+import { FALLBACK_VARIANT_AXIS_ID, shortVariantLabel } from "@/app/catalog/variant-resolve"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { optimizeForPreset, resolveItemImage } from "@/app/lib/image-utils"
@@ -117,6 +117,21 @@ export function VariantPicker({
       : axis.kind
   }
 
+  const getDisplayLabel = (axisId: string, v: { id: string; label: string }) => {
+    if (v.label && v.label.trim() !== "") return v.label
+    
+    const child = childForValue(axisId, v.id)
+    if (child && child.name) {
+      const parentName = imageContext?.parentName || ""
+      if (parentName) {
+        return shortVariantLabel(parentName, child.name)
+      }
+      return child.name
+    }
+    
+    return v.id
+  }
+
   const useOptionTiles =
     presentation === "pdp" &&
     axes.length === 1 &&
@@ -152,7 +167,7 @@ export function VariantPicker({
                             : "bg-muted text-foreground hover:bg-muted/80"
                         } ${!available ? "opacity-40 line-through" : ""}`}
                       >
-                        {v.label}
+                        {getDisplayLabel(axis.id, v)}
                       </button>
                     )
                   })}
@@ -170,7 +185,8 @@ export function VariantPicker({
       {axes.map((axis, axisIndex) => {
         const widget = getVariantWidgetForKind(axis.kind)
         const label = resolveAxisLabel(axis)
-        const selectedLabel = axis.values.find((v) => v.id === selectedOptions[axis.id])?.label
+        const selectedValue = axis.values.find((v) => v.id === selectedOptions[axis.id])
+        const selectedLabel = selectedValue ? getDisplayLabel(axis.id, selectedValue) : undefined
         const chooseLabel = t("pdp.chooseOption", { option: label })
 
         return (
@@ -217,8 +233,8 @@ export function VariantPicker({
                           : "ring-1 ring-border hover:scale-105"
                       } ${!available ? "opacity-30 cursor-not-allowed" : ""}`}
                       style={{ backgroundColor: v.hex || "#ccc" }}
-                      title={v.label}
-                      aria-label={v.label}
+                      title={getDisplayLabel(axis.id, v)}
+                      aria-label={getDisplayLabel(axis.id, v)}
                       aria-pressed={selected}
                     >
                       {selected && (
@@ -238,7 +254,8 @@ export function VariantPicker({
                   const selected = selectedOptions[axis.id] === v.id
                   const available = isValueAvailable(axis.id, v.id)
                   const price = priceForValue(axis.id, v.id)
-                  const imageUrl = imageForValue(axis.id, v.id, v.label)
+                  const displayLabel = getDisplayLabel(axis.id, v)
+                  const imageUrl = imageForValue(axis.id, v.id, displayLabel)
                   return (
                     <button
                       key={v.id}
@@ -276,13 +293,13 @@ export function VariantPicker({
                       </div>
                       <div className={`min-w-0 flex-1 ${!available ? "line-through" : ""}`}>
                         <div
-                          className={`truncate text-base font-bold tracking-tight ${
+                          className={`truncate text-base font-bold tracking-tight min-h-[1.5rem] ${
                             selected
                               ? "text-white dark:text-neutral-900"
                               : "text-foreground"
                           }`}
                         >
-                          {v.label}
+                          {displayLabel}
                         </div>
                         {price != null && (
                           <div
@@ -329,7 +346,7 @@ export function VariantPicker({
                           : "bg-background border border-border hover:border-foreground/40"
                       } ${!available ? "opacity-40 cursor-not-allowed line-through" : ""}`}
                     >
-                      {v.label}
+                      {getDisplayLabel(axis.id, v)}
                     </button>
                   )
                 })}
@@ -353,7 +370,7 @@ export function VariantPicker({
                       value={v.id}
                       disabled={!isValueAvailable(axis.id, v.id)}
                     >
-                      {v.label}
+                      {getDisplayLabel(axis.id, v)}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -15,7 +15,16 @@ export async function getBuyerGeoApprox(): Promise<BuyerGeo> {
   const latitude = headersList.get('x-vercel-ip-latitude') || undefined;
   const longitude = headersList.get('x-vercel-ip-longitude') || undefined;
   const country = headersList.get('x-vercel-ip-country') || undefined;
-  const city = headersList.get('x-vercel-ip-city') || undefined; // Vercel sometimes provides this
+  
+  const rawCity = headersList.get('x-vercel-ip-city') || undefined;
+  let city = rawCity;
+  if (rawCity) {
+    try {
+      city = decodeURIComponent(rawCity);
+    } catch {
+      // Ignore decode error
+    }
+  }
 
   const geo: BuyerGeo = { latitude, longitude, country, city };
 
