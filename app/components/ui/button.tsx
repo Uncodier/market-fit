@@ -111,6 +111,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ? inferredCommand
         : null
 
+    const isCircular =
+      size === "icon" ||
+      (className?.includes("aspect-square") && !className?.match(/(?:sm|md|lg|xl|2xl):aspect-auto/))
+    const circularClass = isCircular ? "btn-primary-well-circular" : undefined
+
     const assignRef = React.useCallback(
       (node: HTMLButtonElement | null) => {
         setGlassNode(node)
@@ -153,7 +158,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     if (asChild) {
       const { outer, inner } = splitOuterClasses(className)
       return (
-        <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
+        <span className={cn("btn-primary-well", wellTintClass, circularClass, outer)} style={pickCssVars(style)}>
           <Slot
             className={cn(buttonVariants({ variant, size }), gatedClassName, inner)}
             ref={assignRef}
@@ -185,7 +190,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const { outer, inner } = splitOuterClasses(className)
     return (
-      <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
+      <span className={cn("btn-primary-well", wellTintClass, circularClass, outer)} style={pickCssVars(style)}>
         <button
           className={cn(buttonVariants({ variant, size }), gatedClassName, inner)}
           ref={assignRef}

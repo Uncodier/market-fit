@@ -27,7 +27,7 @@ export const useInstanceLogs = ({
   const [collapsedToolDetails, setCollapsedToolDetails] = useState<Set<string>>(new Set())
   const [expandedToolGroups, setExpandedToolGroups] = useState<Set<string>>(new Set())
   const [debugInfo, setDebugInfo] = useState<any>(null)
-  const currentRobotInstanceIdRef = useRef<string | null>(null)
+  const currentRobotInstanceIdRef = useRef<string | null>(activeRobotInstance?.id || null)
   const prevSiteIdRef = useRef<string | null>(null)
   const waitingForMessageIdRef = useRef<string | null | undefined>(waitingForMessageId)
   const onResponseReceivedRef = useRef(onResponseReceived)
@@ -65,10 +65,15 @@ export const useInstanceLogs = ({
     }
   )
 
-  const logs = logsData || []
+  const logs = (logsData || []).filter((log: InstanceLog) => !log.instance_id || log.instance_id === activeRobotInstance?.id)
   
   const setLogs = useCallback((updater: any) => {
-    mutate((current = []) => typeof updater === 'function' ? updater(current) : updater, false)
+    mutate((current = []) => {
+      const newLogs = typeof updater === 'function' ? updater(current) : updater;
+      const currentId = currentRobotInstanceIdRef.current;
+      if (!currentId) return newLogs;
+      return newLogs.filter((log: any) => !log.instance_id || log.instance_id === currentId);
+    }, false)
   }, [mutate])
 
   // Clear states when site changes
@@ -192,6 +197,8 @@ export const useInstanceLogs = ({
         .order('created_at', { ascending: false })
         .limit(100)
 
+      if (instanceId !== currentRobotInstanceIdRef.current) return;
+
       if (error) {
         console.error('Error loading more logs:', error)
       } else {
@@ -312,6 +319,10 @@ export const useInstanceLogs = ({
     let visibilityTimeout: NodeJS.Timeout | null = null
 
     const onRealtimePayload = (payload: any) => {
+      // Abortar si la carga útil no es para la instancia actual en el ref para evitar leaks de suscripción que no se cerraron a tiempo
+      if (payload?.new?.instance_id && payload.new.instance_id !== currentRobotInstanceIdRef.current) return;
+      if (payload?.old?.instance_id && payload.old.instance_id !== currentRobotInstanceIdRef.current) return;
+
       if (payload.eventType === 'INSERT') {
         const newLog = payload.new as InstanceLog
 
@@ -453,7 +464,10 @@ export const useInstanceLogs = ({
     if (!shouldReconcile) return
 
     const interval = setInterval(() => {
-      mutate()
+      // Solo hacer mutate si seguimos en la misma instancia
+      if (activeRobotInstance?.id === currentRobotInstanceIdRef.current) {
+        mutate()
+      }
     }, 4000)
 
     return () => clearInterval(interval)
