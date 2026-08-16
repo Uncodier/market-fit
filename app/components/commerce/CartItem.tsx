@@ -1,6 +1,7 @@
 import React from "react"
+import { format } from "date-fns"
 import { Button } from "@/app/components/ui/button"
-import { X } from "@/app/components/ui/icons"
+import { X, CalendarIcon, Clock } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
@@ -31,7 +32,14 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
       <div className="flex-1 min-w-0 flex flex-col justify-between">
         <div>
           <div className="flex justify-between items-start gap-2">
-            <h4 className="font-bold text-gray-900 dark:text-gray-100 leading-tight truncate">{item.name}</h4>
+            <div className="flex-1 min-w-0">
+              {item._parent?.name && item._parent.name !== item.name && (
+                <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5 truncate">
+                  {item._parent.name}
+                </div>
+              )}
+              <h4 className="font-bold text-gray-900 dark:text-gray-100 leading-tight truncate">{item.name}</h4>
+            </div>
             <button onClick={() => updateQty(key, -item.cartQty)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
               <X className="h-4 w-4" />
             </button>
@@ -76,6 +84,21 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
             </span>
           </div>
         </div>
+
+        {item.reservationStart && (
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+              <CalendarIcon className="w-3.5 h-3.5 opacity-70 shrink-0" />
+              <span className="truncate">
+                {format(new Date(item.reservationStart), "MMM d, yyyy")}
+              </span>
+              <Clock className="w-3.5 h-3.5 opacity-70 shrink-0 ml-1" />
+              <span className="truncate">
+                {format(new Date(item.reservationStart), "h:mm a")}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
