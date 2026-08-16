@@ -2,7 +2,7 @@
 
 import { Button } from "@/app/components/ui/button"
 import { ShieldCheck, Truck, RotateCcw } from "@/app/components/ui/icons"
-import { optimizeForPreset, resolveItemImage } from "@/app/lib/image-utils"
+import { ProgressiveImage } from "@/app/components/commerce/ProgressiveImage"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 function badgeIcon(icon?: string) {
@@ -40,27 +40,18 @@ export function ShopHeroTrust({
         // Desktop offset ≈ spacer (16) + header (56) + mb (32) = 104px.
         <div className="text-white h-[580px] md:h-[550px] -mt-[88px] md:-mt-[104px] relative overflow-hidden flex items-end md:items-center bg-gray-100 dark:bg-gray-900">
           <div className="absolute inset-0 z-0">
-            <img
-              src={
-                shop?.hero_image_url
-                  ? optimizeForPreset(shop.hero_image_url, "full")
-                  : resolveItemImage(
-                      {
-                        name: shop?.hero_title || site.name,
-                        description:
-                          shop?.hero_subtitle || site.description || "store hero",
-                        siteDescription: site.description,
-                      },
-                      "full",
-                    )
-              }
-              alt=""
-              decoding="async"
-              fetchPriority="high"
-              onError={(e) => {
-                e.currentTarget.style.display = "none"
+            <ProgressiveImage
+              item={{
+                name: shop?.hero_title || site.name,
+                description: shop?.hero_subtitle || site.description || "store hero",
+                siteDescription: site.description,
               }}
-              className="absolute inset-0 h-full w-full object-cover object-center"
+              directUrl={shop?.hero_image_url || undefined}
+              fallbackPreset="full"
+              sizes="100vw"
+              fetchPriority="high"
+              loading="eager"
+              className="object-cover object-center"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent md:bg-gradient-to-r md:from-black/80 md:via-black/50 md:to-transparent" />
           </div>

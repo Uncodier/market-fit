@@ -3,7 +3,7 @@
 import React from "react"
 import Link from "next/link"
 import { CatalogItem } from "@/app/types"
-import { resolveItemImage } from "@/app/lib/image-utils"
+import { ProgressiveImage } from "@/app/components/commerce/ProgressiveImage"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
@@ -96,15 +96,14 @@ export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
       }`}
     >
       <Link href={href} className="absolute inset-0 z-0" aria-label={item.name}>
-        <img
-          src={resolveItemImage(item, isHero ? "hero" : "card")}
+        <ProgressiveImage
+          item={item}
           alt=""
+          fallbackPreset={isHero ? "hero" : "card"}
+          sizes={isHero ? "100vw" : "(max-width: 768px) 100vw, 50vw"}
           loading={isHero ? undefined : "lazy"}
-          decoding="async"
-          onError={(e) => {
-            e.currentTarget.style.opacity = "0"
-          }}
-          className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+          fetchPriority={isHero ? "high" : "auto"}
+          className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.03]"
         />
         {/* Readability scrim — bottom-heavy so text never sits on busy mid-image */}
         <div

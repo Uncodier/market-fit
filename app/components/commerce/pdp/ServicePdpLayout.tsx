@@ -119,7 +119,7 @@ export function ServicePdpLayout({
     startBuyNow(activeItem, 1, backUrl)
   }
 
-  const isDropIn = item.is_reservation && !isAccessOnlyItem(item)
+  const isDropIn = item.is_reservation && !isAccessOnlyItem(item) && (!item.pass_uses || item.pass_uses === 1)
   const isSellable = isSelectionComplete && item._shop?.sellable !== false
 
   const passImageUrl =

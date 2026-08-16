@@ -6,7 +6,7 @@ import { Plus } from "@/app/components/ui/icons"
 import { CatalogItem } from "@/app/types"
 import type { PromoBadge } from "@/app/promotions/promotion-merchandising"
 import { promoBadgeLabel } from "@/app/promotions/promotion-merchandising"
-import { resolveItemImage } from "@/app/lib/image-utils"
+import { ProgressiveImage } from "@/app/components/commerce/ProgressiveImage"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import {
@@ -103,13 +103,12 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
         }`}
       >
         <Link href={href} className="absolute inset-0 z-0" aria-label={item.name}>
-          <img
-            src={resolveItemImage(item, "card")}
+          <ProgressiveImage
+            item={item}
             alt=""
-            loading="lazy"
-            decoding="async"
-            onError={(e) => { e.currentTarget.style.opacity = '0' }}
-            className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            fallbackPreset="card"
+            sizes={compactMobile ? "(max-width: 768px) 50vw, 25vw" : "(max-width: 768px) 100vw, 33vw"}
+            className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
           />
         </Link>
 

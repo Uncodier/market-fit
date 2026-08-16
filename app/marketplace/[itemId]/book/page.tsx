@@ -9,8 +9,9 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 
-export default function MarketplaceBookingPage(props: { params: Promise<{ itemId: string }> }) {
+export default function MarketplaceBookingPage(props: { params: Promise<{ itemId: string }>; searchParams: Promise<{ modifiers?: string }> | { modifiers?: string } }) {
   const params = use(props.params)
+  const searchParams = use(props.searchParams as any) as { modifiers?: string };
   const router = useRouter()
   
   const { data: itemData, isLoading } = useSWR(
@@ -41,7 +42,15 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
   }
 
   const handleCartAdd = (startIso: string, endIso: string) => {
-    addToCartStorage(item, 1, startIso, endIso)
+    let parsedModifiers = undefined
+    if (searchParams?.modifiers) {
+      try {
+        parsedModifiers = JSON.parse(decodeURIComponent(searchParams.modifiers))
+      } catch (e) {
+        console.error("Failed to parse modifiers", e)
+      }
+    }
+    addToCartStorage(item, 1, startIso, endIso, parsedModifiers)
     toast.success(`${item.name} added to cart`)
     router.push(`/marketplace?cart=1`)
   }

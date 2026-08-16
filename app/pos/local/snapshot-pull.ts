@@ -7,7 +7,7 @@ const SCHEMA_VERSION = 1;
 
 export async function readLocalCatalog(siteId: string) {
   const db = getPosDb();
-  const [catalogItems, categories, locations, leads, priceLists, meta] =
+  const [catalogItemsRaw, categoriesRaw, locations, leads, priceLists, meta] =
     await Promise.all([
       db.catalogItems.where("site_id").equals(siteId).toArray(),
       db.categories.where("site_id").equals(siteId).toArray(),
@@ -16,6 +16,16 @@ export async function readLocalCatalog(siteId: string) {
       db.priceLists.where("site_id").equals(siteId).toArray(),
       db.meta.get(siteId),
     ]);
+
+  const categories = categoriesRaw.sort((a, b) => {
+    if (a.sort_order !== b.sort_order) return (a.sort_order || 0) - (b.sort_order || 0);
+    return (a.name || "").localeCompare(b.name || "");
+  });
+  
+  const catalogItems = catalogItemsRaw.sort((a, b) => {
+    if (a.sort_order !== b.sort_order) return (a.sort_order || 0) - (b.sort_order || 0);
+    return (a.name || "").localeCompare(b.name || "");
+  });
 
   return {
     catalogItems,

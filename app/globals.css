@@ -1833,6 +1833,7 @@ html.dark [role="checkbox"][data-state="indeterminate"]:hover:not(:disabled) {
 
 .btn-primary-well:has(.btn-primary:disabled) {
   pointer-events: none;
+  opacity: 0.5;
 }
 
 .btn-primary-well:has(.btn-primary:disabled)::before {

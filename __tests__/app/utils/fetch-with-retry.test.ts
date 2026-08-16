@@ -44,4 +44,17 @@ describe('fetchWithRetry', () => {
     await expect(resultPromise).resolves.toBe(succeeded)
     expect(fetchFn).toHaveBeenCalledTimes(2)
   })
+
+  it('does not retry thrown 400 client errors', async () => {
+    const error = new Error('Bad Request') as any
+    error.status = 400
+    const fetchFn = jest.fn().mockRejectedValue(error)
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+    await expect(fetchWithRetry(fetchFn, '/api/bad', { maxRetries: 3 })).resolves.toBeNull()
+    expect(fetchFn).toHaveBeenCalledTimes(1)
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[fetchWithRetry] Client error 400 caught for /api/bad'
+    )
+  })
 })

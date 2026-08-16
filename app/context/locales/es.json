@@ -9119,5 +9119,6 @@
   "pos.modifiers.optional": "Opcional",
   "pos.options.title": "Opciones",
   "pos.options.noChoices": "Este artículo no tiene opciones.",
+  "pos.options.selectTime": "Seleccionar Reservación",
   "promotions.untitled": "Promoción"
 }

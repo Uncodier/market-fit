@@ -58,7 +58,15 @@ export async function fetchWithRetry(
       console.error(`[fetchWithRetry] All retries exhausted for ${url}, status: ${response.status}`);
       return null;
       
-    } catch (error) {
+    } catch (error: any) {
+      // Check if the error itself is a non-retryable client error (e.g., from a library that throws on 4xx)
+      const status = error?.status || error?.response?.status;
+      const isRetryableClientError = status === 408 || status === 429;
+      if (status >= 400 && status < 500 && !isRetryableClientError) {
+        console.error(`[fetchWithRetry] Client error ${status} caught for ${url}`);
+        return null;
+      }
+
       // Network or other errors - retry if we have attempts left
       if (attempt < maxRetries) {
         lastError = error instanceof Error ? error : new Error(String(error));

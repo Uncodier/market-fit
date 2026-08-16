@@ -10,9 +10,11 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { ShopSlugNotFound } from "../../ShopSlugNotFound"
+import BookLoading from "./loading"
 
-export default function ShopBookingPage(props: { params: Promise<{ siteSlug: string; itemId: string }> | { siteSlug: string; itemId: string } }) {
+export default function ShopBookingPage(props: { params: Promise<{ siteSlug: string; itemId: string }>; searchParams: Promise<{ modifiers?: string }> | { modifiers?: string } }) {
   const params = use(props.params as any) as { siteSlug: string; itemId: string };
+  const searchParams = use(props.searchParams as any) as { modifiers?: string };
   const router = useRouter()
 
   const { data: site, isLoading: siteLoading } = useSWR(
@@ -35,7 +37,7 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
   }, [item, site])
 
   if (siteLoading || itemLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-muted/20">Loading...</div>
+    return <BookLoading />
   }
 
   if (!site) {
@@ -47,7 +49,15 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
   }
 
   const handleCartAdd = (startIso: string, endIso: string) => {
-    addToCartStorage(item, 1, startIso, endIso)
+    let parsedModifiers = undefined
+    if (searchParams?.modifiers) {
+      try {
+        parsedModifiers = JSON.parse(decodeURIComponent(searchParams.modifiers))
+      } catch (e) {
+        console.error("Failed to parse modifiers", e)
+      }
+    }
+    addToCartStorage(item, 1, startIso, endIso, parsedModifiers)
     toast.success(`${item.name} added to cart`)
     router.push(`/shop/${params.siteSlug}?cart=1`)
   }

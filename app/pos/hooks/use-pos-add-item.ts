@@ -95,6 +95,9 @@ export function usePosAddItem({
   const [reservationItem, setReservationItem] = useState<CatalogItem | null>(
     null,
   );
+  const [reservationModifiers, setReservationModifiers] = useState<PosCartModifier[]>(
+    [],
+  );
   const [digitalItem, setDigitalItem] = useState<CatalogItem | null>(null);
   const [digitalModifiers, setDigitalModifiers] = useState<PosCartModifier[]>(
     [],
@@ -154,12 +157,21 @@ export function usePosAddItem({
     item: CatalogItem,
     modifiers: PosCartModifier[] = [],
   ) => {
+    const isReservable = item.is_reservation || optionsParentItem?.is_reservation;
+    if (isReservable && !isAccessOnlyItem(item)) {
+      setReservationItem(item);
+      setReservationModifiers(modifiers);
+      setOptionsParentItem(null);
+      return;
+    }
+
     if (needsBuyerAccount(item)) {
       setDigitalItem(item);
       setDigitalModifiers(modifiers);
       setOptionsParentItem(null);
       return;
     }
+    
     addItemToCart(item, modifiers.length ? { modifiers } : undefined);
     setOptionsParentItem(null);
   };
@@ -168,8 +180,12 @@ export function usePosAddItem({
     item: CatalogItem,
     extras: { reservationStart: string; reservationEnd: string },
   ) => {
-    addItemToCart(item, extras);
+    addItemToCart(item, {
+      ...extras,
+      ...(reservationModifiers.length ? { modifiers: reservationModifiers } : {})
+    });
     setReservationItem(null);
+    setReservationModifiers([]);
   };
 
   const confirmDigital = (

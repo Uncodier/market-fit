@@ -15,6 +15,8 @@ describe('isRecognizedRevenueSale', () => {
 
   it('counts paid pending sales to match the Orders paid badge', () => {
     expect(isRecognizedRevenueSale({ status: 'pending', amount_due: 0 })).toBe(true)
+    expect(isRecognizedRevenueSale({ status: 'pending' })).toBe(true)
+
   })
 
   it('excludes unpaid, cancelled, and refunded sales', () => {

@@ -12,8 +12,9 @@ function persistActiveCache() {
 }
 
 function localStorageProvider() {
-  const map = loadSWRCache();
-  activeCache = map;
+  if (!activeCache) {
+    activeCache = loadSWRCache();
+  }
 
   if (typeof window !== 'undefined' && !persistBound) {
     persistBound = true;
@@ -21,7 +22,7 @@ function localStorageProvider() {
     window.addEventListener('beforeunload', persistActiveCache);
   }
 
-  return map;
+  return activeCache;
 }
 
 export function SWRProvider({ children }: { children: React.ReactNode }) {

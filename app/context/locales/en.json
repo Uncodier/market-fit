@@ -9109,5 +9109,6 @@
   "pos.modifiers.optional": "Optional",
   "pos.options.title": "Options",
   "pos.options.noChoices": "No options for this item.",
+  "pos.options.selectTime": "Select Time",
   "promotions.untitled": "Promotion"
 }

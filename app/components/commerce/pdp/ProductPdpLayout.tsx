@@ -4,10 +4,10 @@ import { CatalogItem } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { buildPdpGalleryEntries, resolveItemImage } from "@/app/lib/image-utils"
 import { resolveItemSpecDisplay } from "@/app/catalog/product-details"
-import { getAttributeFieldsForItem } from "@/app/catalog/product-details"
+import { getAttributeFieldsForItem, isAccessOnlyItem } from "@/app/catalog/product-details"
 import { usePdpCart } from "./usePdpCart"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 
 import { useState, useMemo, useEffect } from "react"
 import { PdpCtaButton } from "./PdpCtaButton"
@@ -38,6 +38,7 @@ import { getDynamicPricingConfig } from "@/app/catalog/dynamic-pricing"
 export function ProductPdpLayout({ item, backUrl, experience: _experience }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: any }) {
   const { t } = useLocalization()
   const router = useRouter()
+  const pathname = usePathname()
   // Wait, usePdpCart needs the right item id.
   // I will resolve it below.
 
@@ -93,6 +94,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
     : (activeItem.target_sale_price || item.target_sale_price || 0)
   const displayPrice = basePrice + modifiersUnitTotal(selectedModifiers)
   const isSelectionComplete = !hasVariants || !!resolvedChild
+  const isDropIn = activeItem.is_reservation && !isAccessOnlyItem(activeItem) && (!activeItem.pass_uses || activeItem.pass_uses === 1)
   const modifiersValid =
     modifierGroups.length === 0 ||
     isModifierSelectionValid(modifierGroups, selectedModifiers).ok
@@ -208,6 +210,25 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
       return toast.error(modCheck.error)
     }
     startBuyNow(activeItem, 1, backUrl, undefined, undefined, selectedModifiers)
+  }
+
+  const handleBook = () => {
+    if (!resolvedChild && hasVariants) {
+      return toast.error(t("pdp.selectOptions") || "Please select all options")
+    }
+    const modCheck = isModifierSelectionValid(modifierGroups, selectedModifiers)
+    if (!modCheck.ok) {
+      return toast.error(modCheck.error)
+    }
+    const bookItemId = resolvedChild?.id || item.id
+    const bookPath = pathname.replace(/\/[^/]+\/?$/, `/${bookItemId}`)
+    
+    if (selectedModifiers.length > 0) {
+      const modifiersParam = encodeURIComponent(JSON.stringify(selectedModifiers))
+      router.push(`${bookPath}/book?modifiers=${modifiersParam}`)
+    } else {
+      router.push(`${bookPath}/book`)
+    }
   }
 
   const safeImageIdx =
@@ -439,16 +460,28 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
 
           <div className="hidden lg:block p-8 bg-card border border-border/50 rounded-3xl shadow-2xl shadow-black/5 relative overflow-hidden">
             <div className="space-y-3">
-              <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable}>
-                {!isSellable
-                  ? isSelectionComplete
-                    ? t("pdp.soldOut") || "Sold Out"
-                    : t("pdp.selectOptions") || "Select Options"
-                  : t("pdp.buyNow") || "Buy Now"}
-              </PdpCtaButton>
-              <PdpCtaButton variant="outline" onClick={handleAdd} disabled={!isSellable}>
-                {t("marketplace.add") || "Add to Cart"}
-              </PdpCtaButton>
+              {isDropIn ? (
+                <PdpCtaButton onClick={handleBook} disabled={!isSellable}>
+                  {!isSellable
+                    ? isSelectionComplete
+                      ? t("pdp.soldOut") || "Sold Out"
+                      : t("pdp.selectOptions") || "Select Options"
+                    : t("booking.selectTime") || "Select a Time"}
+                </PdpCtaButton>
+              ) : (
+                <>
+                  <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable}>
+                    {!isSellable
+                      ? isSelectionComplete
+                        ? t("pdp.soldOut") || "Sold Out"
+                        : t("pdp.selectOptions") || "Select Options"
+                      : t("pdp.buyNow") || "Buy Now"}
+                  </PdpCtaButton>
+                  <PdpCtaButton variant="outline" onClick={handleAdd} disabled={!isSellable}>
+                    {t("marketplace.add") || "Add to Cart"}
+                  </PdpCtaButton>
+                </>
+              )}
             </div>
             <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-widest">
               <span>{t("pdp.secureCheckout") || "Secure Checkout"}</span>
@@ -471,21 +504,33 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
 
       <PdpMobileBuyBar price={displayPrice} fullWidthCta={true}>
         <div className="flex gap-2 w-full">
-          <PdpCtaButton
-            variant="outline"
-            onClick={handleAdd}
-            disabled={!isSellable}
-            className="px-4 shrink-0 w-auto"
-          >
-            {t("marketplace.add") || "Add"}
-          </PdpCtaButton>
-          <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable} className="flex-1">
-            {!isSellable
-              ? isSelectionComplete
-                ? t("pdp.soldOut") || "Sold Out"
-                : t("pdp.selectOptions") || "Select Options"
-              : t("pdp.buyNow") || "Buy Now"}
-          </PdpCtaButton>
+          {!isDropIn && (
+            <PdpCtaButton
+              variant="outline"
+              onClick={handleAdd}
+              disabled={!isSellable}
+              className="px-4 shrink-0 w-auto"
+            >
+              {t("marketplace.add") || "Add"}
+            </PdpCtaButton>
+          )}
+          {isDropIn ? (
+            <PdpCtaButton onClick={handleBook} disabled={!isSellable} className="flex-1">
+              {!isSellable
+                ? isSelectionComplete
+                  ? t("pdp.soldOut") || "Sold Out"
+                  : t("pdp.selectOptions") || "Select Options"
+                : t("booking.selectTime") || "Select a Time"}
+            </PdpCtaButton>
+          ) : (
+            <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable} className="flex-1">
+              {!isSellable
+                ? isSelectionComplete
+                  ? t("pdp.soldOut") || "Sold Out"
+                  : t("pdp.selectOptions") || "Select Options"
+                : t("pdp.buyNow") || "Buy Now"}
+            </PdpCtaButton>
+          )}
         </div>
       </PdpMobileBuyBar>
     </div>

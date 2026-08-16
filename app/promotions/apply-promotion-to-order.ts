@@ -126,22 +126,23 @@ export async function applyPromotionToOrder(
       }
 
       const expenseClient = await createServiceClient(true);
-      await upsertPromotionDiscountExpense({
-        supabase: expenseClient,
-        siteId: order.site_id || siteId,
-        saleOrderId,
-        discount,
-        campaignId,
-        leadId: saleLeadId,
-        locationId: order.origin_location_id || null,
-        userId: expenseUserId,
-        currency: order.currency || "USD",
-        date: expenseDate,
-        promotionCode: promo?.code || promotionCode,
-        promotionName: promo?.name,
-      });
-
+      
       try {
+        await upsertPromotionDiscountExpense({
+          supabase: expenseClient,
+          siteId: order.site_id || siteId,
+          saleOrderId,
+          discount,
+          campaignId,
+          leadId: saleLeadId,
+          locationId: order.origin_location_id || null,
+          userId: expenseUserId,
+          currency: order.currency || "USD",
+          date: expenseDate,
+          promotionCode: promo?.code || promotionCode,
+          promotionName: promo?.name,
+        });
+
         const { data: promoExpense } = await expenseClient
           .from("transactions")
           .select("id")

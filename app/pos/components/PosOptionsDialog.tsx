@@ -226,6 +226,8 @@ export function PosOptionsDialog({
   const currency = item.currency || "USD"
   const showModifiers = !loadingModifiers && modifierGroups.length > 0
 
+  const isReservable = item?.is_reservation || sellableItem?.is_reservation
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="md">
@@ -317,7 +319,9 @@ export function PosOptionsDialog({
             {t("common.cancel") || "Cancel"}
           </Button>
           <Button onClick={handleConfirm} disabled={!canConfirm}>
-            {t("common.confirm") || "Confirm"}
+            {isReservable && sellableItem 
+              ? (t("pos.options.selectTime") || "Select Time") 
+              : (t("common.confirm") || "Confirm")}
             {extrasTotal > 0
               ? ` (+${formatPrice(extrasTotal, currency)})`
               : ""}

@@ -1,12 +1,12 @@
-import { getShopSite, getShopCatalog, getShopCategoryOffsets, getShopLocations } from "./actions"
-import ShopClient from "./ShopClient"
+import { getShopSite, getShopCatalog, getShopCategoryOffsets, getShopLocations } from "../actions"
+import ShopClient from "../ShopClient"
 import { Metadata } from "next"
 import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 import { buildShopShareMetadata } from "@/app/lib/commerce-metadata"
 import { SiteLocaleBootstrap } from "@/app/components/commerce/SiteLocaleBootstrap"
-import { SHOP_PAGE_SIZE, SHOP_UNCATEGORIZED_NAME, uniqueCategoryNames } from "./shop-catalog-shared"
+import { SHOP_PAGE_SIZE, SHOP_UNCATEGORIZED_NAME, uniqueCategoryNames } from "../shop-catalog-shared"
 import { getShopMerchandising } from "@/app/promotions/storefront-promotions"
-import { ShopSlugNotFound } from "./ShopSlugNotFound"
+import { ShopSlugNotFound } from "../ShopSlugNotFound"
 
 // Literal required: Next.js cannot statically analyze imported segment config values.
 // Keep in sync with SHOP_CACHE_REVALIDATE_SECONDS in ./shop-catalog-shared
