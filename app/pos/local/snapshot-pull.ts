@@ -18,12 +18,16 @@ export async function readLocalCatalog(siteId: string) {
     ]);
 
   const categories = categoriesRaw.sort((a, b) => {
-    if (a.sort_order !== b.sort_order) return (a.sort_order || 0) - (b.sort_order || 0);
+    const aOrder = a.sort_order ?? 999999;
+    const bOrder = b.sort_order ?? 999999;
+    if (aOrder !== bOrder) return aOrder - bOrder;
     return (a.name || "").localeCompare(b.name || "");
   });
   
   const catalogItems = catalogItemsRaw.sort((a, b) => {
-    if (a.sort_order !== b.sort_order) return (a.sort_order || 0) - (b.sort_order || 0);
+    const aOrder = a.sort_order ?? 999999;
+    const bOrder = b.sort_order ?? 999999;
+    if (aOrder !== bOrder) return aOrder - bOrder;
     return (a.name || "").localeCompare(b.name || "");
   });
 
