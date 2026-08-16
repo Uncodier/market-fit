@@ -81,10 +81,10 @@ export function PromoListingCard({
       <div
         className={cn(
           "relative w-full overflow-hidden rounded-2xl bg-muted shrink-0",
-          compactMobile ? "aspect-square md:aspect-[4/3]" : "aspect-[4/3]",
+          compactMobile ? "aspect-[4/3]" : "aspect-[16/9] md:aspect-[4/3]",
         )}
       >
-        <Link href={href} className="absolute inset-0 z-0" aria-label={promo.name || "Promotion"}>
+        <Link href={href} className="absolute inset-0 z-0 block" aria-label={promo.name || "Promotion"}>
           <img
             src={imageSrc}
             alt=""
@@ -95,16 +95,28 @@ export function PromoListingCard({
           />
         </Link>
 
+        {/* Soft top scrim to ensure dashed line visibility */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/20 to-transparent"
+          aria-hidden
+        />
+
+        <div className="absolute top-3 left-4 z-30 flex flex-col items-start gap-1 pointer-events-none">
+          <span className="rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-bold text-white shadow-sm uppercase tracking-wider relative">
+            {label}
+          </span>
+        </div>
+
+        {/* Skeuomorphic Coupon Perforation on the image (Top) */}
+        <div className="absolute top-10 -left-3 w-6 h-6 rounded-full bg-background z-20 pointer-events-none" />
+        <div className="absolute top-10 -right-3 w-6 h-6 rounded-full bg-background z-20 pointer-events-none" />
+        <div className="absolute top-[3.25rem] left-3 right-3 border-b-2 border-dashed border-white/60 z-20 pointer-events-none mix-blend-overlay" />
+
+        {/* Soft bottom scrim so the CTA stays readable on light photos */}
         <div
           className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/55 via-black/20 to-transparent"
           aria-hidden
         />
-
-        <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1">
-          <span className="rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-bold text-white shadow-sm uppercase tracking-wider">
-            {label}
-          </span>
-        </div>
 
         <button
           type="button"
@@ -120,24 +132,29 @@ export function PromoListingCard({
         </button>
       </div>
 
-      <Link href={href} className="pt-3 flex flex-col min-w-0">
-        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5 truncate">
-          {t("shop.promo.offerBadge") || "Offer"}
-        </span>
-        <h3
-          className={cn(
-            "font-bold leading-snug text-foreground",
-            compactMobile
-              ? "text-[15px] md:text-base line-clamp-2"
-              : "text-base md:text-lg line-clamp-2",
-          )}
-        >
-          {promo.name || t("promotions.untitled") || "Promotion"}
-        </h3>
-        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-          {t("shop.promo.viewOffer") || "View offer"}
-        </p>
-      </Link>
+      <div className="pt-3 flex flex-col flex-1">
+        <Link href={href} className="flex flex-col min-w-0 flex-1 mb-3">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Tag className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">
+              {t("shop.promo.offerBadge") || "Offer"}
+            </span>
+          </div>
+          <h3
+            className={cn(
+              "font-bold leading-snug text-foreground",
+              compactMobile
+                ? "text-[15px] md:text-base line-clamp-2"
+                : "text-base md:text-lg line-clamp-2",
+            )}
+          >
+            {promo.name || t("promotions.untitled") || "Promotion"}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+            {t("shop.promo.viewOffer") || "View offer"}
+          </p>
+        </Link>
+      </div>
     </div>
   )
 }

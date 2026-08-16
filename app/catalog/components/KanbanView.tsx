@@ -59,7 +59,10 @@ export function KanbanView({
   const itemsByCategoryId = useMemo(() => {
     const grouped: Record<string, CatalogItem[]> = {}
     items.forEach(item => {
-      const catId = item.category_id || "uncategorized"
+      let catId = item.category_id || "uncategorized"
+      if (item.parent_id) {
+        catId = "variants"
+      }
       if (!grouped[catId]) grouped[catId] = []
       grouped[catId].push(item)
     })
@@ -78,8 +81,17 @@ export function KanbanView({
     if (uncategorizedItems.length > 0 || cols.length === 0) {
       cols.push({
         id: "uncategorized",
-        name: t('catalog.uncategorized') || "Uncategorized",
+        name: t('catalog.uncategorized') || "Sin categoría",
         items: uncategorizedItems
+      })
+    }
+    
+    const variantItems = itemsByCategoryId["variants"] || []
+    if (variantItems.length > 0) {
+      cols.push({
+        id: "variants",
+        name: "Variantes",
+        items: variantItems
       })
     }
     
@@ -104,13 +116,16 @@ export function KanbanView({
               >
                 {orderedColumns.map((column, colIndex) => {
                   const isUncategorized = column.id === "uncategorized"
+                  const isVariants = column.id === "variants"
+                  const canDragColumn = isDragEnabled && !isUncategorized && !isVariants
+                  const canDropItems = isDragEnabled && !isVariants
                   const visibleItems = column.items.slice(0, getVisibleCount(column.id))
                   return (
                     <Draggable 
                       key={column.id} 
                       draggableId={column.id} 
                       index={colIndex}
-                      isDragDisabled={!isDragEnabled || isUncategorized}
+                      isDragDisabled={!canDragColumn}
                     >
                       {(providedCol, snapshotCol) => (
                         <div 
@@ -124,7 +139,7 @@ export function KanbanView({
                         >
                           <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              {isDragEnabled && !isUncategorized && (
+                              {canDragColumn && (
                                 <div
                                   {...providedCol.dragHandleProps}
                                   className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground"
@@ -143,7 +158,7 @@ export function KanbanView({
                             className="w-full rounded-md p-2 bg-muted/30/80 dark:bg-[rgb(2,8,23)]/5 max-h-[calc(100vh-220px)] min-h-[150px]"
                             onScrollCapture={(e) => handleScroll(e, column.id, column.items.length)}
                           >
-                            <Droppable droppableId={column.id} type="item" isDropDisabled={!isDragEnabled}>
+                            <Droppable droppableId={column.id} type="item" isDropDisabled={!canDropItems}>
                               {(provided, snapshot) => (
                                 <div
                                   ref={provided.innerRef}
@@ -158,7 +173,7 @@ export function KanbanView({
                                       key={item.id} 
                                       draggableId={item.id} 
                                       index={index}
-                                      isDragDisabled={!isDragEnabled}
+                                      isDragDisabled={!isDragEnabled || isVariants}
                                     >
                                       {(providedRow, snapshotRow) => (
                                         <Card
@@ -190,6 +205,11 @@ export function KanbanView({
                                                 <Edit className="h-3 w-3" />
                                               </NavigationLink>
                                             </div>
+                                            {item.parent && (
+                                              <div className="text-xs text-primary/80 font-medium mb-1 truncate">
+                                                Variante de: {item.parent.name}
+                                              </div>
+                                            )}
                                             {item.sku && (
                                               <div className="text-xs text-muted-foreground font-mono mb-2">
                                                 {item.sku}
@@ -203,8 +223,8 @@ export function KanbanView({
                                                 {item.is_dynamic_price ? (
                                                   <span className="text-sm">
                                                     {item.lowest_sale_price != null || item.metadata?.dynamic_pricing?.min_price != null
-                                                      ? `From ${new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price))}`
-                                                      : (t('catalog.dynamicPricing.quote') || 'Quote')}
+                                                      ? `Desde ${new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price))}`
+                                                      : (t('catalog.dynamicPricing.quote') || 'Cotizar')}
                                                   </span>
                                                 ) : item.target_sale_price != null 
                                                   ? new Intl.NumberFormat('en-US', { style: 'currency', currency: item.currency || 'USD' }).format(item.target_sale_price)

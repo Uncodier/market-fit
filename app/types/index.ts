@@ -759,6 +759,7 @@ export interface CatalogItem {
   metadata?: CatalogItemMetadata;
   item_specs?: ItemSpec[];
   parent_id?: string | null;
+  parent?: { name: string };
   is_purchasable?: boolean;
   /** Digital assets included when this recurring plan is purchased */
   plan_includes?: CatalogRelatedItem[];

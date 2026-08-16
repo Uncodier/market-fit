@@ -33,14 +33,14 @@ interface CatalogTableProps {
 
 function itemTypeLabel(item: CatalogItem, t: (key: string) => string): string | null {
   if (item.is_recurring) return t('catalog.type.plan') || 'Plan'
-  if (item.digital_subtype === 'pass') return t('catalog.type.pass') || 'Pass'
-  if (item.digital_subtype === 'ticket') return t('catalog.type.ticket') || 'Ticket'
-  if (item.digital_subtype === 'course') return t('catalog.type.course') || 'Course'
-  if (item.digital_subtype === 'file') return t('catalog.type.file') || 'File'
-  if (item.digital_subtype === 'license') return t('catalog.type.license') || 'License'
+  if (item.digital_subtype === 'pass') return t('catalog.type.pass') || 'Pase'
+  if (item.digital_subtype === 'ticket') return t('catalog.type.ticket') || 'Boleto'
+  if (item.digital_subtype === 'course') return t('catalog.type.course') || 'Curso'
+  if (item.digital_subtype === 'file') return t('catalog.type.file') || 'Archivo'
+  if (item.digital_subtype === 'license') return t('catalog.type.license') || 'Licencia'
   if (item.is_reservation) return t('catalog.type.reservable') || 'Reservable'
-  if (item.kind === 'service') return t('catalog.kind.service') || 'Service'
-  if (item.kind === 'product') return t('catalog.kind.product') || 'Product'
+  if (item.kind === 'service') return t('catalog.kind.service') || 'Servicio'
+  if (item.kind === 'product') return t('catalog.kind.product') || 'Producto'
   if (item.kind === 'digital_asset') return t('catalog.kind.digitalAsset') || 'Digital'
   return null
 }
@@ -69,14 +69,14 @@ function catalogAccent(item: CatalogItem): boolean {
   return item.status === "archived" || item.availability_status === "unavailable"
 }
 
-function availabilityStatus(item: CatalogItem): { status: string; label: string } {
-  if (item.status === "archived") return { status: "archived", label: "Archived" }
-  if (item.availability_mode === "always") return { status: "always", label: "Always sellable" }
-  if (item.availability_mode === "inventory") return { status: "active", label: "Inventory" }
+function availabilityStatus(item: CatalogItem, t: (key: string) => string): { status: string; label: string } {
+  if (item.status === "archived") return { status: "archived", label: t('catalog.status.archived') || "Archivado" }
+  if (item.availability_mode === "always") return { status: "always", label: t('catalog.status.always') || "Siempre disponible" }
+  if (item.availability_mode === "inventory") return { status: "active", label: t('catalog.status.inventory') || "Inventario" }
   const map: Record<string, string> = {
-    available: "Available",
-    sold_out: "Sold out",
-    unavailable: "Unavailable",
+    available: t('catalog.status.available') || "Disponible",
+    sold_out: t('catalog.status.soldOut') || "Agotado",
+    unavailable: t('catalog.status.unavailable') || "No disponible",
   }
   return { status: item.availability_status || "available", label: map[item.availability_status] || item.availability_status }
 }
@@ -106,9 +106,9 @@ export function CatalogTable({
     })
     
     toast.promise(promise, {
-      loading: 'Updating availability...',
-      success: 'Availability updated',
-      error: 'Failed to update availability'
+      loading: 'Actualizando disponibilidad...',
+      success: 'Disponibilidad actualizada',
+      error: 'Error al actualizar disponibilidad'
     })
 
     await promise
@@ -119,7 +119,10 @@ export function CatalogTable({
   const itemsByCategoryId = useMemo(() => {
     const grouped: Record<string, CatalogItem[]> = {}
     items.forEach(item => {
-      const catId = item.category_id || "uncategorized"
+      let catId = item.category_id || "uncategorized"
+      if (item.parent_id) {
+        catId = "variants"
+      }
       if (!grouped[catId]) grouped[catId] = []
       grouped[catId].push(item)
     })
@@ -138,8 +141,17 @@ export function CatalogTable({
     if (uncategorizedItems.length > 0 || sections.length === 0) {
       sections.push({
         id: "uncategorized",
-        name: t('catalog.uncategorized') || "Uncategorized",
+        name: t('catalog.uncategorized') || "Sin categoría",
         items: uncategorizedItems
+      })
+    }
+    
+    const variantItems = itemsByCategoryId["variants"] || []
+    if (variantItems.length > 0) {
+      sections.push({
+        id: "variants",
+        name: "Variantes",
+        items: variantItems
       })
     }
     
@@ -160,14 +172,14 @@ export function CatalogTable({
       <div className="p-8">
         <EmptyCard
           icon={<Archive className="h-6 w-6 text-muted-foreground" />}
-          title={t('catalog.empty.title') || "No items found"}
-          description={t('catalog.empty.description') || "Start by adding products or services to your catalog."}
+          title={t('catalog.empty.title') || "No se encontraron ítems"}
+          description={t('catalog.empty.description') || "Empieza agregando productos o servicios a tu catálogo."}
           className="border-0 shadow-none bg-transparent"
           actionButton={
             onCreateOpen ? (
               <Button onClick={onCreateOpen} variant="outline">
                 <Plus className="mr-2 h-4 w-4" />
-                {t('catalog.addItem') || 'Add Item'}
+                {t('catalog.addItem') || 'Agregar ítem'}
               </Button>
             ) : undefined
           }
@@ -185,6 +197,9 @@ export function CatalogTable({
             <Accordion type="multiple" defaultValue={defaultAccordionValue} className="w-full space-y-4">
               {orderedCategorySections.map((section, index) => {
                 const isUncategorized = section.id === "uncategorized"
+                const isVariants = section.id === "variants"
+                const canDragCategory = isDragEnabled && !isUncategorized && !isVariants
+                const canDropItems = isDragEnabled && !isVariants
                 const visibleItems = section.items.slice(0, getVisibleCount(section.id))
 
                 return (
@@ -192,7 +207,7 @@ export function CatalogTable({
                     key={section.id} 
                     draggableId={section.id} 
                     index={index} 
-                    isDragDisabled={!isDragEnabled || isUncategorized}
+                    isDragDisabled={!canDragCategory}
                   >
                     {(provided, snapshot) => (
                       <div
@@ -206,7 +221,7 @@ export function CatalogTable({
                       >
                         <AccordionItem value={section.id} className="border-none">
                           <AccordionHeader className="flex items-center gap-1 rounded-t-lg hover:bg-muted/30 px-4">
-                            {isDragEnabled && !isUncategorized && (
+                            {canDragCategory && (
                               <div
                                 {...provided.dragHandleProps}
                                 className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground p-1 -ml-1 rounded shrink-0"
@@ -221,7 +236,7 @@ export function CatalogTable({
                                 <Badge variant="secondary" className="ml-2 font-normal text-xs shrink-0">{section.items.length}</Badge>
                               </div>
                             </AccordionTrigger>
-                            {!isUncategorized && currentSite?.id && (
+                            {!isUncategorized && !isVariants && currentSite?.id && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -240,7 +255,7 @@ export function CatalogTable({
                             )}
                           </AccordionHeader>
                           <AccordionContent className="p-0">
-                            <Droppable droppableId={section.id} type="item" isDropDisabled={!isDragEnabled}>
+                            <Droppable droppableId={section.id} type="item" isDropDisabled={!canDropItems}>
                               {(providedItem, snapshotItem) => (
                                 <div
                                   ref={providedItem.innerRef}
@@ -254,9 +269,9 @@ export function CatalogTable({
                                     <TableHeader>
                                       <TableRow className="hover:bg-transparent">
                                         {isDragEnabled && <DocumentListHead className="w-8"></DocumentListHead>}
-                                        <DocumentListHead className="w-[42%]">{t("catalog.name") || "Name"}</DocumentListHead>
-                                        <DocumentListHead className="w-[22%]">{t("catalog.status") || "Availability"}</DocumentListHead>
-                                        <DocumentListHead className="w-[22%]" align="right">{t("catalog.price") || "Price"}</DocumentListHead>
+                                        <DocumentListHead className="w-[42%]">{t("catalog.name") || "Nombre"}</DocumentListHead>
+                                        <DocumentListHead className="w-[22%]">{t("catalog.status") || "Disponibilidad"}</DocumentListHead>
+                                        <DocumentListHead className="w-[22%]" align="right">{t("catalog.price") || "Precio"}</DocumentListHead>
                                         <DocumentListHead className="w-[14%]" />
                                       </TableRow>
                                     </TableHeader>
@@ -266,17 +281,17 @@ export function CatalogTable({
                                           const typeLabel = itemTypeLabel(item, t)
                                           const planIncludes = item.plan_includes || []
                                           const passRedeems = item.pass_redeems || []
-                                          const avail = availabilityStatus(item)
+                                          const avail = availabilityStatus(item, t)
                                           const priceLabel = item.is_dynamic_price
                                             ? (item.lowest_sale_price != null || item.metadata?.dynamic_pricing?.min_price != null
-                                              ? `From ${formatCurrency(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price), item.currency || "USD")}`
-                                              : (t("catalog.dynamicPricing.quote") || "Quote"))
+                                              ? `Desde ${formatCurrency(Number(item.metadata?.dynamic_pricing?.min_price ?? item.lowest_sale_price), item.currency || "USD")}`
+                                              : (t("catalog.dynamicPricing.quote") || "Cotizar"))
                                             : item.target_sale_price != null
                                               ? formatCurrency(item.target_sale_price, item.currency || "USD")
                                               : "—"
                                           const metaParts = [
                                             typeLabel,
-                                            item.track_inventory ? (t("catalog.tracksStock") || "Tracks stock") : null,
+                                            item.track_inventory ? (t("catalog.tracksStock") || "Rastrea stock") : null,
                                           ].filter(Boolean)
 
                                           return (
@@ -284,7 +299,7 @@ export function CatalogTable({
                                               key={item.id} 
                                               draggableId={item.id} 
                                               index={itemIndex}
-                                              isDragDisabled={!isDragEnabled}
+                                              isDragDisabled={!isDragEnabled || isVariants}
                                             >
                                               {(providedRow, snapshotRow) => (
                                                 <TableRow 
@@ -297,7 +312,7 @@ export function CatalogTable({
                                                     snapshotRow.isDragging && "bg-background shadow-md ring-1 ring-primary/20 z-50 relative table-row"
                                                   )}
                                                 >
-                                                  {isDragEnabled && (
+                                                  {isDragEnabled && !isVariants && (
                                                     <TableCell className="w-8 px-2 py-3.5">
                                                       <div
                                                         {...providedRow.dragHandleProps}
@@ -305,7 +320,10 @@ export function CatalogTable({
                                                       >
                                                         <GripHorizontal className="h-4 w-4" />
                                                       </div>
-                                                    </TableCell>
+                                                      </TableCell>
+                                                  )}
+                                                  {isDragEnabled && isVariants && (
+                                                    <TableCell className="w-8 px-2 py-3.5"></TableCell>
                                                   )}
                                                   <TableCell className="py-3.5">
                                                     <div className="flex min-w-0 items-center gap-3">
@@ -317,18 +335,21 @@ export function CatalogTable({
                                                         {item.sku ? (
                                                           <p className="truncate font-mono text-[11px] leading-tight text-muted-foreground">{item.sku}</p>
                                                         ) : null}
+                                                        {item.parent ? (
+                                                          <p className="truncate text-[11px] leading-tight text-primary/80 font-medium">Variante de: {item.parent.name}</p>
+                                                        ) : null}
                                                         {metaParts.length > 0 ? (
                                                           <p className="truncate text-[11px] leading-tight text-muted-foreground/80">{metaParts.join(" · ")}</p>
                                                         ) : null}
                                                         {item.is_recurring && (
                                                           <RelatedChips
-                                                            label={t("catalog.relations.includes") || "Includes"}
+                                                            label={t("catalog.relations.includes") || "Incluye"}
                                                             items={planIncludes}
                                                           />
                                                         )}
                                                         {item.digital_subtype === "pass" && (
                                                           <RelatedChips
-                                                            label={t("catalog.relations.redeems") || "Redeems"}
+                                                            label={t("catalog.relations.redeems") || "Canjea"}
                                                             items={passRedeems}
                                                           />
                                                         )}
@@ -346,13 +367,13 @@ export function CatalogTable({
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                           <SelectItem value="available">
-                                                            <StatusDot status="available" label={t("catalog.status.available") || "Available"} />
+                                                            <StatusDot status="available" label={t("catalog.status.available") || "Disponible"} />
                                                           </SelectItem>
                                                           <SelectItem value="sold_out">
-                                                            <StatusDot status="sold_out" label={t("catalog.status.soldOut") || "Sold Out"} />
+                                                            <StatusDot status="sold_out" label={t("catalog.status.soldOut") || "Agotado"} />
                                                           </SelectItem>
                                                           <SelectItem value="unavailable">
-                                                            <StatusDot status="unavailable" label={t("catalog.status.unavailable") || "Unavailable"} />
+                                                            <StatusDot status="unavailable" label={t("catalog.status.unavailable") || "No disponible"} />
                                                           </SelectItem>
                                                         </SelectContent>
                                                       </Select>
@@ -387,7 +408,7 @@ export function CatalogTable({
                                         <TableRow>
                                           <TableCell colSpan={isDragEnabled ? 5 : 4} className="h-24 text-center">
                                             <span className="text-muted-foreground/50 text-sm">
-                                              {t('catalog.emptyCategory') || "No items in this category."}
+                                              {t('catalog.emptyCategory') || "No hay ítems en esta categoría."}
                                             </span>
                                           </TableCell>
                                         </TableRow>

@@ -64,14 +64,15 @@ export async function listCatalogItems({
     
     let query = supabase
       .from("catalog_items")
-      .select("*", { count: "exact" })
+      .select("*, parent:parent_id(name)", { count: "exact" })
       .eq("site_id", siteId)
-      .is("parent_id", null)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false });
 
-    if (kind !== 'all') {
-      query = query.eq('kind', kind);
+    if (kind === 'variant') {
+      query = query.not('parent_id', 'is', null);
+    } else if (kind !== 'all') {
+      query = query.eq('kind', kind).is('parent_id', null);
     }
     if (status !== 'all') {
       query = query.eq('status', status);

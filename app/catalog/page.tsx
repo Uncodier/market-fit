@@ -13,7 +13,7 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Plus, Archive, DatabaseIcon } from "@/app/components/ui/icons"
+import { Plus, Archive, DatabaseIcon, Boxes } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -30,7 +30,7 @@ export default function CatalogPage() {
   
   const [page, setPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
-  const [kindFilter, setKindFilter] = useState<'all' | 'product' | 'service'>('all')
+  const [kindFilter, setKindFilter] = useState<'all' | 'product' | 'service' | 'variant'>('all')
   const [statusFilter, setStatusFilter] = useState<'active' | 'archived'>('active')
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [viewType, setViewType] = useMobileView("table")
@@ -88,10 +88,10 @@ export default function CatalogPage() {
         toast.error(result.error)
         return
       }
-      toast.success("Item kind updated")
+      toast.success("Tipo de ítem actualizado")
       mutate()
     } catch (error) {
-      toast.error("Error updating item")
+      toast.error("Error al actualizar ítem")
     }
   }
 
@@ -110,11 +110,18 @@ export default function CatalogPage() {
     let newItems = [...(items.data || [])]
 
     if (type === 'category') {
+      if (source.droppableId === 'variants' || destination.droppableId === 'variants' || source.index >= newCategories.length || destination.index >= newCategories.length) {
+        return
+      }
       const [moved] = newCategories.splice(source.index, 1)
       newCategories.splice(destination.index, 0, moved)
     } else if (type === 'item') {
       const sourceCatId = source.droppableId
       const destCatId = destination.droppableId
+
+      if (sourceCatId === 'variants' || destCatId === 'variants') {
+        return
+      }
 
       const sourceItems = newItems.filter(i => (i.category_id || "uncategorized") === sourceCatId)
       const destItems = sourceCatId === destCatId ? sourceItems : newItems.filter(i => (i.category_id || "uncategorized") === destCatId)
@@ -162,7 +169,7 @@ export default function CatalogPage() {
     })
 
     if (res.error) {
-      toast.error("Failed to save order")
+      toast.error("Error al guardar el orden")
       mutate() // rollback
     }
   }
@@ -186,9 +193,10 @@ export default function CatalogPage() {
                   className="flex-shrink-0"
                 >
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="all" className="text-xs rounded-full">{t('catalog.kind.all') || 'All Items'}</TabsTrigger>
-                    <TabsTrigger value="product" className="gap-2 text-xs rounded-full"><Archive className="h-4 w-4"/> {t('catalog.kind.product') || 'Products'}</TabsTrigger>
-                    <TabsTrigger value="service" className="gap-2 text-xs rounded-full"><DatabaseIcon className="h-4 w-4"/> {t('catalog.kind.service') || 'Services'}</TabsTrigger>
+                    <TabsTrigger value="all" className="text-xs rounded-full">{t('catalog.kind.all') || 'Todos los ítems'}</TabsTrigger>
+                    <TabsTrigger value="product" className="gap-2 text-xs rounded-full"><Archive className="h-4 w-4"/> {t('catalog.kind.product') || 'Productos'}</TabsTrigger>
+                    <TabsTrigger value="service" className="gap-2 text-xs rounded-full"><DatabaseIcon className="h-4 w-4"/> {t('catalog.kind.service') || 'Servicios'}</TabsTrigger>
+                    <TabsTrigger value="variant" className="gap-2 text-xs rounded-full"><Boxes className="h-4 w-4"/> Variantes</TabsTrigger>
                   </TabsList>
                 </Tabs>
                 
@@ -198,8 +206,8 @@ export default function CatalogPage() {
                   className="flex-shrink-0"
                 >
                   <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="active" className="text-xs rounded-full">{t('status.active') || 'Active'}</TabsTrigger>
-                    <TabsTrigger value="archived" className="text-xs rounded-full">{t('status.archived') || 'Archived'}</TabsTrigger>
+                    <TabsTrigger value="active" className="text-xs rounded-full">{t('status.active') || 'Activos'}</TabsTrigger>
+                    <TabsTrigger value="archived" className="text-xs rounded-full">{t('status.archived') || 'Archivados'}</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -207,7 +215,7 @@ export default function CatalogPage() {
               <div className="flex items-center gap-2 w-full md:w-auto">
                 <form onSubmit={handleSearch} className="w-full md:w-auto">
                   <SearchInput 
-                    placeholder={t('catalog.search') || "Search catalog..."} 
+                    placeholder={t('catalog.search') || "Buscar en catálogo..."} 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     alwaysExpanded={false}
@@ -240,7 +248,7 @@ export default function CatalogPage() {
               </div>
             ) : error ? (
               <div className="p-6 text-center text-red-500">
-                Failed to load catalog. {error.message}
+                Error al cargar el catálogo. {error.message}
               </div>
             ) : (
               <>
@@ -281,12 +289,12 @@ export default function CatalogPage() {
                         <div className="pt-4">
                           <EmptyCard
                             icon={<Archive className="h-6 w-6" />}
-                            title={t('catalog.empty.title') || "No items found"}
-                            description={t('catalog.empty.description') || (searchQuery ? "No items match your search criteria." : "Start by adding products or services to your catalog.")}
+                            title={t('catalog.empty.title') || "No se encontraron ítems"}
+                            description={t('catalog.empty.description') || (searchQuery ? "Ningún ítem coincide con tu búsqueda." : "Empieza agregando productos o servicios a tu catálogo.")}
                             actionButton={
                               <Button onClick={() => setIsCreateOpen(true)} variant="outline">
                                 <Plus className="mr-2 h-4 w-4" />
-                                {t('catalog.addItem') || 'Add Item'}
+                                {t('catalog.addItem') || 'Agregar ítem'}
                               </Button>
                             }
                           />

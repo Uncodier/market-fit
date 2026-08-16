@@ -2,7 +2,7 @@ import { CatalogItem } from "@/app/types";
 
 export interface CatalogListParams {
   siteId: string;
-  kind?: 'product' | 'service' | 'digital_asset' | 'all';
+  kind?: 'product' | 'service' | 'digital_asset' | 'variant' | 'all';
   digitalSubtype?: 'ticket' | 'course' | 'file' | 'pass' | 'license' | 'all';
   isMarketplaceListed?: boolean;
   q?: string;

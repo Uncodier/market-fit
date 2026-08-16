@@ -31,9 +31,9 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
   // Note: For directUrls we don't automatically generate srcSet variants.
   const src = directUrl || (item ? resolveItemImage(item, fallbackPreset) : "")
   
-  const thumbUrl = item ? resolveItemImage(item, "thumb") : src
-  const cardUrl = item ? resolveItemImage(item, "card") : src
-  const heroUrl = item ? resolveItemImage(item, "hero") : src
+  const thumbUrl = directUrl ? directUrl : (item ? resolveItemImage(item, "thumb") : src)
+  const cardUrl = directUrl ? directUrl : (item ? resolveItemImage(item, "card") : src)
+  const heroUrl = directUrl ? directUrl : (item ? resolveItemImage(item, "hero") : src)
 
   // Reset load state if the base source changes
   useEffect(() => {
@@ -42,7 +42,7 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
 
   if (!src) return null
 
-  const srcSet = item 
+  const srcSet = (!directUrl && item) 
     ? `${thumbUrl} 128w, ${cardUrl} 400w, ${heroUrl} 800w`
     : undefined
 
