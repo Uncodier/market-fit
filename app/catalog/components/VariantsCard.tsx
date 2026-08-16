@@ -2,18 +2,13 @@
 
 import React, { useState, useEffect } from "react"
 import { CatalogItem, VariantAxis, VariantAxisValue, VariantAxisKind } from "@/app/types"
-import {
-  SectionCard,
-  SectionCardHeader,
-  SectionCardTitle,
-  SectionCardDescription,
-  SectionCardContent,
-  SectionCardFooter,
-} from "@/app/components/ui/section-card"
+import { SectionCard, SectionCardHeader, SectionCardTitle, SectionCardDescription, SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
-import { Plus, Trash2, Settings } from "@/app/components/ui/icons"
+import { Plus, Trash2, Settings, ExternalLink } from "@/app/components/ui/icons"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { VARIANT_AXES_CATALOG, getSuggestedVariantAxes } from "../variant-axes"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Badge } from "@/app/components/ui/badge"
@@ -158,28 +153,72 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
     }
   }
 
+  const [pendingChildUpdates, setPendingChildUpdates] = useState<Record<string, { sku?: string; target_sale_price?: number }>>({})
+  const [savingChildren, setSavingChildren] = useState(false)
+
   const handleUpdateChild = async (
     childId: string,
     patch: { sku?: string; target_sale_price?: number }
   ) => {
-    const child = children.find((c) => c.id === childId)
-    if (!child) return
+    setPendingChildUpdates((prev) => ({
+      ...prev,
+      [childId]: { ...prev[childId], ...patch }
+    }))
+    // We don't update children state here to avoid re-rendering issues during typing
+  }
+
+  const handleSaveChildren = async () => {
+    const updates = Object.entries(pendingChildUpdates)
+    if (updates.length === 0) {
+      toast.success(t("catalog.variants.skusSaved") || "SKUs guardados")
+      return
+    }
+    setSavingChildren(true)
+    let hasError = false
+    let updatedChildren = [...children]
+    for (const [id, patch] of updates) {
+      const { data, error } = await upsertCatalogItem({ id, site_id: item.site_id, ...patch })
+      if (error) {
+        toast.error(error)
+        hasError = true
+      } else if (data) {
+        updatedChildren = updatedChildren.map(c => c.id === id ? data : c)
+      }
+    }
+    setChildren(updatedChildren)
+    setSavingChildren(false)
+    if (!hasError) {
+      toast.success(t("catalog.variants.skusSaved") || "SKUs guardados")
+      setPendingChildUpdates({})
+    }
+  }
+
+  const comboCount = axes.reduce((acc, a) => acc * Math.max(a.values?.length || 0, 1), axes.length ? 1 : 0)
+
+  const handleAddManualVariant = async () => {
+    if (!item.id) return
     const { data, error } = await upsertCatalogItem({
-      id: childId,
       site_id: item.site_id,
-      ...patch,
+      parent_id: item.id,
+      name: `${item.name} / Custom Variant`,
+      status: "active",
+      is_purchasable: true,
+      kind: item.kind,
+      digital_subtype: item.digital_subtype,
+      is_pos_available: item.is_pos_available,
+      is_recurring: item.is_recurring,
+      is_reservation: item.is_reservation,
+      currency: item.currency,
     })
     if (error) {
       toast.error(error)
       return
     }
     if (data) {
-      setChildren((prev) => prev.map((c) => (c.id === childId ? data : c)))
-      toast.success(t("catalog.variants.childUpdated") || "Variant updated")
+      setChildren([...children, data])
+      toast.success("Variant added")
     }
   }
-
-  const comboCount = axes.reduce((acc, a) => acc * Math.max(a.values?.length || 0, 1), axes.length ? 1 : 0)
 
   return (
     <div className="space-y-6">
@@ -282,12 +321,18 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
 
       {(children.length > 0 || loadingChildren) && (
         <SectionCard>
-          <SectionCardHeader>
-            <SectionCardTitle>{t("catalog.variants.skusTitle") || "Variant SKUs"}</SectionCardTitle>
-            <SectionCardDescription>
-              {t("catalog.variants.skusDescription") ||
-                "Each row is a sellable unit with its own price and SKU."}
-            </SectionCardDescription>
+          <SectionCardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <SectionCardTitle>{t("catalog.variants.skusTitle") || "Variant SKUs"}</SectionCardTitle>
+              <SectionCardDescription>
+                {t("catalog.variants.skusDescription") ||
+                  "Each row is a sellable unit with its own price and SKU."}
+              </SectionCardDescription>
+            </div>
+            <Button size="sm" variant="outline" onClick={handleAddManualVariant} type="button">
+              <Plus size={14} className="mr-1" />
+              {t("catalog.variants.addVariant") || "Add Variant"}
+            </Button>
           </SectionCardHeader>
           <SectionCardContent>
             {loadingChildren ? (
@@ -324,6 +369,13 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
               </Table>
             )}
           </SectionCardContent>
+          <ActionFooter>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" type="button" size="sm" onClick={handleSaveChildren} disabled={savingChildren}>
+                {savingChildren ? t("common.saving") || "Guardando..." : t("catalog.variants.saveSkus") || "Guardar SKUs"}
+              </Button>
+            </div>
+          </ActionFooter>
         </SectionCard>
       )}
     </div>
@@ -336,25 +388,38 @@ function ChildRow({
 }: {
   child: CatalogItem
   onSave: (id: string, patch: { sku?: string; target_sale_price?: number }) => Promise<void>
+  key?: string
 }) {
   const [sku, setSku] = useState(child.sku || "")
   const [price, setPrice] = useState(String(child.target_sale_price ?? ""))
+  const router = useRouter()
 
   useEffect(() => {
     setSku(child.sku || "")
     setPrice(String(child.target_sale_price ?? ""))
   }, [child.id, child.sku, child.target_sale_price])
 
+  const handleRowClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('input')) return;
+    router.push(`/catalog/${child.id}`)
+  }
+
   return (
-    <TableRow>
-      <TableCell className="font-medium text-sm">{child.name}</TableCell>
+    <TableRow className="cursor-pointer group hover:bg-muted/50" onClick={handleRowClick}>
+      <TableCell className="font-medium text-sm">
+        <div className="flex items-center gap-2">
+          {child.name}
+          <ExternalLink size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      </TableCell>
       <TableCell>
         <Input
           className="h-8 font-mono text-xs"
           value={sku}
-          onChange={(e) => setSku(e.target.value)}
-          onBlur={() => {
-            if (sku !== (child.sku || "")) onSave(child.id, { sku: sku || undefined })
+          onChange={(e) => {
+            const val = e.target.value
+            setSku(val)
+            onSave(child.id, { sku: val || undefined })
           }}
           placeholder="SKU"
         />
@@ -365,10 +430,11 @@ function ChildRow({
           type="number"
           step="0.01"
           value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          onBlur={() => {
-            const n = parseFloat(price)
-            if (!Number.isNaN(n) && n !== child.target_sale_price) {
+          onChange={(e) => {
+            const val = e.target.value
+            setPrice(val)
+            const n = parseFloat(val)
+            if (!Number.isNaN(n)) {
               onSave(child.id, { target_sale_price: n })
             }
           }}
