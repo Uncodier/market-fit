@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode } from "react"
+import React, { ReactNode } from "react"
 import { CatalogListingCardSkeleton } from "@/app/components/commerce/CatalogListingCardSkeleton"
 
 const COMPACT_THRESHOLD = 10
@@ -36,7 +36,7 @@ interface CommerceProductGridProps {
   isEmpty?: boolean
 }
 
-export function CommerceProductGrid({
+export const CommerceProductGrid = React.memo(function CommerceProductGrid({
   totalCount,
   isLoading = false,
   skeletonCount = 8,
@@ -65,6 +65,6 @@ export function CommerceProductGrid({
       )}
     </div>
   )
-}
+})
 
 export { COMPACT_THRESHOLD }

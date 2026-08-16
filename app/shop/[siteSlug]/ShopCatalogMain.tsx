@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { CatalogItem } from "@/app/types"
 import { Search } from "@/app/components/ui/icons"
 import { CatalogListingCard } from "@/app/components/commerce/CatalogListingCard"
@@ -66,7 +66,7 @@ interface ShopCatalogMainProps {
   categoryPromosByName?: Record<string, StorefrontPromoCard[]>
 }
 
-export function ShopCatalogMain({
+export const ShopCatalogMain = React.memo(function ShopCatalogMain({
   siteSlug,
   categories,
   categoryOffsets,
@@ -507,4 +507,4 @@ export function ShopCatalogMain({
       )}
     </main>
   )
-}
+})

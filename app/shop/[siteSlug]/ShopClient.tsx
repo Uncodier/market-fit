@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useDeferredValue, useCallback } from "react"
 import { CatalogItem } from "@/app/types"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
 import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
@@ -10,7 +10,11 @@ import { useGuestCheckoutPrefill } from "@/app/commerce/use-guest-checkout-prefi
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { CommerceOrderSuccess } from "@/app/components/commerce/CommerceOrderSuccess"
+import dynamic from "next/dynamic"
+
+const CommerceOrderSuccess = dynamic(() => import("@/app/components/commerce/CommerceOrderSuccess").then(m => m.CommerceOrderSuccess))
+const BuyerLocationSheetHost = dynamic(() => import("@/app/components/commerce/BuyerLocationControls").then(m => m.BuyerLocationSheetHost))
+
 import { ShopHeroTrust } from "./ShopHeroTrust"
 import { ShopCatalogMain } from "./ShopCatalogMain"
 import { ShopHeader } from "./ShopHeader"
@@ -35,10 +39,7 @@ import {
   isItemLocationAvailable,
 } from "@/app/commerce/buyer-location-availability"
 import { useBuyerLocation } from "@/app/components/commerce/use-buyer-location"
-import {
-  buyerLocationLeadingChip,
-  BuyerLocationSheetHost,
-} from "@/app/components/commerce/BuyerLocationControls"
+import { buyerLocationLeadingChip } from "@/app/components/commerce/BuyerLocationControls"
 
 interface CartItem extends CatalogItem {
   cartQty: number;
@@ -103,6 +104,7 @@ export default function ShopClient({
   const [orderSuccess, setOrderSuccess] = useState(false)
   const [deviceOrders, setDeviceOrders] = useState<DeviceOrder[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const deferredSearchQuery = useDeferredValue(searchQuery)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const searchPlaceholder = t("shop.searchPlaceholder") || "Search products..."
@@ -120,7 +122,7 @@ export default function ShopClient({
     site.id,
     initialCatalog,
     initialCount,
-    searchQuery,
+    deferredSearchQuery,
     initialCategoryOffsets
   )
 
@@ -164,14 +166,14 @@ export default function ShopClient({
     return false
   })()
 
-  const getLocationAvailable = (item: CatalogItem) =>
+  const getLocationAvailable = useCallback((item: CatalogItem) =>
     isItemLocationAvailable({
       item,
       settingsLocations: site?.settings?.locations || null,
       inventoryLocations: locations || [],
       buyerGeo: buyerLocation.effectiveBuyerGeo,
       selectedLocationId: buyerLocation.selectedLocationId,
-    })
+    }), [site?.settings?.locations, locations, buyerLocation.effectiveBuyerGeo, buyerLocation.selectedLocationId])
 
   const locationChipRestricted = isBuyerLocationIncompatible({
     settingsLocations: site?.settings?.locations || null,
@@ -206,7 +208,7 @@ export default function ShopClient({
   // categories look empty when stock/availability flipped.
   const sellableCatalogItems = catalogItems
 
-  const addToCart = (item: CatalogItem) => {
+  const addToCart = useCallback((item: CatalogItem) => {
     if (ownedAccessMap.has(item.id)) {
       window.location.href = `/shop/${siteSlug}/${item.id}`
       return
@@ -227,20 +229,22 @@ export default function ShopClient({
       return
     }
 
-    const existing = cart.find(c => c.id === item.id)
-    if (existing) {
-      setCart(cart.map(c => c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c))
-    } else {
-      setCart([...cart, {
-        ...item,
-        site_id: item.site_id || site.id,
-        cartQty: 1,
-        cartPrice: item.target_sale_price || 0,
-      }])
-    }
+    setCart(prevCart => {
+      const existing = prevCart.find(c => c.id === item.id)
+      if (existing) {
+        return prevCart.map(c => c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c)
+      } else {
+        return [...prevCart, {
+          ...item,
+          site_id: item.site_id || site.id,
+          cartQty: 1,
+          cartPrice: item.target_sale_price || 0,
+        }]
+      }
+    })
     toast.success(`${item.name} added to cart`)
     setIsCartOpen(true)
-  }
+  }, [ownedAccessMap, siteSlug, router, site.id])
 
   const [promotionCode, setPromotionCode] = useState("")
   const [promotionId, setPromotionId] = useState<string | null>(null)
@@ -347,16 +351,16 @@ export default function ShopClient({
     setCartItems('cart', 'shop', site.id, cart);
   }, [cart, site.id, orderSuccess, isCartLoaded])
 
-  const updateQty = (id: string, delta: number) => {
-    setCart(
-      cart
+  const updateQty = useCallback((id: string, delta: number) => {
+    setCart(prevCart =>
+      prevCart
         .map((c) => {
           if (cartLineKey(c) !== id) return c
           return { ...c, cartQty: Math.max(0, c.cartQty + delta) }
         })
-        .filter((c) => c.cartQty > 0),
+        .filter((c) => c.cartQty > 0)
     )
-  }
+  }, [])
 
   const subtotal = cart.reduce((sum, item) => sum + cartLineExtendedTotal(item), 0)
   const payableTotal = Math.max(0, subtotal - promoDiscount)
@@ -481,13 +485,13 @@ export default function ShopClient({
         deliveryTimeLabel={deliveryTimeLabel}
       />
 
-      <ShopHeroTrust site={site} searchQuery={searchQuery} isOpen={isOpen} nextOpenSlot={nextOpenSlot} locationAvailable={locationAvailable} deliveryTimeLabel={deliveryTimeLabel} />
+      <ShopHeroTrust site={site} searchQuery={deferredSearchQuery} isOpen={isOpen} nextOpenSlot={nextOpenSlot} locationAvailable={locationAvailable} deliveryTimeLabel={deliveryTimeLabel} />
 
       <ShopCatalogMain
         siteSlug={siteSlug}
         categories={categories}
         categoryOffsets={initialCategoryOffsets}
-        searchQuery={searchQuery}
+        searchQuery={deferredSearchQuery}
         ownedItems={ownedItems}
         ownedAccessMap={ownedAccessMap}
         deviceOrders={deviceOrders}

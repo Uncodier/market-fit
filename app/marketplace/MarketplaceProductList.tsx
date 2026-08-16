@@ -1,5 +1,6 @@
 "use client"
 
+import React, { useCallback } from "react"
 import { Search } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
 import { CatalogListingCard } from "@/app/components/commerce/CatalogListingCard"
@@ -27,7 +28,7 @@ interface MarketplaceProductListProps {
   promoBadgesByItemId?: Record<string, PromoBadge>
 }
 
-export function MarketplaceProductList({
+export const MarketplaceProductList = React.memo(function MarketplaceProductList({
   items,
   initialCount,
   isLoading,
@@ -41,12 +42,12 @@ export function MarketplaceProductList({
 }: MarketplaceProductListProps) {
   const { t } = useLocalization()
 
-  const getLocationAvailable = (item: MarketplaceProductListProps["items"][number]) =>
+  const getLocationAvailable = useCallback((item: MarketplaceProductListProps["items"][number]) =>
     isItemLocationAvailable({
       item,
       settingsLocations: item.site?.settings?.locations || null,
       buyerGeo,
-    })
+    }), [buyerGeo])
 
   if (items.length === 0 && !isLoading) {
     return (
@@ -115,4 +116,4 @@ export function MarketplaceProductList({
       )}
     </>
   )
-}
+})

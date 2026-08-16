@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import Link from "next/link"
 import { CatalogItem } from "@/app/types"
 import { resolveItemImage } from "@/app/lib/image-utils"
@@ -53,7 +54,7 @@ interface FeaturedListingPosterProps {
  * Ecommerce-style featured poster: full-bleed image, bottom gradient,
  * title / price / CTA layered without clipping.
  */
-export function FeaturedListingPoster({
+export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
   item,
   href,
   onPrimaryAction,
@@ -96,8 +97,10 @@ export function FeaturedListingPoster({
     >
       <Link href={href} className="absolute inset-0 z-0" aria-label={item.name}>
         <img
-          src={resolveItemImage(item, "hero")}
+          src={resolveItemImage(item, isHero ? "hero" : "card")}
           alt=""
+          loading={isHero ? undefined : "lazy"}
+          decoding="async"
           onError={(e) => {
             e.currentTarget.style.opacity = "0"
           }}
@@ -235,7 +238,7 @@ export function FeaturedListingPoster({
       </div>
     </article>
   )
-}
+})
 
 interface FeaturedListingsRailProps {
   items: FeaturedItem[]
@@ -252,7 +255,7 @@ interface FeaturedListingsRailProps {
 }
 
 /** 1 item → hero poster; 2 items → side-by-side posters (ecommerce focus rail). */
-export function FeaturedListingsRail({
+export const FeaturedListingsRail = React.memo(function FeaturedListingsRail({
   items,
   getHref,
   onPrimaryAction,
@@ -306,6 +309,6 @@ export function FeaturedListingsRail({
       ))}
     </div>
   )
-}
+})
 
 export const FEATURED_LISTING_THRESHOLD = 3

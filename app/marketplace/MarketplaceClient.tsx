@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useDeferredValue, useCallback } from "react"
 import { toast } from "sonner"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
 import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
@@ -19,10 +19,8 @@ import {
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/product-details"
 import { shouldUseCompactMobileListing } from "@/app/components/commerce/CommerceProductGrid"
-import { CommerceOrderSuccess } from "@/app/components/commerce/CommerceOrderSuccess"
 import { getSiteInfoBySlug } from "@/app/book/actions"
 import { listPublicLocations } from "@/app/inventory/actions"
-import { MarketplaceCartPanel } from "./MarketplaceCartPanel"
 import { MarketplaceFooter } from "./MarketplaceFooter"
 import { MarketplaceCategoryChips, MarketplaceFilterSidebar } from "./MarketplaceCategoryChips"
 import { MarketplaceHeader } from "./MarketplaceHeader"
@@ -41,10 +39,13 @@ import {
   isItemLocationAvailable,
 } from "@/app/commerce/buyer-location-availability"
 import { useBuyerLocation } from "@/app/components/commerce/use-buyer-location"
-import {
-  buyerLocationLeadingChip,
-  BuyerLocationSheetHost,
-} from "@/app/components/commerce/BuyerLocationControls"
+import { buyerLocationLeadingChip } from "@/app/components/commerce/BuyerLocationControls"
+
+import dynamic from "next/dynamic"
+
+const CommerceOrderSuccess = dynamic(() => import("@/app/components/commerce/CommerceOrderSuccess").then(m => m.CommerceOrderSuccess))
+const BuyerLocationSheetHost = dynamic(() => import("@/app/components/commerce/BuyerLocationControls").then(m => m.BuyerLocationSheetHost))
+const MarketplaceCartPanel = dynamic(() => import("./MarketplaceCartPanel").then(m => m.MarketplaceCartPanel))
 
 interface MarketplaceItem extends CatalogItem {
   site: { id: string; name: string; logo_url?: string | null; settings?: any }
@@ -82,6 +83,7 @@ export function MarketplaceClient({
   const [cart, setCart] = useState<CartItem[]>([])
   const [isCartLoaded, setIsCartLoaded] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const deferredSearchQuery = useDeferredValue(searchQuery)
   const selectedKind = parseMarketplaceKind(searchParams?.get("filter"))
   const selectedSubtype = parseMarketplaceSubtype(searchParams?.get("subtype"))
   const showOnlyRecurring = selectedKind === "recurring"
@@ -110,7 +112,7 @@ export function MarketplaceClient({
   const { items: rawItems, page, setPage, totalPages, isLoading } = useMarketplaceProducts(
     initialItems,
     initialTotalPages,
-    searchQuery,
+    deferredSearchQuery,
     productKind,
     selectedSubtype,
     showOnlyRecurring,
@@ -306,7 +308,7 @@ export function MarketplaceClient({
     setCartItems("cart", "marketplace", null, cart)
   }, [cart, orderSuccess, isCartLoaded])
 
-  const addToCart = (item: MarketplaceItem) => {
+  const addToCart = useCallback((item: MarketplaceItem) => {
     if (item.is_dynamic_price) {
       router.push(`/marketplace/${item.id}`)
       return
@@ -319,19 +321,19 @@ export function MarketplaceClient({
       router.push(`/marketplace/${item.id}/book`)
       return
     }
-    const existing = cart.find((c) => c.id === item.id)
-    setCart(
-      existing
-        ? cart.map((c) => (c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c))
-        : [...cart, { ...item, cartQty: 1, cartPrice: item.target_sale_price || 0 }]
-    )
+    setCart(prevCart => {
+      const existing = prevCart.find((c) => c.id === item.id)
+      return existing
+        ? prevCart.map((c) => (c.id === item.id ? { ...c, cartQty: c.cartQty + 1 } : c))
+        : [...prevCart, { ...item, cartQty: 1, cartPrice: item.target_sale_price || 0 }]
+    })
     toast.success(`${item.name} ${t("marketplace.addedToCart") || "added to cart"}`)
     setIsCartOpen(true)
-  }
+  }, [router, t])
 
-  const updateQty = (id: string, delta: number) => {
-    setCart(
-      cart
+  const updateQty = useCallback((id: string, delta: number) => {
+    setCart(prevCart =>
+      prevCart
         .map((c) =>
           cartLineKey(c) === id
             ? { ...c, cartQty: Math.max(0, c.cartQty + delta) }
@@ -339,7 +341,7 @@ export function MarketplaceClient({
         )
         .filter((c) => c.cartQty > 0)
     )
-  }
+  }, [])
 
   const subtotal = cart.reduce((sum, item) => sum + cartLineExtendedTotal(item), 0)
   const payableTotal = Math.max(0, subtotal - promoDiscount)

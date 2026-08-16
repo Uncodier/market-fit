@@ -56,7 +56,7 @@ function formatListingPrice(
   return formatPrice(item.target_sale_price || 0, item.currency || 'USD')
 }
 
-export function CatalogListingCard({
+export const CatalogListingCard = React.memo(function CatalogListingCard({
   item,
   href,
   onPrimaryAction,
@@ -104,8 +104,10 @@ export function CatalogListingCard({
       >
         <Link href={href} className="absolute inset-0 z-0" aria-label={item.name}>
           <img
-            src={resolveItemImage(item, "hero")}
+            src={resolveItemImage(item, "card")}
             alt=""
+            loading="lazy"
+            decoding="async"
             onError={(e) => { e.currentTarget.style.opacity = '0' }}
             className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
           />
@@ -224,4 +226,4 @@ export function CatalogListingCard({
       </Link>
     </div>
   )
-}
+})
