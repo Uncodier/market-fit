@@ -3,7 +3,8 @@
 import { useState, useCallback, useMemo } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
-import { ShieldCheck } from "@/app/components/ui/icons"
+import { ShieldCheck, CalendarIcon, Clock } from "@/app/components/ui/icons"
+import { format } from "date-fns"
 import { Button } from "@/app/components/ui/button"
 import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCodeField"
 import { checkoutLabelKey, CheckoutCopyMode } from "@/app/commerce/checkout-labels"
@@ -80,26 +81,48 @@ export function OrderSummary({
       
       <div className="space-y-4 mb-8 max-h-[40vh] overflow-y-auto pr-2 no-scrollbar">
         {items.map((item, idx) => (
-          <div key={(item.lineKey || item.id) + idx} className="flex gap-4 p-3 bg-muted/30 rounded-2xl border border-border/40">
-            <div className="relative w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0 shadow-sm border border-border/50">
-              <img src={resolveItemImage(item, "card")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+          <div key={(item.lineKey || item.id) + idx} className="flex flex-col gap-3 p-3 bg-muted/30 rounded-2xl border border-border/40">
+            <div className="flex gap-4">
+              <div className="relative w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0 shadow-sm border border-border/50">
+                <img src={resolveItemImage(item, "card")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                {((item._parent?.name && item._parent.name !== item.name) || item.parent_name || item.site?.name) && (
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5 truncate">
+                    {item._parent?.name && item._parent.name !== item.name ? item._parent.name : (item.parent_name || item.site?.name)}
+                  </div>
+                )}
+                <h4 className="font-bold truncate text-sm">{item.name}</h4>
+                <div className="text-xs text-muted-foreground mt-1 font-medium tracking-wide">{t('qty') || 'QTY:'} {item.cartQty}</div>
+                {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
+                  <ul className="mt-1 space-y-0.5">
+                    {item.modifiers.map((m: any) => (
+                      <li key={`${m.groupId}:${m.catalogItemId}`} className="text-xs text-muted-foreground truncate">
+                        + {m.name}{m.cartQty > 1 ? ` ×${m.cartQty}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="font-black text-sm flex items-start pt-1 shrink-0">
+                {formatMoney(cartLineExtendedTotal(item))}
+              </div>
             </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <h4 className="font-bold truncate text-sm">{item.name}</h4>
-              <div className="text-xs text-muted-foreground mt-1 font-medium tracking-wide">{t('qty') || 'QTY:'} {item.cartQty}</div>
-              {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
-                <ul className="mt-1 space-y-0.5">
-                  {item.modifiers.map((m: any) => (
-                    <li key={`${m.groupId}:${m.catalogItemId}`} className="text-xs text-muted-foreground truncate">
-                      + {m.name}{m.cartQty > 1 ? ` ×${m.cartQty}` : ""}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="font-black text-sm flex items-center shrink-0">
-              {formatMoney(cartLineExtendedTotal(item))}
-            </div>
+
+            {item.reservationStart && (
+              <div className="pt-2 mt-1 border-t border-border/40">
+                <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+                  <CalendarIcon className="w-3 h-3 opacity-70 shrink-0" />
+                  <span className="truncate">
+                    {format(new Date(item.reservationStart), "MMM d, yyyy")}
+                  </span>
+                  <Clock className="w-3 h-3 opacity-70 shrink-0 ml-1" />
+                  <span className="truncate">
+                    {format(new Date(item.reservationStart), "h:mm a")}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
