@@ -35,7 +35,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0">
               {((item._parent?.name && item._parent.name !== item.name) || item.parent?.name || item.parent_name) && (
-                <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5 truncate">
+                <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5 truncate leading-tight">
                   {item._parent?.name && item._parent.name !== item.name ? item._parent.name : (item.parent?.name || item.parent_name)}
                 </div>
               )}
@@ -46,7 +46,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
             </button>
           </div>
           {showSeller && item.site?.name ? (
-            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5 truncate mt-1">{item.site.name}</p>
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5 truncate mt-1 leading-tight">{item.site.name}</p>
           ) : null}
           <div className="text-gray-500 dark:text-gray-400 text-sm mt-1 font-medium">
             {formatPrice(unit, currency)}
@@ -86,7 +86,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
         </div>
 
         {item.reservationStart && (
-          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
             <Link 
               href={`/shop/${item.site?.slug || item.site_id}/${item.id}/book`}
               className="flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 p-1.5 -mx-1.5 rounded-lg transition-colors group"
@@ -101,7 +101,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
                   {format(new Date(item.reservationStart), "h:mm a")}
                 </span>
               </div>
-              <span className="text-[10px] uppercase font-bold text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+              <span className="text-[10px] uppercase font-bold text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors mr-1">
                 Edit
               </span>
             </Link>

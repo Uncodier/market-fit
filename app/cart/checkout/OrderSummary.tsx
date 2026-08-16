@@ -126,7 +126,7 @@ export function OrderSummary({
                       {format(new Date(item.reservationStart), "h:mm a")}
                     </span>
                   </div>
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground group-hover:text-foreground transition-colors mr-1">
                     Edit
                   </span>
                 </Link>
