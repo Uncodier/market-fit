@@ -206,12 +206,12 @@ export function BookingExperience({
       )}
 
       <main
-        className={`flex-1 w-full flex flex-col ${
+        className={`flex-1 w-full flex flex-col items-center justify-center ${
           hideHeader
-            ? "p-0"
+            ? "p-4"
             : useShellHeader
-              ? "max-w-7xl mx-auto p-4 md:p-8"
-              : "max-w-7xl mx-auto p-4 md:p-8 pt-24 md:pt-28"
+              ? "max-w-5xl mx-auto p-4 md:p-8"
+              : "max-w-5xl mx-auto p-4 md:p-8 pt-24 md:pt-28"
         }`}
       >
         {booking && (
@@ -223,50 +223,61 @@ export function BookingExperience({
           </div>
         )}
 
-        <div className="mb-8">
-        <div className="bg-card border rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-6">
-          {imageUrl ? (
-            <img src={imageUrl} alt={item.name} className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-cover object-center bg-muted shrink-0" />
-          ) : (
-            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl bg-muted shrink-0 flex items-center justify-center">
-              <span className="text-muted-foreground font-medium text-sm">{t("booking.noImage") || "No Image"}</span>
+        <div className="grid md:grid-cols-3 gap-8 w-full mx-auto max-w-4xl mt-4">
+          <div className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left relative z-10 md:-mr-8 md:pr-8">
+            <div className="space-y-4 flex flex-col items-center md:items-start w-full">
+              {imageUrl ? (
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border border-primary/10 overflow-hidden shadow-sm shrink-0 mb-2">
+                  <img src={imageUrl} alt={item.name} className="w-full h-full object-cover object-center bg-muted" />
+                </div>
+              ) : (
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center shadow-sm mb-2">
+                  <span className="text-muted-foreground font-medium text-xs">{t("booking.noImage") || "No Image"}</span>
+                </div>
+              )}
+              
+              <div className="w-full">
+                {mode === "entitlement" && (
+                  <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-full mb-3">
+                    <CheckCircle className="w-3 h-3" />
+                    {t("booking.usingPass") || "Using Pass"}
+                  </div>
+                )}
+                <h2 className="text-muted-foreground text-xs font-bold uppercase tracking-widest text-center md:text-left">
+                  {mode === "entitlement" ? (t("booking.redeemTitle") || "Book with Pass") : mode === "admin" ? (t("booking.adminTitle") || "Create Reservation") : (t("booking.selectTime") || "Select a Time")}
+                </h2>
+                <h1 className="text-2xl font-semibold mt-1 text-center md:text-left">{item.name}</h1>
+              </div>
+
+              {item.description && (
+                <p className="text-muted-foreground text-sm leading-relaxed text-center md:text-left w-full">
+                  {item.description}
+                </p>
+              )}
             </div>
-          )}
-          <div className="flex-1">
-            {mode === "entitlement" && (
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 px-3 py-1 rounded-full mb-3">
-                <CheckCircle className="w-3.5 h-3.5" />
-                {t("booking.usingPass") || "Using Pass"}
+
+            {mode === "admin" && (
+              <div className="w-full pt-4 mt-2 flex flex-col justify-center md:justify-start">
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2">{t("booking.customerDetails") || "Customer Details"}</h3>
+                <RelationSelect 
+                  options={leads.map((l: any) => ({ id: l.id, label: l.name || l.email }))}
+                  value={leadValue} 
+                  onValueChange={setLeadValue}
+                  placeholder={t("booking.selectCustomer") || "Select customer..."}
+                  emptyMessage={t("booking.noCustomers") || "No customers found"}
+                />
               </div>
             )}
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-2">{item.name}</h2>
-            <p className="text-muted-foreground line-clamp-2 max-w-2xl text-sm">
-              {item.description || (t("booking.serviceDesc") || "Select a time for this service.")}
-            </p>
           </div>
-        </div>
-        </div>
 
-        {mode === "admin" && (
-          <div className="mb-8 bg-card border rounded-3xl p-6 shadow-sm max-w-3xl">
-            <h3 className="text-lg font-bold mb-4">{t("booking.customerDetails") || "Customer Details"}</h3>
-            <RelationSelect 
-              options={leads.map((l: any) => ({ id: l.id, label: l.name || l.email }))}
-              value={leadValue} 
-              onValueChange={setLeadValue}
-              placeholder={t("booking.selectCustomer") || "Select customer..."}
-              emptyMessage={t("booking.noCustomers") || "No customers found"}
+          <div className="md:col-span-2 relative w-full overflow-visible z-0">
+            <ReservationSlotPicker
+              catalogItemId={item.id}
+              layout="page"
+              hideDetailsStep={mode !== "admin"} // Only admin needs the full details step natively for now
+              onSelect={handleSelect}
             />
           </div>
-        )}
-
-        <div className="flex-1 w-full">
-          <ReservationSlotPicker
-            catalogItemId={item.id}
-            layout="page"
-            hideDetailsStep={mode !== "admin"} // Only admin needs the full details step natively for now
-            onSelect={handleSelect}
-          />
         </div>
       </main>
     </div>
