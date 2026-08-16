@@ -50,6 +50,9 @@ export function slimCartItem(item: Record<string, any>): Record<string, any> {
     cartPrice: item.cartPrice,
     reservationStart: item.reservationStart,
     reservationEnd: item.reservationEnd,
+    _parent: item._parent,
+    parent_name: item.parent_name,
+    parent: item.parent,
     ...(Array.isArray(item.modifiers) && item.modifiers.length > 0
       ? {
           modifiers: item.modifiers.map((m: any) => ({
