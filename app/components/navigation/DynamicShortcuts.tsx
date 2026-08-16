@@ -287,7 +287,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 500,
+        delay: 250,
         tolerance: 5,
       },
     }),
@@ -300,6 +300,9 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     const { active, over } = event
     
     if (over && active.id !== over.id) {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(50)
+      }
       setShortcuts((items) => {
         const oldIndex = items.findIndex(s => (typeof s === 'string' ? s : s.id) === active.id)
         const newIndex = items.findIndex(s => (typeof s === 'string' ? s : s.id) === over.id)

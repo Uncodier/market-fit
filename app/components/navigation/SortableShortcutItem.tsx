@@ -55,7 +55,7 @@ export function SortableShortcutItem({
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none select-none">
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div

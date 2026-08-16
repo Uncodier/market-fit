@@ -108,6 +108,10 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
       return
     }
 
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(50)
+    }
+
     onUpdateOrderStatus(draggableId, destination.droppableId)
   }
 
@@ -169,7 +173,7 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
                                 >
                                   <Card 
                                     className={cn(
-                                      "mb-3 cursor-pointer transition-all duration-200 border-border/60 hover:border-primary/40 relative group",
+                                      "mb-3 cursor-pointer transition-all duration-200 border-border/60 hover:border-primary/40 relative group select-none",
                                       snapshot.isDragging ? "shadow-lg border-primary/50" : "shadow-sm hover:shadow-md",
                                       hasNewItems && "bg-amber-50/40 dark:bg-amber-500/5"
                                     )}

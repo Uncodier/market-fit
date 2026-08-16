@@ -126,6 +126,10 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
       return
     }
 
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(50)
+    }
+
     onUpdateDealStage(draggableId, destination.droppableId)
   }
 
@@ -179,7 +183,7 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
                               >
                                 <Card 
                                   className={cn(
-                                    "mb-3 cursor-pointer transition-all duration-200 border-border/60 hover:border-primary/40 relative group",
+                                    "mb-3 cursor-pointer transition-all duration-200 border-border/60 hover:border-primary/40 relative group select-none",
                                     snapshot.isDragging ? "shadow-lg border-primary/50" : "shadow-sm hover:shadow-md"
                                   )}
                                   onClick={() => onDealClick(deal)}

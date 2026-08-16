@@ -52,7 +52,7 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
       <img
         src={thumbUrl}
         alt={alt}
-        className={`${className} absolute inset-0 filter blur-xl scale-105`}
+        className={`${className} absolute inset-0 w-full h-full filter blur-xl scale-105`}
         aria-hidden="true"
         {...props}
       />
@@ -70,12 +70,7 @@ export const ProgressiveImage = React.memo(function ProgressiveImage({
         onError={(e) => {
           e.currentTarget.style.opacity = '0'
         }}
-        className={`
-          ${className} 
-          absolute inset-0 
-          transition-opacity duration-700 ease-out 
-          ${isLoaded ? "opacity-100" : "opacity-0"}
-        `}
+        className={`${className} absolute inset-0 w-full h-full transition-opacity duration-700 ease-out ${isLoaded ? "opacity-100" : "opacity-0"}`}
         {...props}
       />
     </>

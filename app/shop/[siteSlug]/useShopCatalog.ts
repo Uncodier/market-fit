@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { CatalogItem } from "@/app/types"
 import { getShopCatalog } from "./actions"
+import { flushSync } from "react-dom"
 import {
   countItemsByCategory,
   SHOP_PAGE_SIZE,
@@ -169,6 +170,7 @@ export function useShopCatalog(
 
   const backfillAbove = useCallback(async (gen: number) => {
     if (backfillActiveRef.current) return
+    if (gen !== requestGen.current) return
     backfillActiveRef.current = true
     setIsBackfilling(true)
 
@@ -191,24 +193,37 @@ export function useShopCatalog(
           break
         }
 
-        const prevHeight = typeof document !== "undefined" ? document.documentElement.scrollHeight : 0
-        const prevScroll = typeof window !== "undefined" ? window.scrollY : 0
+        let anchorId: string | null = null
+        let prevViewportTop = 0
+        if (typeof document !== "undefined") {
+          const anchorEl = document.querySelector('section[id^="shop-category-"]') as HTMLElement
+          if (anchorEl) {
+            anchorId = anchorEl.id
+            prevViewportTop = anchorEl.getBoundingClientRect().top
+          }
+        }
 
-        setCatalogItems((curr) => {
-          const next = dedupeById([...(result.data as CatalogItem[]), ...curr])
-          catalogItemsRef.current = next
-          return next
+        flushSync(() => {
+          setCatalogItems((curr) => {
+            const next = dedupeById([...(result.data as CatalogItem[]), ...curr])
+            catalogItemsRef.current = next
+            return next
+          })
+          setWindowStart(prevOffset)
         })
-        setWindowStart(prevOffset)
         windowStartRef.current = prevOffset
 
-        requestAnimationFrame(() => {
-          if (typeof document === "undefined" || typeof window === "undefined") return
-          const delta = document.documentElement.scrollHeight - prevHeight
-          if (delta > 0) {
-            window.scrollTo(0, prevScroll + delta)
+        if (anchorId && typeof window !== "undefined" && typeof document !== "undefined") {
+          const anchorEl = document.getElementById(anchorId)
+          if (anchorEl) {
+            const currentViewportTop = anchorEl.getBoundingClientRect().top
+            const diff = currentViewportTop - prevViewportTop
+            // If the element moved in the viewport, scroll by that exact amount to keep it anchored
+            if (Math.abs(diff) > 1) {
+              window.scrollBy(0, diff)
+            }
           }
-        })
+        }
       }
     } catch (err) {
       console.error("Failed to backfill shop catalog:", err)
@@ -330,7 +345,11 @@ export function useShopCatalog(
         setPendingScrollCategory(categoryName)
 
         if (offset > 0) {
-          void backfillAbove(gen)
+          // Delay backfilling to allow the smooth scroll to finish first
+          // Otherwise, instantaneous scroll corrections might cancel the animation.
+          setTimeout(() => {
+            void backfillAbove(gen)
+          }, 1200)
         }
       } catch (err) {
         console.error("Failed to jump shop catalog category:", err)

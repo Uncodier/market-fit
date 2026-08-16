@@ -14,7 +14,7 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ isVisible, i
           initial={{ opacity: 0, y: 10, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.98 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className="w-full min-w-[min(100%,450px)] overflow-hidden max-w-[calc(100%-80px)] lg:max-w-3xl mx-auto my-2"
         >
           <div

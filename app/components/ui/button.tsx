@@ -12,7 +12,7 @@ import { notifyPermissionDenied } from "@/lib/permissions/notify"
 import { PERMISSION_DENIED_TITLE } from "@/lib/permissions/types"
 
 const buttonVariants = cva(
-  "font-inter inline-flex items-center justify-center whitespace-nowrap rounded-full overflow-hidden text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  "font-inter inline-flex items-center justify-center whitespace-nowrap rounded-full overflow-hidden select-none text-sm font-medium transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {

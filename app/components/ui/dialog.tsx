@@ -165,7 +165,7 @@ const DialogBody = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     data-slot="dialog-body"
-    className={cn("min-h-0 flex-1 overflow-y-auto px-6 py-4", className)}
+    className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4", className)}
     {...props}
   />
 )

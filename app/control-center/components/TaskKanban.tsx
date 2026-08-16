@@ -167,6 +167,10 @@ export function TaskKanban({ tasks, sortBy, onUpdateTaskStatus, onTaskClick, kan
       return
     }
 
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(50)
+    }
+
     const newStatus = destination.droppableId
     const sourceStatus = source.droppableId
     const destinationTasks = tasksByStatus[newStatus]
@@ -303,7 +307,7 @@ export function TaskKanban({ tasks, sortBy, onUpdateTaskStatus, onTaskClick, kan
                             >
                               <Card
                                 className={cn(
-                                  "mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md relative",
+                                  "mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md relative select-none",
                                   snapshot.isDragging && "shadow-lg",
                                   selectedTasks.has(task.id) && "ring-2 ring-primary/40 bg-primary/5"
                                 )}
