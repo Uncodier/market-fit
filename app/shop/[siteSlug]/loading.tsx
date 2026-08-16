@@ -35,9 +35,9 @@ export default function ShopLoading() {
         }
       />
 
-      {/* Shop hero — matches ShopHeroTrust proportions (mobile bleeds under chrome) */}
-      <div className="bg-gray-900 text-white h-[520px] md:h-[450px] max-md:-mt-[88px] px-4 md:px-8 relative overflow-hidden flex items-end md:items-center">
-        <div className="max-w-7xl mx-auto w-full relative z-10 text-center md:text-left flex flex-col items-center md:items-start pb-10 md:pb-0 max-md:pt-[88px]">
+      {/* Shop hero — matches ShopHeroTrust proportions */}
+      <div className="bg-gray-900 text-white h-[580px] md:h-[550px] -mt-[88px] md:-mt-[104px] px-4 md:px-8 relative overflow-hidden flex items-end md:items-center">
+        <div className="max-w-7xl mx-auto w-full relative z-10 text-center md:text-left flex flex-col items-center md:items-start pb-10 md:pb-0 pt-[88px] md:pt-[104px]">
           <Skeleton className="h-12 md:h-16 w-3/4 max-w-2xl mb-6 bg-white/20" />
           <Skeleton className="h-6 w-1/2 max-w-xl mb-10 bg-white/20" />
           <Skeleton className="h-14 w-40 rounded-full bg-white/20" />

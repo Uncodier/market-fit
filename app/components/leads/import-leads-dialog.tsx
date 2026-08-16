@@ -405,9 +405,15 @@ export function ImportLeadsDialog({ onImportLeads, trigger }: ImportLeadsDialogP
       setProgress(100)
       
       if (result.success) {
-        toast.success(`Successfully imported ${result.count} leads`)
-        setIsOpen(false)
-        resetDialog()
+        if (result.errors && result.errors.length > 0) {
+          // Warning toast is handled by parent, just close dialog
+          setIsOpen(false)
+          resetDialog()
+        } else {
+          toast.success(`Successfully imported ${result.count} leads`)
+          setIsOpen(false)
+          resetDialog()
+        }
       } else {
         toast.error('Import failed: ' + (result.errors?.join(', ') || 'Unknown error'))
       }

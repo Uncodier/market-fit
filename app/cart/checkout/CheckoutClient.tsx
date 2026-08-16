@@ -543,8 +543,8 @@ export default function CheckoutClient({
                 {session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture ? (
                   <img 
                     src={session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture} 
-                    alt="Avatar" 
-                    className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
+                      alt="Avatar"
+                      className="w-8 h-8 min-w-8 rounded-full object-contain bg-transparent border border-border shadow-sm shrink-0"
                   />
                 ) : (
                   <div className="w-8 h-8 min-w-8 rounded-full bg-muted flex items-center justify-center border border-border shadow-sm shrink-0">

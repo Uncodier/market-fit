@@ -35,8 +35,10 @@ export function ShopHeroTrust({
   return (
     <>
       {showHero && (
-        // Mobile: cover bleeds under sticky navbar. Offset ≈ spacer (16) + header (56) + mb (16) = 88px.
-        <div className="text-white h-[520px] md:h-[450px] max-md:-mt-[88px] relative overflow-hidden flex items-end md:items-center bg-gray-100 dark:bg-gray-900">
+        // Cover bleeds under sticky navbar.
+        // Mobile offset ≈ spacer (16) + header (56) + mb (16) = 88px.
+        // Desktop offset ≈ spacer (16) + header (56) + mb (32) = 104px.
+        <div className="text-white h-[580px] md:h-[550px] -mt-[88px] md:-mt-[104px] relative overflow-hidden flex items-end md:items-center bg-gray-100 dark:bg-gray-900">
           <div className="absolute inset-0 z-0">
             <img
               src={
@@ -62,7 +64,7 @@ export function ShopHeroTrust({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent md:bg-gradient-to-r md:from-black/80 md:via-black/50 md:to-transparent" />
           </div>
-          <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10 text-center md:text-left flex flex-col items-center md:items-start w-full pb-8 md:pb-0 max-md:pt-[88px]">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10 text-center md:text-left flex flex-col items-center md:items-start w-full pb-10 md:pb-0 pt-[88px] md:pt-[104px]">
             {(!isOpen || !locationAvailable || deliveryTimeLabel) && (
               <div className="mb-4 flex flex-wrap gap-2 justify-center md:justify-start">
                 {!isOpen && (
@@ -99,7 +101,7 @@ export function ShopHeroTrust({
               </h1>
             )}
             {shop?.hero_subtitle && (
-              <p className="text-base md:text-xl text-gray-300 max-w-xl mb-4 md:mb-10 drop-shadow-md">
+              <p className="text-base md:text-xl text-gray-300 max-w-xl mb-6 md:mb-10 drop-shadow-md">
                 {shop.hero_subtitle}
               </p>
             )}

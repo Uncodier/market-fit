@@ -313,10 +313,10 @@ export async function searchLeadsWithCount(
 
 // Schema para validar los datos de entrada al crear un lead
 const CreateLeadSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
-  personal_email: z.string().email("Invalid personal email address").optional().nullable(),
-  phone: z.string().optional(),
+  name: z.string().min(1, "Name is required").optional().or(z.literal("")),
+  email: z.string().email("Invalid email address").optional().nullable().or(z.literal("")),
+  personal_email: z.string().email("Invalid personal email address").optional().nullable().or(z.literal("")),
+  phone: z.string().optional().nullable().or(z.literal("")),
   company: z.union([
     z.string(),
     z.object({
@@ -694,6 +694,7 @@ export async function createLead(data: CreateLeadInput): Promise<{ error?: strin
     // Prepare data for insertion
     const insertData = {
       ...validatedData,
+      name: validatedData.name || (validatedData.email ? validatedData.email.split('@')[0] : (validatedData.phone || 'Unknown')),
       company_id,
       user_id: user.id
     }
@@ -1006,11 +1007,16 @@ export async function importLeads(leads: Partial<Lead>[], siteId: string) {
       // Prepare batch data
       const batchData = batch.map((lead, index) => {
         const rowNumber = i + index + 1
-        // Require only a valid email
+        // Require either a valid email or a valid phone number
         const email = (lead.email || '').toString().trim()
+        const phone = (lead.phone || '').toString().trim()
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!email || !emailRegex.test(email)) {
-          errors.push(`Row ${rowNumber}: A valid email is required`)
+        
+        const hasValidEmail = email && emailRegex.test(email)
+        const hasPhone = phone.length > 0
+        
+        if (!hasValidEmail && !hasPhone) {
+          errors.push(`Row ${rowNumber}: A valid email or phone number is required`)
           return null
         }
         
@@ -1022,13 +1028,16 @@ export async function importLeads(leads: Partial<Lead>[], siteId: string) {
         }
         
         // Generate fallback name if missing
-        const name = (lead.name && lead.name.toString().trim()) || email.split('@')[0]
+        let name = lead.name && lead.name.toString().trim()
+        if (!name) {
+          name = hasValidEmail ? email.split('@')[0] : (hasPhone ? phone : 'Unknown')
+        }
         
         return {
           name,
-          email,
+          email: hasValidEmail ? email : "",
           personal_email: lead.personal_email || null,
-          phone: lead.phone || null,
+          phone: hasPhone ? phone : null,
           company: typeof lead.company === 'string' ? { name: lead.company } : lead.company || null,
           position: lead.position || null,
           segment_id: lead.segment_id || null,
@@ -1054,12 +1063,25 @@ export async function importLeads(leads: Partial<Lead>[], siteId: string) {
           .select()
         
         if (error) {
-          // Handle unique constraint violations separately
-          if (error.code === '23505' && error.message.includes('email')) {
-            // Extract row information from error if possible
-            errors.push(`Batch ${Math.floor(i/batchSize) + 1}: Duplicate email(s) found`)
-          } else {
-            errors.push(`Batch ${Math.floor(i/batchSize) + 1}: ${error.message}`)
+          // If the batch fails, try to insert one by one so that valid rows are still imported
+          console.warn(`Batch ${Math.floor(i/batchSize) + 1} failed: ${error.message}. Attempting individual inserts...`)
+          
+          for (let j = 0; j < batchData.length; j++) {
+            const singleLeadData = batchData[j]
+            const { data: singleData, error: singleError } = await supabase
+              .from('leads')
+              .insert(singleLeadData)
+              .select()
+              
+            if (singleError) {
+              if (singleError.code === '23505') {
+                errors.push(`Row ${i + j + 1} failed: Duplicate entry (likely email)`)
+              } else {
+                errors.push(`Row ${i + j + 1} failed: ${singleError.message}`)
+              }
+            } else if (singleData) {
+              createdLeads.push(...singleData)
+            }
           }
         } else if (data) {
           createdLeads.push(...data)

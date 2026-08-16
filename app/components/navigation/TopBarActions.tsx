@@ -1085,8 +1085,17 @@ export function TopBarActions({
       const result = await importLeads(leads, currentSite.id);
 
       if (result.success) {
-        // Recargar la página para mostrar los nuevos leads
-        safeReload(false, "Leads imported successfully");
+        if (result.errors && result.errors.length > 0) {
+          toast.warning(`Imported ${result.count} leads, but some rows had errors.`);
+          console.warn("Import errors:", result.errors);
+          // Wait a bit before reloading so user can see the toast
+          setTimeout(() => {
+            safeReload(false, "Leads imported with some errors");
+          }, 3000);
+        } else {
+          // Recargar la página para mostrar los nuevos leads
+          safeReload(false, "Leads imported successfully");
+        }
       }
 
       return result;
