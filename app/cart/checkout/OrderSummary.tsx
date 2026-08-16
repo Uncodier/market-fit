@@ -5,6 +5,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { ShieldCheck, CalendarIcon, Clock } from "@/app/components/ui/icons"
 import { format } from "date-fns"
+import Link from "next/link"
 import { Button } from "@/app/components/ui/button"
 import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCodeField"
 import { checkoutLabelKey, CheckoutCopyMode } from "@/app/commerce/checkout-labels"
@@ -87,9 +88,9 @@ export function OrderSummary({
                 <img src={resolveItemImage(item, "card")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-center">
-                {((item._parent?.name && item._parent.name !== item.name) || item.parent_name || item.site?.name) && (
+                {((item._parent?.name && item._parent.name !== item.name) || item.parent?.name || item.parent_name || item.site?.name) && (
                   <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5 truncate">
-                    {item._parent?.name && item._parent.name !== item.name ? item._parent.name : (item.parent_name || item.site?.name)}
+                    {item._parent?.name && item._parent.name !== item.name ? item._parent.name : (item.parent?.name || item.parent_name || item.site?.name)}
                   </div>
                 )}
                 <h4 className="font-bold truncate text-sm">{item.name}</h4>
@@ -111,16 +112,24 @@ export function OrderSummary({
 
             {item.reservationStart && (
               <div className="pt-2 mt-1 border-t border-border/40">
-                <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-                  <CalendarIcon className="w-3 h-3 opacity-70 shrink-0" />
-                  <span className="truncate">
-                    {format(new Date(item.reservationStart), "MMM d, yyyy")}
+                <Link
+                  href={`/shop/${item.site?.slug || item.site_id}/${item.id}/book`}
+                  className="flex items-center justify-between hover:bg-muted/50 p-1.5 -mx-1.5 rounded-lg transition-colors group"
+                >
+                  <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground group-hover:text-foreground">
+                    <CalendarIcon className="w-3 h-3 opacity-70 shrink-0" />
+                    <span className="truncate">
+                      {format(new Date(item.reservationStart), "MMM d, yyyy")}
+                    </span>
+                    <Clock className="w-3 h-3 opacity-70 shrink-0 ml-1" />
+                    <span className="truncate">
+                      {format(new Date(item.reservationStart), "h:mm a")}
+                    </span>
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                    Edit
                   </span>
-                  <Clock className="w-3 h-3 opacity-70 shrink-0 ml-1" />
-                  <span className="truncate">
-                    {format(new Date(item.reservationStart), "h:mm a")}
-                  </span>
-                </div>
+                </Link>
               </div>
             )}
           </div>

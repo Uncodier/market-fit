@@ -1,5 +1,6 @@
 import React from "react"
 import { format } from "date-fns"
+import Link from "next/link"
 import { Button } from "@/app/components/ui/button"
 import { X, CalendarIcon, Clock } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
@@ -33,9 +34,9 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
         <div>
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0">
-              {item._parent?.name && item._parent.name !== item.name && (
+              {((item._parent?.name && item._parent.name !== item.name) || item.parent?.name || item.parent_name) && (
                 <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5 truncate">
-                  {item._parent.name}
+                  {item._parent?.name && item._parent.name !== item.name ? item._parent.name : (item.parent?.name || item.parent_name)}
                 </div>
               )}
               <h4 className="font-bold text-gray-900 dark:text-gray-100 leading-tight truncate">{item.name}</h4>
@@ -45,12 +46,11 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
             </button>
           </div>
           {showSeller && item.site?.name ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.site.name}</p>
-          ) : (
-            <div className="text-gray-500 dark:text-gray-400 text-sm mt-1 font-medium">
-              {formatPrice(unit, currency)}
-            </div>
-          )}
+            <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5 truncate mt-1">{item.site.name}</p>
+          ) : null}
+          <div className="text-gray-500 dark:text-gray-400 text-sm mt-1 font-medium">
+            {formatPrice(unit, currency)}
+          </div>
           {modifiers.length > 0 && (
             <ul className="mt-1.5 space-y-0.5">
               {modifiers.map((m) => (
@@ -87,16 +87,24 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
 
         {item.reservationStart && (
           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-            <div className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
-              <CalendarIcon className="w-3.5 h-3.5 opacity-70 shrink-0" />
-              <span className="truncate">
-                {format(new Date(item.reservationStart), "MMM d, yyyy")}
+            <Link 
+              href={`/shop/${item.site?.slug || item.site_id}/${item.id}/book`}
+              className="flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 p-1.5 -mx-1.5 rounded-lg transition-colors group"
+            >
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">
+                <CalendarIcon className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                <span className="truncate">
+                  {format(new Date(item.reservationStart), "MMM d, yyyy")}
+                </span>
+                <Clock className="w-3.5 h-3.5 opacity-70 shrink-0 ml-1" />
+                <span className="truncate">
+                  {format(new Date(item.reservationStart), "h:mm a")}
+                </span>
+              </div>
+              <span className="text-[10px] uppercase font-bold text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">
+                Edit
               </span>
-              <Clock className="w-3.5 h-3.5 opacity-70 shrink-0 ml-1" />
-              <span className="truncate">
-                {format(new Date(item.reservationStart), "h:mm a")}
-              </span>
-            </div>
+            </Link>
           </div>
         )}
       </div>
