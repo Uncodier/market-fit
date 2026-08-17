@@ -195,11 +195,20 @@ export function useShopCatalog(
 
         let anchorId: string | null = null
         let prevViewportTop = 0
-        if (typeof document !== "undefined") {
-          const anchorEl = document.querySelector('section[id^="shop-category-"]') as HTMLElement
-          if (anchorEl) {
-            anchorId = anchorEl.id
-            prevViewportTop = anchorEl.getBoundingClientRect().top
+        if (typeof window !== "undefined" && typeof document !== "undefined") {
+          const sections = Array.from(document.querySelectorAll('section[id^="shop-cat-"]')) as HTMLElement[]
+          if (sections.length > 0) {
+            let chosen = sections[0]
+            for (const sec of sections) {
+              if (sec.getBoundingClientRect().top < window.innerHeight * 0.75) {
+                chosen = sec
+              }
+            }
+            anchorId = chosen.id
+            prevViewportTop = chosen.getBoundingClientRect().top
+            console.log(`[Shop Backfill] Captured anchor ${anchorId} at ${prevViewportTop}px`)
+          } else {
+            console.log(`[Shop Backfill] No sections found to anchor`)
           }
         }
 
@@ -214,15 +223,32 @@ export function useShopCatalog(
         windowStartRef.current = prevOffset
 
         if (anchorId && typeof window !== "undefined" && typeof document !== "undefined") {
-          const anchorEl = document.getElementById(anchorId)
-          if (anchorEl) {
-            const currentViewportTop = anchorEl.getBoundingClientRect().top
-            const diff = currentViewportTop - prevViewportTop
-            // If the element moved in the viewport, scroll by that exact amount to keep it anchored
-            if (Math.abs(diff) > 1) {
-              window.scrollBy(0, diff)
+          let attempts = 0
+          const restore = () => {
+            attempts++
+            const el = document.getElementById(anchorId!)
+            if (el) {
+              const currentViewportTop = el.getBoundingClientRect().top
+              const diff = currentViewportTop - prevViewportTop
+              console.log(`[Shop Backfill Restore #${attempts}] ${anchorId} currentTop=${currentViewportTop}px, prevTop=${prevViewportTop}px, diff=${diff}px. scrollY=${window.scrollY} height=${document.documentElement.scrollHeight}`)
+              // If the element moved in the viewport, scroll by that exact amount to keep it anchored
+              if (Math.abs(diff) > 2) {
+                window.scrollBy({ top: diff, left: 0, behavior: "instant" })
+                console.log(`[Shop Backfill Restore #${attempts}] Applied scroll correction of ${diff}px`)
+              }
+            } else {
+               console.log(`[Shop Backfill Restore #${attempts}] Anchor element ${anchorId} not found in DOM anymore`)
             }
           }
+          // Attempt immediate restore
+          restore()
+          // Mobile Safari often requires a delay after DOM changes to correctly update scrollHeight,
+          // and because our restore() is idempotent (re-measures each time), it's safe to call repeatedly.
+          requestAnimationFrame(() => {
+            restore()
+            setTimeout(restore, 50)
+            setTimeout(restore, 150)
+          })
         }
       }
     } catch (err) {
