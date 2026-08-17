@@ -46,14 +46,16 @@ export default function ShopLoading() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
         {/* Category chips */}
-        <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center mb-8 pb-2">
-          {[32, 24, 36, 28, 20].map((w, i) => (
-            <Skeleton
-              key={i}
-              className="flex-shrink-0 h-9 rounded-full"
-              style={{ width: `${w * 4}px` }}
-            />
-          ))}
+        <div className="-mx-4 md:mx-0 mb-8 pb-2">
+          <div className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center px-4 md:px-0 pb-2">
+            {[32, 24, 36, 28, 20].map((w, i) => (
+              <Skeleton
+                key={i}
+                className="flex-shrink-0 h-9 rounded-full"
+                style={{ width: `${w * 4}px` }}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

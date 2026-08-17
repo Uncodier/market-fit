@@ -57,8 +57,8 @@ export default function MarketplaceLoading() {
 
           <div className="flex-1 min-w-0 w-full">
             {/* Mobile chips only */}
-            <div className="md:hidden sticky top-[72px] z-30 -mx-4 px-4 pt-1 pb-3 mb-6">
-              <div className="flex gap-3 overflow-hidden">
+            <div className="md:hidden sticky top-[72px] z-30 -mx-4 pt-1 pb-3 mb-6">
+              <div className="flex gap-3 overflow-hidden px-4">
                 {[1, 2, 3, 4].map((i) => (
                   <Skeleton key={i} className="h-9 w-28 rounded-full shrink-0" />
                 ))}

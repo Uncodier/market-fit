@@ -42,10 +42,10 @@ export function ShopCategoryChips({
     }`
 
   return (
-    <div className="sticky top-[72px] z-30 pointer-events-none -mx-4 px-4 md:mx-0 md:px-0 pt-1 pb-3 mb-6">
+    <div className="sticky top-[72px] z-30 pointer-events-none -mx-4 md:mx-0 pt-1 pb-3 mb-6">
       <div
         ref={scrollerRef}
-        className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto pb-2"
+        className="flex overflow-x-auto gap-3 scrollbar-hide w-full items-center pointer-events-auto pb-2 px-4 md:px-0"
       >
         {leadingChip}
         {categories.length > 0 && (
