@@ -153,6 +153,7 @@ export function CheckoutForm({
               {t('checkout.incompatibleDelivery') || 'These items cannot be purchased together due to incompatible delivery methods. Please remove some items.'}
             </div>
           ) : (
+            <>
               <div className="inline-flex flex-col sm:flex-row p-1.5 bg-gray-100 dark:bg-zinc-800/80 rounded-2xl w-full gap-1">
                 {allowedOptions.includes('pickup') && (
                   <button
@@ -217,6 +218,7 @@ export function CheckoutForm({
                   {t('checkout.mixedCartWarning') || 'To order products for delivery, please start a new order without reservations or services.'}
                 </div>
               )}
+            </>
           )}
         </div>
 
