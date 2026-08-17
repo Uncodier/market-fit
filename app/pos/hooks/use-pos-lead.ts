@@ -26,10 +26,25 @@ type Args = {
 };
 
 function leadLabel(lead: LeadRecord): string {
-  const parts = [lead.name, lead.email, lead.phone].filter(Boolean);
+  const leadName = lead.name?.trim() || "";
+  let companyName = "";
+  if ((lead as any).companies?.name?.trim()) companyName = (lead as any).companies.name.trim();
+  else if (typeof (lead as any).company === 'object' && (lead as any).company?.name?.trim()) companyName = (lead as any).company.name.trim();
+  else if (typeof (lead as any).company === 'string' && (lead as any).company.trim()) companyName = (lead as any).company.trim();
+
+  let displayName = "";
+  if (leadName && companyName && leadName !== companyName && leadName !== lead.phone) {
+    displayName = `${leadName} (${companyName})`;
+  } else if (companyName && (!leadName || leadName === lead.phone)) {
+    displayName = companyName;
+  } else {
+    displayName = leadName || companyName || "";
+  }
+
+  const parts = Array.from(new Set([displayName, lead.name, lead.email, lead.phone].filter(Boolean)));
   return parts.length > 0
     ? parts.join(" · ")
-    : lead.name || lead.email || lead.id;
+    : lead.id;
 }
 
 export function usePosLead({

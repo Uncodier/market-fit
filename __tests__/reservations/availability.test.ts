@@ -38,7 +38,7 @@ describe('Reservation Availability Engine', () => {
         error: null,
       });
 
-      const seats = await getBookedSeats(catalogItemId, start, end, client);
+      const seats = await getBookedSeats([catalogItemId], start, end, client);
       expect(seats).toBe(3);
       expect(client.from).toHaveBeenCalledWith('reservations');
     });
@@ -48,7 +48,7 @@ describe('Reservation Availability Engine', () => {
       const end = fromZonedTime('2026-07-25T11:00:00', 'UTC');
       const client = createChain({ data: [], error: null });
 
-      const seats = await getBookedSeats(catalogItemId, start, end, client);
+      const seats = await getBookedSeats([catalogItemId], start, end, client);
       expect(seats).toBe(0);
     });
   });
@@ -82,7 +82,15 @@ describe('Reservation Availability Engine', () => {
 
       mockCreateServiceClient.mockResolvedValue({
         from: jest.fn((table: string) => {
-          if (table === 'catalog_items') return createChain({ data: { kind: 'service' }, error: null });
+          if (table === 'catalog_items') {
+            return {
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockReturnThis(),
+              single: jest.fn(() => Promise.resolve({ data: { kind: 'service', id: catalogItemId }, error: null })),
+              maybeSingle: jest.fn(() => Promise.resolve({ data: { kind: 'service', id: catalogItemId }, error: null })),
+              then: (res: any) => Promise.resolve({ data: [], error: null }).then(res)
+            };
+          }
           if (table === 'reservation_schedules') return schedulesChain;
           return reservationsChain;
         }),
@@ -122,7 +130,15 @@ describe('Reservation Availability Engine', () => {
 
       mockCreateServiceClient.mockResolvedValue({
         from: jest.fn((table: string) => {
-          if (table === 'catalog_items') return createChain({ data: { kind: 'service' }, error: null });
+          if (table === 'catalog_items') {
+            return {
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockReturnThis(),
+              single: jest.fn(() => Promise.resolve({ data: { kind: 'service', id: catalogItemId }, error: null })),
+              maybeSingle: jest.fn(() => Promise.resolve({ data: { kind: 'service', id: catalogItemId }, error: null })),
+              then: (res: any) => Promise.resolve({ data: [], error: null }).then(res)
+            };
+          }
           if (table === 'reservation_schedules') return schedulesChain;
           return reservationsChain;
         }),
@@ -157,7 +173,15 @@ describe('Reservation Availability Engine', () => {
 
       mockCreateServiceClient.mockResolvedValue({
         from: jest.fn((table: string) => {
-          if (table === 'catalog_items') return createChain({ data: { kind: 'service' }, error: null });
+          if (table === 'catalog_items') {
+            return {
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockReturnThis(),
+              single: jest.fn(() => Promise.resolve({ data: { kind: 'service', id: catalogItemId }, error: null })),
+              maybeSingle: jest.fn(() => Promise.resolve({ data: { kind: 'service', id: catalogItemId }, error: null })),
+              then: (res: any) => Promise.resolve({ data: [], error: null }).then(res)
+            };
+          }
           if (table === 'reservation_schedules') return schedulesChain;
           return reservationsChain;
         }),

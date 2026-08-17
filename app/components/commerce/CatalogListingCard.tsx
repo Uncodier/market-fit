@@ -2,7 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
-import { Plus } from "@/app/components/ui/icons"
+import { Plus, Calendar } from "@/app/components/ui/icons"
 import { CatalogItem } from "@/app/types"
 import type { PromoBadge } from "@/app/promotions/promotion-merchandising"
 import { promoBadgeLabel } from "@/app/promotions/promotion-merchandising"
@@ -79,7 +79,9 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
   const priceLabel = formatListingPrice(item, formatPrice, t)
   const isSoldOut = !item._shop?.sellable && item._shop?.availableQty === 0
   const actionDisabled = isSoldOut || primaryDisabled
-  const showTypeBadge = typeLabelKey !== 'marketplace.listing.badge.product'
+  
+  const isReservableService = item.kind === 'service' && item.is_reservation
+  const showTypeBadge = typeLabelKey !== 'marketplace.listing.badge.product' && !isReservableService
   const descClamp =
     descriptionLineClamp === "none" ? "" : descriptionLineClamp
 
@@ -150,7 +152,11 @@ export const CatalogListingCard = React.memo(function CatalogListingCard({
           aria-label={finalActionDisabled ? finalDisabledLabel : (t(ctaLabelKey) || 'Add')}
           className="absolute bottom-3 right-3 z-20 flex h-9 w-9 items-center justify-center gap-1.5 rounded-full bg-white text-black shadow-[0_4px_14px_rgba(0,0,0,0.28)] ring-1 ring-black/10 transition-colors duration-200 hover:bg-black hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-black active:scale-95 md:h-10 md:w-auto md:max-w-[min(14rem,calc(100%-1.5rem))] md:px-3.5"
         >
-          <Plus className="h-4 w-4 shrink-0" />
+          {isReservableService ? (
+            <Calendar className="h-4 w-4 shrink-0" />
+          ) : (
+            <Plus className="h-4 w-4 shrink-0" />
+          )}
           <span className="hidden md:inline text-sm font-bold truncate">
             {finalActionDisabled ? finalDisabledLabel : (t(ctaLabelKey) || 'Add')}
           </span>

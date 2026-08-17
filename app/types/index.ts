@@ -718,6 +718,7 @@ export interface CatalogItemMetadata {
   dynamic_pricing?: DynamicPricingConfig;
   shipping_cost?: number | null;
   shipping_cost_mode?: 'extra' | 'covers_order';
+  reservation_mode?: 'parent' | 'override' | 'independent';
 }
 
 /** Lightweight catalog link for list/table relation chips */

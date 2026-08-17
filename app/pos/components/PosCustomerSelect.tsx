@@ -8,6 +8,29 @@ import {
 import { User } from "@/app/components/ui/icons";
 import { PosLeadDetailsDialog } from "./PosLeadDetailsDialog";
 
+function getLeadDisplayName(lead: any): string {
+  // Extract name and company name
+  const leadName = lead.name?.trim() || "";
+  let companyName = "";
+  
+  if (lead.companies?.name?.trim()) {
+    companyName = lead.companies.name.trim();
+  } else if (typeof lead.company === 'object' && lead.company?.name?.trim()) {
+    companyName = lead.company.name.trim();
+  } else if (typeof lead.company === 'string' && lead.company.trim()) {
+    companyName = lead.company.trim();
+  }
+
+  // If both exist and are different, combine them (or if leadName is just the phone number, companyName is better)
+  if (leadName && companyName && leadName !== companyName && leadName !== lead.phone) {
+    return `${leadName} (${companyName})`;
+  } else if (companyName && (!leadName || leadName === lead.phone)) {
+    return companyName;
+  }
+  
+  return leadName || companyName || "";
+}
+
 function getSelectedLeadId(
   leadValue: RelationSelectValue | string | null | undefined,
 ): string | null {
@@ -51,14 +74,28 @@ export function PosCustomerSelect({
     <>
       <RelationSelect
         options={leads.map((l) => {
-          const parts = [l.name, l.email, l.phone].filter(Boolean);
+          const displayName = getLeadDisplayName(l);
+          
+          let companySearchStr = "";
+          if (l.companies?.name?.trim()) companySearchStr = l.companies.name;
+          else if (typeof l.company === 'object' && l.company?.name?.trim()) companySearchStr = l.company.name;
+          else if (typeof l.company === 'string' && l.company.trim()) companySearchStr = l.company;
+
+          const parts = Array.from(new Set([displayName, l.name, l.email, l.phone].filter(Boolean)));
           const label =
             parts.length > 0
               ? parts.join(" · ")
               : t("pos.cart.customer") || "Customer";
-          const searchText = [l.name, l.email, l.personal_email, l.phone]
-            .filter(Boolean)
-            .join(" ");
+              
+          const searchText = Array.from(new Set([
+            displayName, 
+            l.name,
+            companySearchStr,
+            l.email, 
+            l.personal_email, 
+            l.phone
+          ].filter(Boolean))).join(" ");
+          
           return {
             id: l.id,
             label,

@@ -203,9 +203,9 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
       ) : (
         <footer className="bg-card border-t py-12 mt-auto">
           <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-2xl font-black tracking-tight text-muted-foreground">Makinri</div>
+            <div className="text-2xl font-black tracking-tight text-muted-foreground">Makinari</div>
             <div className="text-sm text-muted-foreground font-medium">
-              &copy; {new Date().getFullYear()} Makinri. All rights reserved.
+              &copy; {new Date().getFullYear()} Makinari. All rights reserved.
             </div>
             <div className="flex items-center gap-2">
               <CurrencySelector className="rounded-full" />

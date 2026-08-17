@@ -73,7 +73,7 @@ export function BuyerExperienceShell({
   const resolvedBackLabel = backLabel || t(copy.backKey) || copy.backFallback
 
   return (
-    <div className="w-full min-h-0 flex flex-col relative">
+    <div className="w-full flex-1 min-h-0 flex flex-col relative">
       <div className="h-4 w-full shrink-0" />
       <CommerceShellHeader
         brand={

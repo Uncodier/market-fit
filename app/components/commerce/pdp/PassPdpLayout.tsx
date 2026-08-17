@@ -70,18 +70,7 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
 
   if (isEntitlementExperience) {
     return (
-      <div className="pb-16 max-w-7xl mx-auto w-full px-4 md:px-8 space-y-8">
-        <div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-2">
-            {item.name}
-          </h1>
-          <div className="text-muted-foreground font-medium">
-            {isRecurring
-              ? t("pdp.subscriptionBadge") || "Subscription"
-              : t("pdp.accessPassBadge") || "Access Pass"}
-          </div>
-        </div>
-
+      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-2 md:py-4 flex-1 min-h-0 flex flex-col">
         <PassBookingPanel
           entitlement={experience!.entitlement}
           services={experience!.extras?.services || []}

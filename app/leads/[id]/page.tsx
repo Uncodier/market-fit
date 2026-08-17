@@ -32,7 +32,7 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(true)
   const [showAttributionModal, setShowAttributionModal] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<"new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified" | null>(null)
-  const [revealEmpty, setRevealEmpty] = useState(false)
+  const [revealEmptyCount, setRevealEmptyCount] = useState(0)
   
   // Extract id safely from params
   const leadId = Array.isArray(unwrappedParams.id) ? unwrappedParams.id[0] : unwrappedParams.id
@@ -289,7 +289,22 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
               lead={lead}
               onUpdateLead={handleUpdateLead}
               onDeleteLead={handleDeleteLead}
-              onRevealFields={() => setRevealEmpty(true)}
+              onRevealFields={() => {
+                setRevealEmptyCount(prev => prev + 1)
+                setTimeout(() => {
+                  const aside = document.getElementById('lead-details-aside')
+                  if (aside) {
+                    aside.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    aside.classList.add('ring-2', 'ring-primary/50', 'bg-primary/5', 'rounded-xl', 'transition-all', 'duration-500', 'p-4')
+                    setTimeout(() => {
+                      aside.classList.remove('ring-2', 'ring-primary/50', 'bg-primary/5')
+                      setTimeout(() => {
+                        aside.classList.remove('transition-all', 'duration-500', 'rounded-xl', 'p-4')
+                      }, 500)
+                    }, 1500)
+                  }
+                }, 50)
+              }}
             />
 
             <div className="mt-5 flex flex-col lg:flex-row border-t border-border/50">
@@ -312,13 +327,13 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
               </div>
 
               <aside className="w-full lg:w-[340px] xl:w-[380px] shrink-0 pt-5 lg:pl-8 lg:border-l border-border/50">
-                <div className="lg:sticky lg:top-[calc(var(--topbar-height,64px)+71px+16px)] lg:max-h-[calc(100vh-var(--topbar-height,64px)-96px)] lg:overflow-y-auto">
+                <div id="lead-details-aside" className="lg:sticky lg:top-[calc(var(--topbar-height,64px)+71px+16px)] lg:max-h-[calc(100vh-var(--topbar-height,64px)-96px)] lg:overflow-y-auto">
                   <LeadDetail
                     lead={lead}
                     segments={segments}
                     campaigns={campaigns}
                     onUpdateLead={handleUpdateLead}
-                    revealEmpty={revealEmpty}
+                    revealEmptyCount={revealEmptyCount}
                   />
                 </div>
               </aside>

@@ -41,9 +41,9 @@ export function PassBookingPanel({
   const hasNoAccess = entitlement.uses_remaining === 0 || entitlement.status === "expired" || entitlement.status === "cancelled"
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 flex-1 min-h-0 flex flex-col">
       {hasNoAccess && (
-        <div className="overflow-hidden rounded-3xl border border-destructive/20 bg-destructive/5 relative p-6 sm:p-8 flex items-center gap-6">
+        <div className="overflow-hidden rounded-3xl border border-destructive/20 bg-destructive/5 relative p-6 sm:p-8 flex items-center gap-6 shrink-0">
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-destructive/0 via-destructive/50 to-destructive/0" />
           <div className="inline-flex items-center justify-center w-14 h-14 bg-destructive/10 rounded-full shrink-0">
             <span className="text-2xl font-bold text-destructive">!</span>
@@ -60,7 +60,7 @@ export function PassBookingPanel({
       )}
 
       {(!hasNoAccess && (entitlement.uses_remaining != null || services.length > 1)) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
           <div>
             {entitlement.uses_remaining != null && !hasNoAccess && (
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 text-primary rounded-full text-sm font-bold">
@@ -88,11 +88,12 @@ export function PassBookingPanel({
       )}
 
       {selectedService ? (
-        <div className={hasNoAccess ? "opacity-50 pointer-events-none" : ""}>
+        <div className={hasNoAccess ? "opacity-50 pointer-events-none flex-1 min-h-0 flex flex-col" : "flex-1 min-h-0 flex flex-col"}>
           <BookingExperience
             mode="entitlement"
             item={selectedService}
             entitlementId={entitlement.id}
+            passItem={entitlement.catalog_item || entitlement.subscription?.catalog_item}
             backUrl={backUrl}
             hideHeader
           />

@@ -56,8 +56,62 @@ function getTimeBlocks(dayConfig: any): { start: string; end: string }[] {
   return []
 }
 
+export async function resolveReservationConfig(catalogItemId: string, supabaseClient: any): Promise<{ scheduleItemId: string, capacityGroupIds: string[] }> {
+  const { data: item } = await supabaseClient
+    .from("catalog_items")
+    .select("id, parent_id, metadata")
+    .eq("id", catalogItemId)
+    .single()
+
+  if (!item) return { scheduleItemId: catalogItemId, capacityGroupIds: [catalogItemId] }
+
+  const mode = item.metadata?.reservation_mode || 'parent'
+
+  if (item.parent_id) {
+    if (mode === 'independent') {
+      return { scheduleItemId: catalogItemId, capacityGroupIds: [catalogItemId] }
+    } else {
+      // both 'parent' and 'override' share capacity with parent and other parent/override variants
+      const { data: siblings } = await supabaseClient
+        .from("catalog_items")
+        .select("id, metadata")
+        .eq("parent_id", item.parent_id)
+      
+      const sharedIds = [item.parent_id]
+      for (const sib of (siblings || [])) {
+        const sibMode = sib.metadata?.reservation_mode || 'parent'
+        if (sibMode !== 'independent') {
+          sharedIds.push(sib.id)
+        }
+      }
+      
+      if (mode === 'override') {
+        return { scheduleItemId: catalogItemId, capacityGroupIds: sharedIds }
+      } else {
+        // 'parent' mode
+        return { scheduleItemId: item.parent_id, capacityGroupIds: sharedIds }
+      }
+    }
+  } else {
+    // If it's a parent, find its variants that share capacity
+    const { data: children } = await supabaseClient
+      .from("catalog_items")
+      .select("id, metadata")
+      .eq("parent_id", catalogItemId)
+    
+    const sharedIds = [catalogItemId]
+    for (const child of (children || [])) {
+      const childMode = child.metadata?.reservation_mode || 'parent'
+      if (childMode !== 'independent') {
+        sharedIds.push(child.id)
+      }
+    }
+    return { scheduleItemId: catalogItemId, capacityGroupIds: sharedIds }
+  }
+}
+
 export async function getBookedSeats(
-  catalogItemId: string,
+  catalogItemIds: string[],
   start: Date,
   end: Date,
   supabaseClient: any,
@@ -67,7 +121,7 @@ export async function getBookedSeats(
   let query = supabaseClient
     .from("reservations")
     .select("id, quantity, status")
-    .eq("catalog_item_id", catalogItemId)
+    .in("catalog_item_id", catalogItemIds)
     .in("status", ["pending", "confirmed"])
     .gte("end_time", start.toISOString())
     .lte("start_time", end.toISOString())
@@ -131,12 +185,13 @@ export async function getAvailableSlotsForItem(
   ignoreReservationId?: string
 ) {
   const supabase = await createServiceClient(true)
+  const config = await resolveReservationConfig(catalogItemId, supabase)
   
   // 1. Get schedules
   const { data: schedules } = await supabase
     .from("reservation_schedules")
     .select("*")
-    .eq("catalog_item_id", catalogItemId)
+    .eq("catalog_item_id", config.scheduleItemId)
 
   if (!schedules || schedules.length === 0) return []
 
@@ -151,7 +206,7 @@ export async function getAvailableSlotsForItem(
   const { data: reservations } = await supabase
     .from("reservations")
     .select("id, start_time, end_time, quantity, status")
-    .eq("catalog_item_id", catalogItemId)
+    .in("catalog_item_id", config.capacityGroupIds)
     .in("status", ["pending", "confirmed"])
     .gte("start_time", rangeStart.toISOString())
     .lte("end_time", rangeEnd.toISOString())
@@ -225,10 +280,12 @@ export async function assertReservationSlot(
   ignoreReservationId?: string
 ) {
   const supabase = await createServiceClient(true)
+  const config = await resolveReservationConfig(catalogItemId, supabase)
+
   const { data: schedules } = await supabase
     .from("reservation_schedules")
     .select("*")
-    .eq("catalog_item_id", catalogItemId)
+    .eq("catalog_item_id", config.scheduleItemId)
 
   if (!schedules || schedules.length === 0) {
     throw new Error("Item is reservable but has no schedule configured")
@@ -269,7 +326,7 @@ export async function assertReservationSlot(
     }
 
     if (isWithinAnyBlock) {
-      const booked = await getBookedSeats(catalogItemId, start, end, supabase, ignoreReservationId)
+      const booked = await getBookedSeats(config.capacityGroupIds, start, end, supabase, ignoreReservationId)
       if (schedule.capacity - booked >= quantity) {
         validScheduleFound = true
         break

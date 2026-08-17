@@ -52,19 +52,27 @@ export const DisplayCurrencyProvider = ({ children, initialCountry }: { children
       for (const fxUrl of fxUrls) {
         try {
           const res = await fetch(fxUrl, { credentials: 'omit' });
-          if (!res.ok) continue;
+          if (!res.ok) {
+            console.warn(`[fx] Fetch to ${fxUrl} returned ${res.status}`);
+            continue;
+          }
           const contentType = res.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) continue;
+          if (!contentType || !contentType.includes('application/json')) {
+            console.warn(`[fx] Fetch to ${fxUrl} returned non-json content-type: ${contentType}`);
+            continue;
+          }
           const data = await res.json();
           if (data?.rates) {
             setRates(data.rates);
             return;
+          } else {
+            console.warn(`[fx] Fetch to ${fxUrl} returned no rates:`, data);
           }
-        } catch {
-          // try next URL
+        } catch (error) {
+          console.warn(`[fx] Fetch to ${fxUrl} threw error:`, error);
         }
       }
-      console.error('Failed to load FX rates');
+      console.warn('Failed to load FX rates, falling back to local currency without conversion.');
     })();
 
     setMounted(true);

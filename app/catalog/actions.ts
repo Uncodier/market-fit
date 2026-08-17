@@ -121,12 +121,24 @@ export async function getCatalogItem(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("catalog_items")
-    .select("*")
+    .select("*, parent:parent_id(name), raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))")
     .eq("id", id)
     .single();
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (data?.parent?.name) {
+    data._parent = { name: data.parent.name, id: data.parent_id };
+  }
+
+  if (data?.raw_specs) {
+    data.item_specs = (data.raw_specs as any[])
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map((cis) => cis.item_spec)
+      .filter(Boolean);
+    delete data.raw_specs;
   }
 
   return { data: data as CatalogItem };

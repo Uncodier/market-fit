@@ -169,6 +169,7 @@ export async function syncVariantChildren(parentId: string) {
               option_values: combo.option_values,
               delivery_options: (parent.metadata as any)?.delivery_options,
               payment_options: (parent.metadata as any)?.payment_options,
+              reservation_mode: "parent",
             },
           })
           .select()

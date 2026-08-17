@@ -126,17 +126,33 @@ export async function runMarketplaceCheckout(params: {
     return
   }
 
-  if (orderTiming === "scheduled" && !scheduledFor) {
-    toast.error(t("checkout.selectTimeRequired") || "Please select a date and time for your order.")
-    return
+  const isPurelyReservableOrDigital = cart.length > 0 && cart.every(item => item.is_reservation || item.kind === 'digital_asset')
+
+  if (!isPurelyReservableOrDigital) {
+    if (orderTiming === "scheduled" && !scheduledFor) {
+      toast.error(t("checkout.selectTimeRequired") || "Please select a date and time for your order.")
+      return
+    }
+
+    if (orderTiming === "now" && !isOpen) {
+      const confirmed = window.confirm(
+        nextOpenSlot?.label
+          ? t("checkout.storeClosedConfirm", { time: nextOpenSlot.label }) ||
+            `The store is currently closed. Your order will be processed ${nextOpenSlot.label}. Do you want to continue?`
+          : t("checkout.storeClosedConfirmGeneric") ||
+            "The store is currently closed. Your order will be processed when it opens. Do you want to continue?"
+      )
+      if (!confirmed) return
+    }
   }
 
-  const finalScheduledFor =
+  const finalScheduledFor = isPurelyReservableOrDigital ? undefined : (
     orderTiming === "scheduled"
       ? scheduledFor?.toISOString()
       : orderTiming === "now" && !isOpen && nextOpenSlot
         ? nextOpenSlot.at.toISOString()
         : undefined
+  )
 
   const requiresAuth = cart.some((c: any) => c.kind === "digital_asset" || c.is_recurring)
   if (requiresAuth && !session?.user) {

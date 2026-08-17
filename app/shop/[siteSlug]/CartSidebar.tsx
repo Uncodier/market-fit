@@ -73,6 +73,7 @@ export function CartSidebar({
   }, [cart, locations]);
 
   const requiresAuth = cart.some((c: any) => c.kind === 'digital_asset' || c.is_recurring)
+  const isPurelyReservableOrDigital = cart.length > 0 && cart.every((c: any) => c.is_reservation || c.kind === 'digital_asset')
 
   const promoCartLines = useMemo(() => {
     return cart.map((item: any) => {
@@ -197,8 +198,8 @@ export function CartSidebar({
                   availablePaymentMethods={availablePaymentMethods}
                   paymentMethod={paymentMethod}
                   setPaymentMethod={setPaymentMethod}
-                  orderTiming={orderTiming}
-                  setOrderTiming={setOrderTiming}
+                  orderTiming={isPurelyReservableOrDigital ? undefined : orderTiming}
+                  setOrderTiming={isPurelyReservableOrDigital ? undefined : setOrderTiming}
                   scheduledFor={scheduledFor}
                   setScheduledFor={setScheduledFor}
                   isOpen={isOpen}
@@ -259,7 +260,7 @@ export function CartSidebar({
           type="submit"
           form="checkout-form"
           className="w-full h-14 text-lg font-bold rounded-xl" 
-          disabled={cart.length === 0 || checkoutLoading || allowedOptions.length === 0 || ((fulfillment === 'pickup' || fulfillment === 'dine_in') && pickupLocations.length === 0) || !paymentMethod || !locationAvailable || (orderTiming === 'scheduled' && !scheduledFor)}
+          disabled={cart.length === 0 || checkoutLoading || allowedOptions.length === 0 || ((fulfillment === 'pickup' || fulfillment === 'dine_in') && pickupLocations.length === 0) || !paymentMethod || !locationAvailable || (!isPurelyReservableOrDigital && orderTiming === 'scheduled' && !scheduledFor)}
         >
           {checkoutLoading
             ? (t('shop.cart.processing') || "Processing securely...")

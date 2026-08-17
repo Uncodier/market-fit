@@ -84,6 +84,7 @@ export function MarketplaceCartPanel({
   }, [fulfillment, allowedPaymentOptions])
 
   const requiresAuth = cart.some((c: any) => c.kind === 'digital_asset' || c.is_recurring)
+  const isPurelyReservableOrDigital = cart.length > 0 && cart.every((c: any) => c.is_reservation || c.kind === 'digital_asset')
 
   const pickupLocations = useMemo(() => {
     const restriction = intersectPickupLocationIds(cart);
@@ -217,8 +218,8 @@ export function MarketplaceCartPanel({
               availablePaymentMethods={availablePaymentMethods}
               paymentMethod={paymentMethod}
               setPaymentMethod={setPaymentMethod}
-              orderTiming={orderTiming}
-              setOrderTiming={setOrderTiming}
+              orderTiming={isPurelyReservableOrDigital ? undefined : orderTiming}
+              setOrderTiming={isPurelyReservableOrDigital ? undefined : setOrderTiming}
               scheduledFor={scheduledFor}
               setScheduledFor={setScheduledFor}
               isOpen={isOpen}
@@ -276,7 +277,7 @@ export function MarketplaceCartPanel({
               type="submit"
               form="marketplace-checkout"
               className="w-full h-14 text-lg font-bold rounded-xl" 
-              disabled={checkoutLoading || allowedOptions.length === 0 || ((fulfillment === 'pickup' || fulfillment === 'dine_in') && pickupLocations.length === 0) || !paymentMethod || !locationAvailable || (orderTiming === 'scheduled' && !scheduledFor)}
+              disabled={checkoutLoading || allowedOptions.length === 0 || ((fulfillment === 'pickup' || fulfillment === 'dine_in') && pickupLocations.length === 0) || !paymentMethod || !locationAvailable || (!isPurelyReservableOrDigital && orderTiming === 'scheduled' && !scheduledFor)}
             >
               {checkoutLoading
                 ? (t('marketplace.checkout.processing') || "Processing securely...")

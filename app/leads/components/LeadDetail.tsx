@@ -16,7 +16,7 @@ interface LeadDetailProps {
   segments: Segment[]
   campaigns: Campaign[]
   onUpdateLead: (id: string, data: Partial<Lead>) => Promise<void>
-  revealEmpty?: boolean
+  revealEmptyCount?: number
 }
 
 export function LeadDetail({
@@ -24,13 +24,13 @@ export function LeadDetail({
   segments,
   campaigns,
   onUpdateLead,
-  revealEmpty = false,
+  revealEmptyCount = 0,
 }: LeadDetailProps) {
-  const [showEmpty, setShowEmpty] = useState(revealEmpty)
+  const [showEmpty, setShowEmpty] = useState(revealEmptyCount > 0)
 
   useEffect(() => {
-    if (revealEmpty) setShowEmpty(true)
-  }, [revealEmpty])
+    if (revealEmptyCount > 0) setShowEmpty(true)
+  }, [revealEmptyCount])
 
   const createdLabel = new Date(lead.created_at).toLocaleDateString()
   const updatedLabel = lead.updated_at

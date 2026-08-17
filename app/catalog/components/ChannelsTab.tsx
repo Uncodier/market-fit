@@ -8,6 +8,7 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
+import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import {
   SectionCard,
   SectionCardHeader,
@@ -147,7 +148,67 @@ export function ChannelsTab({
               </div>
             </div>
           )}
-          <ReservationScheduleCard catalogItemId={item.id} />
+
+          {item.parent_id && (
+            <SectionCard>
+              <SectionCardHeader>
+                <SectionCardTitle>{t("catalog.channels.reservationModeTitle") || "Reservation Behavior"}</SectionCardTitle>
+                <SectionCardDescription>
+                  {t("catalog.channels.reservationModeDesc") || "Choose how this variant handles its schedule and capacity."}
+                </SectionCardDescription>
+              </SectionCardHeader>
+              <SectionCardContent>
+                <RadioGroup 
+                  value={(formData.metadata as any)?.reservation_mode || 'parent'}
+                  onValueChange={(val) => setFormData({
+                    ...formData,
+                    metadata: {
+                      ...(formData.metadata as any),
+                      reservation_mode: val
+                    }
+                  })}
+                  className="space-y-3"
+                >
+                  <div className="flex items-start space-x-3 space-y-0">
+                    <RadioGroupItem value="parent" id="mode-parent" className="mt-1" />
+                    <div className="space-y-1 leading-none">
+                      <Label htmlFor="mode-parent" className="font-medium">{t("catalog.channels.modeParent") || "Use parent configuration"}</Label>
+                      <p className="text-sm text-muted-foreground">
+                        {t("catalog.channels.modeParentDesc") || "Shares both schedule hours and capacity with the parent service."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3 space-y-0">
+                    <RadioGroupItem value="override" id="mode-override" className="mt-1" />
+                    <div className="space-y-1 leading-none">
+                      <Label htmlFor="mode-override" className="font-medium">{t("catalog.channels.modeOverride") || "Override schedule"}</Label>
+                      <p className="text-sm text-muted-foreground">
+                        {t("catalog.channels.modeOverrideDesc") || "Set custom hours for this variant, but continue sharing the capacity limit with the parent service."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3 space-y-0">
+                    <RadioGroupItem value="independent" id="mode-independent" className="mt-1" />
+                    <div className="space-y-1 leading-none">
+                      <Label htmlFor="mode-independent" className="font-medium">{t("catalog.channels.modeIndependent") || "Independent schedule and capacity"}</Label>
+                      <p className="text-sm text-muted-foreground">
+                        {t("catalog.channels.modeIndependentDesc") || "Set custom hours and track capacity separately from the parent service."}
+                      </p>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </SectionCardContent>
+              <ActionFooter>
+                <Button variant="outline" onClick={handleSave} disabled={saving} size="sm">
+                  {t("catalog.channels.saveBehaviors") || "Save Behaviors"}
+                </Button>
+              </ActionFooter>
+            </SectionCard>
+          )}
+
+          {(!item.parent_id || ((formData.metadata as any)?.reservation_mode && (formData.metadata as any)?.reservation_mode !== 'parent')) && (
+            <ReservationScheduleCard catalogItemId={item.id} />
+          )}
         </div>
       )}
     </div>

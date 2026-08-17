@@ -185,20 +185,24 @@ export function CartCheckoutFields({
         </div>
       )}
 
-      <div className={`${setOrderTiming ? 'mt-4' : 'mt-6 pt-6 border-t border-gray-100 dark:border-gray-800'}`}>
-        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 block">{t(checkoutLabelKey('checkout.deliveryMethod', copyMode)) || 'Delivery Method'}</Label>
-        {allowedOptions.length === 0 ? (
-          <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
-            {t('checkout.incompatibleDelivery') || 'These items cannot be purchased together due to incompatible delivery methods. Please remove some items.'}
-          </div>
-        ) : (
+      {allowedOptions.length > 1 && (
+        <div className={`${setOrderTiming ? 'mt-4' : 'mt-6 pt-6 border-t border-gray-100 dark:border-gray-800'}`}>
+          <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5 block">{t(checkoutLabelKey('checkout.deliveryMethod', copyMode)) || 'Delivery Method'}</Label>
           <SegmentedTabs
             value={fulfillment}
             onChange={setFulfillment}
             options={deliveryOptions}
           />
-        )}
-      </div>
+        </div>
+      )}
+
+      {allowedOptions.length === 0 && (
+        <div className={`${setOrderTiming ? 'mt-4' : 'mt-6 pt-6 border-t border-gray-100 dark:border-gray-800'}`}>
+          <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
+            {t('checkout.incompatibleDelivery') || 'These items cannot be purchased together due to incompatible delivery methods. Please remove some items.'}
+          </div>
+        </div>
+      )}
 
       {(fulfillment === 'pickup' || fulfillment === 'dine_in') && allowedOptions.some(opt => opt === 'pickup' || opt === 'dine_in') && setOriginLocationId && (
         <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-800">

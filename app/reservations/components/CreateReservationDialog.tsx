@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { format } from "date-fns"
 import useSWR from "swr"
 import { useRouter } from "next/navigation"
@@ -19,7 +19,15 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import type { Reservation } from "@/app/types"
+import { createClient } from "@/lib/supabase/client"
+import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
+import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve"
+import { VariantPicker } from "@/app/components/commerce/pdp/VariantPicker"
+import { ModifierPickerPanel, isModifierSelectionValid } from "@/app/components/commerce/ModifierPickerPanel"
+import type { Reservation, CatalogItem, VariantAxis } from "@/app/types"
+import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
+import type { CartModifier } from "@/app/commerce/cart-modifiers"
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { upsertReservation } from "../actions"
 import { assertReservationSlot } from "../availability"
 import { getLeads } from "@/app/leads/actions"
@@ -30,6 +38,8 @@ import { ReservationSlotPicker } from "@/app/components/commerce/ReservationSlot
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { useDirtyDialogClose } from "@/app/components/ui/use-dirty-dialog-close"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { User } from "@/app/components/ui/icons"
+import { PosCustomerSelect } from "@/app/pos/components/PosCustomerSelect"
 
 function ReservationDialogFormSkeleton() {
   return (
@@ -81,6 +91,7 @@ export function CreateReservationDialog({
 }: CreateReservationDialogProps) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
+  const { formatPrice } = useDisplayCurrency()
   const router = useRouter()
   const isEdit = Boolean(reservation)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -88,6 +99,14 @@ export function CreateReservationDialog({
   const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null)
   const [notes, setNotes] = useState("")
+
+  const [children, setChildren] = useState<CatalogItem[]>([])
+  const [axes, setAxes] = useState<VariantAxis[]>([])
+  const [loadingVariants, setLoadingVariants] = useState(false)
+  const [loadingModifiers, setLoadingModifiers] = useState(false)
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
+  const [modifierGroups, setModifierGroups] = useState<ModifierGroupWithItems[]>([])
+  const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([])
 
   const { data: leadsData } = useSWR(
     open && currentSite ? ["leads", currentSite.id] : null,
@@ -100,7 +119,7 @@ export function CreateReservationDialog({
   )
 
   const leads = leadsData?.leads || []
-  const items = catalogData?.data || []
+  const items = useMemo(() => (catalogData?.data || []).filter((item: any) => !item.parent_id), [catalogData?.data])
   const catalogItemId = catalogItemValue?.mode === "existing" ? catalogItemValue.id : ""
 
   const resetForm = () => {
@@ -108,6 +127,11 @@ export function CreateReservationDialog({
     setLeadValue(null)
     setSelectedSlot(null)
     setNotes("")
+    setChildren([])
+    setAxes([])
+    setModifierGroups([])
+    setSelectedOptions({})
+    setSelectedModifiers([])
   }
 
   useEffect(() => {
@@ -129,6 +153,84 @@ export function CreateReservationDialog({
     resetForm()
     if (initialSlot) setSelectedSlot(initialSlot)
   }, [open, reservation, initialSlot])
+
+  useEffect(() => {
+    if (!catalogItemId || !currentSite) return
+    
+    // Si estamos editando y el catalogItemId ya es una variante (no está en la lista de items filtrados que solo tiene parents),
+    // `parentItem` será undefined. No cargaremos hijos ni modifiers para la variante en sí, porque se asume que ya fue seleccionado
+    // y en edición no permitimos re-seleccionar variantes, solo cambiar de servicio principal.
+    const parentItem = items.find((i: any) => i.id === catalogItemId)
+    
+    if (!parentItem) {
+      setChildren([])
+      setAxes([])
+      setModifierGroups([])
+      setSelectedOptions({})
+      return
+    }
+
+    setLoadingVariants(true)
+    setLoadingModifiers(true)
+    setSelectedOptions({})
+    setSelectedModifiers([])
+    setChildren([])
+    setAxes([])
+    setModifierGroups([])
+
+    const supabase = createClient()
+    
+    void supabase
+      .from("catalog_items")
+      .select("*")
+      .eq("parent_id", catalogItemId)
+      .eq("status", "active")
+      .eq("is_purchasable", true)
+      .then(({ data, error }) => {
+        if (data && !error) {
+          const resolved = resolveVariantAxesForDisplay(
+            parentItem,
+            data as CatalogItem[]
+          )
+          setChildren(resolved.children)
+          setAxes(resolved.axes)
+        }
+        setLoadingVariants(false)
+      })
+
+    void getModifierGroupsForCatalogItem(catalogItemId).then(({ data }) => {
+      setModifierGroups(data || [])
+      setLoadingModifiers(false)
+    })
+  }, [catalogItemId, currentSite, items])
+
+  const resolvedChild = useMemo(() => {
+    if (!axes.length) return null
+    if (Object.keys(selectedOptions).length !== axes.length) return null
+    return (
+      children.find((c) => {
+        const childOpts = c.metadata?.option_values
+        if (!childOpts) return false
+        return Object.entries(selectedOptions).every(
+          ([aId, vId]) => childOpts[aId] === vId
+        )
+      }) || null
+    )
+  }, [selectedOptions, axes.length, children])
+
+  const needsVariant = axes.length > 0
+  const parentItemObj = useMemo(() => {
+    const found = items.find((i: any) => i.id === catalogItemId)
+    if (found) return found
+    if (reservation && reservation.catalog_item_id === catalogItemId) {
+      return { id: catalogItemId, name: reservation.catalog_item?.name || catalogItemId } as CatalogItem
+    }
+    return null
+  }, [items, catalogItemId, reservation])
+  
+  const sellableItem = needsVariant ? resolvedChild : parentItemObj
+
+  const modifiersValid = modifierGroups.length === 0 || isModifierSelectionValid(modifierGroups, selectedModifiers).ok
 
   const dirty = isEdit
     ? catalogItemId !== (reservation?.catalog_item_id || "") ||
@@ -157,13 +259,8 @@ export function CreateReservationDialog({
 
     setIsSubmitting(true)
     try {
-      const { id: resolvedItemId, error: itemError } = await resolveRelationId(
-        "catalog_item",
-        catalogItemValue,
-        currentSite.id
-      )
-      if (itemError) throw new Error(itemError)
-      if (!resolvedItemId) throw new Error("Service is required")
+      if (!sellableItem) throw new Error("Service is required")
+      const resolvedItemId = sellableItem.id
 
       const { id: resolvedLeadId, error: leadError } = await resolveRelationId(
         "lead",
@@ -183,13 +280,21 @@ export function CreateReservationDialog({
         reservation?.id
       )
 
+      let finalNotes = notes.trim()
+      if (selectedModifiers.length > 0) {
+        const modifiersText = selectedModifiers
+          .map(m => `- ${m.cartQty}x ${m.name}` + (m.cartPrice ? ` (+${formatPrice(m.cartPrice, parentItemObj?.currency || "USD")})` : ""))
+          .join("\n")
+        finalNotes = finalNotes ? `${finalNotes}\n\nExtras:\n${modifiersText}` : `Extras:\n${modifiersText}`
+      }
+
       const payload: Partial<Reservation> = {
         site_id: currentSite.id,
         catalog_item_id: resolvedItemId,
         lead_id: resolvedLeadId,
         start_time: selectedSlot.start,
         end_time: selectedSlot.end,
-        notes: notes.trim() || undefined,
+        notes: finalNotes || undefined,
         quantity: reservation?.quantity || 1,
       }
       if (reservation) {
@@ -279,30 +384,74 @@ export function CreateReservationDialog({
                     emptyMessage="No reservable services found"
                   />
                 </div>
+
+                {/* Variants & Modifiers */}
+                {catalogItemId && (loadingVariants || loadingModifiers) ? (
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-16 w-full rounded-2xl" />
+                      <Skeleton className="h-16 w-full rounded-2xl" />
+                    </div>
+                  </div>
+                ) : catalogItemId && (needsVariant || modifierGroups.length > 0) ? (
+                  <>
+                    {needsVariant && (
+                      <div className="[&_.mb-8]:mb-0 [&_.space-y-8]:space-y-4 [&_section]:p-4 [&_section]:rounded-2xl [&_.grid]:!grid-cols-1">
+                        <VariantPicker
+                          axes={axes}
+                          selectedOptions={selectedOptions}
+                          onOptionSelect={(axisId, valueId) =>
+                            setSelectedOptions((prev) => ({ ...prev, [axisId]: valueId }))
+                          }
+                          childrenItems={children}
+                          presentation="pdp"
+                          currency={parentItemObj?.currency || "USD"}
+                        />
+                      </div>
+                    )}
+                    {modifierGroups.length > 0 && (
+                      <div className="space-y-2">
+                        {!needsVariant ? null : (
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            {t("pos.modifiers.title") || "Add extras"}
+                          </h4>
+                        )}
+                        <ModifierPickerPanel
+                          groups={modifierGroups}
+                          value={selectedModifiers}
+                          onChange={setSelectedModifiers}
+                          resolvePrice={(id, price) => price}
+                          currency={parentItemObj?.currency || "USD"}
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : null}
+
                 <div className="space-y-2">
                   <Label>Customer</Label>
-                  <RelationSelect
-                    options={leads.map((lead: { id: string; name?: string; email?: string }) => ({
-                      id: lead.id,
-                      label: lead.name || lead.email || lead.id,
-                    }))}
-                    value={leadValue}
-                    onValueChange={setLeadValue}
+                  <PosCustomerSelect
+                    leads={leads}
+                    leadValue={leadValue}
+                    setLeadValue={setLeadValue}
+                    siteId={currentSite.id}
+                    t={t}
+                    clearable={false}
                     placeholder="Select customer..."
-                    emptyMessage="No customers found"
                   />
                 </div>
-                {selectedSlot && !catalogItemId ? (
+                {selectedSlot && !sellableItem ? (
                   <p className="text-sm text-muted-foreground">
                     Selected: {format(new Date(selectedSlot.start), "PPP p")} – {format(new Date(selectedSlot.end), "p")}
                   </p>
                 ) : null}
-                {catalogItemId ? (
+                {sellableItem ? (
                   <div className="space-y-2">
                     <Label>Time slot</Label>
                     <ReservationSlotPicker
-                      key={`${catalogItemId}-${reservation?.id || "new"}-${initialSlot?.start || ""}`}
-                      catalogItemId={catalogItemId}
+                      key={`${sellableItem.id}-${reservation?.id || "new"}-${initialSlot?.start || ""}`}
+                      catalogItemId={sellableItem.id}
                       hideDetailsStep
                       ignoreReservationId={reservation?.id}
                       selectedStartIso={selectedSlot?.start}
@@ -314,6 +463,13 @@ export function CreateReservationDialog({
                         Selected: {format(new Date(selectedSlot.start), "PPP p")} – {format(new Date(selectedSlot.end), "p")}
                       </p>
                     ) : null}
+                  </div>
+                ) : catalogItemId && needsVariant && !resolvedChild ? (
+                  <div className="space-y-2">
+                    <Label>Time slot</Label>
+                    <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+                      Please select options above to see available times.
+                    </div>
                   </div>
                 ) : null}
                 <div className="space-y-2">
@@ -341,7 +497,7 @@ export function CreateReservationDialog({
             <Button
               type="button"
               onClick={() => void handleSubmit()}
-              disabled={isSubmitting || items.length === 0 || !catalogItemId || !leadValue || !selectedSlot}
+              disabled={isSubmitting || items.length === 0 || !sellableItem || !modifiersValid || !leadValue || !selectedSlot}
             >
               {isSubmitting
                 ? isEdit

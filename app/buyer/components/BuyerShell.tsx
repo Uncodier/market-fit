@@ -5,6 +5,8 @@ import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useRouter, usePathname } from "next/navigation"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import useSWR from "swr"
+import { getBuyerPortalSummary } from "@/app/buyer/actions"
 import { FileText, Repeat, Archive, Home, Sun, Moon, Globe, Monitor, ShoppingCart, User } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
@@ -33,6 +35,15 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   const { setLocale, t } = useLocalization()
 
   const [cartCount, setCartCount] = React.useState(0)
+
+  const { data: summaryData } = useSWR(
+    session ? { key: "buyer-portal-summary", scope: "personal" } : null,
+    async (params) => {
+      const res = await getBuyerPortalSummary({ scope: params.scope })
+      if (res.error) throw new Error(res.error)
+      return res
+    }
+  )
 
   React.useEffect(() => {
     const checkCart = () => {
@@ -74,13 +85,18 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   const signInLabel = t("signIn") || "Sign In"
   const signInHref = `/auth?returnTo=${encodeURIComponent(pathname || "/buyer")}`
 
-  const navItems = [
+  let navItems = [
     { label: t("buyer.layout.home") || "Home", href: "/buyer", icon: <Home size={16} />, exact: true },
-    { label: t("buyer.layout.purchases") || "Purchases", href: "/buyer/orders", icon: <ShoppingCart size={16} /> },
-    { label: t("buyer.layout.subscriptions") || "Subscriptions", href: "/buyer/subscriptions", icon: <Repeat size={16} /> },
-    { label: t("buyer.layout.quotations") || "Quotations", href: "/buyer/quotes", icon: <FileText size={16} /> },
-    { label: t("buyer.layout.assets") || "Assets", href: "/buyer/library", icon: <Archive size={16} /> },
+    { label: t("buyer.layout.purchases") || "Purchases", href: "/buyer/orders", icon: <ShoppingCart size={16} />, count: summaryData?.counts?.orders },
+    { label: t("buyer.layout.subscriptions") || "Subscriptions", href: "/buyer/subscriptions", icon: <Repeat size={16} />, count: summaryData?.counts?.subscriptions },
+    { label: t("buyer.layout.quotations") || "Quotations", href: "/buyer/quotes", icon: <FileText size={16} />, count: summaryData?.counts?.quotes },
+    { label: t("buyer.layout.assets") || "Assets", href: "/buyer/library", icon: <Archive size={16} />, count: summaryData?.counts?.library },
   ]
+
+  // Filter nav items based on counts, always keep Home
+  if (summaryData) {
+    navItems = navItems.filter(item => item.exact || (item.count !== undefined && item.count > 0))
+  }
 
   const initial =
     user?.user_metadata?.first_name?.charAt(0) ||
@@ -88,7 +104,10 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
     "U"
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/30">
+    <div className={cn(
+      "flex min-h-screen w-full flex-col bg-muted/30",
+      isMiniExperience && "md:h-[100dvh] md:overflow-hidden"
+    )}>
       {!isMiniExperience && (
         <>
           <div className="h-4 w-full shrink-0" />
@@ -256,21 +275,23 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
         )}
       </main>
 
-      <footer className="w-full border-t border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
-            <img
-              src="/images/logo.png"
-              alt="Market Fit"
-              className="h-4 w-4 object-contain dark:brightness-0 dark:invert grayscale opacity-50"
-            />
-            <span>
-              &copy; {new Date().getFullYear()} Market Fit.{" "}
-              {t("buyer.layout.footer.allRightsReserved") || "All rights reserved."}
-            </span>
+      {!isMiniExperience && (
+        <footer className="w-full border-t border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-6 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              <img
+                src="/images/logo.png"
+                alt="Market Fit"
+                className="h-4 w-4 object-contain dark:brightness-0 dark:invert grayscale opacity-50"
+              />
+              <span>
+                &copy; {new Date().getFullYear()} Makinari.{" "}
+                {t("buyer.layout.footer.allRightsReserved") || "All rights reserved."}
+              </span>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   )
 }

@@ -268,6 +268,8 @@ export default function CheckoutClient({
     return true;
   }, [siteSettings, shippingAddress, fulfillment, buyerGeo]);
 
+  const isPurelyReservableOrDigital = items.length > 0 && items.every(item => item.is_reservation || item.kind === 'digital_asset');
+
   const deliveryTimeLabel = formatDeliveryTime(siteSettings?.shop);
 
   const handleCheckout = async (e: React.FormEvent) => {
@@ -278,24 +280,27 @@ export default function CheckoutClient({
       return;
     }
 
-    if (orderTiming === 'scheduled' && !scheduledFor) {
-      toast.error(t('checkout.selectTimeRequired') || 'Please select a date and time for your order.');
-      return;
-    }
+    if (!isPurelyReservableOrDigital) {
+      if (orderTiming === 'scheduled' && !scheduledFor) {
+        toast.error(t('checkout.selectTimeRequired') || 'Please select a date and time for your order.');
+        return;
+      }
 
-    if (orderTiming === 'now' && !isOpen) {
-      const confirmed = window.confirm(
-        nextOpenSlot?.label
-          ? (t('checkout.storeClosedConfirm', { time: nextOpenSlot.label }) ||
-            `The store is currently closed. Your order will be processed ${nextOpenSlot.label}. Do you want to continue?`)
-          : (t('checkout.storeClosedConfirmGeneric') ||
-            'The store is currently closed. Your order will be processed when it opens. Do you want to continue?')
-      );
-      if (!confirmed) return;
+      if (orderTiming === 'now' && !isOpen) {
+        const confirmed = window.confirm(
+          nextOpenSlot?.label
+            ? (t('checkout.storeClosedConfirm', { time: nextOpenSlot.label }) ||
+              `The store is currently closed. Your order will be processed ${nextOpenSlot.label}. Do you want to continue?`)
+            : (t('checkout.storeClosedConfirmGeneric') ||
+              'The store is currently closed. Your order will be processed when it opens. Do you want to continue?')
+        );
+        if (!confirmed) return;
+      }
     }
     
-    const finalScheduledFor = orderTiming === 'scheduled' ? scheduledFor?.toISOString() : 
-                              (orderTiming === 'now' && !isOpen && nextOpenSlot ? nextOpenSlot.at.toISOString() : undefined);
+    const finalScheduledFor = isPurelyReservableOrDigital ? undefined :
+                              (orderTiming === 'scheduled' ? scheduledFor?.toISOString() : 
+                              (orderTiming === 'now' && !isOpen && nextOpenSlot ? nextOpenSlot.at.toISOString() : undefined));
 
     if (items.length === 0) return
 
@@ -600,8 +605,8 @@ export default function CheckoutClient({
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
                 availablePaymentMethods={availablePaymentMethods}
-                orderTiming={orderTiming}
-                setOrderTiming={setOrderTiming}
+                orderTiming={isPurelyReservableOrDigital ? undefined : orderTiming}
+                setOrderTiming={isPurelyReservableOrDigital ? undefined : setOrderTiming}
                 scheduledFor={scheduledFor}
                 setScheduledFor={setScheduledFor}
                 orderNotes={orderNotes}
@@ -623,7 +628,7 @@ export default function CheckoutClient({
               disabledReason={
                 !isLocationAvailable
                   ? t("checkout.unavailableLocation") || "Service is not available in your area"
-                  : (orderTiming === 'scheduled' && !scheduledFor)
+                  : (!isPurelyReservableOrDigital && orderTiming === 'scheduled' && !scheduledFor)
                     ? t("checkout.selectTimeRequired") || "Please select a date and time"
                     : !allowedOptions.includes(fulfillment) 
                       ? "Selected delivery method not allowed"
@@ -660,9 +665,9 @@ export default function CheckoutClient({
       ) : (
         <footer className="bg-card border-t py-12 mt-auto">
           <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-2xl font-black tracking-tight text-muted-foreground">Makinri</div>
+            <div className="text-2xl font-black tracking-tight text-muted-foreground">Makinari</div>
             <div className="text-sm text-muted-foreground font-medium">
-              &copy; {new Date().getFullYear()} Makinri. All rights reserved.
+              &copy; {new Date().getFullYear()} Makinari. All rights reserved.
             </div>
           </div>
         </footer>

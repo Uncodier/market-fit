@@ -135,10 +135,10 @@ export function PromoStorefrontShell({
       <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-12 mt-auto hidden lg:block">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-2xl font-black tracking-tight text-gray-400 dark:text-gray-600">
-            {siteName || (surface === "marketplace" ? "Makinri" : "Shop")}
+            {siteName || (surface === "marketplace" ? "Makinari" : "Shop")}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            &copy; {new Date().getFullYear()} {siteName || "Makinri"}. All rights reserved.
+            &copy; {new Date().getFullYear()} {siteName || "Makinari"}. All rights reserved.
           </div>
           <div className="flex items-center gap-2">
             <CurrencySelector className="rounded-full" />

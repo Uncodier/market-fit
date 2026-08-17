@@ -7,7 +7,8 @@ import { CatalogItem } from "@/app/types"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { ReservationSlotPicker } from "../ReservationSlotPicker"
 import { Button } from "@/app/components/ui/button"
-import { ArrowLeft, CheckCircle, User } from "@/app/components/ui/icons"
+import { ArrowLeft, CheckCircle, User, Calendar, Clock, MapPin, Search } from "@/app/components/ui/icons"
+import { resolveItemSpecDisplay, resolveVenueLocation } from "@/app/catalog/product-details"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { bookWithEntitlement } from "@/app/commerce/redeem-reservation"
@@ -16,6 +17,8 @@ import { RelationSelect } from "@/app/components/ui/relation-select"
 import { upsertReservation } from "@/app/reservations/actions"
 import { assertReservationSlot } from "@/app/reservations/availability"
 import { CommerceShellHeader } from "@/app/components/commerce/CommerceShellHeader"
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
+import { PdpMetricChips } from "@/app/components/commerce/pdp/PdpMetricChips"
 
 interface BookingExperienceProps {
   mode: "cart" | "entitlement" | "pos" | "admin"
@@ -23,6 +26,7 @@ interface BookingExperienceProps {
   siteId?: string
   backUrl?: string
   entitlementId?: string
+  passItem?: any // for entitlement mode
   leads?: any[] // for admin mode
   onCartAdd?: (startIso: string, endIso: string) => void // for cart mode
   onSuccess?: () => void
@@ -36,6 +40,7 @@ export function BookingExperience({
   siteId,
   backUrl,
   entitlementId,
+  passItem,
   leads = [],
   onCartAdd,
   onSuccess,
@@ -45,8 +50,15 @@ export function BookingExperience({
   const { t } = useLocalization()
   const router = useRouter()
   const { user } = useAuth()
+  const { formatPrice } = useDisplayCurrency()
   const session = user ? { user } : null
   const [booking, setBooking] = useState(false)
+
+  const metadata = item.metadata || {}
+  const attributes = metadata.attributes || {}
+  const instructor = resolveItemSpecDisplay(item, "instructor") || resolveItemSpecDisplay(item, "host")
+  const venueLocation = resolveVenueLocation(item)
+
 
   // Only used for admin mode
   const [leadValue, setLeadValue] = useState<any>(null)
@@ -111,7 +123,7 @@ export function BookingExperience({
     }
   }
 
-  const imageUrl = resolveItemImage(item)
+  const imageUrl = resolveItemImage(item) || (passItem ? resolveItemImage(passItem) : null)
 
   const title =
     mode === "entitlement"
@@ -147,7 +159,7 @@ export function BookingExperience({
   )
 
   return (
-    <div className={`flex-1 flex flex-col ${hideHeader ? "" : "bg-muted/30 min-h-screen"}`}>
+    <div className={`flex-1 min-h-0 flex flex-col ${hideHeader ? "" : "bg-muted/30 min-h-screen"}`}>
       {useShellHeader && (
         <>
           <div className="h-4 w-full shrink-0" />
@@ -206,7 +218,7 @@ export function BookingExperience({
       )}
 
       <main
-        className={`flex-1 w-full flex flex-col items-center justify-center ${
+        className={`flex-1 w-full flex flex-col items-center justify-center min-h-0 overflow-y-auto ${
           hideHeader
             ? "p-4"
             : useShellHeader
@@ -224,8 +236,9 @@ export function BookingExperience({
         )}
 
         <div className="grid md:grid-cols-3 gap-8 w-full mx-auto max-w-4xl mt-4">
-          <div className="md:col-span-1 space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left relative z-10 md:-mr-8 md:pr-8">
-            <div className="space-y-4 flex flex-col items-center md:items-start w-full">
+          <div className="md:col-span-1 relative z-10 md:-mr-8 md:pr-8 md:h-[590px] overflow-y-auto no-scrollbar flex flex-col">
+            <div className="space-y-6 flex flex-col items-center md:items-start text-center md:text-left my-auto py-4 md:py-8 w-full">
+              <div className="space-y-4 flex flex-col items-center md:items-start w-full">
               {imageUrl ? (
                 <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border border-primary/10 overflow-hidden shadow-sm shrink-0 mb-2">
                   <img src={imageUrl} alt={item.name} className="w-full h-full object-cover object-center bg-muted" />
@@ -243,10 +256,67 @@ export function BookingExperience({
                     {t("booking.usingPass") || "Using Pass"}
                   </div>
                 )}
-                <h2 className="text-muted-foreground text-xs font-bold uppercase tracking-widest text-center md:text-left">
+                <h2 className="text-muted-foreground text-xs font-bold uppercase tracking-widest text-center md:text-left mb-1">
                   {mode === "entitlement" ? (t("booking.redeemTitle") || "Book with Pass") : mode === "admin" ? (t("booking.adminTitle") || "Create Reservation") : (t("booking.selectTime") || "Select a Time")}
                 </h2>
-                <h1 className="text-2xl font-semibold mt-1 text-center md:text-left">{item.name}</h1>
+                
+                {passItem && (
+                  <div className="mb-4">
+                    <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-tight text-center md:text-left mb-1">
+                      {passItem.name}
+                    </h1>
+                    <div className="text-sm font-medium text-muted-foreground text-center md:text-left">
+                      {passItem.is_recurring
+                        ? t("pdp.subscriptionBadge") || "Subscription"
+                        : t("pdp.accessPassBadge") || "Access Pass"}
+                    </div>
+                  </div>
+                )}
+                
+                {((item as any)._parent?.name || (item as any).parent?.name) && ((item as any)._parent?.name !== item.name && (item as any).parent?.name !== item.name) && (
+                  <div className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider mt-3 text-center md:text-left">
+                    {(item as any)._parent?.name || (item as any).parent?.name}
+                  </div>
+                )}
+                
+                {passItem ? (
+                  <h3 className="text-xl font-semibold mt-1 text-center md:text-left text-muted-foreground">{item.name}</h3>
+                ) : (
+                  <h1 className="text-2xl font-semibold mt-1 text-center md:text-left">{item.name}</h1>
+                )}
+                
+                {item.target_sale_price != null && item.target_sale_price > 0 && mode !== "entitlement" && (
+                  <div className="mt-2 text-lg font-medium text-foreground text-center md:text-left">
+                    {formatPrice(item.target_sale_price, item.currency)}
+                  </div>
+                )}
+              </div>
+
+              <div className="w-full">
+                <PdpMetricChips
+                  className="mb-4 justify-center md:justify-start"
+                  chips={[
+                    instructor
+                      ? {
+                          icon: <User className="w-4 h-4 sm:w-5 sm:h-5" />,
+                          imageUrl: instructor.image_url,
+                          label: instructor.name,
+                        }
+                      : attributes.instructor
+                        ? { icon: <User className="w-4 h-4 sm:w-5 sm:h-5" />, label: attributes.instructor }
+                        : null,
+                    venueLocation.name
+                      ? {
+                          icon: <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />,
+                          imageUrl: venueLocation.image_url,
+                          label: venueLocation.name,
+                        }
+                      : null,
+                    attributes.duration
+                      ? { icon: <Clock className="w-4 h-4 sm:w-5 sm:h-5" />, label: attributes.duration }
+                      : null,
+                  ]}
+                />
               </div>
 
               {item.description && (
@@ -268,6 +338,7 @@ export function BookingExperience({
                 />
               </div>
             )}
+            </div>
           </div>
 
           <div className="md:col-span-2 relative w-full overflow-visible z-0">

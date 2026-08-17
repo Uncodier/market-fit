@@ -60,7 +60,7 @@ export function BuyerHomeView({
     )
   }
 
-  const settingsCards = [
+  let settingsCards = [
     ...(scope === "personal" ? [{
       title: hasBusinesses
         ? (t("buyer.home.cards.businesses.title") || "Manage your businesses")
@@ -71,13 +71,15 @@ export function BuyerHomeView({
       icon: <Store className="w-6 h-6 text-foreground/70" />,
       href: hasBusinesses ? `${workspaceUrl}/projects?manage=1` : `${workspaceUrl}/create-site`,
       isPrimary: true,
-      count: hasBusinesses ? managedSites.length : undefined
+      count: hasBusinesses ? managedSites.length : undefined,
+      alwaysShow: true
     }] : []),
     {
       title: t("buyer.home.cards.profile.title") || "Profile information",
       description: t("buyer.home.cards.profile.desc") || "Personal and account details.",
       icon: <User className="w-6 h-6 text-foreground/70" />,
-      href: `${basePath}/profile`
+      href: `${basePath}/profile`,
+      alwaysShow: true
     },
     {
       title: t("buyer.home.cards.purchases.title") || "Online purchases",
@@ -140,8 +142,14 @@ export function BuyerHomeView({
       description: t("buyer.home.cards.visits.desc") || "Accept Visit Terms and check in online.",
       icon: <Calendar className="w-6 h-6 text-foreground/70" />,
       href: `${basePath}/visits/new`,
+      alwaysShow: true
     }
   ]
+
+  // Filter cards based on counts, always keep alwaysShow cards
+  if (data) {
+    settingsCards = settingsCards.filter(card => card.alwaysShow || (card.count !== undefined && card.count > 0))
+  }
 
   const userName = data?.user?.user_metadata?.full_name || data?.user?.user_metadata?.name || data?.user?.user_metadata?.first_name || 'User'
   const userEmail = data?.user?.email || ''

@@ -209,6 +209,11 @@ export function VariantsCard({ item, onUpdate }: VariantsCardProps) {
       is_recurring: item.is_recurring,
       is_reservation: item.is_reservation,
       currency: item.currency,
+      metadata: {
+        ...(item.metadata as any)?.delivery_options ? { delivery_options: (item.metadata as any).delivery_options } : {},
+        ...(item.metadata as any)?.payment_options ? { payment_options: (item.metadata as any).payment_options } : {},
+        reservation_mode: "parent"
+      }
     })
     if (error) {
       toast.error(error)
