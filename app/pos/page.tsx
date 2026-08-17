@@ -117,7 +117,7 @@ export default function POSPage() {
 
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    let list = catalog.catalogItems;
+    let list = catalog.catalogItems.filter((i) => !i.parent_id);
     if (q) {
       list = list.filter(
         (i) =>
@@ -135,13 +135,13 @@ export default function POSPage() {
     return list.filter((i) => i.category_id === selectedCategory);
   }, [catalog.catalogItems, searchQuery, selectedCategory]);
 
-  const hasProducts = catalog.availableItems.some((i) => i.kind === "product");
-  const hasServices = catalog.availableItems.some((i) => i.kind === "service");
+  const hasProducts = catalog.availableItems.some((i) => i.kind === "product" && !i.parent_id);
+  const hasServices = catalog.availableItems.some((i) => i.kind === "service" && !i.parent_id);
   const hasDigital = catalog.availableItems.some(
-    (i) => i.kind === "digital_asset",
+    (i) => i.kind === "digital_asset" && !i.parent_id,
   );
   const nonEmptyCategories = catalog.categories.filter((cat: any) =>
-    catalog.availableItems.some((i) => i.category_id === cat.id),
+    catalog.availableItems.some((i) => i.category_id === cat.id && !i.parent_id),
   );
 
   useEffect(() => {
