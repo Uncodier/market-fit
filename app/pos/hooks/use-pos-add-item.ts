@@ -178,7 +178,7 @@ export function usePosAddItem({
 
   const confirmReservation = (
     item: CatalogItem,
-    extras: { reservationStart: string; reservationEnd: string },
+    extras: { reservationStart: string; reservationEnd: string; reservationAvailableQty?: number },
   ) => {
     addItemToCart(item, {
       ...extras,

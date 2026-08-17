@@ -104,6 +104,7 @@ export function PosCartLines({
                   size="icon"
                   className="h-6 w-6 rounded-full"
                   onClick={() => updateQty(lineKey, 1)}
+                  disabled={Boolean(item.reservationStart) && item.cartQty >= (item.reservationAvailableQty || 1)}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>

@@ -66,7 +66,7 @@ export function ReservationSlotPicker({
   const [allSlots, setAllSlots] = useState<{start: string, end: string, available: number}[]>([])
   const [monthAvailability, setMonthAvailability] = useState<Record<string, boolean>>({})
   const [isLoadingSlots, setIsLoadingSlots] = useState(true)
-  const [selectedSlot, setSelectedSlot] = useState<{start: string, end: string} | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<{start: string, end: string, available?: number} | null>(null)
 
   // Form state
   const [name, setName] = useState("")
@@ -168,7 +168,8 @@ export function ReservationSlotPicker({
         name,
         email,
         guests: guestsString,
-        notes
+        notes,
+        available: selectedSlot.available
       })
     }
   }
@@ -304,7 +305,7 @@ export function ReservationSlotPicker({
                         onClick={() => {
                           setSelectedSlot(slot)
                           if (hideDetailsStep) {
-                            onSelect(slot.start, slot.end, {})
+                            onSelect(slot.start, slot.end, { available: slot.available })
                           } else {
                             setActiveStep("details")
                           }

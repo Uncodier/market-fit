@@ -60,8 +60,16 @@ describe('payment-options', () => {
       expect(getAvailablePaymentMethods('dine_in', ['card', 'cash_on_pickup'])).toEqual(['card', 'cash_on_pickup']);
     });
 
-    it('removes cash_on_pickup for ship even if allowed globally', () => {
-      expect(getAvailablePaymentMethods('ship', ['card', 'cash_on_pickup'])).toEqual(['card']);
+    it('removes cash_on_pickup for ship even if allowed globally (when no service items)', () => {
+      expect(getAvailablePaymentMethods('ship', ['card', 'cash_on_pickup'], [{ kind: 'product' }])).toEqual(['card']);
+    });
+
+    it('allows cash_on_pickup for ship if there are service items', () => {
+      expect(getAvailablePaymentMethods('ship', ['card', 'cash_on_pickup'], [{ kind: 'service' }])).toEqual(['card', 'cash_on_pickup']);
+    });
+
+    it('allows cash_on_pickup for none if there are reservable items', () => {
+      expect(getAvailablePaymentMethods('none', ['card', 'cash_on_pickup'], [{ kind: 'product', is_reservation: true }])).toEqual(['card', 'cash_on_pickup']);
     });
 
     it('allows bank_transfer for any fulfillment', () => {

@@ -28,7 +28,7 @@ interface BookingExperienceProps {
   entitlementId?: string
   passItem?: any // for entitlement mode
   leads?: any[] // for admin mode
-  onCartAdd?: (startIso: string, endIso: string) => void // for cart mode
+  onCartAdd?: (startIso: string, endIso: string, available?: number) => void // for cart mode
   onSuccess?: () => void
   headerAction?: React.ReactNode
   hideHeader?: boolean
@@ -66,7 +66,7 @@ export function BookingExperience({
   const handleSelect = async (startIso: string, endIso: string, details?: any) => {
     if (mode === "cart" || mode === "pos") {
       if (onCartAdd) {
-        onCartAdd(startIso, endIso)
+        onCartAdd(startIso, endIso, details?.available)
       }
       return
     }
@@ -159,7 +159,7 @@ export function BookingExperience({
   )
 
   return (
-    <div className={`flex-1 min-h-0 flex flex-col ${hideHeader ? "" : "bg-muted/30 min-h-screen"}`}>
+    <div className={`flex-1 flex flex-col ${hideHeader ? "" : "bg-muted/30 min-h-screen"}`}>
       {useShellHeader && (
         <>
           <div className="h-4 w-full shrink-0" />
@@ -218,9 +218,9 @@ export function BookingExperience({
       )}
 
       <main
-        className={`flex-1 w-full flex flex-col items-center justify-center min-h-0 overflow-y-auto ${
+        className={`flex-1 w-full flex flex-col items-center justify-center min-h-0 overflow-y-auto overflow-x-hidden ${
           hideHeader
-            ? "p-4"
+            ? "p-4 md:p-8"
             : useShellHeader
               ? "max-w-5xl mx-auto p-4 md:p-8"
               : "max-w-5xl mx-auto p-4 md:p-8 pt-24 md:pt-28"
@@ -235,8 +235,8 @@ export function BookingExperience({
           </div>
         )}
 
-        <div className="grid md:grid-cols-3 gap-8 w-full mx-auto max-w-4xl mt-4">
-          <div className="md:col-span-1 relative z-10 md:-mr-8 md:pr-8 md:h-[590px] overflow-y-auto no-scrollbar flex flex-col">
+        <div className="grid md:grid-cols-3 gap-8 w-full mx-auto max-w-4xl mt-4 shrink-0 pb-4">
+          <div className="md:col-span-1 relative z-10 md:pr-8 md:h-[590px] overflow-y-auto no-scrollbar flex flex-col w-full mx-auto max-w-[590px]">
             <div className="space-y-6 flex flex-col items-center md:items-start text-center md:text-left my-auto py-4 md:py-8 w-full">
               <div className="space-y-4 flex flex-col items-center md:items-start w-full">
               {imageUrl ? (
@@ -341,13 +341,15 @@ export function BookingExperience({
             </div>
           </div>
 
-          <div className="md:col-span-2 relative w-full overflow-visible z-0">
-            <ReservationSlotPicker
-              catalogItemId={item.id}
-              layout="page"
-              hideDetailsStep={mode !== "admin"} // Only admin needs the full details step natively for now
-              onSelect={handleSelect}
-            />
+          <div className="md:col-span-2 relative w-full overflow-visible z-0 flex justify-center md:block">
+            <div className="w-full max-w-[590px] mx-auto md:w-full">
+              <ReservationSlotPicker
+                catalogItemId={item.id}
+                layout="page"
+                hideDetailsStep={mode !== "admin"} // Only admin needs the full details step natively for now
+                onSelect={handleSelect}
+              />
+            </div>
           </div>
         </div>
       </main>

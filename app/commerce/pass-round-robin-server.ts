@@ -9,15 +9,74 @@ import {
 
 export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Promise<string[]> {
   const supabase = await createServiceClient(true)
+  
+  // 1. Fetch the target item to see if it's a variant (has a parent)
+  const { data: targetItem } = await supabase
+    .from("catalog_items")
+    .select("id, parent_id, metadata")
+    .eq("id", passCatalogItemId)
+    .single()
+    
+  if (!targetItem) {
+    return []
+  }
+  
+  const parentId = targetItem.parent_id || targetItem.id
+  
+  // 2. Load members mapped to the parent (or the item itself if no parent)
   const { data: rows, error } = await supabase
     .from("pass_redeemable_items")
     .select("reservable_catalog_item_id, sort_order, created_at")
-    .eq("pass_catalog_item_id", passCatalogItemId)
+    .eq("pass_catalog_item_id", parentId)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
 
   if (error) throw new Error(error.message)
-  const orderedIds = (rows || []).map((r) => r.reservable_catalog_item_id as string)
+  let orderedIds = (rows || []).map((r) => r.reservable_catalog_item_id as string)
+  
+  if (orderedIds.length === 0) return []
+
+  // 3. If target is a variant, we need to map the parent's members to their corresponding variants
+  if (targetItem.parent_id) {
+    const targetOptionValues = targetItem.metadata?.option_values || {}
+    
+    const mappedIds: string[] = []
+    
+    // Fetch all child variants of the members
+    const { data: memberChildren } = await supabase
+      .from("catalog_items")
+      .select("id, name, parent_id, metadata")
+      .in("parent_id", orderedIds)
+      .eq("status", "active")
+      
+    const childrenByParent = new Map<string, any[]>()
+    for (const child of (memberChildren || [])) {
+      const arr = childrenByParent.get(child.parent_id) || []
+      arr.push(child)
+      childrenByParent.set(child.parent_id, arr)
+    }
+    
+    // Try to find a matching variant for each member
+    for (const memberId of orderedIds) {
+      const children = childrenByParent.get(memberId) || []
+      // Match by comparing option_values
+      const match = children.find(child => {
+        const childOptions = child.metadata?.option_values || {}
+        // Check if all option values match
+        return Object.keys(targetOptionValues).every(
+          key => String(targetOptionValues[key]) === String(childOptions[key])
+        )
+      })
+      if (match) {
+        mappedIds.push(match.id)
+      } else {
+        // If we didn't find a matching variant for this member, they can't fulfill this request.
+        // E.g., if one barber doesn't offer "Corte", they shouldn't be considered for "Corte".
+      }
+    }
+    orderedIds = mappedIds
+  }
+
   if (orderedIds.length === 0) return []
 
   const { data: items } = await supabase
@@ -26,12 +85,13 @@ export async function listPassRoundRobinMemberIds(passCatalogItemId: string): Pr
     .in("id", orderedIds)
 
   const byId = new Map((items || []).map((item) => [item.id, item]))
-  return orderedIds.filter((id) => {
+  const finalIds = orderedIds.filter((id) => {
     const item = byId.get(id)
     if (!item || item.status === "archived") return false
     if (isRoundRobinPass(item)) return false
     return Boolean(item.is_reservation)
   })
+  return finalIds
 }
 
 export async function getMergedRoundRobinSlots(
@@ -42,14 +102,17 @@ export async function getMergedRoundRobinSlots(
   ignoreReservationId?: string
 ): Promise<SlotAvailability[]> {
   const memberIds = await listPassRoundRobinMemberIds(passCatalogItemId)
-  if (memberIds.length === 0) return []
+  if (memberIds.length === 0) {
+    return []
+  }
 
   const lists = await Promise.all(
     memberIds.map((id) =>
       getAvailableSlotsForItem(id, startDateStr, endDateStr, qty, ignoreReservationId)
     )
   )
-  return mergeMemberSlots(lists)
+  const merged = mergeMemberSlots(lists)
+  return merged
 }
 
 async function loadRoundRobinCursor(passCatalogItemId: string): Promise<number> {

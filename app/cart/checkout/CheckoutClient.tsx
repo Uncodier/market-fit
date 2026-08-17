@@ -23,6 +23,7 @@ import { Button } from "@/app/components/ui/button"
 import { 
   getItemDeliveryOptions, 
   intersectDeliveryOptions, 
+  hasMixedCartShippingWarning,
   defaultFulfillment,
   intersectPickupLocationIds,
   resolveOrderShippingCost,
@@ -113,6 +114,12 @@ export default function CheckoutClient({
     })))
   }, [items, siteSettings]);
 
+  const showMixedCartWarning = React.useMemo(() => {
+    return hasMixedCartShippingWarning(items.map((i: any) => ({
+      allowed: getItemDeliveryOptions(i, siteSettings?.shop?.default_delivery_options)
+    })));
+  }, [items, siteSettings]);
+
   const allowedLocationIds = React.useMemo(() => {
     return intersectPickupLocationIds(items)
   }, [items])
@@ -124,8 +131,8 @@ export default function CheckoutClient({
   }, [items, siteSettings])
 
   const availablePaymentMethods = React.useMemo(() => {
-    return getAvailablePaymentMethods(fulfillment, allowedPaymentOptions)
-  }, [fulfillment, allowedPaymentOptions])
+    return getAvailablePaymentMethods(fulfillment, allowedPaymentOptions, items)
+  }, [fulfillment, allowedPaymentOptions, items])
 
   useEffect(() => {
     if (availablePaymentMethods.length > 0 && (!paymentMethod || !availablePaymentMethods.includes(paymentMethod as PaymentMethodType))) {
@@ -615,6 +622,7 @@ export default function CheckoutClient({
                 isOpen={isOpen}
                 nextOpenSlot={nextOpenSlot}
                 deliveryTimeLabel={deliveryTimeLabel}
+                showMixedCartWarning={showMixedCartWarning}
               />
             </div>
           </div>

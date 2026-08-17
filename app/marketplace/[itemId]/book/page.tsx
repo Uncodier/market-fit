@@ -41,7 +41,7 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
     return <div className="min-h-screen flex items-center justify-center bg-muted/20">Item not found</div>
   }
 
-  const handleCartAdd = (startIso: string, endIso: string) => {
+  const handleCartAdd = (startIso: string, endIso: string, available?: number) => {
     let parsedModifiers = undefined
     if (searchParams?.modifiers) {
       try {
@@ -50,7 +50,7 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
         console.error("Failed to parse modifiers", e)
       }
     }
-    addToCartStorage(item, 1, startIso, endIso, parsedModifiers)
+    addToCartStorage(item, 1, startIso, endIso, parsedModifiers, available)
     toast.success(`${item.name} added to cart`)
     router.push(`/marketplace?cart=1`)
   }
@@ -59,7 +59,7 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
     <BookingExperience
       mode="cart"
       item={item}
-      backUrl={`/marketplace/${item.id}`}
+      backUrl={`/marketplace/${item.parent_id || item.id}`}
       onCartAdd={handleCartAdd}
     />
   )

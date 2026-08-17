@@ -19,6 +19,7 @@ export const usePdpCart = (siteId: string) => {
     reservationStart?: string,
     reservationEnd?: string,
     modifiers: CartModifier[] = [],
+    reservationAvailableQty?: number,
   ) => {
     try {
       const current = getCartItems("cart", source, siteId).filter(
@@ -38,6 +39,10 @@ export const usePdpCart = (siteId: string) => {
 
       if (existingIdx >= 0) {
         current[existingIdx].cartQty += qty
+        // Optionally update available qty if we got a fresher number
+        if (reservationAvailableQty !== undefined) {
+          current[existingIdx].reservationAvailableQty = reservationAvailableQty
+        }
       } else {
         current.push({
           ...item,
@@ -47,6 +52,7 @@ export const usePdpCart = (siteId: string) => {
           currency: item.currency || "USD",
           reservationStart,
           reservationEnd,
+          reservationAvailableQty,
           modifiers,
           lineKey: sig,
         })

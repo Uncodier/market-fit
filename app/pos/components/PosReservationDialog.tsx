@@ -22,6 +22,7 @@ export type PosReservationConfirm = {
   item: CatalogItem;
   reservationStart: string;
   reservationEnd: string;
+  reservationAvailableQty?: number;
   leadValue: RelationSelectValue;
 };
 
@@ -64,7 +65,7 @@ export function PosReservationDialog({
   t,
 }: Props) {
   const [draft, setDraft] = useState<RelationSelectValue>(null);
-  const [slot, setSlot] = useState<{ start: string; end: string } | null>(null);
+  const [slot, setSlot] = useState<{ start: string; end: string; available?: number } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const getTrans = (key: string, fallback: string) =>
     t(key) === key ? fallback : t(key);
@@ -89,6 +90,7 @@ export function PosReservationDialog({
         item,
         reservationStart: slot.start,
         reservationEnd: slot.end,
+        reservationAvailableQty: slot.available,
         leadValue: draft,
       });
       onOpenChange(false);
@@ -134,7 +136,7 @@ export function PosReservationDialog({
               catalogItemId={item.id}
               layout="dialog"
               hideDetailsStep
-              onSelect={(start, end) => setSlot({ start, end })}
+              onSelect={(start, end, data) => setSlot({ start, end, available: data?.available })}
             />
             {slot ? (
               <p className="text-sm text-muted-foreground">

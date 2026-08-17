@@ -33,6 +33,7 @@ interface CartCheckoutFieldsProps {
   setNotes?: (val: string) => void
   t?: (key: string) => string | undefined
   copyMode?: CheckoutCopyMode
+  showMixedCartWarning?: boolean
 }
 
 function SegmentedTabs<T extends string>({
@@ -90,7 +91,8 @@ export function CartCheckoutFields({
   notes,
   setNotes,
   t: propT,
-  copyMode = 'retail'
+  copyMode = 'retail',
+  showMixedCartWarning = false
 }: CartCheckoutFieldsProps) {
   const { t: contextT } = useLocalization()
   const t = propT || contextT
@@ -193,6 +195,11 @@ export function CartCheckoutFields({
             onChange={setFulfillment}
             options={deliveryOptions}
           />
+          {showMixedCartWarning && (
+            <div className="text-xs text-orange-700 bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-100 dark:border-orange-900/30 mt-3">
+              {t('checkout.mixedCartWarning') || 'To order your products for delivery, please start a new order without reservations or services.'}
+            </div>
+          )}
         </div>
       )}
 
@@ -214,8 +221,8 @@ export function CartCheckoutFields({
               {t(checkoutLabelKey('checkout.noPickupLocations', copyMode)) || 'No valid locations available for these items.'}
             </div>
           ) : pickupLocations.length === 1 ? (
-            <div className="h-12 px-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center text-sm font-medium text-gray-700 dark:text-gray-300">
-              {pickupLocations[0].name}
+            <div className="h-12 px-4 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+              {[pickupLocations[0].address, pickupLocations[0].city, pickupLocations[0].state, pickupLocations[0].zip, pickupLocations[0].country].filter(Boolean).join(', ') || pickupLocations[0].name}
             </div>
           ) : (
             <Select value={originLocationId} onValueChange={setOriginLocationId}>
@@ -225,7 +232,7 @@ export function CartCheckoutFields({
               <SelectContent>
                 {pickupLocations.map((loc: any) => (
                   <SelectItem key={loc.id} value={loc.id}>
-                    {loc.name}
+                    {[loc.address, loc.city, loc.state, loc.zip, loc.country].filter(Boolean).join(', ') || loc.name}
                   </SelectItem>
                 ))}
               </SelectContent>

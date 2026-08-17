@@ -8,6 +8,7 @@ import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCod
 import { 
   getItemDeliveryOptions, 
   intersectDeliveryOptions, 
+  hasMixedCartShippingWarning,
   defaultFulfillment,
   intersectPickupLocationIds,
   resolveOrderShippingCost
@@ -73,6 +74,12 @@ export function MarketplaceCartPanel({
     })))
   }, [cart, siteSettings]);
 
+  const showMixedCartWarning = useMemo(() => {
+    return hasMixedCartShippingWarning(cart.map((i: any) => ({
+      allowed: getItemDeliveryOptions(i, siteSettings?.shop?.default_delivery_options)
+    })));
+  }, [cart, siteSettings]);
+
   const allowedPaymentOptions = useMemo(() => {
     return intersectPaymentOptions(cart.map((i: any) => ({
       allowed: getItemPaymentOptions(i, siteSettings?.shop?.payment_methods)
@@ -80,8 +87,8 @@ export function MarketplaceCartPanel({
   }, [cart, siteSettings])
 
   const availablePaymentMethods = useMemo(() => {
-    return getAvailablePaymentMethods(fulfillment, allowedPaymentOptions)
-  }, [fulfillment, allowedPaymentOptions])
+    return getAvailablePaymentMethods(fulfillment, allowedPaymentOptions, cart)
+  }, [fulfillment, allowedPaymentOptions, cart])
 
   const requiresAuth = cart.some((c: any) => c.kind === 'digital_asset' || c.is_recurring)
   const isPurelyReservableOrDigital = cart.length > 0 && cart.every((c: any) => c.is_reservation || c.kind === 'digital_asset')
@@ -229,6 +236,7 @@ export function MarketplaceCartPanel({
               setNotes={setOrderNotes}
               t={t}
               copyMode={copyMode}
+              showMixedCartWarning={showMixedCartWarning}
             />
               </form>
             </div>

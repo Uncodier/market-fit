@@ -171,10 +171,12 @@ export async function upsertCatalogItem(item: Partial<CatalogItem>) {
   try {
     const supabase = await createClient();
     
+    const { item_specs, raw_specs, parent, _parent, plan_includes, pass_redeems, ...dbItem } = item as any;
+
     const { data, error } = await supabase
       .from("catalog_items")
       .upsert({
-        ...item,
+        ...dbItem,
         updated_at: new Date().toISOString(),
       })
       .select()

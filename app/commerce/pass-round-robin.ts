@@ -7,12 +7,7 @@ export type RoundRobinPassFields = {
 }
 
 export function isRoundRobinPass(item: RoundRobinPassFields | null | undefined): boolean {
-  return Boolean(
-    item &&
-      item.kind === "digital_asset" &&
-      item.digital_subtype === "pass" &&
-      item.redeem_assignment_mode === "round_robin"
-  )
+  return Boolean(item && item.redeem_assignment_mode === "round_robin")
 }
 
 export type SlotAvailability = {
@@ -29,7 +24,7 @@ export function mergeMemberSlots(lists: SlotAvailability[][]): SlotAvailability[
       const key = `${slot.start}|${slot.end}`
       const existing = map.get(key)
       if (existing) {
-        existing.available = Math.max(existing.available, slot.available)
+        existing.available += slot.available // sum availability from all members
       } else {
         map.set(key, { start: slot.start, end: slot.end, available: slot.available })
       }

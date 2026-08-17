@@ -1,6 +1,7 @@
 import {
   getItemDeliveryOptions,
   intersectDeliveryOptions,
+  hasMixedCartShippingWarning,
   defaultFulfillment,
   isFulfillmentAllowed,
   intersectPickupLocationIds,
@@ -53,11 +54,31 @@ describe('delivery-options helpers', () => {
       expect(intersectDeliveryOptions(items)).toEqual(['pickup']);
     });
 
-    it('returns empty when there is no intersection', () => {
+    it('returns restricted options for mixed cart (virtual + physical)', () => {
+      const items: { allowed: CheckoutFulfillmentMethod[] }[] = [
+        { allowed: ['pickup', 'ship'] },
+        { allowed: ['none'] },
+      ];
+      // Mixed cart physical intersection is ['pickup', 'ship']
+      // Restricts to in-person: ['pickup']
+      expect(intersectDeliveryOptions(items)).toEqual(['pickup']);
+    });
+
+    it('returns empty when there is no intersection and no mixed cart fallback', () => {
+      const items: { allowed: CheckoutFulfillmentMethod[] }[] = [
+        { allowed: ['pickup'] },
+        { allowed: ['ship'] },
+      ];
+      expect(intersectDeliveryOptions(items)).toEqual([]);
+    });
+
+    it('returns empty when mixed cart physical intersection has no in-person methods', () => {
       const items: { allowed: CheckoutFulfillmentMethod[] }[] = [
         { allowed: ['ship'] },
         { allowed: ['none'] },
       ];
+      // Mixed cart physical intersection is ['ship']
+      // Restricted to in-person: []
       expect(intersectDeliveryOptions(items)).toEqual([]);
     });
 
@@ -67,6 +88,38 @@ describe('delivery-options helpers', () => {
         { allowed: ['pickup', 'ship', 'none', 'dine_in'] },
       ];
       expect(intersectDeliveryOptions(items)).toEqual(['pickup', 'ship', 'none', 'dine_in']);
+    });
+  });
+
+  describe('hasMixedCartShippingWarning', () => {
+    it('returns true when physical items would allow ship but virtual items restrict it', () => {
+      const items: { allowed: CheckoutFulfillmentMethod[] }[] = [
+        { allowed: ['pickup', 'ship'] },
+        { allowed: ['none'] },
+      ];
+      expect(hasMixedCartShippingWarning(items)).toBe(true);
+    });
+
+    it('returns false when physical items do not allow ship anyway', () => {
+      const items: { allowed: CheckoutFulfillmentMethod[] }[] = [
+        { allowed: ['pickup'] },
+        { allowed: ['none'] },
+      ];
+      expect(hasMixedCartShippingWarning(items)).toBe(false);
+    });
+
+    it('returns false for pure virtual carts', () => {
+      const items: { allowed: CheckoutFulfillmentMethod[] }[] = [
+        { allowed: ['none'] },
+      ];
+      expect(hasMixedCartShippingWarning(items)).toBe(false);
+    });
+
+    it('returns false for pure physical carts', () => {
+      const items: { allowed: CheckoutFulfillmentMethod[] }[] = [
+        { allowed: ['pickup', 'ship'] },
+      ];
+      expect(hasMixedCartShippingWarning(items)).toBe(false);
     });
   });
 

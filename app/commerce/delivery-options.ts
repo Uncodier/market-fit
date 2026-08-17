@@ -79,15 +79,68 @@ export function intersectPickupLocationIds(
 
 /**
  * Computes the intersection of allowed delivery options across multiple cart items.
+ * If the strict intersection is empty, but the cart is a mix of pure virtual items (['none'])
+ * and physical items, it allows physical items to dictate the fulfillment restricted to in-person methods.
  */
 export function intersectDeliveryOptions(items: { allowed: CheckoutFulfillmentMethod[] }[]): CheckoutFulfillmentMethod[] {
   if (!items || items.length === 0) return [];
 
   const ALL: CheckoutFulfillmentMethod[] = ['pickup', 'ship', 'none', 'dine_in'];
 
-  return items.reduce((acc, item) => {
+  const strictIntersection = items.reduce((acc, item) => {
     return acc.filter((method) => item.allowed.includes(method));
   }, [...ALL]);
+
+  if (strictIntersection.length > 0) {
+    return strictIntersection;
+  }
+
+  // Handle mixed cart scenario
+  const isPureVirtual = (allowed: CheckoutFulfillmentMethod[]) => allowed.length === 1 && allowed[0] === 'none';
+  const virtualItems = items.filter(i => isPureVirtual(i.allowed));
+  const physicalItems = items.filter(i => !isPureVirtual(i.allowed));
+
+  if (virtualItems.length > 0 && physicalItems.length > 0) {
+    let physicalIntersection = physicalItems.reduce((acc, item) => {
+      return acc.filter((method) => item.allowed.includes(method));
+    }, [...ALL]);
+
+    // Restrict to in-person methods since there are virtual items
+    physicalIntersection = physicalIntersection.filter(method => method === 'pickup' || method === 'dine_in');
+
+    return physicalIntersection;
+  }
+
+  return [];
+}
+
+/**
+ * Helper to determine if we should warn the user that shipping is unavailable
+ * specifically because they have a mixed cart of virtual and physical items.
+ */
+export function hasMixedCartShippingWarning(items: { allowed: CheckoutFulfillmentMethod[] }[]): boolean {
+  if (!items || items.length === 0) return false;
+
+  const ALL: CheckoutFulfillmentMethod[] = ['pickup', 'ship', 'none', 'dine_in'];
+  const strictIntersection = items.reduce((acc, item) => {
+    return acc.filter((method) => item.allowed.includes(method));
+  }, [...ALL]);
+
+  if (strictIntersection.length > 0) return false;
+
+  const isPureVirtual = (allowed: CheckoutFulfillmentMethod[]) => allowed.length === 1 && allowed[0] === 'none';
+  const virtualItems = items.filter(i => isPureVirtual(i.allowed));
+  const physicalItems = items.filter(i => !isPureVirtual(i.allowed));
+
+  if (virtualItems.length > 0 && physicalItems.length > 0) {
+    const physicalIntersection = physicalItems.reduce((acc, item) => {
+      return acc.filter((method) => item.allowed.includes(method));
+    }, [...ALL]);
+    
+    return physicalIntersection.includes('ship');
+  }
+
+  return false;
 }
 
 /**

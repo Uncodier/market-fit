@@ -2109,6 +2109,7 @@
   "checkout.identity.verification": "Verification",
   "checkout.identity.verify": "Verify",
   "checkout.incompatibleDelivery": "These items cannot be purchased together due to incompatible delivery methods. Please remove some items.",
+  "checkout.mixedCartWarning": "To order products for delivery, please start a new order without reservations or services.",
   "checkout.location": "Location",
   "checkout.noPickupLocations": "No valid pickup locations available for these items.",
   "checkout.noPickupLocationsService": "No valid service locations available for these items.",

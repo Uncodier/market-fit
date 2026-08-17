@@ -34,24 +34,6 @@ export function MarketplaceTab({
 }: MarketplaceTabProps) {
   return (
     <div className="mx-auto max-w-[800px] space-y-6">
-      {item && (
-        <ProductPaymentOptionsCard
-          formData={formData}
-          setFormData={setFormData}
-          handleSave={handleSave}
-          saving={saving}
-        />
-      )}
-
-      {item && (
-        <ItemSpecsEditor
-          catalogItemId={item.id}
-          item={item}
-          handleSave={handleSave}
-          saving={saving}
-        />
-      )}
-
       <SectionCard>
         <SectionCardHeader>
           <SectionCardTitle>Marketplace Listing</SectionCardTitle>
@@ -73,6 +55,24 @@ export function MarketplaceTab({
           <Button variant="outline" onClick={handleSave} disabled={saving} size="sm">Save Listing</Button>
         </ActionFooter>
       </SectionCard>
+
+      {item && (
+        <ProductPaymentOptionsCard
+          formData={formData}
+          setFormData={setFormData}
+          handleSave={handleSave}
+          saving={saving}
+        />
+      )}
+
+      {item && (
+        <ItemSpecsEditor
+          catalogItemId={item.id}
+          item={item}
+          handleSave={handleSave}
+          saving={saving}
+        />
+      )}
     </div>
   )
 }

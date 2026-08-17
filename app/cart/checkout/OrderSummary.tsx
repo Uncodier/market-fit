@@ -82,8 +82,8 @@ export function OrderSummary({
       
       <div className="space-y-4 mb-8 max-h-[40vh] overflow-y-auto pr-2 no-scrollbar">
         {items.map((item, idx) => (
-          <div key={(item.lineKey || item.id) + idx} className="flex flex-col gap-3 p-3 bg-muted/30 rounded-2xl border border-border/40">
-            <div className="flex gap-4">
+          <div key={(item.lineKey || item.id) + idx} className="flex flex-col bg-muted/30 rounded-2xl border border-border/40 overflow-hidden">
+            <div className="flex gap-4 p-3">
               <div className="relative w-16 h-16 rounded-xl bg-muted overflow-hidden shrink-0 shadow-sm border border-border/50">
                 <img src={resolveItemImage(item, "card")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
               </div>
@@ -111,7 +111,7 @@ export function OrderSummary({
             </div>
 
             {item.reservationStart && (
-              <div className="pt-2 mt-1 border-t border-border/40">
+              <div className="pt-2 mt-0 border-t border-border/40 px-3 pb-3 bg-muted/20">
                 <Link
                   href={`/shop/${item.site?.slug || item.site_id}/${item.id}/book`}
                   className="flex items-center justify-between hover:bg-muted/50 p-1.5 -mx-1.5 rounded-lg transition-colors group"
@@ -127,7 +127,7 @@ export function OrderSummary({
                     </span>
                   </div>
                   <span className="text-[10px] uppercase font-bold text-muted-foreground group-hover:text-foreground transition-colors mr-1">
-                    Edit
+                    {t("common.edit") || "Edit"}
                   </span>
                 </Link>
               </div>

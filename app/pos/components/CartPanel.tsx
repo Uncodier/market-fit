@@ -58,6 +58,7 @@ export interface PosCartItem extends CatalogItem {
   modifiers?: PosCartModifier[];
   reservationStart?: string;
   reservationEnd?: string;
+  reservationAvailableQty?: number;
 }
 
 interface CartPanelProps {

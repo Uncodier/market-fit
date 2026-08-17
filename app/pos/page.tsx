@@ -398,12 +398,14 @@ export default function POSPage() {
           item,
           reservationStart,
           reservationEnd,
+          reservationAvailableQty,
           leadValue,
         }) => {
           await leadApi.handleLeadValueChange(leadValue);
           addApi.confirmReservation(item, {
             reservationStart,
             reservationEnd,
+            reservationAvailableQty,
           });
         }}
       />

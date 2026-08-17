@@ -4,6 +4,7 @@ import { Button } from "@/app/components/ui/button"
 import { ShieldCheck, Truck, RotateCcw } from "@/app/components/ui/icons"
 import { ProgressiveImage } from "@/app/components/commerce/ProgressiveImage"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useRouter, usePathname } from "next/navigation"
 
 function badgeIcon(icon?: string) {
   if (icon === "Truck") return Truck
@@ -31,6 +32,23 @@ export function ShopHeroTrust({
   const badges: any[] = shop?.trust_badges?.length ? shop.trust_badges : []
   const showHero = !searchQuery && !!(shop?.hero_title || shop?.hero_image_url)
   const showBadges = !searchQuery && badges.length > 0
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const handleCtaClick = () => {
+    const destType = shop?.hero_cta_destination_type || "scroll"
+    const destValue = shop?.hero_cta_destination_value
+
+    if (destType === "url" && destValue) {
+      window.open(destValue, "_blank")
+    } else if (destType === "category" && destValue) {
+      router.push(`${pathname}?category=${encodeURIComponent(destValue)}`)
+    } else if (destType === "item" && destValue) {
+      router.push(`${pathname}/${destValue}`)
+    } else {
+      window.scrollBy({ top: window.innerHeight * 0.7, behavior: "smooth" })
+    }
+  }
 
   return (
     <>
@@ -127,9 +145,7 @@ export function ShopHeroTrust({
             <Button
               type="button"
               className="h-14 px-8 text-lg rounded-full font-semibold shadow-lg"
-              onClick={() =>
-                window.scrollBy({ top: window.innerHeight * 0.7, behavior: "smooth" })
-              }
+              onClick={handleCtaClick}
             >
               {shop?.hero_cta_label || t("shop.shopNow") || "Shop Now"}
             </Button>

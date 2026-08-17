@@ -106,7 +106,7 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   return (
     <div className={cn(
       "flex min-h-screen w-full flex-col bg-muted/30",
-      isMiniExperience && "md:h-[100dvh] md:overflow-hidden"
+      isMiniExperience && "md:h-[100dvh] md:overflow-hidden overflow-x-hidden w-full max-w-[100vw]"
     )}>
       {!isMiniExperience && (
         <>

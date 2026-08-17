@@ -59,11 +59,26 @@ function getTimeBlocks(dayConfig: any): { start: string; end: string }[] {
 export async function resolveReservationConfig(catalogItemId: string, supabaseClient: any): Promise<{ scheduleItemId: string, capacityGroupIds: string[] }> {
   const { data: item } = await supabaseClient
     .from("catalog_items")
-    .select("id, parent_id, metadata")
+    .select("id, parent_id, metadata, redeem_assignment_mode")
     .eq("id", catalogItemId)
     .single()
 
   if (!item) return { scheduleItemId: catalogItemId, capacityGroupIds: [catalogItemId] }
+
+  // If this item is part of a round robin (either it or its parent), it handles its own schedule/capacity.
+  if (item.redeem_assignment_mode === 'round_robin') {
+    return { scheduleItemId: catalogItemId, capacityGroupIds: [catalogItemId] }
+  }
+  if (item.parent_id) {
+    const { data: parent } = await supabaseClient
+      .from("catalog_items")
+      .select("redeem_assignment_mode")
+      .eq("id", item.parent_id)
+      .single()
+    if (parent?.redeem_assignment_mode === 'round_robin') {
+      return { scheduleItemId: catalogItemId, capacityGroupIds: [catalogItemId] }
+    }
+  }
 
   const mode = item.metadata?.reservation_mode || 'parent'
 
@@ -150,12 +165,26 @@ export async function getAvailableSlots(
   const supabase = await createServiceClient(true)
   const { data: item } = await supabase
     .from("catalog_items")
-    .select("kind, digital_subtype, redeem_assignment_mode")
+    .select("kind, digital_subtype, redeem_assignment_mode, parent_id")
     .eq("id", catalogItemId)
     .maybeSingle()
 
   const { isRoundRobinPass } = await import("@/app/commerce/pass-round-robin")
-  if (isRoundRobinPass(item)) {
+  let isRr = isRoundRobinPass(item)
+  
+  if (!isRr && item?.parent_id) {
+    const { data: parentItem } = await supabase
+      .from("catalog_items")
+      .select("kind, digital_subtype, redeem_assignment_mode")
+      .eq("id", item.parent_id)
+      .maybeSingle()
+    
+    if (isRoundRobinPass(parentItem)) {
+      isRr = true
+    }
+  }
+
+  if (isRr) {
     const { getMergedRoundRobinSlots } = await import(
       "@/app/commerce/pass-round-robin-server"
     )
@@ -280,6 +309,9 @@ export async function assertReservationSlot(
   ignoreReservationId?: string
 ) {
   const supabase = await createServiceClient(true)
+  
+  // Intercept round robin variant assert check: if it's a variant of a RR, we need to skip its own config check
+  // since the parent RR handles the assert directly via assertCommerceReservationSlot mapping.
   const config = await resolveReservationConfig(catalogItemId, supabase)
 
   const { data: schedules } = await supabase

@@ -94,7 +94,7 @@ describe("pass round-robin picker", () => {
 })
 
 describe("mergeMemberSlots", () => {
-  it("unions start/end and uses max availability for a single assignee", () => {
+  it("unions start/end and sums availability", () => {
     const merged = mergeMemberSlots([
       [{ start: "t1", end: "t2", available: 1 }],
       [
@@ -103,7 +103,7 @@ describe("mergeMemberSlots", () => {
       ],
     ])
     expect(merged).toEqual([
-      { start: "t1", end: "t2", available: 3 },
+      { start: "t1", end: "t2", available: 4 },
       { start: "t3", end: "t4", available: 1 },
     ])
   })

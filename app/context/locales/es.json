@@ -2119,6 +2119,7 @@
   "checkout.identity.verification": "Verificación",
   "checkout.identity.verify": "Verificar",
   "checkout.incompatibleDelivery": "Estos artículos no se pueden comprar juntos debido a métodos de entrega incompatibles. Por favor, elimine algunos artículos.",
+  "checkout.mixedCartWarning": "Para pedir tus productos a domicilio inicia una orden sin reservas o servicios.",
   "checkout.location": "Ubicación",
   "checkout.noPickupLocations": "No hay lugares de recogida válidos para estos artículos.",
   "checkout.noPickupLocationsService": "No hay ubicaciones de servicio válidas para estos artículos.",

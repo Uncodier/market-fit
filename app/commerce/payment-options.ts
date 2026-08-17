@@ -33,14 +33,21 @@ export function intersectPaymentOptions(items: { allowed: PaymentMethodType[] }[
 /**
  * Returns available payment methods based on fulfillment and allowed options.
  * - 'cash_on_pickup' is only available if fulfillment is 'pickup' or 'dine_in'.
+ * - Exception: if there are reservable or service items, 'cash_on_pickup' is allowed even for 'ship' or 'none'.
  * - 'card' and 'bank_transfer' are available for any fulfillment.
  */
 export function getAvailablePaymentMethods(
   fulfillment: CheckoutFulfillmentMethod,
-  allowed: PaymentMethodType[]
+  allowed: PaymentMethodType[],
+  items?: Partial<CatalogItem>[]
 ): PaymentMethodType[] {
   return allowed.filter(method => {
-    if (method === 'cash_on_pickup' && fulfillment !== 'pickup' && fulfillment !== 'dine_in') return false;
+    if (method === 'cash_on_pickup') {
+      const isServiceCart = items?.some(item => item.kind === 'service' || item.is_reservation);
+      if (fulfillment !== 'pickup' && fulfillment !== 'dine_in' && !isServiceCart) {
+        return false;
+      }
+    }
     return true;
   });
 }

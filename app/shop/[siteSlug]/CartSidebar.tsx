@@ -7,6 +7,7 @@ import { PromoCodeField, AppliedPromo } from "@/app/components/commerce/PromoCod
 import { 
   getItemDeliveryOptions, 
   intersectDeliveryOptions, 
+  hasMixedCartShippingWarning,
   defaultFulfillment,
   intersectPickupLocationIds,
   resolveOrderShippingCost
@@ -55,6 +56,12 @@ export function CartSidebar({
     })))
   }, [cart, site]);
 
+  const showMixedCartWarning = useMemo(() => {
+    return hasMixedCartShippingWarning(cart.map((i: any) => ({
+      allowed: getItemDeliveryOptions(i, site?.settings?.shop?.default_delivery_options)
+    })));
+  }, [cart, site]);
+
   const allowedPaymentOptions = useMemo(() => {
     return intersectPaymentOptions(cart.map((i: any) => ({
       allowed: getItemPaymentOptions(i, site?.settings?.shop?.payment_methods)
@@ -62,8 +69,8 @@ export function CartSidebar({
   }, [cart, site])
 
   const availablePaymentMethods = useMemo(() => {
-    return getAvailablePaymentMethods(fulfillment, allowedPaymentOptions)
-  }, [fulfillment, allowedPaymentOptions])
+    return getAvailablePaymentMethods(fulfillment, allowedPaymentOptions, cart)
+  }, [fulfillment, allowedPaymentOptions, cart])
 
   const pickupLocations = useMemo(() => {
     const restriction = intersectPickupLocationIds(cart);
@@ -209,6 +216,7 @@ export function CartSidebar({
                   setNotes={setOrderNotes}
                   t={t}
                   copyMode={copyMode}
+                  showMixedCartWarning={showMixedCartWarning}
                 />
               </div>
             </form>

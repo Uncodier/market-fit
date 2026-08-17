@@ -130,6 +130,7 @@ export async function syncVariantChildren(parentId: string) {
             is_pos_available: parent.is_pos_available,
             is_recurring: parent.is_recurring,
             is_reservation: parent.is_reservation,
+            redeem_assignment_mode: parent.redeem_assignment_mode,
             currency: parent.currency,
             metadata: {
               ...(existing.metadata || {}),
@@ -164,6 +165,7 @@ export async function syncVariantChildren(parentId: string) {
             is_pos_available: parent.is_pos_available,
             is_recurring: parent.is_recurring,
             is_reservation: parent.is_reservation,
+            redeem_assignment_mode: parent.redeem_assignment_mode,
             is_marketplace_listed: false,
             metadata: {
               option_values: combo.option_values,

@@ -45,6 +45,7 @@ interface CheckoutFormProps {
   nextOpenSlot?: { at: Date, label: string } | null
   deliveryTimeLabel?: string | null
   copyMode?: CheckoutCopyMode
+  showMixedCartWarning?: boolean
 }
 
 export function CheckoutForm({
@@ -56,7 +57,8 @@ export function CheckoutForm({
   orderTiming = 'now', setOrderTiming, scheduledFor, setScheduledFor,
   orderNotes, setOrderNotes,
   businessHours = [], isOpen = true, nextOpenSlot, deliveryTimeLabel,
-  copyMode = 'retail'
+  copyMode = 'retail',
+  showMixedCartWarning = false
 }: CheckoutFormProps) {
   const { t } = useLocalization()
 
@@ -151,64 +153,70 @@ export function CheckoutForm({
               {t('checkout.incompatibleDelivery') || 'These items cannot be purchased together due to incompatible delivery methods. Please remove some items.'}
             </div>
           ) : (
-            <div className="inline-flex flex-col sm:flex-row p-1.5 bg-gray-100 dark:bg-zinc-800/80 rounded-2xl w-full gap-1">
-              {allowedOptions.includes('pickup') && (
-                <button
-                  type="button"
-                  onClick={() => setFulfillment('pickup')}
-                  className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
-                    fulfillment === 'pickup' 
-                      ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
-                  }`}
-                >
-                  <Store className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.storePickup', copyMode)) || 'Store Pickup'}</span>
-                </button>
+              <div className="inline-flex flex-col sm:flex-row p-1.5 bg-gray-100 dark:bg-zinc-800/80 rounded-2xl w-full gap-1">
+                {allowedOptions.includes('pickup') && (
+                  <button
+                    type="button"
+                    onClick={() => setFulfillment('pickup')}
+                    className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
+                      fulfillment === 'pickup' 
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+                    }`}
+                  >
+                    <Store className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.storePickup', copyMode)) || 'Store Pickup'}</span>
+                  </button>
+                )}
+                {allowedOptions.includes('ship') && (
+                  <button
+                    type="button"
+                    onClick={() => setFulfillment('ship')}
+                    className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
+                      fulfillment === 'ship' 
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+                    }`}
+                  >
+                    <Truck className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.shipToMe', copyMode)) || 'Ship to Me'}</span>
+                  </button>
+                )}
+                {allowedOptions.includes('dine_in') && (
+                  <button
+                    type="button"
+                    onClick={() => setFulfillment('dine_in')}
+                    className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
+                      fulfillment === 'dine_in' 
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+                    }`}
+                  >
+                    <Store className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">{t('checkout.dineIn') || 'Consume Here'}</span>
+                  </button>
+                )}
+                {allowedOptions.includes('none') && (
+                  <button
+                    type="button"
+                    onClick={() => setFulfillment('none')}
+                    className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
+                      fulfillment === 'none' 
+                        ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
+                    }`}
+                  >
+                    <Package className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.digitalService', copyMode)) || 'Digital / Service'}</span>
+                  </button>
+                )}
+              </div>
+              
+              {showMixedCartWarning && (
+                <div className="text-xs text-orange-700 bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border border-orange-100 dark:border-orange-900/30 mt-4">
+                  {t('checkout.mixedCartWarning') || 'To order products for delivery, please start a new order without reservations or services.'}
+                </div>
               )}
-              {allowedOptions.includes('ship') && (
-                <button
-                  type="button"
-                  onClick={() => setFulfillment('ship')}
-                  className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
-                    fulfillment === 'ship' 
-                      ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
-                  }`}
-                >
-                  <Truck className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.shipToMe', copyMode)) || 'Ship to Me'}</span>
-                </button>
-              )}
-              {allowedOptions.includes('dine_in') && (
-                <button
-                  type="button"
-                  onClick={() => setFulfillment('dine_in')}
-                  className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
-                    fulfillment === 'dine_in' 
-                      ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
-                  }`}
-                >
-                  <Store className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-medium whitespace-nowrap">{t('checkout.dineIn') || 'Consume Here'}</span>
-                </button>
-              )}
-              {allowedOptions.includes('none') && (
-                <button
-                  type="button"
-                  onClick={() => setFulfillment('none')}
-                  className={`flex-1 flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl transition-all ${
-                    fulfillment === 'none' 
-                      ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-gray-200/50 dark:hover:bg-zinc-700/50'
-                  }`}
-                >
-                  <Package className="w-4 h-4 shrink-0" />
-                  <span className="text-sm font-medium whitespace-nowrap">{t(checkoutLabelKey('checkout.digitalService', copyMode)) || 'Digital / Service'}</span>
-                </button>
-              )}
-            </div>
           )}
         </div>
 
@@ -253,7 +261,7 @@ export function CheckoutForm({
                     <SelectContent>
                       {locations.map((loc) => (
                         <SelectItem key={loc.id} value={loc.id}>
-                          {loc.name}
+                          {[loc.address, loc.city, loc.state, loc.zip, loc.country].filter(Boolean).join(', ') || loc.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

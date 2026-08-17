@@ -463,6 +463,8 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   passCatalogItemId={item?.id || ''}
                   formData={formData}
                   setFormData={setFormData}
+                  handleSave={handleSave}
+                  saving={saving}
                 />
               </div>
             </TabsContent>

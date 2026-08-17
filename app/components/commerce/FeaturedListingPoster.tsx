@@ -73,6 +73,7 @@ export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
   const typeLabelKey = getListingTypeLabel(item)
   const metaChips = getListingMetaChips(item).slice(0, 3)
   const ctaLabelKey = getListingCtaLabel(item, { isOwned, canBook })
+  const isReservable = ctaLabelKey === "marketplace.listing.cta.book"
   const priceSuffixKey = getListingPriceSuffix(item)
   const priceLabel = formatListingPrice(item, formatPrice, t)
   const isSoldOut = !item._shop?.sellable && item._shop?.availableQty === 0
@@ -124,7 +125,7 @@ export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
               : promoBadge.label}
           </Link>
         )}
-        {typeLabelKey !== "marketplace.listing.badge.product" && (
+        {typeLabelKey !== "marketplace.listing.badge.product" && !isReservable && (
           <span className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-black shadow-sm uppercase tracking-wider">
             {t(typeLabelKey) || typeLabelKey.split(".").pop()}
           </span>
@@ -153,12 +154,6 @@ export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
               ) : null}
               <span className="truncate text-xs font-medium text-white/80">{item.site.name}</span>
             </div>
-          )}
-
-          {!showSeller && item._shop?.categoryName && (
-            <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-white/70">
-              {item._shop.categoryName}
-            </span>
           )}
 
           <h3
@@ -198,12 +193,12 @@ export const FeaturedListingPoster = React.memo(function FeaturedListingPoster({
           <div className="min-w-0">
             <div
               className={`font-black text-white ${
-                isHero ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
+                isHero ? "text-xl sm:text-2xl" : "text-lg sm:text-xl"
               }`}
             >
               {priceLabel}
               {priceSuffixKey && (
-                <span className="ml-1.5 text-sm font-normal text-white/70">
+                <span className="ml-1.5 text-xs sm:text-sm font-normal text-white/70">
                   {t(priceSuffixKey) || "/mo"}
                 </span>
               )}

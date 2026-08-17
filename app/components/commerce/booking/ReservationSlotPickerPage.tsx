@@ -112,7 +112,7 @@ export function ReservationSlotPickerPage({
         }
       `}</style>
       <div
-        className="flex flex-col md:block gap-6 md:gap-0 pb-4 md:pb-0 relative w-full md:h-[590px] overflow-hidden md:overflow-visible"
+        className="flex flex-col md:block gap-6 md:gap-0 pb-4 md:pb-0 relative w-full md:h-[590px]"
         style={{
           "--cal-transform": activeStep === "calendar" ? "translateX(0) scale(1)" : activeStep === "time" ? "translateX(calc(-100% - 360px)) scale(0.95)" : "translateX(calc(-100% - 640px)) scale(0.9)",
           "--cal-opacity": activeStep === "calendar" ? "1" : "0.3",
@@ -281,7 +281,7 @@ export function ReservationSlotPickerPage({
                                 : "hover:border-primary/40 hover:bg-accent/50 border-border/60"
                             )}
                             onClick={() => {
-                              if (hideDetailsStep) onSelect(slot.start, slot.end, {})
+                              if (hideDetailsStep) onSelect(slot.start, slot.end, { available: slot.available })
                               else {
                                 setSelectedSlot(slot)
                                 setActiveStep("details")

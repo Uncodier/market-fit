@@ -382,7 +382,7 @@ export async function checkoutCart({
 
       const { data: catalogItem } = await (isAdmin ? supabaseAdmin : supabase)
         .from("catalog_items")
-        .select("id, name, description, is_recurring, kind, digital_subtype, is_reservation, redeem_assignment_mode, currency, metadata, target_sale_price")
+        .select("id, name, description, is_recurring, kind, digital_subtype, is_reservation, redeem_assignment_mode, currency, metadata, target_sale_price, parent_id")
         .eq("id", line.catalogItemId)
         .single();
         
@@ -394,6 +394,8 @@ export async function checkoutCart({
       } as any);
 
       let isRoundRobinDropin = false;
+      let effectiveAssignmentMode = catalogItem?.redeem_assignment_mode;
+      
       if (catalogItem?.is_reservation && !isAccessOnly) {
         if (!line.reservationStart || !line.reservationEnd) {
           throw new Error("Reservation dates are required for drop-in reservable items.");
@@ -401,14 +403,30 @@ export async function checkoutCart({
         if (!finalLeadId && !isAdmin) {
           throw new Error("Reservable items require a customer.");
         }
+        
         isRoundRobinDropin = isRoundRobinPass(catalogItem);
+        
+        // If it's a variant, check the parent's mode
+        if (!isRoundRobinDropin && catalogItem?.parent_id) {
+          const { data: parentItem } = await (isAdmin ? supabaseAdmin : supabase)
+            .from("catalog_items")
+            .select("redeem_assignment_mode")
+            .eq("id", catalogItem.parent_id)
+            .single();
+            
+          if (parentItem?.redeem_assignment_mode === "round_robin") {
+            isRoundRobinDropin = true;
+            effectiveAssignmentMode = "round_robin";
+          }
+        }
+        
         await assertCommerceReservationSlot({
           siteId,
           catalogItem: {
             id: catalogItem.id,
             kind: catalogItem.kind,
             digital_subtype: catalogItem.digital_subtype,
-            redeem_assignment_mode: catalogItem.redeem_assignment_mode,
+            redeem_assignment_mode: effectiveAssignmentMode,
           },
           startIso: line.reservationStart,
           endIso: line.reservationEnd,

@@ -25,9 +25,9 @@ export default function BookLoading() {
         }
       />
 
-      <main className="flex-1 w-full flex flex-col items-center justify-center max-w-5xl mx-auto p-4 md:p-8">
-        <div className="grid md:grid-cols-3 gap-8 w-full mx-auto max-w-4xl mt-4">
-          <div className="md:col-span-1 relative z-10 md:-mr-8 md:pr-8 md:h-[590px] overflow-y-auto no-scrollbar">
+      <main className="flex-1 w-full flex flex-col items-center justify-center mx-auto p-4 md:p-8">
+        <div className="grid md:grid-cols-3 gap-8 w-full mx-auto max-w-4xl mt-4 shrink-0 pb-4">
+          <div className="md:col-span-1 relative z-10 md:pr-8 md:h-[590px] overflow-y-auto no-scrollbar w-full mx-auto max-w-[590px]">
             <div className="space-y-6 flex flex-col justify-center items-center md:items-start text-center md:text-left min-h-full py-4 md:py-8">
               <div className="space-y-4 flex flex-col items-center md:items-start w-full">
               <Skeleton className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border border-primary/10 shadow-sm mb-2 shrink-0" />
@@ -51,9 +51,9 @@ export default function BookLoading() {
           </div>
           </div>
 
-          <div className="md:col-span-2 relative w-full overflow-visible z-0">
+          <div className="md:col-span-2 relative w-full overflow-visible z-0 flex justify-center md:block">
             {/* ReservationSlotPicker Skeleton */}
-            <div className="bg-card border rounded-3xl p-6 shadow-sm flex flex-col h-[590px] w-full max-w-full">
+            <div className="bg-card border rounded-3xl p-6 shadow-sm flex flex-col h-[590px] w-full max-w-[590px] mx-auto md:w-full">
               <div className="flex-1 flex flex-col w-full">
                 <div className="flex items-center justify-between mb-6 px-1">
                   <Skeleton className="h-8 w-8 rounded-md" />

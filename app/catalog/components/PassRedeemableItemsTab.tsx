@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type Dispatch, type SetStateAction } from "react"
 import { useSite } from "@/app/context/SiteContext"
-import { getPassRedeemableItems, updatePassAssignmentMode, updatePassRedeemableItems } from "../pass-actions"
+import { getPassRedeemableItems, updatePassRedeemableItems } from "../pass-actions"
 import { listCatalogItems } from "../actions"
 import { Button } from "@/app/components/ui/button"
 import { Trash2, PlusCircle, Calendar } from "@/app/components/ui/icons"
@@ -21,6 +21,7 @@ import {
   SectionCardDescription,
   SectionCardContent,
 } from "@/app/components/ui/section-card"
+import { ActionFooter } from "@/app/components/ui/card-footer"
 import {
   Dialog,
   DialogContent,
@@ -37,10 +38,14 @@ export function PassRedeemableItemsTab({
   passCatalogItemId,
   formData,
   setFormData,
+  handleSave,
+  saving,
 }: {
   passCatalogItemId: string
   formData: Partial<CatalogItem>
   setFormData: Dispatch<SetStateAction<Partial<CatalogItem>>>
+  handleSave: () => void
+  saving: boolean
 }) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
@@ -138,23 +143,12 @@ export function PassRedeemableItemsTab({
   const assignmentMode: RedeemAssignmentMode =
     formData.redeem_assignment_mode === "round_robin" ? "round_robin" : "user_choice"
 
-  const handleAssignmentModeChange = async (value: RedeemAssignmentMode) => {
-    if (!currentSite) return
+  const handleAssignmentModeChange = (value: RedeemAssignmentMode) => {
     setFormData((prev) => ({
       ...prev,
       redeem_assignment_mode: value,
       ...(value === "round_robin" ? { is_reservation: true } : {}),
     }))
-    const { error } = await updatePassAssignmentMode(currentSite.id, passCatalogItemId, value)
-    if (error) {
-      toast.error(error.message)
-      return
-    }
-    toast.success(
-      value === "round_robin"
-        ? (t("catalog.passItems.modeRoundRobinSaved") || "Auto-assign (round robin) enabled")
-        : (t("catalog.passItems.modeUserChoiceSaved") || "Buyer chooses service")
-    )
   }
 
   return (
@@ -199,6 +193,11 @@ export function PassRedeemableItemsTab({
           </div>
         </RadioGroup>
       </SectionCardContent>
+      <ActionFooter>
+        <Button variant="outline" onClick={handleSave} disabled={saving} size="sm">
+          {saving ? (t('common.saving') || 'Saving...') : (t('common.saveChanges') || 'Save Changes')}
+        </Button>
+      </ActionFooter>
     </SectionCard>
 
     <SectionCard id="pass-items">

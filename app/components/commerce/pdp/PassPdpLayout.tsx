@@ -70,7 +70,7 @@ export function PassPdpLayout({ item, backUrl, experience }: { item: CatalogItem
 
   if (isEntitlementExperience) {
     return (
-      <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-2 md:py-4 flex-1 min-h-0 flex flex-col">
+      <div className="mx-auto w-full px-4 md:px-8 py-2 md:py-4 flex-1 min-h-0 flex flex-col items-center max-w-7xl">
         <PassBookingPanel
           entitlement={experience!.entitlement}
           services={experience!.extras?.services || []}

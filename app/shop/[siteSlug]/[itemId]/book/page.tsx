@@ -48,7 +48,7 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
     return <div className="min-h-screen flex items-center justify-center bg-muted/20">Item not found</div>
   }
 
-  const handleCartAdd = (startIso: string, endIso: string) => {
+  const handleCartAdd = (startIso: string, endIso: string, available?: number) => {
     let parsedModifiers = undefined
     if (searchParams?.modifiers) {
       try {
@@ -57,7 +57,7 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
         console.error("Failed to parse modifiers", e)
       }
     }
-    addToCartStorage(item, 1, startIso, endIso, parsedModifiers)
+    addToCartStorage(item, 1, startIso, endIso, parsedModifiers, available)
     toast.success(`${item.name} added to cart`)
     router.push(`/shop/${params.siteSlug}?cart=1`)
   }
@@ -66,7 +66,7 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
     <BookingExperience
       mode="cart"
       item={item}
-      backUrl={`/shop/${params.siteSlug}/${item.id}`}
+      backUrl={`/shop/${params.siteSlug}/${item.parent_id || item.id}`}
       onCartAdd={handleCartAdd}
     />
   )
