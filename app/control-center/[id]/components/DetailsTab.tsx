@@ -26,6 +26,7 @@ import { createClient } from "@/utils/supabase/client"
 import { siteMembersService } from "@/app/services/site-members-service"
 import { useSite } from "@/app/context/SiteContext"
 import { DatePicker } from "@/app/components/ui/date-picker"
+import { TimeSelect } from "@/app/components/ui/time-select"
 import { Badge } from "@/app/components/ui/badge"
 import { navigateToControlCenter } from "@/app/hooks/use-navigation-history"
 
@@ -574,18 +575,46 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
               emptyMessage={schedulesLoading ? "Loading calendars..." : "No calendars found"}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="scheduled_date">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Scheduled Date
-              </div>
-            </Label>
-            <DatePicker
-              date={formData.scheduled_date}
-              setDate={(date) => setFormData({ ...formData, scheduled_date: date })}
-              mode="task"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="scheduled_date">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Scheduled Date
+                </div>
+              </Label>
+              <DatePicker
+                date={formData.scheduled_date}
+                setDate={(date) => {
+                  const newDate = new Date(date)
+                  newDate.setHours(formData.scheduled_date.getHours())
+                  newDate.setMinutes(formData.scheduled_date.getMinutes())
+                  setFormData({ ...formData, scheduled_date: newDate })
+                }}
+                mode="task"
+                className="w-full h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 opacity-0" />
+                  Time
+                </div>
+              </Label>
+              <TimeSelect
+                value={formData.scheduled_date.toTimeString().slice(0, 5)}
+                onValueChange={(time) => {
+                  const newDate = new Date(formData.scheduled_date)
+                  const [hours, minutes] = time.split(':').map(Number)
+                  newDate.setHours(hours)
+                  newDate.setMinutes(minutes)
+                  setFormData({ ...formData, scheduled_date: newDate })
+                }}
+                step={15}
+                className="h-11"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="assignee">
