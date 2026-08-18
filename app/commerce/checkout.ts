@@ -382,7 +382,7 @@ export async function checkoutCart({
 
       const { data: catalogItem } = await (isAdmin ? supabaseAdmin : supabase)
         .from("catalog_items")
-        .select("id, name, description, is_recurring, kind, digital_subtype, is_reservation, redeem_assignment_mode, currency, metadata, target_sale_price, parent_id")
+        .select("id, name, description, is_recurring, kind, digital_subtype, is_reservation, redeem_assignment_mode, currency, metadata, target_sale_price, parent_id, parent:parent_id(name)")
         .eq("id", line.catalogItemId)
         .single();
         
@@ -443,6 +443,13 @@ export async function checkoutCart({
         catalogItemsForShipping.push(catalogItem as any);
       }
 
+      let finalName = catalogItem?.name || "Unknown Item";
+      let parentName = null;
+      if ((catalogItem as any)?.parent?.name && (catalogItem as any).parent.name !== catalogItem?.name) {
+        parentName = (catalogItem as any).parent.name;
+        // finalName remains the variant name, we store parent name in metadata
+      }
+
       const clientLineKey =
         line.clientLineKey ||
         `${line.catalogItemId}:${processedLines.length}`;
@@ -450,7 +457,7 @@ export async function checkoutCart({
       processedLines.push({
         site_id: siteId,
         catalog_item_id: line.catalogItemId,
-        name: catalogItem?.name || "Unknown Item",
+        name: finalName,
         description: catalogItem?.description,
         currency: catalogItem?.currency || "USD",
         quantity: line.quantity,
@@ -463,6 +470,7 @@ export async function checkoutCart({
         client_line_key: clientLineKey,
         parent_client_line_key: null as string | null,
         modifier_group_id: null as string | null,
+        parent_name: parentName,
       });
 
       for (const mod of line.modifiers || []) {
@@ -502,6 +510,7 @@ export async function checkoutCart({
           client_line_key: `${clientLineKey}:mod:${mod.groupId || "g"}:${mod.catalogItemId}`,
           parent_client_line_key: clientLineKey,
           modifier_group_id: mod.groupId || null,
+          parent_name: null,
         });
       }
     }
@@ -580,7 +589,7 @@ export async function checkoutCart({
     let orderInitialStatus = 'pending';
 
     if (intent === 'complete') {
-      saleInitialStatus = 'completed';
+      saleInitialStatus = isFullyPaid ? 'completed' : 'pending';
       orderInitialStatus = 'completed';
     } else if (intent === 'pay') {
       saleInitialStatus = isFullyPaid ? 'completed' : 'pending';
@@ -657,6 +666,8 @@ export async function checkoutCart({
          saleInitialStatus = existingSale?.status === 'completed' && !isFullyPaid ? 'completed' : saleInitialStatus;
       }
 
+      const firstItemName = processedLines.length > 0 ? processedLines[0].name : undefined;
+
       // Update Sale
       const saleData: any = {
         site_id: siteId,
@@ -668,6 +679,7 @@ export async function checkoutCart({
         segment_id: leadSegmentId,
         company_id: leadCompanyId,
         title: `Order - ${new Date().toLocaleDateString()}`,
+        product_name: firstItemName,
         status: saleInitialStatus,
         amount: orderTotal,
         amount_due: payments ? Math.max(0, orderTotal - totalPaid) : orderTotal,
@@ -734,6 +746,7 @@ export async function checkoutCart({
             parent_client_line_key: pl.parent_client_line_key,
             is_modifier: !!pl.parent_client_line_key,
             modifier_group_id: pl.modifier_group_id,
+            parent_name: pl.parent_name,
           }
         })),
         ...(notes !== undefined ? { notes: notes.trim() || null } : {}),
@@ -749,6 +762,8 @@ export async function checkoutCart({
       order = updatedOrder;
 
     } else {
+      const firstItemName = processedLines.length > 0 ? processedLines[0].name : undefined;
+
       // 4. Create New Sale
       const saleData: any = {
         site_id: siteId,
@@ -761,6 +776,7 @@ export async function checkoutCart({
         company_id: leadCompanyId,
         accounting_state: 'pending',
         title: `Order - ${new Date().toLocaleDateString()}`,
+        product_name: firstItemName,
         status: saleInitialStatus,
         amount: orderTotal,
         amount_due: payments ? Math.max(0, orderTotal - totalPaid) : orderTotal,
@@ -822,6 +838,7 @@ export async function checkoutCart({
             parent_client_line_key: pl.parent_client_line_key,
             is_modifier: !!pl.parent_client_line_key,
             modifier_group_id: pl.modifier_group_id,
+            parent_name: pl.parent_name,
           }
         }))
       };

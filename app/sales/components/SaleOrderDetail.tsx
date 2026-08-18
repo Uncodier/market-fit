@@ -1,8 +1,7 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { SaleOrder, SaleOrderItem } from "@/app/types"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Button } from "@/app/components/ui/button"
@@ -22,6 +21,17 @@ export function SaleOrderDetail({ saleOrder, saleId }: SaleOrderDetailProps) {
     // Will be implemented later
     console.log("Create new order for sale", saleId);
   };
+
+  const parseItemName = (name: string, parentNameFromMeta?: string | null) => {
+    if (parentNameFromMeta) {
+      return { parentName: parentNameFromMeta, variantName: name };
+    }
+    if (name.includes(' -> ')) {
+      const parts = name.split(' -> ');
+      return { parentName: parts[0], variantName: parts.slice(1).join(' -> ') };
+    }
+    return { parentName: null, variantName: name };
+  }
 
   if (!saleOrder) {
     return (
@@ -48,6 +58,11 @@ export function SaleOrderDetail({ saleOrder, saleId }: SaleOrderDetailProps) {
 
   // Calculate order summary
   const { subtotal, taxTotal, discountTotal, total } = saleOrder;
+  const currency = "MXN" // Default to MXN for now
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount || 0)
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden" style={{ 
@@ -60,42 +75,93 @@ export function SaleOrderDetail({ saleOrder, saleId }: SaleOrderDetailProps) {
       
       <ScrollArea className="max-h-[400px]">
         <div className="p-6">
-          <div className="border border-gray-200 rounded-md overflow-hidden">
-            <Table>
-              <TableHeader className="bg-gray-50">
-                <TableRow>
-                  <TableHead className="text-sm font-semibold">{t('sales.order.item') || 'Item'}</TableHead>
-                  <TableHead className="text-sm font-semibold text-right">{t('sales.order.qty') || 'Qty'}</TableHead>
-                  <TableHead className="text-sm font-semibold text-right">{t('sales.order.price') || 'Price'}</TableHead>
-                  <TableHead className="text-sm font-semibold text-right">{t('sales.order.total') || 'Total'}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {saleOrder.items && saleOrder.items.length > 0 ? (
-                  saleOrder.items.map((item: SaleOrderItem) => (
-                    <TableRow key={item.id} className="border-b border-gray-100">
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          <p className="font-medium text-sm">{item.name}</p>
-                          {item.description && (
-                            <p className="text-xs text-muted-foreground">{item.description}</p>
-                          )}
+          <div className="border border-gray-200 rounded-md overflow-hidden bg-card">
+            <div className="hidden sm:flex items-center gap-4 border-b border-gray-100 bg-gray-50/50 text-xs font-semibold text-gray-500 uppercase tracking-wider px-6 py-3">
+              <div className="flex-1">{t('sales.order.item') || 'Item'}</div>
+              <div className="flex items-center">
+                <div className="w-[120px] text-right">{t('sales.order.qty') || 'Qty'}</div>
+                <div className="w-[100px] text-right">{t('sales.order.price') || 'Price'}</div>
+                <div className="w-[100px] text-right">{t('sales.order.total') || 'Total'}</div>
+              </div>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {saleOrder.items && saleOrder.items.length > 0 ? (() => {
+                const itemsList = saleOrder.items as any[];
+                const parents = itemsList.filter(i => !(i.metadata?.is_modifier || i.parent_sale_order_item_id));
+                const children = itemsList.filter(i => (i.metadata?.is_modifier || i.parent_sale_order_item_id));
+
+                return parents.map((item: any) => {
+                  const modifiers = children.filter(c => 
+                    (c.parent_sale_order_item_id && c.parent_sale_order_item_id === item.id) ||
+                    (c.metadata?.parent_client_line_key && c.metadata.parent_client_line_key === item.metadata?.client_line_key)
+                  );
+
+                  return (
+                    <React.Fragment key={item.id || item.metadata?.client_line_key || Math.random()}>
+                      <div className="p-4 sm:px-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                          <div className="flex-1 flex flex-col">
+                            <div className="font-medium text-base">
+                              {parseItemName(item.name, item.metadata?.parent_name).parentName || item.name}
+                            </div>
+                            {parseItemName(item.name, item.metadata?.parent_name).parentName && (
+                              <div className="text-sm text-muted-foreground mt-0.5">
+                                {parseItemName(item.name, item.metadata?.parent_name).variantName}
+                              </div>
+                            )}
+                            {item.description && (
+                              <div className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.description}</div>
+                            )}
+                            <div className="flex items-center gap-3 mt-2 sm:hidden text-sm text-muted-foreground">
+                              <span>{item.quantity} × {formatCurrency(item.unitPrice)}</span>
+                              <span className="font-medium text-foreground ml-auto">{formatCurrency(item.subtotal)}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="hidden sm:flex items-center">
+                            <div className="w-[120px] text-right text-sm text-muted-foreground">{item.quantity} ×</div>
+                            <div className="w-[100px] text-right font-medium text-base text-muted-foreground">{formatCurrency(item.unitPrice)}</div>
+                            <div className="w-[100px] text-right font-medium text-base">{formatCurrency(item.subtotal)}</div>
+                          </div>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6">
-                      {t('sales.order.noItems') || 'No items in this order'}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+
+                        {modifiers.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-dashed border-gray-200">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3 sm:ml-[16px] lg:ml-[24px]">{t('sales.order.modifiers') || 'Extras'}</p>
+                            <div className="space-y-3">
+                              {modifiers.map((mod: any, idx: number) => (
+                                <div key={mod.id || mod.metadata?.client_line_key || idx} className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                  <div className="flex items-center gap-2 text-muted-foreground min-w-0 flex-1 sm:ml-[16px] lg:ml-[24px]">
+                                    <span>+</span>
+                                    <span className="text-sm">{mod.name}</span>
+                                    {mod.description && <span className="hidden sm:inline text-xs">- {mod.description}</span>}
+                                  </div>
+                                  
+                                  <div className="hidden sm:flex items-center">
+                                    <div className="w-[120px] text-right text-sm text-muted-foreground">{mod.quantity} ×</div>
+                                    <div className="w-[100px] text-right text-sm text-muted-foreground">{formatCurrency(mod.unitPrice)}</div>
+                                    <div className="w-[100px] text-right font-medium text-sm text-muted-foreground">{formatCurrency(mod.subtotal)}</div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between sm:hidden pl-5 text-sm text-muted-foreground">
+                                    <span>{mod.quantity} × {formatCurrency(mod.unitPrice)}</span>
+                                    <span className="font-medium text-foreground">{formatCurrency(mod.subtotal)}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </React.Fragment>
+                  );
+                })
+              })() : (
+                <div className="text-center py-8 text-muted-foreground">
+                  {t('sales.order.noItems') || 'No items in this order'}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 space-y-2 pt-4 border-t border-dashed border-gray-200">

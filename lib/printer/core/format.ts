@@ -98,7 +98,25 @@ export function paymentMethodLabel(value?: string | null, locale?: string | null
 
 export function kitchenLineText(line: KitchenLine, width: number): string[] {
   const qty = `${line.quantity}x`
-  const rows = [padLine(qty, line.name, width)]
+  const rows: string[] = []
+
+  const parseItemName = (name: string) => {
+    if (name.includes(' -> ')) {
+      const parts = name.split(' -> ');
+      return { parentName: parts[0], variantName: parts.slice(1).join(' -> ') };
+    }
+    return { parentName: null, variantName: name };
+  }
+
+  const { parentName, variantName } = parseItemName(line.name);
+
+  if (parentName) {
+    rows.push(padLine(qty, parentName, width))
+    rows.push(`   ${variantName}`.slice(0, width))
+  } else {
+    rows.push(padLine(qty, line.name, width))
+  }
+
   for (const mod of line.modifiers || []) {
     rows.push(`   + ${mod.quantity}x ${mod.name}`.slice(0, width))
   }
@@ -112,14 +130,37 @@ export function receiptLineText(
 ): string[] {
   const currency = payload.currency || "USD"
   const rows: string[] = []
+
+  const parseItemName = (name: string) => {
+    if (name.includes(' -> ')) {
+      const parts = name.split(' -> ');
+      return { parentName: parts[0], variantName: parts.slice(1).join(' -> ') };
+    }
+    return { parentName: null, variantName: name };
+  }
+
   for (const line of payload.lines) {
-    rows.push(
-      padLine(
-        `${line.quantity}x ${line.name}`,
-        formatMoney(line.subtotal, currency, payload.locale),
-        width,
-      ),
-    )
+    const { parentName, variantName } = parseItemName(line.name);
+    
+    if (parentName) {
+      rows.push(`${line.quantity}x ${parentName}`.slice(0, width))
+      rows.push(
+        padLine(
+          `  ${variantName}`,
+          formatMoney(line.subtotal, currency, payload.locale),
+          width,
+        ),
+      )
+    } else {
+      rows.push(
+        padLine(
+          `${line.quantity}x ${line.name}`,
+          formatMoney(line.subtotal, currency, payload.locale),
+          width,
+        ),
+      )
+    }
+
     for (const mod of line.modifiers || []) {
       rows.push(`  + ${mod.quantity}x ${mod.name}`.slice(0, width))
     }
@@ -132,7 +173,8 @@ export function ticketWidth(paper: PaperWidthMm): number {
 }
 
 export function dashedRule(paper: PaperWidthMm): string {
-  return rule(charsPerLine(paper))
+  const width = charsPerLine(paper);
+  return "-".repeat(width);
 }
 
 export function kitchenLinesFromPayload(payload: KitchenPayload): KitchenLine[] {

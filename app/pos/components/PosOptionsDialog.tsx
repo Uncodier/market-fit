@@ -208,8 +208,9 @@ export function PosOptionsDialog({
 
   const handleConfirm = () => {
     if (!sellableItem || !modifiersValid) return
+    const confirmedItem = needsVariant ? { ...sellableItem, _parent: { name: item.name } } : sellableItem
     onConfirm({
-      item: sellableItem,
+      item: confirmedItem,
       modifiers: selectedModifiers.map((m) => ({
         groupId: m.groupId,
         catalogItemId: m.catalogItemId,

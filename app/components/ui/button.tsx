@@ -41,7 +41,7 @@ const buttonVariants = cva(
 )
 
 const OUTER_CLASS_RE =
-  /(?:^|\s)((?:sm:|md:|lg:|xl:|2xl:)?(?:w-full|flex-1|grow|shrink-0|(?:m|mt|mb|ml|mr|mx|my|ms|me)-(?:\[[^\]]+\]|[\w./]+)|self-[\w-]+))(?=\s|$)/g
+  /(?:^|\s)((?:sm:|md:|lg:|xl:|2xl:)?(?:w-full|flex-1|grow|shrink-0|(?:m|mt|mb|ml|mr|mx|my|ms|me)-(?:\[[^\]]+\]|[\w./]+)|self-[\w-]+|!?h-(?:\[[^\]]+\]|[\w./]+)|!?min-h-(?:\[[^\]]+\]|[\w./]+)|!?mt-(?:\[[^\]]+\]|[\w./]+)))(?=\s|$)/g
 
 const RADIUS_CLASS_RE =
   /(?:^|\s)((?:sm:|md:|lg:|xl:|2xl:)?(?:rounded(?:-(?:\[[^\]]+\]|[\w]+))?))/g
@@ -50,8 +50,11 @@ function splitOuterClasses(className?: string) {
   if (!className) return { outer: "", inner: undefined as string | undefined }
   const outer: string[] = []
   const inner = className
-    .replace(OUTER_CLASS_RE, (_match, token: string) => {
+    .replace(OUTER_CLASS_RE, (match, token: string) => {
       outer.push(token)
+      if (token.match(/(?:^|:)(?:!?h-|!?min-h-|w-full)/)) {
+        return match
+      }
       return " "
     })
     .replace(/\s+/g, " ")

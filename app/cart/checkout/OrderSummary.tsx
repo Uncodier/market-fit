@@ -95,20 +95,35 @@ export function OrderSummary({
                 )}
                 <h4 className="font-bold truncate text-sm">{item.name}</h4>
                 <div className="text-xs text-muted-foreground mt-1 font-medium tracking-wide">{t('qty') || 'QTY:'} {item.cartQty}</div>
-                {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
-                  <ul className="mt-1 space-y-0.5">
-                    {item.modifiers.map((m: any) => (
-                      <li key={`${m.groupId}:${m.catalogItemId}`} className="text-xs text-muted-foreground truncate">
-                        + {m.name}{m.cartQty > 1 ? ` ×${m.cartQty}` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
               <div className="font-black text-sm flex items-start pt-1 shrink-0">
                 {formatMoney(cartLineExtendedTotal(item))}
               </div>
             </div>
+
+            {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
+              <div className="pt-2 mt-0 border-t border-border/40 px-3 pb-3 bg-muted/20 shadow-inner">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  {(t as any)?.('checkout.modifiers') || 'Extras'}
+                </div>
+                <div className="space-y-1">
+                  {item.modifiers.map((m: any) => (
+                    <div key={`${m.groupId}:${m.catalogItemId}`} className="flex justify-between items-center text-xs text-muted-foreground">
+                      <div className="flex gap-1.5 items-center truncate">
+                        <span>+</span>
+                        <span className="truncate">{m.name}</span>
+                      </div>
+                      <div className="flex gap-3 items-center shrink-0">
+                        <span>{m.cartQty > 1 ? `${m.cartQty} × ` : ""}{m.cartPrice > 0 ? formatMoney(m.cartPrice) : ""}</span>
+                        <span className="font-medium text-foreground text-right">
+                          {m.cartPrice > 0 ? formatMoney(m.cartPrice * m.cartQty * item.cartQty) : ""}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {item.reservationStart && (
               <div className="pt-2 mt-0 border-t border-border/40 px-3 pb-3 bg-muted/20">

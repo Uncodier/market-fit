@@ -16,6 +16,7 @@ import { PaymentConfirmationDialog } from "./components/PaymentConfirmationDialo
 import { PosOptionsDialog } from "./components/PosOptionsDialog";
 import { PosReservationDialog } from "./components/PosReservationDialog";
 import { PosDigitalAssetDialog } from "./components/PosDigitalAssetDialog";
+import { PosSplitBillDialog } from "./components/PosSplitBillDialog";
 import { CartPanel } from "./components/CartPanel";
 import { resolveUnitPriceLocal } from "./local/resolve-unit-price-local";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
@@ -47,6 +48,7 @@ export default function POSPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [syncIssuesOpen, setSyncIssuesOpen] = useState(false);
+  const [isSplitBillOpen, setIsSplitBillOpen] = useState(false);
   const [leadGate, setLeadGate] = useState<null | "promo" | "checkout" | "send">(
     null,
   );
@@ -125,14 +127,42 @@ export default function POSPage() {
           i.sku?.toLowerCase().includes(q),
       );
     }
-    if (selectedCategory === "all") return list;
-    if (selectedCategory === "kind_product")
-      return list.filter((i) => i.kind === "product");
-    if (selectedCategory === "kind_service")
-      return list.filter((i) => i.kind === "service");
-    if (selectedCategory === "kind_digital_asset")
-      return list.filter((i) => i.kind === "digital_asset");
-    return list.filter((i) => i.category_id === selectedCategory);
+    
+    if (selectedCategory !== "all") {
+      if (selectedCategory === "kind_product") {
+        list = list.filter((i) => i.kind === "product");
+      } else if (selectedCategory === "kind_service") {
+        list = list.filter((i) => i.kind === "service");
+      } else if (selectedCategory === "kind_digital_asset") {
+        list = list.filter((i) => i.kind === "digital_asset");
+      } else {
+        list = list.filter((i) => i.category_id === selectedCategory);
+      }
+    }
+
+    return list.map((item) => {
+      const children = catalog.catalogItems.filter(
+        (child) => 
+          child.parent_id === item.id && 
+          child.status === "active" && 
+          child.is_purchasable !== false
+      );
+      if (!children.length) return item;
+
+      const variantLabels = children.slice(0, 4).map((child) => {
+        const prefix = `${item.name || ""} / `;
+        if (child.name?.startsWith(prefix)) return child.name.slice(prefix.length);
+        return child.name || "";
+      }).filter(Boolean);
+
+      return {
+        ...item,
+        _shop: {
+          ...(item as any)._shop,
+          variantLabels,
+        }
+      };
+    });
   }, [catalog.catalogItems, searchQuery, selectedCategory]);
 
   const hasProducts = catalog.availableItems.some((i) => i.kind === "product" && !i.parent_id);
@@ -211,6 +241,7 @@ export default function POSPage() {
     setShippingAddress: cartApi.setShippingAddress,
     siteId,
     onLeadUpdated: leadApi.handleLeadUpdated,
+    onSplitBill: () => setIsSplitBillOpen(true),
     t,
   };
 
@@ -491,6 +522,22 @@ export default function POSPage() {
               customerConfirmed: true,
               leadOverride: committed,
             });
+          }
+        }}
+      />
+      <PosSplitBillDialog
+        open={isSplitBillOpen}
+        onOpenChange={setIsSplitBillOpen}
+        originalCart={cartApi.cart}
+        onConfirm={(columns) => {
+          if (columns.length === 0) return;
+          cartApi.setCart(columns[0].items);
+          if (columns[0].title !== "Order 1") {
+            cartApi.setOrderNotes(columns[0].title);
+          }
+          const otherColumns = columns.slice(1);
+          if (otherColumns.length > 0) {
+            checkout.createPendingSplitOrders(otherColumns);
           }
         }}
       />

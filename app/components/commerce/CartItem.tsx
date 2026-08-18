@@ -28,7 +28,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
   const currency = item.currency || "USD"
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col">
+    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
       <div className="flex gap-4 p-4">
         <div className="relative w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden flex-shrink-0">
           <img src={resolveItemImage(item, "card")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
@@ -54,22 +54,6 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
             <div className="text-gray-500 dark:text-gray-400 text-sm mt-1 font-medium">
               {formatPrice(unit, currency)}
             </div>
-            {modifiers.length > 0 && (
-              <ul className="mt-1.5 space-y-0.5">
-                {modifiers.map((m) => (
-                  <li
-                    key={`${m.groupId}:${m.catalogItemId}`}
-                    className="text-xs text-gray-500 dark:text-gray-400 truncate"
-                  >
-                    + {m.name}
-                    {m.cartQty > 1 ? ` ×${m.cartQty}` : ""}
-                    {m.cartPrice > 0
-                      ? ` (${formatPrice(m.cartPrice * m.cartQty, currency)})`
-                      : ""}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 shrink-0">
@@ -96,8 +80,35 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
         </div>
       </div>
 
+      {modifiers.length > 0 && (
+        <div className="bg-gray-50/50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 px-4 py-3 shadow-inner">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+            {(t as any)?.('pos.modifiers.title') || 'Extras'}
+          </div>
+          <div className="space-y-1.5">
+            {modifiers.map((m) => (
+              <div
+                key={`${m.groupId}:${m.catalogItemId}`}
+                className="text-xs text-gray-600 dark:text-gray-300 flex justify-between gap-2"
+              >
+                <div className="flex gap-1.5 items-center truncate">
+                  <span className="text-gray-400">+</span>
+                  <span className="truncate">{m.name}</span>
+                </div>
+                <div className="flex gap-3 items-center flex-shrink-0">
+                  <span>{m.cartQty > 1 ? `${m.cartQty} × ` : ""}{formatPrice(m.cartPrice, currency)}</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100 w-16 text-right">
+                    {formatPrice(m.cartPrice * m.cartQty * item.cartQty, currency)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {item.reservationStart && (
-        <div className="px-4 pb-3 pt-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/20 rounded-b-2xl">
+        <div className="px-4 pb-3 pt-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/20">
           <Link 
             href={`/shop/${item.site?.slug || item.site_id}/${item.id}/book`}
             className="flex items-center justify-between hover:bg-white dark:hover:bg-gray-800 p-1.5 -mx-1.5 rounded-lg transition-colors group"

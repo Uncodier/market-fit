@@ -35,7 +35,7 @@ export function PosCartLines({
   updateQty,
   money,
 }: Props) {
-  const { locale } = useLocalization()
+  const { locale, t } = useLocalization()
   const dateLocale = locale === "es" ? es : enUS
 
   return (
@@ -48,24 +48,29 @@ export function PosCartLines({
           ? formatReservationTime(item.reservationStart, dateLocale)
           : null
         return (
-          <div key={lineKey} className="space-y-1">
+          <div key={lineKey} className={cn("rounded-lg border shadow-sm transition-all overflow-hidden", selectedCartItemId === lineKey ? "border-primary/50" : "hover:border-primary/50")}>
             <div
               className={cn(
-                "flex items-center gap-3 p-0 pr-3 rounded-lg border shadow-sm min-h-14 cursor-pointer transition-all",
+                "flex items-center gap-3 p-0 pr-3 min-h-14 cursor-pointer",
                 selectedCartItemId === lineKey
-                  ? "bg-primary/10 dark:bg-primary/20"
-                  : "bg-card hover:border-primary/50",
+                  ? "bg-primary/5 dark:bg-primary/10"
+                  : "bg-card",
               )}
               onClick={() => setSelectedCartItemId?.(lineKey)}
             >
-              <div className="h-14 aspect-square rounded-l-lg bg-muted/30 overflow-hidden flex-shrink-0 self-stretch">
+              <div className="w-16 h-[4.5rem] bg-muted/30 overflow-hidden flex-shrink-0 self-start mt-0.5 ml-0.5 rounded-md">
                 <img
                   src={resolveItemImage(item, "thumb")}
                   alt={item.name}
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="flex-1 min-w-0 py-1.5">
+              <div className="flex-1 min-w-0 py-2.5 flex flex-col justify-center">
+                {((item as any)._parent?.name && (item as any)._parent.name !== item.name) || (item as any).parent?.name || (item as any).parent_name ? (
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5 truncate">
+                    {(item as any)._parent?.name && (item as any)._parent.name !== item.name ? (item as any)._parent.name : ((item as any).parent?.name || (item as any).parent_name)}
+                  </div>
+                ) : null}
                 <h4 className="font-medium text-sm text-foreground truncate">
                   {item.name}
                 </h4>
@@ -111,21 +116,27 @@ export function PosCartLines({
               </div>
             </div>
             {modifiers.length > 0 && (
-              <div className="ml-12 space-y-0.5">
-                {modifiers.map((m) => (
-                  <div
-                    key={`${lineKey}-${m.catalogItemId}`}
-                    className="text-xs text-muted-foreground flex justify-between gap-2 pr-3"
-                  >
-                    <span className="truncate">
-                      + {m.name}
-                      {m.cartQty > 1 ? ` ×${m.cartQty}` : ""}
-                    </span>
-                    <span className="flex-shrink-0">
-                      {money(m.cartPrice * m.cartQty * item.cartQty)}
-                    </span>
-                  </div>
-                ))}
+              <div className="bg-muted/30 border-t px-3 py-2 shadow-inner">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  {(t as any)?.('pos.modifiers.title') || 'Extras'}
+                </div>
+                <div className="space-y-1">
+                  {modifiers.map((m) => (
+                    <div
+                      key={`${lineKey}-${m.catalogItemId}`}
+                      className="text-xs text-muted-foreground flex justify-between gap-2"
+                    >
+                      <div className="flex gap-1.5 items-center truncate">
+                        <span>+</span>
+                        <span className="truncate">{m.name}</span>
+                      </div>
+                      <div className="flex gap-3 items-center flex-shrink-0">
+                        <span>{m.cartQty > 1 ? `${m.cartQty} × ` : ""}{money(m.cartPrice)}</span>
+                        <span className="font-medium text-foreground w-12 text-right">{money(m.cartPrice * m.cartQty * item.cartQty)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

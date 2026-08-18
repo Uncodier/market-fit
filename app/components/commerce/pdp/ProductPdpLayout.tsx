@@ -58,11 +58,13 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
     // Need all axes selected
     if (Object.keys(selectedOptions).length !== axes.length) return null
     
-    return children.find((c: CatalogItem) => {
+    const child = children.find((c: CatalogItem) => {
       const childOpts = c.metadata?.option_values
       if (!childOpts) return false
       return Object.entries(selectedOptions).every(([aId, vId]) => childOpts[aId] === vId)
-    }) || null
+    })
+    
+    return child ? { ...child, _parent: { name: item.name } } : null
   }, [selectedOptions, hasVariants, axes.length, children, item])
 
   // Get cart context using the resolved child's ID (so it merges by variant)

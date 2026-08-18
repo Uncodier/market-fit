@@ -20,12 +20,29 @@ export function writeKitchenDelta(b: TicketBuilder, payload: KitchenPayload): vo
   if (fulfill) b.bold(true).text(ticketHeading(fulfill, locale), "center").bold(false)
   writeSolidRule(b)
 
+  const parseItemName = (name: string) => {
+    if (name.includes(' -> ')) {
+      const parts = name.split(' -> ');
+      return { parentName: parts[0], variantName: parts.slice(1).join(' -> ') };
+    }
+    return { parentName: null, variantName: name };
+  }
+
   if (delta?.adds.length) {
     writeBanner(b, ticketHeading(copy.add, locale))
     for (const line of delta.adds) {
       b.size(true).bold(true)
-      b.rawLine(`${line.quantity}  ${line.name}`.slice(0, b.width))
-      b.size(false).bold(false)
+      const { parentName, variantName } = parseItemName(line.name);
+      
+      if (parentName) {
+        b.rawLine(`${line.quantity}  ${parentName}`.slice(0, b.width))
+        b.size(false).bold(false)
+        b.rawLine(`   ${variantName}`.slice(0, b.width))
+      } else {
+        b.rawLine(`${line.quantity}  ${line.name}`.slice(0, b.width))
+        b.size(false).bold(false)
+      }
+
       for (const mod of line.modifiers || []) {
         b.text(`  + ${mod.quantity}x ${mod.name}`)
       }
@@ -36,15 +53,28 @@ export function writeKitchenDelta(b: TicketBuilder, payload: KitchenPayload): vo
     writeBanner(b, ticketHeading(copy.qty, locale))
     for (const change of delta.qtyChanges) {
       b.bold(true)
-      b.rawLine(padLine(change.name, `${change.from} -> ${change.to}`, b.width))
-      b.bold(false)
+      const { parentName, variantName } = parseItemName(change.name);
+      if (parentName) {
+        b.rawLine(padLine(parentName, `${change.from} -> ${change.to}`, b.width))
+        b.bold(false)
+        b.rawLine(`  ${variantName}`.slice(0, b.width))
+      } else {
+        b.rawLine(padLine(change.name, `${change.from} -> ${change.to}`, b.width))
+        b.bold(false)
+      }
     }
   }
 
   if (delta?.voids.length) {
     writeBanner(b, ticketHeading(copy.voidLabel, locale))
     for (const line of delta.voids) {
-      b.rawLine(`${line.quantity}  ${line.name}`.slice(0, b.width))
+      const { parentName, variantName } = parseItemName(line.name);
+      if (parentName) {
+        b.rawLine(`${line.quantity}  ${parentName}`.slice(0, b.width))
+        b.rawLine(`   ${variantName}`.slice(0, b.width))
+      } else {
+        b.rawLine(`${line.quantity}  ${line.name}`.slice(0, b.width))
+      }
     }
   }
 

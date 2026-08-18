@@ -311,7 +311,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
                 allowCreate={false}
                 placeholder="Link to a specific calendar/schedule..."
                 emptyMessage={schedulesLoading ? "Loading calendars..." : "No calendars found"}
-                className="h-12"
+                className="h-11"
               />
             </div>
             <div className="grid gap-2">

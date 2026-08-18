@@ -22,8 +22,26 @@ export function writeKitchenTicket(b: TicketBuilder, payload: KitchenPayload): v
   writeSolidRule(b)
   for (const line of payload.lines || []) {
     b.size(true).bold(true)
-    b.rawLine(`${line.quantity}  ${line.name}`.slice(0, b.width))
-    b.size(false).bold(false)
+
+    const parseItemName = (name: string) => {
+      if (name.includes(' -> ')) {
+        const parts = name.split(' -> ');
+        return { parentName: parts[0], variantName: parts.slice(1).join(' -> ') };
+      }
+      return { parentName: null, variantName: name };
+    }
+
+    const { parentName, variantName } = parseItemName(line.name);
+
+    if (parentName) {
+      b.rawLine(`${line.quantity}  ${parentName}`.slice(0, b.width))
+      b.size(false).bold(false)
+      b.rawLine(`   ${variantName}`.slice(0, b.width))
+    } else {
+      b.rawLine(`${line.quantity}  ${line.name}`.slice(0, b.width))
+      b.size(false).bold(false)
+    }
+
     for (const mod of line.modifiers || []) {
       b.text(`  + ${mod.quantity}x ${mod.name}`)
     }

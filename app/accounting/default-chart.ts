@@ -26,5 +26,6 @@ export const DEFAULT_CHART: ChartSeedAccount[] = [
   { code: '5400', type: 'expense', label: 'Freelancers', system: false, key: 'freelancers' },
   { code: '5500', type: 'expense', label: 'Events & PR', system: false, key: 'events' },
   { code: '5600', type: 'expense', label: 'Operating costs', system: true, key: 'operating' },
+  { code: '5610', type: 'expense', label: 'Salaries & Benefits', system: false, key: 'salaries' },
   { code: '5900', type: 'expense', label: 'Other', system: false, key: 'other' },
 ];

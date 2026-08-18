@@ -90,6 +90,15 @@ export function usePosCart({
   const restoredRef = useRef(false);
   const persistTimer = useRef<number | null>(null);
 
+  useEffect(() => {
+    const totalQty = cart.reduce((acc, item) => acc + item.cartQty, 0);
+    window.dispatchEvent(
+      new CustomEvent("pos:cart-updated", {
+        detail: { qty: totalQty, activeOrderId },
+      })
+    );
+  }, [cart, activeOrderId]);
+
   const hasLead = hasPosCustomer(leadValue);
 
   const {

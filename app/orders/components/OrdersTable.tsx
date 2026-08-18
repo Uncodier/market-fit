@@ -88,7 +88,7 @@ export function OrdersTable({
                   : t("orders.kanban.sourceOnline") || "Online"
               const amount = Number(order.total) || 0
               const due = Number(order.sales?.amount_due) || 0
-              const cancelled = order.status === "cancelled"
+              const cancelled = order.sales?.status === "cancelled"
               const unpaid = !cancelled && due > 0
               const hasNewItems = order.sale_order_items?.some((item: { status?: string }) => item.status === "new") || false
               const fulfillment =

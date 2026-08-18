@@ -110,6 +110,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
     lead_id: string;
     assignee: string;
     type: string;
+    notes: string;
   }>({
     title: task.title,
     description: initialNotes,
@@ -118,7 +119,8 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
     scheduled_date: new Date(task.scheduled_date),
     lead_id: task.lead_id || "",
     assignee: task.assignee || "",
-    type: task.type || ""
+    type: task.type || "",
+    notes: task.metadata?.notes || ""
   })
 
   // Fetch calendars
@@ -245,6 +247,13 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
         newContext = null;
       }
 
+      let updatedMetadata = { ...task.metadata, notes: formData.notes }
+      if (newContext) {
+        updatedMetadata._calendar_context = newContext
+      } else {
+        delete updatedMetadata._calendar_context
+      }
+
       const supabase = createClient()
       const { data, error } = await supabase
         .from('tasks')
@@ -257,7 +266,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
           lead_id: finalLeadId || null,
           assignee: formData.assignee || null,
           type: formData.type || null,
-          metadata: newContext ? { _calendar_context: newContext } : {}
+          metadata: updatedMetadata
         })
         .eq('id', task.id)
         .eq('site_id', currentSite.id)
@@ -344,14 +353,26 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
           newContext = null;
         }
 
+        let updatedMetadata = { ...task.metadata }
+        if (newContext) {
+          updatedMetadata._calendar_context = newContext
+        } else {
+          delete updatedMetadata._calendar_context
+        }
+
         updateData = {
           scheduled_date: formData.scheduled_date.toISOString(),
           lead_id: finalLeadId || null,
           assignee: formData.assignee || null,
           description: finalDescription || null,
-          metadata: newContext ? { _calendar_context: newContext } : {}
+          metadata: updatedMetadata
         }
         setCalendarContext(newContext);
+      } else if (section === 'notes') {
+        let updatedMetadata = { ...task.metadata, notes: formData.notes }
+        updateData = {
+          metadata: updatedMetadata
+        }
       }
 
       const { data, error } = await supabase
@@ -379,7 +400,8 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
       const sectionNames: Record<string, string> = {
         basic: 'Basic Information',
         status: 'Status & Stage',
-        schedule: 'Schedule & Assignment'
+        schedule: 'Schedule & Assignment',
+        notes: 'Notes'
       }
       toast.success(`${sectionNames[section]} saved successfully`)
     } catch (error) {
@@ -424,16 +446,16 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
         </SectionCardHeader>
         <SectionCardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0">
               <Label>Serial ID</Label>
-              <div className="font-mono text-sm bg-muted px-3 py-2 rounded-md border">
-                {task.serial_id}
+              <div className="font-mono text-sm bg-muted px-3 py-2 rounded-md border h-10 flex items-center">
+                <span className="truncate w-full">{task.serial_id}</span>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0">
               <Label>Internal ID</Label>
-              <div className="font-mono text-xs text-muted-foreground bg-muted px-3 py-2 rounded-md border">
-                {task.id}
+              <div className="font-mono text-sm text-muted-foreground bg-muted px-3 py-2 rounded-md border h-10 flex items-center">
+                <span className="truncate w-full">{task.id}</span>
               </div>
             </div>
           </div>
@@ -573,6 +595,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
               allowCreate={false}
               placeholder="Link to a specific calendar/schedule..."
               emptyMessage={schedulesLoading ? "Loading calendars..." : "No calendars found"}
+              className="h-[42px]"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -592,7 +615,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
                   setFormData({ ...formData, scheduled_date: newDate })
                 }}
                 mode="task"
-                className="w-full h-11"
+                className="w-full h-[42px] bg-background border border-input rounded-md hover:bg-accent hover:text-accent-foreground"
               />
             </div>
             <div className="space-y-2">
@@ -612,7 +635,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
                   setFormData({ ...formData, scheduled_date: newDate })
                 }}
                 step={15}
-                className="h-11"
+                className="h-[42px]"
               />
             </div>
           </div>
@@ -627,7 +650,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
               value={formData.assignee} 
               onValueChange={(value) => setFormData({ ...formData, assignee: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-[42px]">
                 <SelectValue placeholder="Select assignee" />
               </SelectTrigger>
               <SelectContent>
@@ -652,6 +675,7 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
               onValueChange={setLeadValue}
               placeholder="Select lead"
               emptyMessage="No leads found"
+              className="h-[42px]"
             />
           </div>
         </SectionCardContent>
@@ -662,6 +686,33 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
             disabled={savingSection === 'schedule'}
           >
             {savingSection === 'schedule' ? "Saving..." : "Save Schedule & Assignment"}
+          </Button>
+        </ActionFooter>
+      </SectionCard>
+
+      {/* Notes */}
+      <SectionCard>
+        <SectionCardHeader>
+          <SectionCardTitle>Notes</SectionCardTitle>
+          <SectionCardDescription>
+            Additional notes for this task
+          </SectionCardDescription>
+        </SectionCardHeader>
+        <SectionCardContent>
+          <Textarea
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            placeholder="Enter notes here..."
+            className="min-h-[120px]"
+          />
+        </SectionCardContent>
+        <ActionFooter>
+          <Button variant="outline" size="sm"
+            type="button"
+            onClick={() => handleSaveSection('notes')}
+            disabled={savingSection === 'notes'}
+          >
+            {savingSection === 'notes' ? "Saving..." : "Save Notes"}
           </Button>
         </ActionFooter>
       </SectionCard>

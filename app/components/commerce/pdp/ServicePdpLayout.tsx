@@ -60,13 +60,14 @@ export function ServicePdpLayout({
   const resolvedChild = useMemo(() => {
     if (!hasVariants) return item
     if (Object.keys(selectedOptions).length !== axes.length) return null
-    return (
-      children.find((c: CatalogItem) => {
-        const childOpts = c.metadata?.option_values
-        if (!childOpts) return false
-        return Object.entries(selectedOptions).every(([aId, vId]) => childOpts[aId] === vId)
-      }) || null
-    )
+    
+    const child = children.find((c: CatalogItem) => {
+      const childOpts = c.metadata?.option_values
+      if (!childOpts) return false
+      return Object.entries(selectedOptions).every(([aId, vId]) => childOpts[aId] === vId)
+    })
+    
+    return child ? { ...child, _parent: { name: item.name } } : null
   }, [selectedOptions, hasVariants, axes.length, children, item])
 
   const activeItem = resolvedChild || item

@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -46,7 +47,7 @@ export function OrderInvoiceDocument({
 }: OrderInvoiceDocumentProps) {
   const { t } = useLocalization()
   const router = useRouter()
-  const isPaid = !!order.sales && (order.sales.status === 'completed' || order.sales.amount_due === 0)
+  const isPaid = !!order.sales && Number(order.sales.amount_due || 0) === 0 && order.sales.status !== 'cancelled'
   const formatMoney = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: order.currency || 'USD' }).format(amount || 0)
 
@@ -88,6 +89,17 @@ export function OrderInvoiceDocument({
   const fulfillmentLabel = (method?: string | null) => {
     if (!method || method === 'none') return null
     return t(`orders.kanban.fulfillment.${method}`) || method.replace(/_/g, ' ')
+  }
+
+  const parseItemName = (name: string, parentNameFromMeta?: string | null) => {
+    if (parentNameFromMeta) {
+      return { parentName: parentNameFromMeta, variantName: name };
+    }
+    if (name.includes(' -> ')) {
+      const parts = name.split(' -> ');
+      return { parentName: parts[0], variantName: parts.slice(1).join(' -> ') };
+    }
+    return { parentName: null, variantName: name };
   }
 
   return (
@@ -282,76 +294,177 @@ export function OrderInvoiceDocument({
                   <h3 className="text-sm font-semibold uppercase text-muted-foreground mb-4">
                     {t('orders.detail.lineItems') || 'Line Items'}
                   </h3>
-                  <div className="border border-border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t('orders.detail.item') || 'Item'}</TableHead>
-                          <TableHead>{t('orders.detail.status') || 'Status'}</TableHead>
-                          <TableHead className="text-right">{t('orders.detail.qty') || 'Qty'}</TableHead>
-                          <TableHead className="text-right">{t('orders.detail.unitPrice') || 'Unit Price'}</TableHead>
-                          <TableHead className="text-right">{t('orders.detail.total') || 'Total'}</TableHead>
-                          <TableHead>{t('orders.detail.shipment') || 'Shipment'}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {items.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                              {t('orders.detail.noItems') || 'No items found'}
-                            </TableCell>
-                          </TableRow>
-                        ) : items.map((item: any, idx: number) => (
-                          <TableRow key={item.id || idx} className={cn(ROW_STATUS_STYLES[item.status || 'draft'])}>
-                            <TableCell>
-                              <div className="font-medium">{item.name}</div>
-                              {item.description && (
-                                <div className="text-xs text-muted-foreground line-clamp-1">{item.description}</div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={item.status || 'draft'}
-                                onValueChange={(val) => onLineStatusChange(item.id, val)}
-                                disabled={!item.id}
-                              >
-                                <SelectTrigger className={cn("h-8 text-[10px] uppercase tracking-wider w-[110px]", LINE_STATUS_STYLES[item.status || 'draft'])}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="draft" className="text-xs">{t('orders.status.draft') || 'Draft'}</SelectItem>
-                                  <SelectItem value="new" className="text-xs">{t('orders.status.new') || 'New'}</SelectItem>
-                                  <SelectItem value="preparing" className="text-xs">{t('orders.status.preparing') || 'Preparing'}</SelectItem>
-                                  <SelectItem value="completed" className="text-xs">{t('orders.status.completed') || 'Completed'}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell className="text-right">{item.quantity}</TableCell>
-                            <TableCell className="text-right">
-                              {formatMoney(item.unit_price || item.unitPrice || 0)}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatMoney(item.subtotal || 0)}
-                            </TableCell>
-                            <TableCell>
-                              {item.shipment_id ? (
-                                <button
-                                  type="button"
-                                  onClick={() => navigateToShipment({ shipmentId: item.shipment_id, router })}
-                                  className="text-[10px] text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
-                                >
-                                  <Send className="h-3 w-3" /> {t('orders.detail.assigned') || 'Assigned'}
-                                </button>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {t('orders.detail.unassigned') || 'Unassigned'}
-                                </span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="border border-border rounded-md overflow-hidden bg-card">
+                    <div className="hidden md:flex items-center gap-4 border-b border-border bg-muted/30 text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
+                      <div className="flex-1">{t('orders.detail.item') || 'Item'}</div>
+                      <div className="flex items-center">
+                        <div className="w-[120px]">{t('orders.detail.status') || 'Status'}</div>
+                        <div className="w-[120px] text-right">{t('orders.detail.qty') || 'Qty'}</div>
+                        <div className="w-[80px] text-right">{t('orders.detail.unitPrice') || 'Price'}</div>
+                        <div className="w-[80px] text-right">{t('orders.detail.total') || 'Total'}</div>
+                        <div className="w-[100px] text-right">{t('orders.detail.shipment') || 'Shipment'}</div>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-border/50">
+                      {items.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          {t('orders.detail.noItems') || 'No items found'}
+                        </div>
+                      ) : (() => {
+                          const parents = items.filter(i => !(i.metadata?.is_modifier || i.parent_sale_order_item_id));
+                          const children = items.filter(i => (i.metadata?.is_modifier || i.parent_sale_order_item_id));
+
+                          return parents.map((item: any, idx: number) => {
+                            const modifiers = children.filter(c => 
+                              (c.parent_sale_order_item_id && c.parent_sale_order_item_id === item.id) ||
+                              (c.metadata?.parent_client_line_key && c.metadata.parent_client_line_key === item.metadata?.client_line_key)
+                            );
+
+                            return (
+                              <React.Fragment key={item.id || idx}>
+                                <div className={cn("p-4 md:px-6", ROW_STATUS_STYLES[item.status || 'draft'])}>
+                                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                                    <div className="flex-1 flex flex-col">
+                                      <div className="font-medium text-base text-foreground">
+                                        {parseItemName(item.name, item.metadata?.parent_name).parentName || item.name}
+                                      </div>
+                                      {parseItemName(item.name, item.metadata?.parent_name).parentName && (
+                                        <div className="text-sm text-muted-foreground mt-0.5">
+                                          {parseItemName(item.name, item.metadata?.parent_name).variantName}
+                                        </div>
+                                      )}
+                                      {item.description && (
+                                        <div className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.description}</div>
+                                      )}
+                                      <div className="flex items-center gap-2 mt-2 md:hidden">
+                                        <Badge variant="outline" className={LINE_STATUS_STYLES[item.status || 'draft']}>
+                                          {t(`orders.status.${item.status || 'draft'}`) || item.status || 'Draft'}
+                                        </Badge>
+                                        <span className="text-sm text-muted-foreground">
+                                          {item.quantity} × {formatMoney(item.unit_price || item.unitPrice || 0)}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="hidden md:flex items-center">
+                                      <div className="w-[120px]">
+                                        <Select
+                                          value={item.status || 'draft'}
+                                          onValueChange={(val) => onLineStatusChange(item.id, val)}
+                                          disabled={!item.id}
+                                        >
+                                          <SelectTrigger className={cn("h-8 text-[10px] uppercase tracking-wider w-full", LINE_STATUS_STYLES[item.status || 'draft'])}>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="draft" className="text-xs">{t('orders.status.draft') || 'Draft'}</SelectItem>
+                                            <SelectItem value="new" className="text-xs">{t('orders.status.new') || 'New'}</SelectItem>
+                                            <SelectItem value="preparing" className="text-xs">{t('orders.status.preparing') || 'Preparing'}</SelectItem>
+                                            <SelectItem value="completed" className="text-xs">{t('orders.status.completed') || 'Completed'}</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      
+                                  <div className="w-[120px] text-right text-sm text-muted-foreground">{item.quantity} ×</div>
+                                  <div className="w-[80px] text-right text-sm text-muted-foreground">{formatMoney(item.unit_price || item.unitPrice || 0)}</div>
+                                  <div className="w-[80px] text-right font-medium text-base">{formatMoney(item.subtotal || 0)}</div>
+
+                                      <div className="w-[100px] flex justify-end">
+                                        {item.shipment_id ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => navigateToShipment({ shipmentId: item.shipment_id, router })}
+                                            className="text-[10px] text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
+                                          >
+                                            <Send className="h-3 w-3" /> {t('orders.detail.assigned') || 'Assigned'}
+                                          </button>
+                                        ) : (
+                                          <span className="text-[10px] text-muted-foreground">
+                                            {t('orders.detail.unassigned') || 'Unassigned'}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 mt-4 md:hidden">
+                                    <Select
+                                      value={item.status || 'draft'}
+                                      onValueChange={(val) => onLineStatusChange(item.id, val)}
+                                      disabled={!item.id}
+                                    >
+                                      <SelectTrigger className={cn("h-8 text-[10px] uppercase tracking-wider flex-1", LINE_STATUS_STYLES[item.status || 'draft'])}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="draft" className="text-xs">{t('orders.status.draft') || 'Draft'}</SelectItem>
+                                        <SelectItem value="new" className="text-xs">{t('orders.status.new') || 'New'}</SelectItem>
+                                        <SelectItem value="preparing" className="text-xs">{t('orders.status.preparing') || 'Preparing'}</SelectItem>
+                                        <SelectItem value="completed" className="text-xs">{t('orders.status.completed') || 'Completed'}</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    
+                                    <div className="flex-1 flex justify-end">
+                                      {item.shipment_id ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => navigateToShipment({ shipmentId: item.shipment_id, router })}
+                                          className="text-[10px] text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Send className="h-3 w-3" /> {t('orders.detail.assigned') || 'Assigned'}
+                                        </button>
+                                      ) : (
+                                        <span className="text-[10px] text-muted-foreground">
+                                          {t('orders.detail.unassigned') || 'Unassigned'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="font-medium text-base ml-2">
+                                      {formatMoney(item.subtotal || 0)}
+                                    </div>
+                                  </div>
+
+                                  {modifiers.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-dashed border-border/50 md:ml-[16px] lg:ml-[24px]">
+                                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">{t('pos.modifiers.title') || 'Extras'}</p>
+                                      <div className="space-y-3">
+                                        {modifiers.map((mod: any, mIdx: number) => (
+                                          <div key={mod.id || mod.metadata?.client_line_key || mIdx} className="flex flex-col md:flex-row md:items-center gap-4">
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                              <span className="text-muted-foreground">+</span>
+                                              <span className="text-sm text-muted-foreground">{mod.name}</span>
+                                              {mod.description && <span className="text-xs hidden md:inline text-muted-foreground">- {mod.description}</span>}
+                                            </div>
+                                            
+                                            <div className="hidden md:flex items-center">
+                                              {/* Spacer for status - only if needed to align with parent */}
+                                              <div className="w-[120px]"></div>
+                                              
+                                              <div className="w-[120px] text-right text-sm text-muted-foreground">{mod.quantity} ×</div>
+                                              <div className="w-[80px] text-right text-sm text-muted-foreground">{formatMoney(mod.unit_price || mod.unitPrice || 0)}</div>
+                                              <div className="w-[80px] text-right font-medium text-sm text-muted-foreground">{formatMoney(mod.subtotal || 0)}</div>
+
+                                              {/* Spacer for shipment - only if needed to align with parent */}
+                                              <div className="w-[100px]"></div>
+                                            </div>
+
+                                            {/* Mobile view match */}
+                                            <div className="flex items-center justify-between md:hidden pl-5 text-sm text-muted-foreground">
+                                               <span>{mod.quantity} × {formatMoney(mod.unit_price || mod.unitPrice || 0)}</span>
+                                               <span className="font-medium">{formatMoney(mod.subtotal || 0)}</span>
+                                            </div>
+
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </React.Fragment>
+                            );
+                          });
+                        })()}
+                    </div>
                   </div>
 
                   <div className="mt-6 space-y-2 pt-4 border-t border-dashed border-border flex flex-col items-end">

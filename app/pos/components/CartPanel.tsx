@@ -26,6 +26,7 @@ import {
   Store,
   MapPin,
   DollarSign,
+  SplitSquareHorizontal,
 } from "@/app/components/ui/icons";
 import { NumpadPanel } from "./NumpadPanel";
 import { PosCustomerSelect } from "./PosCustomerSelect";
@@ -109,6 +110,7 @@ interface CartPanelProps {
   }) => void;
   shippingAddress?: PosShippingAddress;
   setShippingAddress?: (value: PosShippingAddress) => void;
+  onSplitBill?: () => void;
   t: (key: string) => string;
 }
 
@@ -155,6 +157,7 @@ export function CartPanel({
   onLeadUpdated,
   shippingAddress,
   setShippingAddress,
+  onSplitBill,
   t,
 }: CartPanelProps) {
   const money = (amount: number) =>
@@ -387,6 +390,20 @@ export function CartPanel({
                 </div>
               </div>
             </div>
+
+            {onSplitBill && (
+              <div className="pt-2">
+                <Button
+                  variant="secondary"
+                  className="w-full justify-center text-muted-foreground font-medium"
+                  disabled={cart.length === 0}
+                  onClick={onSplitBill}
+                >
+                  <SplitSquareHorizontal className="h-4 w-4 mr-2" />
+                  {getTrans("pos.cart.splitTitle", "Split Bill")}
+                </Button>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="numpad" className="mt-0">
@@ -439,16 +456,18 @@ export function CartPanel({
               </span>
             </div>
           )}
-          <Button
-            className="w-full h-12 text-lg mt-4"
-            disabled={cart.length === 0 || checkoutLoading}
-            onClick={handleCheckout}
-          >
-            <CreditCard className="h-5 w-5 mr-2" />
-            {checkoutLoading
-              ? t("pos.cart.processing") || "Processing..."
-              : `${t("pos.cart.charge") || "Charge"} ${money(total)}`}
-          </Button>
+          <div className="flex mt-4">
+            <Button
+              className="flex-1 h-12 text-lg"
+              disabled={cart.length === 0 || checkoutLoading}
+              onClick={handleCheckout}
+            >
+              <CreditCard className="h-5 w-5 mr-2" />
+              {checkoutLoading
+                ? t("pos.cart.processing") || "Processing..."
+                : `${t("pos.cart.charge") || "Charge"} ${money(total)}`}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { CatalogItem } from "@/app/types"
 import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Search } from "@/app/components/ui/icons"
+import { Search, Calendar } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { Skeleton } from "@/app/components/ui/skeleton"
 
@@ -61,14 +61,46 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
                   className="absolute inset-0 w-full h-full object-cover z-0"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10" />
+
+                {item.is_reservation && (
+                  <div className="absolute top-2 right-2 z-20">
+                    <Badge 
+                      className="bg-black/40 hover:bg-black/40 text-white border-white/20 backdrop-blur-md p-1.5 pointer-events-none"
+                      title={t("pos.reservable") || "Reservable"}
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                    </Badge>
+                  </div>
+                )}
+
                 <div className="relative z-20 p-3 flex-1 flex flex-col justify-end">
                   <div className="flex-1" />
                   <h3 className="font-medium text-sm text-white line-clamp-2 leading-snug">
                     {item.name}
                   </h3>
-                  {item.sku && (
+                  
+                  {!!(item as any)._shop?.variantLabels?.length && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      {(item as any)._shop.variantLabels.slice(0, 3).map((label: string) => (
+                        <span
+                          key={label}
+                          className="inline-flex max-w-[7.5rem] truncate rounded-md bg-white/20 backdrop-blur-md px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white/90"
+                        >
+                          {label}
+                        </span>
+                      ))}
+                      {(item as any)._shop.variantLabels.length > 3 && (
+                        <span className="text-[10px] font-semibold text-white/70">
+                          +{(item as any)._shop.variantLabels.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {item.sku && !(item as any)._shop?.variantLabels?.length && (
                     <p className="text-xs text-white/80 font-mono mt-0.5">{item.sku}</p>
                   )}
+                  
                   <div className="mt-2 flex items-center justify-between">
                     <span className="font-bold text-white">
                       {new Intl.NumberFormat("en-US", {

@@ -19,8 +19,11 @@ describe('isRecognizedRevenueSale', () => {
 
   })
 
-  it('excludes unpaid, cancelled, and refunded sales', () => {
-    expect(isRecognizedRevenueSale({ status: 'pending', amount_due: 80 })).toBe(false)
+  it('counts all pending and completed sales as revenue (even if unpaid, since they are confirmed orders)', () => {
+    expect(isRecognizedRevenueSale({ status: 'pending', amount_due: 80 })).toBe(true)
+  })
+
+  it('excludes cancelled and refunded sales', () => {
     expect(isRecognizedRevenueSale({ status: 'cancelled', amount_due: 0 })).toBe(false)
     expect(isRecognizedRevenueSale({ status: 'refunded', amount_due: 0 })).toBe(false)
   })

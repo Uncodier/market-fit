@@ -449,6 +449,118 @@ export function usePosCheckout({
     t,
   ]);
 
+  const createPendingSplitOrders = async (
+    ordersToCreate: { title: string; items: PosCartItem[] }[]
+  ) => {
+    if (!siteId || !userId) return;
+
+    let resolvedLeadId: string | null = null;
+    let localLeadId: string | null = null;
+
+    const online = typeof navigator === "undefined" ? true : navigator.onLine;
+    if (
+      leadRelationValue &&
+      typeof leadRelationValue === "object" &&
+      leadRelationValue.mode === "existing" &&
+      leadRelationValue.id?.startsWith("local_")
+    ) {
+      localLeadId = leadRelationValue.id;
+    } else if (online && leadRelationValue) {
+      const { id, error: leadError } = await resolveRelationId(
+        "lead",
+        leadRelationValue,
+        siteId,
+      );
+      if (!leadError) resolvedLeadId = id;
+    } else if (
+      leadRelationValue &&
+      typeof leadRelationValue === "object" &&
+      leadRelationValue.mode === "existing"
+    ) {
+      resolvedLeadId = leadRelationValue.id;
+    }
+
+    const db = getPosDb();
+
+    for (const order of ordersToCreate) {
+      const clientMutationId = uuidv4();
+      
+      const lines = order.items
+        .filter((c) => c.cartQty > 0)
+        .map((c) => ({
+          catalogItemId: c.id,
+          quantity: c.cartQty,
+          unitPriceOverride: c.cartPrice,
+          reservationStart: c.reservationStart,
+          reservationEnd: c.reservationEnd,
+          clientLineKey: c.lineKey || c.id,
+          modifiers: (c.modifiers || []).map((m) => ({
+            catalogItemId: m.catalogItemId,
+            quantity: m.cartQty,
+            unitPriceOverride: m.cartPrice,
+            groupId: m.groupId,
+          })),
+        }));
+
+      await enqueueCheckout(siteId, {
+        siteId,
+        userId,
+        lines,
+        priceListId: priceListId && priceListId !== "none" ? priceListId : undefined,
+        leadId: resolvedLeadId || undefined,
+        localLeadId: localLeadId || undefined,
+        buyerUserId: buyerUserId || undefined,
+        fulfillment,
+        originLocationId,
+        shippingAddress: fulfillment === "ship" ? shippingAddress : undefined,
+        promotionCode: appliedPromo?.code || promoCode || undefined,
+        promotionId: appliedPromo?.promotionId || undefined,
+        source: "pos",
+        payments: [],
+        intent: "send",
+        notes: order.title.trim(),
+        clientMutationId,
+      });
+
+      // Calculate amount due for this split
+      const subtotalSplit = order.items.reduce(
+        (sum, item) =>
+          sum + (item.cartPrice + (item.modifiers || []).reduce((s, m) => s + m.cartPrice * m.cartQty, 0)) * item.cartQty,
+        0,
+      );
+      // For split orders we use simplified tax/shipping approximation, or 0, since they'll be recalculated on sync.
+      // But we can approximate to just subtotal if we don't have taxesByItem here.
+      const amountDue = roundMoney(Math.max(0, subtotalSplit)); 
+
+      const id = `local_${clientMutationId}`;
+      const createdAt = new Date().toISOString();
+      await db.pendingOrders.put({
+        id,
+        site_id: siteId,
+        status: "pending",
+        created_at: createdAt,
+        lead_id: resolvedLeadId || null,
+        price_list_id: priceListId !== "none" ? priceListId : null,
+        amount_due: amountDue,
+        payment_status: "unpaid",
+        raw: {
+          id,
+          status: "pending",
+          created_at: createdAt,
+          leads: null,
+          amount_due: amountDue,
+          payment_status: "unpaid",
+          client_mutation_id: clientMutationId,
+          pending_sync: true,
+        },
+      });
+    }
+
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      void drainPosOutbox(siteId);
+    }
+  };
+
   return {
     checkoutLoading,
     isPaymentDialogOpen,
@@ -456,5 +568,6 @@ export function usePosCheckout({
     initiateCheckout,
     handleCheckout,
     handleSendOrder,
+    createPendingSplitOrders,
   };
 }

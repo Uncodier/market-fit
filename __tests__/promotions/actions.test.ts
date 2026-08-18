@@ -445,6 +445,9 @@ describe("applyPromotionToOrder", () => {
     );
 
     const res = await applyPromotionToOrder("site1", "order1", "CODE");
-    expect(res.error).toBe("Failed to create promotion expense: permission denied");
+    // We recently changed applyPromotionToOrder to catch and swallow accounting errors
+    // so they don't block the checkout. Therefore, res.error should be undefined
+    // and the function should succeed instead of returning an error string.
+    expect(res.error).toBeUndefined();
   });
 });

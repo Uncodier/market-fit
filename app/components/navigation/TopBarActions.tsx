@@ -855,6 +855,16 @@ export function TopBarActions({
     endDate: endOfDay(new Date()),
   });
   const [selectedSegment, setSelectedSegment] = useState<string>("all");
+  const [posCartQty, setPosCartQty] = useState(0);
+
+  useEffect(() => {
+    if (!isPosPage) return;
+    const handleCartUpdate = (e: any) => {
+      setPosCartQty(e.detail.qty);
+    };
+    window.addEventListener("pos:cart-updated", handleCartUpdate);
+    return () => window.removeEventListener("pos:cart-updated", handleCartUpdate);
+  }, [isPosPage]);
 
   // Check if we're on dashboard onboarding tab
   const [currentDashboardTab, setCurrentDashboardTab] = useState<string | null>(
@@ -1607,13 +1617,20 @@ export function TopBarActions({
           <Button
             variant="secondary"
             size="default"
-            className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm overflow-visible"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("pos:send-order"))
             }
             title={t("layout.topbar.sendOrder") || "Send Order"}
           >
-            <ShoppingCart className="h-4 w-4 shrink-0" />
+            <div className="relative">
+              <ShoppingCart className="h-4 w-4 shrink-0" />
+              {posCartQty > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-1 ring-background z-10">
+                  {posCartQty > 99 ? '99+' : posCartQty}
+                </span>
+              )}
+            </div>
             <span className="hidden md:inline font-inter font-medium text-sm">
               {t("layout.topbar.sendOrder") || "Send Order"}
             </span>

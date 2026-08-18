@@ -222,11 +222,11 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
                                         {order.sales?.status && (
                                           <span className={cn(
                                             "text-[11px] font-medium flex-shrink-0",
-                                            (order.sales.status === 'completed' || order.sales.amount_due === 0)
+                                            order.sales.status !== 'cancelled' && Number(order.sales.amount_due || 0) === 0
                                               ? "text-emerald-700 dark:text-emerald-400"
                                               : "text-amber-700 dark:text-amber-400"
                                           )}>
-                                            {(order.sales.status === 'completed' || order.sales.amount_due === 0)
+                                            {order.sales.status !== 'cancelled' && Number(order.sales.amount_due || 0) === 0
                                               ? t('orders.kanban.paid')
                                               : t('orders.kanban.unpaid')}
                                           </span>

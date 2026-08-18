@@ -66,7 +66,7 @@ export function PosVariantPickerDialog({ item, open, onOpenChange, onConfirm }: 
 
   const handleConfirm = () => {
     if (resolvedChild) {
-      onConfirm(resolvedChild)
+      onConfirm({ ...resolvedChild, _parent: { name: item.name } })
       onOpenChange(false)
     }
   }

@@ -27,7 +27,7 @@ describe('accounting builders', () => {
     expect(draft!.entry.memo).toBe('Sale')
   })
 
-  it('returns null for unpaid pending sales', () => {
+  it('returns valid draft for unpaid pending sales now since they represent real AR', () => {
     expect(
       buildFromSale(
         {
@@ -40,7 +40,7 @@ describe('accounting builders', () => {
         },
         null
       )
-    ).toBeNull()
+    ).not.toBeNull()
   })
 
   it('uses recorded payments when amount_due was reset after a promo', () => {

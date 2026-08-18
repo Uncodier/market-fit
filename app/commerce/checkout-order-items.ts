@@ -156,6 +156,7 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
       metadata: {
         is_new: newStatus === "new",
         client_line_key: pl.client_line_key,
+        parent_name: pl.parent_name,
       },
       _is_reservation_dropin: pl.is_reservation_dropin,
       _reservationStart: pl.reservationStart,

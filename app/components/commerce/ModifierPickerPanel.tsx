@@ -124,15 +124,14 @@ export function ModifierPickerPanel({
   )
 
   const setQty = (groupId: string, catalogItemId: string, nextQty: number) => {
-    setQtyByKey((prev) => {
-      const copy = { ...prev }
-      const key = `${groupId}:${catalogItemId}`
-      if (nextQty <= 0) delete copy[key]
-      else copy[key] = nextQty
-      const { modifiers: nextMods } = selectionsFromQty(groups, copy, priceOf)
-      onChange?.(nextMods)
-      return copy
-    })
+    const copy = { ...qtyByKey }
+    const key = `${groupId}:${catalogItemId}`
+    if (nextQty <= 0) delete copy[key]
+    else copy[key] = nextQty
+    
+    setQtyByKey(copy)
+    const { modifiers: nextMods } = selectionsFromQty(groups, copy, priceOf)
+    onChange?.(nextMods)
   }
 
   if (!groups.length) return null

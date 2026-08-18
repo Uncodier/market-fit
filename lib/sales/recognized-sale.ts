@@ -7,7 +7,6 @@ export function isRecognizedRevenueSale(sale: {
 }): boolean {
   const status = (sale?.status || "").toLowerCase()
   if (!status || EXCLUDED_SALE_STATUSES.has(status)) return false
-  if (status === "completed") return true
-  // Treat undefined/null amount_due as 0 to avoid NaN !== 0 issues.
-  return status === "pending" && Number(sale.amount_due ?? 0) === 0
+  if (status === "completed" || status === "pending") return true
+  return false
 }
