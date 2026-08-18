@@ -677,7 +677,7 @@ export function CreateReservationDialog({
                     <DatePicker 
                       date={taskDate} 
                       setDate={setTaskDate as any} 
-                      className="w-full h-10"
+                      className="w-full h-11 bg-background border border-input rounded-md hover:bg-accent hover:text-accent-foreground"
                     />
                   </div>
                   <div className="space-y-2">
@@ -686,6 +686,7 @@ export function CreateReservationDialog({
                       value={taskTime} 
                       onValueChange={setTaskTime} 
                       step={15}
+                      className="h-11"
                     />
                   </div>
                 </div>

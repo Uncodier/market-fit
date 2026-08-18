@@ -274,21 +274,6 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
           </DialogHeader>
           <DialogBody className="grid gap-4">
             <div className="grid gap-2">
-              <Label>Calendar (Optional)</Label>
-              <RelationSelect
-                options={schedules.map((schedule: any) => ({
-                  id: schedule.id,
-                  label: schedule.label || schedule.name || "Unnamed Calendar",
-                }))}
-                value={taskCalendarValue}
-                onValueChange={setTaskCalendarValue}
-                allowCreate={false}
-                placeholder="Link to a specific calendar/schedule..."
-                emptyMessage={schedulesLoading ? "Loading calendars..." : "No calendars found"}
-                className="h-12"
-              />
-            </div>
-            <div className="grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
@@ -312,6 +297,21 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
                 }
                 required
                 className="min-h-[100px]"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Calendar (Optional)</Label>
+              <RelationSelect
+                options={schedules.map((schedule: any) => ({
+                  id: schedule.id,
+                  label: schedule.label || schedule.name || "Unnamed Calendar",
+                }))}
+                value={taskCalendarValue}
+                onValueChange={setTaskCalendarValue}
+                allowCreate={false}
+                placeholder="Link to a specific calendar/schedule..."
+                emptyMessage={schedulesLoading ? "Loading calendars..." : "No calendars found"}
+                className="h-12"
               />
             </div>
             <div className="grid gap-2">
