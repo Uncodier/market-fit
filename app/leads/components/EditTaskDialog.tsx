@@ -35,8 +35,22 @@ export function EditTaskDialog({ isOpen, onOpenChange, task }: EditTaskDialogPro
   // Load task data when dialog opens or task changes
   useEffect(() => {
     if (task && isOpen) {
+      let initialDescription = task.description || ""
+      
+      // Legacy JSON parsing fallback
+      if (initialDescription.includes('{"') && initialDescription.includes('_calendar_context')) {
+        try {
+          const parsed = JSON.parse(initialDescription)
+          if (parsed._calendar_context) {
+            initialDescription = parsed.notes || ""
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
       setTitle(task.title || "")
-      setDescription(task.description || "")
+      setDescription(initialDescription)
       setType(task.type)
       setStage(task.stage)
       setStatus(task.status)
@@ -58,7 +72,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, task }: EditTaskDialogPro
       // Create update data object
       const updateData: Partial<Task> = {
         title,
-        description,
+        description: description || null,
         type,
         stage,
         status,

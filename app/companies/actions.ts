@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/client"
+"use server"
+
+import { createClient } from "@/lib/supabase/server"
 import { z } from "zod"
 import { Company, CreateCompanyInput, UpdateCompanyInput } from "./types"
 
@@ -127,7 +129,7 @@ function cleanCompanyData(data: any) {
 // Obtener todas las companies
 export async function getCompanies(search?: string) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     let query = supabase
       .from('companies')
@@ -158,7 +160,7 @@ export async function getCompanies(search?: string) {
 // Obtener company por ID
 export async function getCompanyById(id: string) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { data, error } = await supabase
       .from('companies')
@@ -185,7 +187,7 @@ export async function createCompany(input: CreateCompanyInput) {
     const validatedData = CreateCompanySchema.parse(input)
     const cleanedData = cleanCompanyData(validatedData)
     
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { data, error } = await supabase
       .from('companies')
@@ -217,7 +219,7 @@ export async function updateCompany(input: UpdateCompanyInput) {
     const { id, ...updateData } = validatedData
     const cleanedData = cleanCompanyData(updateData)
     
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { data, error } = await supabase
       .from('companies')
@@ -245,7 +247,7 @@ export async function updateCompany(input: UpdateCompanyInput) {
 // Eliminar company
 export async function deleteCompany(id: string) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { error } = await supabase
       .from('companies')
@@ -301,7 +303,7 @@ export async function findOrCreateCompany(name: string) {
 // Obtener subsidiarias de una company
 export async function getSubsidiaries(parentCompanyId: string) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { data, error } = await supabase
       .from('companies')

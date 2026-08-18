@@ -68,7 +68,9 @@ export function PosCustomerSelect({
   const selectedLeadId = getSelectedLeadId(leadValue);
   const getTrans = (key: string, fallback: string) =>
     t(key) === key ? fallback : t(key);
-  const canOpenDetails = Boolean(selectedLeadId && siteId);
+  const isNewLead = typeof leadValue === 'object' && leadValue !== null && leadValue.mode === 'create';
+  const canOpenDetails = Boolean((selectedLeadId || isNewLead) && siteId);
+  const newLeadName = isNewLead ? leadValue.label : undefined;
 
   return (
     <>
@@ -103,7 +105,12 @@ export function PosCustomerSelect({
           };
         })}
         value={typeof leadValue === "string" ? null : leadValue}
-        onValueChange={setLeadValue}
+        onValueChange={(val) => {
+          setLeadValue(val);
+          if (val && typeof val === 'object' && val.mode === "create") {
+            setLeadDetailsOpen(true);
+          }
+        }}
         clearable={clearable}
         placeholder={
           placeholder || t("pos.cart.walkIn") || "Walk-in Customer"
@@ -137,7 +144,17 @@ export function PosCustomerSelect({
           leadId={selectedLeadId}
           siteId={siteId}
           t={t}
-          onSaved={onLeadUpdated}
+          onSaved={(lead) => {
+            if (isNewLead) {
+              setLeadValue({
+                id: lead.id,
+                label: lead.name,
+                mode: "existing",
+              });
+            }
+            onLeadUpdated?.(lead);
+          }}
+          newLeadName={newLeadName}
         />
       )}
     </>

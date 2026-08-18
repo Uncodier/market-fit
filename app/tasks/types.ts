@@ -17,6 +17,7 @@ export interface Task {
   deal_id?: string | null
   priority_number?: number
   address?: any
+  metadata?: any
 }
 
 export interface CreateTaskFormValues {
@@ -32,4 +33,5 @@ export interface CreateTaskFormValues {
   amount?: number | null
   lead_id?: string | null
   deal_id?: string | null
+  metadata?: any
 } 

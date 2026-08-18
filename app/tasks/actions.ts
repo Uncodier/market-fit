@@ -18,6 +18,7 @@ export async function createTask(values: CreateTaskFormValues): Promise<{ data?:
       assignee: values.assignee || null,
       type: values.type || "meeting",
       stage: values.stage || "consideration",
+      metadata: values.metadata || {},
       user_id: user.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

@@ -15,6 +15,8 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
+import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { Label } from "@/app/components/ui/label"
 import { Trash2, AlertTriangle, Clock, User } from "@/app/components/ui/icons"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
@@ -59,9 +61,57 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
   const [savingSection, setSavingSection] = useState<string | null>(null)
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
-  const [formData, setFormData] = useState({
+  
+  let initialNotes = task.description || ""
+  let initialCalendarId = null
+  let initialCalendarName = "Calendar"
+  let initialCalendarContext = task.metadata?._calendar_context || null
+
+  if (!initialCalendarContext) {
+    try {
+      const parsed = JSON.parse(task.description || "{}")
+      if (parsed._calendar_context) {
+        initialNotes = parsed.notes || ""
+        initialCalendarContext = parsed._calendar_context
+      }
+    } catch (e) {}
+  } else {
+    try {
+      const parsed = JSON.parse(task.description || "{}")
+      if (parsed._calendar_context) {
+        initialNotes = parsed.notes || ""
+      }
+    } catch (e) {}
+  }
+
+  if (initialCalendarContext) {
+    initialCalendarId = initialCalendarContext.catalog_item_id
+    initialCalendarName = initialCalendarContext.catalog_item_name || "Calendar"
+  }
+
+  const [leadValue, setLeadValue] = useState<RelationSelectValue>(
+    task.lead_id ? { mode: "existing", id: task.lead_id, label: task.leads?.name || "Unknown Lead" } : null
+  )
+
+  const [taskCalendarValue, setTaskCalendarValue] = useState<RelationSelectValue>(
+    initialCalendarId ? { mode: "existing", id: initialCalendarId, label: initialCalendarName } : null
+  )
+  const [calendarContext, setCalendarContext] = useState<any>(initialCalendarContext)
+  const [schedules, setSchedules] = useState<any[]>([])
+  const [schedulesLoading, setSchedulesLoading] = useState(false)
+
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    status: Task['status'];
+    stage: string;
+    scheduled_date: Date;
+    lead_id: string;
+    assignee: string;
+    type: string;
+  }>({
     title: task.title,
-    description: task.description || "",
+    description: initialNotes,
     status: task.status,
     stage: task.stage || "",
     scheduled_date: new Date(task.scheduled_date),
@@ -69,6 +119,65 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
     assignee: task.assignee || "",
     type: task.type || ""
   })
+
+  // Fetch calendars
+  useEffect(() => {
+    async function fetchCalendars() {
+      if (!currentSite) return
+      setSchedulesLoading(true)
+      try {
+        const supabase = createClient()
+        
+        // 1. Site calendars
+        const cals: any[] = []
+        const siteCals = currentSite?.settings?.calendars || []
+        siteCals.forEach((cal: any) => {
+          cals.push({
+            id: cal.id,
+            name: cal.name,
+            duration_minutes: cal.duration || 30,
+            type: 'site',
+            label: `${cal.name} (Team)`,
+            location: cal.location || null
+          })
+        })
+        
+        // 2. Profile event types
+        if (users.length > 0) {
+          const memberIds = users.map(u => u.id)
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, name, settings")
+            .in("id", memberIds)
+            
+          if (profilesData) {
+            profilesData.forEach((profile: any) => {
+              const eventTypes = profile.settings?.calendar?.event_types || []
+              eventTypes.forEach((et: any) => {
+                cals.push({
+                  id: et.id,
+                  name: et.title,
+                  duration_minutes: et.duration || 30,
+                  type: 'profile',
+                  label: `${et.title} (${profile.name || 'User'})`,
+                  owner_id: profile.id,
+                  location: et.location || null
+                })
+              })
+            })
+          }
+        }
+        
+        setSchedules(cals)
+      } catch (error) {
+        console.error("Error fetching calendars:", error)
+      } finally {
+        setSchedulesLoading(false)
+      }
+    }
+    
+    fetchCalendars()
+  }, [currentSite, users])
 
   // Fetch leads and users
   useEffect(() => {
@@ -103,18 +212,51 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
     if (!currentSite) return
 
     try {
+      let finalLeadId = formData.lead_id;
+      if (leadValue && leadValue.mode === "create") {
+         const { id, error } = await resolveRelationId("lead", leadValue, currentSite.id);
+         if (error) throw new Error(error);
+         finalLeadId = id || "";
+      } else if (leadValue && leadValue.mode === "existing") {
+         finalLeadId = leadValue.id;
+      } else if (!leadValue) {
+         finalLeadId = "";
+      }
+
+      let finalDescription = formData.description;
+      const taskCalendarId = taskCalendarValue?.mode === "existing" ? taskCalendarValue.id : null;
+      const taskCalendarSchedule = schedules.find(s => s.id === taskCalendarId);
+      let newContext = calendarContext;
+
+      if (taskCalendarSchedule) {
+        const startDateObj = formData.scheduled_date
+        const endDateObj = new Date(startDateObj.getTime() + (taskCalendarSchedule.duration_minutes * 60000))
+        newContext = {
+          ...calendarContext,
+          origin: calendarContext?.origin || "control_center",
+          catalog_item_id: taskCalendarSchedule.id,
+          catalog_item_name: taskCalendarSchedule.name || "Team Calendar",
+          duration: `${taskCalendarSchedule.duration_minutes} min`,
+          end_time: endDateObj.toISOString(),
+          location: taskCalendarSchedule.location || calendarContext?.location || null
+        }
+      } else {
+        newContext = null;
+      }
+
       const supabase = createClient()
       const { data, error } = await supabase
         .from('tasks')
         .update({
           title: formData.title,
-          description: formData.description,
+          description: finalDescription || null,
           status: formData.status,
           stage: formData.stage,
           scheduled_date: formData.scheduled_date.toISOString(),
-          lead_id: formData.lead_id || null,
+          lead_id: finalLeadId || null,
           assignee: formData.assignee || null,
-          type: formData.type || null
+          type: formData.type || null,
+          metadata: newContext ? { _calendar_context: newContext } : {}
         })
         .eq('id', task.id)
         .eq('site_id', currentSite.id)
@@ -129,7 +271,14 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
 
       if (error) throw error
 
-      onSave(data)
+      const taskData = data as any;
+      setCalendarContext(newContext);
+      setFormData({ ...formData, lead_id: finalLeadId || "" })
+      if (leadValue && leadValue.mode === "create" && taskData.leads) {
+         setLeadValue({ mode: "existing", id: finalLeadId, label: taskData.leads.name || "Unknown Lead" })
+      }
+
+      onSave(taskData)
       toast.success("Task updated successfully")
     } catch (error) {
       console.error('Error updating task:', error)
@@ -148,9 +297,10 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
       let updateData: any = {}
       
       if (section === 'basic') {
+        let finalDescription = formData.description;
         updateData = {
           title: formData.title,
-          description: formData.description,
+          description: finalDescription || null,
           type: formData.type || null
         }
       } else if (section === 'status') {
@@ -159,11 +309,48 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
           stage: formData.stage
         }
       } else if (section === 'schedule') {
+        let finalLeadId = formData.lead_id;
+        if (leadValue && leadValue.mode === "create") {
+            const { id, error } = await resolveRelationId("lead", leadValue, currentSite.id);
+            if (error) throw new Error(error);
+            finalLeadId = id || "";
+        } else if (leadValue && leadValue.mode === "existing") {
+            finalLeadId = leadValue.id;
+        } else if (!leadValue) {
+            finalLeadId = "";
+        }
+        
+        setFormData({ ...formData, lead_id: finalLeadId || "" })
+
+        let finalDescription = formData.description;
+        const taskCalendarId = taskCalendarValue?.mode === "existing" ? taskCalendarValue.id : null;
+        const taskCalendarSchedule = schedules.find(s => s.id === taskCalendarId);
+        let newContext = calendarContext;
+
+        if (taskCalendarSchedule) {
+          const startDateObj = formData.scheduled_date
+          const endDateObj = new Date(startDateObj.getTime() + (taskCalendarSchedule.duration_minutes * 60000))
+          newContext = {
+            ...calendarContext,
+            origin: calendarContext?.origin || "control_center",
+            catalog_item_id: taskCalendarSchedule.id,
+            catalog_item_name: taskCalendarSchedule.name || "Team Calendar",
+            duration: `${taskCalendarSchedule.duration_minutes} min`,
+            end_time: endDateObj.toISOString(),
+            location: taskCalendarSchedule.location || calendarContext?.location || null
+          }
+        } else {
+          newContext = null;
+        }
+
         updateData = {
           scheduled_date: formData.scheduled_date.toISOString(),
-          lead_id: formData.lead_id || null,
-          assignee: formData.assignee || null
+          lead_id: finalLeadId || null,
+          assignee: formData.assignee || null,
+          description: finalDescription || null,
+          metadata: newContext ? { _calendar_context: newContext } : {}
         }
+        setCalendarContext(newContext);
       }
 
       const { data, error } = await supabase
@@ -182,7 +369,12 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
 
       if (error) throw error
 
-      onSave(data)
+      const taskData = data as any;
+      if (section === 'schedule' && leadValue && leadValue.mode === "create" && taskData.leads) {
+         setLeadValue({ mode: "existing", id: taskData.leads.id, label: taskData.leads.name || "Unknown Lead" })
+      }
+
+      onSave(taskData)
       const sectionNames: Record<string, string> = {
         basic: 'Basic Information',
         status: 'Status & Stage',
@@ -369,6 +561,20 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
         </SectionCardHeader>
         <SectionCardContent className="space-y-4">
           <div className="space-y-2">
+            <Label>Calendar (Optional)</Label>
+            <RelationSelect
+              options={schedules.map((schedule: any) => ({
+                id: schedule.id,
+                label: schedule.label || schedule.name || "Unnamed Calendar",
+              }))}
+              value={taskCalendarValue}
+              onValueChange={setTaskCalendarValue}
+              allowCreate={false}
+              placeholder="Link to a specific calendar/schedule..."
+              emptyMessage={schedulesLoading ? "Loading calendars..." : "No calendars found"}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="scheduled_date">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
@@ -411,21 +617,13 @@ export default function DetailsTab({ task, onSave, formRef }: DetailsTabProps) {
                 Associated Lead
               </div>
             </Label>
-            <Select 
-              value={formData.lead_id} 
-              onValueChange={(value) => setFormData({ ...formData, lead_id: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select lead" />
-              </SelectTrigger>
-              <SelectContent>
-                {leads.map((lead) => (
-                  <SelectItem key={lead.id} value={lead.id}>
-                    {lead.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RelationSelect 
+              options={leads.map(lead => ({ id: lead.id, label: lead.name || "Unknown Lead" }))}
+              value={leadValue}
+              onValueChange={setLeadValue}
+              placeholder="Select lead"
+              emptyMessage="No leads found"
+            />
           </div>
         </SectionCardContent>
         <ActionFooter>

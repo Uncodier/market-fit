@@ -128,6 +128,7 @@ interface TimeSelectProps {
   className?: string
   triggerClassName?: string
   step?: number
+  modal?: boolean
 }
 
 export function TimeSelect({
@@ -138,6 +139,7 @@ export function TimeSelect({
   className,
   triggerClassName,
   step = MINUTE_STEP,
+  modal = false,
 }: TimeSelectProps) {
   const listId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -241,7 +243,7 @@ export function TimeSelect({
 
   return (
     <div className={cn("min-w-0 flex-1", className)} data-time-select>
-      <PopoverPrimitive.Root modal={false} open={open} onOpenChange={handleOpenChange}>
+      <PopoverPrimitive.Root modal={modal} open={open} onOpenChange={handleOpenChange}>
         <PopoverPrimitive.Anchor asChild>
           <div className="relative w-full">
             <input
@@ -282,6 +284,18 @@ export function TimeSelect({
             align="start"
             sideOffset={4}
             onOpenAutoFocus={(event) => event.preventDefault()}
+            onInteractOutside={(event) => {
+              const target = event.target as HTMLElement | null
+              // If click is inside the input, don't close (let the input handle it)
+              if (target === inputRef.current) {
+                event.preventDefault()
+              }
+            }}
+            onFocusOutside={(event) => {
+              // Prevent closing when parent Dialog's FocusScope tries to steal focus back
+              // due to a re-render from SWR or other state changes.
+              event.preventDefault()
+            }}
             className="z-[1000000] max-h-[240px] min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
             style={{ width: inputRef.current?.offsetWidth }}
           >

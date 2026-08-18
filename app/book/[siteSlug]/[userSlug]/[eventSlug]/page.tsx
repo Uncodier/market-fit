@@ -35,6 +35,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  Users,
   Globe,
   Sun,
   Moon,
@@ -329,6 +330,7 @@ export default function UserBookingPage(props: {
         notes,
         location: eventType.location,
         title: `${eventType.title} with ${profile.name || userSlug}`,
+        duration: eventType.duration,
         metadata,
       });
       setActiveStep("success");

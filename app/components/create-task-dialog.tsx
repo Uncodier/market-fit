@@ -58,6 +58,71 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
   const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
   const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
+    const [taskCalendarValue, setTaskCalendarValue] = useState<RelationSelectValue>(null)
+    const [schedules, setSchedules] = useState<any[]>([])
+    const [schedulesLoading, setSchedulesLoading] = useState(false)
+    const [taskTime, setTaskTime] = useState(new Date().toTimeString().slice(0, 5))
+
+    useEffect(() => {
+      async function fetchCalendars() {
+        if (!currentSite) return
+        setSchedulesLoading(true)
+        try {
+          const supabase = createClient()
+          
+        // 1. Site calendars
+        const cals: any[] = []
+        const siteCals = currentSite?.settings?.calendars || []
+        siteCals.forEach((cal: any) => {
+          cals.push({
+            id: cal.id,
+            name: cal.name,
+            duration_minutes: cal.duration || 30,
+            type: 'site',
+            label: `${cal.name} (Team)`,
+            location: cal.location || null
+          })
+        })
+        
+        // 2. Profile event types
+        if (users.length > 0) {
+          const memberIds = users.map(u => u.id)
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, name, settings")
+            .in("id", memberIds)
+            
+          if (profilesData) {
+            profilesData.forEach(profile => {
+              const eventTypes = profile.settings?.calendar?.event_types || []
+              eventTypes.forEach((et: any) => {
+                cals.push({
+                  id: et.id,
+                  name: et.title,
+                  duration_minutes: et.duration || 30,
+                  type: 'profile',
+                  label: `${et.title} (${profile.name || 'User'})`,
+                  owner_id: profile.id,
+                  location: et.location || null
+                })
+              })
+            })
+          }
+        }
+          
+          setSchedules(cals)
+        } catch (error) {
+          console.error("Error fetching calendars:", error)
+        } finally {
+          setSchedulesLoading(false)
+        }
+      }
+      
+      if (open) {
+        fetchCalendars()
+      }
+    }, [currentSite, open, users])
+
   const [formData, setFormData] = useState<CreateTaskFormValues>({
     title: "",
     description: "",
@@ -117,15 +182,36 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
         resolvedLeadId = id;
       }
 
-      // Clean the data - convert empty strings to undefined for optional fields
-      const cleanedData = {
+      const cleanedData: any = {
         ...formData,
-        scheduled_date: date,
+        description: formData.description || null,
+        scheduled_date: new Date(`${date.toISOString().split("T")[0]}T${taskTime}:00`),
         site_id: currentSite.id,
         lead_id: resolvedLeadId || undefined,
         assignee: formData.assignee || undefined,
         type: formData.type || undefined,
         stage: formData.stage || undefined,
+      }
+      
+      const taskCalendarId = taskCalendarValue?.mode === "existing" ? taskCalendarValue.id : null
+      const taskCalendarSchedule = schedules.find(s => s.id === taskCalendarId)
+
+      if (taskCalendarSchedule) {
+        const startDateObj = new Date(`${date.toISOString().split("T")[0]}T${taskTime}:00`)
+        const endDateObj = new Date(startDateObj.getTime() + (taskCalendarSchedule.duration_minutes * 60000))
+        cleanedData.description = formData.description || null
+        cleanedData.metadata = {
+          _calendar_context: {
+            origin: "tasks_modal",
+            catalog_item_id: taskCalendarSchedule.id,
+            catalog_item_name: taskCalendarSchedule.name || "Team Calendar",
+            duration: `${taskCalendarSchedule.duration_minutes} min`,
+            end_time: endDateObj.toISOString(),
+            location: taskCalendarSchedule.location || null
+          }
+        }
+      } else {
+        cleanedData.description = formData.description || null
       }
 
       const result = await createTask(cleanedData)
@@ -147,7 +233,9 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
         amount: 0
       })
       setLeadValue(null)
+      setTaskCalendarValue(null)
       setDate(new Date())
+      setTaskTime(new Date().toTimeString().slice(0, 5))
       
       // Emit custom event for task creation
       const event = new CustomEvent('task:created', {
@@ -186,6 +274,21 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
           </DialogHeader>
           <DialogBody className="grid gap-4">
             <div className="grid gap-2">
+              <Label>Calendar (Optional)</Label>
+              <RelationSelect
+                options={schedules.map((schedule: any) => ({
+                  id: schedule.id,
+                  label: schedule.label || schedule.name || "Unnamed Calendar",
+                }))}
+                value={taskCalendarValue}
+                onValueChange={setTaskCalendarValue}
+                allowCreate={false}
+                placeholder="Link to a specific calendar/schedule..."
+                emptyMessage={schedulesLoading ? "Loading calendars..." : "No calendars found"}
+                className="h-12"
+              />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
@@ -212,17 +315,24 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
               />
             </div>
             <div className="grid gap-2">
-              <Label>Due Date</Label>
-              <div className="relative z-[1000000]">
-                <DatePicker
-                  date={date}
-                  setDate={setDate}
-                  className="h-12 w-full"
-                  placeholder={t("datePicker.selectDueDate")}
-                  mode="task"
-                  showTimePicker={true}
-                  timeFormat="12h"
-                />
+              <Label>Due Date & Time</Label>
+              <div className="flex gap-2">
+                <div className="relative z-[1000000] flex-1">
+                  <DatePicker
+                    date={date}
+                    setDate={setDate}
+                    className="h-12 w-full"
+                    placeholder={t("datePicker.selectDueDate")}
+                  />
+                </div>
+                <div className="w-[120px]">
+                  <Input
+                    type="time"
+                    value={taskTime}
+                    onChange={(e) => setTaskTime(e.target.value)}
+                    className="h-12"
+                  />
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

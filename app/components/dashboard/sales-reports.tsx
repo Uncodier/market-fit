@@ -12,7 +12,7 @@ import { SalesDistributionChart } from "@/app/components/dashboard/sales-distrib
 import { MonthlySalesEvolutionChart } from "@/app/components/dashboard/monthly-sales-evolution-chart"
 import { SalesBreakdownReport } from "@/app/components/dashboard/sales-breakdown-report"
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry"
-import { startOfMonth, format, subDays } from "date-fns"
+import { startOfMonth, format, subDays, startOfDay, endOfDay } from "date-fns"
 
 interface SalesData {
   totalSales: {
@@ -102,8 +102,8 @@ export function SalesReports({
   const [dataReady, setDataReady] = useState(false);
   
   // Use state for dates with fallback values
-  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30));
-  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date());
+  const [startDate, setStartDate] = useState<Date>(propStartDate || startOfDay(subDays(new Date(), 30)));
+  const [endDate, setEndDate] = useState<Date>(propEndDate || endOfDay(new Date()));
   
   // Update local state when props change
   useEffect(() => {

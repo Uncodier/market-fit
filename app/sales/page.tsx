@@ -15,7 +15,7 @@ import { toast } from "sonner"
 import { getSegments } from "@/app/segments/actions"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
-import { subDays, isWithinInterval, parseISO } from "date-fns"
+import { subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns"
 import { Sale } from "@/app/types"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { useRouter } from "next/navigation"
@@ -80,8 +80,8 @@ export default function SalesPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "value_desc" | "value_asc">("newest")
   const [dateRange, setDateRange] = useState({
-    startDate: subDays(new Date(), 30),
-    endDate: new Date()
+    startDate: startOfDay(subDays(new Date(), 30)),
+    endDate: endOfDay(new Date())
   })
   const { currentSite } = useSite()
   const router = useRouter()

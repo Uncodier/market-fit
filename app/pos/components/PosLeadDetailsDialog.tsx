@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/app/components/ui/dialog";
 import { ExternalLink } from "@/app/components/ui/icons";
-import { getLeadById, updateLead } from "@/app/leads/actions";
+import { getLeadById, updateLead, createLead } from "@/app/leads/actions";
 import { Skeleton } from "@/app/components/ui/skeleton";
 
 type LeadFormState = {
@@ -80,6 +80,7 @@ export function PosLeadDetailsDialog({
   siteId,
   t,
   onSaved,
+  newLeadName,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -87,6 +88,7 @@ export function PosLeadDetailsDialog({
   siteId: string;
   t: (key: string) => string;
   onSaved?: (lead: { id: string; name: string; email: string; phone?: string | null }) => void;
+  newLeadName?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -97,7 +99,16 @@ export function PosLeadDetailsDialog({
     t(key) === key ? fallback : t(key);
 
   useEffect(() => {
-    if (!open || !leadId || !siteId) return;
+    if (!open) return;
+
+    if (!leadId) {
+      setForm(newLeadName ? { ...emptyForm, name: newLeadName } : emptyForm);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    if (!siteId) return;
 
     let cancelled = false;
     setLoading(true);
@@ -125,9 +136,14 @@ export function PosLeadDetailsDialog({
   };
 
   const handleSave = async () => {
-    if (!leadId || !siteId) return;
+    if (!siteId) return;
     if (!form.name.trim()) {
       setError(getTrans("pos.leadDetails.nameRequired", "Name is required"));
+      return;
+    }
+
+    if (!form.email.trim() && !form.phone.trim()) {
+      setError(getTrans("pos.leadDetails.emailOrPhoneRequired", "Email or phone is required"));
       return;
     }
 
@@ -135,39 +151,75 @@ export function PosLeadDetailsDialog({
     setError(null);
 
     try {
-      const result = await updateLead({
-        id: leadId,
-        site_id: siteId,
-        name: form.name.trim(),
-        email: form.email.trim() || null,
-        personal_email: form.personal_email.trim() || null,
-        phone: form.phone.trim() || null,
-        company: form.company.trim() || null,
-        position: form.position.trim() || null,
-        notes: form.notes.trim() || null,
-        address: {
-          street: form.street.trim() || undefined,
-          city: form.city.trim() || undefined,
-          state: form.state.trim() || undefined,
-          zipcode: form.zipcode.trim() || undefined,
-          country: form.country.trim() || undefined,
-        },
-      });
+      if (leadId) {
+        const result = await updateLead({
+          id: leadId,
+          site_id: siteId,
+          name: form.name.trim(),
+          email: form.email.trim() || null,
+          personal_email: form.personal_email.trim() || null,
+          phone: form.phone.trim() || null,
+          company: form.company.trim() || null,
+          position: form.position.trim() || null,
+          notes: form.notes.trim() || null,
+          address: {
+            street: form.street.trim() || undefined,
+            city: form.city.trim() || undefined,
+            state: form.state.trim() || undefined,
+            zipcode: form.zipcode.trim() || undefined,
+            country: form.country.trim() || undefined,
+          },
+        });
 
-      if (result.error) {
-        setError(result.error);
-        return;
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+
+        toast.success(
+          getTrans("pos.leadDetails.saved", "Customer updated"),
+        );
+        onSaved?.({
+          id: leadId,
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim() || null,
+        });
+      } else {
+        const result = await createLead({
+          site_id: siteId,
+          name: form.name.trim(),
+          email: form.email.trim() || undefined,
+          personal_email: form.personal_email.trim() || undefined,
+          phone: form.phone.trim() || undefined,
+          company: form.company.trim() || undefined,
+          position: form.position.trim() || undefined,
+          notes: form.notes.trim() || undefined,
+          status: "new",
+          address: {
+            street: form.street.trim() || undefined,
+            city: form.city.trim() || undefined,
+            state: form.state.trim() || undefined,
+            zipcode: form.zipcode.trim() || undefined,
+            country: form.country.trim() || undefined,
+          },
+        });
+
+        if (result.error || !result.lead) {
+          setError(result.error || "Failed to create customer");
+          return;
+        }
+
+        toast.success(
+          getTrans("pos.leadDetails.created", "Customer created"),
+        );
+        onSaved?.({
+          id: result.lead.id,
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim() || null,
+        });
       }
-
-      toast.success(
-        getTrans("pos.leadDetails.saved", "Customer updated"),
-      );
-      onSaved?.({
-        id: leadId,
-        name: form.name.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim() || null,
-      });
       onOpenChange(false);
     } catch (err) {
       setError(
@@ -347,16 +399,16 @@ export function PosLeadDetailsDialog({
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
-            {getTrans("cancel", "Cancel")}
+            {getTrans("pos.leadDetails.cancel", "Cancelar")}
           </Button>
           <Button
             type="button"
             onClick={handleSave}
-            disabled={loading || saving || !leadId}
+            disabled={loading || saving}
           >
             {saving
-              ? getTrans("saving", "Saving...")
-              : getTrans("save", "Save")}
+              ? getTrans("pos.leadDetails.saving", "Guardando...")
+              : getTrans("pos.leadDetails.saveBtn", "Guardar")}
           </Button>
         </DialogFooter>
       </DialogContent>

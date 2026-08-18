@@ -48,6 +48,7 @@ import {
   Folder,
   Eye,
   Edit,
+  Ban,
   ShoppingCart,
   Settings,
   Ticket,
@@ -55,7 +56,7 @@ import {
   ModifierGroups,
 } from "@/app/components/ui/icons";
 
-import { subMonths, format } from "date-fns";
+import { subMonths, format, startOfDay, endOfDay } from "date-fns";
 import { safeReload } from "../../utils/safe-reload";
 import { useSearchParams } from "next/navigation";
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton";
@@ -850,8 +851,8 @@ export function TopBarActions({
     startDate: Date;
     endDate: Date;
   }>({
-    startDate: subMonths(new Date(), 1),
-    endDate: new Date(),
+    startDate: startOfDay(subMonths(new Date(), 1)),
+    endDate: endOfDay(new Date()),
   });
   const [selectedSegment, setSelectedSegment] = useState<string>("all");
 
@@ -1805,16 +1806,29 @@ export function TopBarActions({
       )}
 
       {pathname === "/reservations" && currentSite && (
-        <Button
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
-          onClick={() =>
-            window.dispatchEvent(new CustomEvent("reservations:create"))
-          }
-          title="Create Reservation"
-        >
-          <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">Create Reservation</span>
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="min-w-0 md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-transparent bg-transparent shadow-none"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("calendarBlocks:create"))
+            }
+            title="Block Time"
+          >
+            <Ban className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">Block Time</span>
+          </Button>
+          <Button
+            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("reservations:create"))
+            }
+            title="Create Reservation"
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline ml-2">Create Reservation</span>
+          </Button>
+        </div>
       )}
 
       {isQuotationsPage && pathname === "/quotations" && currentSite && (

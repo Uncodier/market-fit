@@ -240,6 +240,20 @@ export async function getAvailableSlotsForItem(
     .gte("start_time", rangeStart.toISOString())
     .lte("end_time", rangeEnd.toISOString())
 
+  // 2.5 Get calendar blocks
+  const siteId = schedules[0].site_id
+  const { data: blocksData } = await supabase
+    .from("calendar_blocks")
+    .select("entity_type, entity_id, start_time, end_time")
+    .eq("site_id", siteId)
+    .gte("end_time", rangeStart.toISOString())
+    .lte("start_time", rangeEnd.toISOString())
+
+  const calendarBlocks = (blocksData || []).filter((b: any) => 
+    b.entity_type === 'global' || 
+    (b.entity_type === 'catalog_item' && config.capacityGroupIds.includes(b.entity_id))
+  )
+
   const activeReservations = (reservations || []).filter(
     (r: { id?: string }) => !ignoreReservationId || r.id !== ignoreReservationId
   )
@@ -266,6 +280,18 @@ export async function getAvailableSlotsForItem(
           const slotEnd = addMinutes(current, duration)
           if (isAfter(slotEnd, dayEnd)) break
           
+          // Check if slot overlaps with any calendar block
+          const isBlocked = calendarBlocks.some((b: any) => {
+            const bStart = new Date(b.start_time)
+            const bEnd = new Date(b.end_time)
+            return isBefore(current, bEnd) && isAfter(slotEnd, bStart)
+          })
+
+          if (isBlocked) {
+            current = addMinutes(current, duration)
+            continue
+          }
+
           // Calculate booked seats
           const booked = activeReservations.filter((r: any) => {
             const rStart = new Date(r.start_time)
@@ -330,6 +356,24 @@ export async function assertReservationSlot(
     throw new Error("Cannot book in the past")
   }
   
+  // Check calendar blocks
+  const { data: blocksData } = await supabase
+    .from("calendar_blocks")
+    .select("entity_type, entity_id, start_time, end_time")
+    .eq("site_id", siteId)
+    .gte("end_time", startIso)
+    .lte("start_time", endIso)
+
+  const isBlocked = (blocksData || []).some((b: any) => 
+    (b.entity_type === 'global' || 
+    (b.entity_type === 'catalog_item' && config.capacityGroupIds.includes(b.entity_id))) &&
+    isBefore(start, new Date(b.end_time)) && isAfter(end, new Date(b.start_time))
+  )
+
+  if (isBlocked) {
+    throw new Error("This time slot is currently blocked")
+  }
+
   // Find a schedule that accommodates this slot
   let validScheduleFound = false
   let capacityError = false

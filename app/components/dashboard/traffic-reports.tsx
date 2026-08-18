@@ -12,8 +12,7 @@ import { useWidgetContext } from "@/app/context/WidgetContext";
 import { fetchWithRetry } from "@/app/utils/fetch-with-retry";
 import { useSite } from "@/app/context/SiteContext";
 import { useAuth } from "@/app/hooks/use-auth";
-import { format } from "date-fns";
-import { subDays } from "date-fns";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
 
 interface TrafficReportsProps {
   startDate?: Date;
@@ -31,8 +30,8 @@ interface TrafficData {
 }
 
 export function TrafficReports({ 
-  startDate = subDays(new Date(), 30), 
-  endDate = new Date(),
+  startDate = startOfDay(subDays(new Date(), 30)), 
+  endDate = endOfDay(new Date()),
   segmentId = "all",
   siteId
 }: TrafficReportsProps) {

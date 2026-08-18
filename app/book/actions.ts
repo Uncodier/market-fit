@@ -136,6 +136,7 @@ export async function bookRRMeeting(data: {
   notes?: string;
   location?: string;
   title: string;
+  duration?: number;
   metadata?: Record<string, string>;
 }) {
   const supabase = await createServiceClient(true);
@@ -185,6 +186,7 @@ export async function bookRRMeeting(data: {
     notes: data.notes,
     location: data.location,
     title: data.title,
+    duration: data.duration,
     metadata: data.metadata,
   });
 }
@@ -546,6 +548,7 @@ export async function bookMeeting(data: {
   notes?: string;
   location?: string;
   title: string;
+  duration?: number;
   metadata?: Record<string, string>;
 }) {
   const supabase = await createServiceClient(true);
@@ -614,17 +617,41 @@ export async function bookMeeting(data: {
   // 3. Create Task
   const scheduledDate = parseISO(`${data.date}T${data.time}:00`);
 
+  const taskNotes = (data.notes || `Meeting booked via public page by ${data.name} (${data.email})`) +
+    (data.guests && data.guests.length > 0 ? `\n\nAttendees: ${[data.email, ...data.guests].join(', ')}` : '') +
+    (data.location ? `\n\nLocation / Meeting Room: ${data.location}` : '');
+    
+  let endDateIso = undefined
+  let durationMins = 30
+  if (data.duration) {
+     durationMins = data.duration
+  } else if (data.metadata?.duration) {
+     const minMatch = data.metadata.duration.match(/(\d+)\s*min/i);
+     const hrMatch = data.metadata.duration.match(/(\d+)\s*hour/i);
+     if (minMatch) durationMins = parseInt(minMatch[1]);
+     else if (hrMatch) durationMins = parseInt(hrMatch[1]) * 60;
+  }
+  
+  const endObj = new Date(scheduledDate.getTime() + (durationMins * 60000))
+  endDateIso = endObj.toISOString()
+
   const { data: task, error: taskError } = await supabase
     .from("tasks")
     .insert({
       title: data.title,
       type: "meeting",
       stage: "decision",
-      description:
-        (data.notes ||
-        `Meeting booked via public page by ${data.name} (${data.email})`) +
-        (data.guests && data.guests.length > 0 ? `\n\nAttendees: ${[data.email, ...data.guests].join(', ')}` : '') +
-        (data.location ? `\n\nLocation / Meeting Room: ${data.location}` : ''),
+      description: taskNotes,
+      metadata: {
+        _calendar_context: {
+          origin: "book",
+          catalog_item_name: data.title,
+          duration: `${durationMins} min`,
+          end_time: endDateIso,
+          location: data.location || null,
+          ...(data.metadata || {})
+        }
+      },
       status: "pending",
       scheduled_date: scheduledDate.toISOString(),
       assignee: data.userId,

@@ -10,7 +10,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import { getSegments } from "@/app/segments/actions"
 import { createClient } from "@/lib/supabase/client"
-import { format, subMonths } from "date-fns"
+import { format, subMonths, startOfDay, endOfDay } from "date-fns"
 
 function CostsPageContent() {
   const { t } = useLocalization()
@@ -19,8 +19,8 @@ function CostsPageContent() {
   const [selectedCampaign, setSelectedCampaign] = useState("all")
   const [selectedSegment, setSelectedSegment] = useState("all")
   const [dateRange, setDateRange] = useState<{ startDate: Date; endDate: Date }>({
-    startDate: subMonths(today, 1),
-    endDate: today,
+    startDate: startOfDay(subMonths(today, 1)),
+    endDate: endOfDay(today),
   })
 
   const siteKey = currentSite && currentSite.id !== "default" ? currentSite.id : null

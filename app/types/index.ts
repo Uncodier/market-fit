@@ -494,6 +494,7 @@ export interface Task {
   assignee?: string
   type?: string
   priority: number
+  metadata?: any
   address?: any
   site_id: string
   created_at: string
@@ -831,6 +832,13 @@ export interface Reservation {
   location?: { id: string; name: string } | null;
   lead?: { name: string; email?: string };
   buyer_profile?: { id: string; name?: string | null; avatar_url?: string | null } | null;
+  is_task?: boolean;
+  original_task_id?: string;
+  original_task_type?: string;
+  original_task_title?: string;
+  original_task_description?: string;
+  original_task_metadata?: any;
+  original_schedule_id?: string;
 }
 
 export interface ReservationSchedule {
@@ -849,6 +857,18 @@ export interface ReservationSchedule {
       timeBlocks?: { start: string; end: string }[];
     };
   };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CalendarBlock {
+  id: string;
+  site_id: string;
+  entity_type: 'catalog_item' | 'user' | 'global';
+  entity_id?: string | null;
+  start_time: string;
+  end_time: string;
+  reason?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -37,8 +37,8 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
   const { shouldExecuteWidgets } = useWidgetContext()
   const [chartData, setChartData] = useState<ChartDataItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [startDate, setStartDate] = useState<Date>(propStartDate || subDays(new Date(), 30))
-  const [endDate, setEndDate] = useState<Date>(propEndDate || new Date())
+  const [startDate, setStartDate] = useState<Date>(propStartDate || startOfDay(subDays(new Date(), 30)))
+  const [endDate, setEndDate] = useState<Date>(propEndDate || endOfDay(new Date()))
   
   // Update local state when props change
   useEffect(() => {

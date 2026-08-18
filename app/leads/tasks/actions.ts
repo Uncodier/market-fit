@@ -59,6 +59,7 @@ const TaskSchema = z.object({
   assignee: z.string().transform((val) => val === "" ? null : val).pipe(z.string().uuid().optional().nullable()),
   notes: z.string().optional().nullable(),
   site_id: z.string().uuid(),
+  metadata: z.any().optional().nullable(),
 })
 
 // Input type for creating a task
@@ -82,6 +83,7 @@ export interface TaskResponse {
     assignee: string | null
     notes: string | null
     priority: number
+    metadata?: any | null
     address: any | null
     site_id: string
     user_id: string
@@ -109,6 +111,7 @@ export interface TasksResponse {
     assignee: string | null
     notes: string | null
     priority: number
+    metadata?: any | null
     address: any | null
     site_id: string
     user_id: string
