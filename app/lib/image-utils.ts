@@ -34,7 +34,7 @@ export type ItemImagePromptInput = {
   } | null
 }
 
-function publicPromptImageUrl(prompt: string, size = 1024): string {
+export function publicPromptImageUrl(prompt: string, size = 1024): string {
   const apiServerUrl =
     process.env.NEXT_PUBLIC_API_SERVER_URL || "http://localhost:3001";
   return `${apiServerUrl}/api/public/image/prompt/${encodeURIComponent(

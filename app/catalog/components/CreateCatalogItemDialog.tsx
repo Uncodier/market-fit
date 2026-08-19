@@ -403,6 +403,7 @@ export function CreateCatalogItemDialog({ open, onOpenChange, onSuccess }: Creat
         confirmLabel="Discard"
         variant="destructive"
         onConfirm={confirmDiscard}
+        dataPermission="allow"
       />
     </Dialog>
   )

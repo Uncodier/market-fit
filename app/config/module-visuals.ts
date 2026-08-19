@@ -54,6 +54,7 @@ import {
   Plug,
   Shield,
   Code,
+  TableRows,
 } from "@/app/components/ui/icons"
 
 export const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
@@ -82,6 +83,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   priceLists: Tag,
   inventory: Boxes,
   printers: Printer,
+  records: TableRows,
   orders: ListOrdered,
   shipments: Send,
   promotions: Ticket,
@@ -179,6 +181,7 @@ export const FLAGSHIP_MODULE_KEYS = new Set([
   "campaigns",
   "pos",
   "checkIn",
+  "records",
   "orders",
   "purchasesOrders",
   "agentsConfiguration",
@@ -258,6 +261,7 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
 
   // —— Operations (teal → cyan → seafoam) ——
   chat: buildVariant(185, 200, 45, 72, 44, "mesh-2", false),
+  records: buildVariant(180, 195, 135, 75, 45, "mesh-1", true, true),
   orders: buildVariant(172, 190, 135, 82, 42, "mesh-3", true, true),
   shipments: buildVariant(190, 170, 200, 75, 46, "mesh-4", false),
   controlCenter: buildVariant(165, 150, 90, 70, 44, "mesh-5", false),

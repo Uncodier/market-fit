@@ -59,7 +59,7 @@ interface RelationSelectProps {
 }
 
 export function RelationSelect({
-  options,
+  options: rawOptions,
   value,
   onValueChange,
   allowCreate = true,
@@ -76,6 +76,7 @@ export function RelationSelect({
   createLabel = (q) => `Use "${q}"`,
   pinnedAction,
 }: RelationSelectProps) {
+  const options = rawOptions || []
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -92,7 +93,7 @@ export function RelationSelect({
   )
 
   const exactMatch = React.useMemo(() => {
-    return options.find(o => o.label.toLowerCase() === searchQuery.trim().toLowerCase())
+    return options.find(o => o?.label?.toLowerCase() === searchQuery.trim().toLowerCase())
   }, [options, searchQuery])
 
   const showCreate =
@@ -106,8 +107,8 @@ export function RelationSelect({
   // when the referenced entity was deleted).
   const isResolvingLabel =
     value?.mode === "existing" &&
-    (value.label === "Loading..." ||
-      (value.label.trim() === "" && options.length === 0))
+    (value?.label === "Loading..." ||
+      (value?.label?.trim() === "" && options.length === 0))
 
   const handleClear = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
@@ -163,10 +164,10 @@ export function RelationSelect({
     }
     if (!value) {
       setSearchQuery("")
-    } else if (value.label === "Loading..." || value.label.trim() === "") {
+    } else if (value.label === "Loading..." || value.label?.trim() === "") {
       setSearchQuery("")
     } else {
-      setSearchQuery(value.label)
+      setSearchQuery(value.label || "")
     }
   }, [value, clearAfterSelect])
 

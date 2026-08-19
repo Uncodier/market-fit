@@ -58,7 +58,8 @@ export function ReservationMonthView({
             data-day={dateStr}
             onPointerDown={(event) => {
               if (event.button !== 0 || !onCreateSlot) return
-              if ((event.target as HTMLElement).closest("[data-reservation-item]")) return
+              const target = event.target as Element | null
+              if (target?.closest && target.closest("[data-reservation-item]")) return
               event.preventDefault()
               begin(dateStr)
             }}
@@ -299,7 +300,8 @@ export function ReservationYearView({
             data-month={monthKey}
             onPointerDown={(event) => {
               if (event.button !== 0 || !onCreateSlot) return
-              if ((event.target as HTMLElement).closest("[data-reservation-item]")) return
+              const target = event.target as Element | null
+              if (target?.closest && target.closest("[data-reservation-item]")) return
               event.preventDefault()
               begin(monthKey)
             }}

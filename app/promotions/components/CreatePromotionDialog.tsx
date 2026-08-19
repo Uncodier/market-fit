@@ -315,6 +315,7 @@ export function CreatePromotionDialog({
         confirmLabel="Discard"
         variant="destructive"
         onConfirm={confirmDiscard}
+        dataPermission="allow"
       />
     </Dialog>
   )

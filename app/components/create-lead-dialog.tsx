@@ -432,6 +432,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
         confirmLabel="Discard"
         variant="destructive"
         onConfirm={confirmDiscard}
+        dataPermission="allow"
       />
     </Dialog>
   )

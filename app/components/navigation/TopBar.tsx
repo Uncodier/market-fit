@@ -294,6 +294,7 @@ export function TopBar({
             isControlCenterPage={pathname === "/control-center"}
             isCampaignsPage={pathname === "/campaigns"}
             isSalesPage={pathname === "/sales"}
+            isRecordsPage={pathname === "/records"}
             isRobotsPage={pathname === "/robots"}
             isSecurityPage={pathname === "/security"}
             isAccountingPage={pathname === "/accounting"}

@@ -922,6 +922,7 @@ export function CreateReservationDialog({
         confirmLabel="Discard"
         variant="destructive"
         onConfirm={confirmDiscard}
+        dataPermission="allow"
       />
     </>
   )

@@ -518,8 +518,8 @@ export function DatePicker({
           className="p-0 w-auto z-[999999]"
           side={position}
           onInteractOutside={(event) => {
-            const target = event.target as HTMLElement | null
-            if (target?.closest("[data-time-select]")) event.preventDefault()
+            const target = event.target as Element | null
+            if (target?.closest && target.closest("[data-time-select]")) event.preventDefault()
           }}
         >
           <div className="flex flex-row">

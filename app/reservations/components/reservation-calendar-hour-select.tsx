@@ -234,7 +234,8 @@ export function HourCell({
       data-day={localDateKey(date)}
       onPointerDown={(event) => {
         if (event.button !== 0 || !onBeginDrag) return
-        if ((event.target as HTMLElement).closest("[data-reservation-item]")) return
+        const target = event.target as Element | null
+        if (target?.closest && target.closest("[data-reservation-item]")) return
         event.preventDefault()
         onBeginDrag(date, hour)
       }}

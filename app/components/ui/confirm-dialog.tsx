@@ -22,6 +22,7 @@ interface ConfirmDialogProps {
   cancelLabel?: string
   variant?: "default" | "destructive"
   loading?: boolean
+  dataPermission?: string
   onConfirm: () => void | Promise<void>
 }
 
@@ -34,6 +35,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   variant = "default",
   loading = false,
+  dataPermission,
   onConfirm,
 }: ConfirmDialogProps) {
   const [pending, setPending] = React.useState(false)
@@ -77,6 +79,7 @@ export function ConfirmDialog({
             variant="default"
             tint={variant === "destructive" ? "destructive" : undefined}
             disabled={isLoading}
+            data-permission={dataPermission}
             onClick={(event) => {
               void handleConfirm(event)
             }}

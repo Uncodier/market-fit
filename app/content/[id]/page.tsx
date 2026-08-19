@@ -224,9 +224,12 @@ const MenuBar = ({
   hasChanges: boolean,
   contentType?: string,
   contentStatus?: string,
-  onTeleprompter?: () => void
+  onTeleprompter?: () => void,
+  isEditorFocused?: boolean
 }) => {
   const currentEditor = activeTab === 'copy' ? editor : instructionsEditor
+  const [isToolbarHovered, setIsToolbarHovered] = useState(false)
+  const [isHeadingDropdownOpen, setIsHeadingDropdownOpen] = useState(false)
 
   if (!currentEditor) {
     return null
@@ -268,8 +271,19 @@ const MenuBar = ({
           </Button>
         )}
         
-        <div className="w-px h-6 bg-border mx-1" />
-        <Button
+        <div className={`w-px h-6 bg-border mx-1 transition-all duration-300 ${
+          isEditorFocused || isToolbarHovered || isHeadingDropdownOpen ? 'opacity-100' : 'opacity-0 w-0 mx-0'
+        }`} />
+        
+        <div 
+          className={`flex items-center transition-all duration-300 overflow-hidden ${
+            isEditorFocused || isToolbarHovered || isHeadingDropdownOpen ? 'max-w-[1000px] opacity-100' : 'max-w-0 opacity-0'
+          }`}
+          onMouseEnter={() => setIsToolbarHovered(true)}
+          onMouseLeave={() => setIsToolbarHovered(false)}
+        >
+          <div className="flex items-center gap-1 flex-nowrap pr-2">
+            <Button
           variant="ghost"
           size="sm"
           onClick={() => currentEditor.chain().focus().toggleBold().run()}
@@ -318,7 +332,7 @@ const MenuBar = ({
           <Code className="h-4 w-4" />
         </Button>
         
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={setIsHeadingDropdownOpen}>
           <DropdownMenuTrigger asChild>
             <Button 
               variant="ghost" 
@@ -442,9 +456,13 @@ const MenuBar = ({
         >
           <Redo className="h-4 w-4" />
         </Button>
+          </div>
+        </div>
         
         {/* Delete section divider and button */}
-        <div className="w-px h-6 bg-border mx-1" />
+        <div className={`w-px h-6 bg-border mx-1 transition-all duration-300 ${
+          isEditorFocused || isToolbarHovered || isHeadingDropdownOpen ? 'opacity-100' : 'opacity-0 w-0 mx-0'
+        }`} />
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
@@ -990,6 +1008,8 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
     status: 'draft' // Default status
   })
   const [activeTab, setActiveTab] = useState<'copy' | 'instructions' | 'ai'>('copy')
+  const [isEditorFocused, setIsEditorFocused] = useState(false)
+  const blurTimeoutRef = React.useRef<NodeJS.Timeout>()
   const [aiPrompt, setAiPrompt] = useState('')
   const [isAiProcessing, setIsAiProcessing] = useState(false)
   const [editorsReady, setEditorsReady] = useState(false)
@@ -1096,6 +1116,15 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
       }),
     ],
     content: '',
+    onFocus: () => {
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
+      setIsEditorFocused(true)
+    },
+    onBlur: () => {
+      blurTimeoutRef.current = setTimeout(() => {
+        setIsEditorFocused(false)
+      }, 150)
+    },
     onUpdate: ({ editor }) => {
       if (activeTab === 'copy') {
         setEditForm(prev => ({ 
@@ -1132,6 +1161,15 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
       }),
     ],
     content: '',
+    onFocus: () => {
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
+      setIsEditorFocused(true)
+    },
+    onBlur: () => {
+      blurTimeoutRef.current = setTimeout(() => {
+        setIsEditorFocused(false)
+      }, 150)
+    },
     onUpdate: ({ editor }) => {
       if (activeTab === 'instructions') {
         setEditForm(prev => ({ 
@@ -2012,6 +2050,7 @@ export default function ContentDetailPage(props: { params: Promise<{ id: string 
             onTeleprompter={() => {
               router.push(`/teleprompter/${content.id}`)
             }}
+            isEditorFocused={isEditorFocused}
           />
         </div>
         <div className="flex-1 overflow-auto">

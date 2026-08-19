@@ -155,6 +155,7 @@ export function CreateCampaignDialog({
         confirmLabel="Discard"
         variant="destructive"
         onConfirm={confirmDiscard}
+        dataPermission="allow"
       />
     </Dialog>
   )

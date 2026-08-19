@@ -135,10 +135,7 @@ export function ModuleTile({ area, itemKey, title, icon: Icon, onClick, inMenu =
   return (
     <div
       onClick={onClick}
-      className={[
-        "flex flex-col items-center group outline-none cursor-pointer focus-visible:outline-none",
-        marked ? "w-[112px]" : "w-[100px]",
-      ].join(" ")}
+      className="flex flex-col items-center group outline-none cursor-pointer focus-visible:outline-none w-[112px]"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -152,9 +149,10 @@ export function ModuleTile({ area, itemKey, title, icon: Icon, onClick, inMenu =
         className={[
           "flex flex-col items-center gap-3 w-full transition-all duration-300 ease-out",
           "group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5",
+          "rounded-[22px] px-2 pt-2 pb-2.5 border",
           marked
-            ? "rounded-[22px] px-2 pt-2 pb-2.5 border border-black/12 dark:border-white/14 bg-black/[0.05] dark:bg-white/[0.07]"
-            : "",
+            ? "border-black/12 dark:border-white/14 bg-black/[0.05] dark:bg-white/[0.07]"
+            : "border-transparent bg-transparent",
         ].join(" ")}
       >
         <div className={ICON_PLATE}>

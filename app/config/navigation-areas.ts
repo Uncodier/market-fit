@@ -87,6 +87,7 @@ export const NAVIGATION_AREAS: Record<
     categoryKey: "layout.category.operations",
     items: [
       { key: "chat", href: "/chat" },
+      { key: "records", href: "/records" },
       { key: "orders", href: "/orders" },
       { key: "shipments", href: "/shipments" },
       { key: "controlCenter", href: "/control-center" },

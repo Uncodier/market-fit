@@ -54,6 +54,7 @@ import {
   Ticket,
   Repeat,
   ModifierGroups,
+  Save,
 } from "@/app/components/ui/icons";
 
 import { subMonths, format, startOfDay, endOfDay } from "date-fns";
@@ -664,30 +665,30 @@ function RobotStartButton({
               <Button
                 variant="secondary"
                 size="default"
-                className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 onClick={() => setIsAuthenticateModalOpen(true)}
                 title={t("layout.topbar.authenticate")}
               >
                 <Shield className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline font-inter font-medium text-sm">
+                <span className="hidden lg:inline font-inter font-medium text-sm">
                   {t("layout.topbar.authenticate")}
                 </span>
               </Button>
               <Button
                 variant="secondary"
                 size="default"
-                className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 onClick={handleSaveAuthSession}
                 title={t("layout.topbar.saveAuthSession")}
               >
                 <Key className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline font-inter font-medium text-sm">
+                <span className="hidden lg:inline font-inter font-medium text-sm">
                   {t("layout.topbar.saveAuthSession")}
                 </span>
               </Button>
               <Button
                 size="default"
-                className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 onClick={handleStopRobot}
                 disabled={isStoppingRobot}
                 title={t("layout.topbar.stopRobot")}
@@ -699,14 +700,14 @@ function RobotStartButton({
                       size="sm"
                       className="text-white"
                     />
-                    <span className="hidden md:inline font-inter font-medium text-sm">
+                    <span className="hidden lg:inline font-inter font-medium text-sm">
                       {t("layout.topbar.stopping")}
                     </span>
                   </>
                 ) : (
                   <>
                     <StopCircle className="h-4 w-4 shrink-0" />
-                    <span className="hidden md:inline ml-2 font-inter font-medium text-sm">
+                    <span className="hidden lg:inline ml-2 font-inter font-medium text-sm">
                       {t("layout.topbar.stopRobot")}
                     </span>
                   </>
@@ -733,7 +734,7 @@ function RobotStartButton({
   return (
     <Button
       size="default"
-      className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+      className="flex items-center gap-2 bg-primary hover:bg-primary/90 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
       onClick={handleStartRobot}
       disabled={isStartingRobot}
       title={t("layout.topbar.startRobot")}
@@ -741,14 +742,14 @@ function RobotStartButton({
       {isStartingRobot ? (
         <>
           <LoadingSkeleton variant="button" size="sm" className="text-white" />
-          <span className="hidden md:inline font-inter font-medium text-sm">
+          <span className="hidden lg:inline font-inter font-medium text-sm">
             {t("layout.topbar.startingRobot")}
           </span>
         </>
       ) : (
         <>
           <PlayCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2 font-inter font-medium text-sm">
+          <span className="hidden lg:inline ml-2 font-inter font-medium text-sm">
             {t("layout.topbar.startRobot")}
           </span>
         </>
@@ -770,6 +771,7 @@ interface TopBarActionsProps {
   isControlCenterPage: boolean;
   isCampaignsPage: boolean;
   isSalesPage: boolean;
+  isRecordsPage?: boolean;
   isRobotsPage: boolean;
   isSecurityPage: boolean;
   isAccountingPage?: boolean;
@@ -822,6 +824,7 @@ export function TopBarActions({
   isControlCenterPage,
   isCampaignsPage,
   isSalesPage,
+  isRecordsPage,
   isRobotsPage,
   isSecurityPage,
   isAccountingPage,
@@ -1166,14 +1169,14 @@ export function TopBarActions({
         pathname !== "/content/deepResearch" && (
           <Button
             variant="default"
-            className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
+            className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90"
             title={t("layout.topbar.publishToSocial") || "Publish"}
             onClick={() =>
               window.dispatchEvent(new CustomEvent("content:publish"))
             }
           >
             <Globe className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline font-inter font-medium text-sm">
+            <span className="hidden lg:inline font-inter font-medium text-sm">
               {t("layout.topbar.publishToSocial") || "Publish"}
             </span>
           </Button>
@@ -1183,11 +1186,11 @@ export function TopBarActions({
         <CreateTaskDialog
           trigger={
             <Button
-              className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.newTask")}
             >
               <PlusCircle className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">
+              <span className="hidden lg:inline ml-2">
                 {t("layout.topbar.newTask")}
               </span>
             </Button>
@@ -1200,12 +1203,12 @@ export function TopBarActions({
         <Button
           variant="ghost"
           size="default"
-          className="text-muted-foreground hover:text-foreground flex items-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() => window.open("https://docs.makinari.com", "_blank")}
           title="Documentation"
         >
           <BookOpen className="h-5 w-5 shrink-0" />
-          <span className="hidden md:inline">{t("layout.topbar.docs")}</span>
+          <span className="hidden lg:inline">{t("layout.topbar.docs")}</span>
         </Button>
       )}
 
@@ -1222,7 +1225,7 @@ export function TopBarActions({
               return true; // Default to showing it if we can't determine
             })() && (
               <Button
-                className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 onClick={async () => {
                   if (!userId) {
                     toast.error("User not authenticated");
@@ -1261,7 +1264,7 @@ export function TopBarActions({
                 title={t("layout.topbar.export")}
               >
                 <Download className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline ml-2">
+                <span className="hidden lg:inline ml-2">
                   {t("layout.topbar.export")}
                 </span>
               </Button>
@@ -1274,7 +1277,7 @@ export function TopBarActions({
         <Button
           variant="default"
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() => {
             window.dispatchEvent(new CustomEvent("requirement:build-trigger"));
           }}
@@ -1288,14 +1291,14 @@ export function TopBarActions({
           {requirementData.isBuilding ? (
             <>
               <div className="h-4 w-4 animate-pulse bg-primary-foreground/50 rounded" />
-              <span className="hidden md:inline font-inter font-medium text-sm">
+              <span className="hidden lg:inline font-inter font-medium text-sm">
                 Building...
               </span>
             </>
           ) : (
             <>
               <Bot className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline font-inter font-medium text-sm">
+              <span className="hidden lg:inline font-inter font-medium text-sm">
                 {requirementData.hasRequirementStatus
                   ? "Rebuild Requirement"
                   : "Build Requirement"}
@@ -1311,7 +1314,7 @@ export function TopBarActions({
             <Button
               variant="secondary"
               size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               onClick={() => segmentData.openAIModal("analysis")}
               disabled={segmentData.isAnalyzing}
               title={t("layout.topbar.analyzeWithAI")}
@@ -1319,14 +1322,14 @@ export function TopBarActions({
               {segmentData.isAnalyzing ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">
+                  <span className="hidden lg:inline font-inter font-medium text-sm">
                     {t("layout.topbar.analyzing")}
                   </span>
                 </>
               ) : (
                 <>
                   <BarChart className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">
+                  <span className="hidden lg:inline font-inter font-medium text-sm">
                     {t("layout.topbar.analyzeWithAI")}
                   </span>
                 </>
@@ -1337,7 +1340,7 @@ export function TopBarActions({
             <Button
               variant="secondary"
               size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               onClick={() => segmentData.openAIModal("topics")}
               disabled={segmentData.isGeneratingTopics}
               title={t("layout.topbar.getTopicsWithAI")}
@@ -1345,14 +1348,14 @@ export function TopBarActions({
               {segmentData.isGeneratingTopics ? (
                 <>
                   <LoadingSkeleton variant="button" size="sm" />
-                  <span className="hidden md:inline font-inter font-medium text-sm">
+                  <span className="hidden lg:inline font-inter font-medium text-sm">
                     {t("layout.topbar.gettingTopics")}
                   </span>
                 </>
               ) : (
                 <>
                   <FileText className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline">
+                  <span className="hidden lg:inline">
                     {t("layout.topbar.getTopicsWithAI")}
                   </span>
                 </>
@@ -1367,11 +1370,11 @@ export function TopBarActions({
             onCreateSegment={handleCreateSegment}
             trigger={
               <Button
-                className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.newSegment")}
               >
                 <PlusCircle className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline ml-2">
+                <span className="hidden lg:inline ml-2">
                   {t("layout.topbar.newSegment")}
                 </span>
               </Button>
@@ -1387,11 +1390,11 @@ export function TopBarActions({
               onCreateExperiment={handleCreateExperiment}
               trigger={
                 <Button
-                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                   title={t("layout.topbar.newExperiment")}
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">
+                  <span className="hidden lg:inline ml-2">
                     {t("layout.topbar.newExperiment")}
                   </span>
                 </Button>
@@ -1408,11 +1411,11 @@ export function TopBarActions({
               onCreateRequirement={handleCreateRequirement}
               trigger={
                 <Button
-                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                   title={t("layout.topbar.newRequirement")}
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">
+                  <span className="hidden lg:inline ml-2">
                     {t("layout.topbar.newRequirement")}
                   </span>
                 </Button>
@@ -1429,11 +1432,11 @@ export function TopBarActions({
               trigger={
                 <Button
                   variant="secondary"
-                  className="flex items-center justify-center gap-2 md:h-9 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  className="flex items-center justify-center gap-2 md:h-9 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                   title={t("layout.topbar.import")}
                 >
                   <UploadCloud className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">
+                  <span className="hidden lg:inline ml-2">
                     {t("layout.topbar.import")}
                   </span>
                 </Button>
@@ -1441,7 +1444,7 @@ export function TopBarActions({
             />
             <Button
               variant="secondary"
-              className="flex items-center justify-center gap-2 md:h-9 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              className="flex items-center justify-center gap-2 md:h-9 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.export")}
               onClick={async () => {
                 try {
@@ -1473,7 +1476,7 @@ export function TopBarActions({
               }}
             >
               <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">
+              <span className="hidden lg:inline ml-2">
                 {t("layout.topbar.export")}
               </span>
             </Button>
@@ -1483,11 +1486,11 @@ export function TopBarActions({
               onCreateLead={handleCreateLead}
               trigger={
                 <Button
-                  className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                  className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                   title="Add Lead"
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
-                  <span className="hidden md:inline ml-2">
+                  <span className="hidden lg:inline ml-2">
                     {t("layout.topbar.addLead")}
                   </span>
                 </Button>
@@ -1516,11 +1519,11 @@ export function TopBarActions({
             }}
             trigger={
               <Button
-                className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.newContent")}
               >
                 <PlusCircle className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline ml-2">
+                <span className="hidden lg:inline ml-2">
                   {t("layout.topbar.newContent")}
                 </span>
               </Button>
@@ -1535,23 +1538,39 @@ export function TopBarActions({
             onCreateCampaign={handleCreateCampaign}
             trigger={
               <Button
-                className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.newCampaign")}
               >
                 <PlusCircle className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline ml-2">
+                <span className="hidden lg:inline ml-2">
                   {t("layout.topbar.newCampaign")}
                 </span>
               </Button>
             }
           />
         ) : null)}
-      {isSalesPage &&
+        
+            {isRecordsPage && currentSite && (
+              <Button
+                className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("records:create"))
+                }
+                title={t("layout.topbar.newRecord") || "New Record"}
+              >
+                <PlusCircle className="h-4 w-4 shrink-0" />
+                <span className="hidden lg:inline ml-2">
+                  {t("layout.topbar.newRecord") || "New Record"}
+                </span>
+              </Button>
+            )}
+
+            {isSalesPage &&
         (currentSite ? (
           <>
             <Button
               variant="secondary"
-              className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.export")}
               onClick={async () => {
                 try {
@@ -1583,17 +1602,17 @@ export function TopBarActions({
               }}
             >
               <Download className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">
+              <span className="hidden lg:inline ml-2">
                 {t("layout.topbar.export")}
               </span>
             </Button>
             <Button
               onClick={onCreateSale}
-              className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.addSale")}
             >
               <PlusCircle className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">
+              <span className="hidden lg:inline ml-2">
                 {t("layout.topbar.addSale")}
               </span>
             </Button>
@@ -1605,19 +1624,19 @@ export function TopBarActions({
           <Button
             variant="secondary"
             size="default"
-            className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => { window.location.href = '/pos/check-in' }}
             title={t("pos.checkIn.title") || "Ticket Check-in"}
           >
             <Ticket className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline font-inter font-medium text-sm">
+            <span className="hidden lg:inline font-inter font-medium text-sm">
               {t("pos.checkIn.title") || "Ticket Check-in"}
             </span>
           </Button>
           <Button
             variant="secondary"
             size="default"
-            className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm overflow-visible"
+            className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm overflow-visible"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("pos:send-order"))
             }
@@ -1631,7 +1650,7 @@ export function TopBarActions({
                 </span>
               )}
             </div>
-            <span className="hidden md:inline font-inter font-medium text-sm">
+            <span className="hidden lg:inline font-inter font-medium text-sm">
               {t("layout.topbar.sendOrder") || "Send Order"}
             </span>
           </Button>
@@ -1642,24 +1661,24 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => router.push("/catalog/modifier-groups")}
             title={t("catalog.modifiers.groupsTitle") || "Modifier groups"}
           >
             <ModifierGroups className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">
+            <span className="hidden lg:inline ml-2">
               {t("catalog.modifiers.groupsTitle") || "Modifier groups"}
             </span>
           </Button>
           <Button
-            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("catalog:create"))
             }
             title={t("catalog.addItem") || "Add Item"}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">
+            <span className="hidden lg:inline ml-2">
               {t("catalog.addItem") || "Add Item"}
             </span>
           </Button>
@@ -1668,14 +1687,14 @@ export function TopBarActions({
 
       {pathname === "/catalog/modifier-groups" && currentSite && (
         <Button
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("modifier-groups:create"))
           }
           title={t("catalog.modifiers.create") || "New group"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">
+          <span className="hidden lg:inline ml-2">
             {t("catalog.modifiers.create") || "New group"}
           </span>
         </Button>
@@ -1683,12 +1702,12 @@ export function TopBarActions({
 
       {pathname === "/orders" && currentSite && (
         <Button
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() => window.dispatchEvent(new CustomEvent("orders:create"))}
           title={t("orders.add") || "Create Order"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">
+          <span className="hidden lg:inline ml-2">
             {t("orders.add") || "Create Order"}
           </span>
         </Button>
@@ -1696,14 +1715,14 @@ export function TopBarActions({
 
       {pathname === "/shipments" && currentSite && (
         <Button
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("shipments:create"))
           }
           title={t("shipments.add") || "Create Shipment"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">
+          <span className="hidden lg:inline ml-2">
             {t("shipments.add") || "Create Shipment"}
           </span>
         </Button>
@@ -1713,7 +1732,7 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(
                 new CustomEvent("inventory:open-location-dialog"),
@@ -1722,19 +1741,19 @@ export function TopBarActions({
             title={t("inventory.addLocation") || "Add Location"}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">
+            <span className="hidden lg:inline ml-2">
               {t("inventory.addLocation") || "Add Location"}
             </span>
           </Button>
           <Button
-            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("inventory:create-stock"))
             }
             title={t("inventory.addStock") || "Add Stock"}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">
+            <span className="hidden lg:inline ml-2">
               {t("inventory.addStock") || "Add Stock"}
             </span>
           </Button>
@@ -1743,14 +1762,14 @@ export function TopBarActions({
 
       {pathname === "/price-lists" && currentSite && (
         <Button
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("price-lists:create"))
           }
           title={t("priceLists.addList") || "Create List"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">
+          <span className="hidden lg:inline ml-2">
             {t("priceLists.addList") || "Create List"}
           </span>
         </Button>
@@ -1768,26 +1787,26 @@ export function TopBarActions({
           </div>
           <Button
             variant="outline"
-            className="min-w-0 md:min-w-[120px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="!min-w-0 lg:!min-w-[120px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("price-list:edit"))
             }
             title={t("priceLists.editAction") || "Edit list"}
           >
             <Edit className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">
+            <span className="hidden lg:inline ml-2">
               {t("priceLists.editAction") || "Edit list"}
             </span>
           </Button>
           <Button
-            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="!min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("price-list:add-price"))
             }
             title="Add Price"
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">
+            <span className="hidden lg:inline ml-2">
               Add Price
             </span>
           </Button>
@@ -1796,14 +1815,14 @@ export function TopBarActions({
 
       {pathname === "/promotions" && currentSite && (
         <Button
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("promotions:create"))
           }
           title={t("promotions.add") || "Create Promotion"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">
+          <span className="hidden lg:inline ml-2">
             {t("promotions.add") || "Create Promotion"}
           </span>
         </Button>
@@ -1811,14 +1830,14 @@ export function TopBarActions({
 
       {pathname === "/subscriptions" && currentSite && (
         <Button
-          className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={() =>
             window.dispatchEvent(new CustomEvent("subscriptions:create"))
           }
           title="Create Subscription"
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline ml-2">Create Subscription</span>
+          <span className="hidden lg:inline ml-2">Create Subscription</span>
         </Button>
       )}
 
@@ -1826,24 +1845,24 @@ export function TopBarActions({
         <div className="flex gap-2">
           <Button
             variant="outline"
-            className="min-w-0 md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-transparent bg-transparent shadow-none"
+            className="!min-w-0 lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-transparent bg-transparent shadow-none"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("calendarBlocks:create"))
             }
             title="Block Time"
           >
             <Ban className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">Block Time</span>
+            <span className="hidden lg:inline ml-2">Block Time</span>
           </Button>
           <Button
-            className="min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="!min-w-0 lg:!min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("reservations:create"))
             }
             title="Create Reservation"
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">Create Reservation</span>
+            <span className="hidden lg:inline ml-2">Create Reservation</span>
           </Button>
         </div>
       )}
@@ -1852,11 +1871,11 @@ export function TopBarActions({
         <CreateQuotationDialog
           trigger={
             <Button
-              className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+              className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
               title="Create Quotation"
             >
               <PlusCircle className="h-4 w-4 shrink-0" />
-              <span className="hidden md:inline ml-2">Create Quotation</span>
+              <span className="hidden lg:inline ml-2">Create Quotation</span>
             </Button>
           }
         />
@@ -1867,11 +1886,11 @@ export function TopBarActions({
             onCreateDeal={handleCreateDeal}
             trigger={
               <Button
-                className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+                className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.createDeal")}
               >
                 <PlusCircle className="h-4 w-4 shrink-0" />
-                <span className="hidden md:inline ml-2">
+                <span className="hidden lg:inline ml-2">
                   {t("layout.topbar.createDeal")}
                 </span>
               </Button>
@@ -1887,12 +1906,12 @@ export function TopBarActions({
       {pathname.startsWith("/purchases/orders") && currentSite && (
         <Button
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => router.push(`/marketplace?ownerSiteId=${currentSite.id}&returnTo=/purchases/orders`)}
           title={t("buyer.orders.newPurchase") || "New Purchase"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline font-inter font-medium text-sm">
+          <span className="hidden lg:inline font-inter font-medium text-sm">
             {t("buyer.orders.newPurchase") || "New Purchase"}
           </span>
         </Button>
@@ -1902,12 +1921,12 @@ export function TopBarActions({
       {pathname.startsWith("/purchases/subscriptions") && currentSite && (
         <Button
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => router.push(`/marketplace?ownerSiteId=${currentSite.id}&returnTo=/purchases/subscriptions&filter=recurring`)}
           title={t("buyer.subscriptions.newSubscription") || "New Subscription"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline font-inter font-medium text-sm">
+          <span className="hidden lg:inline font-inter font-medium text-sm">
             {t("buyer.subscriptions.newSubscription") || "New Subscription"}
           </span>
         </Button>
@@ -1917,7 +1936,7 @@ export function TopBarActions({
       {pathname.startsWith("/bills") && currentSite && (
         <Button
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => {
             if (pathname === "/bills") {
               window.dispatchEvent(new CustomEvent("bills:create"))
@@ -1929,7 +1948,7 @@ export function TopBarActions({
           title={t("bills.create.button") || "New bill"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline font-inter font-medium text-sm">
+          <span className="hidden lg:inline font-inter font-medium text-sm">
             {t("bills.create.button") || "New bill"}
           </span>
         </Button>
@@ -1939,7 +1958,7 @@ export function TopBarActions({
       {pathname === "/transactions" && currentSite && (
         <Button
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => {
             // Desencadenamos un evento personalizado para que la página lo escuche y abra su diálogo
             const event = new CustomEvent('transactions:create');
@@ -1948,7 +1967,7 @@ export function TopBarActions({
           title={t("expenses.create.button") || "Add Expense"}
         >
           <PlusCircle className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline font-inter font-medium text-sm">
+          <span className="hidden lg:inline font-inter font-medium text-sm">
             {t("expenses.create.button") || "Add Expense"}
           </span>
         </Button>
@@ -1959,18 +1978,18 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => window.dispatchEvent(new CustomEvent('accounting:openingBalances'))}
           >
             <Settings className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">Opening Balances</span>
+            <span className="hidden lg:inline ml-2">Opening Balances</span>
           </Button>
           <Button
-            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('accounting:create'))}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">Add Account</span>
+            <span className="hidden lg:inline ml-2">Add Account</span>
           </Button>
         </div>
       )}
@@ -1980,18 +1999,18 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => window.dispatchEvent(new CustomEvent('finance:exportReport'))}
           >
             <Download className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">Export</span>
+            <span className="hidden lg:inline ml-2">Export</span>
           </Button>
           <Button
-            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('finance:loadReport'))}
           >
             <FileText className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">Generate Report</span>
+            <span className="hidden lg:inline ml-2">Generate Report</span>
           </Button>
         </div>
       )}
@@ -2001,18 +2020,18 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+            className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => window.dispatchEvent(new CustomEvent('journal:load'))}
           >
             <Repeat className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">{t('common.sync') || "Sync"}</span>
+            <span className="hidden lg:inline ml-2">{t('common.sync') || "Sync"}</span>
           </Button>
           <Button
-            className="flex items-center justify-center gap-2 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="flex items-center justify-center gap-2 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('journal:create'))}
           >
             <PlusCircle className="h-4 w-4 shrink-0" />
-            <span className="hidden md:inline ml-2">{t('accounting.newEntry') || "New Entry"}</span>
+            <span className="hidden lg:inline ml-2">{t('accounting.newEntry') || "New Entry"}</span>
           </Button>
         </div>
       )}
@@ -2022,7 +2041,7 @@ export function TopBarActions({
         <Button
           variant="secondary"
           size="default"
-          className="flex items-center justify-center gap-2 transition-colors duration-200 min-w-0 md:min-w-[155px] md:w-auto md:px-3.5 w-9 h-9 md:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
+          className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 lg:min-w-[155px] lg:w-auto lg:px-3.5 !w-9 lg:!w-auto h-9 lg:aspect-auto aspect-square p-0 rounded-full font-inter font-medium text-sm"
           onClick={handleLogout}
           title={
             isLoggingOut
@@ -2031,7 +2050,7 @@ export function TopBarActions({
           }
         >
           <LogOut className="h-4 w-4 shrink-0" />
-          <span className="hidden md:inline font-inter font-medium text-sm pt-0.5">
+          <span className="hidden lg:inline font-inter font-medium text-sm pt-0.5">
             {isLoggingOut
               ? t("layout.topbar.signingOut")
               : t("layout.topbar.logOut")}

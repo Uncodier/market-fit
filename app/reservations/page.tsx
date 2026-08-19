@@ -134,18 +134,18 @@ export default function ReservationsPage() {
     <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0 flex items-center justify-between">
-          <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
+          <div className="flex items-center justify-between gap-2 w-full">
             <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-1 md:pb-0 flex-1 gap-2">
               <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as typeof viewMode)}>
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="service" className="gap-2 text-xs rounded-full">
-                    <List className="h-4 w-4" /> <span className="hidden md:inline">{t("reservations.tabs.byService") || "By Service"}</span>
+                    <List className="h-4 w-4" /> <span className="hidden lg:inline tab-label">{t("reservations.tabs.byService") || "By Service"}</span>
                   </TabsTrigger>
                   <TabsTrigger value="calendar" className="gap-2 text-xs rounded-full">
-                    <CalendarDays className="h-4 w-4" /> <span className="hidden md:inline">{t("reservations.tabs.byDate") || "By Date"}</span>
+                    <CalendarDays className="h-4 w-4" /> <span className="hidden lg:inline tab-label">{t("reservations.tabs.byDate") || "By Date"}</span>
                   </TabsTrigger>
                   <TabsTrigger value="schedules" className="gap-2 text-xs rounded-full">
-                    <Clock className="h-4 w-4" /> <span className="hidden md:inline">{t("reservations.tabs.schedules") || "Schedules"}</span>
+                    <Clock className="h-4 w-4" /> <span className="hidden lg:inline tab-label">{t("reservations.tabs.schedules") || "Schedules"}</span>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -157,7 +157,7 @@ export default function ReservationsPage() {
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+            <div className="flex items-center gap-2 w-auto justify-end shrink-0">
               {viewType === "list" && viewMode !== "schedules" && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
