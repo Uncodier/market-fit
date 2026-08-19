@@ -91,8 +91,8 @@ export default function ShipmentsPage() {
       <Tabs value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">
-            <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
-              <div className="flex items-center gap-4 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+            <div className="flex items-center justify-between gap-2 w-full">
+              <div className="flex items-center space-x-2 overflow-x-auto overflow-y-hidden no-scrollbar pb-1 md:pb-0 flex-1 min-w-0 gap-2">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
                   <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
                     <LayoutGrid size={13} className="md:!hidden" />
@@ -147,14 +147,11 @@ export default function ShipmentsPage() {
                 </form>
               </div>
 
-              <div className="flex items-center gap-3 w-full md:w-auto md:ml-auto">
-                <div className="hidden md:flex">
+              <div className="flex items-center gap-2 w-auto justify-end shrink-0">
+                <div className="flex">
                   <ViewSelector currentView={viewType} onViewChange={setViewType} />
                 </div>
               </div>
-            </div>
-            <div className="md:hidden flex justify-end mt-2">
-              <ViewSelector currentView={viewType} onViewChange={setViewType} />
             </div>
           </div>
         </StickyHeader>

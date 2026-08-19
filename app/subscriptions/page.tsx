@@ -60,8 +60,8 @@ export default function SubscriptionsPage() {
     <div className="flex-1 flex flex-col h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0 flex items-center justify-between">
-          <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
-            <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+          <div className="flex items-center justify-between gap-2 w-full">
+            <div className="flex items-center space-x-2 overflow-x-auto overflow-y-hidden no-scrollbar pb-1 md:pb-0 flex-1 min-w-0 gap-2">
               <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                   <TabsTrigger value="all" className="gap-2 text-xs rounded-full">
@@ -83,7 +83,7 @@ export default function SubscriptionsPage() {
               </Tabs>
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="flex items-center gap-2 w-auto justify-end shrink-0">
               <SearchInput
                 placeholder={t("subscriptions.search") || "Search subscriptions..."}
                 value={searchQuery}

@@ -16,7 +16,7 @@ export function ViewSelector({ currentView, onViewChange, showCalendar = false }
       type="single"
       value={currentView}
       onValueChange={(value: string) => value && onViewChange(value as ViewType)}
-      className="hidden md:flex"
+      className="flex"
     >
       <ToggleGroupItem value="table" aria-label="Toggle table view" className="px-2">
         <TableRows className="h-4 w-4" />

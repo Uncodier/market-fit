@@ -58,8 +58,8 @@ export default function PromotionsPage() {
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
         <div className="w-full pt-0">
-          <div className="flex flex-col md:flex-row md:items-center gap-2 w-full">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+          <div className="flex items-center justify-between gap-2 w-full">
+            <div className="flex items-center space-x-2 overflow-x-auto overflow-y-hidden no-scrollbar pb-1 md:pb-0 flex-1 min-w-0 gap-2">
               <Tabs
                 value={statusFilter}
                 onValueChange={(val) => { setStatusFilter(val); setPage(1); }}
@@ -74,7 +74,9 @@ export default function PromotionsPage() {
                 </TabsList>
               </Tabs>
             </div>
-            <form onSubmit={handleSearch} className="w-full md:w-auto">
+            
+            <div className="flex items-center gap-2 w-auto justify-end shrink-0">
+              <form onSubmit={handleSearch} className="w-auto">
               <SearchInput
                 placeholder={t("promotions.search") || "Search name or code..."}
                 value={searchQuery}
@@ -82,6 +84,7 @@ export default function PromotionsPage() {
                 alwaysExpanded={false}
               />
             </form>
+            </div>
           </div>
         </div>
       </StickyHeader>
