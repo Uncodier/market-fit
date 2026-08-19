@@ -513,6 +513,9 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
       })
       
       if (error) {
+        if (error.message?.includes('access_denied') || (error as any).code === 'access_denied') {
+          throw new Error('This account may be registered with a social provider (like Google or GitHub) and does not have a password, or it may not exist. Please try signing in with your social account.')
+        }
         throw error
       }
       

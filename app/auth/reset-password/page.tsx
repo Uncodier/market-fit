@@ -19,7 +19,20 @@ function ResetPasswordContent() {
       try {
         const supabase = createClient()
         
-        // First, check if a session already exists (from Supabase /verify redirect)
+        // First, check if there's an error in the URL (from Supabase email links)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+        
+        const urlError = searchParams.get('error') || hashParams.get('error')
+        const urlErrorDescription = searchParams.get('error_description') || hashParams.get('error_description')
+        
+        if (urlError) {
+          console.error('[Reset Password] URL error detected:', { error: urlError, description: urlErrorDescription })
+          // Convert "+" to spaces and decode URI component
+          const decodedDescription = urlErrorDescription ? decodeURIComponent(urlErrorDescription.replace(/\+/g, ' ')) : 'Invalid or expired password reset link.'
+          throw new Error(decodedDescription)
+        }
+
+        // Check if a session already exists (from Supabase /verify redirect)
         const { data: { session: existingSession } } = await supabase.auth.getSession()
         
         if (existingSession?.user) {
@@ -48,7 +61,6 @@ function ResetPasswordContent() {
         }
 
         // Extract tokens from URL fragment (PKCE flow)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
         const accessToken = hashParams.get('access_token')
         const refreshToken = hashParams.get('refresh_token')
         const hashType = hashParams.get('type')
@@ -57,12 +69,51 @@ function ResetPasswordContent() {
         const tokenHash = searchParams.get('token_hash')
         const queryType = searchParams.get('type')
         
+        // Extract code from query parameters (PKCE code flow)
+        const code = searchParams.get('code')
+        
         console.log('[Reset Password] Token check:', {
           hasHashTokens: !!(accessToken && refreshToken),
           hashType,
           hasQueryTokens: !!tokenHash,
-          queryType
+          queryType,
+          hasCode: !!code
         })
+        
+        // Handle PKCE code flow
+        if (code) {
+          console.log('[Reset Password] Processing PKCE code')
+          
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          
+          if (exchangeError) {
+            console.error('[Reset Password] Code exchange error:', exchangeError)
+            throw new Error(`Failed to verify reset code: ${exchangeError.message}`)
+          }
+          
+          if (!data.session || !data.session.user) {
+            throw new Error('Failed to establish session after verification. Please try again.')
+          }
+          
+          console.log('[Reset Password] Code verified, session established for:', data.session.user.email)
+          
+          // Get returnTo parameter if it exists
+          const returnTo = searchParams.get('returnTo') || '/buyer'
+          
+          // Clear query params from URL
+          window.history.replaceState({}, '', `/auth/reset-password${returnTo !== '/buyer' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`)
+          
+          // Set processing to false before redirect
+          setIsProcessing(false)
+          
+          // Redirect to set-password
+          const setPasswordUrl = `/auth/set-password?redirect_to=${encodeURIComponent(returnTo)}`
+          
+          setTimeout(() => {
+            window.location.href = setPasswordUrl
+          }, 200)
+          return
+        }
 
         // Handle OTP-based recovery flow (query parameters)
         if (tokenHash && queryType === 'recovery') {
