@@ -116,7 +116,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const isCircular =
       size === "icon" ||
-      (className?.includes("aspect-square") && !className?.match(/(?:sm|md|lg|xl|2xl):aspect-auto/))
+      (className?.includes("aspect-square") && !className?.match(/(?:sm|md|lg|xl|2xl):!?aspect-auto/))
     const innerCircularClass = isCircular ? "btn-primary-circular" : undefined
 
     const assignRef = React.useCallback(
