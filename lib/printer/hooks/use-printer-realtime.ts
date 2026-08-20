@@ -133,6 +133,20 @@ export function usePrinterRealtime(
       try {
         const order = await loadOrderForPrint(orderId)
         if (!order) return
+
+        // Prevent auto-printing for orders older than 24 hours
+        // This avoids ghost prints if an old order gets updated (e.g., from an admin dashboard or cron job)
+        // while a POS tab is left open.
+        if (order.created_at) {
+          const orderDate = new Date(order.created_at)
+          const now = new Date()
+          const diffHours = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60)
+          if (diffHours > 24) {
+            console.warn(`[printer] skipping order ${orderId} because it is older than 24h`)
+            return
+          }
+        }
+
         const rawItems = order.sale_order_items || []
         if (rawItems.length === 0) return
         const items = mapSaleOrderItemsToDeltaLines(rawItems)
