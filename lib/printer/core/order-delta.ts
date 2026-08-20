@@ -70,8 +70,8 @@ export function computeKitchenDelta(
   nextLines: DeltaLineInput[],
 ): KitchenDelta {
   const existingParents = existingItems.filter(isParent)
-  const nextParents = nextLines.filter(isParent)
-  const sentParents = existingParents.filter(wasSent)
+  const nextParents = nextLines.filter((l) => isParent(l) && l.status !== "cancelled")
+  const sentParents = existingParents.filter((l) => wasSent(l) && l.status !== "cancelled")
 
   if (sentParents.length === 0) {
     return {
@@ -147,15 +147,22 @@ export function mapSaleOrderItemToDeltaLine(item: {
     client_line_key?: string
     is_modifier?: boolean
     parent_client_line_key?: string
+    parent_name?: string | null
   } | null
 }): DeltaLineInput {
   const meta = item.metadata || {}
   const isModifier = Boolean(
     item.parent_sale_order_item_id || meta.is_modifier,
   )
+  
+  let finalName = item.name || "Item"
+  if (meta.parent_name && !finalName.startsWith(meta.parent_name)) {
+    finalName = `${meta.parent_name} -> ${finalName}`
+  }
+
   return {
     key: meta.client_line_key || item.id || "",
-    name: item.name || "Item",
+    name: finalName,
     quantity: Number(item.quantity) || 0,
     catalogItemId: item.catalog_item_id ?? null,
     parentKey: meta.parent_client_line_key || null,
@@ -194,10 +201,16 @@ export function mapProcessedLineToDeltaLine(line: {
   quantity?: number
   catalog_item_id?: string | null
   id?: string
+  parent_name?: string | null
 }): DeltaLineInput {
+  let finalName = line.name || "Item"
+  if (line.parent_name && !finalName.startsWith(line.parent_name)) {
+    finalName = `${line.parent_name} -> ${finalName}`
+  }
+
   return {
     key: line.client_line_key || line.id || "",
-    name: line.name || "Item",
+    name: finalName,
     quantity: Number(line.quantity) || 0,
     catalogItemId: line.catalog_item_id ?? null,
     parentKey: line.parent_client_line_key || null,

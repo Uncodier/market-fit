@@ -28,16 +28,23 @@ export function receiptFromPosCart(params: {
 }): ReceiptPayload {
   const lines = params.cart
     .filter((c) => c.cartQty > 0)
-    .map((c) => ({
-      name: c.name,
-      quantity: c.cartQty,
-      unitPrice: c.cartPrice,
-      subtotal: c.cartPrice * c.cartQty,
-      modifiers: (c.modifiers || []).map((m) => ({
-        name: m.name,
-        quantity: m.cartQty,
-      })),
-    }))
+    .map((c) => {
+      let finalName = c.name
+      const parentName = (c as any)._parent?.name || c.parent?.name || (c as any).parent_name
+      if (parentName && !finalName.startsWith(parentName)) {
+        finalName = `${parentName} -> ${finalName}`
+      }
+      return {
+        name: finalName,
+        quantity: c.cartQty,
+        unitPrice: c.cartPrice,
+        subtotal: c.cartPrice * c.cartQty,
+        modifiers: (c.modifiers || []).map((m) => ({
+          name: m.name,
+          quantity: m.cartQty,
+        })),
+      }
+    })
   const lineSubtotal = lines.reduce((sum, line) => sum + line.subtotal, 0)
   return {
     ...params.brand,
@@ -95,7 +102,7 @@ export async function printAfterPosCheckout(params: {
     )
   }
 
-  if (intent !== "send" || !kitchenDelta || !kitchenDeltaHasWork(kitchenDelta)) return
+  if (!kitchenDelta || !kitchenDeltaHasWork(kitchenDelta)) return
 
   const isFull = kitchenDelta.kind === "full"
   const flag = isFull ? "kitchenTicket" : "orderDelta"

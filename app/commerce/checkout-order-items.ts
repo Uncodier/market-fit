@@ -217,6 +217,11 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
           .from("reservations")
           .delete()
           .eq("sale_order_item_id", ei.id)
+      } else {
+        await client
+          .from("sale_order_items")
+          .update({ status: "cancelled" })
+          .eq("id", ei.id)
       }
     }
   }

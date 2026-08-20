@@ -160,6 +160,11 @@ export async function updateOrderStatus(siteId: string, orderId: string, status:
     }
 
     if (status === "cancelled" && currentOrder?.sale_id) {
+      await supabase
+        .from("sale_order_items")
+        .update({ status: 'cancelled' })
+        .eq("sale_order_id", orderId);
+
       const { data: sale } = await supabase
         .from("sales")
         .select("id, status, payments, amount, amount_due")
