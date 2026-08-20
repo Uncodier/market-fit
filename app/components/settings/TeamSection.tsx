@@ -5,6 +5,7 @@ import { Button } from "../ui/button"
 import { EmptyCard } from "../ui/empty-card"
 import { TeamMemberCard } from "./TeamMemberCard"
 import { useTeamMembers } from "./use-team-members"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface TeamSectionProps {
   active: boolean
@@ -12,6 +13,7 @@ interface TeamSectionProps {
 }
 
 export function TeamSection({ active, siteId }: TeamSectionProps) {
+  const { t } = useLocalization()
   const {
     teamList,
     isLoading,
@@ -37,9 +39,9 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
     <div id="team-members" className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Team Members</h2>
+          <h2 className="text-2xl font-semibold">{t("settings.nav.teamMembers") || "Team Members"}</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Invite team members to collaborate on your site
+            {t("settings.team.description") || "Invite team members to collaborate on your site"}
           </p>
         </div>
         <Button
@@ -51,7 +53,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
           data-permission="allow"
         >
           <PlusCircle className="mr-2 h-4 w-4" />
-          Invite New Member to Team
+          {t("settings.team.inviteNew") || "Invite New Member to Team"}
         </Button>
       </div>
 
@@ -64,8 +66,8 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
       ) : teamList.length === 0 ? (
         <EmptyCard
           icon={<User className="h-10 w-10" />}
-          title="No team members yet"
-          description="Invite team members to collaborate on your site and manage operations."
+          title={t("settings.team.emptyTitle") || "No team members yet"}
+          description={t("settings.team.emptyDescription") || "Invite team members to collaborate on your site and manage operations."}
           variant="fancy"
         />
       ) : (

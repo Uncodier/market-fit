@@ -72,7 +72,7 @@ describe("printer station claim", () => {
     })
     setPrinterBind({ printerId: "p-usb", usbVendorId: 1, usbProductId: 2 })
     expect(stationOwnsPrinter(usb, { printerId: "p-usb", usbVendorId: 1, usbProductId: 2 })).toBe(false)
-    expect(printerStationStatus({ devices: [usb] }, "pos").state).toBe("unpaired")
+    expect(printerStationStatus({ devices: [usb] }, "pos").state).toBe("hidden")
     clearPrinterBind("p-usb")
   })
 

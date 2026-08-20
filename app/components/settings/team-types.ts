@@ -14,6 +14,7 @@ export interface FormTeamMember {
   emailConfirmed?: boolean
   lastSignIn?: string
   blocked_screens?: string[]
+  restrict_to_assigned_only?: boolean
 }
 
 export const TEAM_ROLES: {
@@ -69,6 +70,7 @@ export function siteMemberToFormMember(member: SiteMember): FormTeamMember {
     emailConfirmed: member.emailConfirmed,
     lastSignIn: member.lastSignIn,
     blocked_screens: member.blocked_screens || [],
+    restrict_to_assigned_only: member.restrict_to_assigned_only || false,
   }
 }
 

@@ -59,10 +59,10 @@ export function MemberBlockedScreens({
         onClick={() => setOpen((value) => !value)}
       >
         <span className="flex min-w-0 items-center gap-2">
-          <span className="text-sm font-medium">App access</span>
+          <span className="text-sm font-medium">{t("settings.team.appAccess") || "App access"}</span>
           {hiddenCount > 0 ? (
             <>
-              <Badge variant="secondary">{hiddenCount} hidden</Badge>
+              <Badge variant="secondary">{hiddenCount} {t("settings.team.hidden") || "hidden"}</Badge>
               {!open && hiddenPreview.length > 0 && (
                 <span className="hidden truncate text-xs text-muted-foreground sm:inline">
                   {hiddenPreview.join(", ")}
@@ -73,7 +73,7 @@ export function MemberBlockedScreens({
               )}
             </>
           ) : (
-            <span className="text-xs text-muted-foreground">All apps visible</span>
+            <span className="text-xs text-muted-foreground">{t("settings.team.allAppsVisible") || "All apps visible"}</span>
           )}
         </span>
         {open ? (
@@ -85,7 +85,7 @@ export function MemberBlockedScreens({
       {open && (
         <div className="space-y-4 border-t border-border/70 px-3 py-3">
           <p className="text-xs text-muted-foreground">
-            Hidden apps will not appear in this member's menu.
+            {t("settings.team.hiddenAppsDesc") || "Hidden apps will not appear in this member's menu."}
           </p>
           {groups.map((group) => {
             const keys = group.items.map((item) => item.key)
@@ -104,7 +104,7 @@ export function MemberBlockedScreens({
                     disabled={disabled}
                     onClick={() => toggleArea(keys, !allBlocked)}
                   >
-                    {allBlocked ? "Show all" : "Hide all"}
+                    {allBlocked ? (t("settings.team.showAll") || "Show all") : (t("settings.team.hideAll") || "Hide all")}
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -116,7 +116,7 @@ export function MemberBlockedScreens({
                         type="button"
                         disabled={disabled}
                         onClick={() => toggleKey(item.key)}
-                        title={isBlocked ? "Show this app" : "Hide this app"}
+                        title={isBlocked ? (t("settings.team.showApp") || "Show this app") : (t("settings.team.hideApp") || "Hide this app")}
                         className={cn(
                           "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                           isBlocked

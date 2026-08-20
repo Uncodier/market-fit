@@ -16,6 +16,7 @@ export interface SiteMember {
   position: string | null
   status: 'pending' | 'active' | 'rejected'
   blocked_screens?: string[]
+  restrict_to_assigned_only?: boolean
   emailConfirmed?: boolean // Track if user has confirmed their email
   lastSignIn?: string // Track last sign in to know if user is truly active
 }
@@ -26,6 +27,7 @@ export interface SiteMemberInput {
   name?: string
   position?: string
   blocked_screens?: string[]
+  restrict_to_assigned_only?: boolean
 }
 
 // For existing members fetched from the database
@@ -109,6 +111,7 @@ export const siteMembersService = {
         name: member.name,
         position: member.position,
         blocked_screens: member.blocked_screens || [],
+        restrict_to_assigned_only: member.restrict_to_assigned_only || false,
       }),
     })
 
@@ -172,6 +175,7 @@ export const siteMembersService = {
         name: updates.name,
         position: updates.position,
         ...(updates.blocked_screens ? { blocked_screens: updates.blocked_screens } : {}),
+        ...(updates.restrict_to_assigned_only !== undefined ? { restrict_to_assigned_only: updates.restrict_to_assigned_only } : {}),
       }),
     })
 
@@ -338,7 +342,8 @@ export const siteMembersService = {
           name: member.name || null,
           position: member.position || null,
           added_by: userData.user.id,
-          status: existingUser?.id ? 'active' : 'pending' // Active if user exists, pending otherwise
+          status: existingUser?.id ? 'active' : 'pending', // Active if user exists, pending otherwise
+          restrict_to_assigned_only: false
         };
         
         console.log(`📝 SYNC: Inserting site_member with data:`, insertData);

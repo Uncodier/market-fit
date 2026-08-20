@@ -14,8 +14,8 @@ import {
 } from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Trash2, Mail, CheckCircle2, Clock, Save, Loader } from "../ui/icons"
-import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select"
 import { Badge } from "../ui/badge"
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +28,8 @@ import {
   AlertDialogTrigger,
 } from "../ui/alert-dialog"
 import { MemberBlockedScreens } from "./MemberBlockedScreens"
+import { Switch } from "../ui/switch"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import {
   TEAM_ROLES,
   getMemberInitials,
@@ -65,17 +67,18 @@ interface TeamMemberCardProps {
 }
 
 function MemberStatusBadge({ member }: { member: FormTeamMember }) {
+  const { t } = useLocalization()
   if (member.status === "active") {
     return (
       <Badge className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200">
-        <CheckCircle2 className="h-3 w-3 mr-1" /> Active
+        <CheckCircle2 className="h-3 w-3 mr-1" /> {t("settings.team.active") || "Active"}
       </Badge>
     )
   }
   if (member.status === "pending") {
     return (
       <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200">
-        <Clock className="h-3 w-3 mr-1" /> Pending
+        <Clock className="h-3 w-3 mr-1" /> {t("settings.team.pending") || "Pending"}
       </Badge>
     )
   }
@@ -100,6 +103,7 @@ export function TeamMemberCard({
   onRemove,
   onResend,
 }: TeamMemberCardProps) {
+  const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const isExisting = !!member.id
   const isAdmin =
@@ -108,7 +112,7 @@ export function TeamMemberCard({
     member.originalRole === "admin"
   const canChangeRole = canManageTeam && validation.canChangeRole(member)
   const selectedRole = TEAM_ROLES.find((role) => role.value === member.role)
-  const displayName = member.name || member.email || "New Member"
+  const displayName = member.name || member.email || (t("settings.team.newMember") || "New Member")
   const showResend = isPendingInvitation(member)
   const showEmailField = !isExisting || showResend
   const hasInvalidEmail = !!member.email && !isValidTeamEmail(member.email)
@@ -136,7 +140,7 @@ export function TeamMemberCard({
               <p className="truncate text-sm text-muted-foreground">
                 {isExisting
                   ? member.email
-                  : member.email || "New invitation"}
+                  : member.email || (t("settings.team.newInvitation") || "New invitation")}
               </p>
             </div>
           </div>
@@ -150,8 +154,8 @@ export function TeamMemberCard({
             <MemberTextField
               control={form.control}
               name={`team_members.${index}.name`}
-              label="Name"
-              placeholder="Full name"
+              label={t("settings.team.name") || "Name"}
+              placeholder={t("settings.team.namePlaceholder") || "Full name"}
               value={member.name || ""}
               onChange={(value) => onUpdate("name", value)}
             />
@@ -159,8 +163,8 @@ export function TeamMemberCard({
               <MemberTextField
                 control={form.control}
                 name={`team_members.${index}.email`}
-                label="Email"
-                placeholder="Email address"
+                label={t("settings.team.email") || "Email"}
+                placeholder={t("settings.team.emailPlaceholder") || "Email address"}
                 type="email"
                 value={member.email}
                 onChange={(value) => onUpdate("email", value)}
@@ -169,8 +173,8 @@ export function TeamMemberCard({
             <MemberTextField
               control={form.control}
               name={`team_members.${index}.position`}
-              label="Position"
-              placeholder="Job title"
+              label={t("settings.team.position") || "Position"}
+              placeholder={t("settings.team.positionPlaceholder") || "Job title"}
               value={member.position || ""}
               onChange={(value) => onUpdate("position", value)}
             />
@@ -192,17 +196,35 @@ export function TeamMemberCard({
           </div>
           {hasInvalidEmail && (
             <p className="text-xs text-destructive">
-              This invitation has an invalid email. Remove it and invite the member again.
+              {t("settings.team.invalidEmail") || "This invitation has an invalid email. Remove it and invite the member again."}
             </p>
           )}
           {isAdmin ? (
-            <p className="text-xs text-muted-foreground">Admins can access all apps.</p>
+            <p className="text-xs text-muted-foreground">{t("settings.team.adminsAccessAll") || "Admins can access all apps."}</p>
           ) : (
-            <MemberBlockedScreens
-              blockedScreens={member.blocked_screens || []}
-              disabled={!canEditBlockedScreens}
-              onChange={(next) => onUpdate("blocked_screens", next)}
-            />
+            <div className="space-y-4">
+              <MemberBlockedScreens
+                blockedScreens={member.blocked_screens || []}
+                disabled={!canEditBlockedScreens}
+                onChange={(next) => onUpdate("blocked_screens", next)}
+              />
+              
+              <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-xs">{t("settings.team.restrictData") || "Restrict to assigned data only"}</FormLabel>
+                  <p className="text-[10px] text-muted-foreground">
+                    {t("settings.team.restrictDataDesc") || "If active, this member will only see leads, deals, orders and tasks assigned to them or created by them."}
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={member.restrict_to_assigned_only || false}
+                    onCheckedChange={(checked) => onUpdate("restrict_to_assigned_only", checked)}
+                    disabled={!canManageTeam}
+                  />
+                </FormControl>
+              </div>
+            </div>
           )}
         </div>
       </SectionCardContent>
@@ -226,20 +248,20 @@ export function TeamMemberCard({
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+                <AlertDialogTitle>{t("settings.team.removeMemberConfirm") || "Remove Team Member"}</AlertDialogTitle>
                 <AlertDialogDescription>
                   {validation.getDeleteMessage(member)}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("cancel") || "Cancel"}</AlertDialogCancel>
                 {validation.canDelete(member) && canManageTeam && (
                   <AlertDialogAction
                     onClick={onRemove}
                     className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
                     data-permission="allow"
                   >
-                    Remove Member
+                    {t("remove") || "Remove Member"}
                   </AlertDialogAction>
                 )}
               </AlertDialogFooter>
@@ -259,7 +281,7 @@ export function TeamMemberCard({
                 ) : (
                   <Mail className="mr-1.5 h-4 w-4" />
                 )}
-                Resend invite
+                {t("settings.team.resendInvitation") || "Resend invite"}
               </Button>
             )}
             {isExisting ? (
@@ -274,12 +296,12 @@ export function TeamMemberCard({
                 {isSavingThis ? (
                   <>
                     <Loader className="mr-1.5 h-4 w-4 animate-spin" />
-                    Saving...
+                    {t("saving") || "Saving..."}
                   </>
                 ) : (
                   <>
                     <Save className="mr-1.5 h-4 w-4" />
-                    Save
+                    {t("save") || "Save"}
                   </>
                 )}
               </Button>
@@ -291,7 +313,7 @@ export function TeamMemberCard({
                 disabled={isSaving || isLoading || !member.email || !canManageTeam}
                 data-permission="allow"
               >
-                {isSaving ? "Saving..." : "Save & Invite"}
+                {isSaving ? (t("saving") || "Saving...") : (t("settings.team.saveAndInvite") || "Save & Invite")}
               </Button>
             )}
           </div>
@@ -360,10 +382,11 @@ function RoleSelect({
   onUpdate: (field: keyof FormTeamMember, value: unknown) => void
   getRoleChangeMessage: (member: FormTeamMember) => string
 }) {
+  const { t } = useLocalization()
   return (
-    <FormItem>
-      <FormLabel className="text-xs text-muted-foreground">Role</FormLabel>
-      <Select
+    <FormItem className="col-span-1 md:col-span-2">
+      <FormLabel className="text-xs text-muted-foreground">{t("settings.team.role") || "Role"}</FormLabel>
+      <Tabs
         value={member.role}
         onValueChange={(value) => {
           if (canChangeRole) {
@@ -373,22 +396,21 @@ function RoleSelect({
             toast.error(getRoleChangeMessage(member))
           }
         }}
-        disabled={!canChangeRole}
+        className="w-full"
       >
-        <FormControl>
-          <SelectTrigger>
-            <span className="truncate">{selectedLabel || "Select role"}</span>
-          </SelectTrigger>
-        </FormControl>
-        <SelectContent>
+        <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 h-auto sm:h-10">
           {TEAM_ROLES.map((role) => (
-            <SelectItem key={role.value} value={role.value}>
-              {role.label}
-              <span className="text-muted-foreground"> · {role.description}</span>
-            </SelectItem>
+            <TabsTrigger 
+              key={role.value} 
+              value={role.value} 
+              disabled={!canChangeRole}
+              title={t(`settings.team.roles.${role.value}Desc`) || role.description}
+            >
+              {t(`settings.team.roles.${role.value}`) || role.label}
+            </TabsTrigger>
           ))}
-        </SelectContent>
-      </Select>
+        </TabsList>
+      </Tabs>
       {!canChangeRole && (
         <p className="mt-1 text-xs text-muted-foreground">
           {getRoleChangeMessage(member)}

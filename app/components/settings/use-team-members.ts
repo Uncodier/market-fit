@@ -141,6 +141,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
       name: "",
       position: "",
       blocked_screens: [],
+      restrict_to_assigned_only: false,
     }, ...teamList]
     setTeamList(newTeamList)
     setHasUnsavedChanges(true)
@@ -196,7 +197,8 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
       (member.name || "") !== (original.name || "") ||
       (member.position || "") !== (original.position || "") ||
       member.role !== original.role ||
-      !screensEqual(member.blocked_screens, original.blocked_screens)
+      !screensEqual(member.blocked_screens, original.blocked_screens) ||
+      (member.restrict_to_assigned_only || false) !== (original.restrict_to_assigned_only || false)
     )
   }
 
@@ -226,6 +228,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
         name: member.name,
         position: member.position,
         blocked_screens: siteMemberRole === "admin" ? [] : (member.blocked_screens || []),
+        restrict_to_assigned_only: member.restrict_to_assigned_only || false,
       })
       toast.success(`${member.name || member.email} updated successfully`)
       const members = await siteMembersService.getMembers(siteId)
@@ -277,6 +280,7 @@ export function useTeamMembers({ active, siteId }: UseTeamMembersOptions) {
               name: member.name,
               position: member.position,
               blocked_screens: member.blocked_screens || [],
+              restrict_to_assigned_only: member.restrict_to_assigned_only || false,
             },
             form.getValues().name || "Your Site"
           ))

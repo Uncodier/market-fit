@@ -1,5 +1,6 @@
 import { getPrinterBind } from "./bind-store"
 import { stationOwnsPrinter } from "./station-claim"
+import { getPrinterWorkstation } from "./workstation"
 import type { PrinterDevice, PrinterModule, PrintersSettings } from "./types"
 import { printersForModule } from "./format"
 import { isWebSerialSupported } from "../transports/web-serial"
@@ -36,10 +37,22 @@ export function printerStationStatus(
   settings: PrintersSettings | null | undefined,
   module: PrinterModule,
 ): PrinterStationStatus {
-  const devices = printersForModule(settings, module)
+  let devices = printersForModule(settings, module)
   if (devices.length === 0) {
     return { state: "hidden", configured: 0, ready: 0 }
   }
+  
+  // Filter out devices claimed by other workstations
+  devices = devices.filter((device) => {
+    const claim = device.station
+    if (!claim?.workstationId) return true // Unclaimed
+    return claim.workstationId === getPrinterWorkstation().id // Claimed by this workstation
+  })
+
+  if (devices.length === 0) {
+    return { state: "hidden", configured: 0, ready: 0 }
+  }
+
   const ready = devices.filter(isPrinterReadyOnStation)
   if (ready.length > 0) {
     return { state: "ready", configured: devices.length, ready: ready.length }

@@ -113,7 +113,15 @@ export async function probeModulePrinters(
   module: PrinterModule,
   options?: { forcePrint?: boolean; locale?: string | null },
 ): Promise<ProbeOutcome> {
-  const devices = printersForModule(settings, module)
+  let devices = printersForModule(settings, module)
+  
+  // Filter out devices claimed by other workstations
+  devices = devices.filter((device) => {
+    const claim = device.station
+    if (!claim?.workstationId) return true // Unclaimed
+    return claim.workstationId === getPrinterWorkstation().id // Claimed by this workstation
+  })
+
   const rows: ProbeRow[] = []
   for (const device of devices) {
     if (device.transport === "system") {

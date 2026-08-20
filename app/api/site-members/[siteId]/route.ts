@@ -27,7 +27,7 @@ async function withSiteOwner(
   const email = profile?.email || authUser?.email
   if (!email) return members
 
-  const { data: inserted, error } = await admin
+    const { data: inserted, error } = await admin
     .from("site_members")
     .insert({
       site_id: siteId,
@@ -37,6 +37,7 @@ async function withSiteOwner(
       role: "owner",
       status: "active",
       blocked_screens: [],
+      restrict_to_assigned_only: false,
     })
     .select()
     .single()
@@ -98,6 +99,7 @@ export async function GET(
           return {
             ...member,
             blocked_screens: member.blocked_screens || [],
+            restrict_to_assigned_only: member.restrict_to_assigned_only || false,
             emailConfirmed: false,
             lastSignIn: null,
           }
@@ -127,6 +129,7 @@ export async function GET(
           return {
             ...member,
             blocked_screens: member.blocked_screens || [],
+            restrict_to_assigned_only: member.restrict_to_assigned_only || false,
             emailConfirmed: !!authUser.email_confirmed_at,
             lastSignIn: authUser.last_sign_in_at,
             status: actualStatus,
@@ -136,6 +139,7 @@ export async function GET(
           return {
             ...member,
             blocked_screens: member.blocked_screens || [],
+            restrict_to_assigned_only: member.restrict_to_assigned_only || false,
             emailConfirmed: false,
             lastSignIn: null,
           }
@@ -211,6 +215,7 @@ export async function POST(
         name: typeof body.name === "string" ? body.name : null,
         position: typeof body.position === "string" ? body.position : null,
         blocked_screens: blockedScreens,
+        restrict_to_assigned_only: typeof body.restrict_to_assigned_only === "boolean" ? body.restrict_to_assigned_only : false,
         added_by: access.userId,
         status: profile?.id ? "active" : "pending",
       })
@@ -288,6 +293,9 @@ export async function PATCH(
     }
     if ("position" in body) {
       patch.position = typeof body.position === "string" ? body.position : null
+    }
+    if ("restrict_to_assigned_only" in body) {
+      patch.restrict_to_assigned_only = typeof body.restrict_to_assigned_only === "boolean" ? body.restrict_to_assigned_only : false
     }
 
     const effectiveRole = nextRole || target.role
