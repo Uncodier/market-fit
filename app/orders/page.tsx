@@ -97,7 +97,7 @@ export default function OrdersPage() {
           order.id === orderId ? { ...order, status: newStatus } : order
         )
       }
-    }, false)
+    }, { revalidate: false })
 
     try {
       const result = await updateOrderStatus(currentSite.id, orderId, newStatus)

@@ -160,6 +160,24 @@ export default function ContentPage() {
   }
 
   const handleUpdateContentStatus = async (contentId: string, newStatus: string) => {
+    // Optimistic update
+    mutateContent((data: any) => {
+      if (!data) return data;
+      return {
+        ...data,
+        content: data.content.map((item: ContentItem) => 
+          item.id === contentId 
+            ? { 
+                ...item, 
+                status: newStatus as any,
+                updated_at: new Date().toISOString(),
+                ...(newStatus === 'published' ? { published_at: new Date().toISOString() } : {})
+              } 
+            : item
+        )
+      };
+    }, { revalidate: false });
+
     try {
       const result = await updateContentStatus({
         contentId,
@@ -168,31 +186,15 @@ export default function ContentPage() {
 
       if (result.error) {
         toast.error(result.error)
+        mutateContent() // Revert
         return
       }
-
-      // Update local state
-      mutateContent((data: any) => {
-        if (!data) return data;
-        return {
-          ...data,
-          content: data.content.map((item: ContentItem) => 
-            item.id === contentId 
-              ? { 
-                  ...item, 
-                  status: newStatus as any,
-                  updated_at: new Date().toISOString(),
-                  ...(newStatus === 'published' ? { published_at: new Date().toISOString() } : {})
-                } 
-              : item
-          )
-        };
-      }, false);
 
       toast.success(`Content status updated to ${newStatus}`)
     } catch (error) {
       console.error("Error updating content status:", error)
       toast.error(t('content.toast.statusFailed'))
+      mutateContent() // Revert
       throw error // Re-throw to trigger the revert in kanban
     }
   }

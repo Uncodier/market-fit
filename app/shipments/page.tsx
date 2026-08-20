@@ -72,16 +72,29 @@ export default function ShipmentsPage() {
   const handleUpdateShipmentStatus = async (shipmentId: string, newStatus: string) => {
     if (!currentSite?.id) return
 
+    // Optimistic update
+    mutate(data => {
+      if (!data) return data;
+      return {
+        ...data,
+        data: data.data.map((shipment: any) => 
+          shipment.id === shipmentId ? { ...shipment, status: newStatus } : shipment
+        )
+      }
+    }, { revalidate: false })
+
     try {
       const result = await updateShipmentStatus(currentSite.id, shipmentId, newStatus)
       if (result.error) {
         toast.error(result.error)
+        mutate() // Revert
         return
       }
       toast.success("Shipment status updated")
       mutate()
     } catch (error) {
       toast.error("Error updating shipment")
+      mutate() // Revert
     }
   }
 

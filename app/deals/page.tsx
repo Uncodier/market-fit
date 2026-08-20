@@ -155,15 +155,21 @@ export default function DealsPage() {
   }
 
   const handleUpdateDealStage = async (dealId: string, newStage: string) => {
+    let newStatus: Deal["status"] = "open"
+    if (newStage === "closed_won") newStatus = "won"
+    if (newStage === "closed_lost") newStatus = "lost"
+
     // Optimistic update
-    setDbDeals(prevDeals => 
-      prevDeals.map(deal => 
-        deal.id === dealId ? { ...deal, stage: newStage as Deal["stage"] } : deal
-      )
+    mutateDeals(
+      (prevDeals = []) => 
+        prevDeals.map(deal => 
+          deal.id === dealId ? { ...deal, stage: newStage as Deal["stage"], status: newStatus } : deal
+        ),
+      { revalidate: false }
     )
 
     try {
-      const result = await updateDeal({ id: dealId, stage: newStage as Deal["stage"] })
+      const result = await updateDeal({ id: dealId, stage: newStage as Deal["stage"], status: newStatus })
       if (result.error) {
         toast.error(result.error)
         // Revert on error

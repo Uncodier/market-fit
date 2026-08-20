@@ -277,6 +277,12 @@ export default function SalesPage() {
     const sale = sales.find(s => s.id === saleId)
     if (!sale || !currentSite?.id) return
     
+    // Optimistic update
+    mutateSales(
+      (prev) => prev?.map((s) => s.id === saleId ? { ...s, status: newStatus as any } : s),
+      { revalidate: false }
+    )
+    
     try {
       const result = await updateSale(currentSite.id, {
         ...sale,
@@ -285,18 +291,15 @@ export default function SalesPage() {
       
       if (result.error) {
         toast.error(result.error)
+        mutateSales() // Revert
         return
       }
-      
-      mutateSales(
-        (prev) => prev?.map((s) => s.id === saleId ? { ...s, status: newStatus as any } : s),
-        false
-      )
       
       toast.success("Sale status updated successfully")
     } catch (error) {
       console.error("Error updating sale status:", error)
       toast.error("Error updating sale status")
+      mutateSales() // Revert
     }
   }
 
