@@ -38,6 +38,7 @@ import { PosShippingAddressFields } from "./PosShippingAddressFields";
 import { cn } from "@/lib/utils";
 import type { LocalPromoMatch } from "@/app/pos/local/resolve-promo-local";
 import type { PosShippingAddress } from "@/app/pos/shipping-address";
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 
 export interface PosCartModifier {
   groupId: string;
@@ -160,11 +161,8 @@ export function CartPanel({
   onSplitBill,
   t,
 }: CartPanelProps) {
-  const money = (amount: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+  const { formatPrice } = useDisplayCurrency();
+  const money = (amount: number) => formatPrice(amount, cart[0]?.currency || "USD");
 
   const getTrans = (key: string, fallback: string) =>
     t(key) === key ? fallback : t(key);

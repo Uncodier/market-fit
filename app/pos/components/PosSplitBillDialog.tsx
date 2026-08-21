@@ -187,7 +187,7 @@ function SortableColumn({ col, idx, columnsLength, formatPrice, moveItem, setCol
 
       <div className="p-3 border-t bg-muted/10 font-medium flex justify-between items-center">
         <span>{getTrans("pos.cart.subtotal", "Subtotal")}</span>
-        <span>{formatPrice(col.items.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0), "USD")}</span>
+        <span>{formatPrice(col.items.reduce((sum, item) => sum + (item.cartPrice * item.cartQty), 0), col.items[0]?.currency || "USD")}</span>
       </div>
     </div>
   );
@@ -415,7 +415,7 @@ export function PosSplitBillDialog({ open, onOpenChange, originalCart, onConfirm
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="full" className="max-w-5xl h-[85vh] flex flex-col">
+      <DialogContent size="xl" className="max-w-5xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{getTrans("pos.cart.splitTitle", "Split Bill")}</DialogTitle>
           <DialogDescription>

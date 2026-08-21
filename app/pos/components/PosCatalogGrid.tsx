@@ -7,6 +7,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Search, Calendar } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 
 interface PosCatalogGridProps {
   items: CatalogItem[]
@@ -16,6 +17,8 @@ interface PosCatalogGridProps {
 }
 
 export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps) {
+  const { formatPrice } = useDisplayCurrency()
+
   return (
     <div className="p-4 bg-muted/30">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -103,10 +106,7 @@ export function PosCatalogGrid({ items, loading, onAdd, t }: PosCatalogGridProps
                   
                   <div className="mt-2 flex items-center justify-between">
                     <span className="font-bold text-white">
-                      {new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      }).format((item as any).cartPrice || item.target_sale_price || 0)}
+                      {formatPrice((item as any).cartPrice || item.target_sale_price || 0, item.currency || "USD")}
                     </span>
                     {!isAvailable && (
                       <Badge
