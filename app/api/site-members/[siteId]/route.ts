@@ -171,7 +171,7 @@ export async function POST(
     if (access.error) return access.error
 
     const body = await request.json().catch(() => ({}))
-    const email = typeof body.email === "string" ? body.email.trim() : ""
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""
     const role = parseWritableSiteMemberRole(body.role)
     if (!email) {
       return NextResponse.json({ success: false, error: "email is required" }, { status: 400 })

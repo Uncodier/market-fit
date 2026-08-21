@@ -16,7 +16,8 @@ interface InvitationRequest {
 export async function POST(request: Request) {
   try {
     const body: InvitationRequest = await request.json()
-    const { email, siteId, siteName, role, name, position } = body
+    const email = body.email.trim().toLowerCase()
+    const { siteId, siteName, role, name, position } = body
 
     if (!email || !siteId || !siteName || !role) {
       return NextResponse.json(
@@ -36,18 +37,43 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Check if user already exists and has confirmed their email
-    const { data: existingUsers, error: listError } = await adminSupabase.auth.admin.listUsers()
-    if (listError) {
-      console.error('Error listing users:', listError)
+    // Check if user already exists in profiles
+    const { data: profile, error: profileError } = await adminSupabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error('Error checking profile:', profileError)
       return NextResponse.json(
         { success: false, error: 'Failed to check existing users' },
         { status: 500 }
       )
     }
 
-    const existingUser = existingUsers.users.find((u: any) => u.email === email)
-    const userHasConfirmedEmail = existingUser && !!existingUser.email_confirmed_at
+    let existingUser = null
+    let userHasConfirmedEmail = false
+
+    if (profile) {
+      // Get the full user object to check email confirmation
+      const { data: userData, error: userError } = await adminSupabase.auth.admin.getUserById(profile.id)
+      
+      if (!userError && userData?.user) {
+        existingUser = userData.user
+        userHasConfirmedEmail = !!userData.user.email_confirmed_at
+      }
+    } else {
+      // Fallback: check auth.users directly via listUsers with filter, in case they don't have a profile yet
+      // We use a search to ensure we don't hit the 50-user pagination limit for the general list
+      // Note: listUsers search might not be exact, but we filter in memory
+      const { data: existingUsers } = await adminSupabase.auth.admin.listUsers()
+      const foundUser = existingUsers?.users?.find((u: any) => u.email === email)
+      if (foundUser) {
+        existingUser = foundUser
+        userHasConfirmedEmail = !!foundUser.email_confirmed_at
+      }
+    }
 
     // Create the redirect URL for the magic link
     // Determine base URL: use localhost only in development, production URL otherwise

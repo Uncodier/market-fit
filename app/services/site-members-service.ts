@@ -310,34 +310,36 @@ export const siteMembersService = {
         continue;
       }
       
-      console.log(`🔍 SYNC: Processing member: ${member.email}`);
+      const email = member.email.trim().toLowerCase()
       
-      const existingMember = currentMembers?.find((m: ExistingSiteMember) => m.email === member.email)
+      console.log(`🔍 SYNC: Processing member: ${email}`);
+      
+      const existingMember = currentMembers?.find((m: ExistingSiteMember) => m.email.toLowerCase() === email)
       
       const siteMemberRole = mapTeamRoleToSiteMemberRole(member.role)
       console.log(`🔄 SYNC: Role mapping ${member.role} -> ${siteMemberRole}`);
       
       if (!existingMember) {
-        console.log(`➕ SYNC: Member ${member.email} not found in site_members, creating new record`);
+        console.log(`➕ SYNC: Member ${email} not found in site_members, creating new record`);
         
         // Check if the user exists in auth.users
         const { data: existingUser, error: userError } = await supabase
           .from('profiles')
           .select('id')
-          .eq('email', member.email)
+          .eq('email', email)
           .single();
         
         if (userError && userError.code !== 'PGRST116') {
-          console.error(`❌ SYNC: Error checking if user exists for ${member.email}:`, userError);
+          console.error(`❌ SYNC: Error checking if user exists for ${email}:`, userError);
         }
         
-        console.log(`👤 SYNC: User ${member.email} exists in auth: ${!!existingUser} (user_id: ${existingUser?.id || 'null'})`);
+        console.log(`👤 SYNC: User ${email} exists in auth: ${!!existingUser} (user_id: ${existingUser?.id || 'null'})`);
         
         // It's a new member, insert it
         const insertData = {
           site_id: siteId,
           user_id: existingUser?.id || null, // Explicitly NULL for pending users
-          email: member.email,
+          email: email,
           role: siteMemberRole,
           name: member.name || null,
           position: member.position || null,
@@ -369,16 +371,16 @@ export const siteMembersService = {
           .from('site_members')
           .select('id, email, status')
           .eq('site_id', siteId)
-          .eq('email', member.email)
+          .eq('email', email)
           .maybeSingle();
         
         if (emailCheckError) {
           console.error(`❌ SYNC: Error checking existing email:`, emailCheckError);
         } else if (existingByEmail) {
-          console.log(`⚠️ SYNC: Member with email ${member.email} already exists:`, existingByEmail);
+          console.log(`⚠️ SYNC: Member with email ${email} already exists:`, existingByEmail);
           continue; // Skip this member as it already exists
         } else {
-          console.log(`✅ SYNC: No existing member found with email ${member.email}`);
+          console.log(`✅ SYNC: No existing member found with email ${email}`);
         }
         
         const { data: insertResult, error } = await supabase
@@ -387,7 +389,7 @@ export const siteMembersService = {
           .select()
         
         if (error) {
-          console.error(`❌ SYNC: Error adding new site member during sync for ${member.email}:`, error)
+          console.error(`❌ SYNC: Error adding new site member during sync for ${email}:`, error)
           console.error(`❌ SYNC: Error code: ${error.code}`);
           console.error(`❌ SYNC: Error message: ${error.message}`);
           console.error(`❌ SYNC: Error details:`, error.details);
@@ -418,17 +420,17 @@ export const siteMembersService = {
           // Don't throw here, continue with other members
           continue;
         } else {
-          console.log(`✅ SYNC: Successfully created site_member for ${member.email}:`, insertResult);
+          console.log(`✅ SYNC: Successfully created site_member for ${email}:`, insertResult);
         }
       } else {
-        console.log(`🔄 SYNC: Member ${member.email} already exists in site_members, checking if update is needed`);
+        console.log(`🔄 SYNC: Member ${email} already exists in site_members, checking if update is needed`);
         
         // Update existing member if needed
         if (existingMember.role !== siteMemberRole || 
             (member.name && existingMember.name !== member.name) ||
             (member.position && existingMember.position !== member.position)) {
           
-          console.log(`📝 SYNC: Updating existing member ${member.email}`);
+          console.log(`📝 SYNC: Updating existing member ${email}`);
           
           const { error } = await supabase
             .from('site_members')
@@ -440,31 +442,36 @@ export const siteMembersService = {
             .eq('id', existingMember.id)
           
           if (error) {
-            console.error(`❌ SYNC: Error updating site member during sync for ${member.email}:`, error)
+            console.error(`❌ SYNC: Error updating site member during sync for ${email}:`, error)
           } else {
-            console.log(`✅ SYNC: Successfully updated member ${member.email}`);
+            console.log(`✅ SYNC: Successfully updated member ${email}`);
           }
         } else {
-          console.log(`⏭️ SYNC: No changes needed for member ${member.email}`);
+          console.log(`⏭️ SYNC: No changes needed for member ${email}`);
         }
       }
     }
     
     // 2. Remove members that are not in the new list
     if (currentMembers) {
-      const currentEmails = currentMembers.map((m: ExistingSiteMember) => m.email)
-      const newEmails = teamMembers.map(m => m.email)
+      const currentEmails = currentMembers.map((m: ExistingSiteMember) => m.email.toLowerCase())
+      const newEmails = teamMembers.map(m => m.email.toLowerCase())
       
       const emailsToRemove = currentEmails.filter((email: string) => !newEmails.includes(email))
       
       if (emailsToRemove.length > 0) {
         console.log(`🗑️ SYNC: Removing members no longer in team_members:`, emailsToRemove);
         
+        // Let's get the exact original emails to remove, since the DB query might be case sensitive
+        const exactEmailsToRemove = currentMembers
+          .filter((m: ExistingSiteMember) => emailsToRemove.includes(m.email.toLowerCase()))
+          .map((m: ExistingSiteMember) => m.email);
+
         const { error } = await supabase
           .from('site_members')
           .delete()
           .eq('site_id', siteId)
-          .in('email', emailsToRemove)
+          .in('email', exactEmailsToRemove)
         
         if (error) {
           console.error('❌ SYNC: Error removing site members during sync:', error)
