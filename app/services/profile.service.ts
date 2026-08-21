@@ -92,10 +92,13 @@ class ProfileService {
         // En supabase, phone en user suele venir vacio si no se verificó con otp, 
         // pero lo guardamos en user_metadata.phone. 
         // No existe columna phone en 'profiles'
-        if (userData.user.phone) {
-          data.phone = userData.user.phone
-        } else if (userData.user.user_metadata?.phone) {
-          data.phone = userData.user.user_metadata.phone
+        // Si el perfil no tiene el teléfono guardado en la DB, lo tomamos de Auth
+        if (!data.phone) {
+          if (userData.user.phone) {
+            data.phone = userData.user.phone
+          } else if (userData.user.user_metadata?.phone) {
+            data.phone = userData.user.user_metadata.phone
+          }
         }
       }
 
@@ -167,9 +170,7 @@ class ProfileService {
       
       const updateData = {
         id: userId,
-        // Eliminamos 'phone: phone' de aquí porque causa el error PGRST204 
-        // ya que la columna no existe en la tabla profiles
-        ...restProfileData,
+        ...profileData,
         updated_at: new Date().toISOString()
       }
 

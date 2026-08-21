@@ -65,26 +65,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized to update this user' }, { status: 401 })
     }
 
+    const { data: userData, error: fetchError } = await supabaseAdmin.auth.admin.getUserById(userId)
+    
+    if (fetchError || !userData || !userData.user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Actualizamos tanto el campo phone principal como el de metadatos
     const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       phone: phone,
-      phone_confirm: true, // Auto-confirm the phone to validate it
-      user_metadata: { phone: phone }
+      phone_confirm: true,
+      user_metadata: { ...userData.user.user_metadata, phone: phone }
     })
 
     if (error) {
       console.error('Error updating user phone via admin API:', error)
-      // Si el teléfono ya ha sido tomado, podríamos decidir si fallamos o no
-      // Por ahora retornaremos un 400 pero indicando que esto no debería bloquear 
-      // la actualización de 'profiles'
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      
+      // Si falla por formato u otro motivo (ej. número ya usado), podemos intentar
+      // al menos guardar en user_metadata como fallback
+      const { error: metaError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        user_metadata: { ...userData.user.user_metadata, phone: phone }
+      })
+      
+      if (metaError) {
+        return NextResponse.json({ error: metaError.message }, { status: 400 })
+      }
+      
+      // Si logramos guardar en metadata pero no en phone, lo informamos pero damos ok
+      return NextResponse.json({ 
+        success: true, 
+        warning: 'Saved to metadata only. Phone format might be invalid or already in use: ' + error.message 
+      })
     }
-
-    // Actualizamos tambien los metadatos de usuario ya que a veces fallaba
-    // Lo hacemos con fire-and-forget para no bloquear el retorno
-    supabaseAdmin.auth.admin.updateUserById(userId, {
-      user_metadata: { phone: phone }
-    }).then(() => console.log('Metadata phone updated via admin'))
-      .catch(metaError => console.error('Error updating metadata phone:', metaError));
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
