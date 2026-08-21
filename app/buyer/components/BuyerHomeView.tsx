@@ -40,8 +40,7 @@ export function BuyerHomeView({
   const { sites } = useSite()
   const managedSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
   const hasBusinesses = managedSites.length > 0
-  // Workspace (projects/create-site) lives on app; buyer commerce is proxied under www.
-  const workspaceUrl = 'https://app.makinari.com'
+  const workspaceUrl = ''
   
   const { data, error, isLoading } = useSWR(
     { key: "buyer-portal-summary", scope, ownerSiteId },

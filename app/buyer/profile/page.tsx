@@ -26,8 +26,7 @@ export default function BuyerProfilePage() {
     ? `${user.user_metadata.first_name} ${user.user_metadata?.last_name || ''}`.trim()
     : t('buyer.profile.myAccount') || 'My Account'
   const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture
-  // Workspace (profile/projects) lives on app; buyer commerce is proxied under www.
-  const workspaceUrl = 'https://app.makinari.com'
+  const workspaceUrl = ''
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-2xl mx-auto w-full space-y-8">

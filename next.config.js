@@ -78,6 +78,7 @@ const nextConfig = {
       ...page('/q'),
       ...page('/i'),
       ...page('/vb'),
+      ...page('/profile'),
       { source: '/api/stripe/checkout/order', destination: `${app}/api/stripe/checkout/order` },
       { source: '/api/fx/rates', destination: `${app}/api/fx/rates` },
       { source: '/api/geocode', destination: `${app}/api/geocode` },

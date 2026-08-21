@@ -37,7 +37,7 @@ export function useProfile() {
   }, [user?.id])
 
   // Actualizar perfil
-  const updateProfile = useCallback(async (data: ProfileUpdateData, silent = false): Promise<boolean> => {
+  const updateProfile = useCallback(async (data: ProfileUpdateData, silent = false): Promise<boolean | string> => {
     if (!user?.id) {
       if (!silent) toast.error('User not authenticated')
       return false
@@ -46,10 +46,7 @@ export function useProfile() {
     try {
       console.log("Setting isUpdating to true");
       setIsUpdating(true)
-      console.log("Calling profileService.upsertProfile...");
       
-      // Hacemos un catch local para no quedarnos atorados si hay error de red
-      // Implementamos Promise.race para poner un timeout de 15s como fallback
       const timeoutPromise = new Promise<null>((_, reject) => {
         setTimeout(() => reject(new Error("Timeout updating profile")), 15000);
       });
@@ -62,8 +59,6 @@ export function useProfile() {
         timeoutPromise
       ]);
       
-      console.log("profileService.upsertProfile returned", updatedProfile);
-      
       if (updatedProfile) {
         setProfile(updatedProfile)
         if (!silent) toast.success('Profile updated successfully')
@@ -72,12 +67,12 @@ export function useProfile() {
         if (!silent) toast.error('Failed to update profile')
         return false
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error)
-      if (!silent) toast.error('Error updating profile')
-      return false
+      const errorMsg = error?.message || 'Error updating profile'
+      if (!silent) toast.error(errorMsg)
+      return errorMsg
     } finally {
-      console.log("Setting isUpdating to false");
       setIsUpdating(false)
     }
   }, [user?.id])

@@ -170,7 +170,9 @@ class ProfileService {
       
       const updateData = {
         id: userId,
-        ...profileData,
+        // Eliminamos 'phone: phone' de aquí porque causa el error PGRST204 
+        // ya que la columna no existe en la tabla profiles
+        ...restProfileData,
         updated_at: new Date().toISOString()
       }
 

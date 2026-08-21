@@ -65,13 +65,21 @@ export async function POST(request: Request) {
       }
     } else {
       // Fallback: check auth.users directly via listUsers with filter, in case they don't have a profile yet
-      // We use a search to ensure we don't hit the 50-user pagination limit for the general list
-      // Note: listUsers search might not be exact, but we filter in memory
-      const { data: existingUsers } = await adminSupabase.auth.admin.listUsers()
-      const foundUser = existingUsers?.users?.find((u: any) => u.email === email)
-      if (foundUser) {
-        existingUser = foundUser
-        userHasConfirmedEmail = !!foundUser.email_confirmed_at
+      // We search with a high limit to ensure we don't miss them if there are more than 50 users
+      try {
+        // In Supabase v2, listUsers can take an options object for pagination
+        const { data: existingUsers } = await adminSupabase.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000
+        })
+        
+        const foundUser = existingUsers?.users?.find((u: any) => u.email?.toLowerCase() === email)
+        if (foundUser) {
+          existingUser = foundUser
+          userHasConfirmedEmail = !!foundUser.email_confirmed_at
+        }
+      } catch (err) {
+        console.warn('Error checking existing users:', err)
       }
     }
 

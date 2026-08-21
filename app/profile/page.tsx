@@ -206,13 +206,13 @@ export default function ProfilePage() {
         avatar_url: imageUrl || undefined
       }
       
-      const success = await updateProfile(profileData, true)
+      const result = await updateProfile(profileData, true)
       
-      if (success) {
+      if (result === true) {
         toast.success("Personal information updated successfully")
         setFormData(prev => ({ ...prev, phone: profileData.phone }))
       } else {
-        toast.error("Failed to update personal information")
+        toast.error(typeof result === 'string' ? `Failed: ${result}` : "Failed to update personal information")
       }
     } catch (error) {
       console.error("Error in handleSavePersonalInfo:", error)
@@ -227,11 +227,11 @@ export default function ProfilePage() {
         timezone: formData.timezone
       }
       
-      const success = await updateProfile(profileData, true)
-      if (success) {
+      const result = await updateProfile(profileData, true)
+      if (result === true) {
         toast.success("Preferences updated successfully")
       } else {
-        toast.error("Failed to update preferences")
+        toast.error(typeof result === 'string' ? `Failed: ${result}` : "Failed to update preferences")
       }
     } catch (error) {
       console.error(error)
