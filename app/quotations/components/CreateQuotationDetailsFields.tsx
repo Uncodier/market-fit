@@ -98,7 +98,7 @@ export function CreateQuotationDetailsFields({
             "Select or create client..."
           }
           disabled={!!buyerUser}
-          emptyMessage="No clients found"
+          emptyMessage={t("common.noClientsFound") || "No clients found"}
         />
       </div>
 

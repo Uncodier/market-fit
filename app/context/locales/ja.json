@@ -8493,5 +8493,9 @@
   "commerce.buyer.lookup": "Buscar",
   "commerce.buyer.hintRequired": "Este usuario podrá ver este activo en su portal de comprador.",
   "commerce.buyer.hintOptionalDocument": "Este usuario podrá ver este documento en su portal de comprador.",
-  "commerce.buyer.hintLink": "Vincula un usuario de la plataforma para que pueda acceder a esto en su portal."
+  "commerce.buyer.hintLink": "Vincula un usuario de la plataforma para que pueda acceder a esto en su portal.",
+  "quotations.detail.deleteItemTitle": "Eliminar elemento",
+  "quotations.create.removeItem": "Eliminar producto",
+  "common.noItemsFound": "No se encontraron artículos",
+  "common.noClientsFound": "No se encontraron clientes"
 }

@@ -62,7 +62,7 @@ export function CreateQuotationLineItems({
                 t("quotations.create.fields.itemPlaceholder") ||
                 "Select or create an item..."
               }
-              emptyMessage="No items found"
+              emptyMessage={t("common.noItemsFound") || "No items found"}
             />
           </div>
           <div className="w-24 shrink-0">
@@ -107,7 +107,7 @@ export function CreateQuotationLineItems({
             size="icon"
             className={`h-10 w-10 shrink-0 ${lineItems.length <= 1 ? "invisible" : ""}`}
             onClick={() => onRemove(row.key)}
-            aria-label="Remove product"
+            aria-label={t("quotations.create.removeItem") || "Remove product"}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
