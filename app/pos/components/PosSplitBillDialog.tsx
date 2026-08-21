@@ -27,7 +27,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { createPortal } from "react-dom";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody } from "@/app/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody, DialogDescription } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
@@ -418,6 +418,9 @@ export function PosSplitBillDialog({ open, onOpenChange, originalCart, onConfirm
       <DialogContent size="full" className="max-w-5xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{getTrans("pos.cart.splitTitle", "Split Bill")}</DialogTitle>
+          <DialogDescription>
+            {getTrans("pos.split.description", "Drag and drop items to split the order, or use the arrows to move them.")}
+          </DialogDescription>
         </DialogHeader>
 
         <DialogBody className="flex-1 overflow-x-auto overflow-y-hidden bg-muted/20 p-4">

@@ -12,6 +12,7 @@ import {
 import { ensureQuotationPublicAccessToken } from "../public-actions"
 import { buildPublicQuotePath } from "../public-token"
 import { authorizeDynamicQuote, retryDynamicQuoteItem } from "../dynamic-quote-actions"
+import { updateQuotationItem } from "../actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import { toast } from "sonner"
@@ -47,6 +48,8 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
   const [updating, setUpdating] = useState(false)
   const [isAddItemOpen, setIsAddItemOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
+
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null)
 
   const loadQuotation = async () => {
     setLoading(true)
@@ -110,16 +113,17 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
     setUpdating(false)
   }
 
-  const handleRemoveItem = async (itemId: string) => {
-    if (!confirm(t("common.confirmDelete") || "Are you sure you want to delete this?")) return
+  const handleRemoveItem = async () => {
+    if (!itemToDelete) return
     setUpdating(true)
-    const res = await removeQuotationItem(itemId)
+    const res = await removeQuotationItem(itemToDelete)
     if (res.error) {
       toast.error(res.error)
     } else {
       toast.success(t("quotations.detail.itemRemoved") || "Item removed successfully")
       loadQuotation()
     }
+    setItemToDelete(null)
     setUpdating(false)
   }
 
@@ -142,6 +146,28 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
     if (res.error && !res.data?.quotationId) toast.error(res.error)
     else {
       toast.success(t("quotations.dynamicQuote.retrying") || "Retrying quote calculation")
+      loadQuotation()
+    }
+    setUpdating(false)
+  }
+
+  const handleUpdateItemQuantity = async (itemId: string, quantity: number) => {
+    setUpdating(true)
+    const res = await updateQuotationItem(itemId, { quantity })
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      loadQuotation()
+    }
+    setUpdating(false)
+  }
+
+  const handleUpdateItemPrice = async (itemId: string, unitPrice: number) => {
+    setUpdating(true)
+    const res = await updateQuotationItem(itemId, { unitPrice })
+    if (res.error) {
+      toast.error(res.error)
+    } else {
       loadQuotation()
     }
     setUpdating(false)
@@ -360,7 +386,9 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
               quotation={quotation}
               updating={updating}
               onAddItem={() => setIsAddItemOpen(true)}
-              onRemoveItem={handleRemoveItem}
+              onRemoveItem={(itemId) => setItemToDelete(itemId)}
+              onUpdateItemQuantity={handleUpdateItemQuantity}
+              onUpdateItemPrice={handleUpdateItemPrice}
               onRetryItem={handleRetry}
             />
             <div className="absolute inset-0 rounded-lg shadow-xl -z-10 transform translate-y-1 bg-card/50 dark:bg-card/10 opacity-50 dark:border dark:border-border/30" />
@@ -384,6 +412,28 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
           onSuccess={loadQuotation}
         />
       )}
+
+      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("quotations.detail.deleteItemTitle") || "Delete Item"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("common.confirmDelete") || "Are you sure you want to delete this?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
+              onClick={handleRemoveItem}
+            >
+              {t("common.delete") || "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

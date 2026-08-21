@@ -9214,5 +9214,17 @@
   "settings.team.showAll": "Show all",
   "settings.team.hideAll": "Hide all",
   "settings.team.showApp": "Show this app",
-  "settings.team.hideApp": "Hide this app"
+  "settings.team.hideApp": "Hide this app",
+  "quotations.create.fields.quantityPlaceholder": "Qty",
+  "quotations.create.fields.notes": "Terms and Conditions / Notes",
+  "quotations.create.fields.notesPlaceholder": "e.g. Valid for 30 days",
+  "quotations.create.fields.pricePlaceholder": "Price",
+  "commerce.buyer.linked": "Cuenta de comprador (Vinculada)",
+  "commerce.buyer.emailLabel": "Cuenta de comprador (correo)",
+  "commerce.buyer.optional": "(Opcional)",
+  "commerce.buyer.emailPlaceholder": "ej. usuario@ejemplo.com",
+  "commerce.buyer.lookup": "Buscar",
+  "commerce.buyer.hintRequired": "Este usuario podrá ver este activo en su portal de comprador.",
+  "commerce.buyer.hintOptionalDocument": "Este usuario podrá ver este documento en su portal de comprador.",
+  "commerce.buyer.hintLink": "Vincula un usuario de la plataforma para que pueda acceder a esto en su portal."
 }

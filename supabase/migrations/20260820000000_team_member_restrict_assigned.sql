@@ -32,6 +32,18 @@ USING (
   )
 );
 
+-- Create helper function for deals to avoid infinite recursion with deal_owners
+CREATE OR REPLACE FUNCTION public.is_deal_owner(p_deal_id UUID, p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM deal_owners WHERE deal_id = p_deal_id AND user_id = p_user_id
+  );
+$$;
+
 -- Deals
 DROP POLICY IF EXISTS "deals_unified" ON deals;
 CREATE POLICY "deals_unified" ON deals
@@ -53,10 +65,7 @@ USING (
         WHERE sm.site_id = s.id AND sm.user_id = auth.uid() AND sm.status = 'active'
         AND (
           sm.restrict_to_assigned_only = false
-          OR EXISTS (
-            SELECT 1 FROM deal_owners d_o
-            WHERE d_o.deal_id = deals.id AND d_o.user_id = auth.uid()
-          )
+          OR public.is_deal_owner(deals.id, auth.uid())
         )
       )
     )

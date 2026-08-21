@@ -2,6 +2,7 @@
 
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
+import { Input } from "@/app/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Plus, Trash2 } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -30,6 +31,8 @@ interface QuotationInvoiceProps {
   updating?: boolean
   onAddItem?: () => void
   onRemoveItem?: (itemId: string) => void
+  onUpdateItemQuantity?: (itemId: string, quantity: number) => void
+  onUpdateItemPrice?: (itemId: string, price: number) => void
   onRetryItem?: (itemId: string) => void
 }
 
@@ -38,6 +41,8 @@ export function QuotationInvoice({
   updating,
   onAddItem,
   onRemoveItem,
+  onUpdateItemQuantity,
+  onUpdateItemPrice,
   onRetryItem,
 }: QuotationInvoiceProps) {
   const { t } = useLocalization()
@@ -231,8 +236,46 @@ export function QuotationInvoice({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right">{formatMoney(item.unit_price)}</TableCell>
+                    <TableCell className="text-right">
+                      {isDraft && onUpdateItemQuantity && (!dqStatus || dqStatus === "priced") ? (
+                        <div className="flex justify-end">
+                          <Input
+                            type="number"
+                            min="1"
+                            step="1"
+                            className="w-20 h-8 text-right"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10)
+                              if (!isNaN(val)) onUpdateItemQuantity(item.id, Math.max(1, val))
+                            }}
+                            disabled={updating}
+                          />
+                        </div>
+                      ) : (
+                        item.quantity
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {isDraft && onUpdateItemPrice && (!dqStatus || dqStatus === "priced") ? (
+                        <div className="flex justify-end">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="w-24 h-8 text-right"
+                            value={item.unit_price}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value)
+                              if (!isNaN(val)) onUpdateItemPrice(item.id, Math.max(0, val))
+                            }}
+                            disabled={updating}
+                          />
+                        </div>
+                      ) : (
+                        formatMoney(item.unit_price)
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">{formatMoney(item.subtotal)}</TableCell>
                     {isDraft && (
                       <TableCell>
@@ -279,8 +322,18 @@ export function QuotationInvoice({
           </Table>
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <div className="w-64 space-y-2">
+        <div className="mt-6 flex flex-col md:flex-row justify-between gap-6">
+          <div className="flex-1">
+            {quotation.notes && (
+              <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/30 p-4 rounded-md border border-border">
+                <h4 className="font-semibold text-foreground mb-2">
+                  {t("quotations.detail.notes") || "Terms and Conditions"}
+                </h4>
+                {quotation.notes}
+              </div>
+            )}
+          </div>
+          <div className="w-full md:w-64 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">
                 {t("quotations.detail.subtotal") || "Subtotal"}

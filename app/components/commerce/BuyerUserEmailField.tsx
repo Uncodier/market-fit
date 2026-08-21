@@ -7,6 +7,7 @@ import { Label } from "@/app/components/ui/label"
 import { toast } from "sonner"
 import { X, Check } from "@/app/components/ui/icons"
 import { resolveBuyerUserByEmail } from "@/app/commerce/resolve-buyer-lead"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export interface BuyerUser {
   buyerUserId: string
@@ -19,6 +20,8 @@ interface BuyerUserEmailFieldProps {
   onChange: (value: BuyerUser | null) => void
   disabled?: boolean
   required?: boolean
+  inputClassName?: string
+  buttonClassName?: string
 }
 
 export function BuyerUserEmailField({
@@ -26,7 +29,10 @@ export function BuyerUserEmailField({
   onChange,
   disabled,
   required = false,
+  inputClassName = "",
+  buttonClassName = "",
 }: BuyerUserEmailFieldProps) {
+  const { t } = useLocalization()
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -60,7 +66,7 @@ export function BuyerUserEmailField({
   if (value) {
     return (
       <div className="space-y-2">
-        <Label>Buyer account (Linked)</Label>
+        <Label>{t("commerce.buyer.linked") || "Buyer account (Linked)"}</Label>
         <div className="flex items-center justify-between p-3 border rounded-md bg-secondary/20">
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium flex items-center gap-2">
@@ -83,8 +89,8 @@ export function BuyerUserEmailField({
         </div>
         <p className="text-xs text-muted-foreground">
           {required
-            ? "This user will be able to see this asset in their buyer portal."
-            : "This user will be able to see this document in their buyer portal."}
+            ? t("commerce.buyer.hintRequired") || "This user will be able to see this asset in their buyer portal."
+            : t("commerce.buyer.hintOptionalDocument") || "This user will be able to see this document in their buyer portal."}
         </p>
       </div>
     )
@@ -93,18 +99,18 @@ export function BuyerUserEmailField({
   return (
     <div className="space-y-2">
       <Label>
-        Buyer account (email)
+        {t("commerce.buyer.emailLabel") || "Buyer account (email)"}
         {required ? null : (
-          <span className="text-muted-foreground font-normal"> (Optional)</span>
+          <span className="text-muted-foreground font-normal"> {t("commerce.buyer.optional") || "(Optional)"}</span>
         )}
       </Label>
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <Input
-          placeholder="e.g. user@example.com"
+          placeholder={t("commerce.buyer.emailPlaceholder") || "e.g. user@example.com"}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={disabled || isLoading}
-          className="flex-1"
+          className={`flex-1 ${inputClassName}`}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault()
@@ -117,17 +123,17 @@ export function BuyerUserEmailField({
           variant="secondary"
           onClick={handleSearch}
           disabled={disabled || isLoading || !email.trim()}
-          className="w-24 shrink-0 flex items-center justify-center"
+          className={`w-24 shrink-0 flex items-center justify-center ${buttonClassName}`}
         >
           {isLoading ? (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           ) : (
-            "Lookup"
+            t("commerce.buyer.lookup") || "Lookup"
           )}
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Link an existing platform user so they can access this in their buyer portal.
+        {t("commerce.buyer.hintLink") || "Link an existing platform user so they can access this in their buyer portal."}
       </p>
     </div>
   )

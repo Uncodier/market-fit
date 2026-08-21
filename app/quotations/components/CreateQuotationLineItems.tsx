@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/app/components/ui/button"
+import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { Plus, Trash2 } from "@/app/components/ui/icons"
@@ -15,6 +16,8 @@ interface CreateQuotationLineItemsProps {
   dynamicStepsCount: number
   onAdd: () => void
   onUpdate: (key: string, value: RelationSelectValue) => void
+  onUpdateQuantity?: (key: string, quantity: number) => void
+  onUpdatePrice?: (key: string, price?: number) => void
   onRemove: (key: string) => void
 }
 
@@ -24,6 +27,8 @@ export function CreateQuotationLineItems({
   dynamicStepsCount,
   onAdd,
   onUpdate,
+  onUpdateQuantity,
+  onUpdatePrice,
   onRemove,
 }: CreateQuotationLineItemsProps) {
   const { t } = useLocalization()
@@ -47,7 +52,7 @@ export function CreateQuotationLineItems({
       </div>
 
       {lineItems.map((row) => (
-        <div key={row.key} className="flex items-start gap-2">
+        <div key={row.key} className="flex items-center gap-2">
           <div className="flex-1 min-w-0">
             <RelationSelect
               options={catalogOptions}
@@ -60,18 +65,52 @@ export function CreateQuotationLineItems({
               emptyMessage="No items found"
             />
           </div>
-          {lineItems.length > 1 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 shrink-0"
-              onClick={() => onRemove(row.key)}
-              aria-label="Remove product"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="w-24 shrink-0">
+            <Input
+              type="number"
+              min="1"
+              step="1"
+              className="h-10 text-center"
+              placeholder={t("quotations.create.fields.quantityPlaceholder") || "Qty"}
+              value={row.quantity ?? 1}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10)
+                if (!isNaN(val) && onUpdateQuantity) {
+                  onUpdateQuantity(row.key, Math.max(1, val))
+                }
+              }}
+            />
+          </div>
+          <div className="w-24 shrink-0">
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              className="h-10 text-center"
+              placeholder={t("quotations.create.fields.pricePlaceholder") || "Price"}
+              value={row.unitPrice === undefined ? "" : row.unitPrice}
+              onChange={(e) => {
+                if (e.target.value === "" && onUpdatePrice) {
+                  onUpdatePrice(row.key, undefined)
+                  return
+                }
+                const val = parseFloat(e.target.value)
+                if (!isNaN(val) && onUpdatePrice) {
+                  onUpdatePrice(row.key, Math.max(0, val))
+                }
+              }}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={`h-10 w-10 shrink-0 ${lineItems.length <= 1 ? "invisible" : ""}`}
+            onClick={() => onRemove(row.key)}
+            aria-label="Remove product"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       ))}
 

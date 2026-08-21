@@ -82,6 +82,7 @@ export async function updateQuotationBasics(
     buyerUserId?: string | null
     dealName: string
     dealAmount?: number
+    notes?: string
   }
 ) {
   const supabase = await createClient()
@@ -111,6 +112,7 @@ export async function updateQuotationBasics(
     .update({
       lead_id: updates.leadId,
       buyer_user_id: buyerUserId,
+      notes: updates.notes,
     })
     .eq("id", id)
 
@@ -133,7 +135,7 @@ export async function updateQuotationBasics(
   return getQuotation(id)
 }
 
-export async function createQuotationFromDeal(siteId: string, dealId: string, leadId: string) {
+export async function createQuotationFromDeal(siteId: string, dealId: string, leadId: string, notes?: string) {
   const supabase = await createClient()
   
   // Also get lead's buyer_user_id
@@ -146,6 +148,7 @@ export async function createQuotationFromDeal(siteId: string, dealId: string, le
       deal_id: dealId,
       lead_id: leadId,
       buyer_user_id: lead?.buyer_user_id || null,
+      notes: notes || null,
       status: 'draft',
       valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
     })

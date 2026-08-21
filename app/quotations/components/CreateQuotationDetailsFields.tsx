@@ -2,6 +2,7 @@
 
 import { UseFormRegister, FieldErrors, UseFormSetValue } from "react-hook-form"
 import { Input } from "@/app/components/ui/input"
+import { Textarea } from "@/app/components/ui/textarea"
 import { Label } from "@/app/components/ui/label"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { BuyerUserEmailField, BuyerUser } from "@/app/components/commerce/BuyerUserEmailField"
@@ -28,6 +29,8 @@ interface CreateQuotationDetailsFieldsProps {
   dynamicStepsCount: number
   onAddLine: () => void
   onUpdateLine: (key: string, value: RelationSelectValue) => void
+  onUpdateLineQuantity: (key: string, quantity: number) => void
+  onUpdateLinePrice?: (key: string, price?: number) => void
   onRemoveLine: (key: string) => void
 }
 
@@ -47,20 +50,21 @@ export function CreateQuotationDetailsFields({
   dynamicStepsCount,
   onAddLine,
   onUpdateLine,
+  onUpdateLineQuantity,
+  onUpdateLinePrice,
   onRemoveLine,
 }: CreateQuotationDetailsFieldsProps) {
   const { t } = useLocalization()
 
   return (
     <>
-      <div className="grid gap-2">
-        <Label>Buyer</Label>
-        <BuyerUserEmailField
-          value={buyerUser}
-          onChange={setBuyerUser}
-          disabled={isSubmitting}
-        />
-      </div>
+      <BuyerUserEmailField
+        value={buyerUser}
+        onChange={setBuyerUser}
+        disabled={isSubmitting}
+        inputClassName="h-12"
+        buttonClassName="h-12"
+      />
 
       <div className="grid gap-2">
         <Label htmlFor="name">
@@ -126,16 +130,30 @@ export function CreateQuotationDetailsFields({
         </div>
       )}
 
-      {!isEditing && (
-        <CreateQuotationLineItems
-          lineItems={lineItems}
-          catalogOptions={catalogOptions}
-          dynamicStepsCount={dynamicStepsCount}
-          onAdd={onAddLine}
-          onUpdate={onUpdateLine}
-          onRemove={onRemoveLine}
+      <CreateQuotationLineItems
+        lineItems={lineItems}
+        catalogOptions={catalogOptions}
+        dynamicStepsCount={dynamicStepsCount}
+        onAdd={onAddLine}
+        onUpdate={onUpdateLine}
+        onUpdateQuantity={onUpdateLineQuantity}
+        onUpdatePrice={onUpdateLinePrice}
+        onRemove={onRemoveLine}
+      />
+
+      <div className="grid gap-2">
+        <Label htmlFor="notes">
+          {t("quotations.create.fields.notes") || "Terms and Conditions / Notes"}
+        </Label>
+        <Textarea
+          id="notes"
+          className="min-h-[80px]"
+          placeholder={
+            t("quotations.create.fields.notesPlaceholder") || "e.g. Valid for 30 days"
+          }
+          {...register("notes")}
         />
-      )}
+      </div>
 
       <div className="grid gap-2">
         <Label htmlFor="amount">

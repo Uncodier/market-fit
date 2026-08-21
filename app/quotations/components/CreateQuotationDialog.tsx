@@ -54,6 +54,8 @@ export type QuotationToEdit = {
   lead?: { id: string; name?: string | null; email?: string | null; buyer_user_id?: string | null } | null
   deal?: { id: string; name?: string | null; amount?: number | null } | null
   buyer_user_id?: string | null
+  notes?: string | null
+  items?: Array<{ id: string; catalog_item_id: string; name: string; quantity: number; unit_price: number }>
 }
 
 interface CreateQuotationDialogProps {
@@ -86,7 +88,7 @@ export function CreateQuotationDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [buyerUser, setBuyerUser] = useState<BuyerUser | null>(null)
   const [lineItems, setLineItems] = useState<CreateQuotationLine[]>([
-    { key: newLineKey(), value: null },
+    { key: newLineKey(), value: null, quantity: 1 },
   ])
   const [stepIndex, setStepIndex] = useState(0)
   const [fieldDrafts, setFieldDrafts] = useState<Record<string, QuoteFieldDraft>>({})
@@ -106,6 +108,7 @@ export function CreateQuotationDialog({
       lead_value: null,
       clientEmail: "",
       amount: "",
+      notes: "",
     },
   })
 
@@ -118,7 +121,7 @@ export function CreateQuotationDialog({
   )
 
   const { data: catalogData } = useSWR(
-    open && currentSite && !isEditing ? ["catalog", currentSite.id] : null,
+    open && currentSite ? ["catalog", currentSite.id] : null,
     () => listCatalogItems({ siteId: currentSite!.id, pageSize: 100 })
   )
 
@@ -137,26 +140,25 @@ export function CreateQuotationDialog({
   }))
 
   const dynamicSteps = useMemo(() => {
-    if (isEditing) return []
     return lineItems.flatMap((row) => {
-      if (!row.value || row.value.mode !== "existing") return []
+      if (!row.value || row.value.mode !== "existing" || row.key.startsWith("existing_")) return []
       const item = catalogItems.find((i) => i.id === row.value!.id)
       if (!item || !hasDynamicQuoteFields(item)) return []
       return [{ lineKey: row.key, item }]
     })
-  }, [lineItems, catalogItems, isEditing])
+  }, [lineItems, catalogItems])
 
-  const totalSteps = isEditing ? 1 : 1 + dynamicSteps.length
+  const totalSteps = 1 + dynamicSteps.length
   const isDetailsStep = stepIndex === 0
   const activeDynamicStep =
-    !isEditing && !isDetailsStep && dynamicSteps.length > 0
+    !isDetailsStep && dynamicSteps.length > 0
       ? dynamicSteps[stepIndex - 1] || null
       : null
 
   const resetDialog = () => {
     reset()
     setBuyerUser(null)
-    setLineItems([{ key: newLineKey(), value: null }])
+    setLineItems([{ key: newLineKey(), value: null, quantity: 1 }])
     setStepIndex(0)
     setFieldDrafts({})
     setStepError(null)
@@ -177,6 +179,7 @@ export function CreateQuotationDialog({
         deal?.amount != null && Number(deal.amount) !== 0
           ? String(deal.amount)
           : "",
+      notes: quotationToEdit.notes || "",
     })
 
     if (lead?.buyer_user_id && lead.email) {
@@ -188,6 +191,19 @@ export function CreateQuotationDialog({
     } else {
       setBuyerUser(null)
     }
+    if (quotationToEdit.items && quotationToEdit.items.length > 0) {
+      setLineItems(
+        quotationToEdit.items.map((item) => ({
+          key: `existing_${item.id}`,
+          value: { mode: "existing", id: item.catalog_item_id, label: item.name },
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+        }))
+      )
+    } else {
+      setLineItems([{ key: newLineKey(), value: null, quantity: 1 }])
+    }
+
     setStepIndex(0)
     setStepError(null)
   }, [open, quotationToEdit, reset])
@@ -238,6 +254,9 @@ export function CreateQuotationDialog({
         siteId: currentSite.id,
         data,
         buyerUser,
+        lineItems,
+        catalogItems,
+        fieldDrafts,
         messages: formMessages,
       })
       toast.success(t("quotations.edit.success") || "Quotation updated successfully")
@@ -254,13 +273,13 @@ export function CreateQuotationDialog({
   }
 
   const goToFieldStepsOrSubmit = handleSubmit(async (data) => {
-    if (isEditing) {
-      await updateQuotation(data)
-      return
-    }
     if (dynamicSteps.length > 0) {
       setStepError(null)
       setStepIndex(1)
+      return
+    }
+    if (isEditing) {
+      await updateQuotation(data)
       return
     }
     await createQuotation(data)
@@ -284,7 +303,11 @@ export function CreateQuotationDialog({
       return
     }
 
-    await createQuotation(getValues())
+    if (isEditing) {
+      await updateQuotation(getValues())
+    } else {
+      await createQuotation(getValues())
+    }
   }
 
   const handleOpenChange = (next: boolean) => {
@@ -296,9 +319,17 @@ export function CreateQuotationDialog({
     setLineItems((prev) => prev.map((r) => (r.key === key ? { ...r, value } : r)))
   }
 
+  const updateLineQuantity = (key: string, quantity: number) => {
+    setLineItems((prev) => prev.map((r) => (r.key === key ? { ...r, quantity } : r)))
+  }
+
+  const updateLinePrice = (key: string, unitPrice?: number) => {
+    setLineItems((prev) => prev.map((r) => (r.key === key ? { ...r, unitPrice } : r)))
+  }
+
   const removeLine = (key: string) => {
     setLineItems((prev) => {
-      if (prev.length <= 1) return [{ key: newLineKey(), value: null }]
+      if (prev.length <= 1) return [{ key: newLineKey(), value: null, quantity: 1 }]
       return prev.filter((r) => r.key !== key)
     })
     setFieldDrafts((prev) => {
@@ -341,7 +372,7 @@ export function CreateQuotationDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent size="md" busy={isSubmitting}>
+      <DialogContent size="lg" className="max-w-3xl" busy={isSubmitting}>
         <DialogForm onSubmit={onFormSubmit}>
           <DialogHeader>
             <DialogTitle>
@@ -359,7 +390,7 @@ export function CreateQuotationDialog({
                   : t("quotations.create.quoteAssistantDesc") ||
                     "Fill quote fields for each dynamic pricing item."}
             </DialogDescription>
-            {!isEditing && totalSteps > 1 && (
+            {totalSteps > 1 && (
               <div className="flex items-center gap-2 pt-1">
                 {Array.from({ length: totalSteps }).map((_, i) => (
                   <div
@@ -390,9 +421,11 @@ export function CreateQuotationDialog({
                 catalogOptions={catalogOptions}
                 dynamicStepsCount={dynamicSteps.length}
                 onAddLine={() =>
-                  setLineItems((prev) => [...prev, { key: newLineKey(), value: null }])
+                  setLineItems((prev) => [...prev, { key: newLineKey(), value: null, quantity: 1 }])
                 }
                 onUpdateLine={updateLineValue}
+                onUpdateLineQuantity={updateLineQuantity}
+                onUpdateLinePrice={updateLinePrice}
                 onRemoveLine={removeLine}
               />
             ) : activeDynamicStep ? (

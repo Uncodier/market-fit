@@ -8,6 +8,8 @@ import {
   createQuotationFromDeal,
   addQuotationItem,
   updateQuotationBasics,
+  removeQuotationItem,
+  updateQuotationItem,
 } from "../actions"
 import { requestDynamicQuote } from "../dynamic-quote-actions"
 import { isDynamicPricedItem } from "@/app/catalog/dynamic-pricing"
@@ -18,11 +20,14 @@ export type CreateQuotationFormData = {
   lead_value: RelationSelectValue
   clientEmail: string
   amount: string
+  notes: string
 }
 
 export type CreateQuotationLine = {
   key: string
   value: RelationSelectValue
+  quantity?: number
+  unitPrice?: number
 }
 
 export async function resolveCreateQuotationLeadId(params: {
@@ -108,7 +113,8 @@ export async function submitCreateQuotation(params: {
   const quoteRes = await createQuotationFromDeal(
     params.siteId,
     dealRes.deal.id,
-    finalLeadId
+    finalLeadId,
+    params.data.notes
   )
 
   if (quoteRes.error || !quoteRes.data) {
@@ -144,18 +150,20 @@ export async function submitCreateQuotation(params: {
       continue
     }
 
-    let unitPrice = 0
-    if (row.value.mode === "existing" && selectedItem?.base_price !== undefined) {
-      unitPrice = selectedItem.base_price
-    } else if (selectedItem?.target_sale_price != null) {
-      unitPrice = Number(selectedItem.target_sale_price)
+    let unitPrice = row.unitPrice !== undefined ? row.unitPrice : 0
+    if (unitPrice === 0 && row.unitPrice === undefined) {
+      if (row.value.mode === "existing" && selectedItem?.base_price !== undefined) {
+        unitPrice = selectedItem.base_price
+      } else if (selectedItem?.target_sale_price != null) {
+        unitPrice = Number(selectedItem.target_sale_price)
+      }
     }
 
     await addQuotationItem({
       quotationId,
       catalogItemId,
       name: row.value.label,
-      quantity: 1,
+      quantity: row.quantity || 1,
       unitPrice,
     })
   }
@@ -168,6 +176,9 @@ export async function submitUpdateQuotation(params: {
   siteId: string
   data: CreateQuotationFormData
   buyerUser: BuyerUser | null
+  lineItems: CreateQuotationLine[]
+  catalogItems: CatalogItem[]
+  fieldDrafts: Record<string, QuoteFieldDraft>
   messages: {
     clientNameRequired: string
     clientEmailRequired: string
@@ -187,9 +198,88 @@ export async function submitUpdateQuotation(params: {
     buyerUserId: params.buyerUser?.buyerUserId || null,
     dealName: params.data.name,
     dealAmount: params.data.amount ? parseFloat(params.data.amount) : 0,
+    notes: params.data.notes,
   })
 
   if (res.error) {
     throw new Error(res.error || params.messages.errorQuote)
+  }
+
+  // Handle line items synchronization
+  const { data: quote } = res
+  const existingItems = quote?.items || []
+  
+  // 1. Remove items that were deleted or changed
+  for (const item of existingItems) {
+    const matchedLine = params.lineItems.find(l => l.key === `existing_${item.id}`)
+    if (!matchedLine || matchedLine.value?.id !== item.catalog_item_id) {
+      await removeQuotationItem(item.id)
+    }
+  }
+
+  // 2. Add new items or update existing quantity/price
+  const dealId = quote?.deal?.id || quote?.deal_id
+  for (const row of params.lineItems) {
+    if (!row.value) continue
+
+    // If it's an existing item, check if quantity, price or product changed
+    if (row.key.startsWith("existing_")) {
+      const originalId = row.key.replace("existing_", "")
+      const originalItem = existingItems.find(i => i.id === originalId)
+      if (originalItem && originalItem.catalog_item_id === row.value.id) {
+        let updates: any = {}
+        if (originalItem.quantity !== row.quantity) {
+           updates.quantity = row.quantity
+        }
+        if (row.unitPrice !== undefined && originalItem.unit_price !== row.unitPrice) {
+           updates.unitPrice = row.unitPrice
+        }
+        if (Object.keys(updates).length > 0) {
+           await updateQuotationItem(originalId, updates)
+        }
+        continue // Unchanged otherwise
+      }
+    }
+
+    const { id: catalogItemId, error: catalogError } = await resolveRelationId(
+      "catalog_item",
+      row.value,
+      params.siteId
+    )
+    if (!catalogItemId || catalogError) continue
+
+    const selectedItem = params.catalogItems.find((i) => i.id === catalogItemId)
+
+    if (selectedItem && isDynamicPricedItem(selectedItem) && dealId) {
+      const draft = params.fieldDrafts[row.key] || { values: {}, quantity: row.quantity || 1 }
+      const res = await requestDynamicQuote({
+        siteId: params.siteId,
+        catalogItemId,
+        leadId: finalLeadId,
+        quantity: draft.quantity,
+        fieldValues: draft.values,
+        quotationId: params.quotationId,
+        dealId,
+      })
+      if (res.error && !res.data?.quotationId) throw new Error(res.error)
+      continue
+    }
+
+    let unitPrice = row.unitPrice !== undefined ? row.unitPrice : 0
+    if (unitPrice === 0 && row.unitPrice === undefined) {
+      if (row.value.mode === "existing" && selectedItem?.base_price !== undefined) {
+        unitPrice = selectedItem.base_price
+      } else if (selectedItem?.target_sale_price != null) {
+        unitPrice = Number(selectedItem.target_sale_price)
+      }
+    }
+
+    await addQuotationItem({
+      quotationId: params.quotationId,
+      catalogItemId,
+      name: row.value.label,
+      quantity: row.quantity || 1,
+      unitPrice,
+    })
   }
 }
