@@ -9,16 +9,26 @@ interface GlobalErrorProps {
 }
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
+  const isStale = isStaleClientBundleError(error)
+
   useEffect(() => {
     // Stale chunks from a previous deploy: hard reload to pull the new build.
-    if (isStaleClientBundleError(error)) {
+    if (isStale) {
       reloadForNewBuild()
       return
     }
 
     // Opcionalmente enviar el error a un servicio de registro
     console.error('Error global crítico:', error)
-  }, [error])
+  }, [error, isStale])
+
+  if (isStale) {
+    return (
+      <html>
+        <body></body>
+      </html>
+    )
+  }
 
   return (
     <html>

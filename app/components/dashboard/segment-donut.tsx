@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { useSite } from "@/app/context/SiteContext"
@@ -435,8 +437,7 @@ export function SegmentDonut({
       <EmptyCard 
         icon={<PieChart className="h-6 w-6 text-muted-foreground" />}
         title="No data"
-        description={description}
-      />
+        description={description} />
     );
   }
   
@@ -511,8 +512,7 @@ export function SegmentDonut({
                   animationDelay: `${index * 0.05}s`
                 }}
                 onMouseEnter={() => setHoveredIndex(index)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              />
+                onMouseLeave={() => setHoveredIndex(null)} />
             );
           })}
           
@@ -593,8 +593,7 @@ export function SegmentDonut({
                     y2={slice.labelLineEndY}
                     stroke={isHovered ? slice.color : "currentColor"}
                     strokeWidth={isHovered ? "1.5" : "1"}
-                    strokeOpacity={isHovered ? "0.9" : "0.6"}
-                  />
+                    strokeOpacity={isHovered ? "0.9" : "0.6"} />
                 )}
                 
                 {/* Segment name */}

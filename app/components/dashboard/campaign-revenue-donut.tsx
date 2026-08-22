@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { useSite } from "@/app/context/SiteContext"
@@ -260,8 +262,7 @@ export function CampaignRevenueDonut({
       <EmptyCard 
         icon={<PieChart className="h-8 w-8 text-muted-foreground" />}
         title={t('dashboard.reports.noRevenueData') || 'No revenue data available'}
-        description={t('dashboard.reports.noRevenueDataDesc') || 'There is no campaign revenue data available for the selected period.'}
-      />
+        description={t('dashboard.reports.noRevenueDataDesc') || 'There is no campaign revenue data available for the selected period.'} />
     );
   }
   
@@ -317,8 +318,7 @@ export function CampaignRevenueDonut({
               style={{
                 transformOrigin: `${center}px ${center}px`,
                 animationDelay: `${index * 0.05}s`
-              }}
-            />
+              }} />
           ))}
           
           {/* Percentage labels (inside) */}
@@ -373,8 +373,7 @@ export function CampaignRevenueDonut({
                     y2={slice.labelLineEndY}
                     stroke="currentColor"
                     strokeWidth="1"
-                    strokeOpacity="0.6"
-                  />
+                    strokeOpacity="0.6" />
                 )}
                 
                 {/* Segment name */}

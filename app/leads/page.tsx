@@ -10,6 +10,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Star, TrendingDown, Ban, TrendingUp, XCircle, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
 import { getLeads, createLead, updateLead, deleteLead, searchLeads, searchLeadsWithCount } from "./actions"
@@ -1306,8 +1307,7 @@ export default function LeadsPage() {
           leadName={pendingStatusChange.leadName}
           statusType={pendingStatusChange.newStatus as "converted" | "lost"}
           onConfirm={handleAttributionConfirm}
-          onCancel={handleAttributionCancel}
-        />
+          onCancel={handleAttributionCancel} />
       )}
       
       {/* Modal de filtros */}
@@ -1316,8 +1316,7 @@ export default function LeadsPage() {
         onClose={() => setIsFilterModalOpen(false)}
         filters={filters}
         onApplyFilters={handleApplyFilters}
-        segments={segments}
-      />
+        segments={segments} />
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
@@ -1364,49 +1363,51 @@ export default function LeadsPage() {
               </div>
             ) : (
               <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-4">
-                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full hidden lg:flex">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.all') || 'All Companies'}>
+                <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                  <div className="flex items-center gap-4">
+                  <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                  <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.all') || 'All Companies'}>
                     <LayoutGrid size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.all') || 'All Companies'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="new" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.new') || 'New'}>
+                  <TabsTrigger value="new" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.new') || 'New'}>
                     <PlusCircle size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.new') || 'New'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="contacted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.contacted') || 'Contacted'}>
+                  <TabsTrigger value="contacted" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.contacted') || 'Contacted'}>
                     <MessageSquare size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.contacted') || 'Contacted'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.qualified') || 'Qualified'}>
+                  <TabsTrigger value="qualified" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.qualified') || 'Qualified'}>
                     <Star size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.qualified') || 'Qualified'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="cold" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.cold') || 'Cold'}>
+                  <TabsTrigger value="cold" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.cold') || 'Cold'}>
                     <TrendingDown size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.cold') || 'Cold'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="converted" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.converted') || 'Converted'}>
+                  <TabsTrigger value="converted" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.converted') || 'Converted'}>
                     <TrendingUp size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.converted') || 'Converted'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="lost" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.lost') || 'Lost'}>
+                  <TabsTrigger value="lost" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.lost') || 'Lost'}>
                     <XCircle size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.lost') || 'Lost'}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="not_qualified" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('leads.tabs.notQualified') || 'Not Qualified'}>
+                  <TabsTrigger value="not_qualified" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.notQualified') || 'Not Qualified'}>
                     <Ban size={13} className="md:!hidden" />
                     <span className="tab-label">{t('leads.tabs.notQualified') || 'Not Qualified'}</span>
                   </TabsTrigger>
                 </TabsList>
-                  <SearchInput
+                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
                     placeholder="Search leads..."
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                    alwaysExpanded={false}
-                  />
+                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
                 </div>
+                </div>
+              </MobileFiltersDrawer>
                 <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                   {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
                     <Button variant="ghost" size="sm" onClick={handleClearFilters}>
@@ -1505,8 +1506,7 @@ export default function LeadsPage() {
                         isLoadingJourneyStages={isLoadingJourneyStages}
                         reloadingLeads={reloadingLeads}
                         selectedLeads={selectedLeads}
-                        onSelectLeads={setSelectedLeads}
-                    />
+                        onSelectLeads={setSelectedLeads} />
                   ) : (
                     <KanbanView 
                       leads={filteredLeads}
@@ -1519,8 +1519,7 @@ export default function LeadsPage() {
                       userData={userData}
                       kanbanPagination={kanbanPagination}
                       onLoadMore={handleLoadMoreKanban}
-                      totalCounts={totalCounts}
-                    />
+                      totalCounts={totalCounts} />
                   )}
                 </TabsContent>
                 ))}

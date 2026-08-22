@@ -7,6 +7,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { Filter, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
 import { getSales, updateSale } from "./actions"
@@ -309,24 +310,28 @@ export default function SalesPage() {
           <StickyHeader>
             <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-4">
-                  <TabsList className="hidden md:flex h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.all') || "All Sales"}>
+                <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                  <div className="flex items-center gap-4">
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">Filtros</span>
+                  <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                    <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.all') || "All Sales"}>
                       <span className="tab-label">{t('sales.tabs.all') || 'All Sales'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.pending') || "Pending"}>
+                    <TabsTrigger value="pending" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.pending') || "Pending"}>
                       <span className="tab-label">{t('sales.tabs.pending') || 'Pending'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.completed') || "Completed"}>
+                    <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.completed') || "Completed"}>
                       <span className="tab-label">{t('sales.tabs.completed') || 'Completed'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="cancelled" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.cancelled') || "Cancelled"}>
+                    <TabsTrigger value="cancelled" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.cancelled') || "Cancelled"}>
                       <span className="tab-label">{t('sales.tabs.cancelled') || 'Cancelled'}</span>
                     </TabsTrigger>
-                    <TabsTrigger value="refunded" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5" title={t('sales.tabs.refunded') || "Refunded"}>
+                    <TabsTrigger value="refunded" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('sales.tabs.refunded') || "Refunded"}>
                       <span className="tab-label">{t('sales.tabs.refunded') || 'Refunded'}</span>
                     </TabsTrigger>
                   </TabsList>
+                  </div>
 
                   {locations.length > 0 && (
                     <Select
@@ -345,99 +350,71 @@ export default function SalesPage() {
                     </Select>
                   )}
 
-                  <SearchInput
-                    data-command-k-input
-                    placeholder={t('sales.search.placeholder') || "Search sales..."}
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    alwaysExpanded={false}
-                  />
-                </div>
-                
-                <div className="ml-auto flex flex-wrap justify-end items-center gap-2">
-                  <div className="md:hidden">
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">
-                          <Filter className="h-4 w-4" />
+                        <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-8 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title="Sort by">
+                          <div className="flex items-center gap-2">
+                            <ListOrdered className="h-4 w-4" />
+                            <span className="font-normal">
+                              {sortBy === "newest"
+                                ? "Newest"
+                                : sortBy === "oldest"
+                                  ? "Oldest"
+                                  : sortBy === "value_desc"
+                                    ? "Highest Value"
+                                    : "Lowest Value"}
+                            </span>
+                          </div>
+                          <ChevronDown className="h-3 w-3 opacity-50" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("all")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "all" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.all') || "All Sales"}
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                          Newest
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("pending")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "pending" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.pending') || "Pending"}
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                          Oldest
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("completed")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "completed" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.completed') || "Completed"}
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_desc")}>
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "value_desc" ? "opacity-100" : "opacity-0")} />
+                          Highest Value
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("cancelled")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "cancelled" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.cancelled') || "Cancelled"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("refunded")}>
-                          <Check className={cn("mr-2 h-4 w-4", activeTab === "refunded" ? "opacity-100" : "opacity-0")} />
-                          {t('sales.tabs.refunded') || "Refunded"}
+                        <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_asc")}>
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "value_asc" ? "opacity-100" : "opacity-0")} />
+                          Lowest Value
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+
+                    <CalendarDateRangePicker 
+                      onRangeChange={handleDateRangeChange} 
+                      initialStartDate={dateRange.startDate}
+                      initialEndDate={dateRange.endDate} />
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title="Sort by">
-                        <ListOrdered className="h-4 w-4" />
-                        <span className="hidden sm:inline font-normal">
-                          {sortBy === "newest"
-                            ? "Newest"
-                            : sortBy === "oldest"
-                              ? "Oldest"
-                              : sortBy === "value_desc"
-                                ? "Highest Value"
-                                : "Lowest Value"}
-                        </span>
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                        Newest
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                        Oldest
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_desc")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "value_desc" ? "opacity-100" : "opacity-0")} />
-                        Highest Value
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("value_asc")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "value_asc" ? "opacity-100" : "opacity-0")} />
-                        Lowest Value
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  
-                  <CalendarDateRangePicker 
-                    onRangeChange={handleDateRangeChange} 
-                    initialStartDate={dateRange.startDate}
-                    initialEndDate={dateRange.endDate}
-                  />
-                  
-                  <ViewSelector currentView={viewType} onViewChange={setViewType} />
+                  <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      data-command-k-input
+                      placeholder={t('sales.search.placeholder') || "Search sales..."}
+                      value={searchQuery}
+                      onChange={handleSearchChange} />
+                  </div>
                 </div>
+              </MobileFiltersDrawer>
+                
+              <div className="ml-auto flex flex-wrap justify-end items-center gap-2 shrink-0">
+                <ViewSelector currentView={viewType} onViewChange={setViewType} />
               </div>
+            </div>
             </div>
           </StickyHeader>
           
-          <div className="p-8 space-y-4 bg-muted/30 flex-1">
-            <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : ""}>
-              <div className={viewType === 'kanban' ? "min-w-fit px-8" : ""}>
+        <div className="p-8 space-y-4 bg-muted/30 flex-1 min-h-0 overflow-auto">
+          <div className={viewType === 'kanban' ? "pb-4 -mx-8" : ""}>
+            <div className={viewType === 'kanban' ? "px-8" : "h-full flex flex-col"}>
               {loading ? (
                 <SalesTableSkeleton />
               ) : viewType === "table" ? (
@@ -451,8 +428,7 @@ export default function SalesPage() {
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onSaleClick={handleSaleClick}
                   onPrintSale={handlePrintSale}
-                  onRegisterPayment={handleRegisterPayment}
-                />
+                  onRegisterPayment={handleRegisterPayment} />
               ) : (
                 <KanbanView
                   sales={filteredSales}
@@ -460,8 +436,7 @@ export default function SalesPage() {
                   segments={segments}
                   onSaleClick={handleSaleClick}
                   onPrintSale={handlePrintSale}
-                  onRegisterPayment={handleRegisterPayment}
-                />
+                  onRegisterPayment={handleRegisterPayment} />
               )}
               </div>
             </div>
@@ -473,23 +448,20 @@ export default function SalesPage() {
           sale={selectedSale}
           open={printDialogOpen}
           onOpenChange={setPrintDialogOpen}
-          onConfirm={handleConfirmPrint}
-        />
+          onConfirm={handleConfirmPrint} />
 
         {/* Register Payment Dialog */}
         <RegisterPaymentDialog
           sale={selectedSale}
           open={registerPaymentOpen}
           onOpenChange={setRegisterPaymentOpen}
-          onSuccess={handlePaymentSuccess}
-        />
+          onSuccess={handlePaymentSuccess} />
 
         {/* Create Sale Dialog */}
         <CreateSaleDialog
           open={isCreateDialogOpen}
           onOpenChange={setIsCreateDialogOpen}
-          onSuccess={handleCreateSuccess}
-        />
+          onSuccess={handleCreateSuccess} />
       </div>
   )
 } 

@@ -14,13 +14,19 @@ export default function ChatError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const isChunkError = isChunkLoadError(error)
+
   useEffect(() => {
-    if (isChunkLoadError(error)) {
+    if (isChunkError) {
       reloadForNewBuild()
       return
     }
     console.error('Chat Error:', error)
-  }, [error])
+  }, [error, isChunkError])
+
+  if (isChunkError) {
+    return null
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen p-6 bg-muted/30">

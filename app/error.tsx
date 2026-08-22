@@ -12,11 +12,13 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const isStale = isStaleClientBundleError(error)
+
   // If the error is caused by stale chunks from a previous build, force a hard
   // reload so the browser fetches the latest HTML and chunk hashes. This is the
   // recovery path for users who had the tab open before a deploy.
   useEffect(() => {
-    if (isStaleClientBundleError(error)) {
+    if (isStale) {
       reloadForNewBuild()
       return
     }
@@ -27,7 +29,11 @@ export default function Error({
     if (error.message.includes('token') || error.message.includes('auth')) {
       console.error('Posible problema de autenticación. Intenta cerrar sesión y volver a iniciar sesión.')
     }
-  }, [error])
+  }, [error, isStale])
+
+  if (isStale) {
+    return null
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen p-6 bg-gray-50">

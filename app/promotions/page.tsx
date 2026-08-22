@@ -1,5 +1,7 @@
 "use client"
 
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+
 import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { useRouter } from "next/navigation"
@@ -59,32 +61,45 @@ export default function PromotionsPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
-            <div className="flex items-center space-x-2 overflow-x-auto overflow-y-hidden no-scrollbar pb-1 md:pb-0 flex-1 min-w-0 gap-2">
-              <Tabs
-                value={statusFilter}
-                onValueChange={(val) => { setStatusFilter(val); setPage(1); }}
-                className="hidden lg:block"
-              >
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
-                  <TabsTrigger value="all" className="text-xs font-medium rounded-full">{t("promotions.tabs.all") || "All"}</TabsTrigger>
-                  <TabsTrigger value="active" className="text-xs font-medium rounded-full">{t("promotions.tabs.active") || "Active"}</TabsTrigger>
-                  <TabsTrigger value="draft" className="text-xs font-medium rounded-full">{t("promotions.tabs.draft") || "Draft"}</TabsTrigger>
-                  <TabsTrigger value="paused" className="text-xs font-medium rounded-full">{t("promotions.tabs.paused") || "Paused"}</TabsTrigger>
-                  <TabsTrigger value="expired" className="text-xs font-medium rounded-full">{t("promotions.tabs.expired") || "Expired"}</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-            
-            <div className="flex items-center gap-2 w-auto justify-end shrink-0">
-              <form onSubmit={handleSearch} className="w-auto">
-              <SearchInput
-                placeholder={t("promotions.search") || "Search name or code..."}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                alwaysExpanded={false}
-              />
-            </form>
-            </div>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                <div className="md:hidden w-full">
+                  <form onSubmit={handleSearch} className="w-full">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      placeholder={t("promotions.search") || "Search name or code..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      alwaysExpanded={true} />
+                  </form>
+                </div>
+
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') || 'Estado'}</span>
+                  <Tabs
+                    value={statusFilter}
+                    onValueChange={(val) => { setStatusFilter(val); setPage(1); }}
+                    className="w-full md:w-auto"
+                  >
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.all") || "All"}</TabsTrigger>
+                      <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.active") || "Active"}</TabsTrigger>
+                      <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.draft") || "Draft"}</TabsTrigger>
+                      <TabsTrigger value="paused" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.paused") || "Paused"}</TabsTrigger>
+                      <TabsTrigger value="expired" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">{t("promotions.tabs.expired") || "Expired"}</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+                
+                <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <form onSubmit={handleSearch} className="w-auto">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      placeholder={t("promotions.search") || "Search name or code..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)} />
+                  </form>
+                </div>
+              </div>
+            </MobileFiltersDrawer>
           </div>
         </div>
       </StickyHeader>
@@ -104,8 +119,7 @@ export default function PromotionsPage() {
             totalCount={data?.count ?? 0}
             onPageChange={setPage}
             onOpen={(id) => router.push(`/promotions/${id}`)}
-            onCreate={() => setIsCreateOpen(true)}
-          />
+            onCreate={() => setIsCreateOpen(true)} />
         )}
       </div>
 
@@ -113,8 +127,7 @@ export default function PromotionsPage() {
         <CreatePromotionDialog
           open={isCreateOpen}
           onOpenChange={setIsCreateOpen}
-          onSuccess={() => mutate()}
-        />
+          onSuccess={() => mutate()} />
       )}
     </div>
   )

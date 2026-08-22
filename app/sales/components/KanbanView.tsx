@@ -4,7 +4,6 @@ import React from "react"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
-import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { Sale } from "@/app/types"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
@@ -99,11 +98,11 @@ export function KanbanView({
 
   return (
     <div className="w-full">
-      <div className="overflow-x-auto pb-8">
+      <div className="pb-8">
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="inline-flex gap-4 pb-4 min-h-[200px]">
+          <div className="flex flex-wrap md:flex-nowrap items-start gap-4 pb-4 min-h-[200px]">
             {SALE_STATUSES.map(status => (
-              <div key={status.id} className="flex flex-col h-full w-[280px]">
+              <div key={status.id} className="flex flex-col w-[calc(50%_-_8px)] md:w-[280px] shrink-0">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="font-medium text-sm">{status.name}</h3>
                   <Badge variant="outline">{salesByStatus[status.id].length}</Badge>
@@ -115,13 +114,15 @@ export function KanbanView({
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={cn(
-                        "flex-1 rounded-md p-2 min-h-[500px]",
+                        "flex-1 min-h-[150px] flex flex-col",
                         snapshot.isDraggingOver 
-                          ? 'bg-gray-100/80 dark:bg-primary/10' 
-                          : 'bg-gray-50/80 dark:bg-[rgb(2,8,23)]/5'
+                          ? 'bg-gray-100/80 dark:bg-primary/10 rounded-md' 
+                          : ''
                       )}
                     >
-                      <ScrollArea className="h-[500px] w-full pr-4">
+                      <div 
+                        className="w-full rounded-md p-2 bg-gray-50/80 dark:bg-[rgb(2,8,23)]/5 flex flex-col"
+                      >
                         {salesByStatus[status.id].map((sale, index) => (
                           <Draggable key={sale.id} draggableId={sale.id} index={index}>
                             {(provided, snapshot) => (
@@ -197,7 +198,7 @@ export function KanbanView({
                           </Draggable>
                         ))}
                         {provided.placeholder}
-                      </ScrollArea>
+                      </div>
                     </div>
                   )}
                 </Droppable>

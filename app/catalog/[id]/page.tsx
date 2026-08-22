@@ -21,6 +21,7 @@ import {
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
+import { ResponsiveTabsList, TabItem } from "@/app/components/ui/responsive-tabs-list"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import {
@@ -71,6 +72,8 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
     is_dynamic_price: false,
   })
 
+  const [activeTab, setActiveTab] = useState("details")
+  
   useEffect(() => {
     async function load() {
       if (currentSite) {
@@ -168,33 +171,33 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
     }
   }, [item, t]);
 
+  const catalogTabs: TabItem[] = [
+    { value: "details", label: t('catalog.tabs.details') || 'Details' },
+    { value: "variants", label: t('catalog.tabs.variants') || 'Variants' },
+    ...(item && formData.is_purchasable !== false ? [{ value: "modifiers", label: t('catalog.tabs.modifiers') || 'Modifiers' }] : []),
+    { value: "delivery", label: t('catalog.tabs.delivery') || 'Delivery' },
+    { value: "marketplace", label: t('catalog.tabs.marketplace') || 'Marketplace' },
+    { value: "channels", label: t('catalog.tabs.channels') || 'Channels' },
+    { value: "inventory", label: t('catalog.tabs.inventory') || 'Inventory' },
+    { value: "sales", label: t('catalog.tabs.sales') || 'Sales' },
+    ...(formData.is_recurring ? [{ value: "plan_items", label: t('catalog.tabs.planItems') || 'Plan Items' }] : []),
+    ...(formData.kind === 'digital_asset' && formData.digital_subtype === 'pass' ? [{ value: "pass_items", label: t('catalog.tabs.passItems') || 'Pass Services' }] : []),
+  ];
+
   if (loading) {
     return <div className="p-8 space-y-4"><Skeleton className="h-10 w-1/3"/><Skeleton className="h-64 w-full"/></div>
   }
 
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))]">
-      <Tabs defaultValue="details" className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <StickyHeader>
           <div className="w-full pt-0 flex justify-between items-center">
-            <TabsList>
-              <TabsTrigger value="details">{t('catalog.tabs.details') || 'Details'}</TabsTrigger>
-              <TabsTrigger value="variants">{t('catalog.tabs.variants') || 'Variants'}</TabsTrigger>
-              {item && formData.is_purchasable !== false && (
-                <TabsTrigger value="modifiers">{t('catalog.tabs.modifiers') || 'Modifiers'}</TabsTrigger>
-              )}
-              <TabsTrigger value="delivery">{t('catalog.tabs.delivery') || 'Delivery'}</TabsTrigger>
-              <TabsTrigger value="marketplace">{t('catalog.tabs.marketplace') || 'Marketplace'}</TabsTrigger>
-              <TabsTrigger value="channels">{t('catalog.tabs.channels') || 'Channels'}</TabsTrigger>
-              <TabsTrigger value="inventory">{t('catalog.tabs.inventory') || 'Inventory'}</TabsTrigger>
-              <TabsTrigger value="sales">{t('catalog.tabs.sales') || 'Sales'}</TabsTrigger>
-              {formData.is_recurring && (
-                <TabsTrigger value="plan_items">{t('catalog.tabs.planItems') || 'Plan Items'}</TabsTrigger>
-              )}
-              {formData.kind === 'digital_asset' && formData.digital_subtype === 'pass' && (
-                <TabsTrigger value="pass_items">{t('catalog.tabs.passItems') || 'Pass Services'}</TabsTrigger>
-              )}
-            </TabsList>
+            <ResponsiveTabsList 
+              tabs={catalogTabs} 
+              activeTab={activeTab} 
+              onTabChange={setActiveTab}
+              className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full" />
           </div>
         </StickyHeader>
 
@@ -211,16 +214,14 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                 <ImageUpload 
                   value={formData.image_url || ''} 
                   onChange={val => setFormData({...formData, image_url: val})} 
-                  onRemove={() => setFormData({...formData, image_url: undefined})} 
-                />
+                  onRemove={() => setFormData({...formData, image_url: undefined})} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2 md:col-span-1">
                   <Label>{t('catalog.form.name') || 'Name'}</Label>
                   <Input 
                     value={formData.name || ''} 
-                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                  />
+                    onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
                 <div className="space-y-2 col-span-2 md:col-span-1">
                   <Label>{t('catalog.form.type') || 'Type'}</Label>
@@ -262,8 +263,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                     value={categoryValue}
                     onValueChange={setCategoryValue}
                     options={categories.map(c => ({ id: c.id, label: c.name }))}
-                    placeholder="Select or create category..."
-                  />
+                    placeholder="Select or create category..." />
                 </div>
               </div>
 
@@ -272,8 +272,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                 <Textarea 
                   value={formData.description || ''} 
                   onChange={e => setFormData({...formData, description: e.target.value})}
-                  rows={4} 
-                />
+                  rows={4} />
               </div>
               
               <div className="space-y-2">
@@ -282,8 +281,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   value={formData.sku || ''} 
                   onChange={e => setFormData({...formData, sku: e.target.value})} 
                   className="font-mono"
-                  placeholder="Optional unique identifier"
-                />
+                  placeholder="Optional unique identifier" />
               </div>
                 </SectionCardContent>
                 <ActionFooter>
@@ -298,8 +296,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                 formData={formData}
                 setFormData={setFormData}
                 handleSave={handleSave}
-                saving={saving}
-              />
+                saving={saving} />
 
               <SectionCard>
                 <SectionCardHeader>
@@ -347,8 +344,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                       <Switch 
                         id="track_inventory" 
                         checked={formData.track_inventory || false}
-                        onCheckedChange={(checked) => setFormData({...formData, track_inventory: checked as boolean})}
-                      />
+                        onCheckedChange={(checked) => setFormData({...formData, track_inventory: checked as boolean})} />
                     </div>
                   </div>
                 </SectionCardContent>
@@ -363,8 +359,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   formData={formData}
                   setFormData={setFormData}
                   handleSave={handleSave}
-                  saving={saving}
-                />
+                  saving={saving} />
               )}
 
               {item && (
@@ -398,8 +393,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   onUpdate={(updated) => {
                     setItem({ ...item, ...updated });
                     setFormData({ ...formData, ...updated });
-                  }} 
-                />
+                  }} />
               )}
             </div>
           </TabsContent>
@@ -419,8 +413,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   formData={formData}
                   setFormData={setFormData}
                   handleSave={handleSave}
-                  saving={saving}
-                />
+                  saving={saving} />
               )}
               {item && (
                 <ProductDownloadableFilesCard item={item} />
@@ -434,8 +427,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               formData={formData}
               setFormData={setFormData}
               handleSave={handleSave}
-              saving={saving}
-            />
+              saving={saving} />
           </TabsContent>
 
           <TabsContent value="channels" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
@@ -444,8 +436,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               formData={formData}
               setFormData={setFormData}
               handleSave={handleSave}
-              saving={saving}
-            />
+              saving={saving} />
           </TabsContent>
 
           {formData.is_recurring && (
@@ -464,8 +455,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   formData={formData}
                   setFormData={setFormData}
                   handleSave={handleSave}
-                  saving={saving}
-                />
+                  saving={saving} />
               </div>
             </TabsContent>
           )}
@@ -475,8 +465,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               <EmptyCard
                 icon={<Activity className="h-12 w-12 text-muted-foreground/50" />}
                 title={t('catalog.tabs.inventoryTracking') || "Inventory Tracking (Coming Soon)"}
-                description={t('catalog.tabs.inventoryTrackingDesc') || "View stock levels and movement history across locations."}
-              />
+                description={t('catalog.tabs.inventoryTrackingDesc') || "View stock levels and movement history across locations."} />
             </div>
           </TabsContent>
 
@@ -485,8 +474,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               <EmptyCard
                 icon={<Activity className="h-12 w-12 text-muted-foreground/50" />}
                 title={t('catalog.tabs.salesHistory') || "Sales History (Coming Soon)"}
-                description={t('catalog.tabs.salesHistoryDesc') || "Track revenue and units sold over time for this item."}
-              />
+                description={t('catalog.tabs.salesHistoryDesc') || "Track revenue and units sold over time for this item."} />
             </div>
           </TabsContent>
         </div>

@@ -9,6 +9,7 @@ import { SubscriptionsList, SubscriptionsListSkeleton } from "./components/Subsc
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { CreateSubscriptionDialog } from "./components/CreateSubscriptionDialog"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 
 export default function SubscriptionsPage() {
@@ -61,36 +62,47 @@ export default function SubscriptionsPage() {
       <StickyHeader>
         <div className="w-full pt-0 flex items-center justify-between">
           <div className="flex items-center justify-between gap-2 w-full">
-            <div className="flex items-center space-x-2 overflow-x-auto overflow-y-hidden no-scrollbar pb-1 md:pb-0 flex-1 min-w-0 gap-2">
-              <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="gap-2 text-xs rounded-full">
-                    {t("subscriptions.tabs.all") || "All"}
-                  </TabsTrigger>
-                  <TabsTrigger value="active" className="gap-2 text-xs rounded-full">
-                    {t("subscriptions.tabs.active") || "Active"}
-                  </TabsTrigger>
-                  <TabsTrigger value="paused" className="gap-2 text-xs rounded-full">
-                    {t("subscriptions.tabs.paused") || "Paused"}
-                  </TabsTrigger>
-                  <TabsTrigger value="cancelled" className="gap-2 text-xs rounded-full">
-                    {t("subscriptions.tabs.cancelled") || "Cancelled"}
-                  </TabsTrigger>
-                  <TabsTrigger value="expired" className="gap-2 text-xs rounded-full">
-                    {t("subscriptions.tabs.expired") || "Expired"}
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                <div className="md:hidden w-full">
+                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                    placeholder={t("subscriptions.search") || "Search subscriptions..."}
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    alwaysExpanded={true} />
+                </div>
 
-            <div className="flex items-center gap-2 w-auto justify-end shrink-0">
-              <SearchInput
-                placeholder={t("subscriptions.search") || "Search subscriptions..."}
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                alwaysExpanded={false}
-              />
-            </div>
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') || 'Estado'}</span>
+                  <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                        {t("subscriptions.tabs.all") || "All"}
+                      </TabsTrigger>
+                      <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                        {t("subscriptions.tabs.active") || "Active"}
+                      </TabsTrigger>
+                      <TabsTrigger value="paused" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                        {t("subscriptions.tabs.paused") || "Paused"}
+                      </TabsTrigger>
+                      <TabsTrigger value="cancelled" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                        {t("subscriptions.tabs.cancelled") || "Cancelled"}
+                      </TabsTrigger>
+                      <TabsTrigger value="expired" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                        {t("subscriptions.tabs.expired") || "Expired"}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+
+                <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                    placeholder={t("subscriptions.search") || "Search subscriptions..."}
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)} />
+                </div>
+              </div>
+            </MobileFiltersDrawer>
           </div>
         </div>
       </StickyHeader>
@@ -102,15 +114,13 @@ export default function SubscriptionsPage() {
           <SubscriptionsList
             subscriptions={filteredSubscriptions}
             siteId={currentSite.id}
-            onUpdate={mutate}
-          />
+            onUpdate={mutate} />
         )}
       </div>
       <CreateSubscriptionDialog
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        onSuccess={mutate}
-      />
+        onSuccess={mutate} />
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { EmptyState } from "@/app/components/ui/empty-state"
 import { Target, Filter, LayoutGrid, PlayCircle, Clock, CheckCircle2, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { Button } from "@/app/components/ui/button"
 import {
   DropdownMenu,
@@ -150,107 +151,133 @@ export default function CampaignsPage() {
       <StickyHeader>
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t("campaigns.tabs.all") || "All"}>
-                  <LayoutGrid size={13} className="md:!hidden" />
-                  <span className="tab-label">{t("campaigns.tabs.all") || "All"}</span>
-                </TabsTrigger>
-                <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t("campaigns.tabs.active") || "Active"}>
-                  <PlayCircle size={13} className="md:!hidden" />
-                  <span className="tab-label">{t("campaigns.tabs.active") || "Active"}</span>
-                </TabsTrigger>
-                <TabsTrigger value="pending" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t("campaigns.tabs.pending") || "Pending"}>
-                  <Clock size={13} className="md:!hidden" />
-                  <span className="tab-label">{t("campaigns.tabs.pending") || "Pending"}</span>
-                </TabsTrigger>
-                <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t("campaigns.tabs.draft") || "Draft"}>
-                  <LayoutGrid size={13} className="md:!hidden" />
-                  <span className="tab-label">{t("campaigns.tabs.draft") || "Drafts"}</span>
-                </TabsTrigger>
-                <TabsTrigger value="completed" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t("campaigns.tabs.completed") || "Completed"}>
-                  <CheckCircle2 size={13} className="md:!hidden" />
-                  <span className="tab-label">{t("campaigns.tabs.completed") || "Completed"}</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <SearchInput
-              data-command-k-input
-              placeholder={t("campaigns.search.placeholder") || "Search campaigns..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64"
-              alwaysExpanded={false}
-            />
-          </div>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                <div className="md:hidden w-full">
+                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                    data-command-k-input
+                    placeholder={t("campaigns.search.placeholder") || "Search campaigns..."}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full"
+                    alwaysExpanded={true} />
+                </div>
 
-          <div className="ml-auto flex flex-wrap justify-end items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full">
-                  <Filter className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuCheckboxItem
-                  checked={selectedPriorities.length === 3}
-                  onCheckedChange={(checked) => setSelectedPriorities(checked ? ["high", "medium", "low"] : [])}
-                  className={selectedPriorities.length === 3 ? "bg-primary/10 font-medium" : ""}
-                >
-                  {t("campaigns.filter.all") || "All Priorities"}
-                </DropdownMenuCheckboxItem>
-                {(["high", "medium", "low"] as const).map((priority) => (
-                  <DropdownMenuCheckboxItem
-                    key={priority}
-                    checked={selectedPriorities.includes(priority)}
-                    onCheckedChange={(checked) => {
-                      setSelectedPriorities(
-                        checked
-                          ? [...selectedPriorities, priority]
-                          : selectedPriorities.filter((value) => value !== priority)
-                      )
-                    }}
-                    className={selectedPriorities.includes(priority) && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
-                  >
-                    {t(`campaigns.filter.${priority}`) || `${priority} Priority`}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') || 'Estado'}</span>
+                  <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "draft" | "completed")}>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.all") || "All Campaigns"}>
+                        <LayoutGrid size={13} className="md:!hidden" />
+                        <span className="tab-label">{t("campaigns.tabs.all") || "All"}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.active") || "Active"}>
+                        <PlayCircle size={13} className="md:!hidden" />
+                        <span className="tab-label">{t("campaigns.tabs.active") || "Active"}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="pending" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.pending") || "Pending"}>
+                        <Clock size={13} className="md:!hidden" />
+                        <span className="tab-label">{t("campaigns.tabs.pending") || "Pending"}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.draft") || "Drafts"}>
+                        <FileText size={13} className="md:!hidden" />
+                        <span className="tab-label">{t("campaigns.tabs.draft") || "Drafts"}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.completed") || "Completed"}>
+                        <CheckCircle2 size={13} className="md:!hidden" />
+                        <span className="tab-label">{t("campaigns.tabs.completed") || "Completed"}</span>
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title="Sort by">
-                  <ListOrdered className="h-4 w-4" />
-                  <span className="hidden sm:inline font-normal">
-                    {sortBy === "due_date"
-                      ? "Due date"
-                      : sortBy === "oldest"
-                        ? "Oldest"
-                        : sortBy === "newest"
-                          ? "Newest"
-                          : sortBy === "budget"
-                            ? "Budget"
-                            : "ROI"}
-                  </span>
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                {([
-                  ["due_date", "Due date"],
-                  ["oldest", "Oldest"],
-                  ["newest", "Newest"],
-                  ["budget", "Budget"],
-                  ["roi", "ROI"],
-                ] as const).map(([value, label]) => (
-                  <DropdownMenuItem key={value} className="cursor-pointer" onClick={() => setSortBy(value)}>
-                    <Check className={cn("mr-2 h-4 w-4", sortBy === value ? "opacity-100" : "opacity-0")} />
-                    {label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="sm" className="w-full md:w-auto md:w-9 h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center">
+                        <div className="flex items-center gap-2">
+                          <Filter className="h-4 w-4" />
+                          <span className="font-normal md:hidden">Filters</span>
+                        </div>
+                        <ChevronDown className="h-3 w-3 opacity-50 md:hidden" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[200px]">
+                      <DropdownMenuCheckboxItem
+                        checked={selectedPriorities.length === 3}
+                        onCheckedChange={(checked) => setSelectedPriorities(checked ? ["high", "medium", "low"] : [])}
+                        className={selectedPriorities.length === 3 ? "bg-primary/10 font-medium" : ""}
+                      >
+                        {t("campaigns.filter.all") || "All Priorities"}
+                      </DropdownMenuCheckboxItem>
+                      {(["high", "medium", "low"] as const).map((priority) => (
+                        <DropdownMenuCheckboxItem
+                          key={priority}
+                          checked={selectedPriorities.includes(priority)}
+                          onCheckedChange={(checked) => {
+                            setSelectedPriorities(
+                              checked
+                                ? [...selectedPriorities, priority]
+                                : selectedPriorities.filter((value) => value !== priority)
+                            )
+                          }}
+                          className={selectedPriorities.includes(priority) && selectedPriorities.length === 1 ? "bg-primary/10 font-medium" : ""}
+                        >
+                          {t(`campaigns.filter.${priority}`) || `${priority} Priority`}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title="Sort by">
+                        <div className="flex items-center gap-2">
+                          <ListOrdered className="h-4 w-4" />
+                          <span className="font-normal">
+                            {sortBy === "due_date"
+                              ? "Due date"
+                              : sortBy === "oldest"
+                                ? "Oldest"
+                                : sortBy === "newest"
+                                  ? "Newest"
+                                  : sortBy === "budget"
+                                    ? "Budget"
+                                    : "ROI"}
+                          </span>
+                        </div>
+                        <ChevronDown className="h-3 w-3 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      {([
+                        ["due_date", "Due date"],
+                        ["oldest", "Oldest"],
+                        ["newest", "Newest"],
+                        ["budget", "Budget"],
+                        ["roi", "ROI"],
+                      ] as const).map(([value, label]) => (
+                        <DropdownMenuItem key={value} className="cursor-pointer" onClick={() => setSortBy(value)}>
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === value ? "opacity-100" : "opacity-0")} />
+                          {label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <CalendarDateRangePicker />
+                </div>
+
+                <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                    data-command-k-input
+                    placeholder={t("campaigns.search.placeholder") || "Search campaigns..."}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-64" />
+                </div>
+              </div>
+            </MobileFiltersDrawer>
 
             <CalendarDateRangePicker />
             <ViewSelector currentView={viewType} onViewChange={setViewType} />
@@ -280,8 +307,7 @@ export default function CampaignsPage() {
                 t("campaigns.empty.feature.item3") || "Manage subtasks and deadlines",
               ],
             },
-          ]}
-        />
+          ]} />
       ) : (
         <div className={cn("p-8 space-y-4 bg-muted/30 flex-1", viewType === "kanban" && "overflow-x-auto")}>
           {viewType === "table" ? (
@@ -290,8 +316,7 @@ export default function CampaignsPage() {
             <CampaignsKanban
               campaignsByType={campaignsByType}
               requirements={requirements}
-              searchQuery={searchQuery}
-            />
+              searchQuery={searchQuery} />
           )}
         </div>
       )}

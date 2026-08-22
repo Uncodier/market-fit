@@ -57,10 +57,16 @@ export type UpdateNotificationInput = z.infer<typeof UpdateNotificationSchema>
 
 async function readJsonBody(response: Response): Promise<any | null> {
   const contentType = response.headers.get("content-type") || ""
-  if (!contentType.includes("application/json")) return null
+  if (!contentType.includes("application/json")) {
+    console.error("readJsonBody: Content-Type is not JSON", contentType)
+    return null
+  }
   try {
-    return await response.json()
-  } catch {
+    const text = await response.text()
+    if (!text) return {} // Return empty object if body is empty
+    return JSON.parse(text)
+  } catch (error) {
+    console.error("readJsonBody: JSON parse error", error)
     return null
   }
 }
@@ -84,8 +90,8 @@ export async function getNotifications(site_id: string, user_id: string): Promis
 
     return { notifications: data.notifications || [] }
   } catch (error) {
-    console.error("Error loading notifications:", error)
-    return { error: "Error loading notifications", notifications: [] }
+    console.error("Error loading notifications detail:", error)
+    return { error: error instanceof Error ? error.message : "Error loading notifications", notifications: [] }
   }
 }
 

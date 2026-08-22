@@ -29,6 +29,7 @@ import { Switch } from "@/app/components/ui/switch"
 import { Pagination } from "@/app/components/ui/pagination"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useSite } from "@/app/context/SiteContext"
 import { getCopywriting, createCopywriting, updateCopywritingStatus, updateCopywriting, type CopywritingItem } from "./actions"
@@ -245,8 +246,7 @@ function CreateCopywritingDialog({
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="Enter title..."
-                required
-              />
+                required />
             </div>
             <div>
               <Label htmlFor="type">Type</Label>
@@ -277,8 +277,7 @@ function CreateCopywritingDialog({
               id="description"
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Brief description..."
-            />
+              placeholder="Brief description..." />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -289,8 +288,7 @@ function CreateCopywritingDialog({
                 value={formData.segmentValue} 
                 onValueChange={(value) => setFormData(prev => ({ ...prev, segmentValue: value }))}
                 placeholder="Select a segment..."
-                emptyMessage="No segment found"
-              />
+                emptyMessage="No segment found" />
             </div>
             <div>
               <Label htmlFor="campaign">Campaign (Optional)</Label>
@@ -299,8 +297,7 @@ function CreateCopywritingDialog({
                 value={formData.campaignValue} 
                 onValueChange={(value) => setFormData(prev => ({ ...prev, campaignValue: value }))}
                 placeholder="Select a campaign..."
-                emptyMessage="No campaign found"
-              />
+                emptyMessage="No campaign found" />
             </div>
           </div>
 
@@ -311,8 +308,7 @@ function CreateCopywritingDialog({
               value={formData.content}
               onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
               placeholder="Write your copy here..."
-              rows={8}
-            />
+              rows={8} />
           </div>
           </DialogBody>
           <DialogFooter>
@@ -570,60 +566,71 @@ export default function CopywritingPage() {
       <Tabs defaultValue="all">
         <StickyHeader>
           <div className="px-16 pt-0">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-8">
-                <TabsList>
-                  <TabsTrigger value="all">
-                    All Copy
-                    <Badge variant="secondary" className="ml-2 bg-muted">
-                      {copywritingItems.length}
-                    </Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="tweet">
-                    Tweets
-                    <Badge variant="secondary" className="ml-2 bg-muted">
-                      {copywritingItems.filter(item => item.type === 'tweet').length}
-                    </Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="cold_email">
-                    Cold Emails
-                    <Badge variant="secondary" className="ml-2 bg-muted">
-                      {copywritingItems.filter(item => item.type === 'cold_email').length}
-                    </Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="pitch">
-                    Pitches
-                    <Badge variant="secondary" className="ml-2 bg-muted">
-                      {copywritingItems.filter(item => item.type === 'pitch').length}
-                    </Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="ad_copy">
-                    Ad Copy
-                    <Badge variant="secondary" className="ml-2 bg-muted">
-                      {copywritingItems.filter(item => item.type === 'ad_copy').length}
-                    </Badge>
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <div className="flex items-center gap-4 ml-auto">
-                <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-muted-foreground" />
+            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                <div className="md:hidden w-full relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search copy..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-64"
-                  />
+                    className="w-full pl-9" />
                 </div>
-                
-                <ViewSelector viewType={viewType} onViewTypeChange={setViewType} />
-                
-                <Button onClick={() => setIsCreateDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Copy
-                </Button>
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">Filtros</span>
+                  <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                    <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      All Copy
+                      <Badge variant="secondary" className="ml-2">
+                        {copywritingItems.length}
+                      </Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="tweet" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      Tweets
+                      <Badge variant="secondary" className="ml-2">
+                        {copywritingItems.filter(item => item.type === 'tweet').length}
+                      </Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="cold_email" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      Cold Emails
+                      <Badge variant="secondary" className="ml-2">
+                        {copywritingItems.filter(item => item.type === 'cold_email').length}
+                      </Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="pitch" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      Pitches
+                      <Badge variant="secondary" className="ml-2">
+                        {copywritingItems.filter(item => item.type === 'pitch').length}
+                      </Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="ad_copy" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      Ad Copy
+                      <Badge variant="secondary" className="ml-2">
+                        {copywritingItems.filter(item => item.type === 'ad_copy').length}
+                      </Badge>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <div className="hidden md:flex items-center gap-4 ml-auto">
+                  <div className="flex items-center gap-2 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search copy..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-48 lg:w-64 h-9 px-3 py-1 pl-9 rounded-md border border-input bg-transparent text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                  </div>
+                </div>
               </div>
+            </MobileFiltersDrawer>
+            <div className="ml-auto flex items-center gap-4 shrink-0 mt-2 md:mt-0">
+              <ViewSelector viewType={viewType} onViewTypeChange={setViewType} />
+              
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Copy
+              </Button>
             </div>
           </div>
         </StickyHeader>
@@ -640,8 +647,7 @@ export default function CopywritingPage() {
                       key={item.id}
                       item={item}
                       onEdit={setSelectedCopywriting}
-                      onStatusChange={handleStatusChange}
-                    />
+                      onStatusChange={handleStatusChange} />
                   ))}
                 </div>
 
@@ -650,8 +656,7 @@ export default function CopywritingPage() {
                     <Pagination
                       currentPage={currentPage}
                       totalPages={totalPages}
-                      onPageChange={setCurrentPage}
-                    />
+                      onPageChange={setCurrentPage} />
                   </div>
                 )}
 
@@ -689,8 +694,7 @@ export default function CopywritingPage() {
                         key={item.id}
                         item={item}
                         onEdit={setSelectedCopywriting}
-                        onStatusChange={handleStatusChange}
-                      />
+                        onStatusChange={handleStatusChange} />
                     ))}
                 </div>
               )}
@@ -705,8 +709,7 @@ export default function CopywritingPage() {
         onClose={() => setIsCreateDialogOpen(false)}
         onSubmit={handleCreateCopywriting}
         segments={segments}
-        campaigns={campaigns}
-      />
+        campaigns={campaigns} />
     </div>
   )
 }

@@ -406,8 +406,9 @@ export const useInstanceLogs = ({
         try { supabase.removeChannel(currentChannel) } catch (err) { /* ignore */ }
       }
 
-      currentChannel = supabase
-        .channel(`instance_logs_${instanceId}_${Date.now()}`)
+      const channelId = `instance_logs_${instanceId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      const newChannel = supabase
+        .channel(channelId)
         .on(
           'postgres_changes',
           {
@@ -418,13 +419,18 @@ export const useInstanceLogs = ({
           },
           onRealtimePayload
         )
-        .subscribe((status: string) => {
-          if (status === 'SUBSCRIBED') {
-            retryCount = 0
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            handleRetry()
-          }
-        })
+        
+      currentChannel = newChannel
+
+      newChannel.subscribe((status: string) => {
+        if (currentChannel !== newChannel) return
+
+        if (status === 'SUBSCRIBED') {
+          retryCount = 0
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          handleRetry()
+        }
+      })
     }
 
     subscribe()

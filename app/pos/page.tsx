@@ -1,5 +1,6 @@
 "use client";
 
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSite } from "@/app/context/SiteContext";
@@ -254,55 +255,71 @@ export default function POSPage() {
       >
         <StickyHeader>
           <div className="w-full pt-0">
-            <div className="flex items-center gap-4 sm:gap-8">
-              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
-                <TabsTrigger value="all" className="rounded-full text-xs px-3">
-                  {t("pos.filters.all") || "All"}
-                </TabsTrigger>
-                {hasProducts && (
-                  <TabsTrigger
-                    value="kind_product"
-                    className="rounded-full text-xs px-3"
-                  >
-                    {t("pos.filters.products") || "Products"}
-                  </TabsTrigger>
-                )}
-                {hasServices && (
-                  <TabsTrigger
-                    value="kind_service"
-                    className="rounded-full text-xs px-3"
-                  >
-                    {t("pos.filters.services") || "Services"}
-                  </TabsTrigger>
-                )}
-                {hasDigital && (
-                  <TabsTrigger
-                    value="kind_digital_asset"
-                    className="rounded-full text-xs px-3"
-                  >
-                    {t("pos.filters.digitalAssets") || "Digital"}
-                  </TabsTrigger>
-                )}
-                {nonEmptyCategories.map((cat: any) => (
-                  <TabsTrigger
-                    key={cat.id}
-                    value={cat.id}
-                    className="rounded-full text-xs px-3"
-                  >
-                    {cat.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+            <div className="flex items-center gap-2 sm:gap-4 w-full">
+              <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                  <div className="md:hidden w-full">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      placeholder={t("pos.searchCatalog") || "Search catalog..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      type="text"
+                      alwaysExpanded={true} />
+                  </div>
 
-              <SearchInput
-                placeholder={t("pos.searchCatalog") || "Search catalog..."}
-                className="w-48 sm:w-64 flex-shrink-0"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                type="text"
-              />
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Categoría' : t('catalog.kind.label')}</span>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                        {t("pos.filters.all") || "All"}
+                      </TabsTrigger>
+                      {hasProducts && (
+                        <TabsTrigger
+                          value="kind_product"
+                          className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap"
+                        >
+                          {t("pos.filters.products") || "Products"}
+                        </TabsTrigger>
+                      )}
+                      {hasServices && (
+                        <TabsTrigger
+                          value="kind_service"
+                          className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap"
+                        >
+                          {t("pos.filters.services") || "Services"}
+                        </TabsTrigger>
+                      )}
+                      {hasDigital && (
+                        <TabsTrigger
+                          value="kind_digital_asset"
+                          className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap"
+                        >
+                          {t("pos.filters.digitalAssets") || "Digital"}
+                        </TabsTrigger>
+                      )}
+                      {nonEmptyCategories.map((cat: any) => (
+                        <TabsTrigger
+                          key={cat.id}
+                          value={cat.id}
+                          className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap"
+                        >
+                          {cat.name}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </div>
 
-              <div className="flex-1 flex justify-end items-center gap-2 pr-1">
+                  <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      placeholder={t("pos.searchCatalog") || "Search catalog..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      type="text" />
+                  </div>
+                </div>
+              </MobileFiltersDrawer>
+
+              <div className="flex-1 flex justify-end items-center gap-2 pr-1 shrink-0">
                 <PrinterSyncBadge module="pos" />
                 <PosSyncBadge
                   status={syncStatus}
@@ -314,8 +331,7 @@ export default function POSPage() {
                     retrySync();
                     if (siteId) void drainPosOutbox(siteId);
                   }}
-                  t={t}
-                />
+                  t={t} />
               </div>
 
               <div className="flex justify-end md:hidden flex-shrink-0">
@@ -325,9 +341,9 @@ export default function POSPage() {
                 >
                   <SheetTrigger asChild>
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="icon"
-                      className="relative h-9 w-9"
+                      className="relative h-9 w-9 rounded-full"
                     >
                       <ShoppingCart className="h-4 w-4" />
                       {cartApi.cart.length > 0 && (
@@ -341,8 +357,7 @@ export default function POSPage() {
                     <CartPanel
                       {...cartPanelProps}
                       isMobile
-                      closeCart={() => setIsMobileCartOpen(false)}
-                    />
+                      closeCart={() => setIsMobileCartOpen(false)} />
                   </SheetContent>
                 </Sheet>
               </div>
@@ -360,8 +375,7 @@ export default function POSPage() {
             items={filteredItems}
             loading={catalogLoading}
             onAdd={addApi.addToCart}
-            t={t}
-          />
+            t={t} />
         )}
       </Tabs>
 
@@ -373,8 +387,7 @@ export default function POSPage() {
         siteId={siteId}
         open={syncIssuesOpen}
         onOpenChange={setSyncIssuesOpen}
-        t={t}
-      />
+        t={t} />
 
       <PaymentConfirmationDialog
         open={checkout.isPaymentDialogOpen}
@@ -382,8 +395,7 @@ export default function POSPage() {
         totalAmount={cartApi.total}
         onConfirm={checkout.handleCheckout}
         isLoading={checkout.checkoutLoading}
-        hasCustomer={!!cartApi.leadValue}
-      />
+        hasCustomer={!!cartApi.leadValue} />
 
       <PosOptionsDialog
         item={addApi.optionsParentItem}
@@ -411,8 +423,7 @@ export default function POSPage() {
             priceLists: catalog.priceLists,
             priceListItems: catalog.priceListItems,
           }).price;
-        }}
-      />
+        }} />
 
       <PosReservationDialog
         item={addApi.reservationItem}
@@ -438,8 +449,7 @@ export default function POSPage() {
             reservationEnd,
             reservationAvailableQty,
           });
-        }}
-      />
+        }} />
 
       <PosDigitalAssetDialog
         item={addApi.digitalItem}
@@ -463,8 +473,7 @@ export default function POSPage() {
             setLeads: catalog.setLeads,
           });
           addApi.confirmDigital(item, modifiers);
-        }}
-      />
+        }} />
 
       <DynamicQuoteFieldsModal
         item={addApi.dynamicQuoteItem}
@@ -478,8 +487,7 @@ export default function POSPage() {
             fieldValues,
             quantity,
           );
-        }}
-      />
+        }} />
 
       <PosRequireLeadDialog
         open={!!leadGate}
@@ -523,8 +531,7 @@ export default function POSPage() {
               leadOverride: committed,
             });
           }
-        }}
-      />
+        }} />
       <PosSplitBillDialog
         open={isSplitBillOpen}
         onOpenChange={setIsSplitBillOpen}
@@ -539,8 +546,7 @@ export default function POSPage() {
           if (otherColumns.length > 0) {
             checkout.createPendingSplitOrders(otherColumns);
           }
-        }}
-      />
+        }} />
     </div>
   );
 }

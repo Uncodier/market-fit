@@ -66,14 +66,13 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       const result = await getNotifications(currentSite.id, user.id)
       
       if (result.error) {
-        toast.error(result.error)
+        console.warn("Background notification fetch failed:", result.error)
         return
       }
       
       setNotifications(result.notifications || [])
     } catch (error) {
       console.error("Error loading notifications:", error)
-      toast.error("Error loading notifications")
     } finally {
       setLoading(false)
     }

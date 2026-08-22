@@ -117,18 +117,19 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="overflow-x-auto pb-4 -mx-4 md:-mx-8">
-        <div className="flex gap-4 min-w-fit px-4 md:px-8 min-h-[calc(100vh-220px)] items-stretch">
+      <div className="w-full">
+        <div className="pb-4 -mx-4 md:-mx-8">
+          <div className="flex flex-wrap md:flex-nowrap items-start gap-4 px-4 md:px-8">
           {ORDER_STATUSES.map((status) => {
             const statusOrders = orders.filter(order => order.status === status.id)
             const totalAmount = statusOrders.reduce((sum, order) => sum + (order.total || 0), 0)
             const StatusIcon = status.icon
             
             return (
-              <div key={status.id} className="flex-shrink-0 w-80 flex flex-col">
+              <div key={status.id} className="flex-shrink-0 w-[calc(50%_-_8px)] md:w-80 flex flex-col">
                 <div 
                   className={cn(
-                    "bg-background/80 backdrop-blur-sm rounded-t-lg p-3.5 border-b-[3px] border-x border-t shadow-sm sticky top-0 z-10",
+                    "bg-background/80 backdrop-blur-sm rounded-t-lg p-3.5 border-b-[3px] border-x border-t shadow-sm sticky top-0 z-10 shrink-0",
                     STATUS_BORDER_COLORS[status.id] || "border-b-primary/30"
                   )}
                 >
@@ -149,14 +150,14 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
 
                 <Droppable droppableId={status.id}>
                   {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={cn(
-                        "bg-muted/30 rounded-b-lg p-3 border-b border-x flex-1 flex flex-col min-h-[150px] transition-colors",
-                        snapshot.isDraggingOver && "bg-muted/60 border-primary/20 shadow-inner"
-                      )}
-                    >
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={cn(
+                          "bg-muted/30 rounded-b-lg p-3 border-b border-x flex flex-col transition-colors min-h-[150px]",
+                          snapshot.isDraggingOver && "bg-muted/60 border-primary/20 shadow-inner"
+                        )}
+                      >
                       {statusOrders.length > 0 ? (
                         statusOrders.map((order, index) => {
                           const leadName = (order.leads as any)?.name || t('orders.kanban.unknownCustomer') || 'Unknown Customer';
@@ -248,8 +249,7 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
                             variant="fancy"
                             showShadow={false}
                             className="bg-transparent border-none shadow-none"
-                            contentClassName="min-h-[160px] pb-0 p-2"
-                          />
+                            contentClassName="min-h-[160px] pb-0 p-2" />
                         </div>
                       )}
                       {provided.placeholder}
@@ -259,6 +259,7 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
               </div>
             )
           })}
+        </div>
         </div>
       </div>
     </DragDropContext>

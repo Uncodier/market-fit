@@ -5,6 +5,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listQuotations } from "./actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { LayoutGrid, FileText, CheckCircle2, Ban, Send } from "@/app/components/ui/icons"
@@ -79,43 +80,54 @@ export default function QuotationsPage() {
       <Tabs value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="w-full pt-0">
-            <div className="flex items-center justify-between gap-2 w-full">
-              <div className="flex items-center space-x-2 overflow-x-auto overflow-y-hidden no-scrollbar pb-1 md:pb-0 flex-1 min-w-0 gap-2">
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
-                  <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                    <LayoutGrid size={13} className="md:!hidden" />
-                    <span className="tab-label">{t("quotations.list.filters.all") || "All"}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="draft" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                    <FileText size={13} className="md:!hidden" />
-                    <span className="tab-label">{t("quotations.list.filters.draft") || "Draft"}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="sent" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                    <Send size={13} className="md:!hidden" />
-                    <span className="tab-label">{t("quotations.list.filters.sent") || "Sent"}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="accepted" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                    <CheckCircle2 size={13} className="md:!hidden" />
-                    <span className="tab-label">{t("quotations.list.filters.accepted") || "Accepted"}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="rejected" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                    <Ban size={13} className="md:!hidden" />
-                    <span className="tab-label">{t("quotations.list.filters.rejected") || "Rejected"}</span>
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                <div className="md:hidden w-full">
+                  <form onSubmit={handleSearch} className="w-full">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      placeholder={t("quotations.list.search") || "Search quotations..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      alwaysExpanded={true} />
+                  </form>
+                </div>
 
-              <div className="flex items-center gap-2 w-auto justify-end shrink-0">
-                <form onSubmit={handleSearch} className="w-auto">
-                  <SearchInput
-                    placeholder={t("quotations.list.search") || "Search quotations..."}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full md:w-[240px]"
-                  />
-                </form>
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') || 'Estado'}</span>
+                  <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                    <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      <LayoutGrid size={13} className="md:!hidden" />
+                      <span className="tab-label">{t("quotations.list.filters.all") || "All"}</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      <FileText size={13} className="md:!hidden" />
+                      <span className="tab-label">{t("quotations.list.filters.draft") || "Draft"}</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="sent" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      <Send size={13} className="md:!hidden" />
+                      <span className="tab-label">{t("quotations.list.filters.sent") || "Sent"}</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="accepted" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      <CheckCircle2 size={13} className="md:!hidden" />
+                      <span className="tab-label">{t("quotations.list.filters.accepted") || "Accepted"}</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="rejected" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
+                      <Ban size={13} className="md:!hidden" />
+                      <span className="tab-label">{t("quotations.list.filters.rejected") || "Rejected"}</span>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <form onSubmit={handleSearch} className="w-auto">
+                    <SearchInput containerClassName="w-full" className="w-full md:w-[240px] h-10 md:h-9"
+                      placeholder={t("quotations.list.search") || "Search quotations..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)} />
+                  </form>
+                </div>
               </div>
-            </div>
+            </MobileFiltersDrawer>
           </div>
         </StickyHeader>
 
@@ -140,8 +152,7 @@ export default function QuotationsPage() {
                   : (t("quotations.list.empty.descDefault") || "Create quotations from deals to send to your clients.")
               }
               onPageChange={setPage}
-              onRowClick={(id) => router.push(`/quotations/${id}`)}
-            />
+              onRowClick={(id) => router.push(`/quotations/${id}`)} />
           )}
         </div>
       </Tabs>

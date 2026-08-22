@@ -4,7 +4,6 @@ import React, { useMemo, useState } from "react"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
-import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { CatalogItem, CatalogCategory } from "@/app/types"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -105,14 +104,14 @@ export function KanbanView({
 
   return (
     <div className="w-full">
-      <div className="overflow-x-auto pb-8">
+      <div className="pb-8">
         <DragDropContext onDragEnd={handleDragEndInternal}>
           <Droppable droppableId="categories-board" type="category" direction="horizontal" isDropDisabled={!isDragEnabled}>
             {(providedBoard) => (
               <div 
                 ref={providedBoard.innerRef} 
                 {...providedBoard.droppableProps}
-                className="inline-flex gap-4 pb-4 min-h-[200px]"
+                className="flex flex-wrap md:flex-nowrap items-start gap-4 pb-4 min-h-[200px]"
               >
                 {orderedColumns.map((column, colIndex) => {
                   const isUncategorized = column.id === "uncategorized"
@@ -132,7 +131,7 @@ export function KanbanView({
                           ref={providedCol.innerRef}
                           {...providedCol.draggableProps}
                           className={cn(
-                            "flex flex-col h-full w-[280px]",
+                            "flex flex-col w-[calc(50%_-_8px)] md:w-[280px] shrink-0",
                             snapshotCol.isDragging && "opacity-80"
                           )}
                           style={providedCol.draggableProps.style}
@@ -154,20 +153,20 @@ export function KanbanView({
                             <Badge variant="outline">{column.items.length}</Badge>
                           </div>
                           
-                          <ScrollArea 
-                            className="w-full rounded-md p-2 bg-muted/30/80 dark:bg-[rgb(2,8,23)]/5 max-h-[calc(100vh-220px)] min-h-[150px]"
+                          <div 
+                            className="w-full rounded-md p-2 bg-muted/30/80 dark:bg-[rgb(2,8,23)]/5 flex-1 flex flex-col"
                             onScrollCapture={(e) => handleScroll(e, column.id, column.items.length)}
                           >
                             <Droppable droppableId={column.id} type="item" isDropDisabled={!canDropItems}>
                               {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.droppableProps}
-                                  className={cn(
-                                    "min-h-[150px] pr-4 h-full",
-                                    snapshot.isDraggingOver && 'bg-muted/80 dark:bg-primary/10 rounded-md'
-                                  )}
-                                >
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.droppableProps}
+                                    className={cn(
+                                      "min-h-[150px]",
+                                      snapshot.isDraggingOver && 'bg-muted/80 dark:bg-primary/10 rounded-md'
+                                    )}
+                                  >
                                   {visibleItems.map((item, index) => (
                                     <Draggable 
                                       key={item.id} 
@@ -254,7 +253,7 @@ export function KanbanView({
                                 </div>
                               )}
                             </Droppable>
-                          </ScrollArea>
+                          </div>
                         </div>
                       )}
                     </Draggable>

@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Globe, LayoutGrid, CheckCircle2, PenSquare } from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import {
   Dialog,
   DialogContent,
@@ -154,27 +155,26 @@ export default function SegmentsPage() {
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex items-center gap-4">
-              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t("segments.tabs.all") || "All Segments"}>
+              <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("segments.tabs.all") || "All Segments"}>
                   <LayoutGrid size={13} className="md:!hidden" />
                   <span className="tab-label">{t("segments.tabs.all") || "All Segments"}</span>
                 </TabsTrigger>
-                <TabsTrigger value="active" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t("segments.tabs.active") || "Active"}>
+                <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("segments.tabs.active") || "Active"}>
                   <CheckCircle2 size={13} className="md:!hidden" />
                   <span className="tab-label">{t("segments.tabs.active") || "Active"}</span>
                 </TabsTrigger>
-                <TabsTrigger value="draft" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t("segments.tabs.draft") || "Draft"}>
+                <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("segments.tabs.draft") || "Draft"}>
                   <PenSquare size={13} className="md:!hidden" />
                   <span className="tab-label">{t("segments.tabs.draft") || "Draft"}</span>
                 </TabsTrigger>
               </TabsList>
-              <SearchInput
+              <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
                 data-command-k-input
                 placeholder={t("segments.searchPlaceholder") || "Search segments..."}
                 className="w-full"
                 value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
+                onChange={(event) => setSearchTerm(event.target.value)} />
             </div>
           </div>
         </StickyHeader>
@@ -198,8 +198,7 @@ export default function SegmentsPage() {
               onToggleStatus={toggleSegmentStatus}
               onCopyUrl={copySegmentUrl}
               onConfigureUrl={handleConfigureUrl}
-              copiedUrlId={copiedUrlId}
-            />
+              copiedUrlId={copiedUrlId} />
           )}
         </div>
       </Tabs>
@@ -221,8 +220,7 @@ export default function SegmentsPage() {
                 value={urlInput}
                 onChange={(event) => setUrlInput(event.target.value)}
                 className="w-full h-12 pl-10"
-                disabled={isSaving}
-              />
+                disabled={isSaving} />
             </div>
             {saveError ? <p className="text-sm text-red-500">{saveError}</p> : null}
           </div>

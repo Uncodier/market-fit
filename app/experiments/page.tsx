@@ -7,6 +7,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { Eye, PlayCircle, PenSquare, StopCircle, XCircle, Search, FlaskConical, ExternalLink, X, CalendarIcon, FileText, Tag, Users, User, HelpCircle, Link } from "@/app/components/ui/icons"
 import { Input } from "@/app/components/ui/input"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { startExperiment, stopExperiment } from "./actions"
 import { useToast } from "@/app/components/ui/use-toast"
 import { useState, useEffect, useCallback, useRef } from "react"
@@ -333,8 +334,7 @@ function ExperimentRow({
                           sandbox="allow-same-origin allow-scripts"
                           loading="lazy"
                           allow="fullscreen"
-                          referrerPolicy="no-referrer"
-                        />
+                          referrerPolicy="no-referrer" />
                       </div>
                     </div>
                   </div>
@@ -690,18 +690,17 @@ export default function ExperimentsPage() {
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-8">
                   <TabsList>
-                    <TabsTrigger value="all" className="text-sm font-medium">All Experiments</TabsTrigger>
-                    <TabsTrigger value="active" className="text-sm font-medium">Active</TabsTrigger>
-                    <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
-                    <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
+                    <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">All Experiments</TabsTrigger>
+                    <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Active</TabsTrigger>
+                    <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Completed</TabsTrigger>
+                    <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Draft</TabsTrigger>
                   </TabsList>
-                  <SearchInput 
+                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
                     placeholder="Search experiments..." 
                     className="w-full"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    type="text"
-                  />
+                    type="text" />
                 </div>
                 <div className="ml-auto">
                   {/* Any other buttons would go here */}
@@ -734,19 +733,18 @@ export default function ExperimentsPage() {
               <div className="flex items-center gap-8">
                 <div>
                   <TabsList>
-                    <TabsTrigger value="all" className="text-sm font-medium">All Experiments</TabsTrigger>
-                    <TabsTrigger value="active" className="text-sm font-medium">Active</TabsTrigger>
-                    <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
-                    <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
+                    <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">All Experiments</TabsTrigger>
+                    <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Active</TabsTrigger>
+                    <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Completed</TabsTrigger>
+                    <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Draft</TabsTrigger>
                   </TabsList>
                 </div>
-                <SearchInput 
+                <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
                   placeholder="Search experiments..." 
                   className="w-full"
                   disabled
                   type="text"
-                  value=""
-                />
+                  value="" />
                 <div className="flex-1"></div>
               </div>
             </div>
@@ -776,19 +774,18 @@ export default function ExperimentsPage() {
             <div className="flex items-center gap-8">
               <div>
                 <TabsList>
-                  <TabsTrigger value="all" className="text-sm font-medium">All Experiments</TabsTrigger>
-                  <TabsTrigger value="active" className="text-sm font-medium">Active</TabsTrigger>
-                  <TabsTrigger value="completed" className="text-sm font-medium">Completed</TabsTrigger>
-                  <TabsTrigger value="draft" className="text-sm font-medium">Draft</TabsTrigger>
+                  <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">All Experiments</TabsTrigger>
+                  <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Active</TabsTrigger>
+                  <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Completed</TabsTrigger>
+                  <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Draft</TabsTrigger>
                 </TabsList>
               </div>
-              <SearchInput 
+              <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
                 placeholder="Search experiments..." 
                 className="w-full"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                type="text"
-              />
+                type="text" />
               <div className="flex-1"></div>
             </div>
           </div>
@@ -815,8 +812,7 @@ export default function ExperimentsPage() {
                       onStart={handleStartExperiment}
                       onStop={handleStopExperiment}
                       onView={handleViewDetails}
-                      isActive={activeExperiments[experiment.id] || false}
-                    />
+                      isActive={activeExperiments[experiment.id] || false} />
                   ))}
                 </div>
               )}
@@ -838,8 +834,7 @@ export default function ExperimentsPage() {
                         onStart={handleStartExperiment}
                         onStop={handleStopExperiment}
                         onView={handleViewDetails}
-                        isActive={activeExperiments[experiment.id] || false}
-                      />
+                        isActive={activeExperiments[experiment.id] || false} />
                     ))}
                 </div>
               )}
@@ -861,8 +856,7 @@ export default function ExperimentsPage() {
                         onStart={handleStartExperiment}
                         onStop={handleStopExperiment}
                         onView={handleViewDetails}
-                        isActive={activeExperiments[experiment.id] || false}
-                      />
+                        isActive={activeExperiments[experiment.id] || false} />
                     ))}
                 </div>
               )}
@@ -884,8 +878,7 @@ export default function ExperimentsPage() {
                         onStart={handleStartExperiment}
                         onStop={handleStopExperiment}
                         onView={handleViewDetails}
-                        isActive={activeExperiments[experiment.id] || false}
-                      />
+                        isActive={activeExperiments[experiment.id] || false} />
                     ))}
                 </div>
               )}
@@ -1116,8 +1109,7 @@ export default function ExperimentsPage() {
                           className="w-full h-full"
                           title={`Preview of ${selectedExperiment.name}`}
                           sandbox="allow-same-origin allow-scripts"
-                          loading="lazy"
-                        />
+                          loading="lazy" />
                       </div>
                     </div>
                   </div>

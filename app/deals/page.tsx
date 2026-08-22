@@ -13,6 +13,7 @@ import { DealsKanban, DealsKanbanSkeleton } from "./components/DealsKanban"
 import { updateDeal } from "./actions"
 import { toast } from "sonner"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Search, Briefcase, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
@@ -191,35 +192,45 @@ export default function DealsPage() {
         <StickyHeader className="border-b min-h-[71px] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-8">
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.all') || "All Deals"}>
-                    <LayoutGrid size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('deals.tabs.all') || 'All Deals'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="open" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.open') || "Open Deals"}>
-                    <Target size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('deals.tabs.openTitle') || 'Open'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="won" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.won') || "Won Deals"}>
-                    <TrendingUp size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('deals.tabs.wonTitle') || 'Won'}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="lost" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('deals.tabs.lost') || "Lost Deals"}>
-                    <XCircle size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('deals.tabs.lostTitle') || 'Lost'}</span>
-                  </TabsTrigger>
-                </TabsList>
-                <div className="flex items-center gap-2">
-                  <SearchInput
-                    placeholder={t('deals.search') || "Search deals..."}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                    alwaysExpanded={false}
-                  />
+              <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                  <div className="md:hidden w-full">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      placeholder={t('deals.search') || "Search deals..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      alwaysExpanded={true} />
+                  </div>
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">Filtros</span>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('deals.tabs.all') || "All Deals"}>
+                        <LayoutGrid size={13} className="md:!hidden" />
+                        <span className="tab-label">{t('deals.tabs.all') || 'All Deals'}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="open" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('deals.tabs.open') || "Open Deals"}>
+                        <Target size={13} className="md:!hidden" />
+                        <span className="tab-label">{t('deals.tabs.openTitle') || 'Open'}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="won" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('deals.tabs.won') || "Won Deals"}>
+                        <TrendingUp size={13} className="md:!hidden" />
+                        <span className="tab-label">{t('deals.tabs.wonTitle') || 'Won'}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="lost" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('deals.tabs.lost') || "Lost Deals"}>
+                        <XCircle size={13} className="md:!hidden" />
+                        <span className="tab-label">{t('deals.tabs.lostTitle') || 'Lost'}</span>
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+                  <div className="hidden md:flex flex-col gap-2">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      placeholder={t('deals.search') || "Search deals..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
+                  </div>
                 </div>
-              </div>
+              </MobileFiltersDrawer>
               <div className="ml-auto flex items-center gap-4">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -282,8 +293,7 @@ export default function DealsPage() {
                 icon={<Briefcase className="h-10 w-10 text-muted-foreground" />}
                 title={t('deals.empty.title') || "No deals found"}
                 description={t('deals.empty.desc') || "Get started by creating a new deal or wait for leads to be converted into deals."}
-                variant="fancy"
-              />
+                variant="fancy" />
             ) : (
               <>
                 {["all", "open", "won", "lost"].map(tabValue => (
@@ -296,14 +306,12 @@ export default function DealsPage() {
                         totalDeals={filteredDeals.length}
                         onPageChange={handlePageChange}
                         onItemsPerPageChange={handleItemsPerPageChange}
-                        onDealClick={handleDealClick}
-                      />
+                        onDealClick={handleDealClick} />
                     ) : (
                       <DealsKanban 
                         deals={filteredDeals} 
                         onDealClick={handleDealClick} 
-                        onUpdateDealStage={handleUpdateDealStage} 
-                      />
+                        onUpdateDealStage={handleUpdateDealStage} />
                     )}
                   </TabsContent>
                 ))}

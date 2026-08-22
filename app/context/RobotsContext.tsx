@@ -128,9 +128,10 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         .order('updated_at', { ascending: false })
       
       if (robotsError) {
-        console.error('Error fetching robots:', robotsError)
-        setError('Failed to fetch robots')
-        throw robotsError
+        const errorDetail = robotsError instanceof Error ? robotsError.message : (robotsError?.message || JSON.stringify(robotsError));
+        console.error('Error fetching robots:', errorDetail, robotsError)
+        setError(errorDetail || 'Failed to fetch robots')
+        throw new Error(errorDetail || 'Failed to fetch robots')
       }
       setError(null)
 

@@ -1,5 +1,7 @@
 "use client"
 
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+
 import React, { Suspense, useCallback, useEffect, useState } from "react"
 import useSWR from "swr"
 import { CostReports } from "@/app/components/dashboard/cost-reports"
@@ -75,63 +77,68 @@ function CostsPageContent() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex w-full items-center justify-end gap-8">
-            <div className="flex flex-wrap items-center justify-end gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {t("dashboard.filters.campaign") || "Campaign:"}
-                </span>
-                <Select
-                  value={selectedCampaign}
-                  onValueChange={setSelectedCampaign}
-                  disabled={isLoadingCampaigns}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder={t("dashboard.filters.allCampaigns") || "All campaigns"} />
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[180px] w-auto">
-                    <SelectItem value="all">
-                      {t("dashboard.filters.allCampaigns") || "All campaigns"}
-                    </SelectItem>
-                    {campaigns.map((campaign) => (
-                      <SelectItem key={campaign.id} value={campaign.id}>
-                        {campaign.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <MobileFiltersDrawer triggerText={t('common.filters') || "Filtros"}>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 md:justify-end min-w-0">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {t("dashboard.filters.campaign") || "Campaign:"}
+                    </span>
+                    <Select
+                      value={selectedCampaign}
+                      onValueChange={setSelectedCampaign}
+                      disabled={isLoadingCampaigns}
+                    >
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder={t("dashboard.filters.allCampaigns") || "All campaigns"} />
+                      </SelectTrigger>
+                      <SelectContent className="min-w-[180px] w-auto">
+                        <SelectItem value="all">
+                          {t("dashboard.filters.allCampaigns") || "All campaigns"}
+                        </SelectItem>
+                        {campaigns.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            {campaign.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {t("dashboard.filters.segment") || "Segment:"}
+                    </span>
+                    <Select
+                      value={selectedSegment}
+                      onValueChange={setSelectedSegment}
+                      disabled={isLoadingSegments}
+                    >
+                      <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectValue placeholder={t("dashboard.filters.allSegments") || "All segments"} />
+                      </SelectTrigger>
+                      <SelectContent className="min-w-[180px] w-auto">
+                        <SelectItem value="all">
+                          {t("dashboard.filters.allSegments") || "All segments"}
+                        </SelectItem>
+                        {segments.map((segment) => (
+                          <SelectItem key={segment.id} value={segment.id}>
+                            {segment.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                    <CalendarDateRangePicker
+                      onRangeChange={handleDateRangeChange}
+                      initialStartDate={dateRange.startDate}
+                      initialEndDate={dateRange.endDate}
+                      key={`date-range-${format(dateRange.startDate, "yyyy-MM-dd")}-${format(dateRange.endDate, "yyyy-MM-dd")}`}
+                      className="flex items-center w-full md:w-auto" />
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {t("dashboard.filters.segment") || "Segment:"}
-                </span>
-                <Select
-                  value={selectedSegment}
-                  onValueChange={setSelectedSegment}
-                  disabled={isLoadingSegments}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder={t("dashboard.filters.allSegments") || "All segments"} />
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[180px] w-auto">
-                    <SelectItem value="all">
-                      {t("dashboard.filters.allSegments") || "All segments"}
-                    </SelectItem>
-                    {segments.map((segment) => (
-                      <SelectItem key={segment.id} value={segment.id}>
-                        {segment.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <CalendarDateRangePicker
-                onRangeChange={handleDateRangeChange}
-                initialStartDate={dateRange.startDate}
-                initialEndDate={dateRange.endDate}
-                key={`date-range-${format(dateRange.startDate, "yyyy-MM-dd")}-${format(dateRange.endDate, "yyyy-MM-dd")}`}
-                className="flex items-center"
-              />
-            </div>
+            </MobileFiltersDrawer>
           </div>
         </div>
       </StickyHeader>
@@ -147,8 +154,7 @@ function CostsPageContent() {
           startDate={dateRange.startDate}
           endDate={dateRange.endDate}
           segmentId={selectedSegment}
-          campaignId={selectedCampaign}
-        />
+          campaignId={selectedCampaign} />
       </div>
     </div>
   )

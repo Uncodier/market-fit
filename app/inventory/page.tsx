@@ -6,6 +6,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { listLocations, getCommerceSettings, updateCommerceSettings } from "./actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
@@ -85,23 +86,41 @@ export default function InventoryPage() {
         <div className="w-full pt-0">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-4 w-full md:w-auto">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full hidden md:flex">
-                  <TabsTrigger value="levels" className="gap-2 text-xs rounded-full"><DatabaseIcon className="h-4 w-4"/> Stock Levels</TabsTrigger>
-                  <TabsTrigger value="locations" className="gap-2 text-xs rounded-full"><MapPin className="h-4 w-4"/> Locations</TabsTrigger>
-                  <TabsTrigger value="settings" className="gap-2 text-xs rounded-full"><Settings className="h-4 w-4"/> Commerce Settings</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              {activeTab === "levels" && (
-                <form onSubmit={handleSearch} className="w-full md:w-64">
-                  <SearchInput 
-                    placeholder="Search catalog..." 
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    alwaysExpanded={false}
-                  />
-                </form>
-              )}
+              <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                  {activeTab === "levels" && (
+                    <div className="md:hidden w-full">
+                      <form onSubmit={handleSearch} className="w-full">
+                        <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+                          placeholder="Search catalog..." 
+                          value={q}
+                          onChange={(e) => setQ(e.target.value)}
+                          alwaysExpanded={true} />
+                      </form>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">Filtros</span>
+                    <Tabs value={activeTab} onValueChange={setActiveTab}>
+                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                        <TabsTrigger value="levels" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-nowrap"><DatabaseIcon className="h-4 w-4"/> Stock Levels</TabsTrigger>
+                        <TabsTrigger value="locations" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-nowrap"><MapPin className="h-4 w-4"/> Locations</TabsTrigger>
+                        <TabsTrigger value="settings" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-nowrap"><Settings className="h-4 w-4"/> Commerce Settings</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                  {activeTab === "levels" && (
+                    <div className="hidden md:block">
+                      <form onSubmit={handleSearch} className="w-full md:w-64">
+                        <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+                          placeholder="Search catalog..." 
+                          value={q}
+                          onChange={(e) => setQ(e.target.value)} />
+                      </form>
+                    </div>
+                  )}
+                </div>
+              </MobileFiltersDrawer>
             </div>
             
             <div className="flex items-center gap-2">
@@ -135,8 +154,7 @@ export default function InventoryPage() {
                 setPage={setPage}
                 pageSize={pageSize}
                 q={q}
-                selectedLocation={selectedLocation}
-              />
+                selectedLocation={selectedLocation} />
             </TabsContent>
             
             <TabsContent value="locations">

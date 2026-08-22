@@ -1,5 +1,7 @@
 "use client";
 
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { RecentActivity } from "@/app/components/dashboard/recent-activity"
 import { Overview } from "@/app/components/dashboard/overview"
@@ -339,52 +341,53 @@ function DashboardPageContent() {
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex w-full items-center justify-end gap-8">
-              {(
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{t('dashboard.filters.segment') || 'Segment:'}</span>
-                    <Select 
-                      value={selectedSegment} 
-                      onValueChange={handleSegmentChange}
-                      disabled={isLoadingSegments}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <div className="flex-1 overflow-hidden">
-                          <span style={{ pointerEvents: 'none' }}>
-                            <SelectValue placeholder={t('dashboard.filters.allSegments') || 'All segments'} />
-                          </span>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent className="min-w-[180px] w-auto">
-                        <SelectItem 
-                          value="all"
-                          className="flex-wrap whitespace-normal"
-                        >
-                          <span style={{ pointerEvents: 'none' }}>{t('dashboard.filters.allSegments') || 'All segments'}</span>
-                        </SelectItem>
-                        {segments.map((segment) => (
+              <MobileFiltersDrawer triggerText={t('common.filters') || "Filtros"}>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 md:justify-end min-w-0">
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                      <span className="text-sm text-muted-foreground">{t('dashboard.filters.segment') || 'Segment:'}</span>
+                      <Select 
+                        value={selectedSegment} 
+                        onValueChange={handleSegmentChange}
+                        disabled={isLoadingSegments}
+                      >
+                        <SelectTrigger className="w-full md:w-[180px]">
+                          <div className="flex-1 overflow-hidden">
+                            <span style={{ pointerEvents: 'none' }}>
+                              <SelectValue placeholder={t('dashboard.filters.allSegments') || 'All segments'} />
+                            </span>
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="min-w-[180px] w-auto">
                           <SelectItem 
-                            key={segment.id} 
-                            value={segment.id}
+                            value="all"
                             className="flex-wrap whitespace-normal"
                           >
-                            <span style={{ pointerEvents: 'none' }}>{segment.name}</span>
+                            <span style={{ pointerEvents: 'none' }}>{t('dashboard.filters.allSegments') || 'All segments'}</span>
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center">
-                    <CalendarDateRangePicker 
-                      onRangeChange={handleDateRangeChange} 
-                      initialStartDate={dateRange.startDate}
-                      initialEndDate={dateRange.endDate}
-                      key={`date-range-${format(dateRange.startDate, 'yyyy-MM-dd')}-${format(dateRange.endDate, 'yyyy-MM-dd')}`}
-                      className="flex items-center"
-                    />
+                          {segments.map((segment) => (
+                            <SelectItem 
+                              key={segment.id} 
+                              value={segment.id}
+                              className="flex-wrap whitespace-normal"
+                            >
+                              <span style={{ pointerEvents: 'none' }}>{segment.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                      <CalendarDateRangePicker 
+                        onRangeChange={handleDateRangeChange} 
+                        initialStartDate={dateRange.startDate}
+                        initialEndDate={dateRange.endDate}
+                        key={`date-range-${format(dateRange.startDate, 'yyyy-MM-dd')}-${format(dateRange.endDate, 'yyyy-MM-dd')}`}
+                        className="flex items-center w-full md:w-auto" />
+                    </div>
                   </div>
                 </div>
-              )}
+              </MobileFiltersDrawer>
             </div>
           </div>
         </StickyHeader>
@@ -412,43 +415,35 @@ function DashboardPageContent() {
                   <LeadsContactedWidget 
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <LeadsInConversationWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <MeetingsWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <SalesKpiWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <TasksWidget 
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <ConversationsWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <ContentsApprovedWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <RequirementsCompletedWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                 </div>
                 <div className="grid gap-4 grid-cols-1">
                   <Card>
@@ -461,8 +456,7 @@ function DashboardPageContent() {
                         <Switch 
                           id="show-conversations" 
                           checked={showConversations}
-                          onCheckedChange={setShowConversations}
-                        />
+                          onCheckedChange={setShowConversations} />
                         <Label htmlFor="show-conversations" className="text-sm text-muted-foreground cursor-pointer">
                           {t('dashboard.metrics.performance.showConversations') || 'Show Conversations'}
                         </Label>
@@ -473,8 +467,7 @@ function DashboardPageContent() {
                         segmentId={selectedSegment}
                         startDate={dateRange.startDate}
                         endDate={dateRange.endDate}
-                        showConversations={showConversations}
-                      />
+                        showConversations={showConversations} />
                     </CardContent>
                   </Card>
                 </div>
@@ -488,8 +481,7 @@ function DashboardPageContent() {
                       <LeadsTasksChart
                         segmentId={selectedSegment}
                         startDate={dateRange.startDate}
-                        endDate={dateRange.endDate}
-                      />
+                        endDate={dateRange.endDate} />
                     </CardContent>
                   </Card>
                 </div>
@@ -503,8 +495,7 @@ function DashboardPageContent() {
                       <TokenUsageChart 
                         segmentId={selectedSegment}
                         startDate={dateRange.startDate}
-                        endDate={dateRange.endDate}
-                      />
+                        endDate={dateRange.endDate} />
                     </CardContent>
                   </Card>
                 </div>
@@ -512,23 +503,19 @@ function DashboardPageContent() {
                   <InputTokensWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <OutputTokensWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <VideoMinutesWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <ImagesGeneratedWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                 </div>
               </>
             )}
@@ -540,41 +527,33 @@ function DashboardPageContent() {
                   <RevenueWidget 
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <ActiveUsersWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <ActiveSegmentsWidget
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <ActiveCampaignsWidget
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <LTVWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <CACWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <ROIWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                   <CPLWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
-                    endDate={dateRange.endDate}
-                  />
+                    endDate={dateRange.endDate} />
                 </div>
                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2 h-[500px]">
                   <Card className="col-span-1 flex flex-col">
@@ -586,8 +565,7 @@ function DashboardPageContent() {
                         <Overview 
                           startDate={dateRange.startDate}
                           endDate={dateRange.endDate}
-                          segmentId={selectedSegment}
-                        />
+                          segmentId={selectedSegment} />
                       </div>
                     </CardContent>
                   </Card>
@@ -600,8 +578,7 @@ function DashboardPageContent() {
                         <RecentActivity 
                           limit={6}
                           startDate={dateRange.startDate}
-                          endDate={dateRange.endDate} 
-                        />
+                          endDate={dateRange.endDate} />
                       </div>
                     </CardContent>
                   </Card>
@@ -625,8 +602,7 @@ function DashboardPageContent() {
                         segmentId={selectedSegment}
                         startDate={dateRange.startDate}
                         endDate={dateRange.endDate}
-                        endpoint="clients-by-segment"
-                      />
+                        endpoint="clients-by-segment" />
                     </CardContent>
                   </Card>
                   <Card className="col-span-1">
@@ -642,8 +618,7 @@ function DashboardPageContent() {
                         startDate={dateRange.startDate}
                         endDate={dateRange.endDate}
                         endpoint="revenue-by-segment"
-                        formatValues={true}
-                      />
+                        formatValues={true} />
                     </CardContent>
                   </Card>
                   <Card className="col-span-1">
@@ -658,8 +633,7 @@ function DashboardPageContent() {
                         segmentId={selectedSegment}
                         startDate={dateRange.startDate}
                         endDate={dateRange.endDate}
-                        endpoint="clients-by-campaign"
-                      />
+                        endpoint="clients-by-campaign" />
                     </CardContent>
                   </Card>
                   <Card className="col-span-1">
@@ -676,8 +650,7 @@ function DashboardPageContent() {
                         endDate={dateRange.endDate}
                         endpoint="revenue-by-campaign"
                         formatValues={true}
-                        onTotalUpdate={handleTotalUpdate}
-                      />
+                        onTotalUpdate={handleTotalUpdate} />
                     </CardContent>
                   </Card>
                 </div>
@@ -693,8 +666,7 @@ function DashboardPageContent() {
                       <CohortTables
                         segmentId={selectedSegment}
                         startDate={dateRange.startDate}
-                        endDate={dateRange.endDate}
-                      />
+                        endDate={dateRange.endDate} />
                     </CardContent>
                   </Card>
                   <Card>
@@ -708,8 +680,7 @@ function DashboardPageContent() {
                       <LeadsCohortTables
                         segmentId={selectedSegment}
                         startDate={dateRange.startDate}
-                        endDate={dateRange.endDate}
-                      />
+                        endDate={dateRange.endDate} />
                     </CardContent>
                   </Card>
 
@@ -723,8 +694,7 @@ function DashboardPageContent() {
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}
                 segmentId={selectedSegment}
-                siteId={currentSite.id}
-              />
+                siteId={currentSite.id} />
             )}
           </div>
           <div className="space-y-4">
@@ -732,8 +702,7 @@ function DashboardPageContent() {
               <CostReports 
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}
-                segmentId={selectedSegment}
-              />
+                segmentId={selectedSegment} />
             )}
           </div>
           <div className="space-y-4">
@@ -741,8 +710,7 @@ function DashboardPageContent() {
               <SalesReports 
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}
-                segmentId={selectedSegment}
-              />
+                segmentId={selectedSegment} />
             )}
           </div>
         </div>

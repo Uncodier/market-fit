@@ -1,5 +1,7 @@
 "use client"
 
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+
 import React, { useState, useEffect } from "react"
 import useSWR from "swr"
 import { useSite } from "@/app/context/SiteContext"
@@ -147,8 +149,7 @@ export default function TransactionsPage() {
         <EmptyCard
           icon={<CreditCard size={40} className="text-muted-foreground" />}
           title={t("expenses.empty.selectSite") || "Select a project"}
-          description={t("expenses.empty.selectSiteDesc") || "Please select a project to view its expenses."}
-        />
+          description={t("expenses.empty.selectSiteDesc") || "Please select a project to view its expenses."} />
       </div>
     )
   }
@@ -158,53 +159,58 @@ export default function TransactionsPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
-            <div className="flex items-center space-x-2 overflow-x-auto overflow-y-hidden no-scrollbar pb-1 md:pb-0 flex-1 min-w-0 gap-2">
-              <Tabs value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setPage(1); }}>
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
-                  <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                    <LayoutGrid size={13} className="md:!hidden" />
-                    <span className="tab-label">{t("expenses.filters.all") || "All"}</span>
-                  </TabsTrigger>
-                  {expenseAccounts.slice(0, 4).map((acc) => (
-                    <TabsTrigger
-                      key={acc.key || acc.code}
-                      value={acc.key || acc.code}
-                      className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5"
-                    >
-                      <span className="tab-label">{acc.label}</span>
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.category') || 'Categoría'}</span>
+                  <Tabs value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setPage(1); }}>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                        <LayoutGrid size={13} className="md:!hidden" />
+                        <span className="tab-label">{t("expenses.filters.all") || "All"}</span>
+                      </TabsTrigger>
+                      {expenseAccounts.slice(0, 4).map((acc) => (
+                        <TabsTrigger
+                          key={acc.key || acc.code}
+                          value={acc.key || acc.code}
+                          className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"
+                        >
+                          <span className="tab-label">{acc.label}</span>
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </div>
 
-              {locations.length > 1 && (
-                <Select value={locationFilter} onValueChange={(val) => { setLocationFilter(val); setPage(1); }}>
-                  <SelectTrigger className="w-[180px] h-8 text-xs bg-muted/30 border-0 rounded-full">
-                    <SelectValue placeholder={t("expenses.filters.allLocations") || "All Locations"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("expenses.filters.allLocations") || "All Locations"}</SelectItem>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+                {locations.length > 1 && (
+                  <Select value={locationFilter} onValueChange={(val) => { setLocationFilter(val); setPage(1); }}>
+                    <SelectTrigger className="w-full md:w-[180px] h-10 md:h-8 text-sm md:text-xs bg-background md:bg-muted/30 border md:border-0 rounded-md md:rounded-full">
+                      <SelectValue placeholder={t("expenses.filters.allLocations") || "All Locations"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("expenses.filters.allLocations") || "All Locations"}</SelectItem>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
-            <div className="flex items-center gap-2 w-auto justify-end shrink-0">
-              <Select value={campaignFilter} onValueChange={(val) => { setCampaignFilter(val); setPage(1); }}>
-                <SelectTrigger className="w-[200px] h-9">
-                  <SelectValue placeholder={t("expenses.filters.allCampaigns") || "All Campaigns"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("expenses.filters.allCampaigns") || "All Campaigns"}</SelectItem>
-                  {campaigns.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
+                  <Select value={campaignFilter} onValueChange={(val) => { setCampaignFilter(val); setPage(1); }}>
+                    <SelectTrigger className="w-full md:w-[200px] h-10 md:h-9">
+                      <SelectValue placeholder={t("expenses.filters.allCampaigns") || "All Campaigns"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("expenses.filters.allCampaigns") || "All Campaigns"}</SelectItem>
+                      {campaigns.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </MobileFiltersDrawer>
           </div>
         </div>
       </StickyHeader>
@@ -228,8 +234,7 @@ export default function TransactionsPage() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onPublish={handlePublish}
-            onUnpublish={handleUnpublish}
-          />
+            onUnpublish={handleUnpublish} />
         )}
       </div>
 
@@ -238,8 +243,7 @@ export default function TransactionsPage() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSuccess={() => mutate()}
-        expenseToEdit={expenseToEdit}
-      />
+        expenseToEdit={expenseToEdit} />
     </div>
   )
 }

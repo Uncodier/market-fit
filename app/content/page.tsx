@@ -9,6 +9,7 @@ import { Filter, FileText, Megaphone, ListOrdered, LayoutGrid, FileVideo, Globe,
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
@@ -273,109 +274,124 @@ export default function ContentPage() {
               }}
             >
               <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-8">
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="all" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.all')}>
-                    <LayoutGrid size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('content.tabs.all')}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="blog_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.blog')}>
-                    <FileText size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('content.tabs.blog')}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="video" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.video')}>
-                    <FileVideo size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('content.tabs.video')}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="social_post" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.social')}>
-                    <Globe size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('content.tabs.social')}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="ad" className="text-xs rounded-full flex items-center justify-center gap-1.5" title={t('content.tabs.ads')}>
-                    <Megaphone size={13} className="md:!hidden" />
-                    <span className="tab-label">{t('content.tabs.ads')}</span>
-                  </TabsTrigger>
-                </TabsList>
-              <div className="flex items-center gap-2">
-                <SearchInput
-                  placeholder="Search content..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                  alwaysExpanded={false}
-                />
+              <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                  <div className="md:hidden w-full">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      placeholder="Search content..."
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                      alwaysExpanded={true} />
+                  </div>
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">Filtros</span>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                      <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.all')}>
+                        <LayoutGrid size={13} className="md:!hidden" />
+                        <span className="tab-label">{t('content.tabs.all')}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="blog_post" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.blog')}>
+                        <FileText size={13} className="md:!hidden" />
+                        <span className="tab-label">{t('content.tabs.blog')}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="video" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.video')}>
+                        <FileVideo size={13} className="md:!hidden" />
+                        <span className="tab-label">{t('content.tabs.video')}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="social_post" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.social')}>
+                        <Globe size={13} className="md:!hidden" />
+                        <span className="tab-label">{t('content.tabs.social')}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="ad" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.ads')}>
+                        <Megaphone size={13} className="md:!hidden" />
+                        <span className="tab-label">{t('content.tabs.ads')}</span>
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+                  <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      placeholder="Search content..."
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                      className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
+                  </div>
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
+                    <Button 
+                      variant="secondary" 
+                      size={(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "default" : "sm"}
+                      className={cn(
+                        "w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full justify-center",
+                        (filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "px-4" : "md:w-9 md:px-0 px-4"
+                      )}
+                      onClick={() => setIsFiltersDialogOpen(true)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4" />
+                        <span className="md:hidden">Filters</span>
+                      </div>
+                      {(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) && (
+                        <Badge variant="secondary" className="ml-2">
+                          {filters.status.length + filters.type.length + filters.segments.length}
+                        </Badge>
+                      )}
+                    </Button>
 
-                  <Button 
-                    variant="secondary" 
-                    size={(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "default" : "icon"}
-                    className={cn(
-                      "h-9 rounded-full",
-                      (filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "px-3" : "w-9"
-                    )}
-                    onClick={() => setIsFiltersDialogOpen(true)}
-                  >
-                    <Filter className="h-4 w-4" />
-                    {(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) && (
-                      <Badge variant="secondary" className="ml-2">
-                        {filters.status.length + filters.type.length + filters.segments.length}
-                      </Badge>
-                    )}
-                  </Button>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('content.sortBy') === 'content.sortBy' ? 'Sort by' : t('content.sortBy')}>
-                        <ListOrdered className="h-4 w-4" />
-                        <span className="hidden sm:inline font-normal">
-                          {sortBy === "newest"
-                            ? (t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest'))
-                            : sortBy === "oldest"
-                              ? (t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest'))
-                              : sortBy === "rate_desc"
-                                ? (t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc'))
-                                : (t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc'))}
-                        </span>
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-40">
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("newest")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                        {t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("oldest")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                        {t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("rate_desc")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_desc" ? "opacity-100" : "opacity-0")} />
-                        {t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        onClick={() => setSortBy("rate_asc")}
-                      >
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_asc" ? "opacity-100" : "opacity-0")} />
-                        {t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title={t('content.sortBy') === 'content.sortBy' ? 'Sort by' : t('content.sortBy')}>
+                          <div className="flex items-center gap-2">
+                            <ListOrdered className="h-4 w-4" />
+                            <span className="font-normal">
+                              {sortBy === "newest"
+                                ? (t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest'))
+                                : sortBy === "oldest"
+                                  ? (t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest'))
+                                  : sortBy === "rate_desc"
+                                    ? (t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc'))
+                                    : (t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc'))}
+                            </span>
+                          </div>
+                          <ChevronDown className="h-3 w-3 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-40">
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => setSortBy("newest")}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
+                          {t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => setSortBy("oldest")}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
+                          {t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="cursor-pointer"
+                          onClick={() => setSortBy("rate_desc")}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_desc" ? "opacity-100" : "opacity-0")} />
+                          {t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="cursor-pointer"
+                          onClick={() => setSortBy("rate_asc")}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_asc" ? "opacity-100" : "opacity-0")} />
+                          {t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
-              </div>
-              <div className="ml-auto">
+              </MobileFiltersDrawer>
+              <div className="ml-auto shrink-0 mt-2 md:mt-0">
                 <ViewSelector 
                   currentView={viewType} 
-                  onViewChange={(view) => setViewType(view)}
-                />
+                  onViewChange={(view) => setViewType(view)} />
               </div>
             </div>
           </div>
@@ -403,8 +419,7 @@ export default function ContentPage() {
                   <TrendsColumn
                     className="self-stretch"
                     segments={segments as any}
-                    currentSiteId={currentSite?.id}
-                  />
+                    currentSiteId={currentSite?.id} />
                 </div>
               )}
               
@@ -426,8 +441,7 @@ export default function ContentPage() {
                   onRatingChange={handleContentRatingChange}
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}
-                  onPublish={handlePublishClick}
-                />
+                  onPublish={handlePublishClick} />
             </div>
             
             {/* Right padding spacer for scroll */}
@@ -452,8 +466,7 @@ export default function ContentPage() {
               }}
               segments={segments}
               onRatingChange={handleContentRatingChange}
-              onPublish={handlePublishClick}
-            />
+              onPublish={handlePublishClick} />
           )}
         </SheetContent>
       </Sheet>
@@ -464,8 +477,7 @@ export default function ContentPage() {
         siteId={currentSite?.id}
         onClose={() => setPublishingContent(null)}
         onPublished={() => mutateOutstand()}
-        onUpdateStatus={handleUpdateContentStatus}
-      />
+        onUpdateStatus={handleUpdateContentStatus} />
 
 
       {/* Filters Dialog */}
@@ -474,14 +486,12 @@ export default function ContentPage() {
         onOpenChange={setIsFiltersDialogOpen}
         filters={filters}
         onFiltersChange={handleFiltersChange}
-        segments={segments}
-      />
+        segments={segments} />
       
       <CreateContentDialog 
         segments={segments as any}
         campaigns={campaigns}
-        onSuccess={refreshContentList}
-      />
+        onSuccess={refreshContentList} />
     </div>
     </div>
   )

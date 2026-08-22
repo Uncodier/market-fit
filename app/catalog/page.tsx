@@ -10,6 +10,7 @@ import { CatalogListParams } from "./types"
 import { CatalogTable } from "./components/CatalogTable"
 import { CreateCatalogItemDialog } from "./components/CreateCatalogItemDialog"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
@@ -181,46 +182,62 @@ export default function CatalogPage() {
   }, [])
 
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))]">
+    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] min-h-0">
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
-            <div className="flex items-center space-x-2 overflow-x-auto overflow-y-hidden no-scrollbar pb-1 md:pb-0 flex-1 min-w-0 gap-2">
-                <Tabs 
-                  value={kindFilter} 
-                  onValueChange={(val) => { setKindFilter(val as any); setPage(1); }}
-                  className="flex-shrink-0"
-                >
-                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="all" className="text-xs rounded-full">{t('catalog.kind.all') || 'Todos los ítems'}</TabsTrigger>
-                    <TabsTrigger value="product" className="gap-2 text-xs rounded-full"><Archive className="h-4 w-4"/> {t('catalog.kind.product') || 'Productos'}</TabsTrigger>
-                    <TabsTrigger value="service" className="gap-2 text-xs rounded-full"><DatabaseIcon className="h-4 w-4"/> {t('catalog.kind.service') || 'Servicios'}</TabsTrigger>
-                    <TabsTrigger value="variant" className="gap-2 text-xs rounded-full"><Boxes className="h-4 w-4"/> Variantes</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                
-                <Tabs 
-                  value={statusFilter} 
-                  onValueChange={(val) => { setStatusFilter(val as any); setPage(1); }}
-                  className="flex-shrink-0"
-                >
-                  <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                    <TabsTrigger value="active" className="text-xs rounded-full">{t('status.active') || 'Activos'}</TabsTrigger>
-                    <TabsTrigger value="archived" className="text-xs rounded-full">{t('status.archived') || 'Archivados'}</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                  <div className="md:hidden w-full">
+                    <form onSubmit={handleSearch} className="w-full">
+                      <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+                        placeholder={t('catalog.search') || "Buscar en catálogo..."} 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        alwaysExpanded={true} />
+                    </form>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Tipo de Artículo' : t('catalog.kind.label')}</span>
+                    <Tabs 
+                      value={kindFilter} 
+                      onValueChange={(val) => { setKindFilter(val as any); setPage(1); }}
+                      className="w-full md:w-auto flex-shrink-0"
+                    >
+                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                        <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('catalog.kind.all') || 'Todos los ítems'}</TabsTrigger>
+                        <TabsTrigger value="product" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><Archive className="h-4 w-4 md:hidden"/> {t('catalog.kind.product') || 'Productos'}</TabsTrigger>
+                        <TabsTrigger value="service" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><DatabaseIcon className="h-4 w-4 md:hidden"/> {t('catalog.kind.service') || 'Servicios'}</TabsTrigger>
+                        <TabsTrigger value="variant" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap"><Boxes className="h-4 w-4 md:hidden"/> Variantes</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') === 'common.status' ? 'Estado' : t('common.status')}</span>
+                    <Tabs 
+                      value={statusFilter} 
+                      onValueChange={(val) => { setStatusFilter(val as any); setPage(1); }}
+                      className="w-full md:w-auto flex-shrink-0"
+                    >
+                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                        <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.active') || 'Activos'}</TabsTrigger>
+                        <TabsTrigger value="archived" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">{t('status.archived') || 'Archivados'}</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
 
-              <div className="flex items-center gap-2 w-full md:w-auto">
-                <form onSubmit={handleSearch} className="w-full md:w-auto">
-                  <SearchInput 
-                    placeholder={t('catalog.search') || "Buscar en catálogo..."} 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    alwaysExpanded={false}
-                  />
-                </form>
-              </div>
+                  <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                    <form onSubmit={handleSearch} className="w-full md:w-auto">
+                      <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+                        placeholder={t('catalog.search') || "Buscar en catálogo..."} 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)} />
+                    </form>
+                  </div>
+                </div>
+              </MobileFiltersDrawer>
               
               <div className="flex items-center gap-2 w-auto justify-end shrink-0">
                 <div className="flex ml-2">
@@ -231,7 +248,7 @@ export default function CatalogPage() {
         </div>
       </StickyHeader>
 
-      <div className="flex-1 p-4 md:p-6 overflow-auto">
+      <div className="flex-1 p-4 md:p-6 min-h-0 overflow-auto">
         <div className="flex flex-col gap-6">
           <div>
             {!currentSite || isLoading ? (
@@ -255,30 +272,27 @@ export default function CatalogPage() {
                       searchQuery={searchQuery}
                       onCreateOpen={() => setIsCreateOpen(true)}
                       onDragEnd={handleDragEnd}
-                      isDragEnabled={isDragEnabled}
-                    />
+                      isDragEnabled={isDragEnabled} />
                     
                     {!isDragEnabled && (data?.items.count ?? 0) > pageSize && (
                       <div className="py-4 flex justify-center">
                         <Pagination 
                           currentPage={page}
                           totalPages={Math.ceil(data!.items.count / pageSize)}
-                          onPageChange={setPage}
-                        />
+                          onPageChange={setPage} />
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className={viewType === 'kanban' ? "overflow-x-auto -mx-4 md:-mx-6" : ""}>
-                    <div className={viewType === 'kanban' ? "px-4 md:px-6" : ""}>
+                  <div className={viewType === 'kanban' ? "-mx-4 md:-mx-6" : "h-full flex flex-col"}>
+                    <div className={viewType === 'kanban' ? "px-4 md:px-6" : "h-full flex flex-col"}>
                       {data?.items.data && data.items.data.length > 0 ? (
                         <KanbanView 
                           items={data.items.data}
                           categories={data.categories}
                           onDragEnd={handleDragEnd}
                           isDragEnabled={isDragEnabled}
-                          searchQuery={searchQuery}
-                        />
+                          searchQuery={searchQuery} />
                       ) : (
                         <div className="pt-4">
                           <EmptyCard
@@ -290,8 +304,7 @@ export default function CatalogPage() {
                                 <Plus className="mr-2 h-4 w-4" />
                                 {t('catalog.addItem') || 'Agregar ítem'}
                               </Button>
-                            }
-                          />
+                            } />
                         </div>
                       )}
                     </div>
@@ -307,8 +320,7 @@ export default function CatalogPage() {
         <CreateCatalogItemDialog
           open={isCreateOpen}
           onOpenChange={setIsCreateOpen}
-          onSuccess={() => mutate()}
-        />
+          onSuccess={() => mutate()} />
       )}
     </div>
   )

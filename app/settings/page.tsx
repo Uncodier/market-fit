@@ -8,6 +8,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useTheme } from "@/app/context/ThemeContext"
 import { type Site, type SiteSettings } from "@/app/context/SiteContext"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { ResponsiveTabsList, TabItem } from "@/app/components/ui/responsive-tabs-list"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
@@ -629,21 +630,39 @@ export default function SettingsPage() {
     }
   }
 
+  const settingsTabs: TabItem[] = [
+    { value: "general", label: t('settings.tabs.general') || 'General Settings' },
+    { value: "company", label: t('settings.tabs.company') || 'Company' },
+    { value: "marketplace", label: t('settings.tabs.marketplace') || 'Marketplace' },
+    { value: "visits", label: t('settings.tabs.visits') || 'Visits' },
+    { value: "channels", label: t('settings.tabs.channels') || 'Agent Channels' },
+    { value: "team", label: t('settings.tabs.team') || 'Team' },
+    { value: "calendar", label: t('settings.tabs.calendar') || 'Calendar' },
+    { value: "printers", label: t('settings.tabs.printers') || 'Printers' },
+    { value: "social", label: t('settings.nav.socialNetworks') || 'Social Networks' },
+  ];
+
+  const initialSettingsTabs: TabItem[] = [
+    { value: "general", label: t('settings.tabs.general') || 'General Settings' },
+    { value: "channels", label: t('settings.tabs.channels') || 'Agent Channels' },
+    { value: "team", label: t('settings.tabs.team') || 'Team' },
+    { value: "calendar", label: t('settings.tabs.calendar') || 'Calendar' },
+    { value: "printers", label: t('settings.tabs.printers') || 'Printers' },
+    { value: "social", label: t('settings.nav.socialNetworks') || 'Social Networks' },
+  ];
+
   // Only show skeleton when initially loading, not when saving
   if (isLoading) {
     return (
       <div className="flex-1">
         <StickyHeader>
           <div className="flex items-center justify-between px-16 w-full">
-            <Tabs value="general" className="w-auto">
-              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
-                <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
-                <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
-                <TabsTrigger value="calendar" className="text-xs rounded-full px-4">{t('settings.tabs.calendar') || 'Calendar'}</TabsTrigger>
-                <TabsTrigger value="printers" className="text-xs rounded-full px-4">{t('settings.tabs.printers') || 'Printers'}</TabsTrigger>
-                <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
-              </TabsList>
+            <Tabs value="general" className="w-auto flex-1 max-w-full">
+              <ResponsiveTabsList 
+                tabs={initialSettingsTabs} 
+                activeTab="general" 
+                onTabChange={() => {}}
+                className="h-8 p-0.5 bg-muted/30 rounded-full" />
             </Tabs>
           </div>
         </StickyHeader>
@@ -674,18 +693,12 @@ export default function SettingsPage() {
       {showSettingsTabBar ? (
         <StickyHeader>
           <div className="flex items-center justify-between px-16 w-full">
-            <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
-              <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                <TabsTrigger value="general" className="text-xs rounded-full px-4">{t('settings.tabs.general') || 'General Settings'}</TabsTrigger>
-                <TabsTrigger value="company" className="text-xs rounded-full px-4">{t('settings.tabs.company') || 'Company'}</TabsTrigger>
-                <TabsTrigger value="marketplace" className="text-xs rounded-full px-4">{t('settings.tabs.marketplace') || 'Marketplace'}</TabsTrigger>
-                <TabsTrigger value="visits" className="text-xs rounded-full px-4">{t('settings.tabs.visits') || 'Visits'}</TabsTrigger>
-                <TabsTrigger value="channels" className="text-xs rounded-full px-4">{t('settings.tabs.channels') || 'Agent Channels'}</TabsTrigger>
-                <TabsTrigger value="team" className="text-xs rounded-full px-4">{t('settings.tabs.team') || 'Team'}</TabsTrigger>
-                <TabsTrigger value="calendar" className="text-xs rounded-full px-4">{t('settings.tabs.calendar') || 'Calendar'}</TabsTrigger>
-                <TabsTrigger value="printers" className="text-xs rounded-full px-4">{t('settings.tabs.printers') || 'Printers'}</TabsTrigger>
-                <TabsTrigger value="social" className="text-xs rounded-full px-4">{t('settings.nav.socialNetworks') || 'Social Networks'}</TabsTrigger>
-              </TabsList>
+            <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto flex-1 max-w-full">
+              <ResponsiveTabsList 
+                tabs={settingsTabs} 
+                activeTab={activeSegment} 
+                onTabChange={setActiveSegment}
+                className="h-8 p-0.5 bg-muted/30 rounded-full" />
             </Tabs>
           </div>
         </StickyHeader>
@@ -708,8 +721,7 @@ export default function SettingsPage() {
             onSaveShop={onSaveShop}
             onSavePrinters={onSavePrinters}
             activeSegment={activeSegment}
-            siteId={currentSite.id}
-          />
+            siteId={currentSite.id} />
           </div>
           <QuickNav sections={getCurrentSections()} />
         </div>

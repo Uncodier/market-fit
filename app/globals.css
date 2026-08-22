@@ -2875,3 +2875,95 @@ html.safari .chat-input-container[style*="fixed"] {
   }
 }
 
+
+/* Mobile Filters Drawer - Global overrides for industry standard mobile UX */
+@media (max-width: 768px) {
+  .mobile-filters-drawer-content {
+    padding-top: 1rem !important;
+    padding-bottom: 2rem !important;
+  }
+  
+  .mobile-filters-drawer-content > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2rem !important;
+    align-items: stretch !important;
+  }
+  
+  .mobile-filters-drawer-content > div > div {
+    width: 100% !important;
+  }
+
+  /* Style for the section titles */
+  .mobile-filters-drawer-content span.text-xs.font-semibold {
+    display: block !important;
+    font-size: 0.75rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: hsl(var(--muted-foreground)) !important;
+    margin-bottom: 1rem !important;
+    font-weight: 600 !important;
+  }
+
+  /* Style TabsList as a flex-wrap container for pills */
+  .mobile-filters-drawer-content [role="tablist"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 0.625rem !important;
+    background: transparent !important;
+    height: auto !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  
+  /* Style individual TabsTriggers as modern padded chips */
+  .mobile-filters-drawer-content [role="tablist"] > [role="tab"] {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    justify-content: center !important;
+    border-radius: 9999px !important;
+    border: 1px solid transparent !important;
+    background: hsl(var(--secondary) / 0.8) !important;
+    color: hsl(var(--secondary-foreground) / 0.9) !important;
+    padding: 0.5rem 1.125rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Active state for chips */
+  .mobile-filters-drawer-content [role="tablist"] > [role="tab"][data-state="active"] {
+    background: hsl(var(--foreground)) !important;
+    color: hsl(var(--background)) !important;
+    font-weight: 600 !important;
+  }
+  
+  /* Active state icons */
+  .mobile-filters-drawer-content [role="tablist"] > [role="tab"][data-state="active"] svg {
+    color: hsl(var(--background)) !important;
+  }
+  
+  /* Ensure badges inside active tabs match the theme */
+  .mobile-filters-drawer-content [role="tablist"] > [role="tab"][data-state="active"] .bg-secondary {
+    background: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Search input container refinement */
+  .mobile-filters-drawer-content input[type="text"] {
+    background: hsl(var(--secondary) / 0.5) !important;
+    border-color: transparent !important;
+    border-radius: 0.75rem !important;
+    height: 3rem !important;
+    font-size: 1rem !important; /* Prevents iOS zoom */
+  }
+  .mobile-filters-drawer-content input[type="text"]:focus {
+    background: hsl(var(--background)) !important;
+    border-color: hsl(var(--ring)) !important;
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2) !important;
+  }
+}

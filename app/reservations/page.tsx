@@ -1,5 +1,7 @@
 "use client"
 
+import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+
 import React, { useEffect, useMemo, useState } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
@@ -135,27 +137,41 @@ export default function ReservationsPage() {
       <StickyHeader>
         <div className="w-full pt-0 flex items-center justify-between">
           <div className="flex items-center justify-between gap-2 w-full">
-            <div className="flex items-center space-x-2 overflow-x-auto overflow-y-hidden no-scrollbar pb-1 md:pb-0 flex-1 min-w-0 gap-2">
-              <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as typeof viewMode)}>
-                <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-                  <TabsTrigger value="service" className="gap-2 text-xs rounded-full">
-                    <List className="h-4 w-4" /> <span className="hidden sm:inline">{t("reservations.tabs.byService") || "By Service"}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="calendar" className="gap-2 text-xs rounded-full">
-                    <CalendarDays className="h-4 w-4" /> <span className="hidden sm:inline">{t("reservations.tabs.byDate") || "By Date"}</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="schedules" className="gap-2 text-xs rounded-full">
-                    <Clock className="h-4 w-4" /> <span className="hidden sm:inline">{t("reservations.tabs.schedules") || "Schedules"}</span>
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <SearchInput
-                placeholder={t("reservations.search.placeholder") || "Search reservations..."}
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                alwaysExpanded={false}
-              />
-            </div>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                <div className="md:hidden w-full">
+                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                    placeholder={t("reservations.search.placeholder") || "Search reservations..."}
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    alwaysExpanded={true} />
+                </div>
+
+                <div className="flex flex-col gap-2 w-full md:w-auto">
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.view') || 'Vista'}</span>
+                  <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as typeof viewMode)}>
+                    <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
+                      <TabsTrigger value="service" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                        <List className="h-4 w-4 md:hidden" /> <span className="inline">{t("reservations.tabs.byService") || "By Service"}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="calendar" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                        <CalendarDays className="h-4 w-4 md:hidden" /> <span className="inline">{t("reservations.tabs.byDate") || "By Date"}</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="schedules" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
+                        <Clock className="h-4 w-4 md:hidden" /> <span className="inline">{t("reservations.tabs.schedules") || "Schedules"}</span>
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+
+                <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                    placeholder={t("reservations.search.placeholder") || "Search reservations..."}
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)} />
+                </div>
+              </div>
+            </MobileFiltersDrawer>
 
             <div className="flex items-center gap-2 w-auto justify-end shrink-0">
               {viewType === "list" && viewMode !== "schedules" && (
@@ -228,23 +244,20 @@ export default function ReservationsPage() {
               reservations={filteredReservations}
               viewMode={viewMode}
               onReservationClick={openEdit}
-              onCreateSlot={openCreate}
-            />
+              onCreateSlot={openCreate} />
           </div>
         ) : viewMode === "service" ? (
           <ReservationsList
             reservations={filteredReservations}
             siteId={currentSite.id}
             onUpdate={mutate}
-            onEdit={openEdit}
-          />
+            onEdit={openEdit} />
         ) : (
           <ReservationsByDateList
             reservations={filteredReservations}
             siteId={currentSite.id}
             onUpdate={mutate}
-            onEdit={openEdit}
-          />
+            onEdit={openEdit} />
         )}
       </div>
       <CreateReservationDialog
@@ -252,13 +265,11 @@ export default function ReservationsPage() {
         reservation={editingReservation}
         initialSlot={createSlot}
         onOpenChange={handleFormOpenChange}
-        onSuccess={mutate}
-      />
+        onSuccess={mutate} />
       <CreateCalendarBlockDialog
         open={isBlockFormOpen}
         onOpenChange={setIsBlockFormOpen}
-        onSuccess={mutate}
-      />
+        onSuccess={mutate} />
     </div>
   )
 }
