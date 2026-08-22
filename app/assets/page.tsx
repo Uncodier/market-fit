@@ -72,10 +72,10 @@ function AssetsLoadingPage() {
                       <span className="tab-label">{t('assets.tabs.documents')}</span>
                     </TabsTrigger>
                   </TabsList>
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+                  <SearchInput   
                     placeholder={t('assets.searchPlaceholder')}
-                    className="w-full"
-                    disabled />
+                    
+                    disabled  className="w-full h-10 md:h-9"  containerClassName="w-full" />
               </div>
               <div className="ml-auto">
                 {/* Any other buttons would go here */}
@@ -269,12 +269,12 @@ function AssetsContent() {
                       <span className="tab-label">{t('assets.tabs.documents')}</span>
                     </TabsTrigger>
                   </TabsList>
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+                  <SearchInput   
                     data-command-k-input
                     placeholder={t('assets.searchPlaceholder')} 
-                    className="w-full" 
+                     
                     value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)} />
+                    onChange={(e) => handleSearch(e.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 </div>
                 <div className="ml-auto flex items-center gap-4">
                   {agentId && (
@@ -351,13 +351,7 @@ function AssetsContent() {
             <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
               <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                 <div className="md:hidden w-full">
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
-                    data-command-k-input
-                    placeholder={t('assets.searchPlaceholder')} 
-                    className="w-full" 
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    alwaysExpanded={true} />
+                  <SearchInput  data-command-k-input placeholder={t('assets.searchPlaceholder')} value={searchTerm} onChange={(e) => handleSearch(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 </div>
 
                 <div className="flex flex-col gap-2 w-full md:w-auto">
@@ -439,12 +433,7 @@ function AssetsContent() {
                 </div>
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
-                    data-command-k-input
-                    placeholder={t('assets.searchPlaceholder')} 
-                    className="w-full" 
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)} />
+                  <SearchInput  data-command-k-input placeholder={t('assets.searchPlaceholder')} value={searchTerm} onChange={(e) => handleSearch(e.target.value)}    className="w-full"  containerClassName="w-64" />
                 </div>
               </div>
             </MobileFiltersDrawer>

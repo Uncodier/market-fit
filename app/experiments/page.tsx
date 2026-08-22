@@ -695,12 +695,12 @@ export default function ExperimentsPage() {
                     <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Completed</TabsTrigger>
                     <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Draft</TabsTrigger>
                   </TabsList>
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+                  <SearchInput   
                     placeholder="Search experiments..." 
-                    className="w-full"
+                    
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    type="text" />
+                    type="text"  className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 </div>
                 <div className="ml-auto">
                   {/* Any other buttons would go here */}
@@ -739,12 +739,12 @@ export default function ExperimentsPage() {
                     <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Draft</TabsTrigger>
                   </TabsList>
                 </div>
-                <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+                <SearchInput   
                   placeholder="Search experiments..." 
-                  className="w-full"
+                  
                   disabled
                   type="text"
-                  value="" />
+                  value=""  className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 <div className="flex-1"></div>
               </div>
             </div>
@@ -780,12 +780,12 @@ export default function ExperimentsPage() {
                   <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap">Draft</TabsTrigger>
                 </TabsList>
               </div>
-              <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+              <SearchInput   
                 placeholder="Search experiments..." 
-                className="w-full"
+                
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                type="text" />
+                type="text"  className="w-full h-10 md:h-9"  containerClassName="w-full" />
               <div className="flex-1"></div>
             </div>
           </div>

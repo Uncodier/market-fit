@@ -1400,11 +1400,11 @@ export default function LeadsPage() {
                     <span className="tab-label">{t('leads.tabs.notQualified') || 'Not Qualified'}</span>
                   </TabsTrigger>
                 </TabsList>
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                  <SearchInput  
                     placeholder="Search leads..."
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
+                      className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-full" />
                 </div>
                 </div>
               </MobileFiltersDrawer>

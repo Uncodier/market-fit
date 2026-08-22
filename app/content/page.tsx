@@ -277,11 +277,7 @@ export default function ContentPage() {
               <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
-                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                      placeholder="Search content..."
-                      value={searchTerm}
-                      onChange={handleSearchChange}
-                      alwaysExpanded={true} />
+                    <SearchInput  placeholder="Search content..." value={searchTerm} onChange={handleSearchChange} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </div>
                   <div className="flex flex-col gap-2 w-full md:w-auto">
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">Filtros</span>
@@ -309,11 +305,7 @@ export default function ContentPage() {
                     </TabsList>
                   </div>
                   <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                      placeholder="Search content..."
-                      value={searchTerm}
-                      onChange={handleSearchChange}
-                      className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
+                    <SearchInput  placeholder="Search content..." value={searchTerm} onChange={handleSearchChange}    className="w-full bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-64" />
                   </div>
                   <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
                     <Button 

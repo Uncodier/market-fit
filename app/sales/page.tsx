@@ -396,11 +396,7 @@ export default function SalesPage() {
                   </div>
 
                   <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                      data-command-k-input
-                      placeholder={t('sales.search.placeholder') || "Search sales..."}
-                      value={searchQuery}
-                      onChange={handleSearchChange} />
+                    <SearchInput  data-command-k-input placeholder={t('sales.search.placeholder') || "Search sales..."} value={searchQuery} onChange={handleSearchChange}    className="w-full"  containerClassName="w-64" />
                   </div>
                 </div>
               </MobileFiltersDrawer>

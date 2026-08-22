@@ -154,18 +154,12 @@ export default function CampaignsPage() {
             <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
               <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                 <div className="md:hidden w-full">
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                    data-command-k-input
-                    placeholder={t("campaigns.search.placeholder") || "Search campaigns..."}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full"
-                    alwaysExpanded={true} />
+                  <SearchInput  data-command-k-input placeholder={t("campaigns.search.placeholder") || "Search campaigns..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 </div>
 
                 <div className="flex flex-col gap-2 w-full md:w-auto">
                   <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') || 'Estado'}</span>
-                  <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "draft" | "completed")}>
+                  <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "active" | "pending" | "completed")}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                       <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.all") || "All Campaigns"}>
                         <LayoutGrid size={13} className="md:!hidden" />
@@ -180,7 +174,7 @@ export default function CampaignsPage() {
                         <span className="tab-label">{t("campaigns.tabs.pending") || "Pending"}</span>
                       </TabsTrigger>
                       <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.draft") || "Drafts"}>
-                        <FileText size={13} className="md:!hidden" />
+                        <LayoutGrid size={13} className="md:!hidden" />
                         <span className="tab-label">{t("campaigns.tabs.draft") || "Drafts"}</span>
                       </TabsTrigger>
                       <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t("campaigns.tabs.completed") || "Completed"}>
@@ -269,12 +263,7 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                    data-command-k-input
-                    placeholder={t("campaigns.search.placeholder") || "Search campaigns..."}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-64" />
+                  <SearchInput  data-command-k-input placeholder={t("campaigns.search.placeholder") || "Search campaigns..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-full w-64" />
                 </div>
               </div>
             </MobileFiltersDrawer>

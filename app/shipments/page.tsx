@@ -110,11 +110,7 @@ export default function ShipmentsPage() {
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
                     <form onSubmit={handleSearch} className="w-full">
-                      <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                        placeholder={t("shipments.search") || "Search tracking or customer..."}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        alwaysExpanded={true} />
+                      <SearchInput  placeholder={t("shipments.search") || "Search tracking or customer..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                     </form>
                   </div>
                   <div className="flex flex-col gap-2 w-full md:w-auto">
@@ -166,10 +162,10 @@ export default function ShipmentsPage() {
 
                   <div className="hidden md:block">
                     <form onSubmit={handleSearch} className="w-full md:w-auto">
-                      <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+                      <SearchInput  
                         placeholder={t("shipments.search") || "Search tracking or customer..."}
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)} />
+                        onChange={(e) => setSearchQuery(e.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
                     </form>
                   </div>
                 </div>

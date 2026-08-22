@@ -91,11 +91,7 @@ export default function InventoryPage() {
                   {activeTab === "levels" && (
                     <div className="md:hidden w-full">
                       <form onSubmit={handleSearch} className="w-full">
-                        <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
-                          placeholder="Search catalog..." 
-                          value={q}
-                          onChange={(e) => setQ(e.target.value)}
-                          alwaysExpanded={true} />
+                        <SearchInput  placeholder="Search catalog..." value={q} onChange={(e) => setQ(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                       </form>
                     </div>
                   )}
@@ -112,10 +108,10 @@ export default function InventoryPage() {
                   {activeTab === "levels" && (
                     <div className="hidden md:block">
                       <form onSubmit={handleSearch} className="w-full md:w-64">
-                        <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
+                        <SearchInput   
                           placeholder="Search catalog..." 
                           value={q}
-                          onChange={(e) => setQ(e.target.value)} />
+                          onChange={(e) => setQ(e.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
                       </form>
                     </div>
                   )}

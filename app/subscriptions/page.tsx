@@ -65,11 +65,7 @@ export default function SubscriptionsPage() {
             <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
               <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                 <div className="md:hidden w-full">
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                    placeholder={t("subscriptions.search") || "Search subscriptions..."}
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    alwaysExpanded={true} />
+                  <SearchInput  placeholder={t("subscriptions.search") || "Search subscriptions..."} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 </div>
 
                 <div className="flex flex-col gap-2 w-full md:w-auto">
@@ -96,10 +92,7 @@ export default function SubscriptionsPage() {
                 </div>
 
                 <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
-                  <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                    placeholder={t("subscriptions.search") || "Search subscriptions..."}
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)} />
+                  <SearchInput  placeholder={t("subscriptions.search") || "Search subscriptions..."} value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}    className="w-full"  containerClassName="w-64" />
                 </div>
               </div>
             </MobileFiltersDrawer>

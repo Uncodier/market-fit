@@ -148,11 +148,7 @@ export default function OrdersPage() {
               <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
-                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
-                      placeholder={t('orders.search') || "Search order number..."} 
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      alwaysExpanded={true} />
+                    <SearchInput  placeholder={t('orders.search') || "Search order number..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </div>
                   <div className="flex flex-col gap-2">
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">Filtros</span>
@@ -206,11 +202,7 @@ export default function OrdersPage() {
 
                   <div className="hidden md:flex items-center gap-2">
                     <form onSubmit={handleSearch}>
-                      <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9" 
-                        placeholder={t('orders.search') || "Search order number..."} 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
+                      <SearchInput  placeholder={t('orders.search') || "Search order number..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-64" />
                     </form>
                   </div>
                 </div>

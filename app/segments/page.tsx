@@ -169,12 +169,12 @@ export default function SegmentsPage() {
                   <span className="tab-label">{t("segments.tabs.draft") || "Draft"}</span>
                 </TabsTrigger>
               </TabsList>
-              <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
+              <SearchInput  
                 data-command-k-input
                 placeholder={t("segments.searchPlaceholder") || "Search segments..."}
-                className="w-full"
+                
                 value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)} />
+                onChange={(event) => setSearchTerm(event.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
             </div>
           </div>
         </StickyHeader>

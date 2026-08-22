@@ -147,13 +147,7 @@ export default function RequirementsPage() {
               <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
-                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                      placeholder={t("requirements.search") || "Search requirements..."}
-                      value={list.searchQuery}
-                      onSearch={list.setSearchQuery}
-                      ref={searchInputRef}
-                      className="border-border bg-background focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                      alwaysExpanded={true} />
+                    <SearchInput  placeholder={t("requirements.search") || "Search requirements..."} value={list.searchQuery} onSearch={list.setSearchQuery} ref={searchInputRef} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </div>
                   <div className="flex flex-col gap-2 w-full md:w-auto">
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">Filtros</span>
@@ -177,12 +171,7 @@ export default function RequirementsPage() {
                     </TabsList>
                   </div>
                   <div className="hidden md:flex items-center gap-2">
-                    <SearchInput containerClassName="w-full" className="w-full h-10 md:h-9"
-                      placeholder={t("requirements.search") || "Search requirements..."}
-                      value={list.searchQuery}
-                      onSearch={list.setSearchQuery}
-                      ref={searchInputRef}
-                      className="border-border bg-background focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
+                    <SearchInput  placeholder={t("requirements.search") || "Search requirements..."} value={list.searchQuery} onSearch={list.setSearchQuery} ref={searchInputRef}    className="w-full border-border bg-background focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-64" />
                     <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={() => setIsFilterModalOpen(true)}>
                       <Filter className="h-4 w-4" />
                     </Button>
