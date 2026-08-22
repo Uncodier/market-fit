@@ -4,6 +4,7 @@ import { getLeads, updateLead as updateLeadAction, createLead as createLeadActio
 import { getSegments } from "@/app/segments/actions"
 import { Lead, Segment, LeadFilters } from "@/app/leads/types"
 import { toast } from "sonner"
+import { retryOnError, useOptimisticError } from "@/app/hooks/use-optimistic-error"
 
 interface LeadsContextType {
   leads: Lead[]
@@ -50,7 +51,13 @@ export function LeadsProvider({ children }: LeadsProviderProps) {
     journeyStages: []
   })
   const [searchQuery, setSearchQuery] = useState("")
+  const [loadError, setLoadError] = useState<string | null>(null)
   const { currentSite } = useSite()
+  const [visibleLoadError] = useOptimisticError(loadError)
+
+  useEffect(() => {
+    if (visibleLoadError) toast.error(visibleLoadError)
+  }, [visibleLoadError])
   
   // Load leads when currentSite changes
   useEffect(() => {
@@ -63,11 +70,16 @@ export function LeadsProvider({ children }: LeadsProviderProps) {
     if (!currentSite?.id) return
     
     setLoading(true)
+    setLoadError(null)
     try {
-      const result = await getLeads(currentSite.id)
+      const result = await retryOnError(async () => {
+        const response = await getLeads(currentSite.id)
+        if (response.error) throw new Error(response.error)
+        return response
+      })
       
       if (result.error) {
-        toast.error(result.error)
+        setLoadError(result.error)
         return
       }
       
@@ -85,7 +97,7 @@ export function LeadsProvider({ children }: LeadsProviderProps) {
       setLeads(normalizedLeads)
     } catch (error) {
       console.error("Error loading leads:", error)
-      toast.error("Error loading leads")
+      setLoadError("Error loading leads")
     } finally {
       setLoading(false)
     }

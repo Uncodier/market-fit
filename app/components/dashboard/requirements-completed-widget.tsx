@@ -5,6 +5,7 @@ import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useEffect, useState } from "react"
+import { retryOnError, useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
 
 interface RequirementsCompletedData {
   actual: number
@@ -44,13 +45,13 @@ export function RequirementsCompletedWidget({
           segmentId: segmentId || "all"
         })
 
-        const response = await fetch(`/api/performance/requirements-completed?${params}`)
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        const result = await response.json()
+        const result = await retryOnError(async () => {
+          const response = await fetch(`/api/performance/requirements-completed?${params}`)
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+          return response.json()
+        })
         setData(result)
       } catch (err) {
         console.error("Error fetching requirements completed data:", err)
@@ -63,6 +64,8 @@ export function RequirementsCompletedWidget({
     fetchData()
   }, [user, currentSite, segmentId, startDate, endDate])
 
+  const { error: visibleError, isLoading: showLoading } = useOptimisticLoadState(isLoading, error)
+
   const formatPeriodType = (periodType: string) => {
     switch (periodType) {
       case "daily": return t('dashboard.widgets.revenue.yesterday') || 'yesterday';
@@ -74,7 +77,7 @@ export function RequirementsCompletedWidget({
     }
   };
 
-  const changeText = error 
+  const changeText = visibleError 
     ? (t('dashboard.widgets.errorLoading') || 'Error loading data')
     : `${data?.percentChange || 0}% from ${formatPeriodType(data?.periodType || "monthly")}`;
 
@@ -84,9 +87,9 @@ export function RequirementsCompletedWidget({
       value={data?.actual || 0}
       changeText={changeText}
       isPositiveChange={(data?.percentChange || 0) > 0}
-      isLoading={isLoading}
-      customStatus={error ? (
-        <p className="text-xs text-red-500 mt-1">{error}</p>
+      isLoading={showLoading}
+      customStatus={visibleError ? (
+        <p className="text-xs text-red-500 mt-1">{String(visibleError)}</p>
       ) : undefined}
     />
   )

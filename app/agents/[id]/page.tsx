@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import React from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
@@ -561,9 +561,9 @@ function AgentPageSkeleton() {
 }
 
 // Content component that will use React.use()
-function AgentDetailPageContent({ params }: { params: Promise<{ id: string }> }) {
-  const unwrappedParams = React.use(params)
-  const agentId = unwrappedParams.id
+function AgentDetailPageContent() {
+  const params = useParams() as { id: string }
+  const agentId = params.id
   const router = useRouter()
   const { currentSite } = useSite()
   const supabase = createClient()

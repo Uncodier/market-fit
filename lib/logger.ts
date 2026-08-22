@@ -50,6 +50,19 @@ function debugConsoleDebug(...args: any[]): void {
  * Enhanced console.error that always works but adds debug info in debug mode
  */
 function enhancedConsoleError(...args: any[]): void {
+  // Ignore Next.js sync-dynamic-apis warnings caused by React DevTools or browser extensions
+  const errorString = args.map(a => {
+    if (typeof a === 'string') return a;
+    if (a instanceof Error) return a.message + ' ' + (a.stack || '');
+    try { return JSON.stringify(a); } catch (e) { return String(a); }
+  }).join(' ');
+  if (
+    (errorString.includes('accessed directly') || errorString.includes('sync-dynamic-apis') || errorString.includes('are being enumerated')) &&
+    (errorString.includes('searchParams') || errorString.includes('params'))
+  ) {
+    return;
+  }
+
   // Always show errors
   originalConsoleError.apply(console, args);
   

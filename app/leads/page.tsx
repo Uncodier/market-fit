@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Badge } from "@/app/components/ui/badge"
-import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Star, TrendingDown, Ban, TrendingUp, XCircle, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
+import { ChevronLeft, ChevronRight, Search, User, Users, MessageSquare, Globe, FileText, Loader, Tag, X, CheckCircle2, ExternalLink, Phone, Pencil, Mail, Filter, LayoutGrid, PlusCircle, Plus, Star, TrendingDown, Ban, TrendingUp, XCircle, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
@@ -857,41 +857,6 @@ export default function LeadsPage() {
     }))
   }
   
-  // Función para crear un nuevo lead
-  const handleCreateLead = async (data: any) => {
-    try {
-      const result = await createLead({
-        name: data.name,
-        email: data.email,
-        personal_email: data.personal_email,
-        phone: data.phone,
-        company: data.company,
-        position: data.position,
-        segment_id: data.segment_id,
-        status: data.status,
-        notes: data.notes,
-        origin: data.origin,
-        site_id: currentSite?.id || ""
-      })
-
-      if (result.error) {
-        toast.error(result.error)
-        return { error: result.error }
-      }
-
-      toast.success("Lead created successfully")
-      
-      // Recargar los leads
-      safeReload(false, 'New lead created')
-      
-      return { lead: result.lead }
-    } catch (error) {
-      console.error("Error creating lead:", error)
-      toast.error("Error creating lead")
-      return { error: "Error creating lead" }
-    }
-  }
-
   // Función para actualizar un lead localmente
   const handleUpdateLead = (leadId: string, updates: Partial<Lead> & { invalidated?: boolean }) => {
     mutateLeads((currentData: any) => {
@@ -1365,79 +1330,64 @@ export default function LeadsPage() {
               <div className="flex items-center justify-between w-full">
                 <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') || 'Estado'}</span>
                   <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                   <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.all') || 'All Companies'}>
-                    <LayoutGrid size={13} className="md:!hidden" />
+                    <LayoutGrid size={13} className="mr-2 md:mr-0" />
                     <span className="tab-label">{t('leads.tabs.all') || 'All Companies'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="new" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.new') || 'New'}>
-                    <PlusCircle size={13} className="md:!hidden" />
+                    <PlusCircle size={13} className="mr-2 md:mr-0" />
                     <span className="tab-label">{t('leads.tabs.new') || 'New'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="contacted" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.contacted') || 'Contacted'}>
-                    <MessageSquare size={13} className="md:!hidden" />
+                    <MessageSquare size={13} className="mr-2 md:mr-0" />
                     <span className="tab-label">{t('leads.tabs.contacted') || 'Contacted'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="qualified" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.qualified') || 'Qualified'}>
-                    <Star size={13} className="md:!hidden" />
+                    <Star size={13} className="mr-2 md:mr-0" />
                     <span className="tab-label">{t('leads.tabs.qualified') || 'Qualified'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="cold" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.cold') || 'Cold'}>
-                    <TrendingDown size={13} className="md:!hidden" />
+                    <TrendingDown size={13} className="mr-2 md:mr-0" />
                     <span className="tab-label">{t('leads.tabs.cold') || 'Cold'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="converted" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.converted') || 'Converted'}>
-                    <TrendingUp size={13} className="md:!hidden" />
+                    <TrendingUp size={13} className="mr-2 md:mr-0" />
                     <span className="tab-label">{t('leads.tabs.converted') || 'Converted'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="lost" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.lost') || 'Lost'}>
-                    <XCircle size={13} className="md:!hidden" />
+                    <XCircle size={13} className="mr-2 md:mr-0" />
                     <span className="tab-label">{t('leads.tabs.lost') || 'Lost'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="not_qualified" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('leads.tabs.notQualified') || 'Not Qualified'}>
-                    <Ban size={13} className="md:!hidden" />
+                    <Ban size={13} className="mr-2 md:mr-0" />
                     <span className="tab-label">{t('leads.tabs.notQualified') || 'Not Qualified'}</span>
                   </TabsTrigger>
                 </TabsList>
-                  <SearchInput  
-                    placeholder="Search leads..."
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                      className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-full" />
                 </div>
-                </div>
-              </MobileFiltersDrawer>
-                <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                  {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
-                    <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                      <Badge variant="outline" className="rounded-full px-2 py-0">
-                        {filters.status.length + filters.segments.length + filters.origin.length}
-                      </Badge>
-                      <span className="ml-2">{t('leads.filters.clear') || 'Clear'}</span>
-                    </Button>
-                  )}
-                  <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={handleOpenFilterModal}>
-                    <Filter className="h-4 w-4" />
-                  </Button>
 
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t('leads.sortBy') === 'leads.sortBy' ? 'Sort by' : t('leads.sortBy')}>
-                        <ListOrdered className="h-4 w-4" />
-                        <span className="hidden sm:inline font-normal">
-                          {sortBy === "newest"
-                            ? (t('leads.sort.newest') === 'leads.sort.newest' ? 'Newest' : t('leads.sort.newest'))
-                            : sortBy === "oldest"
-                              ? (t('leads.sort.oldest') === 'leads.sort.oldest' ? 'Oldest' : t('leads.sort.oldest'))
-                              : sortBy === "nearest_due_date"
-                                ? "Nearest due date"
-                                : "Last updated"}
-                        </span>
+                      <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title={t('leads.sortBy') === 'leads.sortBy' ? 'Sort by' : t('leads.sortBy')}>
+                        <div className="flex items-center gap-2">
+                          <ListOrdered className="h-4 w-4" />
+                          <span className="font-normal">
+                            {sortBy === "newest"
+                              ? (t('leads.sort.newest') === 'leads.sort.newest' ? 'Newest' : t('leads.sort.newest'))
+                              : sortBy === "oldest"
+                                ? (t('leads.sort.oldest') === 'leads.sort.oldest' ? 'Oldest' : t('leads.sort.oldest'))
+                                : sortBy === "nearest_due_date"
+                                  ? "Nearest due date"
+                                  : "Last updated"}
+                          </span>
+                        </div>
                         <ChevronDown className="h-3 w-3 opacity-50" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-52">
+                    <DropdownMenuContent align="start" className="w-52 md:w-auto md:align-end">
                       <DropdownMenuItem 
                         className="cursor-pointer"
                         onClick={() => setSortBy("newest")}
@@ -1469,16 +1419,58 @@ export default function LeadsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <ViewSelector currentView={viewType} onViewChange={setViewType} />
+                  <Button 
+                    variant="secondary" 
+                    size={(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "default" : "sm"}
+                    className={cn(
+                      "w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full justify-between md:justify-center",
+                      (filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "px-4" : "md:w-9 md:px-0 px-4"
+                    )}
+                    onClick={handleOpenFilterModal}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      <span className="font-normal md:hidden">Filters</span>
+                    </div>
+                    {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? (
+                      <Badge variant="secondary" className="ml-2">
+                        {filters.status.length + filters.segments.length + filters.origin.length}
+                      </Badge>
+                    ) : (
+                      <ChevronDown className="h-3 w-3 opacity-50 md:hidden" />
+                    )}
+                  </Button>
+
+                  {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
+                    <Button variant="ghost" size="sm" onClick={handleClearFilters} className="w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full">
+                      <span className="ml-2">{t('leads.filters.clear') || 'Clear filters'}</span>
+                    </Button>
+                  )}
+                </div>
+
+                <div className="hidden md:flex items-center gap-2 w-full md:w-auto">
+                  <SearchInput  
+                    placeholder="Search leads..."
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  
+                    containerClassName="w-full md:w-64" 
+                  />
                 </div>
               </div>
+            </MobileFiltersDrawer>
+            
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2 shrink-0">
+              <ViewSelector currentView={viewType} onViewChange={setViewType} />
+            </div>
+          </div>
             )}
           </div>
         </StickyHeader>
         
-        <div className="p-8 space-y-4 bg-muted/30 flex-1">
-          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-8" : ""}>
-            <div className={viewType === 'kanban' ? "min-w-fit px-8" : ""}>
+        <div className="p-4 md:p-8 space-y-4 bg-muted/30 flex-1 min-w-0">
+          <div className={viewType === 'kanban' ? "overflow-x-auto pb-4 -mx-4 md:-mx-8" : ""}>
+            <div className={viewType === 'kanban' ? "min-w-fit px-4 md:px-8" : ""}>
               {loading ? (
               <LeadsTableSkeleton />
             ) : (
@@ -1529,7 +1521,6 @@ export default function LeadsPage() {
           </div>
         </div>
       </Tabs>
-      
     </div>
     </LeadsContext.Provider>
   )

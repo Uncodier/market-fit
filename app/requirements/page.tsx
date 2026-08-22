@@ -34,6 +34,7 @@ import { KanbanView } from "./kanban-view"
 import { RequirementsTable, RequirementsTableSkeleton } from "./RequirementsTable"
 import { useRequirementsList } from "./use-requirements-list"
 import { COMPLETION_STATUS, REQUIREMENT_STATUS, type Requirement } from "./types"
+import { useOptimisticError } from "@/app/hooks/use-optimistic-error"
 
 export default function RequirementsPage() {
   const { t } = useLocalization()
@@ -42,6 +43,7 @@ export default function RequirementsPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = React.useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const list = useRequirementsList()
+  const [debouncedError, isMaskingError] = useOptimisticError(list.visibleError)
 
   const handleOpen = (requirement: Requirement) => {
     navigateToRequirement({
@@ -72,14 +74,14 @@ export default function RequirementsPage() {
   }
 
   const renderContent = () => {
-    if (list.isLoading || (!list.currentSite && !list.visibleError)) {
+    if (list.isLoading || isMaskingError || (!list.currentSite && !debouncedError)) {
       return <RequirementsTableSkeleton />
     }
-    if (list.visibleError) {
+    if (debouncedError) {
       return (
         <div className="mb-4 rounded-md border border-red-300 bg-red-50 p-4 text-red-800">
           <h3 className="mb-2 font-semibold">{t("requirements.error.loading") || "Error loading requirements"}</h3>
-          <p>{list.visibleError}</p>
+          <p>{debouncedError}</p>
           <button
             onClick={() => safeReload(false, "Requirements page error retry")}
             className="mt-2 rounded-md bg-red-100 px-4 py-2 text-red-800 hover:bg-red-200"

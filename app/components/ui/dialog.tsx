@@ -28,7 +28,7 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className={cn(overlayClassName, className)}
+    className={cn(overlayClassName, "z-[1000000]", className)}
     {...props}
   />
 ))
@@ -36,7 +36,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const dialogContentVariants = cva(
   [
-    "fixed z-[99999] flex w-full flex-col border bg-background shadow-lg outline-none duration-200",
+    "fixed z-[1000001] flex w-full flex-col border bg-background shadow-lg outline-none duration-200",
     dialogContentOverflowClassName,
     "max-h-[min(90vh,720px)] p-0",
     "inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 rounded-t-2xl",

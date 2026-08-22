@@ -342,7 +342,7 @@ export function GroupedLeadsTable({
             })}
           </TableBody>
         </Table>
-        <div className="flex items-center justify-between border-t border-border/60 px-4 py-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between border-t border-border/60 px-4 py-3 gap-4">
           <div className="flex items-center gap-3">
             <p className="text-xs text-muted-foreground">
               Showing <span className="font-medium text-foreground">{Math.min(indexOfFirstItem + 1, totalCompanies)}</span>

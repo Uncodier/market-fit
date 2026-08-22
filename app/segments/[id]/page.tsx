@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, RefObject, Suspense } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import React from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
@@ -492,20 +492,21 @@ const DetailsTab = dynamic<DetailsTabProps>(() => import('./components/SegmentDe
 });
 
 // Wrap the component with Suspense
-export default function SegmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function SegmentDetailPage(props: { params: Promise<{ id: string }> }) {
+  React.use(props.params); // Unwrap to prevent Next.js 15 warning
   return (
     <Suspense fallback={<LoadingState />}>
-      <SegmentDetailPageContent params={params} />
+      <SegmentDetailPageContent />
     </Suspense>
   );
 }
 
 // Move the main component logic to a separate component
-function SegmentDetailPageContent({ params }: { params: Promise<{ id: string }> }) {
+function SegmentDetailPageContent() {
+  const params = useParams()
   const router = useRouter()
   const { currentSite } = useSite()
-  const unwrappedParams = React.use(params)
-  const segmentId = unwrappedParams.id
+  const segmentId = params?.id as string
   
   const [segment, setSegment] = useState<Segment | null>(null)
   const [isActive, setIsActive] = useState(false)

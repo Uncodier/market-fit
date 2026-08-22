@@ -52,6 +52,7 @@ import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relatio
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { retryOnError, useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
 
 // Copywriting types
 const COPYWRITING_TYPES = [
@@ -438,12 +439,12 @@ export default function CopywritingPage() {
     
     try {
       setIsLoading(true)
-      const items = await getCopywriting(currentSite.id)
+      const items = await retryOnError(() => getCopywriting(currentSite.id))
       setCopywritingItems(items)
       setFilteredCopywriting(items)
+      setError(null)
     } catch (error) {
       console.error('Error loading copywriting:', error)
-      toast.error('Failed to load copywriting items')
       setError('Failed to load copywriting items')
     } finally {
       setIsLoading(false)
@@ -544,12 +545,17 @@ export default function CopywritingPage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const paginatedCopywriting = filteredCopywriting.slice(startIndex, endIndex)
+  const { error: visibleError, isLoading: showLoading } = useOptimisticLoadState(isLoading, error)
 
-  if (error) {
+  useEffect(() => {
+    if (visibleError) toast.error(String(visibleError))
+  }, [visibleError])
+
+  if (visibleError) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
         <div className="text-center space-y-4">
-          <p className="text-red-500 mb-4">{error}</p>
+          <p className="text-red-500 mb-4">{visibleError}</p>
           <Button 
             variant="outline" 
             onClick={loadCopywriting}
@@ -637,7 +643,7 @@ export default function CopywritingPage() {
 
         <div className="flex-1 px-16 py-8">
           <TabsContent value="all" className="mt-0">
-            {isLoading ? (
+            {showLoading ? (
               <CopywritingSkeleton />
             ) : (
               <>
@@ -660,7 +666,7 @@ export default function CopywritingPage() {
                   </div>
                 )}
 
-                {filteredCopywriting.length === 0 && !isLoading && (
+                {filteredCopywriting.length === 0 && !showLoading && (
                   <div className="text-center py-12">
                     <PenTool className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No copy found</h3>
@@ -683,7 +689,7 @@ export default function CopywritingPage() {
           {/* Individual type tabs */}
           {COPYWRITING_TYPES.slice(0, 4).map(type => (
             <TabsContent key={type.id} value={type.id} className="mt-0">
-              {isLoading ? (
+              {showLoading ? (
                 <CopywritingSkeleton />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

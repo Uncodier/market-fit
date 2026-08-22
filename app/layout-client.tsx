@@ -16,6 +16,7 @@ import { useArtifactRouterPatch } from "./hooks/use-artifact-router-patch"
 import { useIsMobile } from "./hooks/use-mobile-view"
 import { useLocalization } from "./context/LocalizationContext"
 import { ScreenAccessRedirect } from "./components/navigation/ScreenAccessRedirect"
+import { useOptimisticError } from "./hooks/use-optimistic-error"
 
 const pathToNavKey: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -167,6 +168,7 @@ function LayoutClientInner({
   const isArtifact = searchParams.get("artifact") === "true"
   
   const { t } = useLocalization()
+  const [visibleFetchError] = useOptimisticError(fetchError)
   const { isLayoutCollapsed, setIsLayoutCollapsed, robotsViewMode } = useLayout()
   const isMobile = useIsMobile()
   const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
@@ -264,9 +266,9 @@ function LayoutClientInner({
       "flex min-h-[100dvh] w-full bg-background",
       isLayoutCollapsed ? "collapsed" : ""
     )}>
-        {fetchError && (
+        {visibleFetchError && (
           <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
-            {t('layout.topbar.error') || 'Error'}: {fetchError === 'LAYOUT_ERROR_LOADING_SEGMENTS' ? (t('layout.topbar.errorLoadingSegments') || 'Error loading segments') : fetchError}
+            {t('layout.topbar.error') || 'Error'}: {visibleFetchError === 'LAYOUT_ERROR_LOADING_SEGMENTS' ? (t('layout.topbar.errorLoadingSegments') || 'Error loading segments') : visibleFetchError}
           </div>
         )}
         {isLoginPage ? (

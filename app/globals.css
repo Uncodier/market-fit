@@ -2922,6 +2922,7 @@ html.safari .chat-input-container[style*="fixed"] {
     width: auto !important;
     flex: 0 0 auto !important;
     justify-content: center !important;
+    align-items: center !important;
     border-radius: 9999px !important;
     border: 1px solid transparent !important;
     background: hsl(var(--secondary) / 0.8) !important;
@@ -2933,6 +2934,21 @@ html.safari .chat-input-container[style*="fixed"] {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     margin: 0 !important;
     white-space: nowrap !important;
+    line-height: normal !important;
+  }
+
+  /* Ensure tab labels are visible on mobile and hide extra icons to match catalog style */
+  .mobile-filters-drawer-content .tab-label {
+    display: inline-block !important;
+  }
+  
+  .mobile-filters-drawer-content [role="tablist"] > [role="tab"] > svg {
+    display: none !important;
+  }
+  
+  /* Reset padding when there are icons but we hide them */
+  .mobile-filters-drawer-content [role="tablist"] > [role="tab"] {
+     padding: 0.5rem 1.125rem !important;
   }
 
   /* Active state for chips */
@@ -2945,6 +2961,7 @@ html.safari .chat-input-container[style*="fixed"] {
   /* Active state icons */
   .mobile-filters-drawer-content [role="tablist"] > [role="tab"][data-state="active"] svg {
     color: hsl(var(--background)) !important;
+    display: none !important;
   }
   
   /* Ensure badges inside active tabs match the theme */

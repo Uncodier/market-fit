@@ -39,7 +39,7 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
       loadCompany()
       loadSubsidiaries()
     }
-  }, [params?.id])
+  }, [unwrappedParams?.id])
 
   useEffect(() => {
     if (company) {
@@ -52,7 +52,7 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
   }, [company])
 
   const loadCompany = async () => {
-    if (!params?.id) return
+    if (!unwrappedParams?.id) return
     
     setLoading(true)
     try {
@@ -76,7 +76,7 @@ export default function CompanyDetailPage(props: { params: Promise<{ id: string 
   }
 
   const loadSubsidiaries = async () => {
-    if (!params?.id) return
+    if (!unwrappedParams?.id) return
     
     try {
       const { subsidiaries: subsidiariesData, error } = await getSubsidiaries(unwrappedParams.id as string)

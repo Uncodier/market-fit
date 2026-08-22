@@ -64,10 +64,18 @@ interface CreateLeadDialogProps {
     site_id: string
   }) => Promise<{ error?: string; lead?: any }>
   trigger?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], trigger }: CreateLeadDialogProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], trigger, open, onOpenChange }: CreateLeadDialogProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  const isOpen = open !== undefined ? open : internalIsOpen
+  const handleInternalOpenChange = (newOpen: boolean) => {
+    if (onOpenChange) onOpenChange(newOpen)
+    setInternalIsOpen(newOpen)
+  }
+
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -94,11 +102,11 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
       segmentValue ||
       campaignValue
   )
-  const { discardOpen, setDiscardOpen, handleOpenChange, confirmDiscard } =
+  const { discardOpen, setDiscardOpen, handleOpenChange: dirtyHandleOpenChange, confirmDiscard } =
     useDirtyDialogClose({
       dirty: isDirty,
       busy: isLoading,
-      onOpenChange: setIsOpen,
+      onOpenChange: handleInternalOpenChange,
     })
 
   const handleSubmit = async () => {
@@ -156,7 +164,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
       setStatus("new")
       setNotes("")
       setOrigin("")
-      setIsOpen(false)
+      handleInternalOpenChange(false)
       
       toast.success("Lead created successfully")
     } catch (err) {
@@ -180,7 +188,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
   return (
     <Dialog 
       open={isOpen}
-      onOpenChange={handleOpenChange}
+      onOpenChange={dirtyHandleOpenChange}
     >
       <DialogTrigger asChild>
         {trigger || (
@@ -411,7 +419,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
         <DialogFooter>
           <Button 
             variant="outline" 
-            onClick={() => handleOpenChange(false)}
+            onClick={() => dirtyHandleOpenChange(false)}
           >
             Cancel
           </Button>

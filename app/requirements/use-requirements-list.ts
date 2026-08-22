@@ -6,6 +6,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useToast } from "@/app/components/ui/use-toast"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { type RequirementFilters } from "@/app/components/ui/filter-modal"
+import { retryOnError } from "@/app/hooks/use-optimistic-error"
 import { updateRequirementPriority, updateRequirementStatus } from "./actions"
 import {
   COMPLETION_STATUS,
@@ -50,6 +51,9 @@ export function useRequirementsList() {
     const supabase = createClient()
 
     try {
+      await retryOnError(async () => {
+      if (requestId !== requestIdRef.current) return
+
       const { data: siteData, error: siteError } = await supabase
         .from("sites")
         .select("id, name")
@@ -173,6 +177,7 @@ export function useRequirementsList() {
       setRequirements(mappedRequirements)
       setVisibleError(null)
       setIsLoading(false)
+      })
     } catch (error: unknown) {
       if (requestId !== requestIdRef.current) return
       setVisibleError(error instanceof Error ? error.message : "Error loading data")

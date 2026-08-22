@@ -1,5 +1,5 @@
 export const overlayClassName =
-  "fixed inset-0 z-[99998] bg-black/40 dark:bg-black/50 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+  "fixed inset-0 z-[1000000] bg-black/40 dark:bg-black/50 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
 
 export const DIALOG_SIZES = {
   sm: "sm:max-w-sm",

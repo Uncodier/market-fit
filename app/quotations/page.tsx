@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { LayoutGrid, FileText, CheckCircle2, Ban, Send } from "@/app/components/ui/icons"
 import { useRouter } from "next/navigation"
 import { QuotesTable, QuotesTableSkeleton } from "@/app/components/documents/quotes-table"
+import { retryOnError, useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
 
 export default function QuotationsPage() {
   const { currentSite } = useSite()
@@ -30,8 +31,11 @@ export default function QuotationsPage() {
     if (!currentSite?.id) return
     setIsLoading(true)
     try {
-      const res = await listQuotations({ siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter })
-      if (res.error) throw new Error(res.error)
+      const res = await retryOnError(async () => {
+        const result = await listQuotations({ siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter })
+        if (result.error) throw new Error(result.error)
+        return result
+      })
       setData(res)
       setError(null)
     } catch (err: any) {
@@ -40,6 +44,8 @@ export default function QuotationsPage() {
       setIsLoading(false)
     }
   }
+
+  const { error: visibleError, isLoading: showLoading } = useOptimisticLoadState(isLoading, error)
 
   useEffect(() => {
     fetchData()
@@ -125,9 +131,9 @@ export default function QuotationsPage() {
         </StickyHeader>
 
         <div className="flex-1 p-4 md:p-6 overflow-auto">
-          {!currentSite || isLoading ? (
+          {!currentSite || showLoading ? (
             <QuotesTableSkeleton />
-          ) : error ? (
+          ) : visibleError ? (
             <div className="text-center text-red-500 p-4">
               {t("quotations.list.errorLoading") || "Error loading quotations"}
             </div>

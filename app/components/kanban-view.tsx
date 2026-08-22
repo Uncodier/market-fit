@@ -167,6 +167,17 @@ export function KanbanView({
     return segment?.name || "Unknown Segment"
   }
   
+  // Función para obtener iniciales del nombre
+  const getShortName = (name: string) => {
+    if (!name) return 'Assigned'
+    const parts = name.trim().split(/\s+/)
+    if (parts.length <= 1) return name
+    
+    const firstName = parts[0]
+    const initials = parts.slice(1).map(p => p.charAt(0).toUpperCase() + '.').join(' ')
+    return `${firstName} ${initials}`
+  }
+  
   // Función para obtener el nombre de la compañía
   const getCompanyName = (lead: Lead) => {
     // Si existe companies (joined data), usar eso
@@ -741,10 +752,10 @@ export function KanbanView({
                                                   ) : (
                                                     <UserIcon className="h-3 w-3" />
                                                   )}
-                                                  <span className="text-xs font-medium">
+                                                  <span className="text-xs font-medium truncate max-w-[120px]">
                                                     {lead.assignee_id === user?.id 
                                                       ? 'You' 
-                                                      : userData?.[lead.assignee_id]?.name || 'Assigned'}
+                                                      : getShortName(userData?.[lead.assignee_id]?.name || '')}
                                                   </span>
                                                 </button>
                                               ) : (
