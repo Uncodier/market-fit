@@ -3,17 +3,19 @@
 import { MapPin } from "@/app/components/ui/icons"
 
 export function buyerLocationChipClass(active = false, restricted = false) {
+  const base =
+    "flex-shrink-0 inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border backdrop-blur-3xl shadow-sm"
   if (restricted) {
-    return `flex-shrink-0 inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border shadow-sm ${
+    return `${base} ${
       active
-        ? "bg-red-600 text-white border-red-600"
-        : "bg-red-600/15 text-red-600 border-red-600/40 md:hover:bg-red-600/25 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/40"
+        ? "bg-red-600/70 text-white border-red-600/40"
+        : "bg-red-600/20 text-red-600 border-red-600/40 md:hover:bg-red-600/30 dark:bg-red-500/25 dark:text-red-400 dark:border-red-500/40"
     }`
   }
-  return `flex-shrink-0 inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
+  return `${base} ${
     active
-      ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-sm"
-      : "bg-white/90 text-gray-700 border-black/5 md:hover:bg-white active:bg-white dark:bg-[#030303]/80 dark:text-gray-300 dark:border-white/10 dark:md:hover:bg-[#030303] dark:active:bg-[#030303] backdrop-blur-md shadow-sm"
+      ? "bg-black/60 text-white border-black/30 dark:bg-white/60 dark:text-black dark:border-white/30"
+      : "bg-white/60 text-gray-700 border-black/5 md:hover:bg-white/80 active:bg-white/80 dark:bg-[#030303]/60 dark:text-gray-300 dark:border-white/10 dark:md:hover:bg-[#030303]/80 dark:active:bg-[#030303]/80"
   }`
 }
 

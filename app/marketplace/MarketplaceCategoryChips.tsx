@@ -34,10 +34,10 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border ${
+      className={`flex-shrink-0 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border backdrop-blur-3xl shadow-sm ${
         active
-          ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-sm"
-          : "bg-white/90 text-gray-700 border-black/5 active:bg-white dark:bg-[#030303]/80 dark:text-gray-300 dark:border-white/10 dark:active:bg-[#030303] backdrop-blur-md shadow-sm"
+          ? "bg-black/60 text-white border-black/30 dark:bg-white/60 dark:text-black dark:border-white/30"
+          : "bg-white/60 text-gray-700 border-black/5 active:bg-white/80 dark:bg-[#030303]/60 dark:text-gray-300 dark:border-white/10 dark:active:bg-[#030303]/80"
       }`}
     >
       {children}

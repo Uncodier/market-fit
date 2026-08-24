@@ -158,35 +158,37 @@ export function BuyerHomeView({
   return (
     <div className="flex flex-col w-full gap-8 py-4 md:py-8 px-4">
       {/* Profile Header */}
-      <div className="flex items-center gap-4 mb-2">
-        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center shrink-0 border shadow-sm overflow-hidden">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={userName} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-2xl font-medium text-muted-foreground">
-              {initial}
-            </span>
-          )}
-        </div>
-        <div className="flex-1">
-          {isLoading ? (
-            <>
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-32 mt-1" />
-            </>
-          ) : (
-            <>
-              <h1 className="text-2xl font-bold tracking-tight">{userName}</h1>
-              <p className="text-muted-foreground text-sm mt-1">{userEmail}</p>
-            </>
-          )}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-2">
+        <div className="flex items-center gap-4 min-w-0 flex-1">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center shrink-0 border shadow-sm overflow-hidden">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={userName} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-2xl font-medium text-muted-foreground">
+                {initial}
+              </span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            {isLoading ? (
+              <>
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-32 mt-1" />
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold tracking-tight truncate">{userName}</h1>
+                <p className="text-muted-foreground text-sm mt-1 truncate">{userEmail}</p>
+              </>
+            )}
+          </div>
         </div>
         {/* Digital Wallet Pass Modal */}
         {!isLoading && scope === "personal" && data?.user?.id && (
-          <div className="ml-auto flex items-center shrink-0">
+          <div className="w-full sm:w-auto sm:ml-auto flex items-center">
             <Dialog>
               <DialogTrigger asChild>
-                <button className="group relative flex items-center gap-3 bg-white dark:bg-zinc-900 border shadow-sm hover:shadow-md pl-2 pr-4 h-16 rounded-2xl transition-all hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 shrink-0">
+                <button className="group relative flex items-center gap-3 bg-white dark:bg-zinc-900 border shadow-sm hover:shadow-md pl-2 pr-4 h-16 rounded-2xl transition-all hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 w-full sm:w-auto shrink-0">
                   <div className="bg-white border rounded-md p-1 shadow-sm overflow-hidden flex-shrink-0 group-hover:scale-[1.02] transition-transform">
                     <QRCode value={`mf:user:${data.user.id}`} size={36} className="rounded-sm" />
                   </div>

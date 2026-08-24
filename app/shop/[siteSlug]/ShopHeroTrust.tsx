@@ -77,7 +77,7 @@ export function ShopHeroTrust({
             {(!isOpen || !locationAvailable || deliveryTimeLabel) && (
               <div className="mb-4 flex flex-wrap gap-2 justify-center md:justify-start">
                 {!isOpen && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/70 backdrop-blur-3xl px-3 py-1 text-sm font-bold text-white shadow-sm border border-red-600/40">
                     <span className="relative flex h-2 w-2" aria-hidden>
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
@@ -88,7 +88,7 @@ export function ShopHeroTrust({
                   </span>
                 )}
                 {!locationAvailable && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/70 backdrop-blur-3xl px-3 py-1 text-sm font-bold text-white shadow-sm border border-red-600/40">
                     <span className="relative flex h-2 w-2" aria-hidden>
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
