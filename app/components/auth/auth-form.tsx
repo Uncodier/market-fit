@@ -881,7 +881,8 @@ export function AuthForm({ mode = 'login', returnTo, defaultAuthType, signupData
       {!isShopContext && !waitlistSuccess && authMode !== 'reset_password' && (
           <Button 
             type="button" 
-            className="whatsapp-btn neu-auth-whatsapp-btn w-full font-medium hover:opacity-90 transition-opacity font-inter"
+            tint="whatsapp"
+            className="w-full font-medium neu-auth-whatsapp-btn hover:opacity-90 transition-opacity font-inter"
             onClick={() => window.open('https://wa.me/15512886610', '_blank')}
           >
           <WhatsApp className="w-4 h-4 mr-2 text-white" />

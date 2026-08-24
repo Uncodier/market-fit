@@ -32,11 +32,11 @@ export const metadata: Metadata = {
   },
 }
 
-// Configuración del viewport con ancho mínimo y escalado
+// Configuración del viewport por defecto
 export const viewport: Viewport = {
-  initialScale: 0.9,
-  minimumScale: 0.4,
-  maximumScale: 1.2,
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default async function RootLayout({

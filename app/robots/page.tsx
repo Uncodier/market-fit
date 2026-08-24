@@ -610,21 +610,33 @@ function RobotsPageContent() {
       const sortedInstances = sortInstances(tabInstances)
       
       const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots
-      const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
+      const effectiveMaxTabs = showNewMakinaTab ? Math.max(1, maxVisibleTabs - 1) : Math.max(1, maxVisibleTabs)
       const totalTabs = sortedInstances.length
       const needsOverflow = totalTabs > effectiveMaxTabs
       
-      // Ensure selected instance is always visible
       const selectedInstanceIndex = sortedInstances.findIndex(inst => inst.id === selectedInstanceId)
-      let visibleTabsCount = needsOverflow ? effectiveMaxTabs - 1 : totalTabs
       
-      // If selected instance is beyond visible range, adjust to show it
-      if (selectedInstanceIndex >= 0 && selectedInstanceIndex >= visibleTabsCount) {
-        visibleTabsCount = Math.min(selectedInstanceIndex + 1, effectiveMaxTabs - 1)
+      let visibleInstances = []
+      let hiddenInstances = []
+      
+      if (!needsOverflow) {
+        visibleInstances = sortedInstances
+        hiddenInstances = []
+      } else {
+        if (selectedInstanceIndex === -1 || selectedInstanceIndex < effectiveMaxTabs) {
+          visibleInstances = sortedInstances.slice(0, effectiveMaxTabs)
+          hiddenInstances = sortedInstances.slice(effectiveMaxTabs)
+        } else {
+          visibleInstances = [
+            ...sortedInstances.slice(0, effectiveMaxTabs - 1),
+            sortedInstances[selectedInstanceIndex]
+          ]
+          hiddenInstances = [
+            ...sortedInstances.slice(effectiveMaxTabs - 1, selectedInstanceIndex),
+            ...sortedInstances.slice(selectedInstanceIndex + 1)
+          ]
+        }
       }
-      
-      const visibleInstances = sortedInstances.slice(0, visibleTabsCount)
-      const hiddenInstances = sortedInstances.slice(visibleTabsCount)
       
       // 1. Update selected instance's updated_at to now (moves to first position)
       await supabase
@@ -1282,7 +1294,7 @@ function RobotsPageContent() {
                       // Calculate how many tabs to show
                       const showNewMakinaTab = tabInstances.length === 0 || isLoadingRobots
                       // Account for "New Agent" tab in maxVisibleTabs if it's shown
-                      const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
+                      const effectiveMaxTabs = showNewMakinaTab ? Math.max(1, maxVisibleTabs - 1) : Math.max(1, maxVisibleTabs)
                       const totalTabs = sortedInstances.length
                       const needsOverflow = totalTabs > effectiveMaxTabs
                       
@@ -1294,18 +1306,17 @@ function RobotsPageContent() {
                       if (!needsOverflow) {
                         visibleInstances = sortedInstances
                       } else {
-                        const effectiveMax = effectiveMaxTabs - 1
-                        if (selectedInstanceIndex === -1 || selectedInstanceIndex < effectiveMax) {
-                          visibleInstances = sortedInstances.slice(0, effectiveMax)
-                          hiddenInstances = sortedInstances.slice(effectiveMax)
+                        if (selectedInstanceIndex === -1 || selectedInstanceIndex < effectiveMaxTabs) {
+                          visibleInstances = sortedInstances.slice(0, effectiveMaxTabs)
+                          hiddenInstances = sortedInstances.slice(effectiveMaxTabs)
                         } else {
                           // Swap the selected one into the visible ones
                           visibleInstances = [
-                            ...sortedInstances.slice(0, effectiveMax - 1),
+                            ...sortedInstances.slice(0, effectiveMaxTabs - 1),
                             sortedInstances[selectedInstanceIndex]
                           ]
                           hiddenInstances = [
-                            ...sortedInstances.slice(effectiveMax - 1, selectedInstanceIndex),
+                            ...sortedInstances.slice(effectiveMaxTabs - 1, selectedInstanceIndex),
                             ...sortedInstances.slice(selectedInstanceIndex + 1)
                           ]
                         }
@@ -1596,13 +1607,19 @@ function RobotsPageContent() {
                 
                 // Calculate which instances are visible (same logic as in tab rendering)
                 const showNewMakinaTab = currentInstances.length === 0 || isLoadingRobots
-                const effectiveMaxTabs = showNewMakinaTab ? maxVisibleTabs - 1 : maxVisibleTabs
+                const effectiveMaxTabs = showNewMakinaTab ? Math.max(1, maxVisibleTabs - 1) : Math.max(1, maxVisibleTabs)
                 const totalTabs = sortedInstances.length
                 const needsOverflow = totalTabs > effectiveMaxTabs
-                let visibleTabsCount = needsOverflow ? effectiveMaxTabs - 1 : totalTabs
                 
-                // Get visible instances (first N that fit in visible tabs)
-                const visibleInstances = sortedInstances.slice(0, visibleTabsCount)
+                let visibleInstances = []
+                
+                if (!needsOverflow) {
+                  visibleInstances = sortedInstances
+                } else {
+                  // We don't have a selectedInstanceIndex to worry about swapping here, 
+                  // just get the base visible ones
+                  visibleInstances = sortedInstances.slice(0, effectiveMaxTabs)
+                }
                 
                 // Select the first VISIBLE instance (not just first in sorted list)
                 if (visibleInstances.length > 0) {

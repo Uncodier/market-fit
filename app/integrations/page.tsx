@@ -341,7 +341,7 @@ export default function IntegrationsPage() {
     return (
       <div className="flex-1">
         <StickyHeader>
-          <div className="flex items-center justify-between px-16 w-full">
+          <div className="flex items-center justify-between px-4 md:px-16 w-full">
             <Tabs value="webhooks" className="w-auto">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                 <TabsTrigger value="webhooks" className="text-xs rounded-full px-4 whitespace-nowrap">Webhooks</TabsTrigger>
@@ -351,7 +351,7 @@ export default function IntegrationsPage() {
         </StickyHeader>
         <div className="py-8 pb-16">
           <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-            <div className="flex-1 max-w-[880px] px-16">
+            <div className="flex-1 max-w-[880px] px-4 md:px-16">
               <IntegrationsSkeleton />
             </div>
           </div>
@@ -371,7 +371,7 @@ export default function IntegrationsPage() {
   return (
     <div className="flex-1">
       <StickyHeader>
-        <div className="flex items-center justify-between px-16 w-full">
+        <div className="flex items-center justify-between px-4 md:px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
             <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
               <TabsTrigger value="webhooks" className="text-xs rounded-full px-4 whitespace-nowrap">Webhooks</TabsTrigger>
@@ -382,7 +382,7 @@ export default function IntegrationsPage() {
       </StickyHeader>
       <div className="py-8 pb-16">
         <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-          <div className="flex-1 max-w-[880px] px-16">
+          <div className="flex-1 max-w-[880px] px-4 md:px-16">
             <div className="space-y-8">
           {activeSegment === "webhooks" && (
             <>

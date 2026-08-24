@@ -180,8 +180,9 @@ export function TopBarTitle({
       {!hideSidebarToggle && (
         <Button
           variant="ghost"
-          className="hidden md:flex h-8 w-8 p-0 items-center justify-center font-inter"
+          className="!hidden md:!flex h-8 w-8 p-0 items-center justify-center font-inter"
           onClick={onCollapse}
+          // The responsive hidden class handles mobile display, but Safari sometimes needs explicit rules
         >
           {isCollapsed ? (
             <PanelLeftOpen className="h-4 w-4" />
@@ -255,6 +256,7 @@ export function TopBarTitle({
           tooltipText={helpText || "Open help chat"}
           welcomeMessage={helpWelcomeMessage}
           task={helpTask}
+          className="!hidden md:!flex"
         />
       )}
     </div>

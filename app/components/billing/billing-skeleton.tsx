@@ -101,7 +101,7 @@ export function BillingPageSkeleton() {
           </Tabs>
         </div>
       </div>
-      <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
+      <div className="px-4 md:px-16 py-8 pb-16 max-w-[880px] mx-auto">
         <BillingInfoSkeleton />
       </div>
     </div>

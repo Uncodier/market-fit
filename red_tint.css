@@ -1,0 +1,166 @@
+.btn-primary-well.btn-tint-red {
+  --btn-tint: 248 113 113;
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary {
+  --btn-fill: 152 36 42;
+  --btn-tint: 248 113 113;
+  background-image:
+    linear-gradient(
+      90deg,
+      rgb(var(--btn-tint) / 0.32) 0%,
+      transparent 16%,
+      transparent 84%,
+      rgb(var(--btn-tint) / 0.32) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(var(--btn-tint) / 0.28) 0%,
+      rgb(var(--btn-tint) / 0.08) 14%,
+      rgba(255, 255, 255, 0) 38%
+    ),
+    radial-gradient(
+      92% 68% at 50% 124%,
+      rgb(var(--btn-tint) / 0.42) 0%,
+      rgb(var(--btn-tint) / 0.12) 36%,
+      transparent 64%
+    ),
+    linear-gradient(180deg, rgb(168 40 48 / 0.45) 0%, rgb(80 12 16 / 0.55) 100%);
+  border-color: rgb(var(--btn-tint) / 0.16);
+  border-top-color: rgb(var(--btn-tint) / 0.5);
+  border-right-color: rgb(var(--btn-tint) / 0.14);
+  border-bottom-color: rgb(var(--btn-tint) / 0.24);
+  border-left-color: rgb(var(--btn-tint) / 0.14);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--btn-tint) / 0.5),
+    inset 0 2px 2px rgb(var(--btn-tint) / 0.18),
+    inset 0 -1px 0 rgb(var(--btn-tint) / 0.28),
+    inset 14px 0 16px -10px rgb(var(--btn-tint) / 0.22),
+    inset -14px 0 16px -10px rgb(var(--btn-tint) / 0.22),
+    inset 0 -11px 16px -6px rgb(var(--btn-tint) / 0.24),
+    inset 0 14px 18px -12px rgb(var(--btn-tint) / 0.16);
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary::before {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.36) 0%, transparent 72%);
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary::after {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.2) 0%, transparent 70%);
+}
+
+.btn-primary-well.btn-tint-red .btn-glass-cursor {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.55) 0%, transparent 70%);
+}
+
+.btn-primary-well.btn-tint-red .btn-glass-rim {
+  background:
+    radial-gradient(circle 2.75rem at var(--gx) var(--gy), rgb(var(--btn-tint) / 0.7), transparent 52%),
+    radial-gradient(circle 2.2rem at var(--gx2) var(--gy2), rgb(var(--btn-tint) / 0.35), transparent 50%);
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary:hover {
+  border-top-color: rgb(var(--btn-tint) / 0.62);
+  border-right-color: rgb(var(--btn-tint) / 0.2);
+  border-bottom-color: rgb(var(--btn-tint) / 0.3);
+  border-left-color: rgb(var(--btn-tint) / 0.2);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--btn-tint) / 0.6),
+    inset 0 2px 2px rgb(var(--btn-tint) / 0.22),
+    inset 0 -1px 0 rgb(var(--btn-tint) / 0.34),
+    inset 16px 0 18px -10px rgb(var(--btn-tint) / 0.28),
+    inset -16px 0 18px -10px rgb(var(--btn-tint) / 0.28),
+    inset 0 -12px 18px -6px rgb(var(--btn-tint) / 0.3),
+    inset 0 14px 18px -12px rgb(var(--btn-tint) / 0.2);
+}
+
+.btn-primary-well.btn-tint-red > .btn-primary:hover > .btn-glass-rim {
+  background:
+    radial-gradient(circle 3.1rem at var(--mx) var(--my), rgb(var(--btn-tint) / 0.85), transparent 54%),
+    radial-gradient(circle 2.75rem at var(--gx) var(--gy), rgb(var(--btn-tint) / 0.7), transparent 52%),
+    radial-gradient(circle 2.2rem at var(--gx2) var(--gy2), rgb(var(--btn-tint) / 0.35), transparent 50%);
+}
+
+.dark .btn-primary-well.btn-tint-red {
+  --btn-tint: 252 180 180;
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary {
+  --btn-fill: 58 30 34;
+  --btn-tint: 252 180 180;
+  background-image:
+    linear-gradient(
+      90deg,
+      rgb(var(--btn-tint) / 0.2) 0%,
+      transparent 16%,
+      transparent 84%,
+      rgb(var(--btn-tint) / 0.2) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(var(--btn-tint) / 0.2) 0%,
+      rgb(var(--btn-tint) / 0.05) 16%,
+      rgba(255, 255, 255, 0) 40%
+    ),
+    radial-gradient(
+      92% 68% at 50% 124%,
+      rgb(var(--btn-tint) / 0.28) 0%,
+      rgb(var(--btn-tint) / 0.08) 36%,
+      transparent 64%
+    ),
+    linear-gradient(180deg, rgb(58 30 34 / 0.4) 0%, rgb(30 14 16 / 0.45) 100%);
+  border-color: rgb(var(--btn-tint) / 0.1);
+  border-top-color: rgb(var(--btn-tint) / 0.42);
+  border-right-color: rgb(var(--btn-tint) / 0.08);
+  border-bottom-color: rgb(var(--btn-tint) / 0.2);
+  border-left-color: rgb(var(--btn-tint) / 0.08);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--btn-tint) / 0.4),
+    inset 0 2px 2px rgb(var(--btn-tint) / 0.12),
+    inset 0 -1px 0 rgb(var(--btn-tint) / 0.18),
+    inset 14px 0 16px -10px rgb(var(--btn-tint) / 0.12),
+    inset -14px 0 16px -10px rgb(var(--btn-tint) / 0.12),
+    inset 0 -11px 16px -6px rgb(var(--btn-tint) / 0.14),
+    inset 0 14px 18px -12px rgb(var(--btn-tint) / 0.1);
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary::before {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.22) 0%, transparent 72%);
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary::after {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.14) 0%, transparent 70%);
+}
+
+.dark .btn-primary-well.btn-tint-red .btn-glass-cursor {
+  background: radial-gradient(circle, rgb(var(--btn-tint) / 0.28) 0%, transparent 70%);
+}
+
+.dark .btn-primary-well.btn-tint-red .btn-glass-rim {
+  background:
+    radial-gradient(circle 2.75rem at var(--gx) var(--gy), rgb(var(--btn-tint) / 0.34), transparent 52%),
+    radial-gradient(circle 2.2rem at var(--gx2) var(--gy2), rgb(var(--btn-tint) / 0.16), transparent 50%);
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary:hover {
+  border-top-color: rgb(var(--btn-tint) / 0.52);
+  border-right-color: rgb(var(--btn-tint) / 0.16);
+  border-bottom-color: rgb(var(--btn-tint) / 0.26);
+  border-left-color: rgb(var(--btn-tint) / 0.16);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--btn-tint) / 0.5),
+    inset 0 2px 2px rgb(var(--btn-tint) / 0.16),
+    inset 0 -1px 0 rgb(var(--btn-tint) / 0.24),
+    inset 16px 0 18px -10px rgb(var(--btn-tint) / 0.16),
+    inset -16px 0 18px -10px rgb(var(--btn-tint) / 0.16),
+    inset 0 -12px 18px -6px rgb(var(--btn-tint) / 0.18),
+    inset 0 14px 18px -12px rgb(var(--btn-tint) / 0.14);
+}
+
+.dark .btn-primary-well.btn-tint-red > .btn-primary:hover > .btn-glass-rim {
+  background:
+    radial-gradient(circle 3.1rem at var(--mx) var(--my), rgb(var(--btn-tint) / 0.4), transparent 54%),
+    radial-gradient(circle 2.75rem at var(--gx) var(--gy), rgb(var(--btn-tint) / 0.28), transparent 52%),
+    radial-gradient(circle 2.2rem at var(--gx2) var(--gy2), rgb(var(--btn-tint) / 0.14), transparent 50%);
+}
+

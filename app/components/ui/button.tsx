@@ -91,13 +91,13 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
-  tint?: "default" | "destructive"
+  tint?: "default" | "destructive" | "whatsapp"
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, tint, children, onClick, ...props }, ref) => {
     const isPrimary = variant === undefined || variant === "default"
-    const wellTintClass = tint === "destructive" ? "btn-tint-red" : undefined
+    const wellTintClass = tint === "destructive" ? "btn-tint-red" : tint === "whatsapp" ? "btn-tint-whatsapp" : undefined
     const setGlassNode = useBtnGlassMotion(isPrimary)
     const permissions = useOptionalPermissions()
     const dataPermission =

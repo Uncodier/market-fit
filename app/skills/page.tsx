@@ -23,7 +23,7 @@ export default function SkillsPage() {
     <div className="flex-1">
       <div className="py-8 pb-16">
         <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-          <div className="flex-1 max-w-[880px] px-16">
+          <div className="flex-1 max-w-[880px] px-4 md:px-16">
             <SkillsSection active={true} />
           </div>
           <QuickNav sections={getSkillsQuickNavSections(t)} />

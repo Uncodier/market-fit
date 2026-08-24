@@ -276,7 +276,7 @@ export default function ProfilePage() {
           </TabsList>
         </StickyHeader>
         
-        <div className="px-16 py-8 pb-16 max-w-[880px] mx-auto">
+        <div className="px-4 md:px-16 py-8 pb-16 max-w-[880px] mx-auto">
           <TabsContent value="profile" className="space-y-12 mt-0 border-0 p-0 focus-visible:ring-0">
             <SectionCard>
               <SectionCardHeader>

@@ -93,7 +93,7 @@ export function TopBar({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="inline-flex items-center justify-center rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
+                <button className="!hidden md:!inline-flex items-center justify-center rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
                   <HelpCircle className="h-4 w-4" />
                   <span className="sr-only">Help</span>
                 </button>

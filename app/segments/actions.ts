@@ -63,7 +63,21 @@ export type CreateSegmentInput = z.infer<typeof CreateSegmentSchema>
 
 export async function getSegments(site_id: string): Promise<SegmentResponse> {
   try {
+    // Si el site_id no es un UUID válido (ej. sitios de demo "demo-..."),
+    // y el mock client no lo interceptó, evitamos hacer la consulta real
+    // para no causar un error 22P02 en PostgreSQL.
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(site_id) && !site_id.startsWith('demo-')) {
+      console.warn("getSegments: Invalid site_id format:", site_id)
+      return { segments: [] }
+    }
+
     const supabase = createClient()
+    
+    // Check if we are using mock client (for demo sites)
+    if (site_id.startsWith('demo-') && !(supabase as any)._isMock) {
+      console.warn("getSegments: Demo site_id without mock client:", site_id)
+      return { segments: [] }
+    }
     
     const { data, error } = await supabase
       .from("segments")
@@ -90,8 +104,11 @@ export async function getSegments(site_id: string): Promise<SegmentResponse> {
 
     // Si no hay datos, retornamos un array vacío en lugar de null
     return { segments: data || [] }
-  } catch (error) {
-    console.error("Error loading segments:", error)
+  } catch (error: any) {
+    console.error("Error loading segments:", error?.message || error)
+    if (error?.details) console.error("Error details:", error.details)
+    if (error?.hint) console.error("Error hint:", error.hint)
+    
     return { error: "Error al cargar los segmentos", segments: [] }
   }
 }
@@ -201,8 +218,8 @@ export async function createSegment(data: CreateSegmentInput): Promise<{ error?:
     }
 
     return { segment }
-  } catch (error) {
-    console.error("Error creating segment:", error)
+  } catch (error: any) {
+    console.error("Error creating segment:", error?.message || error)
     if (error instanceof z.ZodError) {
       return { error: "Datos de entrada inválidos" }
     }
@@ -241,8 +258,8 @@ export async function updateSegmentUrl({ segmentId, url }: { segmentId: string, 
     }
 
     return { success: true, segment }
-  } catch (error) {
-    console.error('Error updating segment URL:', error)
+  } catch (error: any) {
+    console.error('Error updating segment URL:', error?.message || error)
     return { error: 'Error al actualizar la URL del segmento' }
   }
 }
@@ -290,8 +307,8 @@ export async function updateSegmentStatus({ segmentId, isActive }: UpdateSegment
     }
 
     return { success: true, segment }
-  } catch (error) {
-    console.error('Error updating segment status:', error)
+  } catch (error: any) {
+    console.error('Error updating segment status:', error?.message || error)
     return { error: 'Error al actualizar el estado del segmento' }
   }
 }
@@ -334,8 +351,9 @@ export async function getSegmentById(segmentId: string): Promise<{ error?: strin
     }
 
     return { segment }
-  } catch (error) {
-    console.error("Error getting segment by ID:", error)
+  } catch (error: any) {
+    console.error("Error getting segment by ID:", error?.message || error)
+    if (error?.details) console.error("Error details:", error.details)
     return { error: "Error al obtener el segmento" }
   }
 }
@@ -387,8 +405,8 @@ export async function updateSegment({ segmentId, data }: { segmentId: string, da
     }
     
     return { segment }
-  } catch (error) {
-    console.error("Error updating segment:", error)
+  } catch (error: any) {
+    console.error("Error updating segment:", error?.message || error)
     return { error: "Error al actualizar el segmento" }
   }
 }
@@ -415,8 +433,8 @@ export async function deleteSegment(segmentId: string): Promise<{ error?: string
     }
     
     return { success: true }
-  } catch (error) {
-    console.error("Error deleting segment:", error)
+  } catch (error: any) {
+    console.error("Error deleting segment:", error?.message || error)
     return { error: "Error al eliminar el segmento" }
   }
 } 

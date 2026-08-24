@@ -656,7 +656,7 @@ export default function SettingsPage() {
     return (
       <div className="flex-1">
         <StickyHeader>
-          <div className="flex items-center justify-between px-16 w-full">
+          <div className="flex items-center justify-between px-4 md:px-16 w-full">
             <Tabs value="general" className="w-auto flex-1 max-w-full">
               <ResponsiveTabsList 
                 tabs={initialSettingsTabs} 
@@ -668,7 +668,7 @@ export default function SettingsPage() {
         </StickyHeader>
         <div className="py-8 pb-16">
           <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-            <div className="flex-1 max-w-[880px] px-16">
+            <div className="flex-1 max-w-[880px] px-4 md:px-16">
               <SettingsFormSkeleton />
             </div>
           </div>
@@ -692,7 +692,7 @@ export default function SettingsPage() {
     <div className="flex-1">
       {showSettingsTabBar ? (
         <StickyHeader>
-          <div className="flex items-center justify-between px-16 w-full">
+          <div className="flex items-center justify-between px-4 md:px-16 w-full">
             <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto flex-1 max-w-full">
               <ResponsiveTabsList 
                 tabs={settingsTabs} 
@@ -705,7 +705,7 @@ export default function SettingsPage() {
       ) : null}
       <div className="py-8 pb-16">
         <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-          <div className="flex-1 max-w-[880px] px-16">
+          <div className="flex-1 max-w-[880px] px-4 md:px-16">
           <SiteForm
             key={formKey}
             id="settings-form"

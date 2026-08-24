@@ -465,7 +465,7 @@ export default function ContextPage() {
     return (
       <div className="flex-1">
         <StickyHeader>
-          <div className="flex items-center justify-between px-16 w-full">
+          <div className="flex items-center justify-between px-4 md:px-16 w-full">
             <Tabs value="company" className="w-auto">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                 <TabsTrigger value="company" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.company') || 'Company'}</TabsTrigger>
@@ -480,7 +480,7 @@ export default function ContextPage() {
         </StickyHeader>
         <div className="py-8 pb-16">
           <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-            <div className="flex-1 max-w-[880px] px-16">
+            <div className="flex-1 max-w-[880px] px-4 md:px-16">
               <ContextFormSkeleton />
             </div>
           </div>
@@ -500,7 +500,7 @@ export default function ContextPage() {
   return (
     <div className="flex-1">
       <StickyHeader>
-        <div className="flex items-center justify-between px-16 w-full">
+        <div className="flex items-center justify-between px-4 md:px-16 w-full">
           <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
             <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
               <TabsTrigger value="branding" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.branding') || 'Branding'}</TabsTrigger>
@@ -514,7 +514,7 @@ export default function ContextPage() {
       </StickyHeader>
       <div className="py-8 pb-16">
         <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
-          <div className="flex-1 max-w-[880px] px-16">
+          <div className="flex-1 max-w-[880px] px-4 md:px-16">
           <ContextForm
             key={formKey}
             id="context-form"
