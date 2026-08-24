@@ -1,17 +1,12 @@
 "use client"
 
+import { Button } from "@/app/components/ui/button"
 import { MapPin } from "@/app/components/ui/icons"
+import { cn } from "@/lib/utils"
 
-export function buyerLocationChipClass(active = false, restricted = false) {
+export function buyerLocationChipClass(active = false) {
   const base =
     "flex-shrink-0 inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 border backdrop-blur-3xl shadow-sm"
-  if (restricted) {
-    return `${base} ${
-      active
-        ? "bg-red-600/70 text-white border-red-600/40"
-        : "bg-red-600/20 text-red-600 border-red-600/40 md:hover:bg-red-600/30 dark:bg-red-500/25 dark:text-red-400 dark:border-red-500/40"
-    }`
-  }
   return `${base} ${
     active
       ? "bg-black/60 text-white border-black/30 dark:bg-white/60 dark:text-black dark:border-white/30"
@@ -33,13 +28,30 @@ export function BuyerLocationChip({
   restricted?: boolean
   className?: string
 }) {
+  if (restricted) {
+    return (
+      <Button
+        type="button"
+        tint="destructive"
+        size="sm"
+        onClick={onClick}
+        data-permission="allow"
+        className={cn("!min-w-0 shrink-0 gap-1.5 px-5", className)}
+        aria-label={label}
+        aria-invalid
+      >
+        <MapPin className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate max-w-[10rem]">{label}</span>
+      </Button>
+    )
+  }
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`${buyerLocationChipClass(active, restricted)} ${className}`}
+      className={`${buyerLocationChipClass(active)} ${className}`}
       aria-label={label}
-      aria-invalid={restricted || undefined}
     >
       <MapPin className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate max-w-[10rem]">{label}</span>

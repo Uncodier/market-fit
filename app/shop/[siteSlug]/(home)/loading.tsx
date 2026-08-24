@@ -9,19 +9,26 @@ export default function ShopLoading() {
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <div className="h-4 w-full shrink-0" />
       <CommerceShellHeader
-        hideCenterOnMobile={false}
+        hideCenterOnMobile
         brand={<Skeleton className="h-6 w-32 ml-2" />}
         center={
-          <>
-            <Skeleton className="md:hidden h-9 w-full min-w-9 rounded-full" />
-            <div className="hidden md:block w-full relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Skeleton className="w-full h-9 rounded-full" />
-            </div>
-          </>
+          <div className="hidden md:block w-full relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Skeleton className="w-full h-9 rounded-full" />
+          </div>
         }
         actions={
           <div className="flex items-center justify-end gap-1 md:gap-3 min-w-0">
+            <div className="md:hidden">
+              <button
+                type="button"
+                className={`relative ${shellClasses.iconButton} !bg-muted/50`}
+                disabled
+                aria-hidden
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            </div>
             <button
               className={`relative ${shellClasses.iconButton} h-9 px-3 gap-1.5 border-0 !min-w-0`}
               disabled

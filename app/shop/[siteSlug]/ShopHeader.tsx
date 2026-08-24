@@ -8,8 +8,6 @@ import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/Com
 import {
   MobileShellSearchExpanded,
   MobileShellSearchIconButton,
-  MobileShellSearchTrigger,
-  useMobileShellSearchCollapsed,
 } from "@/app/components/commerce/MobileShellSearch"
 import { useCommerceSignInHref } from "@/app/components/commerce/use-commerce-sign-in-href"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/app/components/ui/sheet"
@@ -135,8 +133,6 @@ export function ShopHeader({
   locationAvailable,
   deliveryTimeLabel,
 }: Props) {
-  // Prefer center search; Sign In is icon-only on mobile so it rarely needs collapse.
-  const searchCollapsed = useMobileShellSearchCollapsed(false)
   const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
 
   return (
@@ -168,41 +164,28 @@ export function ShopHeader({
             )}
           </Link>
         }
-        hideCenterOnMobile={searchCollapsed}
+        hideCenterOnMobile
         center={
-          <>
-            {!searchCollapsed ? (
-              <div className="md:hidden flex w-full min-w-0">
-                <MobileShellSearchTrigger
-                  value={searchQuery}
-                  label={searchLabel}
-                  onOpen={() => setMobileSearchOpen(true)}
-                />
-              </div>
-            ) : null}
-            <div className="hidden md:block absolute left-1/2 top-1/2 z-[15] w-2/5 -translate-x-1/2 -translate-y-1/2">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder={searchPlaceholder}
-                  className="w-full pl-9 h-9 text-sm bg-muted/50 focus:bg-white dark:focus:bg-gray-950 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-full transition-all outline-none shadow-sm"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+          <div className="hidden md:block absolute left-1/2 top-1/2 z-[15] w-2/5 -translate-x-1/2 -translate-y-1/2">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder={searchPlaceholder}
+                className="w-full pl-9 h-9 text-sm bg-muted/50 focus:bg-white dark:focus:bg-gray-950 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-full transition-all outline-none shadow-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-          </>
+          </div>
         }
         actions={
           <div className="flex items-center justify-end gap-1 md:gap-3 min-w-0">
-            {searchCollapsed ? (
-              <MobileShellSearchIconButton
-                value={searchQuery}
-                label={searchLabel}
-                onOpen={() => setMobileSearchOpen(true)}
-              />
-            ) : null}
+            <MobileShellSearchIconButton
+              value={searchQuery}
+              label={searchLabel}
+              onOpen={() => setMobileSearchOpen(true)}
+            />
             <div
               data-commerce-shell-actions-core
               className="flex items-center justify-end gap-4 min-w-0"

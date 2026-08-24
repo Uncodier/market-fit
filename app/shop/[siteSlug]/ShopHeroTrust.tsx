@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { Button } from "@/app/components/ui/button"
 import { ShieldCheck, Truck, RotateCcw } from "@/app/components/ui/icons"
 import { ProgressiveImage } from "@/app/components/commerce/ProgressiveImage"
@@ -10,6 +11,26 @@ function badgeIcon(icon?: string) {
   if (icon === "Truck") return Truck
   if (icon === "RotateCcw") return RotateCcw
   return ShieldCheck
+}
+
+function WarningChip({ children }: { children: ReactNode }) {
+  return (
+    <Button
+      asChild
+      tint="destructive"
+      size="sm"
+      data-permission="allow"
+      className="!min-w-0 pointer-events-none h-auto px-3 py-1.5 font-bold"
+    >
+      <span className="inline-flex items-center gap-1.5">
+        <span className="relative flex h-2 w-2" aria-hidden>
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+        </span>
+        {children}
+      </span>
+    </Button>
+  )
 }
 
 export function ShopHeroTrust({
@@ -77,24 +98,16 @@ export function ShopHeroTrust({
             {(!isOpen || !locationAvailable || deliveryTimeLabel) && (
               <div className="mb-4 flex flex-wrap gap-2 justify-center md:justify-start">
                 {!isOpen && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/70 backdrop-blur-3xl px-3 py-1 text-sm font-bold text-white shadow-sm border border-red-600/40">
-                    <span className="relative flex h-2 w-2" aria-hidden>
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                    </span>
+                  <WarningChip>
                     {nextOpenSlot
                       ? (t("shop.closedOpens", { time: nextOpenSlot.label }) || `Closed · Opens ${nextOpenSlot.label}`)
                       : (t("shop.closed") || "Closed")}
-                  </span>
+                  </WarningChip>
                 )}
                 {!locationAvailable && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600/70 backdrop-blur-3xl px-3 py-1 text-sm font-bold text-white shadow-sm border border-red-600/40">
-                    <span className="relative flex h-2 w-2" aria-hidden>
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-                    </span>
+                  <WarningChip>
                     {t("shop.unavailableInYourArea") || "Unavailable in your area"}
-                  </span>
+                  </WarningChip>
                 )}
                 {deliveryTimeLabel && isOpen && locationAvailable && (
                   <span className="flex items-center gap-2 text-lg md:text-xl font-bold text-white drop-shadow-md">

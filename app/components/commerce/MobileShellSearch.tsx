@@ -123,17 +123,20 @@ export function MobileShellSearchIconButton({
   onOpen: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={`md:hidden relative ${shellClasses.iconButton} !bg-muted/50 hover:!bg-muted/80`}
-      aria-label={label}
-    >
-      <Search className="h-4 w-4" />
-      {value ? (
-        <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
-      ) : null}
-    </button>
+    // Wrap so Safari's `button { display: inline-flex }` cannot override md:hidden.
+    <div className="md:hidden">
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`relative ${shellClasses.iconButton} !bg-muted/50 hover:!bg-muted/80`}
+        aria-label={label}
+      >
+        <Search className="h-4 w-4" />
+        {value ? (
+          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+        ) : null}
+      </button>
+    </div>
   )
 }
 
