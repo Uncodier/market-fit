@@ -27,7 +27,7 @@ export function LoadingState() {
           <div className="p-6 md:p-8 space-y-6">
             <div className="px-0 md:px-8">
               {/* Performance Metrics Cards Skeleton */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="border-none shadow-sm rounded-lg bg-card">
                     <div className="p-6">

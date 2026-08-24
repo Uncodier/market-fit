@@ -321,34 +321,42 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
   
   // Formato de números para mostrar de forma legible
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('es-ES').format(num)
+    return new Intl.NumberFormat('en-US').format(num)
   }
 
-  // Formato de números con prefijo de dólares
+  // Formato de números con prefijo de dólares para el eje Y
   const formatCurrency = (num: number) => {
-    return `$${new Intl.NumberFormat('es-ES').format(num)}`
+    return `$${new Intl.NumberFormat('en-US', { 
+      notation: num >= 10000 ? "compact" : "standard",
+      maximumFractionDigits: 1
+    }).format(num)}`
+  }
+
+  // Formato exacto para tooltips
+  const formatCurrencyExact = (num: number) => {
+    return `$${new Intl.NumberFormat('en-US').format(num)}`
   }
 
   if (isLoading) {
     return (
-      <div className="w-full h-full flex flex-col pl-4 overflow-hidden">
+      <div className="w-full h-full flex flex-col pl-2 md:pl-4 overflow-hidden">
         {/* Esqueleto para el eje Y con valores */}
-        <div className="flex flex-1 relative">
-          <div className="absolute left-0 top-0 bottom-0 w-12 flex flex-col justify-between py-4">
+        <div className="flex flex-1 relative mt-4">
+          <div className="absolute left-0 top-0 bottom-0 w-14 flex flex-col justify-between pr-2">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-4 w-10 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+              <div key={i} className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded animate-pulse -translate-y-1/2"></div>
             ))}
           </div>
 
           {/* Líneas de guía horizontales */}
-          <div className="absolute left-14 right-4 top-0 bottom-0 flex flex-col justify-between pointer-events-none">
+          <div className="absolute left-14 right-2 top-0 bottom-0 flex flex-col justify-between pointer-events-none">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="border-t w-full h-0 border-slate-200 dark:border-slate-700"></div>
             ))}
           </div>
 
           {/* Esqueleto para las barras */}
-          <div className="w-full ml-14 pr-4 h-full flex items-end space-x-1">
+          <div className="w-full ml-14 pr-2 h-full flex items-end space-x-1 md:space-x-2">
             {Array(12).fill(0).map((_, index) => {
               const heights = [45, 20, 35, 60, 15, 70, 25, 50, 40, 65, 30, 55];
               return (
@@ -370,10 +378,10 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         </div>
 
         {/* Esqueleto para el eje X con etiquetas */}
-        <div className="h-8 flex ml-14 pr-4 mt-2">
+        <div className="h-10 flex ml-14 pr-2 mt-2">
           {Array(12).fill(0).map((_, index) => (
-            <div key={index} className="flex-1 flex justify-center">
-              <div className="h-4 w-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+            <div key={index} className="flex-1 flex justify-center items-start">
+              <div className={`h-3 w-8 md:w-12 bg-slate-200 dark:bg-slate-700 rounded animate-pulse ${index % 2 !== 0 ? 'hidden md:block' : ''}`}></div>
             </div>
           ))}
         </div>
@@ -401,20 +409,20 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
   }
 
   return (
-    <div className="w-full h-full flex flex-col pl-4">
+    <div className="w-full h-full flex flex-col pl-2 md:pl-4 overflow-hidden">
       {/* Agregar ejes Y con valores */}
-      <div className="flex flex-1 relative">
+      <div className="flex flex-1 relative mt-4">
         {/* Eje Y con valores */}
-        <div className="absolute left-0 top-0 bottom-0 w-12 flex flex-col justify-between py-4">
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(maxValue)}</div>
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(Math.round(maxValue * 0.75))}</div>
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(Math.round(maxValue * 0.5))}</div>
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(Math.round(maxValue * 0.25))}</div>
-          <div className={`text-xs ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>$0</div>
+        <div className="absolute left-0 top-0 bottom-0 w-14 flex flex-col justify-between pr-2 text-right">
+          <div className={`text-[10px] sm:text-xs truncate -translate-y-1/2 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(maxValue)}</div>
+          <div className={`text-[10px] sm:text-xs truncate -translate-y-1/2 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(Math.round(maxValue * 0.75))}</div>
+          <div className={`text-[10px] sm:text-xs truncate -translate-y-1/2 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(Math.round(maxValue * 0.5))}</div>
+          <div className={`text-[10px] sm:text-xs truncate -translate-y-1/2 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>{formatCurrency(Math.round(maxValue * 0.25))}</div>
+          <div className={`text-[10px] sm:text-xs truncate translate-y-1/2 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>$0</div>
         </div>
 
         {/* Líneas de guía horizontales */}
-        <div className="absolute left-14 right-4 top-0 bottom-0 flex flex-col justify-between pointer-events-none">
+        <div className="absolute left-14 right-2 top-0 bottom-0 flex flex-col justify-between pointer-events-none">
           <div className={`border-t w-full h-0 ${isDarkMode ? "border-slate-700/70" : "border-gray-100"}`}></div>
           <div className={`border-t w-full h-0 ${isDarkMode ? "border-slate-700/70" : "border-gray-100"}`}></div>
           <div className={`border-t w-full h-0 ${isDarkMode ? "border-slate-700/70" : "border-gray-100"}`}></div>
@@ -426,18 +434,18 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
         <svg width="0" height="0" className="absolute">
           <defs>
             <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={isDarkMode ? "#818cf8" : "#6366f1"} /> {/* indigo-400 o indigo-500 */}
-              <stop offset="100%" stopColor={isDarkMode ? "#6366f1" : "#4f46e5"} /> {/* indigo-500 o indigo-600 */}
+              <stop offset="0%" stopColor={isDarkMode ? "#818cf8" : "#6366f1"} />
+              <stop offset="100%" stopColor={isDarkMode ? "#6366f1" : "#4f46e5"} />
             </linearGradient>
             <linearGradient id="barGradientHover" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={isDarkMode ? "#a5b4fc" : "#818cf8"} /> {/* indigo-300 o indigo-400 */}
-              <stop offset="100%" stopColor={isDarkMode ? "#818cf8" : "#6366f1"} /> {/* indigo-400 o indigo-500 */}
+              <stop offset="0%" stopColor={isDarkMode ? "#a5b4fc" : "#818cf8"} />
+              <stop offset="100%" stopColor={isDarkMode ? "#818cf8" : "#6366f1"} />
             </linearGradient>
           </defs>
         </svg>
 
         {/* Contenedor de barras */}
-        <div className="w-full ml-14 pr-4 h-full flex items-end space-x-1">
+        <div className="w-full ml-14 pr-2 h-full flex items-end space-x-1 md:space-x-2">
           {chartData.map((item, index) => {
             // Calculamos la altura relativa basada en el valor máximo
             const hasData = item.total !== null
@@ -467,7 +475,7 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
                   >
                     <p className={`font-semibold ${isDarkMode ? "text-slate-100" : "text-gray-900"}`}>{item.name}</p>
                     <p className={isDarkMode ? "text-indigo-300" : "text-indigo-600"}>
-                      <span className="font-medium">Total:</span> {formatCurrency(item.total || 0)}
+                      <span className="font-medium">Total:</span> {formatCurrencyExact(item.total || 0)}
                     </p>
                   </div>
                 )}
@@ -507,10 +515,17 @@ export function Overview({ startDate: propStartDate, endDate: propEndDate, segme
       </div>
 
       {/* Eje X con etiquetas de intervalo */}
-      <div className="h-8 flex ml-14 pr-4 mt-2">
+      <div className="h-10 flex ml-14 pr-4 mt-2">
         {chartData.map((item, index) => (
-          <div key={index} className={`flex-1 text-center text-xs font-medium ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
-            {item.name}
+          <div key={index} className="flex-1 text-center flex items-start justify-center overflow-hidden">
+            <div className={`text-[9px] sm:text-[10px] md:text-xs font-medium leading-tight ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+              <span className={`md:hidden ${index % 2 !== 0 ? 'hidden' : 'block'}`}>
+                {item.name.split(' ').map((part, i) => <React.Fragment key={i}>{part}<br/></React.Fragment>)}
+              </span>
+              <span className="hidden md:block whitespace-nowrap overflow-hidden text-ellipsis px-1">
+                {item.name}
+              </span>
+            </div>
           </div>
         ))}
       </div>

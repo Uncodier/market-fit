@@ -284,14 +284,14 @@ export function TrafficReports({
   if (isAuthLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="animate-pulse">
               <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="animate-pulse">
               <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
@@ -305,7 +305,7 @@ export function TrafficReports({
   return (
     <div className="space-y-6">
       {/* KPI Widgets Row - First Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SessionsWidget
           startDate={startDate}
           endDate={endDate}
@@ -329,7 +329,7 @@ export function TrafficReports({
       </div>
       
       {/* Pie Charts Section - Second Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Top Visited Pages</CardTitle>

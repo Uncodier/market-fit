@@ -411,7 +411,7 @@ function DashboardPageContent() {
           <div className="space-y-4">
             {activeTab === "performance" && (
               <>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
+                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 min-h-[160px]">
                   <LeadsContactedWidget 
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
@@ -499,7 +499,7 @@ function DashboardPageContent() {
                     </CardContent>
                   </Card>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
+                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 min-h-[160px]">
                   <InputTokensWidget
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
@@ -523,7 +523,7 @@ function DashboardPageContent() {
           <div className="space-y-4">
             {activeTab === "overview" && (
               <>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-h-[160px]">
+                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 min-h-[160px]">
                   <RevenueWidget 
                     segmentId={selectedSegment}
                     startDate={dateRange.startDate}
@@ -555,31 +555,31 @@ function DashboardPageContent() {
                     startDate={dateRange.startDate}
                     endDate={dateRange.endDate} />
                 </div>
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2 h-[500px]">
-                  <Card className="col-span-1 flex flex-col">
+                <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 lg:items-start">
+                  <Card className="col-span-1 flex flex-col min-h-[350px] lg:h-[500px]">
                     <CardHeader className="flex-shrink-0">
                       <CardTitle>{t('dashboard.overview.title') || 'Overview'}</CardTitle>
                     </CardHeader>
                     <CardContent className="pl-2 flex-1 flex flex-col">
-                      <div className="flex-1">
-                        <Overview 
-                          startDate={dateRange.startDate}
-                          endDate={dateRange.endDate}
-                          segmentId={selectedSegment} />
+                      <div className="flex-1 relative">
+                        <div className="absolute inset-0">
+                          <Overview 
+                            startDate={dateRange.startDate}
+                            endDate={dateRange.endDate}
+                            segmentId={selectedSegment} />
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="col-span-1 flex flex-col">
+                  <Card className="col-span-1 flex flex-col h-auto">
                     <CardHeader className="flex-shrink-0">
                       <CardTitle>{t('dashboard.recentActivity.title') || 'Recent commercial activity'}</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col">
-                      <div className="flex-1">
-                        <RecentActivity 
-                          limit={6}
-                          startDate={dateRange.startDate}
-                          endDate={dateRange.endDate} />
-                      </div>
+                      <RecentActivity 
+                        limit={6}
+                        startDate={dateRange.startDate}
+                        endDate={dateRange.endDate} />
                     </CardContent>
                   </Card>
                 </div>
@@ -589,7 +589,7 @@ function DashboardPageContent() {
           <div className="space-y-4">
             {activeTab === "analytics" && (
               <>
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 min-h-[160px]">
+                <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 min-h-[160px]">
                   <Card className="col-span-1">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base">{t('dashboard.analytics.clientsBySegment.title') || 'Clients by Segment'}</CardTitle>

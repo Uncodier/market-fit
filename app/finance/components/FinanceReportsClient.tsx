@@ -239,7 +239,7 @@ export function FinanceReportsClient() {
         </StickyHeader>
         <div className="flex-1 p-4 md:p-6 overflow-auto">
           <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={`kpi-${i}`} className="h-[116.5px] w-full rounded-xl" />
               ))}
@@ -309,7 +309,7 @@ export function FinanceReportsClient() {
         <Tabs value={activeTab} className="w-full">
           {/* P&L Tab */}
           <TabsContent value="pnl" className="space-y-6 m-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <BaseKpiWidget
                 title={t('accounting.totalIncome')}
                 value={formatCurrency(totalRevenue)}
@@ -346,7 +346,7 @@ export function FinanceReportsClient() {
 
           {/* Balance Sheet Tab */}
           <TabsContent value="bs" className="space-y-6 m-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <BaseKpiWidget
                 title={t('accounting.totalAssets')}
                 value={formatCurrency(totalAssets)}
@@ -394,7 +394,7 @@ export function FinanceReportsClient() {
           
           {/* Trial Balance Tab */}
           <TabsContent value="tb" className="space-y-6 m-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <BaseKpiWidget
                 title={t('accounting.totalDebits')}
                 value={formatCurrency(totalTBDebits)}

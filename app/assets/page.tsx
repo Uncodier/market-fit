@@ -355,7 +355,7 @@ function AssetsContent() {
                 </div>
 
                 <div className="flex flex-col gap-2 w-full md:w-auto">
-                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Categoría' : t('catalog.kind.label')}</span>
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Categoría' : t('catalog.kind.label')}</span>
                   <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                     <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={agentId ? (t('assets.tabs.compatible') || 'Compatible Assets') : t('assets.tabs.all')}>
                       <LayoutGrid size={13} className="md:!hidden" />

@@ -195,7 +195,7 @@ export default function CatalogPage() {
                   </div>
                   
                   <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Tipo de Artículo' : t('catalog.kind.label')}</span>
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('catalog.kind.label') === 'catalog.kind.label' ? 'Tipo de Artículo' : t('catalog.kind.label')}</span>
                     <Tabs 
                       value={kindFilter} 
                       onValueChange={(val) => { setKindFilter(val as any); setPage(1); }}
@@ -211,7 +211,7 @@ export default function CatalogPage() {
                   </div>
                   
                   <div className="flex flex-col gap-2 w-full md:w-auto">
-                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') === 'common.status' ? 'Estado' : t('common.status')}</span>
+                    <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') === 'common.status' ? 'Estado' : t('common.status')}</span>
                     <Tabs 
                       value={statusFilter} 
                       onValueChange={(val) => { setStatusFilter(val as any); setPage(1); }}

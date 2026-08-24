@@ -70,7 +70,7 @@ export default function PromotionsPage() {
                 </div>
 
                 <div className="flex flex-col gap-2 w-full md:w-auto">
-                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') || 'Estado'}</span>
+                  <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') || 'Estado'}</span>
                   <Tabs
                     value={statusFilter}
                     onValueChange={(val) => { setStatusFilter(val); setPage(1); }}
