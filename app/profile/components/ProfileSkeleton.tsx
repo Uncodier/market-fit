@@ -9,7 +9,7 @@ export function ProfileSkeleton() {
   return (
     <div className="flex-1">
       <div className="sticky top-0 z-10 bg-background border-b border-border">
-        <div className="flex items-center justify-between px-16 py-4 w-full">
+        <div className="flex items-center justify-between px-4 md:px-16 py-4 w-full">
           <div className="flex-1" />
           <Skeleton className="h-10 w-32" />
         </div>

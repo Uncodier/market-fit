@@ -91,7 +91,7 @@ export function BillingPageSkeleton() {
   return (
     <div className="flex-1">
       <div className="border-b dark:border-white/5 border-black/5 backdrop-blur-sm bg-background/60 sticky top-[var(--topbar-height,64px)] z-10">
-        <div className="flex items-center justify-between px-16 w-full py-4">
+        <div className="flex items-center justify-between px-4 md:px-16 w-full py-4">
           <Tabs value="loading" className="w-auto">
             <TabsList>
               <TabsTrigger value="billing_info">Billing Info</TabsTrigger>

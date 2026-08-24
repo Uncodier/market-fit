@@ -9254,5 +9254,6 @@
   "workflows.triggersEnabled": "Triggers synced from the current graph.",
   "workflows.testStarted": "Test run started (no side effects).",
   "workflows.runStarted": "Workflow run started. Open Agents to watch logs.",
-  "workflows.running": "Running…"
+  "workflows.running": "Running…",
+  "common.status": "Status"
 }

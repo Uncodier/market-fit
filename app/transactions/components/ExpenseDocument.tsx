@@ -123,7 +123,7 @@ export function ExpenseDocument({
         </h3>
 
         <div className="bg-muted/50 dark:bg-muted/10 p-4 rounded-md mb-6">
-          <div className="grid md:grid-cols-2 gap-4 text-center">
+          <div className="grid grid-cols-2 gap-4 text-center">
             <div>
               <div className="text-sm text-muted-foreground dark:text-muted-foreground">
                 {t('expenses.table.amount') || "Amount"}

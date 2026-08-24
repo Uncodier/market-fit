@@ -143,7 +143,7 @@ function CostsPageContent() {
         </div>
       </StickyHeader>
 
-      <div className="p-8 space-y-4 bg-muted/30 flex-1">
+      <div className="p-4 md:p-8 space-y-4 bg-muted/30 flex-1">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">{t("costs.title") || "Costs"}</h2>
           <p className="text-muted-foreground">

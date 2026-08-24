@@ -203,7 +203,7 @@ export function getHotTopics(segment: Segment, type: 'blog' | 'newsletter'): str
 // Skeleton for the sticky header actions
 const StickyHeaderSkeleton = () => (
   <StickyHeader>
-    <div className="px-16 pt-0 w-full">
+    <div className="px-4 md:px-16 pt-0 w-full">
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-8">
           <div className="bg-background rounded-lg p-1">
@@ -683,7 +683,7 @@ function SegmentDetailPageContent() {
     return (
       <div className="flex-1 p-0">
         <StickyHeaderSkeleton />
-        <div className="px-16 py-6">
+        <div className="px-4 md:px-16 py-6">
           <AnalysisSkeleton />
         </div>
       </div>
@@ -698,7 +698,7 @@ function SegmentDetailPageContent() {
     <div className="flex-1 p-0">
       <Tabs defaultValue="analysis" onValueChange={setActiveTab}>
         <StickyHeader>
-          <div className="px-16 pt-0 w-full">
+          <div className="px-4 md:px-16 pt-0 w-full">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-8">
                 <TabsList>
@@ -782,17 +782,17 @@ function SegmentDetailPageContent() {
             </div>
           </div>
         </StickyHeader>
-        <TabsContent value="analysis" className="px-16 py-6">
+        <TabsContent value="analysis" className="px-4 md:px-16 py-6">
           <Suspense fallback={<AnalysisSkeleton />}>
             <AnalysisTab segment={segment} selectedAdPlatform={selectedAdPlatform} />
           </Suspense>
         </TabsContent>
-        <TabsContent value="icp" className="px-16 py-6">
+        <TabsContent value="icp" className="px-4 md:px-16 py-6">
           <Suspense fallback={<ICPProfileSkeleton />}>
             <ICPTab segment={segment} activeSection={icpSection} />
           </Suspense>
         </TabsContent>
-        <TabsContent value="details" className="px-16 py-6">
+        <TabsContent value="details" className="px-4 md:px-16 py-6">
           <Suspense fallback={<SegmentDetailsSkeleton />}>
             {segment && (
               <DetailsTab 

@@ -49,7 +49,7 @@ export default function NotificationsPage() {
   return (
     <>
       <StickyHeader>
-        <div className="px-16 pt-0 w-full">
+        <div className="px-4 md:px-16 pt-0 w-full">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-8">
               <Tabs 
@@ -98,7 +98,7 @@ export default function NotificationsPage() {
         </div>
       </StickyHeader>
 
-      <div className="px-16 py-8">
+      <div className="px-4 md:px-16 py-8">
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (

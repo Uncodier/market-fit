@@ -179,7 +179,7 @@ export default function ExpenseDetailPage(props: { params: Promise<{ id: string 
     <div className="flex-1 p-0">
       <StickyHeader>
         <div className="flex flex-col w-full">
-          <div className="px-16 flex items-center h-[50px]">
+          <div className="px-4 md:px-16 flex items-center h-[50px]">
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -248,7 +248,7 @@ export default function ExpenseDetailPage(props: { params: Promise<{ id: string 
         </div>
       </StickyHeader>
 
-      <div className="px-16 py-8 bg-muted/50 dark:bg-background min-h-screen">
+      <div className="px-4 md:px-16 py-8 bg-muted/50 dark:bg-background min-h-screen">
         {loading ? (
           <ExpenseDocumentSkeleton />
         ) : expense ? (

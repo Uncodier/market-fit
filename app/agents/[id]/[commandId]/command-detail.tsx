@@ -960,7 +960,7 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
       <div className="flex-1">
         <Tabs defaultValue="results">
           <StickyHeader>
-            <div className="px-16 pt-0 flex items-center justify-between h-full w-full">
+            <div className="px-4 md:px-16 pt-0 flex items-center justify-between h-full w-full">
               <TabsList className="mt-0">
                 <TabsTrigger value="results">Results</TabsTrigger>
                 <TabsTrigger value="tools">Tools</TabsTrigger>
@@ -1046,7 +1046,7 @@ export default function CommandDetail({ command, commandId, agentName }: { comma
             </div>
           </StickyHeader>
 
-          <div className="px-16 py-6">
+          <div className="px-4 md:px-16 py-6">
             <div className="flex flex-row space-x-6">
               {/* Left Side (60%) - Tabs Content */}
               <div className="w-[60%]">

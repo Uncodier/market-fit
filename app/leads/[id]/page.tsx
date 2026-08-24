@@ -17,7 +17,8 @@ import { SalesView } from "@/app/leads/components/SalesView"
 import { DigitalBehaviorView } from "@/app/leads/components/DigitalBehaviorView"
 import { DealsView } from "@/app/leads/components/DealsView"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
+import { Tabs, TabsContent } from "@/app/components/ui/tabs"
+import { ResponsiveTabsList, type TabItem } from "@/app/components/ui/responsive-tabs-list"
 import { LeadDetailSkeleton } from "@/app/leads/components/LeadDetailSkeleton"
 import { StatusSegmentBar } from "@/app/leads/components/StatusSegmentBar"
 import { AttributionModal } from "@/app/leads/components/AttributionModal"
@@ -33,6 +34,15 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
   const [showAttributionModal, setShowAttributionModal] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<"new" | "contacted" | "qualified" | "cold" | "converted" | "lost" | "not_qualified" | null>(null)
   const [revealEmptyCount, setRevealEmptyCount] = useState(0)
+  const [activeTab, setActiveTab] = useState("journey")
+  
+  const leadTabs: TabItem[] = [
+    { value: "journey", label: "Customer Journey" },
+    { value: "conversations", label: "Conversations" },
+    { value: "deals", label: "Deals" },
+    { value: "sales", label: "Sales" },
+    { value: "digital-behavior", label: "Digital Behavior" },
+  ]
   
   // Extract id safely from params
   const leadId = Array.isArray(unwrappedParams.id) ? unwrappedParams.id[0] : unwrappedParams.id
@@ -260,17 +270,16 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
   
   return (
     <div className="flex-1 p-0">
-      <Tabs defaultValue="journey">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <StickyHeader>
-          <div className="pt-0 flex-1 w-full">
+          <div className="pt-0 flex-1 w-full min-w-0">
             <div className="flex items-center justify-between w-full gap-4">
-              <TabsList>
-                <TabsTrigger value="journey">Customer Journey</TabsTrigger>
-                <TabsTrigger value="conversations">Conversations</TabsTrigger>
-                <TabsTrigger value="deals">Deals</TabsTrigger>
-                <TabsTrigger value="sales">Sales</TabsTrigger>
-                <TabsTrigger value="digital-behavior">Digital Behavior</TabsTrigger>
-              </TabsList>
+              <ResponsiveTabsList 
+                tabs={leadTabs}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                className="w-auto flex-1 max-w-full"
+              />
               {lead && (
                 <div className="flex items-center overflow-x-auto shrink-0">
                   <StatusSegmentBar

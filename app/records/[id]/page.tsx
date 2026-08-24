@@ -120,7 +120,7 @@ const RecordDetailSkeleton = () => {
         </div>
 
         <div className="flex-1 overflow-auto">
-          <div className="p-8 max-w-4xl mx-auto h-full space-y-8">
+          <div className="p-4 md:p-8 max-w-4xl mx-auto h-full space-y-8">
             <div className="space-y-4">
               <Skeleton className="h-12 w-3/4 mb-4" />
               <div className="space-y-2">
@@ -604,7 +604,7 @@ export default function RecordDetailPage() {
         </div>
 
         <div className="flex-1 overflow-auto">
-          <div className="p-8 max-w-4xl mx-auto h-full">
+          <div className="p-4 md:p-8 max-w-4xl mx-auto h-full">
             {/* If no template fields, just show a simple markdown-like area */}
             {templateFields.length === 0 ? (
               <div className="flex flex-col h-full space-y-4">

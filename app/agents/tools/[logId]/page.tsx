@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/app/components/ui/card"
 function ToolDetailSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="px-16 pt-0">
+      <div className="px-4 md:px-16 pt-0">
         <div className="flex gap-2">
           <Skeleton className="h-9 w-20" />
           <Skeleton className="h-9 w-20" />

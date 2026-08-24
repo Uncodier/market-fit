@@ -222,7 +222,7 @@ export function TopBarTitle({
                       />
                     )}
                     {item.isCurrent ? (
-                      <span className={cn("font-semibold text-foreground transition-all duration-200 font-inter truncate", fontSize)}>
+                      <span className={cn("font-semibold text-foreground transition-all duration-200 font-inter truncate block min-w-0", fontSize)}>
                         {item.label}
                       </span>
                     ) : (
@@ -234,7 +234,7 @@ export function TopBarTitle({
                           }
                         }}
                         className={cn(
-                          "font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer font-inter truncate",
+                          "font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer font-inter truncate block min-w-0 text-left",
                           fontSize
                         )}
                       >

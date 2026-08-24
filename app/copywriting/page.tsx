@@ -571,7 +571,7 @@ export default function CopywritingPage() {
     <div className="h-full flex flex-col">
       <Tabs defaultValue="all">
         <StickyHeader>
-          <div className="px-16 pt-0">
+          <div className="px-4 md:px-16 pt-0">
             <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
               <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                 <div className="md:hidden w-full relative">
@@ -641,7 +641,7 @@ export default function CopywritingPage() {
           </div>
         </StickyHeader>
 
-        <div className="flex-1 px-16 py-8">
+        <div className="flex-1 px-4 md:px-16 py-8">
           <TabsContent value="all" className="mt-0">
             {showLoading ? (
               <CopywritingSkeleton />

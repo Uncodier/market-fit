@@ -280,7 +280,7 @@ export function TopBar({
           )}
         </div>
         
-        <div className="flex items-center justify-end flex-1 min-w-0">
+        <div className="flex items-center justify-end shrink-0 ml-auto">
           <TopBarActions
             isPosPage={pathname === "/pos"}
             isDashboardPage={pathname === "/dashboard"}

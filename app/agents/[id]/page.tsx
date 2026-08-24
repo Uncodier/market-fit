@@ -482,7 +482,7 @@ function AgentPageSkeleton() {
     <div className="flex-1 p-0">
       <div className="sticky top-[var(--topbar-height,64px)] min-h-[71px] flex items-center p-0 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/40 z-10">
         <div className="w-full transition-[padding] duration-300 ease-in-out">
-          <div className="px-16 pt-0">
+          <div className="px-4 md:px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <div className="inline-flex h-10 items-center justify-center rounded-full bg-muted p-1 text-muted-foreground">
@@ -1798,7 +1798,7 @@ function AgentDetailPageContent() {
     <div className="flex-1 p-0">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="h-full">
         <StickyHeader>
-          <div className="px-16 pt-0">
+          <div className="px-4 md:px-16 pt-0">
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-8">
                 <TabsList>

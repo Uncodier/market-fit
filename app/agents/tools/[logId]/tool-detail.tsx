@@ -509,7 +509,7 @@ export default function ToolDetail({ log, logId }: { log: InstanceLog | null, lo
       <div className="min-h-screen bg-background">
         <Tabs defaultValue="details">
           <StickyHeader>
-            <div className="px-16 pt-0">
+            <div className="px-4 md:px-16 pt-0">
               <TabsList>
                 <TabsTrigger value="details">Details</TabsTrigger>
                 {log.tool_args && <TabsTrigger value="toolArgs">Tool Args</TabsTrigger>}

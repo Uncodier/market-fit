@@ -313,7 +313,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       <div className="flex-1 p-0">
         <Tabs defaultValue="updates">
           <StickyHeader>
-            <div className="px-16 pt-0 w-full">
+            <div className="px-4 md:px-16 pt-0 w-full">
               <div className="flex items-center justify-between w-full">
                 <TabsList>
                   <TabsTrigger value="updates">Timeline</TabsTrigger>
@@ -326,7 +326,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           </StickyHeader>
           <div className="max-w-3xl mx-auto">
-            <div className="px-16 py-6">
+            <div className="px-4 md:px-16 py-6">
               <UpdatesSkeleton />
             </div>
           </div>
@@ -339,7 +339,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     <div className="flex-1 p-0">
       <Tabs defaultValue="updates" onValueChange={setActiveTab}>
         <StickyHeader>
-          <div className="px-16 pt-0 w-full">
+          <div className="px-4 md:px-16 pt-0 w-full">
             <div className="flex items-center justify-between w-full">
               <TabsList>
                 <TabsTrigger value="updates">Timeline</TabsTrigger>
@@ -357,12 +357,12 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </StickyHeader>
         <div className="max-w-3xl mx-auto">
-          <TabsContent value="updates" className="px-16 py-6">
+          <TabsContent value="updates" className="px-4 md:px-16 py-6">
             <Suspense fallback={<UpdatesSkeleton />}>
               {task && <TimelineTab task={task} />}
             </Suspense>
           </TabsContent>
-          <TabsContent value="details" className="px-16 py-6">
+          <TabsContent value="details" className="px-4 md:px-16 py-6">
             <Suspense fallback={<DetailsSkeleton />}>
               {task && (
                 <DetailsTab 

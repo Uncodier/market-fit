@@ -1330,6 +1330,15 @@ export default function LeadsPage() {
               <div className="flex items-center justify-between w-full">
                 <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
+                  <div className="flex md:hidden items-center gap-2 w-full">
+                    <SearchInput  
+                      placeholder="Search leads..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      className="w-full h-10 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  
+                      containerClassName="w-full" 
+                    />
+                  </div>
                   <div className="flex flex-col gap-2 w-full md:w-auto">
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1">{t('common.status') || 'Estado'}</span>
                   <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">

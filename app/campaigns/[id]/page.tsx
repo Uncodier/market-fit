@@ -1,10 +1,11 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
+import { Tabs, TabsContent } from "@/app/components/ui/tabs"
+import { ResponsiveTabsList, type TabItem } from "@/app/components/ui/responsive-tabs-list"
 import { CampaignSummary } from "@/app/components/campaign-detail/campaign-summary"
 import { FinancialDetails } from "@/app/components/campaign-detail/financial-details"
 import { CampaignPromotions } from "@/app/components/campaign-detail/campaign-promotions"
@@ -20,6 +21,13 @@ export default function CampaignDetailPage(props: { params: Promise<{ id: string
   const router = useRouter()
   const id = unwrappedParams.id as string
   const detail = useCampaignDetail(id)
+  const [activeTab, setActiveTab] = useState("overview")
+
+  const campaignTabs: TabItem[] = [
+    { value: "overview", label: "Overview" },
+    { value: "financials", label: "Finances" },
+    { value: "promotions", label: "Promotions" },
+  ]
 
   if (detail.loading) {
     return <TaskDetailSkeleton />
@@ -40,15 +48,16 @@ export default function CampaignDetailPage(props: { params: Promise<{ id: string
 
   return (
     <div className="flex-1 p-0">
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <StickyHeader>
-          <div className="pt-0 flex-1 w-full">
+          <div className="pt-0 flex-1 w-full min-w-0">
             <div className="flex items-center justify-between w-full gap-4">
-              <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="financials">Finances</TabsTrigger>
-                <TabsTrigger value="promotions">Promotions</TabsTrigger>
-              </TabsList>
+              <ResponsiveTabsList 
+                tabs={campaignTabs}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                className="w-auto flex-1 max-w-full"
+              />
               <div className="flex items-center overflow-x-auto shrink-0">
                 <CampaignStatusBar
                   currentStatus={(campaign.status || "pending") as CampaignStatus}

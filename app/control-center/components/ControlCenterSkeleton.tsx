@@ -76,7 +76,7 @@ function DesktopKanbanSkeleton({ isSidebarCollapsed }: { isSidebarCollapsed: boo
     <div className="flex-1 overflow-auto bg-muted/30 pt-[71px]">
       <div className="p-8 h-full">
         <div className="overflow-x-auto pb-4 -mx-8">
-          <div className="flex gap-4 min-w-fit px-16 min-h-[calc(100vh-220px)] items-stretch">
+          <div className="flex gap-4 min-w-fit px-4 md:px-16 min-h-[calc(100vh-220px)] items-stretch">
             {['Pending', 'In Progress', 'Completed', 'Failed'].map((status, columnIndex) => (
               <div key={status} className="flex-shrink-0 w-80 flex flex-col">
                 <div className="bg-background rounded-t-md p-3 border-b border-x border-t">
