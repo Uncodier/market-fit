@@ -666,7 +666,7 @@ function RobotStartButton({
               <Button
                 variant="secondary"
                 size="default"
-                className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 onClick={() => setIsAuthenticateModalOpen(true)}
                 title={t("layout.topbar.authenticate")}
               >
@@ -678,7 +678,7 @@ function RobotStartButton({
               <Button
                 variant="secondary"
                 size="default"
-                className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 onClick={handleSaveAuthSession}
                 title={t("layout.topbar.saveAuthSession")}
               >
@@ -1315,7 +1315,7 @@ export function TopBarActions({
             <Button
               variant="secondary"
               size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               onClick={() => segmentData.openAIModal("analysis")}
               disabled={segmentData.isAnalyzing}
               title={t("layout.topbar.analyzeWithAI")}
@@ -1341,7 +1341,7 @@ export function TopBarActions({
             <Button
               variant="secondary"
               size="default"
-              className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               onClick={() => segmentData.openAIModal("topics")}
               disabled={segmentData.isGeneratingTopics}
               title={t("layout.topbar.getTopicsWithAI")}
@@ -1433,7 +1433,7 @@ export function TopBarActions({
               trigger={
                 <Button
                   variant="secondary"
-                  className="flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+                  className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                   title={t("layout.topbar.import")}
                 >
                   <UploadCloud className="h-4 w-4 shrink-0" />
@@ -1445,7 +1445,7 @@ export function TopBarActions({
             />
             <Button
               variant="secondary"
-              className="flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+              className="hidden sm:flex items-center justify-center gap-2 md:h-9 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.export")}
               onClick={async () => {
                 try {
@@ -1571,7 +1571,7 @@ export function TopBarActions({
           <>
             <Button
               variant="secondary"
-              className="!min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.export")}
               onClick={async () => {
                 try {
@@ -1625,7 +1625,7 @@ export function TopBarActions({
           <Button
             variant="secondary"
             size="default"
-            className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => { window.location.href = '/pos/check-in' }}
             title={t("pos.checkIn.title") || "Ticket Check-in"}
           >
@@ -1635,9 +1635,9 @@ export function TopBarActions({
             </span>
           </Button>
           <Button
-            variant="secondary"
+            variant="default"
             size="default"
-            className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm overflow-visible"
+            className="hidden sm:flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm overflow-visible bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("pos:send-order"))
             }
@@ -1662,7 +1662,7 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="!min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() => router.push("/catalog/modifier-groups")}
             title={t("catalog.modifiers.groupsTitle") || "Modifier groups"}
           >
@@ -1733,7 +1733,7 @@ export function TopBarActions({
         <div className="flex items-center gap-2">
           <Button
             variant="secondary"
-            className="!min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(
                 new CustomEvent("inventory:open-location-dialog"),
@@ -1788,7 +1788,7 @@ export function TopBarActions({
           </div>
           <Button
             variant="outline"
-            className="!min-w-0 sm:!min-w-[120px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[120px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("price-list:edit"))
             }
@@ -1846,7 +1846,7 @@ export function TopBarActions({
         <div className="flex gap-2">
           <Button
             variant="outline"
-            className="!min-w-0 sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-transparent bg-transparent shadow-none"
+            className="hidden sm:flex items-center justify-center gap-2 !min-w-0 sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-transparent bg-transparent shadow-none"
             onClick={() =>
               window.dispatchEvent(new CustomEvent("calendarBlocks:create"))
             }

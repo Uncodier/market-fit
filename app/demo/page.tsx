@@ -104,7 +104,8 @@ function DemoSelectorContent() {
     localStorage.removeItem('currentSiteId');
     localStorage.removeItem('market_fit_manual_demo');
     setCurrentDemo(null);
-    window.location.href = "/projects";
+    const baseUrl = window.location.hostname.startsWith('www.') ? window.location.origin.replace('www.', 'app.') : '';
+    window.location.href = `${baseUrl}/projects`;
   };
 
   if (isAutoRedirecting) {

@@ -360,7 +360,8 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                       document.cookie = `market_fit_demo_site_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
                       localStorage.removeItem('currentSiteId');
                       localStorage.removeItem('market_fit_manual_demo');
-                      window.location.href = "/projects";
+                      const baseUrl = window.location.hostname.startsWith('www.') ? window.location.origin.replace('www.', 'app.') : '';
+                      window.location.href = `${baseUrl}/projects`;
                     }}
                   >
                     Exit Demo Mode

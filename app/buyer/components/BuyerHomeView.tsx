@@ -40,7 +40,13 @@ export function BuyerHomeView({
   const { sites } = useSite()
   const managedSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
   const hasBusinesses = managedSites.length > 0
-  const workspaceUrl = ''
+  
+  const appUrl = typeof window !== 'undefined'
+    ? (window.location.hostname.startsWith('www.')
+        ? window.location.origin.replace('www.', 'app.')
+        : '')
+    : ''
+  const workspaceUrl = appUrl
   
   const { data, error, isLoading } = useSWR(
     { key: "buyer-portal-summary", scope, ownerSiteId },

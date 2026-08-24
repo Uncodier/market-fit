@@ -198,7 +198,8 @@ export default function ProjectsPage() {
             clearCookieEverywhere("market_fit_demo_site_id")
             localStorage.removeItem('currentSiteId');
             localStorage.removeItem('market_fit_manual_demo');
-            window.location.href = "/projects";
+            const baseUrl = window.location.hostname.startsWith('www.') ? window.location.origin.replace('www.', 'app.') : '';
+            window.location.href = `${baseUrl}/projects`;
           }}>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
@@ -214,7 +215,8 @@ export default function ProjectsPage() {
                   clearCookieEverywhere("market_fit_demo_site_id")
                   localStorage.removeItem('currentSiteId');
                   localStorage.removeItem('market_fit_manual_demo');
-                  window.location.href = "/projects";
+                  const baseUrl = window.location.hostname.startsWith('www.') ? window.location.origin.replace('www.', 'app.') : '';
+                  window.location.href = `${baseUrl}/projects`;
                 }}>Exit Demo</Button>
               </div>
             </CardContent>
