@@ -732,7 +732,8 @@ export function ZoomableCanvas({
         target.closest('[role="combobox"]') || 
         target.closest('button') || 
         target.closest('input') ||
-        target.closest('textarea')) {
+        target.closest('textarea') ||
+        target.closest('select')) {
       return;
     }
     
@@ -1073,7 +1074,8 @@ export function ZoomableCanvas({
         target.closest('[role="combobox"]') || 
         target.closest('button') || 
         target.closest('input') ||
-        target.closest('textarea')) {
+        target.closest('textarea') ||
+        target.closest('select')) {
       return;
     }
     
@@ -1111,7 +1113,8 @@ export function ZoomableCanvas({
         target.closest('[role="combobox"]') || 
         target.closest('button') || 
         target.closest('input') ||
-        target.closest('textarea')) {
+        target.closest('textarea') ||
+        target.closest('select')) {
       return;
     }
     

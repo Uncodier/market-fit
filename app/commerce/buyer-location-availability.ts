@@ -60,6 +60,97 @@ export function buyerMatchesSiteLocations(
   })
 }
 
+/**
+ * Walking-distance cutoff for pickup/cash defaults.
+ * City or IP location is too coarse to know whether the buyer can actually get to the store.
+ */
+export const NEARBY_PICKUP_METERS = 500
+
+export type NearbyLocationRef = {
+  id?: string
+  name?: string
+  city?: string
+  zip?: string
+  is_default?: boolean
+  latitude?: string | number | null
+  longitude?: string | number | null
+}
+
+function parseCoord(value?: string | number | null): number | null {
+  if (value == null || value === "") return null
+  const n = typeof value === "number" ? value : parseFloat(value)
+  return Number.isFinite(n) ? n : null
+}
+
+export function haversineKm(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number }
+): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLon = toRad(b.lon - a.lon)
+  const lat1 = toRad(a.lat)
+  const lat2 = toRad(b.lat)
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+function locationCoords(loc: NearbyLocationRef): { lat: number; lon: number } | null {
+  const lat = parseCoord(loc.latitude)
+  const lon = parseCoord(loc.longitude)
+  if (lat == null || lon == null) return null
+  return { lat, lon }
+}
+
+function buyerCoords(geo?: BuyerGeo | null): { lat: number; lon: number } | null {
+  const lat = parseCoord(geo?.latitude)
+  const lon = parseCoord(geo?.longitude)
+  if (lat == null || lon == null) return null
+  return { lat, lon }
+}
+
+function isParticularlyCloseToLocation(
+  buyerGeo: BuyerGeo | null | undefined,
+  loc: NearbyLocationRef
+): boolean {
+  const from = buyerCoords(buyerGeo)
+  const to = locationCoords(loc)
+  if (!from || !to) return false
+  return haversineKm(from, to) * 1000 <= NEARBY_PICKUP_METERS
+}
+
+/**
+ * Buyer is close enough to default to store pickup (and cash).
+ * Same city is not enough — only a chosen store or coordinates within 500m.
+ */
+export function isBuyerParticularlyClose(params: {
+  buyerGeo?: BuyerGeo | null
+  inventoryLocations?: NearbyLocationRef[] | null
+  settingsLocations?: NearbyLocationRef[] | null
+  selectedLocationId?: string | null
+}): boolean {
+  if (params.selectedLocationId) return true
+  const locations = [
+    ...(params.inventoryLocations || []),
+    ...(params.settingsLocations || []),
+  ]
+  if (!params.buyerGeo || locations.length === 0) return false
+  return locations.some((loc) => isParticularlyCloseToLocation(params.buyerGeo, loc))
+}
+
+/** Prefer a store within 500m; otherwise the default / first location. */
+export function pickPreferredPickupLocation<T extends NearbyLocationRef>(
+  locations: T[],
+  buyerGeo?: BuyerGeo | null
+): T | undefined {
+  if (!locations.length) return undefined
+  const close = locations.find((loc) => isParticularlyCloseToLocation(buyerGeo, loc))
+  if (close) return close
+  return locations.find((loc) => loc.is_default) || locations[0]
+}
+
 /** Shop pill: multi inventory stores OR settings geo needs relocate. */
 export function shouldShowShopLocationPill(params: {
   inventoryLocations: Array<Pick<Location, "id" | "is_active">>

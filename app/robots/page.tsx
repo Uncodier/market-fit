@@ -21,6 +21,7 @@ import { createClient } from "@/lib/supabase/client"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { ZipViewer } from '@/app/components/simple-messages-view/components/ZipViewer'
 import { ImprentaPanel } from '@/app/components/agents/imprenta-panel'
+import { WorkflowPanel } from '@/app/components/workflows/workflow-panel'
 import "@/app/styles/iframe-containment.css"
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
 import { useInstanceArtifacts } from "@/app/components/simple-messages-view/hooks/useInstanceArtifacts"
@@ -83,6 +84,7 @@ function RobotsPageContent() {
   const router = useRouter()
   const pathname = usePathname()
   const viewMode = robotsViewMode
+  const isCanvasMode = viewMode === 'imprenta' || viewMode === 'workflow'
   const { theme, isDarkMode } = useTheme()
   
   // Verify subscription on re-entry
@@ -109,6 +111,8 @@ function RobotsPageContent() {
     const raw = searchParams.get("mode")
     if (raw === "imprenta") {
       setRobotsViewMode("imprenta")
+    } else if (raw === "workflow") {
+      setRobotsViewMode("workflow")
     } else {
       setRobotsViewMode("agent")
     }
@@ -1081,7 +1085,7 @@ function RobotsPageContent() {
   const isBrowserVisible = Boolean(
     (hasRequirementPreview || artifacts.length > 0) &&
     !pendingInstanceId &&
-    viewMode !== 'imprenta' &&
+    !isCanvasMode &&
     activeBrowserTab.kind !== 'artifact'
   )
 
@@ -1268,7 +1272,7 @@ function RobotsPageContent() {
   }, [allArtifactItems, containerWidth]);
 
   return (
-    <div className={`flex flex-col h-full w-full ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'} relative`}>
+    <div className={`flex flex-col h-full w-full ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'} relative`}>
       <StickyHeader key={`${currentSite?.id}-${siteChangeKey}`} className="flex-none transition-all duration-300">
         <div className="pt-0 w-full overflow-hidden">
           <div className="flex items-center gap-4 w-full">
@@ -1694,10 +1698,10 @@ function RobotsPageContent() {
         />
       )}
       
-      <div className={`absolute inset-0 flex flex-col min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
+      <div className={`absolute inset-0 flex flex-col min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
         {/* Content area - no pt-[71px] here so it can go under header */}
-        <div className={`flex-1 flex flex-col min-h-0 ${viewMode === 'imprenta' ? 'bg-transparent' : 'bg-muted/30'} transition-colors duration-300 ease-in-out ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
-          <div className={`flex flex-col lg:flex-row flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
+        <div className={`flex-1 flex flex-col min-h-0 ${isCanvasMode ? 'bg-transparent' : 'bg-muted/30'} transition-colors duration-300 ease-in-out ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
+          <div className={`flex flex-col lg:flex-row flex-1 min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
             {isBrowserVisible && (
               <div className={`w-full ${isChatHidden ? 'lg:w-full' : 'lg:w-2/3'} border-b lg:border-b-0 lg:border-r border-border iframe-container flex flex-col shrink-0 h-[calc(40vh+135px)] lg:h-full overflow-hidden relative transition-all duration-300`}>
                 <div className={`grid grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden`}>
@@ -1968,13 +1972,17 @@ function RobotsPageContent() {
               </div>
             )}
 
-            {/* Messages View or Imprenta - Chat/Instance Logs */}
-            {!isChatHidden && (
-              <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 ${viewMode === 'imprenta' ? 'overflow-visible' : 'overflow-hidden'}`}>
-                <div className={`flex flex-col m-0 ${viewMode === 'imprenta' ? 'bg-transparent overflow-visible' : 'bg-card overflow-hidden'} min-w-0 flex-1 min-h-0 relative`}>
+            {/* Canvas modes stay full-bleed. Agent mode may split with explorer + instance logs. */}
+            {(isCanvasMode || !isChatHidden) && (
+              <div className={`${isBrowserVisible ? 'w-full lg:w-1/3' : 'w-full mx-auto'} min-w-0 messages-area flex flex-col flex-1 min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
+                <div className={`flex flex-col m-0 ${isCanvasMode ? 'bg-transparent overflow-visible' : 'bg-card overflow-hidden'} min-w-0 flex-1 min-h-0 relative`}>
                   {viewMode === 'imprenta' ? (
                     <div className="h-full min-h-0 absolute inset-0 flex flex-col">
                       <ImprentaPanel activeInstanceId={activeRobotInstance?.id} />
+                    </div>
+                  ) : viewMode === 'workflow' ? (
+                    <div className="h-full min-h-0 absolute inset-0 flex flex-col">
+                      <WorkflowPanel activeInstanceId={activeRobotInstance?.id} />
                     </div>
                   ) : (
                     <SimpleMessagesView 

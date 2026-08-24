@@ -10,7 +10,7 @@ const COMMERCE_PREFIXES = [
   "/vb/",
 ]
 
-const NO_REDIRECT_PREFIXES = ["/create-site", "/auth", "/projects", "/demo"]
+const NO_REDIRECT_PREFIXES = ["/create-site", "/auth", "/projects", "/demo", "/profile"]
 
 export type WorkspaceSiteRedirect = "/buyer" | "/projects"
 

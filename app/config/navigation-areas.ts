@@ -118,6 +118,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "channels", href: "/settings", settingsTab: "channels" },
       { key: "activities", href: "/settings", settingsTab: "activities" },
       { key: "skills", href: "/skills" },
+      { key: "workflows", href: "/robots", robotsMode: "workflow" },
     ],
   },
   applications: {
@@ -306,6 +307,10 @@ export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): st
   if (item.key === "contentCreator") {
     const translation = t("layout.sidebar.imprenta")
     return translation === "layout.sidebar.imprenta" ? "Content Creator" : translation
+  }
+  if (item.key === "workflows") {
+    const translation = t("layout.sidebar.workflows")
+    return translation === "layout.sidebar.workflows" ? "Workflows" : translation
   }
   return item.key
 }

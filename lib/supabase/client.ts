@@ -188,6 +188,12 @@ function createMockClient(reason: string) {
           error: { message: `Cliente mock (${reason}): No hay sesión disponible` } 
         }
       },
+      getUser: async () => {
+        return {
+          data: { user: null },
+          error: { message: `Cliente mock (${reason}): No hay sesión disponible` }
+        }
+      },
       onAuthStateChange: () => {
         return { 
           data: { 

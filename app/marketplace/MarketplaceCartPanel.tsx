@@ -9,7 +9,6 @@ import {
   getItemDeliveryOptions, 
   intersectDeliveryOptions, 
   hasMixedCartShippingWarning,
-  defaultFulfillment,
   intersectPickupLocationIds,
   resolveOrderShippingCost
 } from "@/app/commerce/delivery-options"
@@ -18,8 +17,9 @@ import {
   getItemPaymentOptions, 
   intersectPaymentOptions, 
   getAvailablePaymentMethods,
-  PaymentMethodType
 } from "@/app/commerce/payment-options"
+import { pickPreferredPickupLocation } from "@/app/commerce/buyer-location-availability"
+import { useNearbyCheckoutDefaults } from "@/app/commerce/use-nearby-checkout-defaults"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 
 export function MarketplaceCartPanel({
@@ -61,7 +61,11 @@ export function MarketplaceCartPanel({
   handleCheckout,
   checkoutLoading,
   setIsCartOpen,
-  t
+  t,
+  buyerGeo,
+  selectedLocationId,
+  userChoseFulfillmentRef,
+  userChosePaymentRef,
 }: any) {
   const { formatPrice } = useDisplayCurrency()
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
@@ -144,27 +148,28 @@ export function MarketplaceCartPanel({
     setPromoDiscount?.(0)
   }, [setPromoDiscount])
 
-  useEffect(() => {
-    if (allowedOptions.length > 0 && !allowedOptions.includes(fulfillment)) {
-      setFulfillment(defaultFulfillment(allowedOptions) || 'none');
-    }
-  }, [allowedOptions, fulfillment, setFulfillment]);
-
-  useEffect(() => {
-    if (availablePaymentMethods.length > 0 && (!paymentMethod || !availablePaymentMethods.includes(paymentMethod as PaymentMethodType))) {
-      setPaymentMethod(availablePaymentMethods[0]);
-    } else if (availablePaymentMethods.length === 0) {
-      setPaymentMethod('');
-    }
-  }, [availablePaymentMethods, paymentMethod, setPaymentMethod]);
+  const { setFulfillmentByUser, setPaymentMethodByUser } = useNearbyCheckoutDefaults({
+    allowedOptions,
+    fulfillment,
+    setFulfillment,
+    availablePaymentMethods,
+    paymentMethod,
+    setPaymentMethod,
+    buyerGeo,
+    inventoryLocations: pickupLocations,
+    settingsLocations: siteSettings?.locations,
+    selectedLocationId,
+    userChoseFulfillmentRef,
+    userChosePaymentRef,
+  })
 
   useEffect(() => {
     if (fulfillment !== 'pickup' && fulfillment !== 'dine_in') return;
     if (pickupLocations.length === 0) return;
-    if (!pickupLocations.some((l: any) => l.id === originLocationId)) {
-      setOriginLocationId(pickupLocations[0].id);
-    }
-  }, [fulfillment, pickupLocations, originLocationId, setOriginLocationId]);
+    if (pickupLocations.some((l: any) => l.id === originLocationId)) return;
+    const preferred = pickPreferredPickupLocation(pickupLocations, buyerGeo);
+    setOriginLocationId(preferred?.id || pickupLocations[0].id);
+  }, [fulfillment, pickupLocations, originLocationId, setOriginLocationId, buyerGeo]);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-background/80 backdrop-blur-sm transition-all">
@@ -216,7 +221,7 @@ export function MarketplaceCartPanel({
             <CartCheckoutFields
               allowedOptions={allowedOptions}
               fulfillment={fulfillment}
-              setFulfillment={setFulfillment}
+              setFulfillment={setFulfillmentByUser}
               pickupLocations={pickupLocations}
               originLocationId={originLocationId}
               setOriginLocationId={setOriginLocationId}
@@ -224,7 +229,7 @@ export function MarketplaceCartPanel({
               setShippingAddress={setShippingAddress}
               availablePaymentMethods={availablePaymentMethods}
               paymentMethod={paymentMethod}
-              setPaymentMethod={setPaymentMethod}
+              setPaymentMethod={setPaymentMethodByUser}
               orderTiming={isPurelyReservableOrDigital ? undefined : orderTiming}
               setOrderTiming={isPurelyReservableOrDigital ? undefined : setOrderTiming}
               scheduledFor={scheduledFor}

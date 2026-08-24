@@ -128,6 +128,14 @@ describe('delivery-options helpers', () => {
       expect(defaultFulfillment(['pickup', 'ship', 'none', 'dine_in'])).toEqual('ship');
     });
 
+    it('prefers pickup over ship when nearby', () => {
+      expect(defaultFulfillment(['pickup', 'ship', 'none'], { preferPickup: true })).toEqual('pickup');
+    });
+
+    it('keeps ship when nearby but pickup is not allowed', () => {
+      expect(defaultFulfillment(['ship', 'none'], { preferPickup: true })).toEqual('ship');
+    });
+
     it('prefers pickup over dine_in', () => {
       expect(defaultFulfillment(['pickup', 'dine_in', 'none'])).toEqual('pickup');
     });

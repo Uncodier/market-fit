@@ -63,6 +63,13 @@ export function NavigationAreaGroups({
       ) {
         return true
       }
+      if (
+        area === "automation" &&
+        pathname.startsWith("/robots") &&
+        robotsViewMode === "workflow"
+      ) {
+        return true
+      }
       return isAreaActive(area, pathname, navSearchParams)
     },
     [pathname, navSearchParams, robotsViewMode]
@@ -141,9 +148,9 @@ export function NavigationAreaGroups({
         isActive={isActive}
         isCollapsed={renderCollapsed}
         onClick={
-          item.robotsMode === "imprenta"
+          item.robotsMode
             ? () => {
-                setRobotsViewMode("imprenta")
+                setRobotsViewMode(item.robotsMode as "agent" | "imprenta" | "workflow")
                 requestNavigationHistoryReset()
               }
             : undefined

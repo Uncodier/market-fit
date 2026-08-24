@@ -28,6 +28,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { useRobots } from "@/app/context/RobotsContext";
+import { WorkflowRunButton } from "@/app/components/workflows/workflow-run-button";
 import {
   PlusCircle,
   Download,
@@ -571,7 +572,7 @@ function RobotStartButton({
   }
 
   // If there's an active robot instance (from URL param or found paused instance), decide which controls to show
-  if (activeRobotInstance && viewMode !== "imprenta") {
+  if (activeRobotInstance && viewMode !== "imprenta" && viewMode !== "workflow") {
     // Only show stop/authenticate buttons when robot is running or active
     const isRunning = ["running", "active"].includes(
       activeRobotInstance.status,
@@ -728,7 +729,7 @@ function RobotStartButton({
   }
 
   // Default state: if New Makina is selected or in imprenta mode, hide start
-  if (selectedInstanceId === "new" || viewMode === "imprenta") return null;
+  if (selectedInstanceId === "new" || viewMode === "imprenta" || viewMode === "workflow") return null;
 
   // Otherwise, show start button as fallback (should rarely show)
   return (
@@ -1899,7 +1900,11 @@ export function TopBarActions({
         ) : null)}
       {isRobotsPage &&
         (currentSite ? (
-          <RobotStartButton currentSite={currentSite} viewMode={viewMode} />
+          viewMode === "workflow" ? (
+            <WorkflowRunButton />
+          ) : (
+            <RobotStartButton currentSite={currentSite} viewMode={viewMode} />
+          )
         ) : null)}
 
       {/* New Purchase button in toolbar */}

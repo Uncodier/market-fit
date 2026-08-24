@@ -69,9 +69,13 @@ export const routes: RouteConfig[] = [
   { path: "/500", hasLayout: false },
 ]
 
+function pathStartsWithRoute(pathname: string, routePath: string): boolean {
+  return pathname === routePath || pathname.startsWith(`${routePath}/`)
+}
+
 export function shouldUseLayout(pathname: string): boolean {
   // Check if the pathname matches any of our defined routes
-  const route = routes.find(route => pathname.startsWith(route.path))
+  const route = routes.find(route => pathStartsWithRoute(pathname, route.path))
   
   // If we find a matching route, use its layout configuration
   if (route) {

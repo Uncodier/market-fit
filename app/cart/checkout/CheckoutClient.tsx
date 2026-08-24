@@ -24,13 +24,13 @@ import {
   getItemDeliveryOptions, 
   intersectDeliveryOptions, 
   hasMixedCartShippingWarning,
-  defaultFulfillment,
   intersectPickupLocationIds,
-  resolveOrderShippingCost,
-  CheckoutFulfillmentMethod
+  resolveOrderShippingCost
 } from "@/app/commerce/delivery-options"
 import { resolveCheckoutCopyMode } from "@/app/commerce/checkout-labels"
 import { getAvailablePaymentMethods, PaymentMethodType, getItemPaymentOptions, intersectPaymentOptions } from "@/app/commerce/payment-options"
+import { pickPreferredPickupLocation } from "@/app/commerce/buyer-location-availability"
+import { useNearbyCheckoutDefaults } from "@/app/commerce/use-nearby-checkout-defaults"
 import { listPublicLocations } from "@/app/inventory/actions"
 import { getSiteInfoBySlug } from "@/app/book/actions"
 import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
@@ -134,13 +134,17 @@ export default function CheckoutClient({
     return getAvailablePaymentMethods(fulfillment, allowedPaymentOptions, items)
   }, [fulfillment, allowedPaymentOptions, items])
 
-  useEffect(() => {
-    if (availablePaymentMethods.length > 0 && (!paymentMethod || !availablePaymentMethods.includes(paymentMethod as PaymentMethodType))) {
-      setPaymentMethod(availablePaymentMethods[0]);
-    } else if (availablePaymentMethods.length === 0) {
-      setPaymentMethod('');
-    }
-  }, [availablePaymentMethods, paymentMethod, setPaymentMethod]);
+  const { setFulfillmentByUser, setPaymentMethodByUser } = useNearbyCheckoutDefaults({
+    allowedOptions,
+    fulfillment,
+    setFulfillment,
+    availablePaymentMethods,
+    paymentMethod,
+    setPaymentMethod,
+    buyerGeo,
+    inventoryLocations: locations,
+    settingsLocations: siteSettings?.locations,
+  })
 
   useEffect(() => {
     let currentSiteId = siteId;
@@ -160,8 +164,8 @@ export default function CheckoutClient({
         }
         setLocations(availableLocations);
         if (availableLocations.length > 0) {
-          const defaultLoc = availableLocations.find((l: any) => l.is_default) || availableLocations[0];
-          setPickupLocationId(defaultLoc.id);
+          const preferred = pickPreferredPickupLocation(availableLocations, buyerGeo);
+          setPickupLocationId(preferred?.id || availableLocations[0].id);
         } else {
           setPickupLocationId("");
         }
@@ -174,13 +178,7 @@ export default function CheckoutClient({
         }
       }).catch(console.error);
     }
-  }, [siteId, source, items, allowedLocationIds]);
-
-  useEffect(() => {
-    if (allowedOptions.length > 0 && !allowedOptions.includes(fulfillment)) {
-      setFulfillment(defaultFulfillment(allowedOptions) || 'none');
-    }
-  }, [allowedOptions, fulfillment, setFulfillment]);
+  }, [siteId, source, items, allowedLocationIds, buyerGeo]);
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -594,7 +592,7 @@ export default function CheckoutClient({
                 requiresAuth={requiresAuth}
                 source={source}
                 fulfillment={fulfillment}
-                setFulfillment={setFulfillment}
+                setFulfillment={setFulfillmentByUser}
                 allowedOptions={allowedOptions}
                 customerName={customerName}
                 setCustomerName={setCustomerName}
@@ -610,7 +608,7 @@ export default function CheckoutClient({
                 pickupLocationId={pickupLocationId}
                 setPickupLocationId={setPickupLocationId}
                 paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
+                setPaymentMethod={setPaymentMethodByUser}
                 availablePaymentMethods={availablePaymentMethods}
                 orderTiming={isPurelyReservableOrDigital ? undefined : orderTiming}
                 setOrderTiming={isPurelyReservableOrDigital ? undefined : setOrderTiming}

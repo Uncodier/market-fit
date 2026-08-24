@@ -18,6 +18,8 @@ import { isDemoModeActive, isRealSiteId } from "@/lib/demo-utils"
 import { clearCurrentSiteCookie, persistCurrentSiteCookie } from "@/lib/auth/current-site-cookie"
 import { getWorkspaceSiteRedirect } from "@/lib/auth/workspace-site-redirect"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
+import { fetchAccessibleSitesClient } from "@/lib/sites/fetch-accessible-sites"
+import { postgrestErrorMessage } from "@/lib/supabase/postgrest-error"
 
 // Definición de la interfaz Site adaptada a la estructura de Supabase
 export interface Site {
@@ -669,30 +671,15 @@ export function SiteProvider({ children }: SiteProviderProps) {
     
     let userId: string | null = null
 
-    // VERIFY session first (getUser validates the JWT; getSession can return stale cookies)
+    // Read the local session for demo site ownership only.
+    // Do not call auth.getUser() here: it always hits the Auth API from the
+    // browser, and a Failed to fetch (blocked, aborted, offline) was treated
+    // as logout and surfaced as a Next.js Console TypeError overlay.
     try {
-      const { data: { user }, error } = await supabaseRef.current.auth.getUser()
-      const valid = !!user && !error
-      setHasValidSession(valid)
-      
-      if (!valid || !user) {
-        setSites([])
-        setIsLoading(false)
-        if (!isInitialized) {
-          setIsInitialized(true)
-        }
-        return
-      }
-      userId = user.id
-    } catch (sessionError) {
-      console.error("Error checking session:", sessionError)
-      setHasValidSession(false)
-      setSites([])
-      setIsLoading(false)
-      if (!isInitialized) {
-        setIsInitialized(true)
-      }
-      return
+      const { data: { session } } = await supabaseRef.current.auth.getSession()
+      userId = session?.user?.id ?? null
+    } catch {
+      userId = null
     }
     
     try {
@@ -700,17 +687,37 @@ export function SiteProvider({ children }: SiteProviderProps) {
       setIsLoading(true)
       setError(null)
 
-      const { data: accessibleSites, error: sitesError } = await supabaseRef.current.rpc(
-        "get_my_accessible_sites",
-        {}
-      )
+      const {
+        sites: accessibleSites,
+        error: sitesError,
+        aborted,
+        unauthorized,
+      } = await fetchAccessibleSitesClient(supabaseRef.current)
 
-      if (sitesError) {
-        console.error("Error fetching accessible sites:", sitesError)
-        throw new Error(sitesError.message || "Failed to load sites")
+      if (aborted) {
+        return
       }
 
-      const allSitesData = [...(accessibleSites || [])]
+      if (unauthorized) {
+        setHasValidSession(false)
+        setSites([])
+        if (!isInitialized) {
+          setIsInitialized(true)
+        }
+        return
+      }
+
+      if (sitesError) {
+        console.error(
+          "Error fetching accessible sites:",
+          postgrestErrorMessage(sitesError, "Failed to load sites")
+        )
+        throw new Error(postgrestErrorMessage(sitesError, "Failed to load sites"))
+      }
+
+      setHasValidSession(true)
+
+      const allSitesData = [...accessibleSites]
       
       // Demo accounts are only available while demo mode is active.
       // Do not inject them into workspace/buyer site lists.
@@ -725,7 +732,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
               url: demo.url || null,
               logo_url: null,
               description: demo.description,
-              user_id: userId, // Set current user as owner to pass basic checks
+              user_id: userId || "demo-user",
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });
@@ -835,7 +842,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         setIsInitialized(true)
       }
     } catch (err) {
-      console.error("Error loading sites:", err)
+      console.error("Error loading sites:", err instanceof Error ? err.message : String(err))
       setError(err instanceof Error ? err : new Error(String(err)))
     } finally {
       setIsLoading(false)

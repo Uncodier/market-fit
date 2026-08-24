@@ -145,9 +145,14 @@ export function hasMixedCartShippingWarning(items: { allowed: CheckoutFulfillmen
 
 /**
  * Chooses the best default fulfillment method from a list of allowed options.
- * Preference order: ship -> pickup -> none
+ * Preference order: ship -> pickup -> dine_in -> none.
+ * When the buyer is particularly close to a store, pickup wins over ship.
  */
-export function defaultFulfillment(options: CheckoutFulfillmentMethod[]): CheckoutFulfillmentMethod | undefined {
+export function defaultFulfillment(
+  options: CheckoutFulfillmentMethod[],
+  prefs?: { preferPickup?: boolean }
+): CheckoutFulfillmentMethod | undefined {
+  if (prefs?.preferPickup && options.includes('pickup')) return 'pickup';
   if (options.includes('ship')) return 'ship';
   if (options.includes('pickup')) return 'pickup';
   if (options.includes('dine_in')) return 'dine_in';

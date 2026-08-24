@@ -2,12 +2,12 @@
 
 import { createContext, useContext, ReactNode, useState, useEffect, useRef } from 'react'
 
-export type RobotsViewMode = "agent" | "imprenta"
+export type RobotsViewMode = "agent" | "imprenta" | "workflow"
 
 interface LayoutContextType {
   isLayoutCollapsed: boolean
   setIsLayoutCollapsed: (collapsed: boolean) => void
-  /** Agents vs Imprenta canvas — driven by sidebar only, not URL */
+  /** Agents vs Imprenta vs Workflow canvas */
   robotsViewMode: RobotsViewMode
   setRobotsViewMode: (mode: RobotsViewMode) => void
 }
@@ -34,6 +34,7 @@ function readInitialRobotsViewMode(): RobotsViewMode {
     if (path === "/robots" || path.startsWith("/robots/")) {
       const sp = new URLSearchParams(window.location.search)
       if (sp.get("mode") === "imprenta") return "imprenta"
+      if (sp.get("mode") === "workflow") return "workflow"
     }
   } catch {
     /* ignore */

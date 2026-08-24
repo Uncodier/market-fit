@@ -58,6 +58,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   // Keep in sync with commercial-site/next.config.js (www → app proxy).
+  // /profile must be proxied: www has a leftover workspace profile page whose
+  // SiteContext redirect fights auth and loops. Do not list /profile as a
+  // local protected route on www — the app enforces auth, same as /buyer.
   // Only active when MARKET_FIT_ORIGIN is set so this app deploy does not
   // proxy to itself.
   async rewrites() {

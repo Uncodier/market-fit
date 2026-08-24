@@ -4,6 +4,10 @@ import {
   isBuyerLocationIncompatible,
   formatBuyerLocationLabel,
   buyerMatchesSiteLocations,
+  isBuyerParticularlyClose,
+  pickPreferredPickupLocation,
+  haversineKm,
+  NEARBY_PICKUP_METERS,
 } from '@/app/commerce/buyer-location-availability';
 
 describe('buyer-location-availability', () => {
@@ -189,6 +193,90 @@ describe('buyer-location-availability', () => {
           buyerGeo: { city: 'Guadalajara', country: 'MX' },
         })
       ).toBe(true);
+    });
+  });
+
+  describe('isBuyerParticularlyClose', () => {
+    it('is false when only the city matches — that is too coarse to know they can arrive', () => {
+      expect(
+        isBuyerParticularlyClose({
+          buyerGeo: { city: 'Celaya', country: 'MX' },
+          inventoryLocations: [{ id: 'a', name: 'Downtown', city: 'Celaya' }],
+        })
+      ).toBe(false);
+    });
+
+    it('is false when only the zip matches', () => {
+      expect(
+        isBuyerParticularlyClose({
+          buyerGeo: { city: 'Austin', zip: '78701' },
+          inventoryLocations: [{ id: 'a', name: 'Store', zip: '78701' }],
+        })
+      ).toBe(false);
+    });
+
+    it('is true when the buyer picked a store', () => {
+      expect(
+        isBuyerParticularlyClose({
+          buyerGeo: { city: 'Dallas' },
+          inventoryLocations: [{ id: 'a', city: 'Austin' }],
+          selectedLocationId: 'a',
+        })
+      ).toBe(true);
+    });
+
+    it('is true when coordinates are within 500m', () => {
+      expect(
+        isBuyerParticularlyClose({
+          buyerGeo: { latitude: '20.5200', longitude: '-100.8100' },
+          inventoryLocations: [{ id: 'a', latitude: 20.5225, longitude: -100.81 }],
+        })
+      ).toBe(true);
+    });
+
+    it('is false when coordinates are farther than 500m', () => {
+      expect(
+        isBuyerParticularlyClose({
+          buyerGeo: { latitude: '20.5200', longitude: '-100.8100' },
+          inventoryLocations: [{ id: 'a', latitude: 20.53, longitude: -100.81 }],
+        })
+      ).toBe(false);
+    });
+  });
+
+  describe('pickPreferredPickupLocation', () => {
+    it('prefers the store within 500m over the default', () => {
+      const picked = pickPreferredPickupLocation(
+        [
+          { id: 'default', latitude: 20.53, longitude: -100.81, is_default: true },
+          { id: 'local', latitude: 20.5225, longitude: -100.81 },
+        ],
+        { latitude: '20.5200', longitude: '-100.8100' }
+      );
+      expect(picked?.id).toBe('local');
+    });
+
+    it('falls back to the default store when none are within 500m', () => {
+      const picked = pickPreferredPickupLocation(
+        [
+          { id: 'other', city: 'Leon' },
+          { id: 'default', city: 'Monterrey', is_default: true },
+        ],
+        { city: 'Guadalajara' }
+      );
+      expect(picked?.id).toBe('default');
+    });
+  });
+
+  describe('haversineKm', () => {
+    it('is roughly zero for the same point', () => {
+      expect(haversineKm({ lat: 20.52, lon: -100.81 }, { lat: 20.52, lon: -100.81 })).toBeCloseTo(0, 5);
+    });
+
+    it('treats a ~280m hop as within 500m', () => {
+      const meters = haversineKm({ lat: 20.52, lon: -100.81 }, { lat: 20.5225, lon: -100.81 }) * 1000;
+      expect(meters).toBeLessThan(NEARBY_PICKUP_METERS);
+      expect(meters).toBeGreaterThan(200);
     });
   });
 });

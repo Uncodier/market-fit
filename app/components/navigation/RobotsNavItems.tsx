@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { MenuItem } from "./MenuItem"
-import { Bot, Printer } from "@/app/components/ui/icons"
+import { Bot, Printer, Workflow } from "@/app/components/ui/icons"
 import { RobotsBadge } from "./RobotsBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useLayout } from "@/app/context/LayoutContext"
@@ -46,12 +46,20 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
     return `/robots?${p.toString()}`
   }, [searchQueryString])
 
+  const workflowHref = useMemo(() => {
+    const p = new URLSearchParams(searchQueryString)
+    p.set("mode", "workflow")
+    return `/robots?${p.toString()}`
+  }, [searchQueryString])
+
   const overviewActive = pathname.startsWith("/dashboard") && searchParams.get("tab") === "overview"
   const agentActive = isRobotsRoute && robotsViewMode === "agent"
   const imprentaActive = isRobotsRoute && robotsViewMode === "imprenta"
+  const workflowActive = isRobotsRoute && robotsViewMode === "workflow"
   const screenAccess = useOptionalScreenAccess()
   const showOverview = !screenAccess || screenAccess.canAccessNavKey("reportOverview")
   const showContentCreator = !screenAccess || screenAccess.canAccessNavKey("contentCreator")
+  const showWorkflows = !screenAccess || screenAccess.canAccessNavKey("workflows")
 
   return (
     <>
@@ -89,6 +97,19 @@ export function RobotsNavItems({ isCollapsed }: RobotsNavItemsProps) {
         isCollapsed={isCollapsed}
         onClick={() => {
           setRobotsViewMode("imprenta")
+          requestNavigationHistoryReset()
+        }}
+      />
+      )}
+      {showWorkflows && (
+      <MenuItem
+        href={workflowHref}
+        icon={Workflow}
+        title={t("layout.sidebar.workflows") || "Workflows"}
+        isActive={workflowActive}
+        isCollapsed={isCollapsed}
+        onClick={() => {
+          setRobotsViewMode("workflow")
           requestNavigationHistoryReset()
         }}
       />

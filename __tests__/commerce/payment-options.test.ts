@@ -1,7 +1,8 @@
 import { 
   getItemPaymentOptions, 
   intersectPaymentOptions, 
-  getAvailablePaymentMethods
+  getAvailablePaymentMethods,
+  defaultPaymentMethod
 } from '../../app/commerce/payment-options';
 import { CatalogItem } from '../../app/types';
 
@@ -79,6 +80,24 @@ describe('payment-options', () => {
 
     it('returns empty array if no valid options left', () => {
       expect(getAvailablePaymentMethods('ship', ['cash_on_pickup'])).toEqual([]);
+    });
+  });
+
+  describe('defaultPaymentMethod', () => {
+    it('returns the first available method', () => {
+      expect(defaultPaymentMethod(['card', 'cash_on_pickup'])).toEqual('card');
+    });
+
+    it('prefers cash when nearby and cash is available', () => {
+      expect(defaultPaymentMethod(['card', 'cash_on_pickup'], { preferCash: true })).toEqual('cash_on_pickup');
+    });
+
+    it('keeps card when nearby but cash is not available', () => {
+      expect(defaultPaymentMethod(['card', 'bank_transfer'], { preferCash: true })).toEqual('card');
+    });
+
+    it('returns undefined for empty', () => {
+      expect(defaultPaymentMethod([])).toBeUndefined();
     });
   });
 });

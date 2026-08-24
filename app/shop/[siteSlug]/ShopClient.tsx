@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useDeferredValue, useCallback } from "react"
+import { useState, useEffect, useDeferredValue, useCallback, useRef } from "react"
 import { CatalogItem } from "@/app/types"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
 import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
@@ -37,6 +37,8 @@ import { BuyerGeo } from "@/app/commerce/buyer-geo"
 import {
   isBuyerLocationIncompatible,
   isItemLocationAvailable,
+  isBuyerParticularlyClose,
+  pickPreferredPickupLocation,
 } from "@/app/commerce/buyer-location-availability"
 import { useBuyerLocation } from "@/app/components/commerce/use-buyer-location"
 import { buyerLocationLeadingChip } from "@/app/components/commerce/BuyerLocationControls"
@@ -84,8 +86,16 @@ export default function ShopClient({
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [ownedItemIdsState, setOwnedItemIdsState] = useState<ShopOwnedAccess[]>(ownedItemIds)
   const [ownedItemsDataState, setOwnedItemsDataState] = useState<CatalogItem[]>(ownedItemsData)
-  const [fulfillment, setFulfillment] = useState<'pickup' | 'ship' | 'none' | 'dine_in'>('ship')
-  const [originLocationId, setOriginLocationId] = useState<string>(locations[0]?.id || '')
+  const [fulfillment, setFulfillment] = useState<'pickup' | 'ship' | 'none' | 'dine_in'>(() =>
+    isBuyerParticularlyClose({
+      buyerGeo,
+      inventoryLocations: locations,
+      settingsLocations: site?.settings?.locations,
+    }) ? 'pickup' : 'none'
+  )
+  const [originLocationId, setOriginLocationId] = useState<string>(
+    () => pickPreferredPickupLocation(locations || [], buyerGeo)?.id || locations?.[0]?.id || ''
+  )
   const [shippingAddress, setShippingAddress] = useState({
     line1: "",
     line2: "",
@@ -128,6 +138,8 @@ export default function ShopClient({
 
   const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
+  const userChoseFulfillmentRef = useRef(false)
+  const userChosePaymentRef = useRef(false)
   
   // Compute business availability
   const businessHours = site?.settings?.business_hours || []
@@ -483,6 +495,10 @@ export default function ShopClient({
         nextOpenSlot={nextOpenSlot}
         locationAvailable={locationAvailable}
         deliveryTimeLabel={deliveryTimeLabel}
+        buyerGeo={buyerLocation.effectiveBuyerGeo}
+        selectedLocationId={buyerLocation.selectedLocationId}
+        userChoseFulfillmentRef={userChoseFulfillmentRef}
+        userChosePaymentRef={userChosePaymentRef}
       />
 
       <ShopHeroTrust site={site} searchQuery={deferredSearchQuery} isOpen={isOpen} nextOpenSlot={nextOpenSlot} locationAvailable={locationAvailable} deliveryTimeLabel={deliveryTimeLabel} />

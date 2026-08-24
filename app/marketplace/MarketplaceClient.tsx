@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect, useDeferredValue, useCallback } from "react"
+import React, { useState, useEffect, useDeferredValue, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
 import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
@@ -155,6 +155,8 @@ export function MarketplaceClient({
 
   const [orderTiming, setOrderTiming] = useState<'now' | 'scheduled'>('now')
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
+  const userChoseFulfillmentRef = useRef(false)
+  const userChosePaymentRef = useRef(false)
 
   useGuestCheckoutPrefill({
     session,
@@ -526,6 +528,10 @@ export function MarketplaceClient({
           checkoutLoading={checkoutLoading}
           setIsCartOpen={setIsCartOpen}
           t={t}
+          buyerGeo={buyerLocation.effectiveBuyerGeo}
+          selectedLocationId={buyerLocation.selectedLocationId}
+          userChoseFulfillmentRef={userChoseFulfillmentRef}
+          userChosePaymentRef={userChosePaymentRef}
         />
       )}
 

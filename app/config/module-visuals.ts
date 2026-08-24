@@ -55,6 +55,7 @@ import {
   Shield,
   Code,
   TableRows,
+  Workflow,
 } from "@/app/components/ui/icons"
 
 export const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
@@ -110,6 +111,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
   channels: Phone,
   activities: Activity,
   skills: Brain,
+  workflows: Workflow,
   reportPerformance: TrendingUp,
   reportOverview: PieChart,
   reportAnalytics: BarChart,
@@ -286,6 +288,7 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   channels: buildVariant(248, 265, 90, 68, 54, "mesh-1", false),
   activities: buildVariant(260, 245, 310, 72, 50, "mesh-2", false),
   skills: buildVariant(280, 265, 160, 75, 56, "mesh-3", false),
+  workflows: buildVariant(262, 248, 120, 80, 52, "mesh-4", true, true),
 
   // —— Applications (slate → indigo, lower chroma) ——
   applicationsDatabase: buildVariant(225, 245, 135, 58, 48, "mesh-4", true, true),

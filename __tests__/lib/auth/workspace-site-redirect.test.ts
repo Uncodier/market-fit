@@ -33,9 +33,22 @@ describe("getWorkspaceSiteRedirect", () => {
 
   it("does not redirect commerce, auth, or demo selector routes", () => {
     expect(getWorkspaceSiteRedirect({ ...base, pathname: "/buyer" })).toBeNull()
+    expect(getWorkspaceSiteRedirect({ ...base, pathname: "/buyer/profile" })).toBeNull()
     expect(getWorkspaceSiteRedirect({ ...base, pathname: "/auth" })).toBeNull()
     expect(getWorkspaceSiteRedirect({ ...base, pathname: "/demo" })).toBeNull()
     expect(getWorkspaceSiteRedirect({ ...base, pathname: "/projects" })).toBeNull()
+  })
+
+  it("does not kick buyers off account profile when no workspace site is selected", () => {
+    expect(getWorkspaceSiteRedirect({ ...base, pathname: "/profile" })).toBeNull()
+    expect(
+      getWorkspaceSiteRedirect({
+        ...base,
+        pathname: "/profile",
+        realSiteCount: 2,
+        hasRealCurrentSite: false,
+      })
+    ).toBeNull()
   })
 
   it("does not redirect without a session", () => {

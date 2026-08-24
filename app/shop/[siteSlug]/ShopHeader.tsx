@@ -13,6 +13,8 @@ import { useCommerceSignInHref } from "@/app/components/commerce/use-commerce-si
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/app/components/ui/sheet"
 import { CartSidebar } from "./CartSidebar"
 import type { CatalogItem } from "@/app/types"
+import type { BuyerGeo } from "@/app/commerce/buyer-geo"
+import type { MutableRefObject } from "react"
 
 type CartItem = CatalogItem & {
   cartQty: number
@@ -84,6 +86,12 @@ type Props = {
   nextOpenSlot?: { at: Date; label: string } | null
   locationAvailable?: boolean
   deliveryTimeLabel?: string | null
+  orderNotes?: string
+  setOrderNotes?: (value: string) => void
+  buyerGeo?: BuyerGeo
+  selectedLocationId?: string | null
+  userChoseFulfillmentRef?: MutableRefObject<boolean>
+  userChosePaymentRef?: MutableRefObject<boolean>
 }
 
 export function ShopHeader({
@@ -132,6 +140,12 @@ export function ShopHeader({
   nextOpenSlot,
   locationAvailable,
   deliveryTimeLabel,
+  orderNotes,
+  setOrderNotes,
+  buyerGeo,
+  selectedLocationId,
+  userChoseFulfillmentRef,
+  userChosePaymentRef,
 }: Props) {
   const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
 
@@ -249,6 +263,12 @@ export function ShopHeader({
                     nextOpenSlot={nextOpenSlot}
                     locationAvailable={locationAvailable}
                     deliveryTimeLabel={deliveryTimeLabel}
+                    orderNotes={orderNotes}
+                    setOrderNotes={setOrderNotes}
+                    buyerGeo={buyerGeo}
+                    selectedLocationId={selectedLocationId}
+                    userChoseFulfillmentRef={userChoseFulfillmentRef}
+                    userChosePaymentRef={userChosePaymentRef}
                   />
                 </SheetContent>
               </Sheet>

@@ -51,3 +51,14 @@ export function getAvailablePaymentMethods(
     return true;
   });
 }
+
+/**
+ * Default payment for checkout. Nearby pickup prefers cash when that method is available.
+ */
+export function defaultPaymentMethod(
+  available: PaymentMethodType[],
+  prefs?: { preferCash?: boolean }
+): PaymentMethodType | undefined {
+  if (prefs?.preferCash && available.includes('cash_on_pickup')) return 'cash_on_pickup';
+  return available[0];
+}
