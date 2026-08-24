@@ -1432,7 +1432,7 @@ export default function LeadsPage() {
                     variant="secondary" 
                     size={(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "default" : "sm"}
                     className={cn(
-                      "w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full justify-between md:justify-center",
+                      "w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full justify-center",
                       (filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "px-4" : "md:w-9 md:px-0 px-4"
                     )}
                     onClick={handleOpenFilterModal}
@@ -1441,12 +1441,10 @@ export default function LeadsPage() {
                       <Filter className="h-4 w-4" />
                       <span className="font-normal md:hidden">Filters</span>
                     </div>
-                    {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? (
+                    {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
                       <Badge variant="secondary" className="ml-2">
                         {filters.status.length + filters.segments.length + filters.origin.length}
                       </Badge>
-                    ) : (
-                      <ChevronDown className="h-3 w-3 opacity-50 md:hidden" />
                     )}
                   </Button>
 

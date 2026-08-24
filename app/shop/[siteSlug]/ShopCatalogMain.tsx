@@ -306,8 +306,10 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
         promo={promo}
         href={`/shop/${siteSlug}/promo/${promo.id}`}
         compactMobile={compactMobile}
+        fullWidth={true}
         surface="shop"
         siteSlug={String(siteSlug)}
+        className="col-span-full"
       />
     ))
 

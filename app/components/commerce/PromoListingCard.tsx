@@ -16,6 +16,7 @@ type PromoListingCardProps = {
   promo: StorefrontPromoCard
   href: string
   compactMobile?: boolean
+  fullWidth?: boolean
   className?: string
   surface: "shop" | "marketplace"
   siteSlug?: string
@@ -26,6 +27,7 @@ export function PromoListingCard({
   promo,
   href,
   compactMobile = false,
+  fullWidth = false,
   className,
   surface,
   siteSlug,
@@ -81,7 +83,11 @@ export function PromoListingCard({
       <div
         className={cn(
           "relative w-full overflow-hidden rounded-2xl bg-muted shrink-0",
-          compactMobile ? "aspect-[4/3]" : "aspect-[16/9] md:aspect-[4/3]",
+          fullWidth
+            ? "aspect-[2/1] md:aspect-[3/1]"
+            : compactMobile
+              ? "aspect-[4/3]"
+              : "aspect-[16/9] md:aspect-[4/3]",
         )}
       >
         <Link href={href} className="absolute inset-0 z-0 block" aria-label={promo.name || "Promotion"}>

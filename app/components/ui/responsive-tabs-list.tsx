@@ -152,9 +152,9 @@ export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: 
         ))}
       </div>
 
-      <TabsList className={`flex flex-nowrap justify-start w-full overflow-hidden ${className || ''}`}>
+      <TabsList className={`inline-flex max-w-full flex-nowrap justify-start ${className || ''}`}>
         {visibleTabs.map((tab) => (
-          <TabsTrigger key={tab.value} value={tab.value}>
+          <TabsTrigger key={tab.value} value={tab.value} className="rounded-[inherit]">
             <span className="flex items-center gap-2 whitespace-nowrap truncate max-w-[200px] px-2 py-0">
               {tab.icon && <span className="flex-shrink-0">{tab.icon}</span>}
               <span className="truncate">{tab.label}</span>
@@ -167,7 +167,7 @@ export function ResponsiveTabsList({ tabs, activeTab, onTabChange, className }: 
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50 text-muted-foreground"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-[inherit] px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground"
                 title="Más opciones"
               >
                 <span className="flex items-center gap-1">
