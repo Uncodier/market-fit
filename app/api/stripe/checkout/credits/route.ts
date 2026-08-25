@@ -73,13 +73,11 @@ export async function POST(request: NextRequest) {
       })
       customerId = customer.id
 
-      // Update billing record with customer ID
+      // Persist only the Stripe customer. Do not reset plan or credits before payment.
       await supabase.rpc('upsert_billing', {
         p_site_id: siteId,
         p_stripe_customer_id: customerId,
-        p_plan: 'commission', // Default plan
-        p_auto_renew: true,
-        p_credits_available: 0
+        p_auto_renew: true
       })
     }
 

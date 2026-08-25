@@ -14,6 +14,10 @@ import { PdpCtaButton } from "./PdpCtaButton"
 import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
 import { PdpMetricChips } from "./PdpMetricChips"
+import { PdpItemDescription } from "./PdpItemDescription"
+import { PdpProductDetails } from "./PdpProductDetails"
+import { PdpProductGallery } from "./PdpProductGallery"
+import { hasPdpProductDetails } from "./pdp-item-description"
 import { VariantPicker } from "./VariantPicker"
 import {
   ModifierPickerPanel,
@@ -238,103 +242,19 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
     galleryEntries.length > 0 ? Math.min(activeImageIdx, galleryEntries.length - 1) : 0
   const mainGallerySrc = galleryEntries[safeImageIdx]?.url || displayImageUrl
 
-  const galleryBlock = (
-    <div className="space-y-4">
-      <div className="relative aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden border shadow-sm">
-        {mainGallerySrc ? (
-          <img
-            src={mainGallerySrc}
-            alt={item.name}
-            className="absolute inset-0 h-full w-full object-cover object-center hover:scale-105 transition-transform duration-700"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-muted-foreground font-medium">No Image</span>
-          </div>
-        )}
-      </div>
-
-      {galleryEntries.length > 1 && (
-        <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-1 snap-x">
-          {galleryEntries.map((entry, i) => {
-            const selected = safeImageIdx === i
-            return (
-              <button
-                key={`${entry.catalogItemId || "extra"}-${i}`}
-                type="button"
-                onClick={() => handleGalleryThumbClick(i)}
-                aria-pressed={selected}
-                className={`relative aspect-square w-20 sm:w-24 shrink-0 rounded-2xl p-[3px] snap-start transition-colors ${
-                  selected
-                    ? "bg-foreground"
-                    : "bg-border/60 hover:bg-foreground/40"
-                }`}
-              >
-                <span className="relative block h-full w-full overflow-hidden rounded-[0.85rem] bg-muted">
-                  <img
-                    src={entry.url}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover object-center"
-                  />
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-
   const detailsBelow = (
-    <>
-      {item.description && (
-        <div className="mb-10 sm:mb-12">
-          <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
-            {t("marketplace.catalogDetails.about") || "Product Description"}
-          </h3>
-          <div className="prose prose-base sm:prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap">
-            <p>{item.description}</p>
-          </div>
-        </div>
-      )}
-
-      {attrFields.length > 0 && (
-        <div className="mb-10 sm:mb-12 grid grid-cols-2 gap-x-6 sm:gap-x-8 gap-y-6">
-          {attrFields.map((f) => {
-            const camelCaseKey = f.replace(/_([a-z])/g, (g) => g[1].toUpperCase())
-            return (
-              <div key={f}>
-                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-muted-foreground mb-1 sm:mb-2">
-                  {t(`marketplace.catalogDetails.${camelCaseKey}`) || f.replace("_", " ")}
-                </div>
-                <div className="font-semibold text-base sm:text-lg">{attributes[f]}</div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {specs.length > 0 && (
-        <div className="pt-8 border-t">
-          <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">
-            {t("marketplace.catalogDetails.specs") || "Technical Specifications"}
-          </h3>
-          <div className="border rounded-2xl sm:rounded-[1.5rem] overflow-hidden">
-            {specs.map((s, i) => (
-              <div key={i} className="flex border-b last:border-0 hover:bg-muted/30 transition-colors">
-                <div className="w-1/3 bg-muted/30 p-4 sm:p-5 font-bold text-muted-foreground text-xs sm:text-sm uppercase tracking-wider">
-                  {s.label}
-                </div>
-                <div className="w-2/3 p-4 sm:p-5 font-semibold text-sm sm:text-base text-foreground">
-                  {s.value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </>
+    <PdpProductDetails
+      description={item.description}
+      attrFields={attrFields}
+      attributes={attributes}
+      specs={specs}
+    />
   )
+  const showDetailsBelow = hasPdpProductDetails({
+    description: item.description,
+    attrCount: attrFields.length,
+    specCount: specs.length,
+  })
 
   if (isDynamic) {
     return (
@@ -352,11 +272,11 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-tight">
               {item.name}
             </h1>
-            {item.description && (
-              <p className="mt-2 text-sm text-muted-foreground max-w-2xl line-clamp-2">
-                {item.description}
-              </p>
-            )}
+            <PdpItemDescription
+              description={item.description}
+              variant="inline"
+              className="mt-2 text-sm max-w-2xl"
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
@@ -377,7 +297,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
                 </div>
               </div>
               <DynamicQuotePdpFields />
-              <div className="pt-4 border-t">{detailsBelow}</div>
+              {showDetailsBelow && <div className="pt-4 border-t">{detailsBelow}</div>}
             </div>
 
             <div className="lg:col-span-5 xl:col-span-4 order-2">
@@ -403,7 +323,15 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
       {/* Sticky gallery only while the options column scrolls; details sit below. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20">
         <div>
-          <div className="lg:sticky lg:top-28">{galleryBlock}</div>
+          <div className="lg:sticky lg:top-28">
+            <PdpProductGallery
+              itemName={item.name}
+              mainSrc={mainGallerySrc}
+              entries={galleryEntries}
+              selectedIndex={safeImageIdx}
+              onThumbClick={handleGalleryThumbClick}
+            />
+          </div>
         </div>
 
         <div className="flex flex-col py-0 sm:py-4 lg:py-8">
@@ -431,6 +359,12 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
                   </span>
                 )}
             </div>
+
+            <PdpItemDescription
+              description={item.description}
+              variant="inline"
+              className="mt-4 sm:mt-6"
+            />
           </div>
 
           {hasVariants && (
@@ -499,15 +433,17 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
         </div>
       </div>
 
-      <div className="mt-12 sm:mt-16 lg:mt-20 max-w-3xl">
-        {detailsBelow}
+      {(showDetailsBelow || (_experience?.kind === "subscription" && _experience.subscription)) && (
+        <div className="mt-12 sm:mt-16 lg:mt-20 max-w-3xl">
+          {showDetailsBelow && detailsBelow}
 
-        {_experience?.kind === "subscription" && _experience.subscription && (
-          <div className="pt-8 mt-8 border-t">
-            <SubscriptionManagePanel subscription={_experience.subscription} />
-          </div>
-        )}
-      </div>
+          {_experience?.kind === "subscription" && _experience.subscription && (
+            <div className="pt-8 mt-8 border-t">
+              <SubscriptionManagePanel subscription={_experience.subscription} />
+            </div>
+          )}
+        </div>
+      )}
 
       <PdpMobileBuyBar price={displayPrice} fullWidthCta={true}>
         <div className="flex gap-2 w-full">

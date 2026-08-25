@@ -64,12 +64,13 @@ export async function POST(request: NextRequest) {
       console.log('Customer ID:', customerId)
       console.log('Plan:', plan)
       
+      // Persist only the Stripe customer. Do not change plan or credits until
+      // checkout.session.completed confirms payment — passing 0 credits here
+      // wipes the welcome grant via COALESCE(0, credits_available).
       const { data: billingResult, error: billingError } = await supabase.rpc('upsert_billing', {
         p_site_id: siteId,
         p_stripe_customer_id: customerId,
-        p_plan: plan,
-        p_auto_renew: true,
-        p_credits_available: 0
+        p_auto_renew: true
       })
 
       console.log('Billing upsert result:', billingResult)

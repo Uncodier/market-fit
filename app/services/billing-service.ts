@@ -212,7 +212,7 @@ class BillingService {
         p_billing_postal_code: billingData.billing_postal_code,
         p_billing_country: billingData.billing_country,
         p_auto_renew: billingData.auto_renew !== undefined ? billingData.auto_renew : true,
-        p_credits_available: billingData.credits_available || 0
+        p_credits_available: billingData.credits_available ?? null
       })
 
       if (error) {
