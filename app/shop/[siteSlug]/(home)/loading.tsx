@@ -43,11 +43,65 @@ export default function ShopLoading() {
       />
 
       {/* Shop hero — matches ShopHeroTrust proportions */}
-      <div className="bg-gray-900 text-white h-[580px] md:h-[550px] -mt-[88px] md:-mt-[104px] px-4 md:px-8 relative overflow-hidden flex items-end md:items-center">
-        <div className="max-w-7xl mx-auto w-full relative z-10 text-center md:text-left flex flex-col items-center md:items-start pb-10 md:pb-0 pt-[88px] md:pt-[104px]">
-          <Skeleton className="h-12 md:h-16 w-3/4 max-w-2xl mb-6 bg-white/20" />
-          <Skeleton className="h-6 w-1/2 max-w-xl mb-10 bg-white/20" />
-          <Skeleton className="h-14 w-40 rounded-full bg-white/20" />
+      <div className="bg-gray-900 text-white h-[580px] md:h-[550px] -mt-[88px] md:-mt-[104px] relative overflow-hidden flex items-center">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10 text-center md:text-left flex flex-col items-center md:items-start w-full pt-[88px] md:pt-[104px] pb-20">
+          <Skeleton className="h-10 md:h-16 w-3/4 max-w-2xl mb-3 md:mb-6 bg-white/20" />
+          <Skeleton className="h-5 md:h-7 w-1/2 max-w-xl mb-6 md:mb-10 bg-white/20" />
+          
+          <div className="md:hidden w-full max-w-md mb-5 grid grid-cols-3 gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex flex-col items-center justify-start gap-1.5 rounded-2xl bg-white/10 px-2 py-2.5">
+                <Skeleton className="h-4 w-4 rounded-full bg-white/20 shrink-0" />
+                <div className="w-full flex flex-col items-center gap-1 mt-0.5">
+                  <Skeleton className="h-3 w-16 bg-white/20" />
+                  <Skeleton className="h-2 w-12 bg-white/20" />
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="md:hidden">
+            <Skeleton className="h-14 w-40 rounded-full bg-white/20" />
+          </div>
+        </div>
+
+        {/* Fulfillment skeleton at the bottom */}
+        <div className="absolute inset-x-0 bottom-3 md:bottom-4 z-10">
+          <div className="max-w-7xl mx-auto px-3 md:px-8">
+            <div className="flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] w-full gap-2">
+              <div className="flex items-center gap-2 min-w-0 w-[320px] max-w-[calc(100%-3.75rem)] md:w-auto md:max-w-none">
+                <Skeleton className="h-14 w-full md:w-64 rounded-full bg-white/20" />
+                <div className="hidden md:block shrink-0">
+                  <Skeleton className="h-14 w-14 rounded-full bg-white/20" />
+                </div>
+              </div>
+              <div className="hidden md:flex justify-center">
+                <Skeleton className="h-14 w-40 rounded-full bg-white/20" />
+              </div>
+              <div className="shrink-0 md:min-w-0">
+                <div className="md:hidden">
+                  <Skeleton className="h-14 w-14 rounded-full bg-white/20" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop trust strip */}
+      <div className="hidden md:block bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6">
+          <div className="grid grid-cols-3 gap-6 text-center">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex flex-col items-center justify-center gap-2">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="flex flex-col items-center gap-1.5">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

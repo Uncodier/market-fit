@@ -37,6 +37,7 @@ import { formatDeliveryTime } from "@/app/commerce/delivery-time"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
 import {
   defaultFulfillment,
+  getItemDeliveryOptions,
   type CheckoutFulfillmentMethod,
 } from "@/app/commerce/delivery-options"
 import {
@@ -238,10 +239,27 @@ export default function ShopClient({
 
   const categories = initialCategories || [];
   const ownedAccessMap = new Map(ownedItemIdsState.map(o => [o.catalogItemId, o.canBook]))
-  const ownedItems = ownedItemsDataState
-  // Keep unavailable items visible (sold-out CTA); hiding them made whole
-  // categories look empty when stock/availability flipped.
-  const sellableCatalogItems = catalogItems
+
+  const isItemCompatibleWithFulfillment = useCallback((item: CatalogItem) => {
+    const options = getItemDeliveryOptions(item, shopAllowedOptions);
+    if (options.includes(fulfillment)) return true;
+    
+    // Pure virtual items are compatible with in-person methods (pickup, dine_in)
+    const isPureVirtual = options.length === 1 && options[0] === 'none';
+    if (isPureVirtual && (fulfillment === 'pickup' || fulfillment === 'dine_in' || fulfillment === 'none')) {
+      return true;
+    }
+    
+    return false;
+  }, [fulfillment, shopAllowedOptions]);
+
+  const sellableCatalogItems = useMemo(() => {
+    return catalogItems.filter(isItemCompatibleWithFulfillment);
+  }, [catalogItems, isItemCompatibleWithFulfillment]);
+
+  const ownedItems = useMemo(() => {
+    return ownedItemsDataState.filter(isItemCompatibleWithFulfillment);
+  }, [ownedItemsDataState, isItemCompatibleWithFulfillment]);
 
   const addToCart = useCallback((item: CatalogItem) => {
     if (ownedAccessMap.has(item.id)) {
@@ -561,6 +579,7 @@ export default function ShopClient({
         siteId={site.id}
         onDeviceOrdersHydrated={setDeviceOrders}
         sellableCatalogItems={sellableCatalogItems}
+        rawCatalogItems={catalogItems}
         initialCount={initialCount || 0}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}

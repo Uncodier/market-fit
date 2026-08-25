@@ -47,6 +47,7 @@ interface ShopCatalogMainProps {
   siteId?: string
   onDeviceOrdersHydrated?: (orders: DeviceOrder[]) => void
   sellableCatalogItems: CatalogItem[]
+  rawCatalogItems?: CatalogItem[]
   initialCount: number
   isLoading: boolean
   isLoadingMore: boolean
@@ -77,6 +78,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
   siteId,
   onDeviceOrdersHydrated,
   sellableCatalogItems,
+  rawCatalogItems,
   initialCount,
   isLoading,
   isLoadingMore,
@@ -187,7 +189,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
 
     const offsetEntry = categoryOffsets.find((o) => o.name === cat)
     const expected = offsetEntry?.count ?? 0
-    const loadedInCategory = sellableCatalogItems.filter(
+    const loadedInCategory = (rawCatalogItems || sellableCatalogItems).filter(
       (item) => (item as any)._shop?.categoryName === cat
     ).length
     const sectionComplete =
@@ -218,7 +220,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
     if (matched) {
       const offsetEntry = categoryOffsets.find((o) => o.name === matched)
       const expected = offsetEntry?.count ?? 0
-      const loadedInCategory = sellableCatalogItems.filter(
+      const loadedInCategory = (rawCatalogItems || sellableCatalogItems).filter(
         (item) => (item as any)._shop?.categoryName === matched
       ).length
       const sectionComplete =
