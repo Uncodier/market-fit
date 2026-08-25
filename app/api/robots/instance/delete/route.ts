@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { userCanOnSite } from "@/lib/permissions/site-access"
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
-    
-    // Verify session exists
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
       return NextResponse.json(
         { success: false, error: { message: "Unauthorized" } },
         { status: 401 }
       )
     }
 
-    // Parse request body
     const body = await request.json()
     const { instance_id } = body
 
@@ -25,65 +26,62 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify the instance exists and belongs to the user
     const { data: instance, error: fetchError } = await supabase
-      .from('remote_instances')
-      .select('id, site_id, user_id, name')
-      .eq('id', instance_id)
+      .from("remote_instances")
+      .select("id, site_id, user_id, name")
+      .eq("id", instance_id)
       .single()
 
     if (fetchError || !instance) {
-      console.error('Error fetching robot instance:', fetchError)
+      console.error("Error fetching robot instance:", fetchError)
       return NextResponse.json(
         { success: false, error: { message: "Robot instance not found" } },
         { status: 404 }
       )
     }
 
-    // Verify user has access to this instance
-    if (instance.user_id !== session.user.id) {
+    const canDeleteSite = await userCanOnSite(supabase, instance.site_id, "delete")
+    const isCreator = instance.user_id === user.id
+    if (!canDeleteSite && !isCreator) {
       return NextResponse.json(
         { success: false, error: { message: "Permission denied" } },
         { status: 403 }
       )
     }
 
-    // Delete the instance
     const { error: deleteError } = await supabase
-      .from('remote_instances')
+      .from("remote_instances")
       .delete()
-      .eq('id', instance_id)
+      .eq("id", instance_id)
 
     if (deleteError) {
-      console.error('Error deleting robot instance:', deleteError)
+      console.error("Error deleting robot instance:", deleteError)
       return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
+        {
+          success: false,
+          error: {
             message: "Failed to delete robot instance",
-            details: deleteError.message 
-          } 
+            details: deleteError.message,
+          },
         },
         { status: 500 }
       )
     }
 
-    console.log(`✅ Robot instance deleted successfully: ${instance_id}`)
+    console.log(`Robot instance deleted successfully: ${instance_id}`)
 
     return NextResponse.json({
       success: true,
-      message: "Robot instance deleted successfully"
+      message: "Robot instance deleted successfully",
     })
-
   } catch (error) {
-    console.error('Error in delete robot instance API:', error)
+    console.error("Error in delete robot instance API:", error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: { message: "Internal server error" } 
+      {
+        success: false,
+        error: { message: "Internal server error" },
       },
       { status: 500 }
     )
   }
 }
-

@@ -37,7 +37,7 @@ import { formatDeliveryTime } from "@/app/commerce/delivery-time"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
 import {
   defaultFulfillment,
-  getItemDeliveryOptions,
+  isItemCompatibleWithFulfillment,
   type CheckoutFulfillmentMethod,
 } from "@/app/commerce/delivery-options"
 import {
@@ -240,26 +240,13 @@ export default function ShopClient({
   const categories = initialCategories || [];
   const ownedAccessMap = new Map(ownedItemIdsState.map(o => [o.catalogItemId, o.canBook]))
 
-  const isItemCompatibleWithFulfillment = useCallback((item: CatalogItem) => {
-    const options = getItemDeliveryOptions(item, shopAllowedOptions);
-    if (options.includes(fulfillment)) return true;
-    
-    // Pure virtual items are compatible with in-person methods (pickup, dine_in)
-    const isPureVirtual = options.length === 1 && options[0] === 'none';
-    if (isPureVirtual && (fulfillment === 'pickup' || fulfillment === 'dine_in' || fulfillment === 'none')) {
-      return true;
-    }
-    
-    return false;
-  }, [fulfillment, shopAllowedOptions]);
-
   const sellableCatalogItems = useMemo(() => {
-    return catalogItems.filter(isItemCompatibleWithFulfillment);
-  }, [catalogItems, isItemCompatibleWithFulfillment]);
+    return catalogItems.filter((item) => isItemCompatibleWithFulfillment(item, fulfillment));
+  }, [catalogItems, fulfillment]);
 
   const ownedItems = useMemo(() => {
-    return ownedItemsDataState.filter(isItemCompatibleWithFulfillment);
-  }, [ownedItemsDataState, isItemCompatibleWithFulfillment]);
+    return ownedItemsDataState.filter((item) => isItemCompatibleWithFulfillment(item, fulfillment));
+  }, [ownedItemsDataState, fulfillment]);
 
   const addToCart = useCallback((item: CatalogItem) => {
     if (ownedAccessMap.has(item.id)) {

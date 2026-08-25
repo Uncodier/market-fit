@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { createClient } from "@/lib/supabase/client"
 import { useOptionalSite } from "@/app/context/SiteContext"
 import {
+  commandAllowed,
   parseCapabilities,
   setPermissionStore,
 } from "@/lib/permissions/capabilities"
@@ -60,7 +61,7 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<PermissionContextValue>(() => {
     const can = (command: PermissionCommand) => {
       if (!siteId || !capabilities) return true
-      return !!capabilities[command]
+      return commandAllowed(capabilities, command)
     }
     return {
       siteId,

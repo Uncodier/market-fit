@@ -22,27 +22,56 @@ export function capabilitiesFromRole(role: SiteMemberRole | null): SiteCapabilit
   }
 
   const canWrite = role === "owner" || role === "admin" || role === "collaborator"
+  const canDelete = role === "owner" || role === "admin"
   return {
     role,
     is_owner: role === "owner",
     select: true,
     insert: canWrite,
     update: canWrite,
-    delete: role === "owner",
+    delete: canDelete,
   }
 }
 
-export function parseCapabilities(data: unknown): SiteCapabilities | null {
-  if (!data || typeof data !== "object") return null
+export function commandAllowed(
+  capabilities: SiteCapabilities | null | undefined,
+  command: PermissionCommand
+): boolean {
+  if (!capabilities) return true
+  if (capabilities.is_owner) return true
+  return !!capabilities[command]
+}
+
+function unwrapCapabilitiesPayload(data: unknown): Record<string, unknown> | null {
+  if (data == null) return null
+  if (typeof data === "string") {
+    try {
+      return unwrapCapabilitiesPayload(JSON.parse(data))
+    } catch {
+      return null
+    }
+  }
+  if (Array.isArray(data)) {
+    return data.length > 0 ? unwrapCapabilitiesPayload(data[0]) : null
+  }
+  if (typeof data !== "object") return null
   const value = data as Record<string, unknown>
-  const role = parseRole(value.role)
+  if (value.get_my_site_capabilities != null && typeof value.role === "undefined") {
+    return unwrapCapabilitiesPayload(value.get_my_site_capabilities)
+  }
+  return value
+}
+
+export function parseCapabilities(data: unknown): SiteCapabilities | null {
+  const value = unwrapCapabilitiesPayload(data)
+  if (!value) return null
+  const parsedRole = parseRole(value.role)
+  const isOwner = value.is_owner === true || parsedRole === "owner"
+  const role: SiteMemberRole | null = isOwner ? "owner" : parsedRole
   return {
+    ...capabilitiesFromRole(role),
     role,
-    is_owner: value.is_owner === true || role === "owner",
-    select: value.select !== false,
-    insert: value.insert === true,
-    update: value.update === true,
-    delete: value.delete === true,
+    is_owner: isOwner,
   }
 }
 
@@ -80,7 +109,7 @@ export function resetPermissionStore() {
 /** Fail-open when capabilities are unknown so a failed RPC does not freeze the app. */
 export function canCommand(command: PermissionCommand): boolean {
   if (!store.siteId || !store.loaded || !store.capabilities) return true
-  return !!store.capabilities[command]
+  return commandAllowed(store.capabilities, command)
 }
 
 export function getFailOpenCapabilities(): SiteCapabilities {

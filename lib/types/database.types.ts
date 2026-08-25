@@ -476,6 +476,10 @@ export interface Database {
           insert: boolean
           update: boolean
           delete: boolean
+          can_select?: boolean
+          can_insert?: boolean
+          can_update?: boolean
+          can_delete?: boolean
         }
       }
     }

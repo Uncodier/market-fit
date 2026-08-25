@@ -21,17 +21,26 @@ describe("capabilitiesFromRole", () => {
     })
   })
 
-  it("lets admin and collaborator write but not delete", () => {
-    for (const role of ["admin", "collaborator"] as const) {
-      expect(capabilitiesFromRole(role)).toEqual({
-        role,
-        is_owner: false,
-        select: true,
-        insert: true,
-        update: true,
-        delete: false,
-      })
-    }
+  it("lets admin write including delete", () => {
+    expect(capabilitiesFromRole("admin")).toEqual({
+      role: "admin",
+      is_owner: false,
+      select: true,
+      insert: true,
+      update: true,
+      delete: true,
+    })
+  })
+
+  it("lets collaborator write but not delete", () => {
+    expect(capabilitiesFromRole("collaborator")).toEqual({
+      role: "collaborator",
+      is_owner: false,
+      select: true,
+      insert: true,
+      update: true,
+      delete: false,
+    })
   })
 
   it("limits marketing to select", () => {
@@ -68,6 +77,52 @@ describe("parseCapabilities", () => {
   it("returns null for invalid payloads", () => {
     expect(parseCapabilities(null)).toBeNull()
     expect(parseCapabilities("nope")).toBeNull()
+  })
+
+  it("falls back to the role matrix when verb flags are missing", () => {
+    expect(parseCapabilities({ role: "owner", is_owner: true })).toMatchObject({
+      role: "owner",
+      is_owner: true,
+      insert: true,
+      update: true,
+      delete: true,
+    })
+    expect(parseCapabilities({ role: "admin" })).toMatchObject({
+      role: "admin",
+      delete: true,
+    })
+  })
+
+  it("treats site_ownership as owner even if the member role is admin", () => {
+    expect(
+      parseCapabilities({
+        role: "admin",
+        is_owner: true,
+        can_delete: true,
+      })
+    ).toMatchObject({ role: "owner", is_owner: true, delete: true })
+  })
+
+  it("unwraps jsonb strings, arrays, and can_* aliases", () => {
+    expect(
+      parseCapabilities('{"role":"owner","can_delete":true}')
+    ).toMatchObject({ role: "owner", delete: true })
+    expect(
+      parseCapabilities([{ role: "admin", can_insert: true, can_delete: true }])
+    ).toMatchObject({ role: "admin", insert: true, delete: true })
+  })
+
+  it("does not let a stale RPC delete=false override owner or admin", () => {
+    expect(
+      parseCapabilities({
+        role: "admin",
+        is_owner: false,
+        select: true,
+        insert: true,
+        update: true,
+        delete: false,
+      })
+    ).toMatchObject({ role: "admin", delete: true })
   })
 })
 

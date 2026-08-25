@@ -68,6 +68,7 @@ export function DeleteRobotModal({
       }
       confirmLabel="Delete"
       variant="destructive"
+      dataPermission="allow"
       onConfirm={handleDelete}
     />
   )

@@ -41,6 +41,41 @@ describe("mutation-guard", () => {
     expect(result.data).toBeNull()
   })
 
+  it("lets admin delete", async () => {
+    setPermissionStore({
+      siteId: "site-1",
+      capabilities: capabilitiesFromRole("admin"),
+      loaded: true,
+    })
+    expect(canCommand("delete")).toBe(true)
+
+    const remove = jest.fn(() => Promise.resolve({ data: null, error: null }))
+    const client = wrapSupabaseClient({
+      from() {
+        return { delete: remove }
+      },
+    })
+    const result = await client.from("leads").delete()
+    expect(remove).toHaveBeenCalled()
+    expect(result.error).toBeNull()
+  })
+
+  it("lets owners delete even if the delete flag is missing", async () => {
+    setPermissionStore({
+      siteId: "site-1",
+      capabilities: {
+        role: "owner",
+        is_owner: true,
+        select: true,
+        insert: true,
+        update: true,
+        delete: false,
+      },
+      loaded: true,
+    })
+    expect(canCommand("delete")).toBe(true)
+  })
+
   it("maps RLS errors from allowed writes", async () => {
     setPermissionStore({
       siteId: "site-1",

@@ -33,6 +33,30 @@ export function getItemDeliveryOptions(
   return ['none'];
 }
 
+function hasExplicitDeliveryOptions(item: Partial<CatalogItem>): boolean {
+  return Array.isArray(item.metadata?.delivery_options) && item.metadata.delivery_options.length > 0;
+}
+
+function isPureVirtualOptions(options: CheckoutFulfillmentMethod[]): boolean {
+  return options.length === 1 && options[0] === 'none';
+}
+
+/**
+ * Whether a catalog item should stay visible in the shop for the selected order type.
+ * Order-type availability is opt-in: unconfigured items are not hidden.
+ * Virtual-only items (['none']) stay visible for every order type so services
+ * are not dropped when the shop header defaults to delivery.
+ */
+export function isItemCompatibleWithFulfillment(
+  item: Partial<CatalogItem>,
+  fulfillment: CheckoutFulfillmentMethod
+): boolean {
+  const explicit = item.metadata?.delivery_options;
+  if (!hasExplicitDeliveryOptions(item) || !explicit) return true;
+  if (explicit.includes(fulfillment)) return true;
+  return isPureVirtualOptions(explicit);
+}
+
 /**
  * Whether the item offers physical delivery methods (pickup and/or ship).
  */

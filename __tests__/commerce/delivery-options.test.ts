@@ -1,5 +1,6 @@
 import {
   getItemDeliveryOptions,
+  isItemCompatibleWithFulfillment,
   intersectDeliveryOptions,
   hasMixedCartShippingWarning,
   defaultFulfillment,
@@ -38,6 +39,39 @@ describe('delivery-options helpers', () => {
     it('defaults to none for service kind when missing', () => {
       const item: Partial<CatalogItem> = { kind: 'service' };
       expect(getItemDeliveryOptions(item)).toEqual(['none']);
+    });
+  });
+
+  describe('isItemCompatibleWithFulfillment', () => {
+    it('keeps unconfigured services visible for every order type', () => {
+      const item: Partial<CatalogItem> = { kind: 'service' };
+      expect(isItemCompatibleWithFulfillment(item, 'ship')).toBe(true);
+      expect(isItemCompatibleWithFulfillment(item, 'pickup')).toBe(true);
+      expect(isItemCompatibleWithFulfillment(item, 'dine_in')).toBe(true);
+    });
+
+    it('keeps unconfigured products visible for every order type', () => {
+      const item: Partial<CatalogItem> = { kind: 'product' };
+      expect(isItemCompatibleWithFulfillment(item, 'ship')).toBe(true);
+      expect(isItemCompatibleWithFulfillment(item, 'dine_in')).toBe(true);
+    });
+
+    it('keeps explicit virtual-only items visible when delivery is selected', () => {
+      const item: Partial<CatalogItem> = {
+        kind: 'service',
+        metadata: { delivery_options: ['none'] },
+      };
+      expect(isItemCompatibleWithFulfillment(item, 'ship')).toBe(true);
+      expect(isItemCompatibleWithFulfillment(item, 'pickup')).toBe(true);
+    });
+
+    it('hides items that explicitly exclude the selected order type', () => {
+      const item: Partial<CatalogItem> = {
+        kind: 'product',
+        metadata: { delivery_options: ['pickup', 'ship'] },
+      };
+      expect(isItemCompatibleWithFulfillment(item, 'dine_in')).toBe(false);
+      expect(isItemCompatibleWithFulfillment(item, 'ship')).toBe(true);
     });
   });
 
