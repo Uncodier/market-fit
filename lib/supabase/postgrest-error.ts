@@ -53,7 +53,13 @@ export function snapshotPostgrestError(error: unknown): PostgrestErrorSnapshot {
 export function isAbortError(error: unknown): boolean {
   const snapshot = snapshotPostgrestError(error)
   const text = `${snapshot.name} ${snapshot.message} ${snapshot.hint}`.toLowerCase()
-  return snapshot.name === "AbortError" || snapshot.code === "ABORT_ERR" || text.includes("abort")
+  return (
+    snapshot.name === "AbortError" ||
+    snapshot.name === "TimeoutError" ||
+    snapshot.code === "ABORT_ERR" ||
+    snapshot.code === "TIMEOUT_ERR" ||
+    text.includes("abort")
+  )
 }
 
 export function postgrestErrorMessage(error: unknown, fallback = "Request failed"): string {

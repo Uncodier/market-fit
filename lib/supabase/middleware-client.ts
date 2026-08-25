@@ -5,6 +5,13 @@ import {
   isInvalidRefreshTokenError,
   isSupabaseAuthCookieName,
 } from '@/lib/supabase/auth-cookies'
+import { middlewareFetch } from '@/lib/supabase/middleware-fetch'
+import { isAbortError } from '@/lib/supabase/postgrest-error'
+
+export type MiddlewareUserLookup = {
+  user: { id: string } | null
+  lookupFailed: boolean
+}
 
 export function copyResponseCookies(from: NextResponse, to: NextResponse): NextResponse {
   from.cookies.getAll().forEach((cookie) => {
@@ -19,6 +26,26 @@ export function clearSupabaseCookies(request: NextRequest, response: NextRespons
     request.cookies.delete(cookie.name)
     response.cookies.set(cookie.name, '', EXPIRED_COOKIE_OPTIONS)
   }
+}
+
+export function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some((cookie) => isSupabaseAuthCookieName(cookie.name))
+}
+
+export function isTransientAuthLookupError(error: unknown): boolean {
+  if (isAbortError(error)) return true
+  if (!error || typeof error !== 'object') return false
+  const status = Number((error as { status?: unknown }).status)
+  if (status >= 500 || status === 408 || status === 429) return true
+  const name = `${(error as { name?: unknown }).name || ''}`
+  const message = `${(error as { message?: unknown }).message || ''}`.toLowerCase()
+  if (name === 'TypeError' && message.includes('fetch')) return true
+  return (
+    message.includes('fetch failed') ||
+    message.includes('econnreset') ||
+    message.includes('etimedout') ||
+    message.includes('econnrefused')
+  )
 }
 
 export function createMiddlewareSupabase(request: NextRequest, response: NextResponse) {
@@ -39,6 +66,9 @@ export function createMiddlewareSupabase(request: NextRequest, response: NextRes
           })
         },
       },
+      global: {
+        fetch: middlewareFetch,
+      },
     }
   )
 }
@@ -46,7 +76,11 @@ export function createMiddlewareSupabase(request: NextRequest, response: NextRes
 export async function getMiddlewareUser(
   request: NextRequest,
   response: NextResponse
-): Promise<{ user: { id: string } | null }> {
+): Promise<MiddlewareUserLookup> {
+  if (!hasSupabaseAuthCookie(request)) {
+    return { user: null, lookupFailed: false }
+  }
+
   const supabase = createMiddlewareSupabase(request, response)
 
   try {
@@ -54,14 +88,23 @@ export async function getMiddlewareUser(
 
     if (isInvalidRefreshTokenError(error)) {
       clearSupabaseCookies(request, response)
-      return { user: null }
+      return { user: null, lookupFailed: false }
     }
 
-    return { user: user ?? null }
+    if (error && !user && isTransientAuthLookupError(error)) {
+      console.warn('middleware auth lookup failed open', {
+        status: (error as { status?: unknown }).status,
+      })
+      return { user: null, lookupFailed: true }
+    }
+
+    return { user: user ?? null, lookupFailed: false }
   } catch (error) {
     if (isInvalidRefreshTokenError(error)) {
       clearSupabaseCookies(request, response)
+      return { user: null, lookupFailed: false }
     }
-    return { user: null }
+    console.warn('middleware auth lookup timed out')
+    return { user: null, lookupFailed: true }
   }
 }

@@ -25,15 +25,31 @@ function applyShopCatalogOrder<T extends { order: (...args: any[]) => T }>(query
     .order("id", { ascending: true });
 }
 
+const SHOP_SITE_MISS = "SHOP_SITE_MISS";
+
 export async function getShopSite(slug: string) {
-  return unstable_cache(
-    async () => getSiteInfoBySlug(slug),
-    ["shop-site", slug],
-    {
-      revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
-      tags: [shopSlugCacheTag(slug)],
-    }
-  )();
+  try {
+    return await unstable_cache(
+      async () => {
+        const site = await getSiteInfoBySlug(slug);
+        if (!site) {
+          // Do not persist a miss: a timeout or stale lookup would 404 the shop
+          // until the Data Cache key expires (and keys survive deploys).
+          throw new Error(SHOP_SITE_MISS);
+        }
+        return site;
+      },
+      // v2: bust cached nulls from the name-slug lookup
+      ["shop-site-v2", slug],
+      {
+        revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
+        tags: [shopSlugCacheTag(slug)],
+      }
+    )();
+  } catch (error) {
+    if (error instanceof Error && error.message === SHOP_SITE_MISS) return null;
+    throw error;
+  }
 }
 
 function categoryNameFromJoin(category: unknown): string | null {

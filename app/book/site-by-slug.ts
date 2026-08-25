@@ -89,27 +89,48 @@ export async function resolveSiteInfoBySlug(
     }
   }
 
-  // Narrow candidates with ilike ("my-shop" -> "%my%shop%") then exact-match slugified names.
-  // Wildcards on both ends pick up trailing spaces / punctuation in stored names.
-  // Avoids scanning the full sites table (slow and more prone to transient network failures).
+  // Exact ilike first ("pigs" -> "Pigs"), then prefix ("pigs%" -> "Pigs ").
+  // Trailing wildcard stays index-friendly; a leading % forces a seq scan and times out.
   const safeSlug = toSiteSlug(siteSlug);
   if (!safeSlug) return null;
-  const likePattern = `%${safeSlug.replace(/-/g, "%")}%`;
-  const { data: sites, error } = await withTransientRetry(
+  const prefixPattern = `${safeSlug.replace(/-/g, "%")}%`;
+
+  const siteSelect = "id, name, logo_url, description" as const;
+  const exact = await withTransientRetry(
     () =>
       supabase
         .from("sites")
-        .select("id, name, logo_url, description")
-        .ilike("name", likePattern)
+        .select(siteSelect)
+        .ilike("name", safeSlug)
         .limit(50),
-    "getSiteInfoBySlug/slug",
+    "getSiteInfoBySlug/slug-exact",
   );
 
-  if (error || !sites?.length) {
-    return null;
+  let candidates = !exact.error && exact.data?.length ? exact.data : null;
+  if (!candidates) {
+    const prefixed = await withTransientRetry(
+      () =>
+        supabase
+          .from("sites")
+          .select(siteSelect)
+          .ilike("name", prefixPattern)
+          .limit(50),
+      "getSiteInfoBySlug/slug-prefix",
+    );
+    if (prefixed.error || !prefixed.data?.length) {
+      if (exact.error || prefixed.error) {
+        console.error(
+          `[getSiteInfoBySlug] no site for slug=${safeSlug}`,
+          exact.error && formatDbError(exact.error),
+          prefixed.error && formatDbError(prefixed.error),
+        );
+      }
+      return null;
+    }
+    candidates = prefixed.data;
   }
 
-  const exactMatch = sites.find((s) => toSiteSlug(s.name) === safeSlug);
+  const exactMatch = candidates.find((s) => toSiteSlug(s.name) === safeSlug);
 
   if (exactMatch) {
     return {

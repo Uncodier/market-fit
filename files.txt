@@ -1,5 +1,0 @@
-app/marketplace/loading.tsx
-app/reservations/page.tsx
-app/catalog/page.tsx
-app/campaigns/page.tsx
-app/assets/page.tsx

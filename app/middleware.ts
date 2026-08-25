@@ -8,6 +8,7 @@ import { copyResponseCookies, getMiddlewareUser } from '@/lib/supabase/middlewar
 import { resolveBlockedScreenRedirect } from '@/lib/auth/enforce-screen-access'
 import { shouldClearDemoCookieOnPath } from '@/lib/auth/workspace-site-redirect'
 import { isRouterPrefetchRequest } from '@/lib/navigation/is-router-prefetch'
+import { isServerActionRequest } from '@/lib/navigation/is-server-action'
 
 // Lista específica y exacta de rutas públicas permitidas
 const ALLOWED_PUBLIC_PATHS = [
@@ -351,10 +352,11 @@ export async function middleware(request: NextRequest) {
   getCorsHeaders(sessionResponse, request, isPublicBooking)
 
   const isPrefetch = isRouterPrefetchRequest(request.headers)
+  const isServerAction = isServerActionRequest(request.headers)
   let middlewareUserId: string | null = null
 
   if (isAuthPath || !isPublicPage) {
-    const { user } = await getMiddlewareUser(request, sessionResponse)
+    const { user, lookupFailed } = await getMiddlewareUser(request, sessionResponse)
     middlewareUserId = user?.id ?? null
 
     if (isAuthPath) {
@@ -368,7 +370,7 @@ export async function middleware(request: NextRequest) {
           NextResponse.redirect(new URL(destination, request.url))
         )
       }
-    } else if (!user && !request.cookies.has('market_fit_demo_site_id')) {
+    } else if (!user && !lookupFailed && !request.cookies.has('market_fit_demo_site_id')) {
       if (isApiLikeRequest(request)) {
         return forbiddenResponse(request)
       }
@@ -386,6 +388,7 @@ export async function middleware(request: NextRequest) {
     !isPublicPage &&
     !isAuthPath &&
     !isPrefetch &&
+    !isServerAction &&
     !request.cookies.has('market_fit_demo_site_id')
   ) {
     try {

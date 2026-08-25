@@ -6,6 +6,7 @@ import {
   isAlwaysAllowedPath,
   isScreenBlocked,
 } from '@/lib/auth/screen-access'
+import { isServerActionRequest } from '@/lib/navigation/is-server-action'
 import { createMiddlewareSupabase } from '@/lib/supabase/middleware-client'
 
 function isDemoSiteId(siteId: string): boolean {
@@ -17,6 +18,9 @@ export async function resolveBlockedScreenRedirect(
   sessionResponse: NextResponse,
   userId: string
 ): Promise<NextResponse | null> {
+  // Server Actions POST to the current page; screen gating is a navigation concern.
+  if (isServerActionRequest(request.headers)) return null
+
   const { pathname, searchParams } = request.nextUrl
   if (isAlwaysAllowedPath(pathname)) return null
 

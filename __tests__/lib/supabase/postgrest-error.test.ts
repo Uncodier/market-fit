@@ -41,6 +41,7 @@ describe("snapshotPostgrestError", () => {
 describe("isAbortError", () => {
   it("detects aborted fetches", () => {
     expect(isAbortError({ name: "AbortError", message: "The user aborted a request." })).toBe(true)
+    expect(isAbortError({ name: "TimeoutError", message: "The operation timed out." })).toBe(true)
     expect(isAbortError({ message: "Failed to load sites" })).toBe(false)
   })
 })

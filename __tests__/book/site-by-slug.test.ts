@@ -22,4 +22,10 @@ describe("toSiteSlug", () => {
     expect(toSiteSlug("   ")).toBe("")
     expect(toSiteSlug("---")).toBe("")
   })
+
+  it("matches URL slugs against spaced or punctuated store names", () => {
+    expect(toSiteSlug("Pigs ")).toBe(toSiteSlug("pigs"))
+    expect(toSiteSlug("Pigs")).toBe("pigs")
+    expect(toSiteSlug("My Shop")).toBe(toSiteSlug("my-shop"))
+  })
 })
