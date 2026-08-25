@@ -214,7 +214,10 @@ export function ShopFulfillmentHeader({
 
   if (tone === "hero") {
     return (
-      <div className="shop-fulfillment-bar flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] w-full gap-2 min-h-14">
+      <div 
+        className="shop-fulfillment-bar flex items-center justify-between md:grid w-full gap-2 min-h-14"
+        style={{ gridTemplateColumns: "1fr auto 1fr" }}
+      >
         <div className="flex items-center gap-2 min-w-0 min-h-14 w-[320px] max-w-[calc(100%-3.75rem)] md:w-auto md:max-w-none">
           {segment}
           <div className="hidden md:block shrink-0">{scheduleButton}</div>

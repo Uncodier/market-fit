@@ -145,7 +145,7 @@ export default function RequirementsPage() {
       <Tabs value={list.activeTab} onValueChange={list.setActiveTab} className="flex h-full min-h-0 w-full flex-1 flex-col">
         <StickyHeader>
           <div className="w-full pt-0">
-              <div className="flex w-full items-center justify-between">
+              <div className="flex w-full items-center justify-between gap-4">
               <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
@@ -174,50 +174,50 @@ export default function RequirementsPage() {
                   </div>
                   <div className="hidden md:flex items-center gap-2">
                     <SearchInput  placeholder={t("requirements.search") || "Search requirements..."} value={list.searchQuery} onSearch={list.setSearchQuery} ref={searchInputRef}    className="w-full border-border bg-background focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-64" />
-                    <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full" onClick={() => setIsFilterModalOpen(true)}>
+                    <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full flex-shrink-0" onClick={() => setIsFilterModalOpen(true)}>
                       <Filter className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               </MobileFiltersDrawer>
-              <div className="ml-auto flex items-center gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t("requirements.sortBy") || "Sort by"}>
-                        <ListOrdered className="h-4 w-4" />
-                        <span className="hidden font-normal sm:inline">
-                          {list.sortBy === "priority"
-                            ? (t("requirements.sort.priority") || "Priority")
-                            : list.sortBy === "newest"
-                              ? (t("requirements.sort.newest") || "Newest")
-                              : (t("requirements.sort.budget") || "Budget")}
-                        </span>
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={() => list.setSortBy("priority")} className="cursor-pointer">
-                        {t("requirements.sort.priority") || "Priority"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => list.setSortBy("newest")} className="cursor-pointer">
-                        {t("requirements.sort.newest") || "Newest"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => list.setSortBy("budget")} className="cursor-pointer">
-                        {t("requirements.sort.budget") || "Budget"}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-              <div className="ml-auto flex items-center gap-4">
+              
+              <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
                 {activeFilterCount > 0 ? (
-                  <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                  <Button variant="ghost" size="sm" onClick={handleClearFilters} className="hidden md:flex">
                     <Badge variant="outline" className="rounded-full px-2 py-0">{activeFilterCount}</Badge>
                     <span className="ml-2">{t("requirements.clearFilters") || "Clear"}</span>
                   </Button>
                 ) : null}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t("requirements.sortBy") || "Sort by"}>
+                      <ListOrdered className="h-4 w-4" />
+                      <span className="hidden font-normal lg:inline">
+                        {list.sortBy === "priority"
+                          ? (t("requirements.sort.priority") || "Priority")
+                          : list.sortBy === "newest"
+                            ? (t("requirements.sort.newest") || "Newest")
+                            : (t("requirements.sort.budget") || "Budget")}
+                      </span>
+                      <ChevronDown className="h-3 w-3 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem onClick={() => list.setSortBy("priority")} className="cursor-pointer">
+                      {t("requirements.sort.priority") || "Priority"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => list.setSortBy("newest")} className="cursor-pointer">
+                      {t("requirements.sort.newest") || "Newest"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => list.setSortBy("budget")} className="cursor-pointer">
+                      {t("requirements.sort.budget") || "Budget"}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
                 <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
               </div>
+            </div>
             </div>
         </StickyHeader>
 

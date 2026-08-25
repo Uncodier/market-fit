@@ -23,12 +23,12 @@ export function validateModifierSelections(
 
   for (const sel of selections) {
     if (!sel.catalogItemId || !sel.groupId) {
-      return { ok: false, error: "Invalid modifier selection" }
+      return { ok: false, error: "Selección de modificador inválida" }
     }
     if (!Number.isFinite(sel.quantity) || sel.quantity < 1) {
       return {
         ok: false,
-        error: "Modifier quantity must be at least 1",
+        error: "La cantidad del modificador debe ser al menos 1",
         groupId: sel.groupId,
       }
     }
@@ -36,14 +36,14 @@ export function validateModifierSelections(
     if (!allowed) {
       return {
         ok: false,
-        error: "Unknown modifier group",
+        error: "Grupo de modificador desconocido",
         groupId: sel.groupId,
       }
     }
     if (!allowed.has(sel.catalogItemId)) {
       return {
         ok: false,
-        error: "Modifier is not part of this group",
+        error: "El modificador no pertenece a este grupo",
         groupId: sel.groupId,
       }
     }
@@ -56,14 +56,14 @@ export function validateModifierSelections(
     if (totalUnits < (group.min_select ?? 0)) {
       return {
         ok: false,
-        error: `Select at least ${group.min_select} from ${group.name}`,
+        error: `Selecciona al menos ${group.min_select} de ${group.name}`,
         groupId: group.id,
       }
     }
     if (group.max_select != null && totalUnits > group.max_select) {
       return {
         ok: false,
-        error: `Select at most ${group.max_select} from ${group.name}`,
+        error: `Selecciona como máximo ${group.max_select} de ${group.name}`,
         groupId: group.id,
       }
     }

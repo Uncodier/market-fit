@@ -1835,6 +1835,7 @@
   "catalog.empty.title": "No items found",
   "catalog.emptyCategory": "No items in this category.",
   "catalog.form.archive": "Archive Product",
+  "catalog.form.unarchive": "Restore Product",
   "catalog.form.archiveConfirm": "Are you sure you want to archive \"{{name}}\"? This will hide it from the active catalog.",
   "catalog.form.archiveTitle": "Archive Product",
   "catalog.form.availability.always": "Always Available",

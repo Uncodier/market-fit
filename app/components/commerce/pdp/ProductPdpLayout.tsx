@@ -97,9 +97,10 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   const displayPrice = basePrice + modifiersUnitTotal(selectedModifiers)
   const isSelectionComplete = !hasVariants || !!resolvedChild
   const isDropIn = activeItem.is_reservation && !isAccessOnlyItem(activeItem) && (!activeItem.pass_uses || activeItem.pass_uses === 1)
+  const modifierValidationResult = isModifierSelectionValid(modifierGroups, selectedModifiers)
   const modifiersValid =
     modifierGroups.length === 0 ||
-    isModifierSelectionValid(modifierGroups, selectedModifiers).ok
+    modifierValidationResult.ok
   const isSellable =
     isSelectionComplete &&
     modifiersValid &&
@@ -465,18 +466,22 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
               {isDropIn ? (
                 <PdpCtaButton onClick={handleBook} disabled={!isSellable}>
                   {!isSellable
-                    ? isSelectionComplete
-                      ? t("pdp.soldOut") || "Sold Out"
-                      : t("pdp.selectOptions") || "Select Options"
+                    ? !isSelectionComplete
+                      ? t("pdp.selectOptions") || "Select Options"
+                      : !modifiersValid && 'error' in modifierValidationResult
+                        ? modifierValidationResult.error
+                        : t("pdp.soldOut") || "Sold Out"
                     : t("booking.selectTime") || "Select a Time"}
                 </PdpCtaButton>
               ) : (
                 <>
                   <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable}>
                     {!isSellable
-                      ? isSelectionComplete
-                        ? t("pdp.soldOut") || "Sold Out"
-                        : t("pdp.selectOptions") || "Select Options"
+                      ? !isSelectionComplete
+                        ? t("pdp.selectOptions") || "Select Options"
+                        : !modifiersValid && 'error' in modifierValidationResult
+                          ? modifierValidationResult.error
+                          : t("pdp.soldOut") || "Sold Out"
                       : t("pdp.buyNow") || "Buy Now"}
                   </PdpCtaButton>
                   <PdpCtaButton variant="outline" onClick={handleAdd} disabled={!isSellable}>
@@ -519,17 +524,21 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
           {isDropIn ? (
             <PdpCtaButton onClick={handleBook} disabled={!isSellable} className="flex-1">
               {!isSellable
-                ? isSelectionComplete
-                  ? t("pdp.soldOut") || "Sold Out"
-                  : t("pdp.selectOptions") || "Select Options"
+                ? !isSelectionComplete
+                  ? t("pdp.selectOptions") || "Select Options"
+                  : !modifiersValid && 'error' in modifierValidationResult
+                    ? modifierValidationResult.error
+                    : t("pdp.soldOut") || "Sold Out"
                 : t("booking.selectTime") || "Select a Time"}
             </PdpCtaButton>
           ) : (
             <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable} className="flex-1">
               {!isSellable
-                ? isSelectionComplete
-                  ? t("pdp.soldOut") || "Sold Out"
-                  : t("pdp.selectOptions") || "Select Options"
+                ? !isSelectionComplete
+                  ? t("pdp.selectOptions") || "Select Options"
+                  : !modifiersValid && 'error' in modifierValidationResult
+                    ? modifierValidationResult.error
+                    : t("pdp.soldOut") || "Sold Out"
                 : t("pdp.buyNow") || "Buy Now"}
             </PdpCtaButton>
           )}

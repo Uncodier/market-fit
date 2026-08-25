@@ -273,6 +273,31 @@ export async function deleteCatalogItem(siteId: string, catalogItemId: string) {
   }
 }
 
+export async function unarchiveCatalogItem(siteId: string, catalogItemId: string) {
+  try {
+    const supabase = await createClient();
+    
+    // Restore by setting status to active
+    const { error } = await supabase
+      .from("catalog_items")
+      .update({ status: 'active' })
+      .eq("id", catalogItemId)
+      .eq("site_id", siteId);
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    revalidatePath(`/catalog`);
+    revalidatePath(`/pos`);
+    revalidateTag(shopCacheTag(siteId), "max");
+    
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
 /**
  * Checks if an item can be sold based on availability mode and inventory levels.
  */

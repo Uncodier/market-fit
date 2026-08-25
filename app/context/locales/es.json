@@ -1845,6 +1845,7 @@
   "catalog.empty.title": "No se encontraron elementos",
   "catalog.emptyCategory": "No hay elementos en esta categoría.",
   "catalog.form.archive": "Archivar Producto",
+  "catalog.form.unarchive": "Desarchivar Producto",
   "catalog.form.archiveConfirm": "¿Estás seguro que deseas archivar \"{{name}}\"? Esto lo ocultará del catálogo activo.",
   "catalog.form.archiveTitle": "Archivar Producto",
   "catalog.form.availability.always": "Siempre Disponible",

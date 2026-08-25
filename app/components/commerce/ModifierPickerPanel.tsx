@@ -10,6 +10,7 @@ import { validateModifierSelections } from "@/app/catalog/modifier-validate"
 import type { CartModifier } from "@/app/commerce/cart-modifiers"
 import { Button } from "@/app/components/ui/button"
 import { Minus, Plus } from "@/app/components/ui/icons"
+import { Checkbox } from "@/app/components/ui/checkbox"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
@@ -165,14 +166,9 @@ export function ModifierPickerPanel({
                 const qty = qtyByKey[key] || 0
                 const price = priceOf(opt.catalog_item_id, opt.price)
                 const imageUrl = optionImageUrl(opt, imageContext)
-                return (
-                  <div
-                    key={opt.catalog_item_id}
-                    className={cn(
-                      "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5",
-                      qty > 0 && "border-foreground/30 bg-muted/40",
-                    )}
-                  >
+                const isSingleSelect = max === 1
+                const content = (
+                  <>
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted">
                         <img
@@ -192,28 +188,79 @@ export function ModifierPickerPanel({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                        onClick={() => setQty(group.id, opt.catalog_item_id, qty - 1)}
-                        disabled={qty <= 0}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-5 text-center text-sm font-medium">{qty}</span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                        onClick={() => setQty(group.id, opt.catalog_item_id, qty + 1)}
-                        disabled={max != null && groupTotal >= max}
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
+                      {isSingleSelect ? (
+                        <Checkbox
+                          id={key}
+                          className="h-5 w-5"
+                          checked={qty > 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              const copy = { ...qtyByKey }
+                              for (const opt2 of group.items) {
+                                delete copy[`${group.id}:${opt2.catalog_item_id}`]
+                              }
+                              copy[key] = 1
+                              setQtyByKey(copy)
+                              const { modifiers: nextMods } = selectionsFromQty(groups, copy, priceOf)
+                              onChange?.(nextMods)
+                            } else {
+                              setQty(group.id, opt.catalog_item_id, 0)
+                            }
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 rounded-full"
+                            onClick={() => setQty(group.id, opt.catalog_item_id, qty - 1)}
+                            disabled={qty <= 0}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-5 text-center text-sm font-medium">{qty}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 rounded-full"
+                            onClick={() => setQty(group.id, opt.catalog_item_id, qty + 1)}
+                            disabled={max != null && groupTotal >= max}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
                     </div>
+                  </>
+                )
+
+                if (isSingleSelect) {
+                  return (
+                    <label
+                      key={opt.catalog_item_id}
+                      htmlFor={key}
+                      className={cn(
+                        "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors cursor-pointer hover:bg-muted/30",
+                        qty > 0 && "border-foreground/30 bg-muted/40"
+                      )}
+                    >
+                      {content}
+                    </label>
+                  )
+                }
+
+                return (
+                  <div
+                    key={opt.catalog_item_id}
+                    className={cn(
+                      "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 transition-colors",
+                      qty > 0 && "border-foreground/30 bg-muted/40",
+                    )}
+                  >
+                    {content}
                   </div>
                 )
               })}

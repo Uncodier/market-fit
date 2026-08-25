@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import { useRouter } from "next/navigation"
-import { getCatalogItem, upsertCatalogItem, deleteCatalogItem, listCatalogCategories } from "../actions"
+import { getCatalogItem, upsertCatalogItem, deleteCatalogItem, unarchiveCatalogItem, listCatalogCategories } from "../actions"
 import { CatalogItem, CatalogCategory } from "@/app/types"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
 } from "@/app/components/ui/alert-dialog"
 import { toast } from "sonner"
-import { ChevronLeft, Save, Trash2, Activity } from "@/app/components/ui/icons"
+import { ChevronLeft, Save, Trash2, Activity, RotateCcw } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Textarea } from "@/app/components/ui/textarea"
 import { ImageUpload } from "@/app/components/ui/image-upload"
@@ -64,6 +64,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
   const [saving, setSaving] = useState(false)
   const [showArchiveDialog, setShowArchiveDialog] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  const [unarchiving, setUnarchiving] = useState(false)
   const [categoryValue, setCategoryValue] = useState<RelationSelectValue>(null)
   const [formData, setFormData] = useState<Partial<CatalogItem>>({
     is_pos_available: true,
@@ -152,6 +153,21 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
       toast.success("Item archived")
       setShowArchiveDialog(false)
       router.push("/catalog")
+    }
+  }
+
+  const handleUnarchive = async () => {
+    if (!currentSite || !item) return
+    setUnarchiving(true)
+    const { error } = await unarchiveCatalogItem(currentSite.id, item.id)
+    if (error) {
+      toast.error(error)
+      setUnarchiving(false)
+    } else {
+      toast.success("Item restored")
+      setItem({ ...item, status: 'active' })
+      setFormData({ ...formData, status: 'active' })
+      setUnarchiving(false)
     }
   }
 
@@ -371,14 +387,26 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                     </SectionCardDescription>
                   </SectionCardHeader>
                   <SectionCardContent>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setShowArchiveDialog(true)}
-                      className="gap-2"
-                    >
-                      <Trash2 size={16} /> {t('catalog.form.archive') || 'Archive Product'}
-                    </Button>
+                    {item.status === 'archived' ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUnarchive}
+                        disabled={unarchiving}
+                        className="gap-2 text-primary border-primary hover:bg-primary/10"
+                      >
+                        <RotateCcw size={16} /> {unarchiving ? (t('common.saving') || 'Saving...') : (t('catalog.form.unarchive') || 'Restore Product')}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setShowArchiveDialog(true)}
+                        className="gap-2"
+                      >
+                        <Trash2 size={16} /> {t('catalog.form.archive') || 'Archive Product'}
+                      </Button>
+                    )}
                   </SectionCardContent>
                 </SectionCard>
               )}
