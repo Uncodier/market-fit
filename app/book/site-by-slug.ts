@@ -1,7 +1,10 @@
 import { createServiceClient } from "@/lib/supabase/server";
 
 export function toSiteSlug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function isTransientDbError(error: { message?: string; details?: string } | null | undefined): boolean {
@@ -86,11 +89,12 @@ export async function resolveSiteInfoBySlug(
     }
   }
 
-  // Narrow candidates with ilike ("my-shop" -> "my%shop") then exact-match slugified names.
+  // Narrow candidates with ilike ("my-shop" -> "%my%shop%") then exact-match slugified names.
+  // Wildcards on both ends pick up trailing spaces / punctuation in stored names.
   // Avoids scanning the full sites table (slow and more prone to transient network failures).
-  const safeSlug = siteSlug.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  const safeSlug = toSiteSlug(siteSlug);
   if (!safeSlug) return null;
-  const likePattern = safeSlug.replace(/-/g, "%");
+  const likePattern = `%${safeSlug.replace(/-/g, "%")}%`;
   const { data: sites, error } = await withTransientRetry(
     () =>
       supabase
