@@ -20,7 +20,7 @@ import {
 } from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Switch } from "../ui/switch"
-import { Store, Image as ImageIcon, Truck, ShieldCheck, RotateCcw, PlusCircle, Trash2, CreditCard, Loader, X, Calendar, Link, Copy, Download } from "../ui/icons"
+import { Store, Image as ImageIcon, Truck, ShieldCheck, RotateCcw, PlusCircle, Trash2, CreditCard, Loader, X, Calendar, Link, Copy, Download, Globe, ExternalLink, Info } from "../ui/icons"
 import { EmptyCard } from "../ui/empty-card"
 import { uploadAssetFile } from "@/app/assets/actions"
 import { listCatalogCategories, listCatalogItems } from "@/app/catalog/actions"
@@ -176,37 +176,79 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
             <Link className="h-5 w-5 text-gray-500" />
             Share & Promote
           </SectionCardTitle>
-          <p className="text-sm text-gray-500 mt-1">Share your marketplace link and QR code.</p>
+          <p className="text-sm text-gray-500 mt-1">Share your marketplace link and QR code with your customers.</p>
         </SectionCardHeader>
         <SectionCardContent>
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            <div className="flex flex-col items-center gap-4 p-4 border rounded-xl bg-white">
-              <div id="marketplace-qr-code-container" className="p-2 bg-white rounded-lg">
-                <QRCode
-                  value={siteUrl}
-                  size={150}
-                  level="M"
-                />
-              </div>
-              <Button variant="outline" size="sm" type="button" onClick={handleDownloadQR} className="w-full gap-2">
-                <Download className="h-4 w-4" />
-                Download QR
-              </Button>
-            </div>
-            <div className="flex-1 space-y-4 pt-2">
-              <div>
-                <FormLabel>Marketplace URL</FormLabel>
-                <div className="flex gap-2 mt-1.5">
-                  <Input value={siteUrl} readOnly className="bg-gray-50" />
-                  <Button variant="outline" type="button" onClick={handleCopyUrl} className="shrink-0 gap-2">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+            <div className="lg:col-span-2 space-y-6 pt-1">
+              <div className="space-y-4">
+                <div>
+                  <FormLabel className="text-base font-medium">Store Link</FormLabel>
+                  <FormDescription className="mt-1.5">
+                    This is your public marketplace URL. Share it with your customers on social media, in campaigns, or directly via messages.
+                  </FormDescription>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Input 
+                      value={siteUrl} 
+                      readOnly 
+                      className="bg-muted/50 font-mono text-sm pl-9 h-11 focus-visible:ring-1" 
+                    />
+                  </div>
+                  <Button type="button" onClick={handleCopyUrl} className="h-11 px-4 sm:px-6 gap-2 shrink-0">
                     <Copy className="h-4 w-4" />
-                    Copy
+                    <span className="hidden sm:inline">Copy Link</span>
+                    <span className="sm:hidden">Copy</span>
+                  </Button>
+                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => window.open(siteUrl, '_blank')}>
+                    <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Use this link in your social media, campaigns, or directly share it with your customers.
-                </p>
               </div>
+              
+              <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-4 border border-blue-100 dark:border-blue-900/50">
+                <div className="flex gap-3">
+                  <div className="mt-0.5 text-blue-500 dark:text-blue-400">
+                    <Info className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-medium text-blue-800 dark:text-blue-300">Pro tip for physical stores</h5>
+                    <p className="text-xs text-blue-600/80 dark:text-blue-400/80 mt-1 leading-relaxed">
+                      Download your QR code and place it on tables, counters, or your storefront window. Customers can scan it to instantly browse your catalog and place orders from their phones.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-1 flex flex-col items-center justify-center gap-4 p-6 border rounded-2xl bg-muted/10 relative overflow-hidden">
+              {/* Subtle background decoration */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none" />
+              
+              <div id="marketplace-qr-code-container" className="p-3 bg-white rounded-xl shadow-sm border border-gray-100 z-10">
+                <QRCode
+                  value={siteUrl}
+                  size={140}
+                  level="M"
+                  style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                />
+              </div>
+              
+              <div className="text-center z-10 space-y-1 mt-1">
+                <h4 className="font-semibold text-sm">Scan to visit</h4>
+                <p className="text-xs text-muted-foreground">Marketplace QR Code</p>
+              </div>
+              
+              <Button variant="outline" size="sm" type="button" onClick={handleDownloadQR} className="w-full mt-2 gap-2 z-10 bg-background/80 backdrop-blur-sm">
+                <Download className="h-4 w-4" />
+                Download PNG
+              </Button>
             </div>
           </div>
         </SectionCardContent>
