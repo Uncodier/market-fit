@@ -689,7 +689,7 @@ export function DatePicker({
 
   if (isMobile) {
     return (
-      <div className={trigger ? "w-auto h-full" : "w-full"}>
+      <div className={trigger ? "inline-flex w-auto h-auto shrink-0" : "w-full"}>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             {resolvedTrigger}
@@ -709,7 +709,7 @@ export function DatePicker({
   }
 
   return (
-    <div className={trigger ? "w-auto h-full" : "w-full"}>
+    <div className={trigger ? "inline-flex w-auto h-auto shrink-0" : "w-full"}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           {resolvedTrigger}

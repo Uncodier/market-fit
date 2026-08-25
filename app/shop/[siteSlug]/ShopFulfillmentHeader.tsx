@@ -9,15 +9,15 @@ import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options"
 
 const PHYSICAL_OPTIONS: CheckoutFulfillmentMethod[] = ["pickup", "ship", "dine_in"]
-const CONTROL_HEIGHT = "h-14"
+const CONTROL_HEIGHT = "h-14 min-h-14"
 
 type OrderTiming = "now" | "scheduled"
 type Tone = "default" | "hero"
 
 const cellClass = (tone: Tone) =>
   tone === "hero"
-    ? "flex flex-col items-center justify-center gap-1 flex-1 min-w-0 h-full px-2 rounded-full transition-all select-none"
-    : "flex flex-col items-center justify-center gap-1 w-[5.5rem] md:w-24 h-full px-2 rounded-full transition-all select-none"
+    ? "shop-fulfillment-cell flex flex-col items-center justify-center gap-1 flex-1 min-w-0 h-12 min-h-12 px-2 rounded-full transition-all select-none"
+    : "shop-fulfillment-cell flex flex-col items-center justify-center gap-1 w-[5.5rem] md:w-24 h-12 min-h-12 px-2 rounded-full transition-all select-none"
 
 type SegmentOption<T extends string> = {
   value: T
@@ -59,7 +59,7 @@ function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={`inline-flex ${CONTROL_HEIGHT} p-1 ${trackClass(tone)} rounded-full gap-1 ${tone === "hero" ? "w-full max-w-[320px]" : ""}`}
+      className={`flex items-stretch ${CONTROL_HEIGHT} shrink-0 p-1 ${trackClass(tone)} rounded-full gap-1 ${tone === "hero" ? "w-full max-w-[320px]" : "w-fit"}`}
     >
       {options.map((opt) => {
         const selected = value === opt.value
@@ -154,7 +154,7 @@ export function ShopFulfillmentHeader({
   }
 
   const scheduleButton = showScheduling ? (
-    <div className={`${CONTROL_HEIGHT} shrink-0`}>
+    <div className="size-14 min-h-14 min-w-14 shrink-0">
       <DatePicker
         date={scheduledFor || undefined}
         setDate={(date: Date) => {
@@ -175,7 +175,7 @@ export function ShopFulfillmentHeader({
                 ? scheduleLabel
                 : t("shop.fulfillment.schedule") || "Schedule"
             }
-            className={`relative size-14 rounded-full shrink-0 flex items-center justify-center transition-all select-none ${
+            className={`shop-fulfillment-schedule relative size-14 min-h-14 min-w-14 rounded-full shrink-0 flex items-center justify-center transition-all select-none ${
               isScheduled
                 ? selectedCellClass(true, tone)
                 : `${trackClass(tone)} ${selectedCellClass(false, tone)}`
@@ -214,12 +214,12 @@ export function ShopFulfillmentHeader({
 
   if (tone === "hero") {
     return (
-      <div className="flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] w-full gap-2">
-        <div className="flex items-center gap-2 min-w-0 w-[320px] max-w-[calc(100%-3.75rem)] md:w-auto md:max-w-none">
+      <div className="shop-fulfillment-bar flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] w-full gap-2 min-h-14">
+        <div className="flex items-center gap-2 min-w-0 min-h-14 w-[320px] max-w-[calc(100%-3.75rem)] md:w-auto md:max-w-none">
           {segment}
           <div className="hidden md:block shrink-0">{scheduleButton}</div>
         </div>
-        <div className="hidden md:flex justify-center">{centerAction}</div>
+        <div className="hidden md:flex justify-center items-center">{centerAction}</div>
         <div className="shrink-0 md:min-w-0">
           <div className="md:hidden">{scheduleButton}</div>
         </div>
@@ -228,8 +228,8 @@ export function ShopFulfillmentHeader({
   }
 
   return (
-    <div className="mb-5 md:mb-6">
-      <div className="flex items-center justify-between md:justify-start gap-2 md:gap-5">
+    <div className="shop-fulfillment-bar mb-5 md:mb-6">
+      <div className="flex items-center justify-between md:justify-start gap-2 md:gap-5 min-h-14">
         {segment}
         {scheduleButton}
       </div>

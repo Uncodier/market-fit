@@ -1147,6 +1147,48 @@ html.safari button .w-4.h-4 {
   min-height: 16px !important;
 }
 
+/* Shop fulfillment bar: undo global Safari button/svg shrink */
+html.safari .shop-fulfillment-bar button:not([role="tab"]) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative;
+}
+
+html.safari .shop-fulfillment-bar .shop-fulfillment-cell {
+  flex-direction: column !important;
+  height: 3rem !important;
+  min-height: 3rem !important;
+}
+
+html.safari .shop-fulfillment-bar [role="radiogroup"].w-full .shop-fulfillment-cell {
+  flex: 1 1 0% !important;
+}
+
+html.safari .shop-fulfillment-bar .shop-fulfillment-schedule {
+  flex: none !important;
+  flex-direction: row !important;
+  width: 3.5rem !important;
+  height: 3.5rem !important;
+  min-width: 3.5rem !important;
+  min-height: 3.5rem !important;
+}
+
+html.safari .shop-fulfillment-bar button:not([role="tab"]) svg {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  min-width: 1.25rem !important;
+  min-height: 1.25rem !important;
+  margin: 0 !important;
+}
+
+html.safari .shop-fulfillment-bar .shop-fulfillment-schedule svg {
+  width: 1.75rem !important;
+  height: 1.75rem !important;
+  min-width: 1.75rem !important;
+  min-height: 1.75rem !important;
+}
+
 /* Fix específico para inputs con iconos usando InputWithIcon */
 html.safari .safari-input-container .safari-icon-container {
   pointer-events: none !important;
