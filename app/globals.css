@@ -1147,34 +1147,35 @@ html.safari button .w-4.h-4 {
   min-height: 16px !important;
 }
 
-/* Shop fulfillment bar: undo global Safari button/svg shrink */
-html.safari .shop-fulfillment-bar {
-  display: flex !important;
-  width: 100% !important;
+/* Shop fulfillment bar */
+.shop-fulfillment-bar--hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
+@media (min-width: 1024px) {
+  .shop-fulfillment-bar--hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
+/* Undo global Safari button/svg shrink without breaking the desktop grid */
 html.safari .shop-fulfillment-bar button:not([role="tab"]) {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   position: relative;
-  overflow: hidden !important;
-}
-
-html.safari .shop-fulfillment-bar [role="radiogroup"] button:not([role="tab"]) {
-  flex: 1 1 0% !important;
-  width: 100% !important;
-  max-width: 100% !important;
 }
 
 html.safari .shop-fulfillment-bar .shop-fulfillment-cell {
   flex-direction: column !important;
   height: 3rem !important;
   min-height: 3rem !important;
-}
-
-html.safari .shop-fulfillment-bar [role="radiogroup"].w-full .shop-fulfillment-cell {
   flex: 1 1 0% !important;
+  min-width: 0 !important;
 }
 
 html.safari .shop-fulfillment-bar .shop-fulfillment-schedule {
@@ -1185,13 +1186,6 @@ html.safari .shop-fulfillment-bar .shop-fulfillment-schedule {
   min-width: 3.5rem !important;
   min-height: 3.5rem !important;
   max-width: 3.5rem !important;
-}
-
-html.safari .shop-fulfillment-bar [role="radiogroup"] {
-  display: flex !important;
-  flex-direction: row !important;
-  width: 100% !important;
-  flex: 1 1 auto !important;
 }
 
 html.safari .shop-fulfillment-bar button:not([role="tab"]) svg {

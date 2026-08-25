@@ -149,3 +149,24 @@ export async function getPdpCatalogItem(itemId: string, options?: { siteId?: str
 
   return mergeParentIntoCatalogItem(withSpecs as any, parent);
 }
+
+/** Lightweight PDP row for generateMetadata so loading.tsx can paint while the full item loads. */
+export async function getPdpShareItem(
+  itemId: string,
+  options?: { requireMarketplace?: boolean },
+) {
+  const supabase = await createServiceClient(true)
+  let query = supabase
+    .from("catalog_items")
+    .select("name, description, image_url, metadata, site:sites(name)")
+    .eq("id", itemId)
+    .eq("status", "active")
+
+  if (options?.requireMarketplace) {
+    query = query.eq("is_marketplace_listed", true).eq("availability_status", "available")
+  }
+
+  const { data, error } = await query.maybeSingle()
+  if (error || !data) return null
+  return data
+}

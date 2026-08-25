@@ -21,7 +21,7 @@ export function ShopSiteFooter({ siteName }: { siteName: string }) {
         <div className="text-sm text-gray-500 dark:text-gray-400">
           &copy; {new Date().getFullYear()} {siteName}.{" "}
           {t("shop.allRightsReserved") || "All rights reserved."}{" "}
-          {t("shop.poweredBy") || "Powered by Uncodie."}
+          {t("shop.poweredBy") || "Powered by Makinari."}
         </div>
         <div className="flex items-center gap-2">
           <CreditCard className="h-8 w-8 text-gray-300 dark:text-gray-700" />

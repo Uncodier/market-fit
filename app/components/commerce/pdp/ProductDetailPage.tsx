@@ -179,44 +179,48 @@ export function ProductDetailPage({ item, site, backUrl, experience }: ProductDe
         }
       />
 
-      <main className="flex-1 pb-24 lg:pb-0">
+      <main>
         <LayoutComponent item={item} backUrl={backUrl} experience={experience} />
       </main>
 
       {/* Footer */}
-      {site ? (
-        <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-12 mt-auto">
-          <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-2xl font-black tracking-tight text-gray-400 dark:text-gray-600">{site.name}</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              &copy; {new Date().getFullYear()} {site.name}. All rights reserved. Powered by Uncodie.
+      <div className="flex-1 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pb-32 lg:pb-0">
+        {site ? (
+          <footer className="py-12">
+            <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="text-2xl font-black tracking-tight text-gray-400 dark:text-gray-600">{site.name}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 text-center md:text-left">
+                &copy; {new Date().getFullYear()} {site.name}. {t("shop.allRightsReserved") || "All rights reserved."}{" "}
+                {t("shop.poweredBy") || "Powered by Makinari."}
+              </div>
+              <div className="flex items-center gap-2">
+                <CurrencySelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
+                <LocaleSelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
+                <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800">
+                  {theme === "dark" ? <Sun className="h-5 w-5 text-gray-400 hover:text-black dark:hover:text-white" /> : <Moon className="h-5 w-5 text-gray-500 hover:text-black dark:hover:text-white" />}
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <CurrencySelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
-              <LocaleSelector className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400" />
-              <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-800">
-                {theme === "dark" ? <Sun className="h-5 w-5 text-gray-400 hover:text-black dark:hover:text-white" /> : <Moon className="h-5 w-5 text-gray-500 hover:text-black dark:hover:text-white" />}
-              </Button>
+          </footer>
+        ) : (
+          <footer className="py-12">
+            <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="text-2xl font-black tracking-tight text-muted-foreground">Makinari</div>
+              <div className="text-sm text-muted-foreground font-medium text-center md:text-left">
+                &copy; {new Date().getFullYear()} Makinari. {t("marketplace.footer.rights") || "All rights reserved."}{" "}
+                {t("marketplace.footer.poweredBy") || "Powered by Makinari."}
+              </div>
+              <div className="flex items-center gap-2">
+                <CurrencySelector className="rounded-full" />
+                <LocaleSelector className="rounded-full" />
+                <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
+                  {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </Button>
+              </div>
             </div>
-          </div>
-        </footer>
-      ) : (
-        <footer className="bg-card border-t py-12 mt-auto">
-          <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="text-2xl font-black tracking-tight text-muted-foreground">Makinari</div>
-            <div className="text-sm text-muted-foreground font-medium">
-              &copy; {new Date().getFullYear()} Makinari. All rights reserved.
-            </div>
-            <div className="flex items-center gap-2">
-              <CurrencySelector className="rounded-full" />
-              <LocaleSelector className="rounded-full" />
-              <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
-                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-              </Button>
-            </div>
-          </div>
-        </footer>
-      )}
+          </footer>
+        )}
+      </div>
     </div>
   )
 }

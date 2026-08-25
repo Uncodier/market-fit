@@ -155,7 +155,7 @@ export function ServicePdpLayout({
 
   return (
     <DynamicQuotePdpProvider item={item} backUrl={backUrl}>
-    <div className={isReservationExperience ? "pb-8" : "pb-32 lg:pb-0"}>
+    <div className={isReservationExperience ? "pb-8" : ""}>
       <div className="w-full px-4 md:px-8">
         <div className="w-full h-[28vh] min-h-[200px] sm:h-[36vh] md:h-[42vh] bg-muted relative rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden">
           <img src={heroImageUrl} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />

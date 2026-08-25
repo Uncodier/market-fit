@@ -1,4 +1,5 @@
-import { getPdpCatalogItem } from "@/app/commerce/pdp-actions"
+import { Suspense } from "react"
+import { getPdpCatalogItem, getPdpShareItem } from "@/app/commerce/pdp-actions"
 import { getShopSite } from "../actions"
 import { notFound } from "next/navigation"
 import { ProductDetailPage } from "@/app/components/commerce/pdp/ProductDetailPage"
@@ -7,6 +8,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Metadata } from "next"
 import { buildCatalogItemShareMetadata } from "@/app/lib/commerce-metadata"
 import { ShopSlugNotFound } from "../ShopSlugNotFound"
+import { PdpPageSkeleton } from "@/app/components/commerce/pdp/PdpPageSkeleton"
 
 export const dynamic = "force-dynamic"
 
@@ -17,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ siteSlug:
   
   if (!itemId) return { title: 'Shop Item | Makinari' };
   
-  const item = await getPdpCatalogItem(itemId);
+  const item = await getPdpShareItem(itemId);
   if (!item) return { title: 'Shop Item | Makinari' };
 
   const path = siteSlug
@@ -36,6 +38,14 @@ export default async function ShopItemPage({ params }: { params: Promise<{ siteS
     return <ShopSlugNotFound slug={siteSlug} />
   }
 
+  return (
+    <Suspense fallback={<PdpPageSkeleton />}>
+      <ShopItemContent siteSlug={siteSlug} itemId={itemId} />
+    </Suspense>
+  )
+}
+
+async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId: string }) {
   // Prefer resolving via catalog item (includes site join) so a flaky slug scan
   // does not block the PDP when we already have a stable item id.
   const item = await getPdpCatalogItem(itemId)

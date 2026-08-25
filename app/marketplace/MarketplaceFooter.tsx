@@ -35,7 +35,8 @@ export function MarketplaceFooter({
           </div>
           <div className="text-sm text-muted-foreground mb-4">
             &copy; {new Date().getFullYear()} Makinari Inc.{" "}
-            {t("marketplace.footer.rights") || "All rights reserved."}
+            {t("marketplace.footer.rights") || "All rights reserved."}{" "}
+            {t("marketplace.footer.poweredBy") || "Powered by Makinari."}
           </div>
           <div className="flex items-center gap-2">
             <CurrencySelector className="rounded-full" />

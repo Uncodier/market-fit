@@ -97,7 +97,7 @@ export function DigitalPdpLayout({ item, backUrl, experience }: { item: CatalogI
   }
 
   return (
-    <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-8 md:py-16 pb-32 lg:pb-16">
+    <div className="max-w-6xl mx-auto w-full px-4 md:px-8 py-8 md:py-16">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center">
         <div className="order-2 lg:order-1">
           <PdpMetricChips 

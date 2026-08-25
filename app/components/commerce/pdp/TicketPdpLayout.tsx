@@ -152,7 +152,7 @@ export function TicketPdpLayout({ item, backUrl, experience }: { item: CatalogIt
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12 pb-32 lg:pb-12">
+    <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12">
       <div className="flex flex-col lg:flex-row gap-8 lg:gap-20 bg-card rounded-[2rem] lg:rounded-[3rem] border overflow-hidden shadow-xl">
         <div className="w-full lg:w-[45%] aspect-[4/5] lg:aspect-auto bg-muted relative">
           <img src={resolveItemImage(item, "full")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />

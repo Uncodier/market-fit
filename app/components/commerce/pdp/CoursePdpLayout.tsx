@@ -106,7 +106,7 @@ export function CoursePdpLayout({ item, backUrl, experience }: { item: CatalogIt
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 pb-32 lg:pb-12">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
       <div className="text-center mb-10 sm:mb-16 max-w-3xl mx-auto">
         <h1 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight mb-6">{item.name}</h1>
         <PdpMetricChips 

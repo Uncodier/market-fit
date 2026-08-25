@@ -17,6 +17,7 @@ import { PdpMetricChips } from "./PdpMetricChips"
 import { PdpItemDescription } from "./PdpItemDescription"
 import { PdpProductDetails } from "./PdpProductDetails"
 import { PdpProductGallery } from "./PdpProductGallery"
+import { PdpModifierSkeleton } from "./PdpPageSkeleton"
 import { hasPdpProductDetails } from "./pdp-item-description"
 import { VariantPicker } from "./VariantPicker"
 import {
@@ -54,6 +55,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
   const [modifierGroups, setModifierGroups] = useState<ModifierGroupWithItems[]>([])
   const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([])
+  const [modifiersReady, setModifiersReady] = useState(false)
   
   // Resolve selected child
   const resolvedChild = useMemo(() => {
@@ -79,12 +81,17 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   // Load modifier groups for the host (parent) — children inherit via server action
   useEffect(() => {
     let cancelled = false
+    setModifiersReady(false)
     const hostId = item.id
-    getModifierGroupsForCatalogItem(hostId).then((res) => {
-      if (cancelled) return
-      setModifierGroups(res.data || [])
-      setSelectedModifiers([])
-    })
+    getModifierGroupsForCatalogItem(hostId)
+      .then((res) => {
+        if (cancelled) return
+        setModifierGroups(res.data || [])
+        setSelectedModifiers([])
+      })
+      .finally(() => {
+        if (!cancelled) setModifiersReady(true)
+      })
     return () => {
       cancelled = true
     }
@@ -103,14 +110,23 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   const isDropIn = activeItem.is_reservation && !isAccessOnlyItem(activeItem) && (!activeItem.pass_uses || activeItem.pass_uses === 1)
   const modifierValidationResult = isModifierSelectionValid(modifierGroups, selectedModifiers)
   const modifiersValid =
-    modifierGroups.length === 0 ||
-    modifierValidationResult.ok
+    modifiersReady &&
+    (modifierGroups.length === 0 || modifierValidationResult.ok)
   const isSellable =
     isSelectionComplete &&
     modifiersValid &&
     (hasVariants
       ? activeItem.availability_status !== "sold_out" && activeItem.status === "active"
       : item._shop?.sellable !== false)
+  const disabledCtaLabel = isSellable
+    ? null
+    : !isSelectionComplete
+      ? t("pdp.selectOptions") || "Select Options"
+      : !modifiersReady
+        ? null
+        : !modifiersValid && "error" in modifierValidationResult
+          ? modifierValidationResult.error
+          : t("pdp.soldOut") || "Sold Out"
 
   const galleryEntries = useMemo(
     () =>
@@ -259,7 +275,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   if (isDynamic) {
     return (
       <DynamicQuotePdpProvider item={item} backUrl={backUrl}>
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6 pb-28 lg:pb-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6">
           <div className="mb-4 lg:mb-5">
             <PdpMetricChips
               className="mb-2 sm:mb-3"
@@ -319,7 +335,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-16 pb-32 lg:pb-16">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-16">
       {/* Sticky gallery only while the options column scrolls; details sit below. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20">
         <div>
@@ -380,7 +396,9 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
             />
           )}
 
-          {modifierGroups.length > 0 && (
+          {!modifiersReady ? (
+            <PdpModifierSkeleton />
+          ) : modifierGroups.length > 0 ? (
             <div className="mb-8 sm:mb-10">
               <h3 className="text-lg font-bold mb-4">
                 {t("pos.modifiers.title") || "Add extras"}
@@ -393,30 +411,18 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
                 currency={item.currency || "USD"}
               />
             </div>
-          )}
+          ) : null}
 
           <div className="hidden lg:block p-8 bg-card border border-border/50 rounded-3xl shadow-2xl shadow-black/5 relative overflow-hidden">
             <div className="space-y-3">
               {isDropIn ? (
                 <PdpCtaButton onClick={handleBook} disabled={!isSellable}>
-                  {!isSellable
-                    ? !isSelectionComplete
-                      ? t("pdp.selectOptions") || "Select Options"
-                      : !modifiersValid && 'error' in modifierValidationResult
-                        ? modifierValidationResult.error
-                        : t("pdp.soldOut") || "Sold Out"
-                    : t("booking.selectTime") || "Select a Time"}
+                  {disabledCtaLabel || t("booking.selectTime") || "Select a Time"}
                 </PdpCtaButton>
               ) : (
                 <>
                   <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable}>
-                    {!isSellable
-                      ? !isSelectionComplete
-                        ? t("pdp.selectOptions") || "Select Options"
-                        : !modifiersValid && 'error' in modifierValidationResult
-                          ? modifierValidationResult.error
-                          : t("pdp.soldOut") || "Sold Out"
-                      : t("pdp.buyNow") || "Buy Now"}
+                    {disabledCtaLabel || t("pdp.buyNow") || "Buy Now"}
                   </PdpCtaButton>
                   <PdpCtaButton variant="outline" onClick={handleAdd} disabled={!isSellable}>
                     {t("marketplace.add") || "Add to Cart"}
@@ -459,23 +465,11 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience }: { i
           )}
           {isDropIn ? (
             <PdpCtaButton onClick={handleBook} disabled={!isSellable} className="flex-1">
-              {!isSellable
-                ? !isSelectionComplete
-                  ? t("pdp.selectOptions") || "Select Options"
-                  : !modifiersValid && 'error' in modifierValidationResult
-                    ? modifierValidationResult.error
-                    : t("pdp.soldOut") || "Sold Out"
-                : t("booking.selectTime") || "Select a Time"}
+              {disabledCtaLabel || t("booking.selectTime") || "Select a Time"}
             </PdpCtaButton>
           ) : (
             <PdpCtaButton onClick={handleBuyNow} disabled={!isSellable} className="flex-1">
-              {!isSellable
-                ? !isSelectionComplete
-                  ? t("pdp.selectOptions") || "Select Options"
-                  : !modifiersValid && 'error' in modifierValidationResult
-                    ? modifierValidationResult.error
-                    : t("pdp.soldOut") || "Sold Out"
-                : t("pdp.buyNow") || "Buy Now"}
+              {disabledCtaLabel || t("pdp.buyNow") || "Buy Now"}
             </PdpCtaButton>
           )}
         </div>

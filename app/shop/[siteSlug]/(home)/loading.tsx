@@ -60,7 +60,7 @@ export default function ShopLoading() {
             ))}
           </div>
           
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <Skeleton className="h-14 w-40 rounded-full bg-white/20" />
           </div>
         </div>
@@ -68,18 +68,18 @@ export default function ShopLoading() {
         {/* Fulfillment skeleton at the bottom */}
         <div className="absolute inset-x-0 bottom-3 md:bottom-4 z-10">
           <div className="max-w-7xl mx-auto px-3 md:px-8">
-            <div className="flex items-center justify-between md:grid w-full gap-2" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
-              <div className="flex items-center gap-2 min-w-0 w-full md:w-[320px] md:max-w-none flex-1 md:flex-initial overflow-hidden">
-                <Skeleton className="h-14 w-full md:w-64 rounded-full bg-white/20" />
-                <div className="hidden md:block shrink-0 flex-none w-14 min-w-14">
+            <div className="shop-fulfillment-bar shop-fulfillment-bar--hero flex items-center justify-between w-full gap-2 min-h-14">
+              <div className="flex items-center gap-2 min-w-0 min-h-14 w-[320px] max-w-[calc(100%-3.75rem)] lg:w-auto lg:max-w-none">
+                <Skeleton className="h-14 w-full max-w-[320px] lg:w-[320px] rounded-full bg-white/20" />
+                <div className="hidden lg:block shrink-0">
                   <Skeleton className="h-14 w-14 rounded-full bg-white/20" />
                 </div>
               </div>
-              <div className="hidden md:flex justify-center items-center">
+              <div className="hidden lg:flex justify-center items-center">
                 <Skeleton className="h-14 w-40 rounded-full bg-white/20" />
               </div>
-              <div className="shrink-0 flex-none w-14 min-w-14 md:min-w-0">
-                <div className="md:hidden shrink-0 flex-none w-14 min-w-14">
+              <div className="shrink-0 lg:min-w-0">
+                <div className="lg:hidden">
                   <Skeleton className="h-14 w-14 rounded-full bg-white/20" />
                 </div>
               </div>

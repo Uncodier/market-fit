@@ -16,8 +16,8 @@ type Tone = "default" | "hero"
 
 const cellClass = (tone: Tone) =>
   tone === "hero"
-    ? "shop-fulfillment-cell flex flex-col items-center justify-center gap-0.5 sm:gap-1 flex-1 min-w-0 w-full h-12 min-h-12 px-0.5 sm:px-2 rounded-full transition-all select-none overflow-hidden"
-    : "shop-fulfillment-cell flex flex-col items-center justify-center gap-0.5 sm:gap-1 w-[4.5rem] md:w-24 h-12 min-h-12 px-0.5 sm:px-2 rounded-full transition-all select-none overflow-hidden"
+    ? "shop-fulfillment-cell flex flex-col items-center justify-center gap-1 flex-1 min-w-0 h-12 min-h-12 px-2 rounded-full transition-all select-none overflow-hidden"
+    : "shop-fulfillment-cell flex flex-col items-center justify-center gap-1 w-[5.5rem] md:w-24 h-12 min-h-12 px-2 rounded-full transition-all select-none overflow-hidden"
 
 type SegmentOption<T extends string> = {
   value: T
@@ -59,7 +59,11 @@ function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={`flex items-stretch ${CONTROL_HEIGHT} p-1 shrink min-w-0 w-full md:max-w-[320px] ${trackClass(tone)} rounded-full gap-1 ${tone === "hero" ? "flex-1 overflow-hidden" : "md:w-fit"}`}
+      className={`flex items-stretch ${CONTROL_HEIGHT} p-1 min-w-0 ${trackClass(tone)} rounded-full gap-1 ${
+        tone === "hero"
+          ? "w-full max-w-[320px] lg:w-[320px] lg:max-w-[320px] lg:shrink-0"
+          : "w-fit"
+      }`}
     >
       {options.map((opt) => {
         const selected = value === opt.value
@@ -73,7 +77,7 @@ function SegmentedControl<T extends string>({
             className={`${cellClass(tone)} ${selectedCellClass(selected, tone)}`}
           >
             {opt.icon}
-            <span className="text-[9px] sm:text-xs font-semibold leading-none truncate w-full text-center px-0.5">
+            <span className="text-xs font-semibold leading-none truncate max-w-full">
               {opt.label}
             </span>
           </button>
@@ -214,16 +218,14 @@ export function ShopFulfillmentHeader({
 
   if (tone === "hero") {
     return (
-      <div 
-        className="shop-fulfillment-bar flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] w-full gap-2 min-h-14"
-      >
-        <div className="flex items-center gap-2 min-w-0 min-h-14 w-full md:w-[320px] md:max-w-none flex-1 md:flex-initial overflow-hidden">
+      <div className="shop-fulfillment-bar shop-fulfillment-bar--hero flex items-center justify-between w-full gap-2 min-h-14">
+        <div className="flex items-center gap-2 min-w-0 min-h-14 w-[320px] max-w-[calc(100%-3.75rem)] lg:w-auto lg:max-w-none">
           {segment}
-          <div className="hidden md:block shrink-0 flex-none w-14 min-w-14">{scheduleButton}</div>
+          <div className="hidden lg:block shrink-0">{scheduleButton}</div>
         </div>
-        <div className="hidden md:flex justify-center items-center">{centerAction}</div>
-        <div className="shrink-0 flex-none w-14 min-w-14 md:min-w-0">
-          <div className="md:hidden shrink-0 flex-none w-14 min-w-14">{scheduleButton}</div>
+        <div className="hidden lg:flex justify-center items-center">{centerAction}</div>
+        <div className="shrink-0 lg:min-w-0">
+          <div className="lg:hidden">{scheduleButton}</div>
         </div>
       </div>
     )
@@ -231,13 +233,9 @@ export function ShopFulfillmentHeader({
 
   return (
     <div className="shop-fulfillment-bar mb-5 md:mb-6">
-      <div className="flex items-center justify-between md:justify-start gap-2 md:gap-5 min-h-14 w-full">
-        <div className="flex-1 min-w-0 md:flex-none">
-          {segment}
-        </div>
-        <div className="shrink-0 flex-none w-14 min-w-14">
-          {scheduleButton}
-        </div>
+      <div className="flex items-center justify-between md:justify-start gap-2 md:gap-5 min-h-14">
+        {segment}
+        {scheduleButton}
       </div>
     </div>
   )

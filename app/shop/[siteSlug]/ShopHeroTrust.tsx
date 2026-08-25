@@ -157,7 +157,7 @@ export function ShopHeroTrust({
             )}
 
             {fulfillment ? (
-              <div className="md:hidden">
+              <div className="lg:hidden">
                 <Button
                   type="button"
                   className="h-14 px-8 text-lg rounded-full font-semibold shadow-lg"

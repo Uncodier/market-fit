@@ -664,7 +664,8 @@ export default function CheckoutClient({
           <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="text-2xl font-black tracking-tight text-gray-400 dark:text-gray-600">{items[0]?.site?.name || 'Store'}</div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              &copy; {new Date().getFullYear()} {items[0]?.site?.name || 'Store'}. All rights reserved. Powered by Uncodie.
+              &copy; {new Date().getFullYear()} {items[0]?.site?.name || 'Store'}. {t("shop.allRightsReserved") || "All rights reserved."}{" "}
+              {t("shop.poweredBy") || "Powered by Makinari."}
             </div>
           </div>
         </footer>
@@ -673,7 +674,8 @@ export default function CheckoutClient({
           <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="text-2xl font-black tracking-tight text-muted-foreground">Makinari</div>
             <div className="text-sm text-muted-foreground font-medium">
-              &copy; {new Date().getFullYear()} Makinari. All rights reserved.
+              &copy; {new Date().getFullYear()} Makinari. {t("marketplace.footer.rights") || "All rights reserved."}{" "}
+              {t("marketplace.footer.poweredBy") || "Powered by Makinari."}
             </div>
           </div>
         </footer>
