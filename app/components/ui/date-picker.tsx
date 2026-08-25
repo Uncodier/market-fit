@@ -5,6 +5,8 @@ import { CalendarIcon, ChevronLeft, ChevronRight } from "@/app/components/ui/ico
 import { Button } from "@/app/components/ui/button"
 import { format, addDays, subDays, addWeeks, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, startOfDay, endOfDay, startOfWeek as dateStartOfWeek, endOfWeek as dateEndOfWeek, startOfMonth as dateStartOfMonth, endOfMonth as dateEndOfMonth, startOfYear, endOfYear, isSameYear } from "date-fns"
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/app/components/ui/dialog"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { TimeSelect } from "@/app/components/ui/time-select"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/app/components/ui/badge"
@@ -481,51 +483,44 @@ export function DatePicker({
   };
   
   const shouldDisableDate = (_date: Date) => false;
+  
+  const isMobile = useIsMobile();
 
-  return (
-    <div className="w-full">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant={mode === 'range' ? "secondary" : "outline"}
-            className={cn(
-              mode === 'range' ? "h-9" : "h-10",
-              "text-left font-normal",
-              mode === 'range' ? "w-auto gap-2" : "w-full",
-              mode === 'range' ? "px-3" : "px-3 py-1 flex items-center justify-between",
-              mode !== 'range' && "rounded-md border border-input bg-background",
-              "focus:outline-none focus-visible:outline-none focus-visible:ring-0",
-              mode !== 'range' && "hover:bg-muted hover:border-input hover:no-underline transition-colors duration-200",
-              !date && "text-muted-foreground",
-              className
-            )}
-            disabled={disabled}
-          >
-            <div className="flex items-center flex-1 min-w-0 max-w-full overflow-hidden">
-              <CalendarIcon className={cn("h-4 w-4 flex-shrink-0", mode === 'range' ? "mr-2" : "mr-2")} />
-              <span className="truncate text-sm max-w-full overflow-hidden text-ellipsis">
-                {displayText}
-              </span>
-            </div>
-            {mode !== 'range' && (
-              <div className="opacity-50 ml-1 flex-shrink-0">
-                <ChevronLeft className="h-3 w-3 rotate-90" />
-              </div>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="p-0 w-auto z-[999999]"
-          side={position}
-          onInteractOutside={(event) => {
-            const target = event.target as Element | null
-            if (target?.closest && target.closest("[data-time-select]")) event.preventDefault()
-          }}
-        >
-          <div className="flex flex-row">
-            {/* Calendar */}
-            <div className="p-4 min-w-[280px]" onKeyDown={handleKeyDown} tabIndex={-1}>
-              {mode === 'range' && (
+  const triggerButton = (
+    <Button
+      variant={mode === 'range' ? "secondary" : "outline"}
+      className={cn(
+        mode === 'range' ? "h-9" : "h-10",
+        "text-left font-normal",
+        mode === 'range' ? "w-auto gap-2" : "w-full",
+        mode === 'range' ? "px-3" : "px-3 py-1 flex items-center justify-between",
+        mode !== 'range' && "rounded-md border border-input bg-background",
+        "focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+        mode !== 'range' && "hover:bg-muted hover:border-input hover:no-underline transition-colors duration-200",
+        !date && "text-muted-foreground",
+        className
+      )}
+      disabled={disabled}
+    >
+      <div className="flex items-center flex-1 min-w-0 max-w-full overflow-hidden">
+        <CalendarIcon className={cn("h-4 w-4 flex-shrink-0", mode === 'range' ? "mr-2" : "mr-2")} />
+        <span className="truncate text-sm max-w-full overflow-hidden text-ellipsis">
+          {displayText}
+        </span>
+      </div>
+      {mode !== 'range' && (
+        <div className="opacity-50 ml-1 flex-shrink-0">
+          <ChevronLeft className="h-3 w-3 rotate-90" />
+        </div>
+      )}
+    </Button>
+  );
+
+  const pickerContent = (
+    <div className="flex flex-col sm:flex-row max-h-[80vh] sm:max-h-none overflow-y-auto sm:overflow-visible">
+      {/* Calendar */}
+      <div className="p-4 w-full sm:w-[280px] sm:min-w-[280px] flex-shrink-0" onKeyDown={handleKeyDown} tabIndex={-1}>
+        {mode === 'range' && (
                 <div className="mb-3 text-sm flex flex-col gap-1">
                   <div className="flex items-center justify-between w-full">
                     <Badge variant="outline" className="text-xs py-1 flex-1 justify-center overflow-hidden">
@@ -578,7 +573,7 @@ export function DatePicker({
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2">
                 {eachDayOfInterval({
                   start: startOfWeek(currentMonth, { locale: dateLocale }),
                   end: addDays(startOfWeek(currentMonth, { locale: dateLocale }), 6),
@@ -603,7 +598,7 @@ export function DatePicker({
                       key={i}
                       variant="ghost"
                       className={cn(
-                        "h-8 w-8 p-0 text-sm relative",
+                        "h-8 w-full sm:w-8 p-0 text-sm relative",
                         !isSameMonth(day, currentMonth) && "text-muted-foreground opacity-50",
                         (mode === 'range' ? (isRangeStart || isRangeEnd) : (date && isSameDay(day, date))) && "bg-primary text-primary-foreground",
                         isSameDay(day, new Date()) && !(isRangeStart || isRangeEnd) && "border border-primary",
@@ -626,26 +621,28 @@ export function DatePicker({
             {/* Events Sidebar */}
             {showEvents && displayEvents.length > 0 && (
               <div className={cn(
-                "border-l p-4 w-[168px] flex flex-col gap-2 overflow-hidden",
+                "border-t sm:border-t-0 sm:border-l p-4 w-full sm:w-[168px] flex flex-col gap-2 overflow-hidden flex-shrink-0",
                 mode !== 'range' && "max-h-[300px] overflow-y-auto"
               )}>
                 {mode !== 'range' && (
                   <div className="text-xs font-medium text-muted-foreground mb-3">{getEventGroupTitle()}</div>
                 )}
-                {displayEvents.map((event, index) => (
-                  <div 
-                    key={index}
-                    className={cn(
-                      "text-xs py-1.5 px-2.5 rounded-md cursor-pointer transition-colors duration-200",
-                      "hover:bg-muted w-full text-left",
-                      selectedPresetLabel === event.label ? "bg-primary/15 font-medium text-primary" : "text-foreground"
-                    )}
-                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                    onClick={(e) => handlePresetSelection(event, e)}
-                  >
-                    {event.label}
-                  </div>
-                ))}
+                <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
+                  {displayEvents.map((event, index) => (
+                    <div 
+                      key={index}
+                      className={cn(
+                        "text-xs py-1.5 px-2.5 rounded-md cursor-pointer transition-colors duration-200",
+                        "hover:bg-muted w-full text-left",
+                        selectedPresetLabel === event.label ? "bg-primary/15 font-medium text-primary" : "text-foreground"
+                      )}
+                      style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                      onClick={(e) => handlePresetSelection(event, e)}
+                    >
+                      {event.label}
+                    </div>
+                  ))}
+                </div>
                 
                 {customEvents && (
                   <div className="mt-2 pt-2 border-t">
@@ -658,7 +655,7 @@ export function DatePicker({
             
             {/* Time Picker - Rightmost Column */}
             {showTimePicker && (
-              <div className="border-l p-4 w-[230px] flex flex-col">
+              <div className="border-t sm:border-t-0 sm:border-l p-4 w-full sm:w-[230px] flex flex-col flex-shrink-0">
                 <div className="text-xs font-medium text-muted-foreground mb-3">{t("datePicker.selectTime")}</div>
                 <TimeSelect
                   value={`${selectedTime.hours.toString().padStart(2, "0")}:${selectedTime.minutes.toString().padStart(2, "0")}`}
@@ -684,6 +681,45 @@ export function DatePicker({
               </div>
             )}
           </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="w-full">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            {triggerButton}
+          </DialogTrigger>
+          <DialogContent 
+            className="p-0 w-[95vw] max-w-[400px] gap-0 border-border bg-popover !fixed !inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !rounded-xl" 
+            showClose={true}
+          >
+            <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+              <DialogTitle className="text-base font-semibold">{t("datePicker.selectDate")}</DialogTitle>
+            </div>
+            {pickerContent}
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          {triggerButton}
+        </PopoverTrigger>
+        <PopoverContent
+          className="p-0 w-auto max-w-[calc(100vw-2rem)] sm:max-w-none z-[999999]"
+          side={position}
+          align="center"
+          onInteractOutside={(event) => {
+            const target = event.target as Element | null
+            if (target?.closest && target.closest("[data-time-select]")) event.preventDefault()
+          }}
+        >
+          {pickerContent}
         </PopoverContent>
       </Popover>
     </div>

@@ -157,15 +157,15 @@ export default function SegmentsPage() {
             <div className="flex items-center gap-4">
               <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                 <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("segments.tabs.all") || "All Segments"}>
-                  <LayoutGrid size={13} className="md:!hidden" />
+                  <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                   <span className="tab-label">{t("segments.tabs.all") || "All Segments"}</span>
                 </TabsTrigger>
                 <TabsTrigger value="active" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("segments.tabs.active") || "Active"}>
-                  <CheckCircle2 size={13} className="md:!hidden" />
+                  <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
                   <span className="tab-label">{t("segments.tabs.active") || "Active"}</span>
                 </TabsTrigger>
                 <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t("segments.tabs.draft") || "Draft"}>
-                  <PenSquare size={13} className="md:!hidden" />
+                  <PenSquare size={13} className="shrink-0 md:!hidden" />
                   <span className="tab-label">{t("segments.tabs.draft") || "Draft"}</span>
                 </TabsTrigger>
               </TabsList>

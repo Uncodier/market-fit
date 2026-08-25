@@ -283,23 +283,23 @@ export default function ContentPage() {
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filtros'}</span>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                       <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.all')}>
-                        <LayoutGrid size={13} className="md:!hidden" />
+                        <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('content.tabs.all')}</span>
                       </TabsTrigger>
                       <TabsTrigger value="blog_post" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.blog')}>
-                        <FileText size={13} className="md:!hidden" />
+                        <FileText size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('content.tabs.blog')}</span>
                       </TabsTrigger>
                       <TabsTrigger value="video" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.video')}>
-                        <FileVideo size={13} className="md:!hidden" />
+                        <FileVideo size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('content.tabs.video')}</span>
                       </TabsTrigger>
                       <TabsTrigger value="social_post" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.social')}>
-                        <Globe size={13} className="md:!hidden" />
+                        <Globe size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('content.tabs.social')}</span>
                       </TabsTrigger>
                       <TabsTrigger value="ad" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap" title={t('content.tabs.ads')}>
-                        <Megaphone size={13} className="md:!hidden" />
+                        <Megaphone size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('content.tabs.ads')}</span>
                       </TabsTrigger>
                     </TabsList>

@@ -117,16 +117,16 @@ export function OrdersKanban({ orders, onOrderClick, onUpdateOrderStatus }: Orde
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="w-full">
+      <div className="w-full overflow-x-auto">
         <div className="pb-4 -mx-4 md:-mx-8">
-          <div className="flex flex-wrap md:flex-nowrap items-start gap-4 px-4 md:px-8">
+          <div className="flex gap-4 min-w-fit px-4 md:px-8 items-stretch">
           {ORDER_STATUSES.map((status) => {
             const statusOrders = orders.filter(order => order.status === status.id)
             const totalAmount = statusOrders.reduce((sum, order) => sum + (order.total || 0), 0)
             const StatusIcon = status.icon
             
             return (
-              <div key={status.id} className="flex-shrink-0 w-[calc(50%_-_8px)] md:w-80 flex flex-col">
+              <div key={status.id} className="flex-shrink-0 w-72 md:w-80 flex flex-col">
                 <div 
                   className={cn(
                     "bg-background/80 backdrop-blur-sm rounded-t-lg p-3.5 border-b-[3px] border-x border-t shadow-sm sticky top-0 z-10 shrink-0",

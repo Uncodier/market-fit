@@ -118,15 +118,15 @@ export function BuyerOrdersView({
               <div className="flex items-center gap-4 flex-1 overflow-x-auto no-scrollbar">
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
                   <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                    <LayoutGrid size={13} className="md:!hidden" />
+                    <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                     <span className="tab-label">{t('buyer.orders.filters.all') || 'All'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="pending" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                    <Clock size={13} className="md:!hidden" />
+                    <Clock size={13} className="shrink-0 md:!hidden" />
                     <span className="tab-label">{t('buyer.orders.filters.pending') || 'Pending'}</span>
                   </TabsTrigger>
                   <TabsTrigger value="completed" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                    <CheckCircle2 size={13} className="md:!hidden" />
+                    <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
                     <span className="tab-label">{t('buyer.orders.filters.completed') || 'Completed'}</span>
                   </TabsTrigger>
                 </TabsList>

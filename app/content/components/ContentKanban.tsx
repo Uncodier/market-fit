@@ -177,7 +177,7 @@ export function ContentKanban({
   }
 
   return (
-    <div className="w-full h-full flex flex-col justify-start flex-1 min-h-0 self-stretch flex-grow min-w-0">
+    <div className="w-full h-full flex flex-col justify-start flex-1 min-h-0 self-stretch flex-grow min-w-0 overflow-x-auto">
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 min-w-fit items-start pt-0 mt-0 flex-1 flex-row w-full h-full min-h-0 items-stretch self-stretch flex-grow min-w-0">
           {CONTENT_STATUSES.map(status => (

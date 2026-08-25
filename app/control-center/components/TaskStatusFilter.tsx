@@ -31,15 +31,15 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
   const getFilterConfig = () => ({
     all: {
       label: t('controlCenter.statusFilter.all') || "All",
-      icon: <LayoutGrid size={13} className="md:!hidden" />
+      icon: <LayoutGrid size={13} className="shrink-0 md:!hidden" />
     },
     new: {
       label: t('controlCenter.statusFilter.new') || "New",
-      icon: <Activity size={13} className="md:!hidden" />
+      icon: <Activity size={13} className="shrink-0 md:!hidden" />
     },
     completed: {
       label: t('controlCenter.statusFilter.completed') || "Completed",
-      icon: <CheckCircle2 size={13} className="md:!hidden" />
+      icon: <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
     }
   })
 

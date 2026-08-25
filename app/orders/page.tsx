@@ -139,13 +139,29 @@ export default function OrdersPage() {
     mutate()
   }
 
+  const renderOrdersTable = () => {
+    if (!currentSite || isLoading) return <OrdersTableSkeleton />
+    if (error) return <div className="p-4 text-center text-sm text-red-500">{error.message}</div>
+    return (
+      <OrdersTable
+        orders={data?.data || []}
+        page={page}
+        pageSize={pageSize}
+        totalCount={data?.count ?? 0}
+        searchQuery={searchQuery}
+        onPageChange={setPage}
+        onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
+      />
+    )
+  }
+
   return (
     <div className="flex-1 min-w-0 w-full p-0 bg-muted/30 min-h-[calc(100vh-var(--topbar-height,64px))] flex flex-col">
       <Tabs value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }} className="w-full h-full min-h-0 flex flex-col flex-1">
         <StickyHeader className="border-b min-h-[71px] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="w-full pt-0">
             <div className="flex items-center justify-between w-full">
-              <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"}>
+              <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"} results={renderOrdersTable()}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
                     <SearchInput  placeholder={t('orders.search') || "Search order number..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
@@ -154,23 +170,23 @@ export default function OrdersPage() {
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filtros'}</span>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                       <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('orders.tabs.all') || "All Orders"}>
-                        <LayoutGrid size={13} className="md:!hidden" />
+                        <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('orders.tabs.all') || 'All Orders'}</span>
                       </TabsTrigger>
                       <TabsTrigger value="pending" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('orders.tabs.pending') || "Pending Orders"}>
-                        <Clock size={13} className="md:!hidden" />
+                        <Clock size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('orders.tabs.pendingTitle') || 'Pending'}</span>
                       </TabsTrigger>
                       <TabsTrigger value="in_progress" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('orders.tabs.inProgress') || "Orders in Progress"}>
-                        <PlayCircle size={13} className="md:!hidden" />
+                        <PlayCircle size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('orders.tabs.inProgressTitle') || 'In Progress'}</span>
                       </TabsTrigger>
                       <TabsTrigger value="completed" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('orders.tabs.completed') || "Completed Orders"}>
-                        <CheckCircle2 size={13} className="md:!hidden" />
+                        <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('orders.tabs.completedTitle') || 'Completed'}</span>
                       </TabsTrigger>
                       <TabsTrigger value="cancelled" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('orders.tabs.cancelled') || "Cancelled Orders"}>
-                        <Ban size={13} className="md:!hidden" />
+                        <Ban size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('orders.tabs.cancelledTitle') || 'Cancelled'}</span>
                       </TabsTrigger>
                     </TabsList>

@@ -81,23 +81,23 @@ export function BuyerLibraryView({
             <div className="flex items-center gap-4 flex-1 overflow-x-auto no-scrollbar">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
                 <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <LayoutGrid size={13} className="md:!hidden" />
+                  <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                   <span className="tab-label">{t('buyer.library.filters.allItems') || 'All Items'}</span>
                 </TabsTrigger>
                 <TabsTrigger value="course" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <Video size={13} className="md:!hidden" />
+                  <Video size={13} className="shrink-0 md:!hidden" />
                   <span className="tab-label">{t('buyer.library.filters.courses') || 'Courses'}</span>
                 </TabsTrigger>
                 <TabsTrigger value="ticket" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <Ticket size={13} className="md:!hidden" />
+                  <Ticket size={13} className="shrink-0 md:!hidden" />
                   <span className="tab-label">{t('buyer.library.filters.tickets') || 'Tickets'}</span>
                 </TabsTrigger>
                 <TabsTrigger value="file" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <FileIcon size={13} className="md:!hidden" />
+                  <FileIcon size={13} className="shrink-0 md:!hidden" />
                   <span className="tab-label">{t('buyer.library.filters.files') || 'Files'}</span>
                 </TabsTrigger>
                 <TabsTrigger value="pass" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
-                  <CheckCircle2 size={13} className="md:!hidden" />
+                  <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
                   <span className="tab-label">{t('buyer.library.filters.passes') || 'Passes'}</span>
                 </TabsTrigger>
               </TabsList>

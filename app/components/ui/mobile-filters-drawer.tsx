@@ -17,9 +17,10 @@ import { cn } from "@/lib/utils"
 interface MobileFiltersDrawerProps {
   children: React.ReactNode
   triggerText?: string
+  results?: React.ReactNode
 }
 
-export function MobileFiltersDrawer({ children, triggerText }: MobileFiltersDrawerProps) {
+export function MobileFiltersDrawer({ children, triggerText, results }: MobileFiltersDrawerProps) {
   const { t } = useLocalization()
   const [open, setOpen] = useState(false)
   const isMobile = useIsMobile()
@@ -49,6 +50,14 @@ export function MobileFiltersDrawer({ children, triggerText }: MobileFiltersDraw
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-6 mobile-filters-drawer-content">
             {children}
+            {results && (
+              <div className="mt-2 pt-6 border-t border-border flex flex-col gap-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase">{t('common.results') || 'Resultados'}</h3>
+                <div className="-mx-4 px-4 overflow-x-auto">
+                  {results}
+                </div>
+              </div>
+            )}
           </div>
         </SheetContent>
       </Sheet>

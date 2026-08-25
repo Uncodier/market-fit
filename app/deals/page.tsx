@@ -201,19 +201,19 @@ export default function DealsPage() {
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filtros'}</span>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                       <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('deals.tabs.all') || "All Deals"}>
-                        <LayoutGrid size={13} className="md:!hidden" />
+                        <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('deals.tabs.all') || 'All Deals'}</span>
                       </TabsTrigger>
                       <TabsTrigger value="open" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('deals.tabs.open') || "Open Deals"}>
-                        <Target size={13} className="md:!hidden" />
+                        <Target size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('deals.tabs.openTitle') || 'Open'}</span>
                       </TabsTrigger>
                       <TabsTrigger value="won" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('deals.tabs.won') || "Won Deals"}>
-                        <TrendingUp size={13} className="md:!hidden" />
+                        <TrendingUp size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('deals.tabs.wonTitle') || 'Won'}</span>
                       </TabsTrigger>
                       <TabsTrigger value="lost" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-nowrap" title={t('deals.tabs.lost') || "Lost Deals"}>
-                        <XCircle size={13} className="md:!hidden" />
+                        <XCircle size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t('deals.tabs.lostTitle') || 'Lost'}</span>
                       </TabsTrigger>
                     </TabsList>

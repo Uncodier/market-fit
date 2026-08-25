@@ -97,12 +97,12 @@ export function KanbanView({
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full overflow-x-auto">
       <div className="pb-8">
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex flex-wrap md:flex-nowrap items-start gap-4 pb-4 min-h-[200px]">
+          <div className="flex gap-4 min-w-fit pb-4 min-h-[200px] items-stretch">
             {SALE_STATUSES.map(status => (
-              <div key={status.id} className="flex flex-col w-[calc(50%_-_8px)] md:w-[280px] shrink-0">
+              <div key={status.id} className="flex flex-col w-[280px] shrink-0">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="font-medium text-sm">{status.name}</h3>
                   <Badge variant="outline">{salesByStatus[status.id].length}</Badge>

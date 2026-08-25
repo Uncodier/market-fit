@@ -98,23 +98,23 @@ export default function QuotationsPage() {
                   <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.status') || 'Estado'}</span>
                   <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                     <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
-                      <LayoutGrid size={13} className="md:!hidden" />
+                      <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                       <span className="tab-label">{t("quotations.list.filters.all") || "All"}</span>
                     </TabsTrigger>
                     <TabsTrigger value="draft" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
-                      <FileText size={13} className="md:!hidden" />
+                      <FileText size={13} className="shrink-0 md:!hidden" />
                       <span className="tab-label">{t("quotations.list.filters.draft") || "Draft"}</span>
                     </TabsTrigger>
                     <TabsTrigger value="sent" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
-                      <Send size={13} className="md:!hidden" />
+                      <Send size={13} className="shrink-0 md:!hidden" />
                       <span className="tab-label">{t("quotations.list.filters.sent") || "Sent"}</span>
                     </TabsTrigger>
                     <TabsTrigger value="accepted" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
-                      <CheckCircle2 size={13} className="md:!hidden" />
+                      <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
                       <span className="tab-label">{t("quotations.list.filters.accepted") || "Accepted"}</span>
                     </TabsTrigger>
                     <TabsTrigger value="rejected" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent whitespace-normal md:whitespace-nowrap">
-                      <Ban size={13} className="md:!hidden" />
+                      <Ban size={13} className="shrink-0 md:!hidden" />
                       <span className="tab-label">{t("quotations.list.filters.rejected") || "Rejected"}</span>
                     </TabsTrigger>
                   </TabsList>

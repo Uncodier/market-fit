@@ -166,7 +166,7 @@ export default function TransactionsPage() {
                   <Tabs value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setPage(1); }}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-lg md:rounded-full flex flex-col md:flex-row w-full md:max-w-full overflow-y-auto md:overflow-x-auto justify-start items-stretch md:items-center gap-1 md:gap-0">
                       <TabsTrigger value="all" className="w-full md:w-auto justify-start md:justify-center rounded-md md:rounded-full text-sm md:text-xs py-2 px-3 md:py-1 md:px-3 text-left text-foreground/80 md:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-black/5 dark:data-[state=active]:border-white/5 md:data-[state=active]:border-transparent gap-2 whitespace-normal md:whitespace-nowrap">
-                        <LayoutGrid size={13} className="md:!hidden" />
+                        <LayoutGrid size={13} className="shrink-0 md:!hidden" />
                         <span className="tab-label">{t("expenses.filters.all") || "All"}</span>
                       </TabsTrigger>
                       {expenseAccounts.slice(0, 4).map((acc) => (
