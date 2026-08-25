@@ -296,7 +296,7 @@ export function TimeSelect({
               // due to a re-render from SWR or other state changes.
               event.preventDefault()
             }}
-            className="z-[1000000] max-h-[240px] min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+            className="z-[1000060] max-h-[240px] min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
             style={{ width: inputRef.current?.offsetWidth }}
           >
             <div id={listId} role="listbox" className="max-h-[232px] overflow-y-auto">
