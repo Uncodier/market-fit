@@ -68,7 +68,7 @@ export default function ShopLoading() {
         {/* Fulfillment skeleton at the bottom */}
         <div className="absolute inset-x-0 bottom-3 md:bottom-4 z-10">
           <div className="max-w-7xl mx-auto px-3 md:px-8">
-            <div className="flex items-center justify-between md:grid w-full gap-2" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
+            <div className="flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] w-full gap-2">
               <div className="flex items-center gap-2 min-w-0 w-[320px] max-w-[calc(100%-3.75rem)] md:w-auto md:max-w-none">
                 <Skeleton className="h-14 w-full md:w-64 rounded-full bg-white/20" />
                 <div className="hidden md:block shrink-0">

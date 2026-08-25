@@ -59,7 +59,7 @@ function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={`flex items-stretch ${CONTROL_HEIGHT} shrink-0 p-1 ${trackClass(tone)} rounded-full gap-1 ${tone === "hero" ? "w-full max-w-[320px]" : "w-fit"}`}
+      className={`flex items-stretch ${CONTROL_HEIGHT} p-1 shrink min-w-0 ${trackClass(tone)} rounded-full gap-1 ${tone === "hero" ? "w-full max-w-[320px]" : "w-fit"}`}
     >
       {options.map((opt) => {
         const selected = value === opt.value
@@ -154,7 +154,7 @@ export function ShopFulfillmentHeader({
   }
 
   const scheduleButton = showScheduling ? (
-    <div className="size-14 min-h-14 min-w-14 shrink-0">
+    <div className="size-14 min-h-14 min-w-14 shrink-0 flex-none">
       <DatePicker
         date={scheduledFor || undefined}
         setDate={(date: Date) => {
@@ -175,7 +175,7 @@ export function ShopFulfillmentHeader({
                 ? scheduleLabel
                 : t("shop.fulfillment.schedule") || "Schedule"
             }
-            className={`shop-fulfillment-schedule relative size-14 min-h-14 min-w-14 rounded-full shrink-0 flex items-center justify-center transition-all select-none ${
+            className={`shop-fulfillment-schedule relative size-14 min-h-14 min-w-14 rounded-full shrink-0 flex-none flex items-center justify-center transition-all select-none ${
               isScheduled
                 ? selectedCellClass(true, tone)
                 : `${trackClass(tone)} ${selectedCellClass(false, tone)}`
@@ -215,8 +215,7 @@ export function ShopFulfillmentHeader({
   if (tone === "hero") {
     return (
       <div 
-        className="shop-fulfillment-bar flex items-center justify-between md:grid w-full gap-2 min-h-14"
-        style={{ gridTemplateColumns: "1fr auto 1fr" }}
+        className="shop-fulfillment-bar flex items-center justify-between md:grid md:grid-cols-[1fr_auto_1fr] w-full gap-2 min-h-14"
       >
         <div className="flex items-center gap-2 min-w-0 min-h-14 w-[320px] max-w-[calc(100%-3.75rem)] md:w-auto md:max-w-none">
           {segment}

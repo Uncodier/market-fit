@@ -2,6 +2,8 @@
 
 import { useFormContext } from "react-hook-form"
 import { useState, useEffect, useRef, useCallback } from "react"
+import { toast } from "sonner"
+import QRCode from "react-qr-code"
 import { type SiteFormValues } from "./form-schema"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "../ui/form"
 import { Input } from "../ui/input"
@@ -18,7 +20,7 @@ import {
 } from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Switch } from "../ui/switch"
-import { Store, Image as ImageIcon, Truck, ShieldCheck, RotateCcw, PlusCircle, Trash2, CreditCard, Loader, X, Calendar } from "../ui/icons"
+import { Store, Image as ImageIcon, Truck, ShieldCheck, RotateCcw, PlusCircle, Trash2, CreditCard, Loader, X, Calendar, Link, Copy, Download } from "../ui/icons"
 import { EmptyCard } from "../ui/empty-card"
 import { uploadAssetFile } from "@/app/assets/actions"
 import { listCatalogCategories, listCatalogItems } from "@/app/catalog/actions"
@@ -44,6 +46,43 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [categories, setCategories] = useState<any[]>([])
   const [items, setItems] = useState<any[]>([])
+
+  const siteUrl = form.watch("url") || (siteId ? `https://${siteId}.uncodie.com` : "https://uncodie.com")
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(siteUrl)
+      toast.success("URL copied to clipboard")
+    } catch (err) {
+      toast.error("Failed to copy URL")
+    }
+  }
+
+  const handleDownloadQR = () => {
+    const container = document.getElementById("marketplace-qr-code-container")
+    const svg = container?.querySelector("svg")
+    if (svg) {
+      const svgData = new XMLSerializer().serializeToString(svg)
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
+      const img = new Image()
+      img.onload = () => {
+        canvas.width = img.width
+        canvas.height = img.height
+        if (ctx) {
+          ctx.fillStyle = "white"
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+          ctx.drawImage(img, 0, 0)
+          const pngFile = canvas.toDataURL("image/png")
+          const downloadLink = document.createElement("a")
+          downloadLink.download = `${siteId || "marketplace"}-qr.png`
+          downloadLink.href = pngFile
+          downloadLink.click()
+        }
+      }
+      img.src = "data:image/svg+xml;base64," + btoa(svgData)
+    }
+  }
 
   useEffect(() => {
     if (siteId) {
@@ -130,6 +169,49 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
 
   return (
     <div className="space-y-6">
+      {/* Marketplace URL & QR Code */}
+      <SectionCard id="shop-share">
+        <SectionCardHeader>
+          <SectionCardTitle className="flex items-center gap-2">
+            <Link className="h-5 w-5 text-gray-500" />
+            Share & Promote
+          </SectionCardTitle>
+          <p className="text-sm text-gray-500 mt-1">Share your marketplace link and QR code.</p>
+        </SectionCardHeader>
+        <SectionCardContent>
+          <div className="flex flex-col md:flex-row gap-8 items-start">
+            <div className="flex flex-col items-center gap-4 p-4 border rounded-xl bg-white">
+              <div id="marketplace-qr-code-container" className="p-2 bg-white rounded-lg">
+                <QRCode
+                  value={siteUrl}
+                  size={150}
+                  level="M"
+                />
+              </div>
+              <Button variant="outline" size="sm" type="button" onClick={handleDownloadQR} className="w-full gap-2">
+                <Download className="h-4 w-4" />
+                Download QR
+              </Button>
+            </div>
+            <div className="flex-1 space-y-4 pt-2">
+              <div>
+                <FormLabel>Marketplace URL</FormLabel>
+                <div className="flex gap-2 mt-1.5">
+                  <Input value={siteUrl} readOnly className="bg-gray-50" />
+                  <Button variant="outline" type="button" onClick={handleCopyUrl} className="shrink-0 gap-2">
+                    <Copy className="h-4 w-4" />
+                    Copy
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Use this link in your social media, campaigns, or directly share it with your customers.
+                </p>
+              </div>
+            </div>
+          </div>
+        </SectionCardContent>
+      </SectionCard>
+
       {/* Hero Section */}
       <SectionCard id="shop-hero">
         <SectionCardHeader>
