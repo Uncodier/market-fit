@@ -215,7 +215,8 @@ export function Sidebar({
         <div
           aria-hidden={hideSidebarWidgets}
           className={cn(
-            "grid flex-none transition-[grid-template-rows,opacity] duration-300 ease-in-out",
+            "flex-none transition-[grid-template-rows,opacity] duration-300 ease-in-out",
+            "hidden md:grid",
             hideSidebarWidgets
               ? "grid-rows-[0fr] opacity-0 pointer-events-none"
               : "grid-rows-[1fr] opacity-100"

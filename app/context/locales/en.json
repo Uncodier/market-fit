@@ -8175,6 +8175,11 @@
   "shop.checkout.fullName": "Full Name",
   "shop.closed": "Closed",
   "shop.closedOpens": "Closed · Opens {{time}}",
+  "shop.fulfillment.delivery": "Delivery",
+  "shop.fulfillment.dineIn": "Dine-in",
+  "shop.fulfillment.now": "Now",
+  "shop.fulfillment.pickup": "Pickup",
+  "shop.fulfillment.schedule": "Schedule",
   "shop.location.gpsFailed": "Could not get your location",
   "shop.location.locating": "Locating...",
   "shop.location.noResults": "No locations found",
@@ -9257,5 +9262,8 @@
   "workflows.testStarted": "Test run started (no side effects).",
   "workflows.runStarted": "Workflow run started. Open Agents to watch logs.",
   "workflows.running": "Running…",
-  "common.status": "Status"
+  "common.status": "Status",
+  "version.newAvailable": "A new version is available",
+  "version.reloadDescription": "Reload to get the latest updates.",
+  "version.reload": "Reload"
 }

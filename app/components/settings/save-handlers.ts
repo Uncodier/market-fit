@@ -880,6 +880,7 @@ export const handleSaveShop = async (data: SiteFormValues, options: SaveOptions)
       hero_cta_label: "Shop Now",
       hero_cta_destination_type: "scroll",
       hero_cta_destination_value: "",
+      hero_order_bar: false,
       hero_image_url: "",
       shipping_cost: null,
       free_shipping_threshold: null,

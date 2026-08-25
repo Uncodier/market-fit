@@ -8185,6 +8185,11 @@
   "shop.checkout.fullName": "Nombre Completo",
   "shop.closed": "Cerrado",
   "shop.closedOpens": "Cerrado · Abre {{time}}",
+  "shop.fulfillment.delivery": "Entrega",
+  "shop.fulfillment.dineIn": "Consumir aquí",
+  "shop.fulfillment.now": "Ahora",
+  "shop.fulfillment.pickup": "Para llevar",
+  "shop.fulfillment.schedule": "Programa",
   "shop.location.gpsFailed": "No se pudo obtener tu ubicación",
   "shop.location.locating": "Obteniendo ubicación...",
   "shop.location.noResults": "No se encontraron ubicaciones",
@@ -9267,5 +9272,8 @@
   "workflows.testStarted": "Prueba iniciada (sin efectos secundarios).",
   "workflows.runStarted": "Ejecución iniciada. Abre Agents para ver los logs.",
   "workflows.running": "Ejecutando…",
-  "common.status": "Status"
+  "common.status": "Status",
+  "version.newAvailable": "Hay una nueva versión disponible",
+  "version.reloadDescription": "Recarga para obtener las últimas actualizaciones.",
+  "version.reload": "Recargar"
 }

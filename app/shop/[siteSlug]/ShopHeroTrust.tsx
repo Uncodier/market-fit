@@ -39,7 +39,8 @@ export function ShopHeroTrust({
   isOpen = true,
   nextOpenSlot = null,
   locationAvailable = true,
-  deliveryTimeLabel
+  deliveryTimeLabel,
+  fulfillment,
 }: {
   site: any
   searchQuery: string
@@ -47,6 +48,7 @@ export function ShopHeroTrust({
   nextOpenSlot?: { at: Date; label: string } | null
   locationAvailable?: boolean
   deliveryTimeLabel?: string | null
+  fulfillment?: (tone: "hero" | "default", centerAction?: ReactNode) => ReactNode
 }) {
   const { t } = useLocalization()
   const shop = site?.settings?.shop
@@ -94,7 +96,7 @@ export function ShopHeroTrust({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent md:bg-gradient-to-r md:from-black/80 md:via-black/50 md:to-transparent" />
           </div>
-          <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10 text-center md:text-left flex flex-col items-center md:items-start w-full pt-[88px] md:pt-[104px]">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10 text-center md:text-left flex flex-col items-center md:items-start w-full pt-[88px] md:pt-[104px] pb-20">
             {(!isOpen || !locationAvailable || deliveryTimeLabel) && (
               <div className="mb-4 flex flex-wrap gap-2 justify-center md:justify-start">
                 {!isOpen && (
@@ -128,7 +130,6 @@ export function ShopHeroTrust({
               </p>
             )}
 
-            {/* Mobile metrics — compact row inside the hero, above the CTA */}
             {showBadges && (
               <div className="md:hidden w-full max-w-md mb-5 grid grid-cols-3 gap-2">
                 {badges.slice(0, 3).map((badge: any, i: number) => {
@@ -155,16 +156,51 @@ export function ShopHeroTrust({
               </div>
             )}
 
-            <Button
-              type="button"
-              className="h-14 px-8 text-lg rounded-full font-semibold shadow-lg"
-              onClick={handleCtaClick}
-            >
-              {shop?.hero_cta_label || t("shop.shopNow") || "Shop Now"}
-            </Button>
+            {fulfillment ? (
+              <div className="md:hidden">
+                <Button
+                  type="button"
+                  className="h-14 px-8 text-lg rounded-full font-semibold shadow-lg"
+                  onClick={handleCtaClick}
+                >
+                  {shop?.hero_cta_label || t("shop.shopNow") || "Shop Now"}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                className="h-14 px-8 text-lg rounded-full font-semibold shadow-lg"
+                onClick={handleCtaClick}
+              >
+                {shop?.hero_cta_label || t("shop.shopNow") || "Shop Now"}
+              </Button>
+            )}
           </div>
+
+          {fulfillment ? (
+            <div className="absolute inset-x-0 bottom-3 md:bottom-4 z-10">
+              <div className="max-w-7xl mx-auto px-3 md:px-8">
+                {fulfillment(
+                  "hero",
+                  <Button
+                    type="button"
+                    className="h-14 px-8 text-lg rounded-full font-semibold shadow-lg"
+                    onClick={handleCtaClick}
+                  >
+                    {shop?.hero_cta_label || t("shop.shopNow") || "Shop Now"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
+
+      {!showHero && fulfillment ? (
+        <div className="max-w-7xl mx-auto px-4 md:px-8 pt-5 md:pt-8">
+          {fulfillment("default")}
+        </div>
+      ) : null}
 
       {/* Desktop trust strip — or mobile fallback when there is no hero */}
       {showBadges && (

@@ -8500,5 +8500,8 @@
   "quotations.detail.deleteItemTitle": "Eliminar elemento",
   "quotations.create.removeItem": "Eliminar producto",
   "common.noItemsFound": "No se encontraron artículos",
-  "common.noClientsFound": "No se encontraron clientes"
+  "common.noClientsFound": "No se encontraron clientes",
+  "version.newAvailable": "新しいバージョンが利用可能です",
+  "version.reloadDescription": "再読み込みして最新の更新を取得してください。",
+  "version.reload": "再読み込み"
 }

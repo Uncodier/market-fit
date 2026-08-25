@@ -29,7 +29,7 @@ export function CartItem({ item, updateQty, showSeller = false }: CartItemProps)
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
-      <div className="flex gap-4 p-4">
+      <div className="flex items-center gap-4 p-4">
         <div className="relative w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden flex-shrink-0">
           <img src={resolveItemImage(item, "card")} alt={item.name} className="absolute inset-0 h-full w-full object-cover object-center" />
         </div>

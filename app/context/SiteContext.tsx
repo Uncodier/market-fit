@@ -111,6 +111,7 @@ export interface SiteSettings {
     hero_cta_label?: string
     hero_cta_destination_type?: 'scroll' | 'category' | 'item' | 'url'
     hero_cta_destination_value?: string
+    hero_order_bar?: boolean
     hero_image_url?: string
     free_shipping_threshold?: number | null
     delivery_time_min?: number | null
@@ -222,6 +223,7 @@ export interface SiteSettings {
     hero_cta_label?: string
     hero_cta_destination_type?: 'scroll' | 'category' | 'item' | 'url'
     hero_cta_destination_value?: string
+    hero_order_bar?: boolean
     hero_image_url?: string
     free_shipping_threshold?: number | null
     delivery_time_min?: number | null
@@ -1189,6 +1191,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
                   hero_cta_label: "Shop Now",
                   hero_cta_destination_type: "scroll",
                   hero_cta_destination_value: "",
+                  hero_order_bar: false,
                   hero_image_url: "",
                   free_shipping_threshold: null,
                   return_policy_summary: "30-Day Returns",

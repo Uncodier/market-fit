@@ -6,6 +6,7 @@ import LayoutClient from "./layout-client"
 import { shouldUseLayout } from "./config/routes"
 import DemoBanner from "./components/DemoBanner"
 import ViewOnlyBanner from "./components/permissions/ViewOnlyBanner"
+import VersionCheck from "./components/VersionCheck"
 import { rememberInternalPath } from "./documents/internal-back"
 
 export default function ClientWrapper({
@@ -26,6 +27,7 @@ export default function ClientWrapper({
         {children}
         <DemoBanner />
         <ViewOnlyBanner />
+        <VersionCheck />
       </LayoutClient>
     )
   }
@@ -35,6 +37,7 @@ export default function ClientWrapper({
       {children}
       <DemoBanner />
       <ViewOnlyBanner />
+      <VersionCheck />
     </>
   )
 } 

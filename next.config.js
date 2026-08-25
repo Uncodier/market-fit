@@ -2,6 +2,14 @@ const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Unique per deploy so stale tabs can detect a new version and prompt reload.
+  env: {
+    NEXT_PUBLIC_BUILD_ID:
+      process.env.VERCEL_GIT_COMMIT_SHA ||
+      process.env.NEXT_PUBLIC_BUILD_ID ||
+      String(Date.now()),
+  },
+
   // Configurar assetPrefix en producción para que el proxy en www cargue los assets desde app.makinari.com
   assetPrefix: process.env.NODE_ENV === 'production' ? 'https://app.makinari.com' : undefined,
   
@@ -85,6 +93,7 @@ const nextConfig = {
       { source: '/api/stripe/checkout/order', destination: `${app}/api/stripe/checkout/order` },
       { source: '/api/fx/rates', destination: `${app}/api/fx/rates` },
       { source: '/api/geocode', destination: `${app}/api/geocode` },
+      { source: '/api/version', destination: `${app}/api/version` },
     ]
   },
   // Next 16 reads serverActions from experimental (top-level is ignored).

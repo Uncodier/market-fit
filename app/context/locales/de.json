@@ -8500,5 +8500,8 @@
   "quotations.detail.deleteItemTitle": "Eliminar elemento",
   "quotations.create.removeItem": "Eliminar producto",
   "common.noItemsFound": "No se encontraron artículos",
-  "common.noClientsFound": "No se encontraron clientes"
+  "common.noClientsFound": "No se encontraron clientes",
+  "version.newAvailable": "Eine neue Version ist verfügbar",
+  "version.reloadDescription": "Laden Sie neu, um die neuesten Updates zu erhalten.",
+  "version.reload": "Neu laden"
 }

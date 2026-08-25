@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useDeferredValue, useCallback, useRef } from "react"
+import { useState, useEffect, useDeferredValue, useCallback, useMemo, useRef } from "react"
 import { CatalogItem } from "@/app/types"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
 import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
@@ -18,6 +18,7 @@ const BuyerLocationSheetHost = dynamic(() => import("@/app/components/commerce/B
 import { ShopHeroTrust } from "./ShopHeroTrust"
 import { ShopCatalogMain } from "./ShopCatalogMain"
 import { ShopHeader } from "./ShopHeader"
+import { ShopFulfillmentHeader } from "./ShopFulfillmentHeader"
 import { ShopMobileCartCta, ShopSiteFooter } from "./ShopSiteFooter"
 import { runShopCheckout } from "./run-shop-checkout"
 import { useParams, useRouter } from "next/navigation"
@@ -34,6 +35,10 @@ import { isAccessOnlyItem, requiresVariantSelection } from "@/app/catalog/produc
 import { isBusinessOpen, getNextOpenSlot } from "@/app/commerce/business-hours"
 import { formatDeliveryTime } from "@/app/commerce/delivery-time"
 import { BuyerGeo } from "@/app/commerce/buyer-geo"
+import {
+  defaultFulfillment,
+  type CheckoutFulfillmentMethod,
+} from "@/app/commerce/delivery-options"
 import {
   isBuyerLocationIncompatible,
   isItemLocationAvailable,
@@ -86,13 +91,26 @@ export default function ShopClient({
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [ownedItemIdsState, setOwnedItemIdsState] = useState<ShopOwnedAccess[]>(ownedItemIds)
   const [ownedItemsDataState, setOwnedItemsDataState] = useState<CatalogItem[]>(ownedItemsData)
-  const [fulfillment, setFulfillment] = useState<'pickup' | 'ship' | 'none' | 'dine_in'>(() =>
-    isBuyerParticularlyClose({
+  const shopAllowedOptions = useMemo<CheckoutFulfillmentMethod[]>(() => {
+    const raw = site?.settings?.shop?.default_delivery_options
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw as CheckoutFulfillmentMethod[]
+    }
+    return ["pickup", "ship", "dine_in"]
+  }, [site?.settings?.shop?.default_delivery_options])
+
+  const [fulfillment, setFulfillment] = useState<CheckoutFulfillmentMethod>(() => {
+    const nearby = isBuyerParticularlyClose({
       buyerGeo,
       inventoryLocations: locations,
       settingsLocations: site?.settings?.locations,
-    }) ? 'pickup' : 'none'
-  )
+    })
+    const raw = site?.settings?.shop?.default_delivery_options
+    const options = (Array.isArray(raw) && raw.length > 0
+      ? raw
+      : ["pickup", "ship", "dine_in"]) as CheckoutFulfillmentMethod[]
+    return defaultFulfillment(options, { preferPickup: nearby }) || "none"
+  })
   const [originLocationId, setOriginLocationId] = useState<string>(
     () => pickPreferredPickupLocation(locations || [], buyerGeo)?.id || locations?.[0]?.id || ''
   )
@@ -140,6 +158,11 @@ export default function ShopClient({
   const [scheduledFor, setScheduledFor] = useState<Date | null>(null)
   const userChoseFulfillmentRef = useRef(false)
   const userChosePaymentRef = useRef(false)
+
+  const setFulfillmentByUser = useCallback((value: CheckoutFulfillmentMethod) => {
+    userChoseFulfillmentRef.current = true
+    setFulfillment(value)
+  }, [])
   
   // Compute business availability
   const businessHours = site?.settings?.business_hours || []
@@ -501,7 +524,31 @@ export default function ShopClient({
         userChosePaymentRef={userChosePaymentRef}
       />
 
-      <ShopHeroTrust site={site} searchQuery={deferredSearchQuery} isOpen={isOpen} nextOpenSlot={nextOpenSlot} locationAvailable={locationAvailable} deliveryTimeLabel={deliveryTimeLabel} />
+      <ShopHeroTrust
+        site={site}
+        searchQuery={deferredSearchQuery}
+        isOpen={isOpen}
+        nextOpenSlot={nextOpenSlot}
+        locationAvailable={locationAvailable}
+        deliveryTimeLabel={deliveryTimeLabel}
+        fulfillment={
+          site?.settings?.shop?.hero_order_bar === true
+            ? (tone, centerAction) => (
+                <ShopFulfillmentHeader
+                  allowedOptions={shopAllowedOptions}
+                  fulfillment={fulfillment}
+                  setFulfillment={setFulfillmentByUser}
+                  orderTiming={orderTiming}
+                  setOrderTiming={setOrderTiming}
+                  scheduledFor={scheduledFor}
+                  setScheduledFor={setScheduledFor}
+                  tone={tone}
+                  centerAction={centerAction}
+                />
+              )
+            : undefined
+        }
+      />
 
       <ShopCatalogMain
         siteSlug={siteSlug}

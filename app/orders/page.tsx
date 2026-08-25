@@ -164,7 +164,9 @@ export default function OrdersPage() {
               <MobileFiltersDrawer triggerText={t('common.search') || "Buscar"} results={renderOrdersTable()}>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 md:gap-4 w-full flex-1 min-w-0">
                   <div className="md:hidden w-full">
-                    <SearchInput  placeholder={t('orders.search') || "Search order number..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
+                    <form onSubmit={handleSearch}>
+                      <SearchInput  placeholder={t('orders.search') || "Search order number..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
+                    </form>
                   </div>
                   <div className="flex flex-col gap-2">
                     <span className="text-xs font-semibold text-muted-foreground md:hidden mb-1 uppercase">{t('common.filters') || 'Filtros'}</span>

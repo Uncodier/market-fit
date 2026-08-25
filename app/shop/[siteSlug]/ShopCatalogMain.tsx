@@ -332,7 +332,7 @@ export const ShopCatalogMain = React.memo(function ShopCatalogMain({
   }
 
   return (
-    <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
+    <main className="flex-1 max-w-7xl mx-auto px-4 md:px-8 pt-5 pb-8 md:pt-8 md:pb-12 w-full">
       {!isSearching && generalPromos.length > 0 && (
         <PromoCarousel
           promos={generalPromos}

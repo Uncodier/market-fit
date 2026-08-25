@@ -18,7 +18,7 @@ import {
 } from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Switch } from "../ui/switch"
-import { Store, Image as ImageIcon, Truck, ShieldCheck, RotateCcw, PlusCircle, Trash2, CreditCard, Loader, X } from "../ui/icons"
+import { Store, Image as ImageIcon, Truck, ShieldCheck, RotateCcw, PlusCircle, Trash2, CreditCard, Loader, X, Calendar } from "../ui/icons"
 import { EmptyCard } from "../ui/empty-card"
 import { uploadAssetFile } from "@/app/assets/actions"
 import { listCatalogCategories, listCatalogItems } from "@/app/catalog/actions"
@@ -269,6 +269,30 @@ export function ShopSection({ active, onSave, siteId }: ShopSectionProps) {
               />
             )}
           </div>
+
+          <FormField
+            control={form.control}
+            name="shop.hero_order_bar"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg p-3 shadow-sm border bg-background">
+                <div className="space-y-0.5">
+                  <FormLabel className="font-medium flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-violet-500" />
+                    Hero order bar
+                  </FormLabel>
+                  <FormDescription className="text-xs">
+                    Show pickup, delivery, dine-in, and schedule controls at the bottom of the hero. On desktop, the call-to-action sits in the same row.
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value === true}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
 
           <FormField
             control={form.control}

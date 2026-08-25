@@ -41,6 +41,7 @@ export interface DatePickerProps {
   rangeDisplay?: string;
   showTimePicker?: boolean;
   timeFormat?: '12h' | '24h';
+  trigger?: React.ReactNode;
 }
 
 export function DatePicker({
@@ -59,7 +60,8 @@ export function DatePicker({
   setEndDate,
   rangeDisplay,
   showTimePicker = false,
-  timeFormat = '24h'
+  timeFormat = '24h',
+  trigger
 }: DatePickerProps) {
   const { t, locale } = useLocalization()
   const dateLocale = getDateFnsLocale(locale)
@@ -683,12 +685,14 @@ export function DatePicker({
           </div>
   );
 
+  const resolvedTrigger = trigger || triggerButton
+
   if (isMobile) {
     return (
-      <div className="w-full">
+      <div className={trigger ? "w-auto h-full" : "w-full"}>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            {triggerButton}
+            {resolvedTrigger}
           </DialogTrigger>
           <DialogContent 
             className="p-0 w-[95vw] max-w-[400px] gap-0 border-border bg-popover !fixed !inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !rounded-xl" 
@@ -705,10 +709,10 @@ export function DatePicker({
   }
 
   return (
-    <div className="w-full">
+    <div className={trigger ? "w-auto h-full" : "w-full"}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          {triggerButton}
+          {resolvedTrigger}
         </PopoverTrigger>
         <PopoverContent
           className="p-0 w-auto max-w-[calc(100vw-2rem)] sm:max-w-none z-[999999]"

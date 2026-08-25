@@ -522,6 +522,7 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       hero_cta_label: site.settings?.shop?.hero_cta_label || "Shop Now",
       hero_cta_destination_type: site.settings?.shop?.hero_cta_destination_type || "scroll",
       hero_cta_destination_value: site.settings?.shop?.hero_cta_destination_value || "",
+      hero_order_bar: site.settings?.shop?.hero_order_bar === true,
       hero_image_url: site.settings?.shop?.hero_image_url || "",
       shipping_cost: site.settings?.shop?.shipping_cost ?? null,
       free_shipping_threshold: site.settings?.shop?.free_shipping_threshold || null,
