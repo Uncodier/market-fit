@@ -28,7 +28,8 @@ import type { Reservation, CatalogItem, VariantAxis } from "@/app/types"
 import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
 import type { CartModifier } from "@/app/commerce/cart-modifiers"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
-import { upsertReservation } from "../actions"
+import { updateReservationStatus, upsertReservation } from "../actions"
+import { reservationCanCancel } from "../reservation-helpers"
 import { assertReservationSlot } from "../availability"
 import { getLeads } from "@/app/leads/actions"
 import { listCatalogItems } from "@/app/catalog/actions"
@@ -103,6 +104,10 @@ export function CreateReservationDialog({
   const router = useRouter()
   const isEdit = Boolean(reservation)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const canCancel = Boolean(reservation && reservationCanCancel(reservation))
+  const isBusy = isSubmitting || isCancelling
   const [catalogItemValue, setCatalogItemValue] = useState<RelationSelectValue>(null)
   const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string; timezone?: string } | null>(null)
@@ -432,12 +437,33 @@ export function CreateReservationDialog({
   const { discardOpen, setDiscardOpen, handleOpenChange, confirmDiscard } =
     useDirtyDialogClose({
       dirty,
-      busy: isSubmitting,
+      busy: isBusy,
       onOpenChange: (next) => {
-        if (!next) resetForm()
+        if (!next) {
+          resetForm()
+          setCancelConfirmOpen(false)
+        }
         onOpenChange(next)
       },
     })
+
+  const handleCancelReservation = async () => {
+    if (!currentSite || !reservation || !reservationCanCancel(reservation)) return
+    setIsCancelling(true)
+    try {
+      const res = await updateReservationStatus(currentSite.id, reservation.id, "cancelled")
+      if (res.error) throw new Error(res.error)
+      toast.success(t("reservations.toast.cancelled") || "Reservation cancelled")
+      resetForm()
+      onSuccess()
+      onOpenChange(false)
+    } catch (error: any) {
+      toast.error(error.message || t("reservations.toast.cancelFailed") || "Failed to cancel reservation")
+      throw error
+    } finally {
+      setIsCancelling(false)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!currentSite) return
@@ -611,7 +637,7 @@ export function CreateReservationDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent size="lg" busy={isSubmitting}>
+        <DialogContent size="lg" busy={isBusy}>
           <DialogHeader>
             <DialogTitle>
               {isEdit
@@ -896,31 +922,46 @@ export function CreateReservationDialog({
             )}
           </DialogBody>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void handleSubmit()}
-              disabled={
-                isSubmitting || 
-                (mode === "service" ? (items.length === 0 || !sellableItem || !modifiersValid || !leadValue || !selectedSlot) : false)
-              }
-            >
-              {isSubmitting
-                ? isEdit
-                  ? t("reservations.dialog.saving") || "Saving..."
-                  : t("reservations.dialog.creating") || "Creating..."
-                : isEdit
-                  ? t("reservations.dialog.save") || "Save changes"
-                  : t("reservations.dialog.createTitle") || "Create reservation"}
-            </Button>
+          <DialogFooter className="gap-2 sm:justify-between">
+            {canCancel ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={() => setCancelConfirmOpen(true)}
+                disabled={isBusy}
+              >
+                {t("reservations.dialog.cancelReservation") || "Cancel reservation"}
+              </Button>
+            ) : (
+              <span />
+            )}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={isBusy}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={
+                  isBusy || 
+                  (mode === "service" ? (items.length === 0 || !sellableItem || !modifiersValid || !leadValue || !selectedSlot) : false)
+                }
+              >
+                {isSubmitting
+                  ? isEdit
+                    ? t("reservations.dialog.saving") || "Saving..."
+                    : t("reservations.dialog.creating") || "Creating..."
+                  : isEdit
+                    ? t("reservations.dialog.save") || "Save changes"
+                    : t("reservations.dialog.createTitle") || "Create reservation"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -932,6 +973,17 @@ export function CreateReservationDialog({
         confirmLabel="Discard"
         variant="destructive"
         onConfirm={confirmDiscard}
+        dataPermission="allow"
+      />
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        onOpenChange={setCancelConfirmOpen}
+        title={t("reservations.dialog.cancelConfirmTitle") || "Cancel this reservation?"}
+        description={t("reservations.dialog.cancelConfirmDescription") || "The time slot will become available again."}
+        confirmLabel={t("reservations.dialog.cancelReservation") || "Cancel reservation"}
+        variant="destructive"
+        loading={isCancelling}
+        onConfirm={handleCancelReservation}
         dataPermission="allow"
       />
     </>

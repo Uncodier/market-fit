@@ -6,6 +6,20 @@ export function reservationCanEdit(reservation: Pick<Reservation, "status">) {
   return reservation.status === "pending" || reservation.status === "confirmed"
 }
 
+export function reservationCanCancel(
+  reservation: Pick<Reservation, "status" | "is_task">
+) {
+  if (reservation.is_task) return false
+  return reservation.status === "pending" || reservation.status === "confirmed"
+}
+
+export function reservationCanRestore(
+  reservation: Pick<Reservation, "status" | "is_task">
+) {
+  if (reservation.is_task) return false
+  return reservation.status === "cancelled"
+}
+
 export function compareReservationStartTime(
   a: Pick<Reservation, "start_time">,
   b: Pick<Reservation, "start_time">,
@@ -145,7 +159,11 @@ export function reservationServiceColorKey(reservation: ServiceColorReservation)
   return `type:${reservation.resource_type || "unknown"}`
 }
 
-export function reservationServiceColor(reservation: ServiceColorReservation) {
-  const index = hashString(reservationServiceColorKey(reservation)) % RESERVATION_SERVICE_COLORS.length
+export function reservationServiceColorForKey(key: string) {
+  const index = hashString(key) % RESERVATION_SERVICE_COLORS.length
   return RESERVATION_SERVICE_COLORS[index]
+}
+
+export function reservationServiceColor(reservation: ServiceColorReservation) {
+  return reservationServiceColorForKey(reservationServiceColorKey(reservation))
 }

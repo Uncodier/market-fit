@@ -1,6 +1,9 @@
 import {
   compareReservationStartTime,
+  reservationCanCancel,
+  reservationCanRestore,
   reservationServiceColor,
+  reservationServiceColorForKey,
   reservationServiceColorKey,
   sortReservationGroups,
   sortReservations,
@@ -82,6 +85,12 @@ describe("reservation service colors", () => {
         },
       })
     ).toBe("catalog:emmanuel")
+    expect(reservationServiceColorForKey("catalog:emmanuel")).toEqual(
+      reservationServiceColor({
+        catalog_item_id: "corte",
+        catalog_item: { name: "Corte", parent_id: "emmanuel" },
+      })
+    )
   })
 
   it("keeps independent variant colors on the leaf catalog item", () => {
@@ -105,5 +114,31 @@ describe("reservation service colors", () => {
     )
 
     expect(swatches.size).toBeGreaterThan(1)
+  })
+})
+
+describe("reservationCanCancel", () => {
+  it("allows cancelling pending and confirmed reservations", () => {
+    expect(reservationCanCancel({ status: "pending" })).toBe(true)
+    expect(reservationCanCancel({ status: "confirmed" })).toBe(true)
+  })
+
+  it("does not allow cancelling completed, cancelled, or task reservations", () => {
+    expect(reservationCanCancel({ status: "completed" })).toBe(false)
+    expect(reservationCanCancel({ status: "cancelled" })).toBe(false)
+    expect(reservationCanCancel({ status: "confirmed", is_task: true })).toBe(false)
+  })
+})
+
+describe("reservationCanRestore", () => {
+  it("allows restoring cancelled reservations", () => {
+    expect(reservationCanRestore({ status: "cancelled" })).toBe(true)
+  })
+
+  it("does not allow restoring active, completed, or task reservations", () => {
+    expect(reservationCanRestore({ status: "pending" })).toBe(false)
+    expect(reservationCanRestore({ status: "confirmed" })).toBe(false)
+    expect(reservationCanRestore({ status: "completed" })).toBe(false)
+    expect(reservationCanRestore({ status: "cancelled", is_task: true })).toBe(false)
   })
 })

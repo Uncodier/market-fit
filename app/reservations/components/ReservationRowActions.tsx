@@ -17,11 +17,12 @@ import {
   CheckCircle,
   ClipboardList,
   Pencil,
+  RotateCcw,
 } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getVisitsSettings } from "@/app/visits/actions"
 import { reservationCanRegisterVisitor } from "@/app/visits/visit-helpers"
-import { reservationCanEdit } from "../reservation-helpers"
+import { reservationCanEdit, reservationCanRestore } from "../reservation-helpers"
 
 export function ReservationRowActions({
   reservation,
@@ -87,6 +88,11 @@ export function ReservationRowActions({
             className="text-red-600 focus:text-red-600"
           >
             <Ban className="h-4 w-4 mr-2" /> {t("reservations.actions.cancel")}
+          </DropdownMenuItem>
+        )}
+        {reservationCanRestore(reservation) && (
+          <DropdownMenuItem onClick={() => onStatusChange(reservation.id, "confirmed")}>
+            <RotateCcw className="h-4 w-4 mr-2" /> {t("reservations.actions.restore") || "Restore"}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

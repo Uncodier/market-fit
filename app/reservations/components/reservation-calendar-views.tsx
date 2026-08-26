@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { CalendarBlock, Reservation } from "@/app/types"
-import { reservationServiceColor } from "../reservation-helpers"
+import { reservationServiceColorForKey } from "../reservation-helpers"
 import { CalendarBlockItem, ReservationItem } from "./ReservationCalendarItem"
 import { buildMonthCalendarDays, getMonthName } from "./reservation-calendar-utils"
 import {
@@ -173,7 +173,7 @@ export function ReservationDayView({
             key={group.key}
             className="bg-muted/50 sticky top-0 z-10 border-b border-border h-10 flex items-center justify-center gap-2 font-medium text-sm truncate px-2"
           >
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", reservationServiceColor(group.sample).swatch)} />
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", reservationServiceColorForKey(group.key).swatch)} />
             <span className="truncate">{group.label}</span>
           </div>
         ))}
